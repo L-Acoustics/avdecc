@@ -1,0 +1,13 @@
+[attr]text_lf text eol=lf
+[attr]text_crlf text eol=crlf
+
+*.cpp			text_lf
+*.c				text_lf
+*.hpp			text_lf
+*.h				text_lf
+
+*.txt			text_lf
+*.sh			text_lf
+
+Doxyfile	text_lf
+*.eap			binary

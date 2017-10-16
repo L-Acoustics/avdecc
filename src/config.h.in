@@ -1,0 +1,32 @@
+/*
+* Copyright (C) 2016-2017, L-Acoustics and its contributors
+
+* This file is part of LA_avdecc.
+
+* LA_avdecc is free software: you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+
+* LA_avdecc is distributed in the hope that it will be usefu_state,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+
+* You should have received a copy of the GNU Lesser General Public License
+* along with LA_avdecc.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+/**
+* @file config.hpp
+* @author Christophe Calmejane
+* @brief Project global defines.
+*/
+
+#pragma once
+
+#define LA_AVDECC_LIB_VERSION "@LA_PROJECT_VERSIONMAJ@.@LA_PROJECT_VERSIONMIN@.@LA_PROJECT_VERSIONSUB@"
+#define LA_COMPANY_NAME "@LA_PROJECT_COMPANYNAME@"
+#define LA_YEAR "@LA_YEAR@"
+#define LA_LEGAL_COPYRIGHT "@LA_PROJECT_LEGALCOPYRIGHT@"
+#define LA_FULL_COPYRIGHT "@LA_PROJECT_READABLE_COPYRIGHT@"

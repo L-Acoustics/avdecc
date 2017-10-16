@@ -1,0 +1,10 @@
+# Ignore CMake Build folder
+/_build*
+
+# Ignore MacOS files
+.DS_Store
+
+# Ignore winpcap developer's pack
+/externals/3rdparty/winpcap/Include
+/externals/3rdparty/winpcap/Lib
+
