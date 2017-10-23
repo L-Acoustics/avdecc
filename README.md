@@ -35,7 +35,7 @@ This is a simple library to create an AVDECC controller entity on the local comp
 
 The controller API has 2 interfaces:
 - An observer interface to monitor all changes on discovered entities
-- A control interface to send command (AECP) and control (ACMP) requests to an entity
+- An interaction interface to send enumeration and control (AECP) or connection management (ACMP) requests to an entity
 
 # Minimum requirements for compilation
 
