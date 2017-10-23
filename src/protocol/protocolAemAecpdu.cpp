@@ -109,6 +109,16 @@ void AemAecpdu::deserialize(DeserializationBuffer& buffer)
 #endif // DEBUG
 }
 
+	/** Copy method */
+Aecpdu::UniquePointer AemAecpdu::copy() const
+{
+	auto deleter = [](Aecpdu* self)
+	{
+		static_cast<AemAecpdu*>(self)->destroy();
+	};
+	return UniquePointer(new AemAecpdu(*this), deleter);
+}
+
 /** Entry point */
 AemAecpdu* AemAecpdu::createRawAemAecpdu()
 {

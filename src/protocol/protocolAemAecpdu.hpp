@@ -102,6 +102,9 @@ public:
 	// Deserialization method
 	virtual void deserialize(DeserializationBuffer& buffer) override;
 
+	/** Copy method */
+	virtual UniquePointer copy() const override;
+	
 	// Defaulted compiler auto-generated methods
 	AemAecpdu(AemAecpdu&&) = default;
 	AemAecpdu(AemAecpdu const&) = default;

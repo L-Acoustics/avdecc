@@ -103,6 +103,9 @@ public:
 
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept = 0;
+	
+	/** Copy method */
+	virtual UniquePointer copy() const = 0;
 
 	// Defaulted compiler auto-generated methods
 	Aecpdu(Aecpdu&&) = default;
