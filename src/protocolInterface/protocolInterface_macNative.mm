@@ -263,6 +263,7 @@ namespace la
 {
 	if ([NSProcessInfo instancesRespondToSelector:@selector(isOperatingSystemAtLeastVersion:)])
 	{
+		// Minimum required version is macOS 10.11.0 (El Capitan)
 		return [[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion:{10, 11, 0}];
 	}
 
