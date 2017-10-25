@@ -67,6 +67,7 @@ struct EntityQueues
 	std::condition_variable _pendingCondVar;
 }
 
++(BOOL)isSupported;
 /** std::string to NSString conversion */
 +(NSString*)getNSString:(std::string const&)cString;
 /** NSString to std::string conversion */
@@ -248,6 +249,7 @@ namespace la
 			
 			bool ProtocolInterfaceMacNative::isSupported() noexcept
 			{
+				return [BridgeInterface isSupported];
 			}
 
 		} // namespace protocol
@@ -256,6 +258,16 @@ namespace la
 
 #pragma mark - BridgeInterface Implementation
 @implementation BridgeInterface
+
++(BOOL)isSupported
+{
+	if ([NSProcessInfo instancesRespondToSelector:@selector(isOperatingSystemAtLeastVersion:)])
+	{
+		return [[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion:{10, 11, 0}];
+	}
+
+	return FALSE;
+}
 
 /** std::string to NSString conversion */
 +(NSString*)getNSString:(std::string const&)cString
