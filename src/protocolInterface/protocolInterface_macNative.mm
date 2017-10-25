@@ -127,6 +127,9 @@ namespace la
 				ProtocolInterfaceMacNativeImpl(std::string const& networkInterfaceName)
 				: ProtocolInterfaceMacNative(networkInterfaceName)
 				{
+					// Should not be there if the interface is not supported
+					assert(isSupported());
+
 					auto* intName = [BridgeInterface getNSString:networkInterfaceName];
 					
 #if 0 // We don't need to check for AVB capability/enable on the interface, AVDECC do not require an AVB compatible interface
@@ -243,6 +246,10 @@ namespace la
 				return std::make_unique<ProtocolInterfaceMacNativeImpl>(networkInterfaceName);
 			}
 			
+			bool ProtocolInterfaceMacNative::isSupported() noexcept
+			{
+			}
+
 		} // namespace protocol
 	} // namespace avdecc
 } // namespace la

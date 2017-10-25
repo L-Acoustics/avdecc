@@ -45,6 +45,9 @@ public:
 	*/
 	static UniquePointer create(std::string const& networkInterfaceName);
 
+	/** Returns true is this ProtocolInterface is supported (runtime check) */
+	static bool isSupported() noexcept;
+
 	/** Destructor */
 	virtual ~ProtocolInterfacePcap() noexcept = default;
 
