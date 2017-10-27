@@ -9,7 +9,7 @@ configure_file(
 )
 if(WIN32)
 	configure_file(
-		"${CMAKE_SOURCE_DIR}/resources/win32/resources.rc.in"
+		"${LA_ROOT_DIR}/resources/win32/resources.rc.in"
 		"${CMAKE_CURRENT_BINARY_DIR}/resources.rc"
 	)
 	set(SHARED_LIBRARY_FILES "${CMAKE_CURRENT_BINARY_DIR}/resources.rc")
@@ -36,21 +36,21 @@ set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER ${SOURCE_FILES_CPP_NETWORK_INTERF
 set (HEADER_FILES_CPP_NETWORK_INTERFACE_HELPER networkInterfaceHelper/networkInterfaceHelper_common.hpp)
 
 set (PUBLIC_HEADER_FILES
-	${CMAKE_SOURCE_DIR}/include/la/avdecc/avdecc.hpp
-	${CMAKE_SOURCE_DIR}/include/la/avdecc/logger.hpp
-	${CMAKE_SOURCE_DIR}/include/la/avdecc/networkInterfaceHelper.hpp
-	${CMAKE_SOURCE_DIR}/include/la/avdecc/utils.hpp
-	${CMAKE_SOURCE_DIR}/include/la/avdecc/internals/controllerEntity.hpp
-	${CMAKE_SOURCE_DIR}/include/la/avdecc/internals/endian.hpp
-	${CMAKE_SOURCE_DIR}/include/la/avdecc/internals/endStation.hpp
-	${CMAKE_SOURCE_DIR}/include/la/avdecc/internals/entity.hpp
-	${CMAKE_SOURCE_DIR}/include/la/avdecc/internals/entityModel.hpp
-	${CMAKE_SOURCE_DIR}/include/la/avdecc/internals/exception.hpp
-	${CMAKE_SOURCE_DIR}/include/la/avdecc/internals/exports.hpp
-	${CMAKE_SOURCE_DIR}/include/la/avdecc/internals/protocolDefines.hpp
-	${CMAKE_SOURCE_DIR}/include/la/avdecc/internals/streamFormat.hpp
-	${CMAKE_SOURCE_DIR}/include/la/avdecc/internals/types.hpp
-	${CMAKE_SOURCE_DIR}/include/la/avdecc/internals/uniqueIdentifier.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/avdecc.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/logger.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/networkInterfaceHelper.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/utils.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/controllerEntity.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/endian.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/endStation.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/entity.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModel.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/exception.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/exports.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolDefines.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/streamFormat.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/types.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/uniqueIdentifier.hpp
 )
 
 # Low level Protocol
@@ -245,5 +245,5 @@ endif()
 
 # Set installation rules
 if(INSTALL_AVDECC_HEADERS)
-	install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/la/avdecc CONFIGURATIONS Release DESTINATION include/la)
+	install(DIRECTORY ${LA_ROOT_DIR}/include/la/avdecc CONFIGURATIONS Release DESTINATION include/la)
 endif()

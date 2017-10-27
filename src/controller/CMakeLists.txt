@@ -9,16 +9,16 @@ configure_file(
 )
 if(WIN32)
 	configure_file(
-		"${CMAKE_SOURCE_DIR}/resources/win32/controller/resources.rc.in"
+		"${LA_ROOT_DIR}/resources/win32/controller/resources.rc.in"
 		"${CMAKE_CURRENT_BINARY_DIR}/resources.rc"
 	)
 	set(SHARED_LIBRARY_FILES "${CMAKE_CURRENT_BINARY_DIR}/resources.rc")
 endif()
 
 set (PUBLIC_HEADER_FILES
-	${CMAKE_SOURCE_DIR}/include/la/avdecc/controller/avdeccController.hpp
-	${CMAKE_SOURCE_DIR}/include/la/avdecc/controller/internals/exports.hpp
-	${CMAKE_SOURCE_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntity.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/controller/avdeccController.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/exports.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntity.hpp
 )
 source_group("Header Files\\Public\\Controller" FILES ${PUBLIC_HEADER_FILES})
 
@@ -73,5 +73,5 @@ endif()
 
 # Set installation rules
 if(INSTALL_AVDECC_HEADERS)
-	install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/la/avdecc CONFIGURATIONS Release DESTINATION include/la)
+	install(DIRECTORY ${LA_ROOT_DIR}/include/la/avdecc CONFIGURATIONS Release DESTINATION include/la)
 endif()

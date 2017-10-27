@@ -8,8 +8,8 @@ cmake_minimum_required(VERSION 3.6)
 # Using Semantic Versioning (http://semver.org/spec/v2.0.0.html)
 # Project version number x.y.z on main branch, x.y.z.w on dev and task branches
 # Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task)
-set(LA_AVDECC_VERSION 2.0.9)
-set(LA_AVDECC_CONTROLLER_VERSION 2.0.1)
+set(LA_AVDECC_VERSION 2.0.10)
+set(LA_AVDECC_CONTROLLER_VERSION 2.0.2)
 
 ############ Override from command line "CMake -D<OPTION>=TRUE/FALSE/0/1/ON/OFF"
 
@@ -57,10 +57,10 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 
 # Include our internal macros
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/internals.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/internals.cmake)
 
 # Include common properties overrides
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/CommonProjectProperties.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/CommonProjectProperties.cmake)
 
 ############ Define some variables
 
@@ -102,11 +102,11 @@ endif()
 if(BUILD_AVDECC_INTERFACE_PCAP)
 	if(WIN32)
 		# Check if winpcap is installed
-		if(NOT EXISTS "${CMAKE_SOURCE_DIR}/externals/3rdparty/winpcap/Include" OR NOT EXISTS "${CMAKE_SOURCE_DIR}/externals/3rdparty/winpcap/Lib")
-			message(FATAL_ERROR "WinPCap Developer's Pack not properly installed. See ${CMAKE_SOURCE_DIR}/externals/3rdparty/winpcap/README.md for installation instructions")
+		if(NOT EXISTS "${LA_ROOT_DIR}/externals/3rdparty/winpcap/Include" OR NOT EXISTS "${LA_ROOT_DIR}/externals/3rdparty/winpcap/Lib")
+			message(FATAL_ERROR "WinPCap Developer's Pack not properly installed. See ${LA_ROOT_DIR}/externals/3rdparty/winpcap/README.md for installation instructions")
 		endif()
 		# Define base folder for winpcap
-		set(LA_WINPCAP_BASE_DIR "${CMAKE_SOURCE_DIR}/externals/3rdparty/winpcap")
+		set(LA_WINPCAP_BASE_DIR "${LA_ROOT_DIR}/externals/3rdparty/winpcap")
 		if(${TARGET_ARCH} EQUAL 32)
 			set(LA_WINPCAP_LIB_DIR "${LA_WINPCAP_BASE_DIR}/Lib")
 		else()

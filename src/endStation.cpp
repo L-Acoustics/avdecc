@@ -129,24 +129,36 @@ std::string LA_AVDECC_CALL_CONVENTION EndStation::typeToString(ProtocolInterface
 
 EndStation::SupportedProtocolInterfaceTypes LA_AVDECC_CALL_CONVENTION EndStation::getSupportedProtocolInterfaceTypes() noexcept
 {
-	static SupportedProtocolInterfaceTypes types = {
+	static SupportedProtocolInterfaceTypes s_supportedProtocolInterfaceTypes{};
+
+	if (s_supportedProtocolInterfaceTypes.empty())
+	{
 		// PCap
 #if defined(HAVE_PROTOCOL_INTERFACE_PCAP)
-		ProtocolInterfaceType::PCap,
+		if (protocol::ProtocolInterfacePcap::isSupported())
+		{
+			s_supportedProtocolInterfaceTypes.push_back(ProtocolInterfaceType::PCap);
+		}
 #endif // HAVE_PROTOCOL_INTERFACE_PCAP
 
-		// MacOSNative only supported on macOS
+		// MacOSNative (only supported on macOS)
 #if defined(HAVE_PROTOCOL_INTERFACE_MAC)
-		ProtocolInterfaceType::MacOSNative,
+		if (protocol::ProtocolInterfaceMacNative::isSupported())
+		{
+			s_supportedProtocolInterfaceTypes.push_back(ProtocolInterfaceType::MacOSNative);
+		}
 #endif // HAVE_PROTOCOL_INTERFACE_MAC
 
-		// Proxy
+			// Proxy
 #if defined(HAVE_PROTOCOL_INTERFACE_PROXY)
-		ProtocolInterfaceType::Proxy,
+		if (protocol::ProtocolInterfaceProxy::isSupported())
+		{
+			s_supportedProtocolInterfaceTypes.push_back(ProtocolInterfaceType::Proxy);
+		}
 #endif // HAVE_PROTOCOL_INTERFACE_PROXY
-	};
+	}
 
-	return types;
+	return s_supportedProtocolInterfaceTypes;
 }
 
 /** EndStation Entry point */
@@ -193,6 +205,8 @@ EndStation* LA_AVDECC_CALL_CONVENTION EndStation::createRawEndStation(ProtocolIn
 				throw Exception(Error::InterfaceNotFound, e.what());
 			case protocol::ProtocolInterface::Error::InterfaceInvalid:
 				throw Exception(Error::InterfaceInvalid, e.what());
+			case protocol::ProtocolInterface::Error::NotSupported:
+				throw Exception(Error::InvalidProtocolInterfaceType, e.what());
 			default:
 				assert(false && "Unhandled exception");
 				throw Exception(Error::InternalError, e.what());
