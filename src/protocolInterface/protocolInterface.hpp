@@ -60,6 +60,7 @@ public:
 		DuplicateLocalEntityID = 6, /**< The EntityID specified in a LocalEntity is already in use by another local entity. */
 		InterfaceNotFound = 7, /**< Specified interface not found. */
 		InterfaceInvalid = 8, /**< Specified interface is invalid. */
+		NotSupported = 9, /**< This protocol interface is not in the list of supported protocol interfaces. */
 		InternalError = 99, /**< Internal error, please report the issue. */
 	};
 

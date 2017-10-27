@@ -67,6 +67,7 @@ struct EntityQueues
 	std::condition_variable _pendingCondVar;
 }
 
++(BOOL)isSupported;
 /** std::string to NSString conversion */
 +(NSString*)getNSString:(std::string const&)cString;
 /** NSString to std::string conversion */
@@ -127,6 +128,9 @@ namespace la
 				ProtocolInterfaceMacNativeImpl(std::string const& networkInterfaceName)
 				: ProtocolInterfaceMacNative(networkInterfaceName)
 				{
+					// Should not be there if the interface is not supported
+					assert(isSupported());
+
 					auto* intName = [BridgeInterface getNSString:networkInterfaceName];
 					
 #if 0 // We don't need to check for AVB capability/enable on the interface, AVDECC do not require an AVB compatible interface
@@ -243,12 +247,28 @@ namespace la
 				return std::make_unique<ProtocolInterfaceMacNativeImpl>(networkInterfaceName);
 			}
 			
+			bool ProtocolInterfaceMacNative::isSupported() noexcept
+			{
+				return [BridgeInterface isSupported];
+			}
+
 		} // namespace protocol
 	} // namespace avdecc
 } // namespace la
 
 #pragma mark - BridgeInterface Implementation
 @implementation BridgeInterface
+
++(BOOL)isSupported
+{
+	if ([NSProcessInfo instancesRespondToSelector:@selector(isOperatingSystemAtLeastVersion:)])
+	{
+		// Minimum required version is macOS 10.11.0 (El Capitan)
+		return [[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion:{10, 11, 0}];
+	}
+
+	return FALSE;
+}
 
 /** std::string to NSString conversion */
 +(NSString*)getNSString:(std::string const&)cString

@@ -40,6 +40,9 @@ public:
 	*/
 	static UniquePointer create(std::string const& networkInterfaceName);
 
+	/** Returns true if this ProtocolInterface is supported (runtime check) */
+	static bool isSupported() noexcept;
+
 	/** Destructor */
 	virtual ~ProtocolInterfaceMacNative() noexcept = default;
 

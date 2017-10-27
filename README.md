@@ -20,7 +20,7 @@ We use GitHub issues for tracking requests and bugs.
 * Avid: S6L
 * MOTU: 112D, 828, Traveller, StageBox16
 * MeyerSound: Galileo GALAXY
-* Apple: macOS Talker, Listener and Controller (Sierra and later)
+* Apple: macOS Talker, Listener and Controller (El Capitan and later)
 
 # la_avdecc Library
 

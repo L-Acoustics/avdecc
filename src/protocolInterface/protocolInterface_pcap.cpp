@@ -50,9 +50,8 @@ public:
 	ProtocolInterfacePcapImpl(std::string const& networkInterfaceName)
 		: ProtocolInterfacePcap(networkInterfaceName)
 	{
-		// Ensure pcap is available
-		if (!_pcapLibrary.is_available())
-			throw Exception(Error::TransportError, "Pcap library not available");
+		// Should always be supported. Cannot create a PCap ProtocolInterface if it's not supported.
+		assert(isSupported());
 
 		// Open pcap on specified network interface
 		std::array<char, PCAP_ERRBUF_SIZE> errbuf;
@@ -495,6 +494,20 @@ ProtocolInterfacePcap::ProtocolInterfacePcap(std::string const& networkInterface
 ProtocolInterface::UniquePointer ProtocolInterfacePcap::create(std::string const& networkInterfaceName)
 {
 	return std::make_unique<ProtocolInterfacePcapImpl>(networkInterfaceName);
+}
+
+bool ProtocolInterfacePcap::isSupported() noexcept
+{
+	try
+	{
+		PcapInterface pcapLibrary{};
+
+		return pcapLibrary.is_available();
+	}
+	catch (...)
+	{
+		return false;
+	}
 }
 
 } // namespace protocol
