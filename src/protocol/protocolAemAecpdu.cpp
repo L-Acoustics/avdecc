@@ -43,7 +43,13 @@ la::avdecc::networkInterface::MacAddress AemAecpdu::Identify_Mac_Address{ { 0x91
 AemAecpdu::AemAecpdu() noexcept
 {
 	// Initialize parent's specific data length field
-	Aecpdu::setAecpSpecificDataLength(AemAecpdu::HeaderLength); // Might throw, but it's not possible from here (if a compiler complains about this constructor declared as 'noexcept' but calling a method not tagged as 'noexcept', add a try-catch)
+	try
+	{
+		Aecpdu::setAecpSpecificDataLength(AemAecpdu::HeaderLength); // This method might throw, but it's not possible from here
+	}
+	catch (std::exception const&)
+	{
+	}
 }
 
 void AemAecpdu::serialize(SerializationBuffer& buffer) const

@@ -807,11 +807,18 @@ void ControllerImpl::onStreamInputFormatChanged(UniqueIdentifier const entityID,
 	auto entityIt = _controlledEntities.find(entityID);
 	if (entityIt != _controlledEntities.end())
 	{
-		auto& controlledEntity = entityIt->second;
-		controlledEntity->setInputStreamFormat(streamIndex, streamFormat);
-		if (controlledEntity->wasAdvertised())
+		try
 		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputFormatChanged, controlledEntity.get(), streamIndex, streamFormat);
+			auto& controlledEntity = entityIt->second;
+			controlledEntity->setInputStreamFormat(streamIndex, streamFormat);
+			if (controlledEntity->wasAdvertised())
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputFormatChanged, controlledEntity.get(), streamIndex, streamFormat);
+			}
+		}
+		catch (la::avdecc::controller::ControlledEntity::Exception const& e)
+		{
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Debug, std::string("onStreamInputFormatChanged(" + toHexString(entityID, true) + "," + std::to_string(streamIndex) + "," + toHexString(streamFormat, true) + ") failed: " + e.what()));
 		}
 	}
 }
@@ -823,11 +830,18 @@ void ControllerImpl::onStreamOutputFormatChanged(UniqueIdentifier const entityID
 	auto entityIt = _controlledEntities.find(entityID);
 	if (entityIt != _controlledEntities.end())
 	{
-		auto& controlledEntity = entityIt->second;
-		controlledEntity->setOutputStreamFormat(streamIndex, streamFormat);
-		if (controlledEntity->wasAdvertised())
+		try
 		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputFormatChanged, controlledEntity.get(), streamIndex, streamFormat);
+			auto& controlledEntity = entityIt->second;
+			controlledEntity->setOutputStreamFormat(streamIndex, streamFormat);
+			if (controlledEntity->wasAdvertised())
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputFormatChanged, controlledEntity.get(), streamIndex, streamFormat);
+			}
+		}
+		catch (la::avdecc::controller::ControlledEntity::Exception const& e)
+		{
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Debug, std::string("onStreamOutputFormatChanged(" + toHexString(entityID, true) + "," + std::to_string(streamIndex) + "," + toHexString(streamFormat, true) + ") failed: " + e.what()));
 		}
 	}
 }

@@ -311,50 +311,74 @@ private:
 
 	virtual ProtocolInterface::Error sendMessage(Adpdu const& adpdu) const noexcept override
 	{
-		// PCap transport requires the full frame to be built
-		SerializationBuffer buffer;
+		try
+		{
+			// PCap transport requires the full frame to be built
+			SerializationBuffer buffer;
 
-		// Start with EtherLayer2
-		serialize<EtherLayer2>(adpdu, buffer);
-		// Then Avtp control
-		serialize<AvtpduControl>(adpdu, buffer);
-		// Then with Adp
-		serialize<Adpdu>(adpdu, buffer);
+			// Start with EtherLayer2
+			serialize<EtherLayer2>(adpdu, buffer);
+			// Then Avtp control
+			serialize<AvtpduControl>(adpdu, buffer);
+			// Then with Adp
+			serialize<Adpdu>(adpdu, buffer);
 
-		// Send the message
-		return sendPacket(buffer);
+			// Send the message
+			return sendPacket(buffer);
+		}
+		catch (std::exception const& e)
+		{
+			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize ADPDU: ") + e.what());
+			return ProtocolInterface::Error::InternalError;
+		}
 	}
 
 	virtual ProtocolInterface::Error sendMessage(Aecpdu const& aecpdu) const noexcept override
 	{
-		// PCap transport requires the full frame to be built
-		SerializationBuffer buffer;
+		try
+		{
+			// PCap transport requires the full frame to be built
+			SerializationBuffer buffer;
 
-		// Start with EtherLayer2
-		serialize<EtherLayer2>(aecpdu, buffer);
-		// Then Avtp control
-		serialize<AvtpduControl>(aecpdu, buffer);
-		// Then with Aecp
-		serialize<Aecpdu>(aecpdu, buffer);
+			// Start with EtherLayer2
+			serialize<EtherLayer2>(aecpdu, buffer);
+			// Then Avtp control
+			serialize<AvtpduControl>(aecpdu, buffer);
+			// Then with Aecp
+			serialize<Aecpdu>(aecpdu, buffer);
 
-		// Send the message
-		return sendPacket(buffer);
+			// Send the message
+			return sendPacket(buffer);
+		}
+		catch (std::exception const& e)
+		{
+			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize AECPDU: ") + e.what());
+			return ProtocolInterface::Error::InternalError;
+		}
 	}
 
 	virtual ProtocolInterface::Error sendMessage(Acmpdu const& acmpdu) const noexcept override
 	{
-		// PCap transport requires the full frame to be built
-		SerializationBuffer buffer;
+		try
+		{
+			// PCap transport requires the full frame to be built
+			SerializationBuffer buffer;
 
-		// Start with EtherLayer2
-		serialize<EtherLayer2>(acmpdu, buffer);
-		// Then Avtp control
-		serialize<AvtpduControl>(acmpdu, buffer);
-		// Then with Acmp
-		serialize<Acmpdu>(acmpdu, buffer);
+			// Start with EtherLayer2
+			serialize<EtherLayer2>(acmpdu, buffer);
+			// Then Avtp control
+			serialize<AvtpduControl>(acmpdu, buffer);
+			// Then with Acmp
+			serialize<Acmpdu>(acmpdu, buffer);
 
-		// Send the message
-		return sendPacket(buffer);
+			// Send the message
+			return sendPacket(buffer);
+		}
+		catch (std::exception const& e)
+		{
+			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize ACMPDU: ") + e.what());
+			return ProtocolInterface::Error::InternalError;
+		}
 	}
 
 	void dispatchAvdeccMessage(std::uint8_t const* const pkt_data, size_t const pkt_len, EtherLayer2 const& etherLayer2) noexcept
