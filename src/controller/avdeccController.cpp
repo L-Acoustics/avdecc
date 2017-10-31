@@ -360,7 +360,7 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 			// Get Locales
 			{
 				auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::Locale);
-				if (countIt != descriptor.descriptorCounts.end())
+				if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
 				{
 					auto count = countIt->second;
 					for (auto index = entity::model::LocaleIndex(0); index < count; ++index)
@@ -377,7 +377,7 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 			// Get input streams
 			{
 				auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::StreamInput);
-				if (countIt != descriptor.descriptorCounts.end())
+				if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
 				{
 					auto count = countIt->second;
 					for (auto index = entity::model::StreamIndex(0); index < count; ++index)
@@ -397,7 +397,7 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 			// Get output streams
 			{
 				auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::StreamOutput);
-				if (countIt != descriptor.descriptorCounts.end())
+				if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
 				{
 					auto count = countIt->second;
 					for (auto index = entity::model::StreamIndex(0); index < count; ++index)
