@@ -256,6 +256,15 @@ if [[ isWindows && $toolset =~ clang ]]; then
 	platformSdk="10.0"
 fi
 
+toolset_option=""
+if [ ! -z "${toolset}" ]; then
+	if [ ! -z "${toolchain}" ]; then
+		toolset_option="-T${toolset},host=${toolchain} "
+	else
+		toolset_option="-T${toolset} "
+	fi
+fi
+
 echo "Generating cmake project..."
 "$cmake_path" -H. -B"${outputFolder}" "-G${generator}" $toolset_option $sdk_option $cmake_opt $add_cmake_opt $cmake_config
 
