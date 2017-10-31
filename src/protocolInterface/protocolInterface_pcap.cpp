@@ -506,8 +506,8 @@ private:
 	std::unique_ptr<pcap_t, std::function<void(pcap_t*)>> _pcap{ nullptr, nullptr };
 	int _fd{ -1 };
 	bool _shouldTerminate{ false };
-	std::thread _captureThread{};
 	mutable stateMachine::ControllerStateMachine _controllerStateMachine{ this, this };
+	std::thread _captureThread{};
 };
 
 ProtocolInterfacePcap::ProtocolInterfacePcap(std::string const& networkInterfaceName)
