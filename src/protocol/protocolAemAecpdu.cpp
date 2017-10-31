@@ -109,7 +109,7 @@ void AemAecpdu::deserialize(DeserializationBuffer& buffer)
 #endif // DEBUG
 }
 
-	/** Copy method */
+/** Copy method */
 Aecpdu::UniquePointer AemAecpdu::copy() const
 {
 	auto deleter = [](Aecpdu* self)

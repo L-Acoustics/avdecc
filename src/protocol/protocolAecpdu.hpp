@@ -98,12 +98,9 @@ public:
 	/** Serialization method */
 	virtual void serialize(SerializationBuffer& buffer) const;
 
-	// Deserialization method
+	/** Deserialization method */
 	virtual void deserialize(DeserializationBuffer& buffer) = 0;
 
-	/** Destroy method for COM-like interface */
-	virtual void destroy() noexcept = 0;
-	
 	/** Copy method */
 	virtual UniquePointer copy() const = 0;
 
@@ -125,6 +122,9 @@ protected:
 	AecpSequenceID _sequenceID{ 0 };
 
 private:
+	/** Destroy method for COM-like interface */
+	virtual void destroy() noexcept = 0;
+
 	// Hide renamed AvtpduControl data
 	using AvtpduControl::setControlData;
 	using AvtpduControl::setControlDataLength;

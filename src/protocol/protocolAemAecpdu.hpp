@@ -99,7 +99,7 @@ public:
 	/** Serialization method */
 	virtual void serialize(SerializationBuffer& buffer) const override;
 
-	// Deserialization method
+	/** Deserialization method */
 	virtual void deserialize(DeserializationBuffer& buffer) override;
 
 	/** Copy method */
