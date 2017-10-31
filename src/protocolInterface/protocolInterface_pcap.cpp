@@ -221,6 +221,12 @@ private:
 		return _controllerStateMachine.discoverRemoteEntity(entityID);
 	}
 
+	virtual Error sendAdpMessage(Adpdu::UniquePointer&& adpdu) const noexcept override
+	{
+		// Message can be directly sent
+		return sendMessage(static_cast<Adpdu const&>(*adpdu));
+	}
+
 	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& /*macAddress*/, AecpCommandResultHandler const& onResult) const noexcept override
 	{
 		// PCap protocol interface do not need the macAddress parameter, it will be retrieved from the Aecpdu when sending it
