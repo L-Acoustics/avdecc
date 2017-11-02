@@ -223,8 +223,20 @@ private:
 
 	virtual Error sendAdpMessage(Adpdu::UniquePointer&& adpdu) const noexcept override
 	{
-		// Message can be directly sent
+		// Directly send the message on the network
 		return sendMessage(static_cast<Adpdu const&>(*adpdu));
+	}
+
+	virtual Error sendAecpMessage(Aecpdu::UniquePointer&& aecpdu) const noexcept override
+	{
+		// Directly send the message on the network
+		return sendMessage(static_cast<Aecpdu const&>(*aecpdu));
+	}
+
+	virtual Error sendAcmpMessage(Acmpdu::UniquePointer&& acmpdu) const noexcept override
+	{
+		// Directly send the message on the network
+		return sendMessage(static_cast<Acmpdu const&>(*acmpdu));
 	}
 
 	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& /*macAddress*/, AecpCommandResultHandler const& onResult) const noexcept override

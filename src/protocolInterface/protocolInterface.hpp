@@ -126,8 +126,12 @@ public:
 	virtual Error discoverRemoteEntities() const noexcept = 0;
 	/** Requests a targetted remote entity discovery. */
 	virtual Error discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept = 0;
-	/** Sends an ADP message (not supported by all kinds of ProtocolInterface). */
+	/** Sends an ADP message directly on the network (not supported by all kinds of ProtocolInterface). */
 	virtual Error sendAdpMessage(Adpdu::UniquePointer&& adpdu) const noexcept = 0;
+	/** Sends an AECP message directly on the network (not supported by all kinds of ProtocolInterface). */
+	virtual Error sendAecpMessage(Aecpdu::UniquePointer&& aecpdu) const noexcept = 0;
+	/** Sends an ACMP message directly on the network (not supported by all kinds of ProtocolInterface). */
+	virtual Error sendAcmpMessage(Acmpdu::UniquePointer&& acmpdu) const noexcept = 0;
 	/** Sends an AECP command message. */
 	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& macAddress, AecpCommandResultHandler const& onResult) const noexcept = 0;
 	/** Sends an AECP response message. */
