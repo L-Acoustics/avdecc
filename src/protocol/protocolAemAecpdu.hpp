@@ -72,7 +72,11 @@ public:
 		if (commandSpecificDataLength > MaximumPayloadLength)
 			throw std::invalid_argument("AEM payload too big");
 		_commandSpecificDataLength = commandSpecificDataLength;
-		memcpy(_commandSpecificData.data(), commandSpecificData, _commandSpecificDataLength);
+		if (_commandSpecificDataLength > 0)
+		{
+			assert(commandSpecificData != nullptr && "commandSpecificData is nullptr");
+			memcpy(_commandSpecificData.data(), commandSpecificData, _commandSpecificDataLength);
+		}
 		// Don't forget to update parent's specific data length field
 		setAecpSpecificDataLength(AemAecpdu::HeaderLength + commandSpecificDataLength);
 	}

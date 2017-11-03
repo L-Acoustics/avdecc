@@ -21,6 +21,13 @@
 
 int main(int argc, char* argv[])
 {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+	try
+	{
+		::testing::InitGoogleTest(&argc, argv);
+		return RUN_ALL_TESTS();
+	}
+	catch (...)
+	{
+		return 1;
+	}
 }

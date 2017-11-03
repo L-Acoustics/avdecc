@@ -49,6 +49,6 @@
 
 void initOutput();
 void deinitOutput();
-void outputText(std::string const& str);
+void outputText(std::string const& str) noexcept;
 la::avdecc::EndStation::ProtocolInterfaceType chooseProtocolInterfaceType();
 la::avdecc::networkInterface::Interface chooseNetworkInterface();

@@ -121,7 +121,7 @@ ControllerEntityImpl::ControllerEntityImpl(protocol::ProtocolInterface* const pr
 ControllerEntityImpl::~ControllerEntityImpl() noexcept
 {
 	// Unregister observer
-	getProtocolInterface()->unregisterObserver(this);
+	invokeProtectedMethod(&protocol::ProtocolInterface::unregisterObserver, getProtocolInterface(), this);
 
 	_shouldTerminate = true;
 	if (_discoveryThread.joinable())
@@ -1126,54 +1126,82 @@ void ControllerEntityImpl::queryControllerAvailable(UniqueIdentifier const targe
 
 void ControllerEntityImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntityHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemLockEntityCommandPayloadSize> ser;
-	ser << protocol::AemLockEntityFlags::None; // aem_lock_flags
-	ser << getNullIdentifier(); // locked_entity_id
+	try
+	{
+		Serializer<protocol::AecpAemLockEntityCommandPayloadSize> ser;
+		ser << protocol::AemLockEntityFlags::None; // aem_lock_flags
+		ser << getNullIdentifier(); // locked_entity_id
 #pragma message("TBD: Change the API to allow partial EM lock")
-	ser << model::DescriptorType::Entity; // descriptor_type
-	ser << model::DescriptorIndex{ 0 }; // descriptor_index
+		ser << model::DescriptorType::Entity; // descriptor_type
+		ser << model::DescriptorIndex{ 0 }; // descriptor_index
 
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier());
-	sendAemCommand(targetEntityID, protocol::AemCommandType::LockEntity, ser.data(), ser.size(), errorCallback, handler);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier());
+		sendAemCommand(targetEntityID, protocol::AemCommandType::LockEntity, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize lockEntity: ") + e.what());
+	}
 }
 
 void ControllerEntityImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockEntityHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemLockEntityCommandPayloadSize> ser;
-	ser << protocol::AemLockEntityFlags::Release; // aem_lock_flags
-	ser << getNullIdentifier(); // locked_entity_id
+	try
+	{
+		Serializer<protocol::AecpAemLockEntityCommandPayloadSize> ser;
+		ser << protocol::AemLockEntityFlags::Release; // aem_lock_flags
+		ser << getNullIdentifier(); // locked_entity_id
 #pragma message("TBD: Change the API to allow partial EM lock")
-	ser << model::DescriptorType::Entity; // descriptor_type
-	ser << model::DescriptorIndex{ 0 }; // descriptor_index
+		ser << model::DescriptorType::Entity; // descriptor_type
+		ser << model::DescriptorIndex{ 0 }; // descriptor_index
 
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
-	sendAemCommand(targetEntityID, protocol::AemCommandType::LockEntity, ser.data(), ser.size(), errorCallback, handler);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
+		sendAemCommand(targetEntityID, protocol::AemCommandType::LockEntity, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize unlockEntity: ") + e.what());
+	}
 }
 
 void ControllerEntityImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, AcquireEntityHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemAcquireEntityCommandPayloadSize> ser;
-	ser << (isPersistent ? protocol::AemAcquireEntityFlags::Persistent : protocol::AemAcquireEntityFlags::None); // aem_acquire_flags
-	ser << getNullIdentifier(); // owner_entity_id
+	try
+	{
+		Serializer<protocol::AecpAemAcquireEntityCommandPayloadSize> ser;
+		ser << (isPersistent ? protocol::AemAcquireEntityFlags::Persistent : protocol::AemAcquireEntityFlags::None); // aem_acquire_flags
+		ser << getNullIdentifier(); // owner_entity_id
 #pragma message("TBD: Change the API to allow partial EM acquire")
-	ser << model::DescriptorType::Entity; // descriptor_type
-	ser << model::DescriptorIndex{ 0 }; // descriptor_index
+		ser << model::DescriptorType::Entity; // descriptor_type
+		ser << model::DescriptorIndex{ 0 }; // descriptor_index
 
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier());
-	sendAemCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier());
+		sendAemCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize acquireEntity: ") + e.what());
+	}
 }
 
 void ControllerEntityImpl::releaseEntity(UniqueIdentifier const targetEntityID, ReleaseEntityHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemAcquireEntityCommandPayloadSize> ser;
-	ser << protocol::AemAcquireEntityFlags::Release; // aem_acquire_flags
-	ser << getNullIdentifier(); // owner_entity_id
+	try
+	{
+		Serializer<protocol::AecpAemAcquireEntityCommandPayloadSize> ser;
+		ser << protocol::AemAcquireEntityFlags::Release; // aem_acquire_flags
+		ser << getNullIdentifier(); // owner_entity_id
 #pragma message("TBD: Change the API to allow partial EM acquire")
-	ser << model::DescriptorType::Entity; // descriptor_type
-	ser << model::DescriptorIndex{ 0 }; // descriptor_index
+		ser << model::DescriptorType::Entity; // descriptor_type
+		ser << model::DescriptorIndex{ 0 }; // descriptor_index
 
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier());
-	sendAemCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier());
+		sendAemCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize releaseEntity: ") + e.what());
+	}
 }
 
 void ControllerEntityImpl::registerUnsolicitedNotifications(UniqueIdentifier const targetEntityID, RegisterUnsolicitedNotificationsHandler const& handler) const noexcept
@@ -1190,240 +1218,373 @@ void ControllerEntityImpl::unregisterUnsolicitedNotifications(UniqueIdentifier c
 
 void ControllerEntityImpl::readEntityDescriptor(UniqueIdentifier const targetEntityID, EntityDescriptorHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
-	ser << model::ConfigurationIndex{ 0x0000 }; // configuration_index
-	ser << std::uint16_t{ 0x0000 }; // reserved
-	ser << model::DescriptorType::Entity; // descriptor_type
-	ser << model::DescriptorIndex{ 0 }; // descriptor_index
+	try
+	{
+		Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
+		ser << model::ConfigurationIndex{ 0x0000 }; // configuration_index
+		ser << std::uint16_t{ 0x0000 }; // reserved
+		ser << model::DescriptorType::Entity; // descriptor_type
+		ser << model::DescriptorIndex{ 0 }; // descriptor_index
 
-	model::EntityDescriptor const emptyDescriptor{ { model::DescriptorType::Entity, model::DescriptorIndex{ 0 } } };
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
-	sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		model::EntityDescriptor const emptyDescriptor{ { model::DescriptorType::Entity, model::DescriptorIndex{ 0 } } };
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readEntityDescriptor: ") + e.what());
+	}
 }
 
 void ControllerEntityImpl::readConfigurationDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, ConfigurationDescriptorHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
-	ser << model::ConfigurationIndex{ 0x0000 }; // configuration_index
-	ser << std::uint16_t{ 0x0000 }; // reserved
-	ser << model::DescriptorType::Configuration; // descriptor_type
-	ser << model::DescriptorIndex{ configurationIndex }; // descriptor_index
+	try
+	{
+		Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
+		ser << model::ConfigurationIndex{ 0x0000 }; // configuration_index
+		ser << std::uint16_t{ 0x0000 }; // reserved
+		ser << model::DescriptorType::Configuration; // descriptor_type
+		ser << model::DescriptorIndex{ configurationIndex }; // descriptor_index
 
-	model::ConfigurationDescriptor const emptyDescriptor{ { model::DescriptorType::Configuration, configurationIndex } };
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
-	sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		model::ConfigurationDescriptor const emptyDescriptor{ { model::DescriptorType::Configuration, configurationIndex } };
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readConfigurationDescriptor: ") + e.what());
+	}
 }
 
 void ControllerEntityImpl::readLocaleDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::LocaleIndex const localeIndex, LocaleDescriptorHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
-	ser << model::ConfigurationIndex{ configurationIndex }; // configuration_index
-	ser << std::uint16_t{ 0x0000 }; // reserved
-	ser << model::DescriptorType::Locale; // descriptor_type
-	ser << model::DescriptorIndex{ localeIndex }; // descriptor_index
+	try
+	{
+		Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
+		ser << model::ConfigurationIndex{ configurationIndex }; // configuration_index
+		ser << std::uint16_t{ 0x0000 }; // reserved
+		ser << model::DescriptorType::Locale; // descriptor_type
+		ser << model::DescriptorIndex{ localeIndex }; // descriptor_index
 
-	model::LocaleDescriptor const emptyDescriptor{ { model::DescriptorType::Locale, localeIndex } };
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
-	sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		model::LocaleDescriptor const emptyDescriptor{ { model::DescriptorType::Locale, localeIndex } };
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readLocaleDescriptor: ") + e.what());
+	}
 }
 
 void ControllerEntityImpl::readStringsDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StringsIndex const stringsIndex, StringsDescriptorHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
-	ser << model::ConfigurationIndex{ configurationIndex }; // configuration_index
-	ser << std::uint16_t{ 0x0000 }; // reserved
-	ser << model::DescriptorType::Strings; // descriptor_type
-	ser << model::DescriptorIndex{ stringsIndex }; // descriptor_index
+	try
+	{
+		Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
+		ser << model::ConfigurationIndex{ configurationIndex }; // configuration_index
+		ser << std::uint16_t{ 0x0000 }; // reserved
+		ser << model::DescriptorType::Strings; // descriptor_type
+		ser << model::DescriptorIndex{ stringsIndex }; // descriptor_index
 
-	model::StringsDescriptor const emptyDescriptor{ { model::DescriptorType::Strings, stringsIndex } };
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
-	sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		model::StringsDescriptor const emptyDescriptor{ { model::DescriptorType::Strings, stringsIndex } };
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readStringsDescriptor: ") + e.what());
+	}
 }
 
 void ControllerEntityImpl::readStreamInputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const streamIndex, StreamInputDescriptorHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
-	ser << model::ConfigurationIndex{ configurationIndex }; // configuration_index
-	ser << std::uint16_t{ 0x0000 }; // reserved
-	ser << model::DescriptorType::StreamInput; // descriptor_type
-	ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
+	try
+	{
+		Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
+		ser << model::ConfigurationIndex{ configurationIndex }; // configuration_index
+		ser << std::uint16_t{ 0x0000 }; // reserved
+		ser << model::DescriptorType::StreamInput; // descriptor_type
+		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
 
-	model::StreamDescriptor const emptyDescriptor{ model::DescriptorType::StreamInput, streamIndex };
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
-	sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		model::StreamDescriptor const emptyDescriptor{ model::DescriptorType::StreamInput, streamIndex };
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readStreamInputDescriptor: ") + e.what());
+	}
 }
 
 void ControllerEntityImpl::readStreamOutputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const streamIndex, StreamOutputDescriptorHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
-	ser << model::ConfigurationIndex{ configurationIndex }; // configuration_index
-	ser << std::uint16_t{ 0x0000 }; // reserved
-	ser << model::DescriptorType::StreamOutput; // descriptor_type
-	ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
+	try
+	{
+		Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
+		ser << model::ConfigurationIndex{ configurationIndex }; // configuration_index
+		ser << std::uint16_t{ 0x0000 }; // reserved
+		ser << model::DescriptorType::StreamOutput; // descriptor_type
+		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
 
-	model::StreamDescriptor const emptyDescriptor{ model::DescriptorType::StreamOutput, streamIndex };
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
-	sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		model::StreamDescriptor const emptyDescriptor{ model::DescriptorType::StreamOutput, streamIndex };
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readStreamOutputDescriptor: ") + e.what());
+	}
 }
 
 void ControllerEntityImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamFormat const streamFormat, SetStreamInputFormatHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemSetStreamFormatCommandPayloadSize> ser;
-	ser << model::DescriptorType::StreamInput; // descriptor_type
-	ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-	ser << streamFormat; // stream_format
+	try
+	{
+		Serializer<protocol::AecpAemSetStreamFormatCommandPayloadSize> ser;
+		ser << model::DescriptorType::StreamInput; // descriptor_type
+		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
+		ser << streamFormat; // stream_format
 
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
-	sendAemCommand(targetEntityID, protocol::AemCommandType::SetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
+		sendAemCommand(targetEntityID, protocol::AemCommandType::SetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setStreamInputFormat: ") + e.what());
+	}
 }
 
 void ControllerEntityImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamFormat const streamFormat, SetStreamOutputFormatHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemSetStreamFormatCommandPayloadSize> ser;
-	ser << model::DescriptorType::StreamOutput; // descriptor_type
-	ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-	ser << streamFormat; // stream_format
+	try
+	{
+		Serializer<protocol::AecpAemSetStreamFormatCommandPayloadSize> ser;
+		ser << model::DescriptorType::StreamOutput; // descriptor_type
+		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
+		ser << streamFormat; // stream_format
 
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
-	sendAemCommand(targetEntityID, protocol::AemCommandType::SetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
+		sendAemCommand(targetEntityID, protocol::AemCommandType::SetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setStreamOutputFormat: ") + e.what());
+	}
 }
 
 void ControllerEntityImpl::getStreamInputAudioMap(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::MapIndex const mapIndex, GetStreamInputAudioMapHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemGetAudioMapCommandPayloadSize> ser;
-	ser << model::DescriptorType::StreamInput; // descriptor_type
-	ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-	ser << model::MapIndex(mapIndex); // map_index
-	ser << std::uint16_t{ 0x0000 }; // reserved
+	try
+	{
+		Serializer<protocol::AecpAemGetAudioMapCommandPayloadSize> ser;
+		ser << model::DescriptorType::StreamInput; // descriptor_type
+		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
+		ser << model::MapIndex(mapIndex); // map_index
+		ser << std::uint16_t{ 0x0000 }; // reserved
 
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::MapIndex(0), mapIndex, s_emptyMappings);
-	sendAemCommand(targetEntityID, protocol::AemCommandType::GetAudioMap, ser.data(), ser.size(), errorCallback, handler);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::MapIndex(0), mapIndex, s_emptyMappings);
+		sendAemCommand(targetEntityID, protocol::AemCommandType::GetAudioMap, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize getStreamInputAudioMap: ") + e.what());
+	}
 }
 
 void ControllerEntityImpl::getStreamOutputAudioMap(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::MapIndex const mapIndex, GetStreamOutputAudioMapHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemGetAudioMapCommandPayloadSize> ser;
-	ser << model::DescriptorType::StreamOutput; // descriptor_type
-	ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-	ser << model::MapIndex(mapIndex); // map_index
-	ser << std::uint16_t{ 0x0000 }; // reserved
+	try
+	{
+		Serializer<protocol::AecpAemGetAudioMapCommandPayloadSize> ser;
+		ser << model::DescriptorType::StreamOutput; // descriptor_type
+		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
+		ser << model::MapIndex(mapIndex); // map_index
+		ser << std::uint16_t{ 0x0000 }; // reserved
 
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::MapIndex(0), mapIndex, s_emptyMappings);
-	sendAemCommand(targetEntityID, protocol::AemCommandType::GetAudioMap, ser.data(), ser.size(), errorCallback, handler);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::MapIndex(0), mapIndex, s_emptyMappings);
+		sendAemCommand(targetEntityID, protocol::AemCommandType::GetAudioMap, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize getStreamOutputAudioMap: ") + e.what());
+	}
 }
 
 void ControllerEntityImpl::addStreamInputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, std::vector<model::AudioMapping> const& mappings, AddStreamInputAudioMappingsHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemAddAudioMappingsCommandPayloadMaxSize> ser;
-	ser << model::DescriptorType::StreamInput; // descriptor_type
-	ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-	ser << model::MapIndex(mappings.size()); // number_of_mappings
-	ser << std::uint16_t{ 0x0000 }; // reserved
-	for (auto const& map : mappings)
+	try
 	{
-		ser << map.streamIndex << map.streamChannel << map.clusterOffset << map.clusterChannel;
-	}
+		Serializer<protocol::AecpAemAddAudioMappingsCommandPayloadMaxSize> ser;
+		ser << model::DescriptorType::StreamInput; // descriptor_type
+		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
+		ser << model::MapIndex(mappings.size()); // number_of_mappings
+		ser << std::uint16_t{ 0x0000 }; // reserved
+		for (auto const& map : mappings)
+		{
+			ser << map.streamIndex << map.streamChannel << map.clusterOffset << map.clusterChannel;
+		}
 
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyMappings);
-	sendAemCommand(targetEntityID, protocol::AemCommandType::AddAudioMappings, ser.data(), ser.size(), errorCallback, handler);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyMappings);
+		sendAemCommand(targetEntityID, protocol::AemCommandType::AddAudioMappings, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize addStreamInputAudioMappings: ") + e.what());
+	}
 }
 
 void ControllerEntityImpl::addStreamOutputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::AudioMappings const& mappings, AddStreamOutputAudioMappingsHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemAddAudioMappingsCommandPayloadMaxSize> ser;
-	ser << model::DescriptorType::StreamOutput; // descriptor_type
-	ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-	ser << model::MapIndex(mappings.size()); // number_of_mappings
-	ser << std::uint16_t{ 0x0000 }; // reserved
-	for (auto const& map : mappings)
+	try
 	{
-		ser << map.streamIndex << map.streamChannel << map.clusterOffset << map.clusterChannel;
-	}
+		Serializer<protocol::AecpAemAddAudioMappingsCommandPayloadMaxSize> ser;
+		ser << model::DescriptorType::StreamOutput; // descriptor_type
+		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
+		ser << model::MapIndex(mappings.size()); // number_of_mappings
+		ser << std::uint16_t{ 0x0000 }; // reserved
+		for (auto const& map : mappings)
+		{
+			ser << map.streamIndex << map.streamChannel << map.clusterOffset << map.clusterChannel;
+		}
 
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyMappings);
-	sendAemCommand(targetEntityID, protocol::AemCommandType::AddAudioMappings, ser.data(), ser.size(), errorCallback, handler);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyMappings);
+		sendAemCommand(targetEntityID, protocol::AemCommandType::AddAudioMappings, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize addStreamOutputAudioMappings: ") + e.what());
+	}
 }
 
 void ControllerEntityImpl::removeStreamInputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, std::vector<model::AudioMapping> const& mappings, RemoveStreamInputAudioMappingsHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemRemoveAudioMappingsCommandPayloadMaxSize> ser;
-	ser << model::DescriptorType::StreamInput; // descriptor_type
-	ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-	ser << model::MapIndex(mappings.size()); // number_of_mappings
-	ser << std::uint16_t{ 0x0000 }; // reserved
-	for (auto const& map : mappings)
+	try
 	{
-		ser << map.streamIndex << map.streamChannel << map.clusterOffset << map.clusterChannel;
-	}
+		Serializer<protocol::AecpAemRemoveAudioMappingsCommandPayloadMaxSize> ser;
+		ser << model::DescriptorType::StreamInput; // descriptor_type
+		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
+		ser << model::MapIndex(mappings.size()); // number_of_mappings
+		ser << std::uint16_t{ 0x0000 }; // reserved
+		for (auto const& map : mappings)
+		{
+			ser << map.streamIndex << map.streamChannel << map.clusterOffset << map.clusterChannel;
+		}
 
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyMappings);
-	sendAemCommand(targetEntityID, protocol::AemCommandType::RemoveAudioMappings, ser.data(), ser.size(), errorCallback, handler);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyMappings);
+		sendAemCommand(targetEntityID, protocol::AemCommandType::RemoveAudioMappings, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize removeStreamInputAudioMappings: ") + e.what());
+	}
 }
 
 void ControllerEntityImpl::removeStreamOutputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::AudioMappings const& mappings, RemoveStreamOutputAudioMappingsHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemRemoveAudioMappingsCommandPayloadMaxSize> ser;
-	ser << model::DescriptorType::StreamOutput; // descriptor_type
-	ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-	ser << model::MapIndex(mappings.size()); // number_of_mappings
-	ser << std::uint16_t{ 0x0000 }; // reserved
-	for (auto const& map : mappings)
+	try
 	{
-		ser << map.streamIndex << map.streamChannel << map.clusterOffset << map.clusterChannel;
-	}
+		Serializer<protocol::AecpAemRemoveAudioMappingsCommandPayloadMaxSize> ser;
+		ser << model::DescriptorType::StreamOutput; // descriptor_type
+		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
+		ser << model::MapIndex(mappings.size()); // number_of_mappings
+		ser << std::uint16_t{ 0x0000 }; // reserved
+		for (auto const& map : mappings)
+		{
+			ser << map.streamIndex << map.streamChannel << map.clusterOffset << map.clusterChannel;
+		}
 
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyMappings);
-	sendAemCommand(targetEntityID, protocol::AemCommandType::RemoveAudioMappings, ser.data(), ser.size(), errorCallback, handler);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyMappings);
+		sendAemCommand(targetEntityID, protocol::AemCommandType::RemoveAudioMappings, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize removeStreamOutputAudioMappings: ") + e.what());
+	}
 }
 
 void ControllerEntityImpl::getStreamInputInfo(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, GetStreamInputInfoHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemGetStreamInfoCommandPayloadSize> ser;
-	ser << model::DescriptorType::StreamInput; // descriptor_type
-	ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
+	try
+	{
+		Serializer<protocol::AecpAemGetStreamInfoCommandPayloadSize> ser;
+		ser << model::DescriptorType::StreamInput; // descriptor_type
+		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
 
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyStreamInfo);
-	sendAemCommand(targetEntityID, protocol::AemCommandType::GetStreamInfo, ser.data(), ser.size(), errorCallback, handler);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyStreamInfo);
+		sendAemCommand(targetEntityID, protocol::AemCommandType::GetStreamInfo, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize getStreamInputInfo: ") + e.what());
+	}
 }
 
 void ControllerEntityImpl::startStreamInput(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, StartStreamInputHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemStartStreamingCommandPayloadSize> ser;
-	ser << model::DescriptorType::StreamInput; // descriptor_type
-	ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
+	try
+	{
+		Serializer<protocol::AecpAemStartStreamingCommandPayloadSize> ser;
+		ser << model::DescriptorType::StreamInput; // descriptor_type
+		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
 
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
-	sendAemCommand(targetEntityID, protocol::AemCommandType::StartStreaming, ser.data(), ser.size(), errorCallback, handler);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
+		sendAemCommand(targetEntityID, protocol::AemCommandType::StartStreaming, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize startStreamInput: ") + e.what());
+	}
 }
 
 void ControllerEntityImpl::startStreamOutput(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, StartStreamOutputHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemStartStreamingCommandPayloadSize> ser;
-	ser << model::DescriptorType::StreamOutput; // descriptor_type
-	ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
+	try
+	{
+		Serializer<protocol::AecpAemStartStreamingCommandPayloadSize> ser;
+		ser << model::DescriptorType::StreamOutput; // descriptor_type
+		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
 
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
-	sendAemCommand(targetEntityID, protocol::AemCommandType::StartStreaming, ser.data(), ser.size(), errorCallback, handler);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
+		sendAemCommand(targetEntityID, protocol::AemCommandType::StartStreaming, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize startStreamOutput: ") + e.what());
+	}
 }
 
 void ControllerEntityImpl::stopStreamInput(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, StopStreamInputHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemStopStreamingCommandPayloadSize> ser;
-	ser << model::DescriptorType::StreamInput; // descriptor_type
-	ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
+	try
+	{
+		Serializer<protocol::AecpAemStopStreamingCommandPayloadSize> ser;
+		ser << model::DescriptorType::StreamInput; // descriptor_type
+		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
 
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
-	sendAemCommand(targetEntityID, protocol::AemCommandType::StopStreaming, ser.data(), ser.size(), errorCallback, handler);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
+		sendAemCommand(targetEntityID, protocol::AemCommandType::StopStreaming, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize stopStreamInput: ") + e.what());
+	}
 }
 
 void ControllerEntityImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, StopStreamOutputHandler const& handler) const noexcept
 {
-	Serializer<protocol::AecpAemStopStreamingCommandPayloadSize> ser;
-	ser << model::DescriptorType::StreamOutput; // descriptor_type
-	ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
+	try
+	{
+		Serializer<protocol::AecpAemStopStreamingCommandPayloadSize> ser;
+		ser << model::DescriptorType::StreamOutput; // descriptor_type
+		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
 
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
-	sendAemCommand(targetEntityID, protocol::AemCommandType::StopStreaming, ser.data(), ser.size(), errorCallback, handler);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
+		sendAemCommand(targetEntityID, protocol::AemCommandType::StopStreaming, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize stopStreamOutput: ") + e.what());
+	}
 }
 
 /* Connection Management Protocol (ACMP) */
