@@ -31,6 +31,7 @@
 #include <array>
 #include <cassert>
 #include <unordered_map>
+#include <iostream>
 #include <tuple>
 #include "types.hpp"
 #include "uniqueIdentifier.hpp"
@@ -48,7 +49,7 @@ namespace model
 {
 
 using VendorEntityModel = std::uint64_t;
-using AvdeccFixedString = std::array<char, 64>;
+using AvdeccFixedString = std::array<char, 64>; /* UTF-8 String */
 using ConfigurationIndex = std::uint16_t;
 using LocaleIndex = std::uint16_t;
 using StringsIndex = std::uint16_t;
@@ -135,12 +136,12 @@ struct EntityDescriptor
 	ControllerCapabilities controllerCapabilities{ ControllerCapabilities::None };
 	std::uint32_t availableIndex{ 0u };
 	UniqueIdentifier associationID{ getNullIdentifier() };
-	std::string entityName{};
+	AvdeccFixedString entityName{};
 	std::uint16_t vendorNameString{ 0u };
 	std::uint16_t modelNameString{ 0u };
-	std::string firmwareVersion{};
-	std::string groupName{};
-	std::string serialNumber{};
+	AvdeccFixedString firmwareVersion{};
+	AvdeccFixedString groupName{};
+	AvdeccFixedString serialNumber{};
 	std::uint16_t configurationsCount{ 0u };
 	std::uint16_t currentConfiguration{ 0u };
 };
@@ -149,7 +150,7 @@ struct EntityDescriptor
 struct ConfigurationDescriptor
 {
 	CommonDescriptor common{ DescriptorType::Configuration };
-	std::string objectName{};
+	AvdeccFixedString objectName{};
 	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
 	std::uint16_t descriptorCountsCount{ 0u };
 	std::uint16_t descriptorCountsOffset{ 0u };
@@ -161,7 +162,7 @@ struct ConfigurationDescriptor
 struct LocaleDescriptor
 {
 	CommonDescriptor common{ DescriptorType::Locale };
-	LocaleIdentifier localeID{};
+	AvdeccFixedString localeID{};
 	std::uint16_t numberOfStringDescriptors{ 0u };
 	StringsIndex baseStringDescriptorIndex{ StringsIndex(0u) };
 };
@@ -171,14 +172,14 @@ struct LocaleDescriptor
 struct StringsDescriptor
 {
 	CommonDescriptor common{ DescriptorType::Strings };
-	std::array<std::string, 7> strings{};
+	std::array<AvdeccFixedString, 7> strings{};
 };
 
 /** STREAM_INPUT and STREAM_OUTPUT Descriptor - Clause 7.2.6 */
 struct StreamDescriptor
 {
 	CommonDescriptor common{};
-	std::string objectName{};
+	AvdeccFixedString objectName{};
 	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
 	std::uint16_t clockDomainIndex{ 0u };
 	StreamFlags streamFlags{ StreamFlags::None };
@@ -286,7 +287,36 @@ constexpr std::tuple<std::uint32_t, std::uint8_t, std::uint32_t> splitVendorEnti
 	);
 }
 
+/** Converts a AvdeccFixedString to std::string */
+inline std::string to_string(AvdeccFixedString const& afs) noexcept
+{
+	std::string str{};
+
+	// If all bytes in an AvdeccFixedString are used, the buffer is not NULL-terminated. We cannot use strlen or directly copy the buffer into an std::string or we might overflow
+	for (auto const c : afs)
+	{
+		if (c == 0)
+			break;
+		str.push_back(c);
+	}
+
+	return str;
+}
+
 } // namespace model
 } // namespace entity
 } // namespace avdecc
 } // namespace la
+
+/** ostream overload for la::avdecc::entity::model::AvdeccFixedString */
+inline std::ostream& operator<<(std::ostream& os, la::avdecc::entity::model::AvdeccFixedString const& rhs)
+{
+	os << la::avdecc::entity::model::to_string(rhs);
+	return os;
+}
+
+/** Operator== overload for la::avdecc::entity::model::AvdeccFixedString */
+inline bool operator==(la::avdecc::entity::model::AvdeccFixedString const& lhs, std::string const& rhs) noexcept
+{
+	return la::avdecc::entity::model::to_string(lhs) == rhs;
+}

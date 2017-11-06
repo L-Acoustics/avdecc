@@ -129,9 +129,9 @@ la::avdecc::entity::model::StreamDescriptor const& ControlledEntityImpl::getStre
 	return it->second;
 }
 
-std::string const& ControlledEntityImpl::getLocalizedString(la::avdecc::entity::model::LocalizedStringReference const stringReference) const noexcept
+entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString(la::avdecc::entity::model::LocalizedStringReference const stringReference) const noexcept
 {
-	static std::string s_noLocalizationString{};
+	static entity::model::AvdeccFixedString s_noLocalizationString{};
 	try
 	{
 		// Special value meaning NO_STRING

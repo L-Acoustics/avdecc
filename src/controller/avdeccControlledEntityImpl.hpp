@@ -57,7 +57,7 @@ public:
 	virtual entity::model::LocaleDescriptor const* findLocaleDescriptor(std::string const& locale) const override; // Throws Exception::NotSupported if EM not supported by the Entity
 	virtual entity::model::StreamDescriptor const& getStreamInputDescriptor(entity::model::StreamIndex const streamIndex) const override; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidStreamIndex if streamIndex do not exist
 	virtual entity::model::StreamDescriptor const& getStreamOutputDescriptor(entity::model::StreamIndex const streamIndex) const override; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidStreamIndex if streamIndex do not exist
-	virtual std::string const& getLocalizedString(entity::model::LocalizedStringReference const stringReference) const noexcept override;
+	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::LocalizedStringReference const stringReference) const noexcept override;
 	/** Get connected information about a listener's stream (TalkerID and StreamIndex might be filled even if isConnected is not true, in case of FastConnect) */
 	virtual entity::model::StreamConnectedState getConnectedSinkState(entity::model::StreamIndex const listenerIndex) const override; // Throws Exception::InvalidStreamIndex if streamIndex do not exist
 	virtual entity::model::AudioMappings const& getStreamInputAudioMappings(entity::model::StreamIndex const streamIndex) const override; // Throws Exception::InvalidStreamIndex if streamIndex do not exist
@@ -104,7 +104,7 @@ private:
 	entity::model::EntityDescriptor _entityDescriptor{};
 	entity::model::ConfigurationDescriptor _configurationDescriptor{};
 	std::unordered_map<entity::model::LocaleIndex, entity::model::LocaleDescriptor> _localeDescriptors{};
-	std::unordered_map<entity::model::StringsIndex, std::string> _localizedStrings{}; // Localized strings for selected locale
+	std::unordered_map<entity::model::StringsIndex, entity::model::AvdeccFixedString> _localizedStrings{}; // Localized strings for selected locale
 	std::unordered_map<entity::model::StreamIndex, entity::model::StreamDescriptor> _inputStreams{};
 	std::unordered_map<entity::model::StreamIndex, entity::model::StreamDescriptor> _outputStreams{};
 	std::unordered_map<entity::model::StreamIndex, entity::model::StreamConnectedState> _inputStreamStates{};

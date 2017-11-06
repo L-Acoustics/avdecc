@@ -8,8 +8,8 @@ cmake_minimum_required(VERSION 3.6)
 # Using Semantic Versioning (http://semver.org/spec/v2.0.0.html)
 # Project version number x.y.z on main branch, x.y.z.w on dev and task branches
 # Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task)
-set(LA_AVDECC_VERSION 2.0.11.2)
-set(LA_AVDECC_CONTROLLER_VERSION 2.0.3.3)
+set(LA_AVDECC_VERSION 2.1.0.1)
+set(LA_AVDECC_CONTROLLER_VERSION 2.1.0.1)
 
 ############ Override from command line "CMake -D<OPTION>=TRUE/FALSE/0/1/ON/OFF"
 

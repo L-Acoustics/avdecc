@@ -371,7 +371,6 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 							throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: DESCRIPTOR_ENTITY");
 
 						// Read descriptor fields
-						model::AvdeccFixedString str;
 						model::EntityDescriptor entityDescriptor{ {descriptorType, descriptorIndex } };
 						des >> entityDescriptor.entityID >> entityDescriptor.vendorEntityModelID >> entityDescriptor.entityCapabilities;
 						des >> entityDescriptor.talkerStreamSources >> entityDescriptor.talkerCapabilities;
@@ -379,15 +378,11 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 						des >> entityDescriptor.controllerCapabilities;
 						des >> entityDescriptor.availableIndex;
 						des >> entityDescriptor.associationID;
-						des.unpackBuffer(str.data(), str.size());
-						entityDescriptor.entityName = str.data();
+						des >> entityDescriptor.entityName;
 						des >> entityDescriptor.vendorNameString >> entityDescriptor.modelNameString;
-						des.unpackBuffer(str.data(), str.size());
-						entityDescriptor.firmwareVersion = str.data();
-						des.unpackBuffer(str.data(), str.size());
-						entityDescriptor.groupName = str.data();
-						des.unpackBuffer(str.data(), str.size());
-						entityDescriptor.serialNumber = str.data();
+						des >> entityDescriptor.firmwareVersion;
+						des >> entityDescriptor.groupName;
+						des >> entityDescriptor.serialNumber;
 						des >> entityDescriptor.configurationsCount >> entityDescriptor.currentConfiguration;
 						assert(des.usedBytes() == protocol::AecpAemReadEntityDescriptorResponsePayloadSize && "Used more bytes than specified in protocol constant");
 						// Notify handlers
@@ -401,10 +396,8 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 							throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: DESCRIPTOR_CONFIGURATION");
 
 						// Read descriptor fields
-						model::AvdeccFixedString str;
 						model::ConfigurationDescriptor configurationDescriptor{ {descriptorType, descriptorIndex } };
-						des.unpackBuffer(str.data(), str.size());
-						configurationDescriptor.objectName = str.data();
+						des >> configurationDescriptor.objectName;
 						des >> configurationDescriptor.localizedDescription;
 						des >> configurationDescriptor.descriptorCountsCount >> configurationDescriptor.descriptorCountsOffset;
 						// Check descriptor variable size
@@ -432,10 +425,8 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 							throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: DESCRIPTOR_LOCALE");
 
 						// Read descriptor fields
-						model::AvdeccFixedString str;
 						model::LocaleDescriptor localeDescriptor{ {descriptorType, descriptorIndex } };
-						des.unpackBuffer(str.data(), str.size());
-						localeDescriptor.localeID = str.data();
+						des >> localeDescriptor.localeID;
 						des >> localeDescriptor.numberOfStringDescriptors >> localeDescriptor.baseStringDescriptorIndex;
 						assert(des.usedBytes() == protocol::AecpAemReadLocaleDescriptorResponsePayloadSize && "Used more bytes than specified in protocol constant");
 						// Notify handlers
@@ -449,12 +440,10 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 							throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: DESCRIPTOR_STRINGS");
 
 						// Read descriptor fields
-						model::AvdeccFixedString str;
 						model::StringsDescriptor stringsDescriptor{ {descriptorType, descriptorIndex } };
 						for (auto strIndex = 0u; strIndex < stringsDescriptor.strings.size(); ++strIndex)
 						{
-							des.unpackBuffer(str.data(), str.size());
-							stringsDescriptor.strings[strIndex] = str.data();
+							des >> stringsDescriptor.strings[strIndex];
 						}
 						assert(des.usedBytes() == protocol::AecpAemReadStringsDescriptorResponsePayloadSize && "Used more bytes than specified in protocol constant");
 						// Notify handlers
@@ -472,10 +461,8 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 							throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: DESCRIPTOR_STREAM_OUTPUT");
 
 						// Read descriptor fields
-						model::AvdeccFixedString str;
 						model::StreamDescriptor streamDescriptor{ descriptorType, descriptorIndex };
-						des.unpackBuffer(str.data(), str.size());
-						streamDescriptor.objectName = str.data();
+						des >> streamDescriptor.objectName;
 						des >> streamDescriptor.localizedDescription >> streamDescriptor.clockDomainIndex >> streamDescriptor.streamFlags;
 						des >> streamDescriptor.currentFormat >> streamDescriptor.formatsOffset >> streamDescriptor.numberOfFormats;
 						des >> streamDescriptor.backupTalkerEntityID_0 >> streamDescriptor.backupTalkerUniqueID_0;

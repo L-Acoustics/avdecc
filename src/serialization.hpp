@@ -32,6 +32,7 @@
 #include <cstring> // memcpy
 #include "la/avdecc/internals/endian.hpp"
 #include "la/avdecc/utils.hpp"
+#include "la/avdecc/internals/entityModel.hpp"
 
 namespace la
 {
@@ -146,8 +147,9 @@ public:
 	{
 	}
 
+	/** Unpack any arithmetic or enum type */
 	template<typename T, typename = std::enable_if_t<std::is_arithmetic<T>::value || std::is_enum<T>::value>>
-	Deserializer& operator >> (T& v)
+	Deserializer& operator>>(T& v)
 	{
 		// Check enough remaining data in buffer
 		if (remaining() < sizeof(v))
@@ -162,11 +164,13 @@ public:
 
 		// Advance data pointer
 		_pos += sizeof(v);
+
 		return *this;
 	}
 
+	/** Unpack any TypedDefine type */
 	template<typename T>
-	Deserializer& operator >> (TypedDefine<T>& v)
+	Deserializer& operator>>(TypedDefine<T>& v)
 	{
 		// Check enough remaining data in buffer
 		if (remaining() < sizeof(v))
@@ -181,6 +185,28 @@ public:
 
 		// Advance data pointer
 		_pos += sizeof(v);
+
+		return *this;
+	}
+
+	/** Unpack an AvdeccFixedString (without changing endianess) */
+	Deserializer& operator>>(entity::model::AvdeccFixedString& v)
+	{
+		auto const size = v.size();
+
+		// Check enough remaining data in buffer
+		if (remaining() < size)
+		{
+			throw std::invalid_argument("Not enough data to deserialize");
+		}
+
+		// Direct data copy
+		auto const* const ptr = static_cast<std::uint8_t const*>(_ptr) + _pos;
+		std::copy_n(ptr, size, v.begin());
+
+		// Advance data pointer
+		_pos += size;
+
 		return *this;
 	}
 
@@ -194,6 +220,7 @@ public:
 		}
 
 		std::memcpy(buffer, static_cast<std::uint8_t const*>(_ptr) + _pos, size);
+
 		// Advance data pointer
 		_pos += size;
 	}

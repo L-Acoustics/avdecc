@@ -93,7 +93,7 @@ public:
 	virtual entity::model::LocaleDescriptor const* findLocaleDescriptor(std::string const& locale) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity
 	virtual entity::model::StreamDescriptor const& getStreamInputDescriptor(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidStreamIndex if streamIndex do not exist
 	virtual entity::model::StreamDescriptor const& getStreamOutputDescriptor(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidStreamIndex if streamIndex do not exist
-	virtual std::string const& getLocalizedString(entity::model::LocalizedStringReference const stringReference) const noexcept = 0;
+	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::LocalizedStringReference const stringReference) const noexcept = 0;
 	/** Get connected information about a listener's stream (TalkerID and StreamIndex might be filled even if isConnected is not true, in case of FastConnect) */
 	virtual entity::model::StreamConnectedState getConnectedSinkState(entity::model::StreamIndex const listenerIndex) const = 0; // Throws Exception::InvalidStreamIndex if streamIndex do not exist
 	virtual entity::model::AudioMappings const& getStreamInputAudioMappings(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::InvalidStreamIndex if streamIndex do not exist

@@ -36,8 +36,6 @@ namespace avdecc
 namespace entity
 {
 
-using LocaleIdentifier = std::string; /** Encoded in UTF-8 */
-
 /** ADP Entity Capabilities - Clause 6.2.1.10 */
 enum class EntityCapabilities : std::uint32_t
 {
