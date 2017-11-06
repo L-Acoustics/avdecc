@@ -1,5 +1,8 @@
-# What is LA_avdecc
+# LA AVDECC
 
+Copyright (C) 2016-2017, L-Acoustics and its contributors
+
+## What is LA_avdecc
 LA_avdecc is a set of open source libraries for controlling and monitoring AVB entities using the AVDECC protocol (IEEE 1722.1).
 
 These libraries are written in pure C++14 and do not depend on any other library. They can be compiled on Windows, Linux and macOS, using standard development tools (procedure below). Unit tests and sample programs are also provided.
@@ -10,11 +13,11 @@ Another benefit is the support of Apple’s native API, which allows control of 
 
 We use GitHub issues for tracking requests and bugs.
 
-## Optional dependencies:
+### Optional dependencies:
 * [Google's C++ test framework](https://github.com/google/googletest) to build unit tests
 * [WinPcap Developer's Pack](externals/3rdparty/winpcap/README.md) to build on Windows platform
 
-## <a name="compatibleEntities"></a>Tested AVB entities:
+### <a name="compatibleEntities"></a>Tested AVB entities:
 * L-Acoustics: LA4X, LA12X, P1
 * Biamp: Tesira Forte
 * Avid: S6L
@@ -22,14 +25,14 @@ We use GitHub issues for tracking requests and bugs.
 * MeyerSound: Galileo GALAXY
 * Apple: macOS Talker, Listener and Controller (El Capitan and later)
 
-# la_avdecc Library
+## la_avdecc Library
 
 Implementation of the IEEE Std 1722.1-2013 specification.  
 Also implementing non-released IEEE Std 1722.1 corrigendum 1 draft 8.
 
 The library exposes APIs needed to create AVDECC entities on the local computer, and to interact with other entities on the network.
 
-# la_avdecc_controller Library
+## la_avdecc_controller Library
 
 This is a simple library to create an AVDECC controller entity on the local computer. This controller automatically listens to and keeps track of the other entities on the network using the IEEE Std 1722.1 protocol.
 
@@ -37,34 +40,34 @@ The controller API has 2 interfaces:
 - An observer interface to monitor all changes on discovered entities
 - An interaction interface to send enumeration and control (AECP) or connection management (ACMP) requests to an entity
 
-# Minimum requirements for compilation
+## Minimum requirements for compilation
 
 
-## All platforms
+### All platforms
 - CMake 3.6
 
-## Windows
+### Windows
 - Windows 8.1
 - Visual Studio 2017, platform toolset v141 (or v141_clang_c2)
 - WinPcap 4.1.2 Developer's Pack (see [this file](externals/3rdparty/winpcap/README.md) for more details)
 
-## macOS
+### macOS
 - macOS 10.12
 - Xcode 8.2.1
 
-## Linux
+### Linux
 - C++17 compliant compiler
 - Make
 - pcap developer package
 - ncurses developer package (optional, for examples)
 
-# Compilation
+## Compilation
 
-## All platforms
+### All platforms
 - Clone this repository
 - Update submodules (optional, only required for unit testing): *git submodule update --init*
 
-## Windows
+### Windows
 - [Install WinPcap Developer's Pack](externals/3rdparty/winpcap/README.md)
 - Using the provided bash script (*gen_cmake.sh*):
   * Run the script with whatever optional parameters required (run *gen_cmake.sh -h* to display the help)
@@ -76,7 +79,7 @@ The controller API has 2 interfaces:
   * Open the generated Visual Studio solution (or your other CMake generated files)
   * Compile everything from Visual Studio (or compile using your toolchain)
  
-## macOS
+### macOS
 - Using the provided bash script (*gen_cmake.sh*):
   * Run the script with whatever optional parameters required (run *gen_cmake.sh -h* to display the help)
   * Go into the generated output folder (*_build_x86_64-apple-darwinX.Y.Z* by default)
@@ -87,7 +90,7 @@ The controller API has 2 interfaces:
   * Open the generated Xcode solution (or your other CMake generated files)
   * Compile everything from Xcode (or compile using your toolchain)
 
-## Linux
+### Linux
 - Using the provided bash script (*gen_cmake.sh*):
   * Run the script with either *-debug* or *-release* and whatever optional parameters required (run *gen_cmake.sh -h* to display the help)
   * Go into the generated output folder (*_build_x86_64-linux-gnu* by default)
@@ -97,11 +100,11 @@ The controller API has 2 interfaces:
   * Go into the folder where the Unix Makefiles have been generated
   * Run *make* to compile everything (or compile using your toolchain)
 
-# Known limitations
+## Known limitations
 
 - [Windows only] When plugging in a USB ethernet card for the first time, you either have to reboot the computer or restart the WinPCap driver (*net stop npf* then *net start npf*, from an elevated command prompt)
 
-# Upcoming features
+## Upcoming features
 
 - Better unit testing using a virtual protocol interface and virtual entities
 - Ability to preload AEMXML files, and not enumerate AEM for devices with identical vendorEntityModelId
