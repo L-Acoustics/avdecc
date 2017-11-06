@@ -1,4 +1,5 @@
 # LA AVDECC
+[![Coverity Scan Build Status](https://img.shields.io/coverity/scan/14038.svg)](https://scan.coverity.com/projects/l-acoustics-avdecc)
 
 Copyright (C) 2016-2017, L-Acoustics and its contributors
 
