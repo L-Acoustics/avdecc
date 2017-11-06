@@ -632,19 +632,20 @@ void ControllerImpl::onEntityOnline(entity::ControllerEntity const* const contro
 	{
 		auto& controlledEntity = _controlledEntities.insert(std::make_pair(entityID, std::make_unique<ControlledEntityImpl>(entity))).first->second;
 
-		// Register for unsolicited notifications
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("Registering for unsolicited notifications"));
-		controller->registerUnsolicitedNotifications(entityID, {});
-
-		// Request its entity descriptor, if AEM is supported
+		// Check if AEM is supported by this entity
 		if (la::avdecc::hasFlag(entity.getEntityCapabilities(), la::avdecc::entity::EntityCapabilities::AemSupported))
 		{
+			// Register for unsolicited notifications
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("Registering for unsolicited notifications"));
+			controller->registerUnsolicitedNotifications(entityID, {});
+
+			// Request its entity descriptor
 			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("Requesting entity's descriptor"));
 			controller->readEntityDescriptor(entityID, std::bind(&ControllerImpl::onEntityDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 		}
 		else
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("Entity does not support AEM, advertising it"));
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("Entity does not support AEM, simply advertise it"));
 			controlledEntity->setAllIgnored();
 			checkAdvertiseEntity(controlledEntity.get());
 		}
