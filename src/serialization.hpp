@@ -77,9 +77,11 @@ public:
 
 		// Advance data pointer
 		_pos += sizeof(v);
+
 		return *this;
 	}
 
+	/** Serializes any TypedDefine type */
 	template<typename T>
 	Serializer& operator<<(TypedDefine<T> const& v)
 	{
@@ -95,9 +97,29 @@ public:
 
 		// Advance data pointer
 		_pos += sizeof(v);
+
 		return *this;
 	}
 
+	/** Serializes an AvdeccFixedString (without changing endianess) */
+	Serializer& operator<<(entity::model::AvdeccFixedString const& v)
+	{
+		auto const size = v.size();
+
+		// Check enough room in buffer
+		if (remaining() < size)
+		{
+			throw std::invalid_argument("Not enough room to serialize");
+		}
+
+		// Copy data to buffer
+		std::memcpy(_buffer.data() + _pos, v.data(), size);
+
+		// Advance data pointer
+		_pos += size;
+
+		return *this;
+	}
 
 	/** Appends a raw buffer to the serialized buffer (without changing endianess) */
 	Serializer& packBuffer(void const* const ptr, size_t const size)
@@ -113,6 +135,7 @@ public:
 
 		// Advance data pointer
 		_pos += size;
+
 		return *this;
 	}
 
@@ -147,7 +170,7 @@ public:
 	{
 	}
 
-	/** Unpack any arithmetic or enum type */
+	/** Unpacks any arithmetic (including enums) */
 	template<typename T, typename = std::enable_if_t<std::is_arithmetic<T>::value || std::is_enum<T>::value>>
 	Deserializer& operator>>(T& v)
 	{
@@ -168,7 +191,7 @@ public:
 		return *this;
 	}
 
-	/** Unpack any TypedDefine type */
+	/** Unpacks any TypedDefine type */
 	template<typename T>
 	Deserializer& operator>>(TypedDefine<T>& v)
 	{
@@ -189,7 +212,7 @@ public:
 		return *this;
 	}
 
-	/** Unpack an AvdeccFixedString (without changing endianess) */
+	/** Unpacks an AvdeccFixedString (without changing endianess) */
 	Deserializer& operator>>(entity::model::AvdeccFixedString& v)
 	{
 		auto const size = v.size();
@@ -210,7 +233,7 @@ public:
 		return *this;
 	}
 
-	/** Unpack data to a raw buffer (without changing endianess) */
+	/** Unpacks data to a raw buffer (without changing endianess) */
 	void unpackBuffer(void* const buffer, size_t const size)
 	{
 		// Check enough remaining data in buffer
