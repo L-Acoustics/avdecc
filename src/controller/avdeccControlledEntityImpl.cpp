@@ -37,7 +37,7 @@ namespace controller
 /* ControlledEntityImpl                                                       */
 /* ************************************************************************** */
 /** Constructor */
-ControlledEntityImpl::ControlledEntityImpl(la::avdecc::entity::Entity const& entity) noexcept
+ControlledEntityImpl::ControlledEntityImpl(entity::Entity const& entity) noexcept
 	: _entity(entity)
 {
 }
@@ -58,35 +58,35 @@ bool ControlledEntityImpl::isAcquiredByOther() const noexcept
 	return _acquireState == AcquireState::AcquiredByOther;
 }
 
-la::avdecc::UniqueIdentifier ControlledEntityImpl::getOwningControllerID() const noexcept
+UniqueIdentifier ControlledEntityImpl::getOwningControllerID() const noexcept
 {
 	return _owningControllerID;
 }
 
-la::avdecc::entity::Entity const& ControlledEntityImpl::getEntity() const noexcept
+entity::Entity const& ControlledEntityImpl::getEntity() const noexcept
 {
 	return _entity;
 }
 
-la::avdecc::entity::model::EntityDescriptor const& ControlledEntityImpl::getEntityDescriptor() const
+entity::model::EntityDescriptor const& ControlledEntityImpl::getEntityDescriptor() const
 {
-	if (!la::avdecc::hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+	if (!hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
 		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
 
 	return _entityDescriptor;
 }
 
-la::avdecc::entity::model::ConfigurationDescriptor const& ControlledEntityImpl::getConfigurationDescriptor() const
+entity::model::ConfigurationDescriptor const& ControlledEntityImpl::getConfigurationDescriptor() const
 {
-	if (!la::avdecc::hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+	if (!hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
 		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
 
 	return _configurationDescriptor;
 }
 
-la::avdecc::entity::model::LocaleDescriptor const* ControlledEntityImpl::findLocaleDescriptor(std::string const& /*locale*/) const
+entity::model::LocaleDescriptor const* ControlledEntityImpl::findLocaleDescriptor(std::string const& /*locale*/) const
 {
-	if (!la::avdecc::hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+	if (!hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
 		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
 
 	if (_localeDescriptors.empty())
@@ -97,12 +97,12 @@ la::avdecc::entity::model::LocaleDescriptor const* ControlledEntityImpl::findLoc
 	return &_localeDescriptors.at(0);
 }
 
-la::avdecc::entity::model::StreamDescriptor const& ControlledEntityImpl::getStreamInputDescriptor(la::avdecc::entity::model::StreamIndex const streamIndex) const
+entity::model::StreamDescriptor const& ControlledEntityImpl::getStreamInputDescriptor(entity::model::StreamIndex const streamIndex) const
 {
-	if (!la::avdecc::hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+	if (!hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
 		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
 
-	auto countIt = _configurationDescriptor.descriptorCounts.find(la::avdecc::entity::model::DescriptorType::StreamInput);
+	auto countIt = _configurationDescriptor.descriptorCounts.find(entity::model::DescriptorType::StreamInput);
 	if (countIt == _configurationDescriptor.descriptorCounts.end())
 		throw Exception(Exception::Type::InvalidStreamIndex, "Invalid stream index");
 	if (streamIndex >= countIt->second)
@@ -113,12 +113,12 @@ la::avdecc::entity::model::StreamDescriptor const& ControlledEntityImpl::getStre
 	return it->second;
 }
 
-la::avdecc::entity::model::StreamDescriptor const& ControlledEntityImpl::getStreamOutputDescriptor(la::avdecc::entity::model::StreamIndex const streamIndex) const
+entity::model::StreamDescriptor const& ControlledEntityImpl::getStreamOutputDescriptor(entity::model::StreamIndex const streamIndex) const
 {
-	if (!la::avdecc::hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+	if (!hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
 		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
 
-	auto countIt = _configurationDescriptor.descriptorCounts.find(la::avdecc::entity::model::DescriptorType::StreamOutput);
+	auto countIt = _configurationDescriptor.descriptorCounts.find(entity::model::DescriptorType::StreamOutput);
 	if (countIt == _configurationDescriptor.descriptorCounts.end())
 		throw Exception(Exception::Type::InvalidStreamIndex, "Invalid stream index");
 	if (streamIndex >= countIt->second)
@@ -129,7 +129,7 @@ la::avdecc::entity::model::StreamDescriptor const& ControlledEntityImpl::getStre
 	return it->second;
 }
 
-entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString(la::avdecc::entity::model::LocalizedStringReference const stringReference) const noexcept
+entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString(entity::model::LocalizedStringReference const stringReference) const noexcept
 {
 	static entity::model::AvdeccFixedString s_noLocalizationString{};
 	try
@@ -141,7 +141,7 @@ entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString
 		auto const offset = stringReference >> 3;
 		auto const index = stringReference & 0x0007;
 		auto const globalOffset = ((offset * 7u) + index) & 0xFFFF;
-		return _localizedStrings.at(la::avdecc::entity::model::StringsIndex(globalOffset));
+		return _localizedStrings.at(entity::model::StringsIndex(globalOffset));
 	}
 	catch (...)
 	{
@@ -149,9 +149,9 @@ entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString
 	}
 }
 
-entity::model::StreamConnectedState ControlledEntityImpl::getConnectedSinkState(la::avdecc::entity::model::StreamIndex const listenerIndex) const
+entity::model::StreamConnectedState ControlledEntityImpl::getConnectedSinkState(entity::model::StreamIndex const listenerIndex) const
 {
-	auto countIt = _configurationDescriptor.descriptorCounts.find(la::avdecc::entity::model::DescriptorType::StreamInput);
+	auto countIt = _configurationDescriptor.descriptorCounts.find(entity::model::DescriptorType::StreamInput);
 	if (countIt == _configurationDescriptor.descriptorCounts.end())
 		throw Exception(Exception::Type::InvalidStreamIndex, "Invalid stream index");
 	if (listenerIndex >= countIt->second)
@@ -163,9 +163,9 @@ entity::model::StreamConnectedState ControlledEntityImpl::getConnectedSinkState(
 	return state;
 }
 
-la::avdecc::entity::model::AudioMappings const& ControlledEntityImpl::getStreamInputAudioMappings(la::avdecc::entity::model::StreamIndex const streamIndex) const
+entity::model::AudioMappings const& ControlledEntityImpl::getStreamInputAudioMappings(entity::model::StreamIndex const streamIndex) const
 {
-	auto countIt = _configurationDescriptor.descriptorCounts.find(la::avdecc::entity::model::DescriptorType::StreamInput);
+	auto countIt = _configurationDescriptor.descriptorCounts.find(entity::model::DescriptorType::StreamInput);
 	if (countIt == _configurationDescriptor.descriptorCounts.end())
 		throw Exception(Exception::Type::InvalidStreamIndex, "Invalid stream index");
 	if (streamIndex >= countIt->second)
@@ -176,7 +176,7 @@ la::avdecc::entity::model::AudioMappings const& ControlledEntityImpl::getStreamI
 	return it->second;
 }
 
-void ControlledEntityImpl::updateEntity(la::avdecc::entity::Entity const& entity) noexcept
+void ControlledEntityImpl::updateEntity(entity::Entity const& entity) noexcept
 {
 	_entity = entity;
 }
@@ -186,28 +186,28 @@ void ControlledEntityImpl::setAcquireState(AcquireState const state) noexcept
 	_acquireState = state;
 }
 
-void ControlledEntityImpl::setOwningController(la::avdecc::UniqueIdentifier const controllerID) noexcept
+void ControlledEntityImpl::setOwningController(UniqueIdentifier const controllerID) noexcept
 {
 	_owningControllerID = controllerID;
 }
 
-void ControlledEntityImpl::setEntityDescriptor(la::avdecc::entity::model::EntityDescriptor const& descriptor) noexcept
+void ControlledEntityImpl::setEntityDescriptor(entity::model::EntityDescriptor const& descriptor) noexcept
 {
 	_entityDescriptor = descriptor;
 	_completedQueries.set(static_cast<std::size_t>(EntityQuery::EntityDescriptor));
 }
 
-void ControlledEntityImpl::setConfigurationDescriptor(la::avdecc::entity::model::ConfigurationDescriptor const& descriptor) noexcept
+void ControlledEntityImpl::setConfigurationDescriptor(entity::model::ConfigurationDescriptor const& descriptor) noexcept
 {
 	_configurationDescriptor = descriptor;
 	_completedQueries.set(static_cast<std::size_t>(EntityQuery::ConfigurationDescriptor));
 }
 
-bool ControlledEntityImpl::addLocaleDescriptor(la::avdecc::entity::model::LocaleDescriptor const& descriptor) noexcept
+bool ControlledEntityImpl::addLocaleDescriptor(entity::model::LocaleDescriptor const& descriptor) noexcept
 {
 	_localeDescriptors[descriptor.common.descriptorIndex] = descriptor;
 	// Check if we have all locale descriptors
-	if (_configurationDescriptor.descriptorCounts[la::avdecc::entity::model::DescriptorType::Locale] == _localeDescriptors.size())
+	if (_configurationDescriptor.descriptorCounts[entity::model::DescriptorType::Locale] == _localeDescriptors.size())
 	{
 		_completedQueries.set(static_cast<std::size_t>(EntityQuery::LocaleDescriptor));
 		return true;
@@ -215,11 +215,11 @@ bool ControlledEntityImpl::addLocaleDescriptor(la::avdecc::entity::model::Locale
 	return false;
 }
 
-void ControlledEntityImpl::addStringsDescriptor(la::avdecc::entity::model::StringsDescriptor const& descriptor, la::avdecc::entity::model::StringsIndex const baseStringDescriptorIndex) noexcept
+void ControlledEntityImpl::addStringsDescriptor(entity::model::StringsDescriptor const& descriptor, entity::model::StringsIndex const baseStringDescriptorIndex) noexcept
 {
 	for (auto strIndex = 0u; strIndex < descriptor.strings.size(); ++strIndex)
 	{
-		auto localizedStringIndex = la::avdecc::entity::model::StringsIndex((descriptor.common.descriptorIndex - baseStringDescriptorIndex) * descriptor.strings.size() + strIndex);
+		auto localizedStringIndex = entity::model::StringsIndex((descriptor.common.descriptorIndex - baseStringDescriptorIndex) * descriptor.strings.size() + strIndex);
 		_localizedStrings[localizedStringIndex] = descriptor.strings.at(strIndex);
 	}
 	// Check if we have all strings descriptors
@@ -232,41 +232,41 @@ void ControlledEntityImpl::addStringsDescriptor(la::avdecc::entity::model::Strin
 	}
 }
 
-void ControlledEntityImpl::addInputStreamDescriptor(la::avdecc::entity::model::StreamDescriptor const& descriptor) noexcept
+void ControlledEntityImpl::addInputStreamDescriptor(entity::model::StreamDescriptor const& descriptor) noexcept
 {
 	_inputStreams[descriptor.common.descriptorIndex] = descriptor;
 	// Check if we have all input stream descriptors
-	if (_configurationDescriptor.descriptorCounts[la::avdecc::entity::model::DescriptorType::StreamInput] == _inputStreams.size())
+	if (_configurationDescriptor.descriptorCounts[entity::model::DescriptorType::StreamInput] == _inputStreams.size())
 	{
 		_completedQueries.set(static_cast<std::size_t>(EntityQuery::InputStreamDescriptor));
 	}
 }
 
-void ControlledEntityImpl::addOutputStreamDescriptor(la::avdecc::entity::model::StreamDescriptor const& descriptor) noexcept
+void ControlledEntityImpl::addOutputStreamDescriptor(entity::model::StreamDescriptor const& descriptor) noexcept
 {
 	_outputStreams[descriptor.common.descriptorIndex] = descriptor;
 	// Check if we have all output stream descriptors
-	if (_configurationDescriptor.descriptorCounts[la::avdecc::entity::model::DescriptorType::StreamOutput] == _outputStreams.size())
+	if (_configurationDescriptor.descriptorCounts[entity::model::DescriptorType::StreamOutput] == _outputStreams.size())
 	{
 		_completedQueries.set(static_cast<std::size_t>(EntityQuery::OutputStreamDescriptor));
 	}
 }
 
-bool ControlledEntityImpl::setInputStreamState(la::avdecc::entity::model::StreamIndex const inputStreamIndex, la::avdecc::entity::model::StreamConnectedState const& state) noexcept
+bool ControlledEntityImpl::setInputStreamState(entity::model::StreamIndex const inputStreamIndex, entity::model::StreamConnectedState const& state) noexcept
 {
 	auto previous = _inputStreamStates[inputStreamIndex];
 	_inputStreamStates[inputStreamIndex] = state;
 	// Check if we have all input stream states
-	if (_configurationDescriptor.descriptorCounts[la::avdecc::entity::model::DescriptorType::StreamInput] == _inputStreamStates.size())
+	if (_configurationDescriptor.descriptorCounts[entity::model::DescriptorType::StreamInput] == _inputStreamStates.size())
 	{
 		_completedQueries.set(static_cast<std::size_t>(EntityQuery::InputStreamState));
 	}
 	return previous != state;
 }
 
-bool ControlledEntityImpl::setInputStreamFormat(la::avdecc::entity::model::StreamIndex const inputStreamIndex, la::avdecc::entity::model::StreamFormat const streamFormat) /* True if format changed */
+bool ControlledEntityImpl::setInputStreamFormat(entity::model::StreamIndex const inputStreamIndex, entity::model::StreamFormat const streamFormat) /* True if format changed */
 {
-	auto countIt = _configurationDescriptor.descriptorCounts.find(la::avdecc::entity::model::DescriptorType::StreamInput);
+	auto countIt = _configurationDescriptor.descriptorCounts.find(entity::model::DescriptorType::StreamInput);
 	if (countIt == _configurationDescriptor.descriptorCounts.end())
 		throw Exception(Exception::Type::InvalidStreamIndex, "Invalid stream index");
 	if (inputStreamIndex >= countIt->second)
@@ -281,9 +281,9 @@ bool ControlledEntityImpl::setInputStreamFormat(la::avdecc::entity::model::Strea
 	return previous != streamFormat;
 }
 
-bool ControlledEntityImpl::setOutputStreamFormat(la::avdecc::entity::model::StreamIndex const outputStreamIndex, la::avdecc::entity::model::StreamFormat const streamFormat) /* True if format changed */
+bool ControlledEntityImpl::setOutputStreamFormat(entity::model::StreamIndex const outputStreamIndex, entity::model::StreamFormat const streamFormat) /* True if format changed */
 {
-	auto countIt = _configurationDescriptor.descriptorCounts.find(la::avdecc::entity::model::DescriptorType::StreamOutput);
+	auto countIt = _configurationDescriptor.descriptorCounts.find(entity::model::DescriptorType::StreamOutput);
 	if (countIt == _configurationDescriptor.descriptorCounts.end())
 		throw Exception(Exception::Type::InvalidStreamIndex, "Invalid stream index");
 	if (outputStreamIndex >= countIt->second)
@@ -298,18 +298,18 @@ bool ControlledEntityImpl::setOutputStreamFormat(la::avdecc::entity::model::Stre
 	return previous != streamFormat;
 }
 
-void ControlledEntityImpl::clearInputStreamAudioMappings(la::avdecc::entity::model::StreamIndex const inputStreamIndex) noexcept
+void ControlledEntityImpl::clearInputStreamAudioMappings(entity::model::StreamIndex const inputStreamIndex) noexcept
 {
 	_inputStreamAudioMappings.erase(inputStreamIndex);
 }
 
-void ControlledEntityImpl::addInputStreamAudioMappings(la::avdecc::entity::model::StreamIndex const inputStreamIndex, la::avdecc::entity::model::AudioMappings const& mappings, bool const isComplete) noexcept
+void ControlledEntityImpl::addInputStreamAudioMappings(entity::model::StreamIndex const inputStreamIndex, entity::model::AudioMappings const& mappings, bool const isComplete) noexcept
 {
 	auto& audioMappings = _inputStreamAudioMappings[inputStreamIndex];
 	for (auto const& map : mappings)
 	{
 		// Check if mapping must be replaced
-		auto foundIt = std::find_if(audioMappings.begin(), audioMappings.end(), [&map](la::avdecc::entity::model::AudioMapping const& mapping)
+		auto foundIt = std::find_if(audioMappings.begin(), audioMappings.end(), [&map](entity::model::AudioMapping const& mapping)
 		{
 			return (map.clusterOffset == mapping.clusterOffset) && (map.clusterChannel == mapping.clusterChannel);
 		});
@@ -328,13 +328,13 @@ void ControlledEntityImpl::addInputStreamAudioMappings(la::avdecc::entity::model
 	}
 }
 
-void ControlledEntityImpl::removeInputStreamAudioMappings(la::avdecc::entity::model::StreamIndex const inputStreamIndex, la::avdecc::entity::model::AudioMappings const& mappings) noexcept
+void ControlledEntityImpl::removeInputStreamAudioMappings(entity::model::StreamIndex const inputStreamIndex, entity::model::AudioMappings const& mappings) noexcept
 {
 	auto& audioMappings = _inputStreamAudioMappings[inputStreamIndex];
 	for (auto const& map : mappings)
 	{
 		// Check if mapping exists
-		auto foundIt = std::find_if(audioMappings.begin(), audioMappings.end(), [&map](la::avdecc::entity::model::AudioMapping const& mapping)
+		auto foundIt = std::find_if(audioMappings.begin(), audioMappings.end(), [&map](entity::model::AudioMapping const& mapping)
 		{
 			return (map.clusterOffset == mapping.clusterOffset) && (map.clusterChannel == mapping.clusterChannel);
 		});
