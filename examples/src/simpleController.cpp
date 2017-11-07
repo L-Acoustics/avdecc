@@ -49,6 +49,7 @@ int doJob()
 		{
 			outputText("[" + la::avdecc::Logger::getInstance().layerToString(layer) + "," + la::avdecc::Logger::getInstance().levelToString(level) + "] " + message + "\n");
 		}
+		// la::avdecc::entity::ControllerEntity::Delegate overrides
 		/* Discovery Protocol (ADP) */
 		virtual void onEntityOnline(la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::Entity const& entity) noexcept override
 		{
@@ -98,6 +99,8 @@ int doJob()
 				outputText("Uncaught exception in onEntityUpdate");
 			}
 		}
+
+		// Result handlers
 		/* Enumeration and Control Protocol (AECP) */
 		void onEntityAvailableResult(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status) noexcept
 		{
@@ -324,6 +327,8 @@ int doJob()
 				outputText("Uncaught exception in onGetListenerStreamStateSniffed");
 			}
 		}
+
+
 
 	private:
 		la::avdecc::UniqueIdentifier _talker{ 0 };
