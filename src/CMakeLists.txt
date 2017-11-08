@@ -60,6 +60,7 @@ set (HEADER_FILES_PROTOCOL
 	protocol/protocolAdpdu.hpp
 	protocol/protocolAecpdu.hpp
 	protocol/protocolAemAecpdu.hpp
+	protocol/protocolAemPayloadSizes.hpp
 	protocol/protocolAemPayloads.hpp
 	protocol/protocolAvtpdu.hpp
 )
@@ -69,6 +70,7 @@ set (SOURCE_FILES_PROTOCOL
 	protocol/protocolAdpdu.cpp
 	protocol/protocolAecpdu.cpp
 	protocol/protocolAemAecpdu.cpp
+	protocol/protocolAemPayloads.cpp
 	protocol/protocolAvtpdu.cpp
 	protocol/protocolDefines.cpp
 )

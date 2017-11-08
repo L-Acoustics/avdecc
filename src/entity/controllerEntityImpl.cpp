@@ -44,10 +44,12 @@ constexpr int DISCOVER_SEND_DELAY = 10000;
 
 static model::AudioMappings const s_emptyMappings{ 0 }; // Empty audio channel mappings used by timeout callback (needs a ref to an AudioMappings)
 static model::StreamInfo const s_emptyStreamInfo{ }; // Empty stream info used by timeout callback (needs a ref to a StreamInfo)
+static model::AvdeccFixedString const s_emptyAvdeccFixedString{}; // Empty AvdeccFixedString used by timeout callback (needs a ref to a std::string)
 
 /* ************************************************************************** */
 /* Exceptions                                                                 */
 /* ************************************************************************** */
+#pragma message("TODO: To remove: CommandException")
 class CommandException final : public std::exception
 {
 public:
@@ -874,6 +876,24 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 		try
 		{
 			it->second(this, status, aem, answerCallback);
+		}
+		catch (protocol::aemPayload::IncorrectPayloadSizeException const& e)
+		{
+			auto st = AemCommandStatus::ProtocolError;
+#if defined(IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES)
+			if (status != AemCommandStatus::Success)
+			{
+				// Allow this packet to go through as a non-success response, but some fields might have the default initial value which might not be valid (the spec says even in a response message, some fields have a meaningful value)
+				st = status;
+				Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Received an invalid non-success AEM response (") + e.what() + ") from: " + toHexString(aem.getTargetEntityID(), true));
+			}
+#endif // IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES
+			if (st == AemCommandStatus::ProtocolError)
+			{
+				Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Failed to process AEM response: ") + e.what());
+			}
+			invokeProtectedHandler(onErrorCallback, st);
+			return;
 		}
 		catch (CommandException const& e)
 		{

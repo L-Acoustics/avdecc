@@ -24,79 +24,40 @@
 
 #pragma once
 
+#include "protocolAemPayloadSizes.hpp"
+#include "serialization.hpp"
+#include "la/avdecc/internals/entityModel.hpp"
+#include <cstdint>
+#include <tuple>
+#include <exception>
+
 namespace la
 {
 namespace avdecc
 {
 namespace protocol
 {
+namespace aemPayload
+{
 
-/** ACQUIRE_ENTITY Command - Clause 7.4.1.1 */
-constexpr size_t AecpAemAcquireEntityCommandPayloadSize = 16u;
+class IncorrectPayloadSizeException final : public std::exception
+{
+public:
+	IncorrectPayloadSizeException(char const* const message) : std::exception(message) {}
+};
 
-/** ACQUIRE_ENTITY Response - Clause 7.4.1.2 */
-constexpr size_t AecpAemAcquireEntityResponsePayloadSize = 16u;
 
-/** LOCK_ENTITY Command - Clause 7.4.2.1 */
-constexpr size_t AecpAemLockEntityCommandPayloadSize = 16u;
+// All serialization methods might throw a std::exception if serialization goes wrong
 
-/** LOCK_ENTITY Response - Clause 7.4.2.2 */
-constexpr size_t AecpAemLockEntityResponsePayloadSize = 16u;
+Serializer<protocol::AecpAemSetNameCommandPayloadSize> serializeSetNameCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString name);
+//serializeSetNameResponse
+Serializer<protocol::AecpAemGetNameCommandPayloadSize> serializeGetNameCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex);
+//serializeGetNameResponse
 
-/** READ_DESCRIPTOR Command - Clause 7.4.5.1 */
-constexpr size_t AecpAemReadDescriptorCommandPayloadSize = 8u;
+//deserializeSetNameCommand
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t, entity::model::ConfigurationIndex, entity::model::AvdeccFixedString> deserializeSetNameResponse(AemAecpdu::Payload const& payload);
 
-/** READ_DESCRIPTOR Response - Clause 7.4.5.2 */
-constexpr size_t AecpAemReadCommonDescriptorResponsePayloadSize = 8u;
-constexpr size_t AecpAemReadDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize;
-constexpr size_t AecpAemReadEntityDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 308u;
-constexpr size_t AecpAemReadConfigurationDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 70u;
-constexpr size_t AecpAemReadLocaleDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 68u;
-constexpr size_t AecpAemReadStringsDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 448u;
-constexpr size_t AecpAemReadStreamDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 128u;
-
-/** SET_STREAM_FORMAT Command - Clause 7.4.9.1 */
-constexpr size_t AecpAemSetStreamFormatCommandPayloadSize = 12u;
-
-/** SET_STREAM_FORMAT Response - Clause 7.4.9.1 */
-constexpr size_t AecpAemSetStreamFormatResponsePayloadSize = 12u;
-
-/** GET_AUDIO_MAP Command  - Clause 7.4.44.1 */
-constexpr size_t AecpAemGetAudioMapCommandPayloadSize = 8u;
-
-/** GET_AUDIO_MAP Response  - Clause 7.4.44.2 */
-constexpr size_t AecpAemGetAudioMapResponsePayloadMinSize = 12u;
-
-/** ADD_AUDIO_MAPPINGS Command  - Clause 7.4.45.1 */
-constexpr size_t AecpAemAddAudioMappingsCommandPayloadMaxSize = Aecpdu::MaximumLength - Aecpdu::HeaderLength - AemAecpdu::HeaderLength;
-
-/** ADD_AUDIO_MAPPINGS Response  - Clause 7.4.45.1 */
-constexpr size_t AecpAemAddAudioMappingsResponsePayloadMinSize = 8u;
-
-/** REMOVE_AUDIO_MAPPINGS Command  - Clause 7.4.46.1 */
-constexpr size_t AecpAemRemoveAudioMappingsCommandPayloadMaxSize = Aecpdu::MaximumLength - Aecpdu::HeaderLength - AemAecpdu::HeaderLength;
-
-/** REMOVE_AUDIO_MAPPINGS Response  - Clause 7.4.46.1 */
-constexpr size_t AecpAemRemoveAudioMappingsResponsePayloadMinSize = 8u;
-
-/** GET_STREAM_INFO Command - Clause 7.4.16.1 */
-constexpr size_t AecpAemGetStreamInfoCommandPayloadSize = 4u;
-
-/** GET_STREAM_INFO Response - Clause 7.4.16.2 */
-constexpr size_t AecpAemGetStreamInfoResponsePayloadSize = 48u;
-
-/** START_STREAMING Command - Clause 7.4.35.1 */
-constexpr size_t AecpAemStartStreamingCommandPayloadSize = 4u;
-
-/** START_STREAMING Response - Clause 7.4.35.1 */
-constexpr size_t AecpAemStartStreamingResponsePayloadSize = 4u;
-
-/** STOP_STREAMING Command - Clause 7.4.36.1 */
-constexpr size_t AecpAemStopStreamingCommandPayloadSize = 4u;
-
-/** STOP_STREAMING Response - Clause 7.4.36.1 */
-constexpr size_t AecpAemStopStreamingResponsePayloadSize = 4u;
-
+} // namespace aemPayload
 } // namespace protocol
 } // namespace avdecc
 } // namespace la
