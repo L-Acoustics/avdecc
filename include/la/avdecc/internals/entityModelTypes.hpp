@@ -30,7 +30,6 @@
 #include <array>
 #include <iostream>
 #include <cstring> // std::memcpy
-#include <algorithm> // std::min
 
 namespace la
 {
@@ -85,7 +84,7 @@ public:
 	/** Assign from a raw buffer */
 	void assign(void const* const ptr, size_t const size) noexcept
 	{
-		auto const copySize = std::min(MaxLength, size);
+		auto const copySize = size <= MaxLength ? size : MaxLength; // Cannot use std::min here because MaxLength doesn't have a reference (it's a static constexpr)
 
 		// Copy std::string to internal std::array
 		auto* dstPtr = _buffer.data();

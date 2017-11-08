@@ -29,7 +29,6 @@
 #include "la/avdecc/internals/entityModel.hpp"
 #include <cstdint>
 #include <tuple>
-#include <exception>
 
 namespace la
 {
@@ -40,10 +39,10 @@ namespace protocol
 namespace aemPayload
 {
 
-class IncorrectPayloadSizeException final : public std::exception
+class IncorrectPayloadSizeException final : public Exception
 {
 public:
-	IncorrectPayloadSizeException(char const* const message) : std::exception(message) {}
+	IncorrectPayloadSizeException(char const* const message) : Exception(message) {}
 };
 
 
