@@ -599,7 +599,66 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 			}
 		},
 		// Set Name
+		{ protocol::AemCommandType::SetName.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
+			{
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex, nameIndex, configurationIndex, name] = protocol::aemPayload::deserializeSetNameResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeSetNameResponse(aem.getPayload());
+				model::DescriptorType descriptorType = std::get<0>(result);
+				model::DescriptorIndex descriptorIndex = std::get<1>(result);
+				std::uint16_t nameIndex = std::get<2>(result);
+				entity::model::ConfigurationIndex configurationIndex = std::get<3>(result);
+				entity::model::AvdeccFixedString name = std::get<4>(result);
+#endif // __cpp_structured_bindings
+
+				auto const targetID = aem.getTargetEntityID();
+				auto* delegate = controller->getDelegate();
+
+				// Notify handlers
+				switch (descriptorType)
+				{
+					case model::DescriptorType::Entity:
+					{
+						if (descriptorIndex != 0)
+						{
+							Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Invalid descriptorIndex in SET_NAME response for Entity Descriptor: ") + std::to_string(descriptorIndex));
+						}
+						switch (nameIndex)
+						{
+							case 0: // entity_name
+								answerCallback.invoke<SetEntityNameHandler>(controller, targetID, status);
+								if (aem.getUnsolicited() && delegate && !!status)
+								{
+									invokeProtectedMethod(&ControllerEntity::Delegate::onEntityNameChanged, delegate, targetID, name);
+								}
+								break;
+							case 1: // group_name
+								answerCallback.invoke<SetEntityGroupNameHandler>(controller, targetID, status);
+								if (aem.getUnsolicited() && delegate && !!status)
+								{
+									invokeProtectedMethod(&ControllerEntity::Delegate::onEntityGroupNameChanged, delegate, targetID, name);
+								}
+								break;
+							default:
+								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in SET_NAME response for Entity Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+								break;
+						}
+						break;
+					}
+					default:
+						Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled descriptorType in SET_NAME response: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+						break;
+				}
+			}
+		},
 		// Get Name
+		{ protocol::AemCommandType::GetName.getValue(), [](ControllerEntityImpl const* const /*controller*/, AemCommandStatus const /*status*/, protocol::AemAecpdu const& /*aem*/, AnswerCallback const& /*answerCallback*/)
+			{
+				assert(false && "todo");
+			}
+		},
 		// Start Streaming
 		{ protocol::AemCommandType::StartStreaming.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
@@ -1523,6 +1582,66 @@ void ControllerEntityImpl::getStreamInputInfo(UniqueIdentifier const targetEntit
 	catch (std::exception const& e)
 	{
 		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize getStreamInputInfo: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::setEntityName(UniqueIdentifier const targetEntityID, model::AvdeccFixedString const& entityName, SetEntityNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::Entity, 0, 0, 0, entityName);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setName: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::getEntityName(UniqueIdentifier const targetEntityID, GetEntityNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::Entity, 0, 0, 0);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, s_emptyAvdeccFixedString);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize getName: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, model::AvdeccFixedString const& entityGroupName, SetEntityGroupNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::Entity, 0, 1, 0, entityGroupName);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setName: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::getEntityGroupName(UniqueIdentifier const targetEntityID, GetEntityGroupNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::Entity, 0, 1, 0);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, s_emptyAvdeccFixedString);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize getName: ") + e.what());
 	}
 }
 
