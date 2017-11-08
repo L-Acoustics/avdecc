@@ -42,19 +42,24 @@ namespace aemPayload
 class IncorrectPayloadSizeException final : public Exception
 {
 public:
-	IncorrectPayloadSizeException(char const* const message) : Exception(message) {}
+	IncorrectPayloadSizeException() : Exception("Incorrect payload size") {}
 };
 
+// All serialization methods might throw a std::invalid_argument if serialization goes wrong
+// All deserialization methods might throw a la::avdecc:Exception if deserialization goes wrong
 
-// All serialization methods might throw a std::exception if serialization goes wrong
-
+// SET_NAME Command - Clause 7.4.17.1
 Serializer<protocol::AecpAemSetNameCommandPayloadSize> serializeSetNameCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString name);
-//serializeSetNameResponse
-Serializer<protocol::AecpAemGetNameCommandPayloadSize> serializeGetNameCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex);
-//serializeGetNameResponse
-
-//deserializeSetNameCommand
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t, entity::model::ConfigurationIndex, entity::model::AvdeccFixedString> deserializeSetNameCommand(AemAecpdu::Payload const& payload);
+// SET_NAME Response - Clause 7.4.17.1
+Serializer<protocol::AecpAemSetNameResponsePayloadSize> serializeSetNameResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString name);
 std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t, entity::model::ConfigurationIndex, entity::model::AvdeccFixedString> deserializeSetNameResponse(AemAecpdu::Payload const& payload);
+// GET_NAME Command - Clause 7.4.18.1
+Serializer<protocol::AecpAemGetNameCommandPayloadSize> serializeGetNameCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t, entity::model::ConfigurationIndex> deserializeGetNameCommand(AemAecpdu::Payload const& payload);
+// GET_NAME Response - Clause 7.4.17.1
+Serializer<protocol::AecpAemGetNameResponsePayloadSize> serializeGetNameResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString name);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t, entity::model::ConfigurationIndex, entity::model::AvdeccFixedString> deserializeGetNameResponse(AemAecpdu::Payload const& payload);
 
 } // namespace aemPayload
 } // namespace protocol

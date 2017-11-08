@@ -100,6 +100,11 @@ enum class DescriptorType : std::uint16_t
 	ClockDomain = 36,
 	ControlBlock = 37,
 };
+constexpr bool operator==(DescriptorType const lhs, DescriptorType const rhs)
+{
+	return static_cast<std::underlying_type_t<DescriptorType>>(lhs) == static_cast<std::underlying_type_t<DescriptorType>>(rhs);
+}
+
 constexpr bool operator==(DescriptorType const lhs, std::underlying_type_t<DescriptorType> const rhs)
 {
 	return static_cast<std::underlying_type_t<DescriptorType>>(lhs) == rhs;

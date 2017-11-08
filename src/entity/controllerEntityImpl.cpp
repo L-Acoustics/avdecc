@@ -609,8 +609,8 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				model::DescriptorType descriptorType = std::get<0>(result);
 				model::DescriptorIndex descriptorIndex = std::get<1>(result);
 				std::uint16_t nameIndex = std::get<2>(result);
-				entity::model::ConfigurationIndex configurationIndex = std::get<3>(result);
-				entity::model::AvdeccFixedString name = std::get<4>(result);
+				model::ConfigurationIndex configurationIndex = std::get<3>(result);
+				model::AvdeccFixedString name = std::get<4>(result);
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
@@ -944,12 +944,12 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 			{
 				// Allow this packet to go through as a non-success response, but some fields might have the default initial value which might not be valid (the spec says even in a response message, some fields have a meaningful value)
 				st = status;
-				Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Received an invalid non-success AEM response (") + e.what() + ") from: " + toHexString(aem.getTargetEntityID(), true));
+				Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Received an invalid non-success ") + std::string(aem.getCommandType()) + "AEM response (" + e.what() + ") from " + toHexString(aem.getTargetEntityID(), true) + " but still processing it because of define IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES");
 			}
 #endif // IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES
 			if (st == AemCommandStatus::ProtocolError)
 			{
-				Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Failed to process AEM response: ") + e.what());
+				Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Failed to process ") + std::string(aem.getCommandType()) + "AEM response: " + e.what());
 			}
 			invokeProtectedHandler(onErrorCallback, st);
 			return;
