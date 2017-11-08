@@ -27,6 +27,7 @@ TEST(AvdeccFixedString, DefaultConstructor)
 	ASSERT_EQ(64u, afs.size()) << "Should be 64 bytes long";
 	ASSERT_EQ(typeid(char), typeid(la::avdecc::entity::model::AvdeccFixedString::value_type)) << "Underlying type should be 'char'";
 
+	EXPECT_TRUE(afs.empty());
 	EXPECT_STREQ("", afs.str().c_str()) << "String should be empty";
 
 	auto const* const ptr = afs.data();
@@ -43,6 +44,7 @@ TEST(AvdeccFixedString, StdStringConstructor)
 		std::string const str{ "Hi" };
 		la::avdecc::entity::model::AvdeccFixedString afs{ str };
 
+		EXPECT_FALSE(afs.empty());
 		EXPECT_STREQ(str.c_str(), afs.str().c_str());
 
 		auto const* const ptr = afs.data();
@@ -57,6 +59,7 @@ TEST(AvdeccFixedString, StdStringConstructor)
 		ASSERT_LT(64u, str.size());
 		la::avdecc::entity::model::AvdeccFixedString afs{ str };
 
+		EXPECT_FALSE(afs.empty());
 		EXPECT_STRNE(str.c_str(), afs.str().c_str());
 		{
 			auto const subStr = str.substr(0, 64);
@@ -71,6 +74,7 @@ TEST(AvdeccFixedString, RawBufferConstructor)
 	auto const size = strlen(str);
 	la::avdecc::entity::model::AvdeccFixedString afs{ str, size };
 
+	EXPECT_FALSE(afs.empty());
 	EXPECT_STREQ(str, afs.str().c_str());
 
 	auto const* const ptr = afs.data();
@@ -88,6 +92,7 @@ TEST(AvdeccFixedString, AssignStdString)
 	{
 		std::string const str{ "Hello" };
 		afs.assign(str);
+		EXPECT_FALSE(afs.empty());
 		EXPECT_STREQ(str.c_str(), afs.str().c_str());
 
 		auto const* const ptr = afs.data();
@@ -101,6 +106,7 @@ TEST(AvdeccFixedString, AssignStdString)
 	{
 		std::string const str{ "Hi" };
 		afs.assign(str);
+		EXPECT_FALSE(afs.empty());
 		EXPECT_STREQ(str.c_str(), afs.str().c_str());
 
 		auto const* const ptr = afs.data();
@@ -120,6 +126,7 @@ TEST(AvdeccFixedString, AssignRawBuffer)
 		char const* const str{ "Hello" };
 		auto const size = strlen(str);
 		afs.assign(str);
+		EXPECT_FALSE(afs.empty());
 		EXPECT_STREQ(str, afs.str().c_str());
 
 		auto const* const ptr = afs.data();
@@ -134,6 +141,7 @@ TEST(AvdeccFixedString, AssignRawBuffer)
 		char const* const str{ "Hi" };
 		auto const size = strlen(str);
 		afs.assign(str);
+		EXPECT_FALSE(afs.empty());
 		EXPECT_STREQ(str, afs.str().c_str());
 
 		auto const* const ptr = afs.data();
@@ -151,9 +159,12 @@ TEST(AvdeccFixedString, EqualOperator)
 	la::avdecc::entity::model::AvdeccFixedString afs2{ "Hi" };
 	la::avdecc::entity::model::AvdeccFixedString afs3{ "Hi!" };
 
+	EXPECT_FALSE(afs.empty());
 	EXPECT_STREQ(afs.str().c_str(), afs2.str().c_str());
 	EXPECT_TRUE(afs == afs2);
 
+	EXPECT_FALSE(afs2.empty());
+	EXPECT_FALSE(afs3.empty());
 	EXPECT_STRNE(afs.str().c_str(), afs3.str().c_str());
 	EXPECT_STRNE(afs2.str().c_str(), afs3.str().c_str());
 	EXPECT_FALSE(afs == afs3);

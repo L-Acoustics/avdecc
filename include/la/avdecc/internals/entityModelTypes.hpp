@@ -115,6 +115,12 @@ public:
 		return MaxLength;
 	}
 
+	/** Returns true if the buffer contains only '\0' */
+	bool empty() const noexcept
+	{
+		return _buffer[0] == '\0';
+	}
+
 	/** operator== */
 	bool operator==(AvdeccFixedString const& afs) const noexcept
 	{
