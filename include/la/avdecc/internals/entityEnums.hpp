@@ -18,9 +18,9 @@
 */
 
 /**
-* @file types.hpp
+* @file entityEnums.hpp
 * @author Christophe Calmejane
-* @brief Avdecc entity types and constants.
+* @brief Avdecc entity enums.
 */
 
 #pragma once

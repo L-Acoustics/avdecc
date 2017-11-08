@@ -33,9 +33,10 @@
 #include <unordered_map>
 #include <iostream>
 #include <tuple>
-#include "types.hpp"
+#include "entityEnums.hpp"
 #include "uniqueIdentifier.hpp"
 #include "protocolDefines.hpp"
+#include "entityModelTypes.hpp"
 #include "la/avdecc/utils.hpp"
 #include "la/avdecc/networkInterfaceHelper.hpp"
 
@@ -48,18 +49,7 @@ namespace entity
 namespace model
 {
 
-using VendorEntityModel = std::uint64_t;
-using AvdeccFixedString = std::array<char, 64>; /* UTF-8 String */
-using ConfigurationIndex = std::uint16_t;
-using LocaleIndex = std::uint16_t;
-using StringsIndex = std::uint16_t;
-using LocalizedStringReference = std::uint16_t;
-using StreamIndex = std::uint16_t;
-using StreamFormat = std::uint64_t;
-using DescriptorIndex = std::uint16_t;
-using MapIndex = std::uint16_t;
-
-constexpr StreamFormat getNullVendorEntityModel() noexcept
+constexpr VendorEntityModel getNullVendorEntityModel() noexcept
 {
 	return VendorEntityModel(0u);
 }
@@ -287,36 +277,7 @@ constexpr std::tuple<std::uint32_t, std::uint8_t, std::uint32_t> splitVendorEnti
 	);
 }
 
-/** Converts a AvdeccFixedString to std::string */
-inline std::string to_string(AvdeccFixedString const& afs) noexcept
-{
-	std::string str{};
-
-	// If all bytes in an AvdeccFixedString are used, the buffer is not NULL-terminated. We cannot use strlen or directly copy the buffer into an std::string or we might overflow
-	for (auto const c : afs)
-	{
-		if (c == 0)
-			break;
-		str.push_back(c);
-	}
-
-	return str;
-}
-
 } // namespace model
 } // namespace entity
 } // namespace avdecc
 } // namespace la
-
-/** ostream overload for la::avdecc::entity::model::AvdeccFixedString */
-inline std::ostream& operator<<(std::ostream& os, la::avdecc::entity::model::AvdeccFixedString const& rhs)
-{
-	os << la::avdecc::entity::model::to_string(rhs);
-	return os;
-}
-
-/** Operator== overload for la::avdecc::entity::model::AvdeccFixedString */
-inline bool operator==(la::avdecc::entity::model::AvdeccFixedString const& lhs, std::string const& rhs) noexcept
-{
-	return la::avdecc::entity::model::to_string(lhs) == rhs;
-}

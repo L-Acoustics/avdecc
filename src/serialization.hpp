@@ -223,9 +223,9 @@ public:
 			throw std::invalid_argument("Not enough data to deserialize");
 		}
 
-		// Direct data copy
+		// Copy to AvdeccFixedString
 		auto const* const ptr = static_cast<std::uint8_t const*>(_ptr) + _pos;
-		std::copy_n(ptr, size, v.begin());
+		v.assign(ptr, size);
 
 		// Advance data pointer
 		_pos += size;

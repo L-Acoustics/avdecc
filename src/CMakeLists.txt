@@ -45,11 +45,12 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/internals/endStation.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entity.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModel.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTypes.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/exception.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/exports.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolDefines.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/streamFormat.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/types.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/entityEnums.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/uniqueIdentifier.hpp
 )
 

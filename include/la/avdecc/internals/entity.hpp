@@ -29,7 +29,7 @@
 #include <thread>
 #include <algorithm>
 #include "entityModel.hpp"
-#include "types.hpp"
+#include "entityEnums.hpp"
 
 namespace la
 {

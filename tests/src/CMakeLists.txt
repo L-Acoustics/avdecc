@@ -18,10 +18,11 @@ set(ADD_LINK_LIBRARIES gtest)
 ### Unit Tests
 set(TESTS_SOURCE
 	main.cpp
-	controller_state_machine.cpp
-	protocol_avtpdu_tests.cpp
-	protocol_interface_pcap.cpp
-	stream_format_tests.cpp
+	avdeccFixedString_tests.cpp
+	controllerStateMachine_tests.cpp
+	protocolAvtpdu_tests.cpp
+	protocolInterface_pcap_tests.cpp
+	streamFormat_tests.cpp
 )
 list(APPEND ADD_LINK_LIBRARIES la_avdecc_static)
 
