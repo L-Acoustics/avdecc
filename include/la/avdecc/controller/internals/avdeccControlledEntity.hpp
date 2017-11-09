@@ -69,8 +69,9 @@ public:
 		OutputStreamDescriptor = 5,
 		InputStreamState = 6,
 		InputStreamAudioMappings = 7,
+		OutputStreamAudioMappings = 8,
 
-		CountQueries = 8 /**< Count of EntityQuery elements, to be increased if a new value is added */
+		CountQueries = 9 /**< Count of EntityQuery elements, to be increased if a new value is added */
 	};
 
 	enum class AcquireState
@@ -97,6 +98,7 @@ public:
 	/** Get connected information about a listener's stream (TalkerID and StreamIndex might be filled even if isConnected is not true, in case of FastConnect) */
 	virtual entity::model::StreamConnectedState getConnectedSinkState(entity::model::StreamIndex const listenerIndex) const = 0; // Throws Exception::InvalidStreamIndex if streamIndex do not exist
 	virtual entity::model::AudioMappings const& getStreamInputAudioMappings(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::InvalidStreamIndex if streamIndex do not exist
+	virtual entity::model::AudioMappings const& getStreamOutputAudioMappings(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::InvalidStreamIndex if streamIndex do not exist
 
 	// Deleted compiler auto-generated methods
 	ControlledEntity(ControlledEntity&&) = delete;

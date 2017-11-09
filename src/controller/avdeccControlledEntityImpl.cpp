@@ -70,18 +70,12 @@ entity::Entity const& ControlledEntityImpl::getEntity() const noexcept
 
 entity::model::EntityDescriptor const& ControlledEntityImpl::getEntityDescriptor() const
 {
-	if (!hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
-		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
-
-	return _entityDescriptor;
+	return getRootDescriptor<entity::model::EntityDescriptor, &ControlledEntityImpl::_entityDescriptor>();
 }
 
 entity::model::ConfigurationDescriptor const& ControlledEntityImpl::getConfigurationDescriptor() const
 {
-	if (!hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
-		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
-
-	return _configurationDescriptor;
+	return getRootDescriptor<entity::model::ConfigurationDescriptor, &ControlledEntityImpl::_configurationDescriptor>();
 }
 
 entity::model::LocaleDescriptor const* ControlledEntityImpl::findLocaleDescriptor(std::string const& /*locale*/) const
@@ -99,14 +93,8 @@ entity::model::LocaleDescriptor const* ControlledEntityImpl::findLocaleDescripto
 
 entity::model::StreamDescriptor const& ControlledEntityImpl::getStreamInputDescriptor(entity::model::StreamIndex const streamIndex) const
 {
-	if (!hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
-		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
+	checkValidStreamIndex(entity::model::DescriptorType::StreamInput, streamIndex);
 
-	auto countIt = _configurationDescriptor.descriptorCounts.find(entity::model::DescriptorType::StreamInput);
-	if (countIt == _configurationDescriptor.descriptorCounts.end())
-		throw Exception(Exception::Type::InvalidStreamIndex, "Invalid stream index");
-	if (streamIndex >= countIt->second)
-		throw Exception(Exception::Type::InvalidStreamIndex, "Invalid stream index");
 	auto const it = _inputStreams.find(streamIndex);
 	if (it == _inputStreams.end())
 		throw Exception(Exception::Type::Unknown, "Should be filled with data already");
@@ -115,14 +103,8 @@ entity::model::StreamDescriptor const& ControlledEntityImpl::getStreamInputDescr
 
 entity::model::StreamDescriptor const& ControlledEntityImpl::getStreamOutputDescriptor(entity::model::StreamIndex const streamIndex) const
 {
-	if (!hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
-		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
+	checkValidStreamIndex(entity::model::DescriptorType::StreamOutput, streamIndex);
 
-	auto countIt = _configurationDescriptor.descriptorCounts.find(entity::model::DescriptorType::StreamOutput);
-	if (countIt == _configurationDescriptor.descriptorCounts.end())
-		throw Exception(Exception::Type::InvalidStreamIndex, "Invalid stream index");
-	if (streamIndex >= countIt->second)
-		throw Exception(Exception::Type::InvalidStreamIndex, "Invalid stream index");
 	auto const it = _outputStreams.find(streamIndex);
 	if (it == _outputStreams.end())
 		throw Exception(Exception::Type::Unknown, "Should be filled with data already");
@@ -151,11 +133,8 @@ entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString
 
 entity::model::StreamConnectedState ControlledEntityImpl::getConnectedSinkState(entity::model::StreamIndex const listenerIndex) const
 {
-	auto countIt = _configurationDescriptor.descriptorCounts.find(entity::model::DescriptorType::StreamInput);
-	if (countIt == _configurationDescriptor.descriptorCounts.end())
-		throw Exception(Exception::Type::InvalidStreamIndex, "Invalid stream index");
-	if (listenerIndex >= countIt->second)
-		throw Exception(Exception::Type::InvalidStreamIndex, "Invalid stream index");
+	checkValidStreamIndex(entity::model::DescriptorType::StreamInput, listenerIndex);
+
 	auto const it = _inputStreamStates.find(listenerIndex);
 	entity::model::StreamConnectedState state{ getUninitializedIdentifier() , 0, false, false };
 	if (it != _inputStreamStates.end())
@@ -165,15 +144,32 @@ entity::model::StreamConnectedState ControlledEntityImpl::getConnectedSinkState(
 
 entity::model::AudioMappings const& ControlledEntityImpl::getStreamInputAudioMappings(entity::model::StreamIndex const streamIndex) const
 {
-	auto countIt = _configurationDescriptor.descriptorCounts.find(entity::model::DescriptorType::StreamInput);
-	if (countIt == _configurationDescriptor.descriptorCounts.end())
-		throw Exception(Exception::Type::InvalidStreamIndex, "Invalid stream index");
-	if (streamIndex >= countIt->second)
-		throw Exception(Exception::Type::InvalidStreamIndex, "Invalid stream index");
+	checkValidStreamIndex(entity::model::DescriptorType::StreamInput, streamIndex);
+
 	auto const it = _inputStreamAudioMappings.find(streamIndex);
 	if (it == _inputStreamAudioMappings.end())
 		throw Exception(Exception::Type::Unknown, "Should be filled with data already");
 	return it->second;
+}
+
+entity::model::AudioMappings const& ControlledEntityImpl::getStreamOutputAudioMappings(entity::model::StreamIndex const streamIndex) const
+{
+	checkValidStreamIndex(entity::model::DescriptorType::StreamInput, streamIndex);
+
+	auto const it = _outputStreamAudioMappings.find(streamIndex);
+	if (it == _outputStreamAudioMappings.end())
+		throw Exception(Exception::Type::Unknown, "Should be filled with data already");
+	return it->second;
+}
+
+entity::model::EntityDescriptor& ControlledEntityImpl::getEntityDescriptor()
+{
+	return const_cast<entity::model::EntityDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getEntityDescriptor());
+}
+
+entity::model::ConfigurationDescriptor& ControlledEntityImpl::getConfigurationDescriptor()
+{
+	return const_cast<entity::model::ConfigurationDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getConfigurationDescriptor());
 }
 
 void ControlledEntityImpl::updateEntity(entity::Entity const& entity) noexcept
@@ -266,11 +262,8 @@ bool ControlledEntityImpl::setInputStreamState(entity::model::StreamIndex const 
 
 bool ControlledEntityImpl::setInputStreamFormat(entity::model::StreamIndex const inputStreamIndex, entity::model::StreamFormat const streamFormat) /* True if format changed */
 {
-	auto countIt = _configurationDescriptor.descriptorCounts.find(entity::model::DescriptorType::StreamInput);
-	if (countIt == _configurationDescriptor.descriptorCounts.end())
-		throw Exception(Exception::Type::InvalidStreamIndex, "Invalid stream index");
-	if (inputStreamIndex >= countIt->second)
-		throw Exception(Exception::Type::InvalidStreamIndex, "Invalid stream index");
+	checkValidStreamIndex(entity::model::DescriptorType::StreamInput, inputStreamIndex);
+
 	auto const it = _inputStreams.find(inputStreamIndex);
 	if (it == _inputStreams.end())
 		throw Exception(Exception::Type::Unknown, "Should be filled with data already");
@@ -283,11 +276,8 @@ bool ControlledEntityImpl::setInputStreamFormat(entity::model::StreamIndex const
 
 bool ControlledEntityImpl::setOutputStreamFormat(entity::model::StreamIndex const outputStreamIndex, entity::model::StreamFormat const streamFormat) /* True if format changed */
 {
-	auto countIt = _configurationDescriptor.descriptorCounts.find(entity::model::DescriptorType::StreamOutput);
-	if (countIt == _configurationDescriptor.descriptorCounts.end())
-		throw Exception(Exception::Type::InvalidStreamIndex, "Invalid stream index");
-	if (outputStreamIndex >= countIt->second)
-		throw Exception(Exception::Type::InvalidStreamIndex, "Invalid stream index");
+	checkValidStreamIndex(entity::model::DescriptorType::StreamOutput, outputStreamIndex);
+
 	auto const it = _outputStreams.find(outputStreamIndex);
 	if (it == _outputStreams.end())
 		throw Exception(Exception::Type::Unknown, "Should be filled with data already");
@@ -301,6 +291,11 @@ bool ControlledEntityImpl::setOutputStreamFormat(entity::model::StreamIndex cons
 void ControlledEntityImpl::clearInputStreamAudioMappings(entity::model::StreamIndex const inputStreamIndex) noexcept
 {
 	_inputStreamAudioMappings.erase(inputStreamIndex);
+}
+
+void ControlledEntityImpl::clearOutputStreamAudioMappings(entity::model::StreamIndex const outputStreamIndex) noexcept
+{
+	_outputStreamAudioMappings.erase(outputStreamIndex);
 }
 
 void ControlledEntityImpl::addInputStreamAudioMappings(entity::model::StreamIndex const inputStreamIndex, entity::model::AudioMappings const& mappings, bool const isComplete) noexcept
@@ -328,9 +323,50 @@ void ControlledEntityImpl::addInputStreamAudioMappings(entity::model::StreamInde
 	}
 }
 
+void ControlledEntityImpl::addOutputStreamAudioMappings(entity::model::StreamIndex const outputStreamIndex, entity::model::AudioMappings const& mappings, bool const isComplete) noexcept
+{
+	auto& audioMappings = _outputStreamAudioMappings[outputStreamIndex];
+	for (auto const& map : mappings)
+	{
+		// Check if mapping must be replaced
+		auto foundIt = std::find_if(audioMappings.begin(), audioMappings.end(), [&map](entity::model::AudioMapping const& mapping)
+		{
+			return (map.clusterOffset == mapping.clusterOffset) && (map.clusterChannel == mapping.clusterChannel);
+		});
+		// Not found, add the new mapping
+		if (foundIt == audioMappings.end())
+			audioMappings.push_back(map);
+		else // Otherwise, replace the previous mapping
+		{
+			foundIt->streamIndex = map.streamIndex;
+			foundIt->streamChannel = map.streamChannel;
+		}
+	}
+	if (isComplete)
+	{
+		_completedQueries.set(static_cast<std::size_t>(EntityQuery::OutputStreamAudioMappings));
+	}
+}
+
 void ControlledEntityImpl::removeInputStreamAudioMappings(entity::model::StreamIndex const inputStreamIndex, entity::model::AudioMappings const& mappings) noexcept
 {
 	auto& audioMappings = _inputStreamAudioMappings[inputStreamIndex];
+	for (auto const& map : mappings)
+	{
+		// Check if mapping exists
+		auto foundIt = std::find_if(audioMappings.begin(), audioMappings.end(), [&map](entity::model::AudioMapping const& mapping)
+		{
+			return (map.clusterOffset == mapping.clusterOffset) && (map.clusterChannel == mapping.clusterChannel);
+		});
+		assert(foundIt != audioMappings.end());
+		if (foundIt != audioMappings.end())
+			audioMappings.erase(foundIt);
+	}
+}
+
+void ControlledEntityImpl::removeOutputStreamAudioMappings(entity::model::StreamIndex const outputStreamIndex, entity::model::AudioMappings const& mappings) noexcept
+{
+	auto& audioMappings = _outputStreamAudioMappings[outputStreamIndex];
 	for (auto const& map : mappings)
 	{
 		// Check if mapping exists
@@ -372,6 +408,18 @@ bool ControlledEntityImpl::wasAdvertised() const noexcept
 void ControlledEntityImpl::setAdvertised(bool const wasAdvertised) noexcept
 {
 	_advertised = wasAdvertised;
+}
+
+void ControlledEntityImpl::checkValidStreamIndex(entity::model::DescriptorType const descriptorType, entity::model::StreamIndex const streamIndex) const
+{
+	if (!hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
+
+	auto countIt = _configurationDescriptor.descriptorCounts.find(descriptorType);
+	if (countIt == _configurationDescriptor.descriptorCounts.end())
+		throw Exception(Exception::Type::InvalidStreamIndex, "Invalid stream index");
+	if (streamIndex >= countIt->second)
+		throw Exception(Exception::Type::InvalidStreamIndex, "Invalid stream index");
 }
 
 } // namespace controller

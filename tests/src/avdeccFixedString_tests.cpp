@@ -22,7 +22,7 @@
 
 TEST(AvdeccFixedString, DefaultConstructor)
 {
-	la::avdecc::entity::model::AvdeccFixedString afs;
+	la::avdecc::entity::model::AvdeccFixedString const afs;
 
 	ASSERT_EQ(64u, afs.size()) << "Should be 64 bytes long";
 	ASSERT_EQ(typeid(char), typeid(la::avdecc::entity::model::AvdeccFixedString::value_type)) << "Underlying type should be 'char'";
@@ -42,7 +42,7 @@ TEST(AvdeccFixedString, StdStringConstructor)
 	// Small string
 	{
 		std::string const str{ "Hi" };
-		la::avdecc::entity::model::AvdeccFixedString afs{ str };
+		la::avdecc::entity::model::AvdeccFixedString const afs{ str };
 
 		EXPECT_FALSE(afs.empty());
 		EXPECT_STREQ(str.c_str(), afs.str().c_str());
@@ -57,7 +57,7 @@ TEST(AvdeccFixedString, StdStringConstructor)
 	{
 		std::string const str{ "This is a string that should be contain more than 64 bytes in it!" };
 		ASSERT_LT(64u, str.size());
-		la::avdecc::entity::model::AvdeccFixedString afs{ str };
+		la::avdecc::entity::model::AvdeccFixedString const afs{ str };
 
 		EXPECT_FALSE(afs.empty());
 		EXPECT_STRNE(str.c_str(), afs.str().c_str());
@@ -72,7 +72,7 @@ TEST(AvdeccFixedString, RawBufferConstructor)
 {
 	char const* const str{ "Hi" };
 	auto const size = strlen(str);
-	la::avdecc::entity::model::AvdeccFixedString afs{ str, size };
+	la::avdecc::entity::model::AvdeccFixedString const afs{ str, size };
 
 	EXPECT_FALSE(afs.empty());
 	EXPECT_STREQ(str, afs.str().c_str());
@@ -152,12 +152,12 @@ TEST(AvdeccFixedString, AssignRawBuffer)
 	}
 }
 
-TEST(AvdeccFixedString, EqualOperator)
+TEST(AvdeccFixedString, ComparisonOperator)
 {
 	std::string const str{ "Hi" };
-	la::avdecc::entity::model::AvdeccFixedString afs{ str };
-	la::avdecc::entity::model::AvdeccFixedString afs2{ "Hi" };
-	la::avdecc::entity::model::AvdeccFixedString afs3{ "Hi!" };
+	la::avdecc::entity::model::AvdeccFixedString const afs{ str };
+	la::avdecc::entity::model::AvdeccFixedString const afs2{ "Hi" };
+	la::avdecc::entity::model::AvdeccFixedString const afs3{ "Hi!" };
 
 	EXPECT_FALSE(afs.empty());
 	EXPECT_STREQ(afs.str().c_str(), afs2.str().c_str());
@@ -169,4 +169,23 @@ TEST(AvdeccFixedString, EqualOperator)
 	EXPECT_STRNE(afs2.str().c_str(), afs3.str().c_str());
 	EXPECT_FALSE(afs == afs3);
 	EXPECT_FALSE(afs2 == afs3);
+}
+
+TEST(AvdeccFixedString, CopyConstructor)
+{
+	std::string const str{ "Hi" };
+	la::avdecc::entity::model::AvdeccFixedString const afs{ str };
+	la::avdecc::entity::model::AvdeccFixedString const afs2{ afs };
+
+	EXPECT_TRUE(afs == afs2);
+}
+
+TEST(AvdeccFixedString, EqualOperator)
+{
+	std::string const str{ "Hi" };
+	la::avdecc::entity::model::AvdeccFixedString const afs{ str };
+	la::avdecc::entity::model::AvdeccFixedString afs2;
+
+	afs2 = afs;
+	EXPECT_TRUE(afs == afs2);
 }
