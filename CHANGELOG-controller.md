@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - setEntityName method, to change an entity's name (Entity Descriptor)
 - setEntityGroupName method, to change an entity's group (Entity Descriptor)
 - setConfigurationName method, to change a configuration's name (Configuration Descriptor)
+- setStream[Input/Output]Name method, to change a stream's name (Stream Descriptor)
 - Support for output stream dynamic audio mapping
 ### Changed
 - la::avdecc::controller::Controller::Observer AECP notifications are now also triggered when the controller changes a value itself
