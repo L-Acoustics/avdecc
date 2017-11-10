@@ -96,6 +96,7 @@ public:
 	virtual void stopStreamOutput(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, StopStreamOutputHandler const& handler) const noexcept override;
 	virtual void setEntityName(UniqueIdentifier const targetEntityID, entity::model::AvdeccFixedString const& name, SetEntityNameHandler const& handler) const noexcept override;
 	virtual void setEntityGroupName(UniqueIdentifier const targetEntityID, entity::model::AvdeccFixedString const& name, SetEntityGroupNameHandler const& handler) const noexcept override;
+	virtual void setConfigurationName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& name, SetConfigurationNameHandler const& handler) const noexcept override;
 
 	/* Connection Management Protocol (ACMP) */
 	virtual void connectStream(UniqueIdentifier const talkerEntityID, entity::model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, entity::model::StreamIndex const listenerStreamIndex, ConnectStreamHandler const& handler) const noexcept override;
@@ -145,6 +146,7 @@ private:
 	virtual void onStreamOutputInfoChanged(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept override;
 	virtual void onEntityNameChanged(UniqueIdentifier const entityID, entity::model::AvdeccFixedString const& entityName) noexcept override;
 	virtual void onEntityGroupNameChanged(UniqueIdentifier const entityID, entity::model::AvdeccFixedString const& entityGroupName) noexcept override;
+	virtual void onConfigurationNameChanged(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& configurationName) noexcept override;
 	virtual void onStreamInputStarted(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept override;
 	virtual void onStreamOutputStarted(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept override;
 	virtual void onStreamInputStopped(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept override;
@@ -159,6 +161,7 @@ private:
 	void updateStreamOutputAudioMappingsRemoved(ControlledEntityImpl* const controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::AudioMappings const& mappings) const noexcept;
 	void updateEntityName(ControlledEntityImpl* const controlledEntity, entity::model::AvdeccFixedString const& entityName) const noexcept;
 	void updateEntityGroupName(ControlledEntityImpl* const controlledEntity, entity::model::AvdeccFixedString const& entityGroupName) const noexcept;
+	void updateConfigurationName(ControlledEntityImpl* const controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& configurationName) const noexcept;
 
 	mutable std::recursive_mutex _lockEntities{}; // Lock for _controlledEntities (required since ControllerEntity::Delegate notifications can occur from 2 different threads)
 	std::unordered_map<UniqueIdentifier, ControlledEntityImpl::UniquePointer> _controlledEntities;
@@ -963,6 +966,18 @@ void ControllerImpl::onEntityGroupNameChanged(UniqueIdentifier const entityID, e
 	}
 }
 
+void ControllerImpl::onConfigurationNameChanged(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& configurationName) noexcept
+{
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+	auto entityIt = _controlledEntities.find(entityID);
+	if (entityIt != _controlledEntities.end())
+	{
+		auto& controlledEntity = entityIt->second;
+		updateConfigurationName(controlledEntity.get(), configurationIndex, configurationName);
+	}
+}
+
 void ControllerImpl::onStreamInputStarted(UniqueIdentifier const /*entityID*/, entity::model::StreamIndex const /*streamIndex*/) noexcept
 {
 }
@@ -1493,6 +1508,41 @@ void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, e
 	}
 }
 
+void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& name, SetConfigurationNameHandler const& handler) const noexcept
+{
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+	auto entityIt = _controlledEntities.find(targetEntityID);
+	if (entityIt != _controlledEntities.end())
+	{
+		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setConfigurationName requested for ") + toHexString(targetEntityID, true));
+		_controller->setConfigurationName(targetEntityID, configurationIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex)
+		{
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setConfigurationName result for ") + toHexString(entityID, true) + " -> " + entity::ControllerEntity::statusToString(status));
+			std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+			auto entityIt = _controlledEntities.find(entityID);
+			if (entityIt != _controlledEntities.end())
+			{
+				auto& controlledEntity = entityIt->second;
+				if (!!status) // Only change the name in case of success
+				{
+					updateConfigurationName(controlledEntity.get(), configurationIndex, name);
+				}
+				invokeProtectedHandler(handler, controlledEntity.get(), status);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status);
+			}
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
 void ControllerImpl::connectStream(UniqueIdentifier const talkerEntityID, entity::model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, entity::model::StreamIndex const listenerStreamIndex, ConnectStreamHandler const& handler) const noexcept
 {
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
@@ -1726,6 +1776,11 @@ void ControllerImpl::updateEntityGroupName(ControlledEntityImpl* const controlle
 	{
 		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityGroupNameChanged, controlledEntity, entityGroupName);
 	}
+}
+
+void ControllerImpl::updateConfigurationName(ControlledEntityImpl* const /*controlledEntity*/, entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::AvdeccFixedString const& /*configurationName*/) const noexcept
+{
+#pragma message("TBD: Handle the update, once the controller supports multiple configurations, not just the active one")
 }
 
 void ControllerImpl::runMethodForEntity(UniqueIdentifier const entityID, RunMethodForEntityHandler const& handler) const

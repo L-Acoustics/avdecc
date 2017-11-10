@@ -102,7 +102,7 @@ ControllerEntityImpl::ControllerEntityImpl(protocol::ProtocolInterface* const pr
 	// Create the state machine thread
 	_discoveryThread = std::thread([this]
 	{
-		la::avdecc::setCurrentThreadName("avdecc::ControllerDiscovery");
+		setCurrentThreadName("avdecc::ControllerDiscovery");
 		while (!_shouldTerminate)
 		{
 			// Request a discovery
@@ -625,6 +625,10 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 						{
 							Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Invalid descriptorIndex in SET_NAME response for Entity Descriptor: ") + std::to_string(descriptorIndex));
 						}
+						if (configurationIndex != 0)
+						{
+							Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Invalid configurationIndex in SET_NAME response for Entity Descriptor: ") + std::to_string(configurationIndex));
+						}
 						switch (nameIndex)
 						{
 							case 0: // entity_name
@@ -643,6 +647,27 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 								break;
 							default:
 								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in SET_NAME response for Entity Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::Configuration:
+					{
+						if (configurationIndex != 0)
+						{
+							Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Invalid configurationIndex in SET_NAME response for Configuration Descriptor: ") + std::to_string(configurationIndex));
+						}
+						switch (nameIndex)
+						{
+							case 0: // configuration_name
+								answerCallback.invoke<SetConfigurationNameHandler>(controller, targetID, status, descriptorIndex);
+								if (aem.getUnsolicited() && delegate && !!status)
+								{
+									invokeProtectedMethod(&ControllerEntity::Delegate::onConfigurationNameChanged, delegate, targetID, descriptorIndex, name);
+								}
+								break;
+							default:
+								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in SET_NAME response for Configuration Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
 								break;
 						}
 						break;
@@ -1645,6 +1670,36 @@ void ControllerEntityImpl::getEntityGroupName(UniqueIdentifier const targetEntit
 	}
 }
 
+void ControllerEntityImpl::setConfigurationName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& entityGroupName, SetConfigurationNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::Configuration, configurationIndex, 0, 0, entityGroupName);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setName: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::getConfigurationName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, GetConfigurationNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::Configuration, configurationIndex, 0, 0);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, s_emptyAvdeccFixedString);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize getName: ") + e.what());
+	}
+}
+
 void ControllerEntityImpl::startStreamInput(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, StartStreamInputHandler const& handler) const noexcept
 {
 	try
@@ -1747,34 +1802,34 @@ ControllerEntityImpl::Delegate* ControllerEntityImpl::getDelegate() const noexce
 /* protocol::ProtocolInterface::Observer overrides                            */
 /* ************************************************************************** */
 /* **** Global notifications **** */
-void ControllerEntityImpl::onTransportError(la::avdecc::protocol::ProtocolInterface const* const /*pi*/) noexcept
+void ControllerEntityImpl::onTransportError(protocol::ProtocolInterface const* const /*pi*/) noexcept
 {
 	invokeProtectedMethod(&ControllerEntity::Delegate::onTransportError, _delegate);
 }
 
 /* **** Discovery notifications **** */
-void ControllerEntityImpl::onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface const* const pi, DiscoveredEntity const& entity) noexcept
+void ControllerEntityImpl::onLocalEntityOnline(protocol::ProtocolInterface const* const pi, DiscoveredEntity const& entity) noexcept
 {
 	// The controller doesn't make any difference btw a local and a remote entity, just ignore ourself
 	if (getEntityID() != entity.getEntityID())
 		onRemoteEntityOnline(pi, entity);
 }
 
-void ControllerEntityImpl::onLocalEntityOffline(la::avdecc::protocol::ProtocolInterface const* const pi, UniqueIdentifier const entityID) noexcept
+void ControllerEntityImpl::onLocalEntityOffline(protocol::ProtocolInterface const* const pi, UniqueIdentifier const entityID) noexcept
 {
 	// The controller doesn't make any difference btw a local and a remote entity, just ignore ourself
 	if (getEntityID() != entityID)
 		onRemoteEntityOffline(pi, entityID); // The controller doesn't make any difference btw a local and a remote entity
 }
 
-void ControllerEntityImpl::onLocalEntityUpdated(la::avdecc::protocol::ProtocolInterface const* const pi, DiscoveredEntity const& entity) noexcept
+void ControllerEntityImpl::onLocalEntityUpdated(protocol::ProtocolInterface const* const pi, DiscoveredEntity const& entity) noexcept
 {
 	// The controller doesn't make any difference btw a local and a remote entity, just ignore ourself
 	if (getEntityID() != entity.getEntityID())
 		onRemoteEntityUpdated(pi, entity); // The controller doesn't make any difference btw a local and a remote entity
 }
 
-void ControllerEntityImpl::onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface const* const /*pi*/, DiscoveredEntity const& entity) noexcept
+void ControllerEntityImpl::onRemoteEntityOnline(protocol::ProtocolInterface const* const /*pi*/, DiscoveredEntity const& entity) noexcept
 {
 	auto const entityID = entity.getEntityID();
 	{
@@ -1796,7 +1851,7 @@ void ControllerEntityImpl::onRemoteEntityOnline(la::avdecc::protocol::ProtocolIn
 	invokeProtectedMethod(&ControllerEntity::Delegate::onEntityOnline, _delegate, this, entityID, entity);
 }
 
-void ControllerEntityImpl::onRemoteEntityOffline(la::avdecc::protocol::ProtocolInterface const* const /*pi*/, UniqueIdentifier const entityID) noexcept
+void ControllerEntityImpl::onRemoteEntityOffline(protocol::ProtocolInterface const* const /*pi*/, UniqueIdentifier const entityID) noexcept
 {
 	{
 		// Lock entities
@@ -1809,7 +1864,7 @@ void ControllerEntityImpl::onRemoteEntityOffline(la::avdecc::protocol::ProtocolI
 	invokeProtectedMethod(&ControllerEntity::Delegate::onEntityOffline, _delegate, this, entityID);
 }
 
-void ControllerEntityImpl::onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface const* const /*pi*/, DiscoveredEntity const& entity) noexcept
+void ControllerEntityImpl::onRemoteEntityUpdated(protocol::ProtocolInterface const* const /*pi*/, DiscoveredEntity const& entity) noexcept
 {
 	auto const entityID = entity.getEntityID();
 	{
@@ -1832,7 +1887,7 @@ void ControllerEntityImpl::onRemoteEntityUpdated(la::avdecc::protocol::ProtocolI
 }
 
 /* **** AECP notifications **** */
-void ControllerEntityImpl::onAecpCommand(la::avdecc::protocol::ProtocolInterface const* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Aecpdu const& aecpdu) noexcept
+void ControllerEntityImpl::onAecpCommand(protocol::ProtocolInterface const* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Aecpdu const& aecpdu) noexcept
 {
 	auto const selfID = getEntityID();
 	auto const targetID = aecpdu.getTargetEntityID();
@@ -1882,7 +1937,7 @@ void ControllerEntityImpl::onAecpCommand(la::avdecc::protocol::ProtocolInterface
 	}
 }
 
-void ControllerEntityImpl::onAecpUnsolicitedResponse(la::avdecc::protocol::ProtocolInterface const* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Aecpdu const& aecpdu) noexcept
+void ControllerEntityImpl::onAecpUnsolicitedResponse(protocol::ProtocolInterface const* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Aecpdu const& aecpdu) noexcept
 {
 	auto const messageType = aecpdu.getMessageType();
 
@@ -1899,11 +1954,11 @@ void ControllerEntityImpl::onAecpUnsolicitedResponse(la::avdecc::protocol::Proto
 }
 
 /* **** ACMP notifications **** */
-void ControllerEntityImpl::onAcmpSniffedCommand(la::avdecc::protocol::ProtocolInterface const* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Acmpdu const& /*acmpdu*/) noexcept
+void ControllerEntityImpl::onAcmpSniffedCommand(protocol::ProtocolInterface const* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Acmpdu const& /*acmpdu*/) noexcept
 {
 }
 
-void ControllerEntityImpl::onAcmpSniffedResponse(la::avdecc::protocol::ProtocolInterface const* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Acmpdu const& acmpdu) noexcept
+void ControllerEntityImpl::onAcmpSniffedResponse(protocol::ProtocolInterface const* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Acmpdu const& acmpdu) noexcept
 {
 	processAcmpResponse(&acmpdu, OnACMPErrorCallback(), AnswerCallback(), true);
 }

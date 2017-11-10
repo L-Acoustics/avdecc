@@ -684,6 +684,7 @@ class TypedSubject : public Subject<TypedSubject<Tag, Mut>, Mut>
 public:
 	using Subject<TypedSubject<Tag, Mut>, Mut>::notifyObservers;
 	using Subject<TypedSubject<Tag, Mut>, Mut>::notifyObserversMethod;
+	using Subject<TypedSubject<Tag, Mut>, Mut>::removeAllObservers;
 };
 
 } // namespace avdecc
