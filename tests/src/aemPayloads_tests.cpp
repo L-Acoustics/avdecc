@@ -59,6 +59,24 @@ TEST(AemPayloads, LockEntityResponse)
 	CHECK_PAYLOAD(LockEntityResponse, la::avdecc::protocol::AemLockEntityFlags::Unlock, la::avdecc::getNullIdentifier(), la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
 }
 
+TEST(AemPayloads, SetConfigurationCommand)
+{
+	CHECK_PAYLOAD(SetConfigurationCommand, la::avdecc::entity::model::ConfigurationIndex(0));
+	CHECK_PAYLOAD(SetConfigurationCommand, la::avdecc::entity::model::ConfigurationIndex(5));
+}
+
+TEST(AemPayloads, SetConfigurationResponse)
+{
+	CHECK_PAYLOAD(SetConfigurationResponse, la::avdecc::entity::model::ConfigurationIndex(0));
+	CHECK_PAYLOAD(SetConfigurationResponse, la::avdecc::entity::model::ConfigurationIndex(5));
+}
+
+TEST(AemPayloads, GetConfigurationResponse)
+{
+	CHECK_PAYLOAD(GetConfigurationResponse, la::avdecc::entity::model::ConfigurationIndex(0));
+	CHECK_PAYLOAD(GetConfigurationResponse, la::avdecc::entity::model::ConfigurationIndex(5));
+}
+
 TEST(AemPayloads, SetNameCommand)
 {
 	CHECK_PAYLOAD(SetNameCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(0u), la::avdecc::entity::model::ConfigurationIndex(0), la::avdecc::entity::model::AvdeccFixedString("Hi"));

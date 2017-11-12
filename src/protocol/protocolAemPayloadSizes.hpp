@@ -35,17 +35,21 @@ namespace protocol
 namespace aemPayload
 {
 
-/** ACQUIRE_ENTITY Command - Clause 7.4.1.1 */
+/** ACQUIRE_ENTITY Command and Response - Clause 7.4.1.1 */
 constexpr size_t AecpAemAcquireEntityCommandPayloadSize = 16u;
-
-/** ACQUIRE_ENTITY Response - Clause 7.4.1.1 */
 constexpr size_t AecpAemAcquireEntityResponsePayloadSize = 16u;
 
-/** LOCK_ENTITY Command - Clause 7.4.2.1 */
+/** LOCK_ENTITY Command and Response - Clause 7.4.2.1 */
 constexpr size_t AecpAemLockEntityCommandPayloadSize = 16u;
-
-/** LOCK_ENTITY Response - Clause 7.4.2.1 */
 constexpr size_t AecpAemLockEntityResponsePayloadSize = 16u;
+
+/** ENTITY_AVAILABLE Command and Response - Clause 7.4.3.1 */
+constexpr size_t AecpAemEntityAvailableCommandPayloadSize = 0u;
+constexpr size_t AecpAemEntityAvailableResponsePayloadSize = 0u;
+
+/** CONTROLLER_AVAILABLE Command and Response - Clause 7.4.4.1 */
+constexpr size_t AecpAemControllerAvailableCommandPayloadSize = 0u;
+constexpr size_t AecpAemControllerAvailableResponsePayloadSize = 0u;
 
 /** READ_DESCRIPTOR Command - Clause 7.4.5.1 */
 constexpr size_t AecpAemReadDescriptorCommandPayloadSize = 8u;
@@ -59,11 +63,43 @@ constexpr size_t AecpAemReadLocaleDescriptorResponsePayloadSize = AecpAemReadCom
 constexpr size_t AecpAemReadStringsDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 448u;
 constexpr size_t AecpAemReadStreamDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 128u;
 
-/** SET_STREAM_FORMAT Command - Clause 7.4.9.1 */
-constexpr size_t AecpAemSetStreamFormatCommandPayloadSize = 12u;
+/** SET_CONFIGURATION Command and Response - Clause 7.4.7.1 */
+constexpr size_t AecpAemSetConfigurationCommandPayloadSize = 4u;
+constexpr size_t AecpAemSetConfigurationResponsePayloadSize = 4u;
 
-/** SET_STREAM_FORMAT Response - Clause 7.4.9.1 */
+/** GET_CONFIGURATION Command - Clause 7.4.8.1 */
+constexpr size_t AecpAemGetConfigurationCommandPayloadSize = 0u;
+
+/** GET_CONFIGURATION Response - Clause 7.4.8.2 */
+constexpr size_t AecpAemGetConfigurationResponsePayloadSize = 4u;
+
+/** SET_STREAM_FORMAT Command and Response - Clause 7.4.9.1 */
+constexpr size_t AecpAemSetStreamFormatCommandPayloadSize = 12u;
 constexpr size_t AecpAemSetStreamFormatResponsePayloadSize = 12u;
+
+/** GET_STREAM_INFO Command - Clause 7.4.16.1 */
+constexpr size_t AecpAemGetStreamInfoCommandPayloadSize = 4u;
+
+/** GET_STREAM_INFO Response - Clause 7.4.16.2 */
+constexpr size_t AecpAemGetStreamInfoResponsePayloadSize = 48u;
+
+/** SET_NAME Command and Response - Clause 7.4.17.1 */
+constexpr size_t AecpAemSetNameCommandPayloadSize = 72u;
+constexpr size_t AecpAemSetNameResponsePayloadSize = 72u;
+
+/** GET_NAME Command - Clause 7.4.18.1 */
+constexpr size_t AecpAemGetNameCommandPayloadSize = 8u;
+
+/** GET_NAME Response - Clause 7.4.18.2 */
+constexpr size_t AecpAemGetNameResponsePayloadSize = 72u;
+
+/** START_STREAMING Command and Response - Clause 7.4.35.1 */
+constexpr size_t AecpAemStartStreamingCommandPayloadSize = 4u;
+constexpr size_t AecpAemStartStreamingResponsePayloadSize = 4u;
+
+/** STOP_STREAMING Command and Response - Clause 7.4.36.1 */
+constexpr size_t AecpAemStopStreamingCommandPayloadSize = 4u;
+constexpr size_t AecpAemStopStreamingResponsePayloadSize = 4u;
 
 /** GET_AUDIO_MAP Command  - Clause 7.4.44.1 */
 constexpr size_t AecpAemGetAudioMapCommandPayloadSize = 8u;
@@ -82,36 +118,6 @@ constexpr size_t AecpAemRemoveAudioMappingsCommandPayloadMaxSize = Aecpdu::Maxim
 
 /** REMOVE_AUDIO_MAPPINGS Response  - Clause 7.4.46.1 */
 constexpr size_t AecpAemRemoveAudioMappingsResponsePayloadMinSize = 8u;
-
-/** GET_STREAM_INFO Command - Clause 7.4.16.1 */
-constexpr size_t AecpAemGetStreamInfoCommandPayloadSize = 4u;
-
-/** GET_STREAM_INFO Response - Clause 7.4.16.2 */
-constexpr size_t AecpAemGetStreamInfoResponsePayloadSize = 48u;
-
-/** SET_NAME Command - Clause 7.4.17.1 */
-constexpr size_t AecpAemSetNameCommandPayloadSize = 72u;
-
-/** SET_NAME Response - Clause 7.4.17.1 */
-constexpr size_t AecpAemSetNameResponsePayloadSize = 72u;
-
-/** GET_NAME Command - Clause 7.4.18.1 */
-constexpr size_t AecpAemGetNameCommandPayloadSize = 8u;
-
-/** GET_NAME Response - Clause 7.4.17.1 */
-constexpr size_t AecpAemGetNameResponsePayloadSize = 72u;
-
-/** START_STREAMING Command - Clause 7.4.35.1 */
-constexpr size_t AecpAemStartStreamingCommandPayloadSize = 4u;
-
-/** START_STREAMING Response - Clause 7.4.35.1 */
-constexpr size_t AecpAemStartStreamingResponsePayloadSize = 4u;
-
-/** STOP_STREAMING Command - Clause 7.4.36.1 */
-constexpr size_t AecpAemStopStreamingCommandPayloadSize = 4u;
-
-/** STOP_STREAMING Response - Clause 7.4.36.1 */
-constexpr size_t AecpAemStopStreamingResponsePayloadSize = 4u;
 
 } // namespace aemPayload
 } // namespace protocol

@@ -64,6 +64,41 @@ std::tuple<protocol::AemLockEntityFlags, UniqueIdentifier, entity::model::Descri
 Serializer<protocol::aemPayload::AecpAemLockEntityResponsePayloadSize> serializeLockEntityResponse(protocol::AemLockEntityFlags flags, UniqueIdentifier lockedID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex);
 std::tuple<protocol::AemLockEntityFlags, UniqueIdentifier, entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeLockEntityResponse(AemAecpdu::Payload const& payload);
 
+/** ENTITY_AVAILABLE Command - Clause 7.4.3.1 */
+// No payload
+
+/** ENTITY_AVAILABLE Response - Clause 7.4.3.1 */
+// No payload
+
+/** CONTROLLER_AVAILABLE Command - Clause 7.4.4.1 */
+// No payload
+
+/** CONTROLLER_AVAILABLE Response - Clause 7.4.4.1 */
+// No payload
+
+/** READ_DESCRIPTOR Command - Clause 7.4.5.1 */
+
+/** READ_DESCRIPTOR Response - Clause 7.4.5.2 */
+
+/** WRITE_DESCRIPTOR Command - Clause 7.4.6.1 */
+
+/** WRITE_DESCRIPTOR Response - Clause 7.4.6.1 */
+
+/** SET_CONFIGURATION Command - Clause 7.4.7.1 */
+Serializer<protocol::aemPayload::AecpAemSetConfigurationCommandPayloadSize> serializeSetConfigurationCommand(entity::model::ConfigurationIndex const configurationIndex);
+std::tuple<entity::model::ConfigurationIndex> deserializeSetConfigurationCommand(AemAecpdu::Payload const& payload);
+
+/** SET_CONFIGURATION Response - Clause 7.4.7.1 */
+Serializer<protocol::aemPayload::AecpAemSetConfigurationResponsePayloadSize> serializeSetConfigurationResponse(entity::model::ConfigurationIndex const configurationIndex);
+std::tuple<entity::model::ConfigurationIndex> deserializeSetConfigurationResponse(AemAecpdu::Payload const& payload);
+
+/** GET_CONFIGURATION Command - Clause 7.4.8.1 */
+// No payload
+
+/** GET_CONFIGURATION Response - Clause 7.4.8.2 */
+Serializer<protocol::aemPayload::AecpAemGetConfigurationResponsePayloadSize> serializeGetConfigurationResponse(entity::model::ConfigurationIndex const configurationIndex);
+std::tuple<entity::model::ConfigurationIndex> deserializeGetConfigurationResponse(AemAecpdu::Payload const& payload);
+
 /** SET_NAME Command - Clause 7.4.17.1 */
 Serializer<protocol::aemPayload::AecpAemSetNameCommandPayloadSize> serializeSetNameCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString name);
 std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t, entity::model::ConfigurationIndex, entity::model::AvdeccFixedString> deserializeSetNameCommand(AemAecpdu::Payload const& payload);
@@ -76,7 +111,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::u
 Serializer<protocol::aemPayload::AecpAemGetNameCommandPayloadSize> serializeGetNameCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex);
 std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t, entity::model::ConfigurationIndex> deserializeGetNameCommand(AemAecpdu::Payload const& payload);
 
-/** GET_NAME Response - Clause 7.4.17.1 */
+/** GET_NAME Response - Clause 7.4.18.2 */
 Serializer<protocol::aemPayload::AecpAemGetNameResponsePayloadSize> serializeGetNameResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString name);
 std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t, entity::model::ConfigurationIndex, entity::model::AvdeccFixedString> deserializeGetNameResponse(AemAecpdu::Payload const& payload);
 
