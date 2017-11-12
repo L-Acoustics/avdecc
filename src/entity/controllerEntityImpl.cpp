@@ -252,29 +252,25 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 	auto const& aem = static_cast<protocol::AemAecpdu const&>(*response);
 	auto const status = static_cast<AemCommandStatus>(aem.getStatus().getValue()); // We have to convert protocol status to our extended status
 
-	static std::unordered_map<protocol::AemCommandType::value_type, std::function<void(ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)>> s_Dispatch{
+	static std::unordered_map<protocol::AemCommandType::value_type, std::function<void(ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)>> s_Dispatch
+	{
 		// Acquire Entity
 		{ protocol::AemCommandType::AcquireEntity.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
-				auto const payloadInfo = aem.getPayload();
-				auto* const commandPayload = payloadInfo.first;
-				auto const commandPayloadLength = payloadInfo.second;
-
-				if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemAcquireEntityResponsePayloadSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: ACQUIRE_ENTITY");
-
-				// Check payload for acquire/release status
-				Deserializer des(commandPayload, commandPayloadLength);
-				auto aemAcquireFlags{ protocol::AemAcquireEntityFlags::None };
-				UniqueIdentifier ownerID;
-				model::DescriptorType descriptorType;
-				model::DescriptorIndex descriptorIndex;
-				des >> aemAcquireFlags >> ownerID >> descriptorType >> descriptorIndex;
-				assert(des.usedBytes() == protocol::aemPayload::AecpAemAcquireEntityResponsePayloadSize && "Used more bytes than specified in protocol constant");
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[flags, ownerID, descriptorType, descriptorIndex] = protocol::aemPayload::deserializeAcquireEntityResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeAcquireEntityResponse(aem.getPayload());
+				protocol::AemAcquireEntityFlags const flags = std::get<0>(result);
+				UniqueIdentifier const ownerID = std::get<1>(result);
+				entity::model::DescriptorType const descriptorType = std::get<2>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<3>(result);
+#endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
-				if ((aemAcquireFlags & protocol::AemAcquireEntityFlags::Release) == protocol::AemAcquireEntityFlags::Release)
+				if ((flags & protocol::AemAcquireEntityFlags::Release) == protocol::AemAcquireEntityFlags::Release)
 				{
 					answerCallback.invoke<ReleaseEntityHandler>(controller, targetID, status, ownerID);
 					if (aem.getUnsolicited() && delegate && !!status)
@@ -295,38 +291,33 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 		// Lock Entity
 		{ protocol::AemCommandType::LockEntity.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
-				auto const payloadInfo = aem.getPayload();
-				auto* const commandPayload = payloadInfo.first;
-				auto const commandPayloadLength = payloadInfo.second;
-
-				if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemLockEntityResponsePayloadSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: LOCK_ENTITY");
-
-				// Check payload for lock/release status
-				Deserializer des(commandPayload, commandPayloadLength);
-				auto aemLockFlags{ protocol::AemLockEntityFlags::None };
-				UniqueIdentifier lockID;
-				model::DescriptorType descriptorType;
-				model::DescriptorIndex descriptorIndex;
-				des >> aemLockFlags >> lockID >> descriptorType >> descriptorIndex;
-				assert(des.usedBytes() == protocol::aemPayload::AecpAemLockEntityResponsePayloadSize && "Used more bytes than specified in protocol constant");
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[flags, lockedID, descriptorType, descriptorIndex] = protocol::aemPayload::deserializeLockEntityResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeLockEntityResponse(aem.getPayload());
+				protocol::AemLockEntityFlags const flags = std::get<0>(result);
+				UniqueIdentifier const lockedID = std::get<1>(result);
+				entity::model::DescriptorType const descriptorType = std::get<2>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<3>(result);
+#endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
 				//auto* delegate = controller->getDelegate();
-				if ((aemLockFlags & protocol::AemLockEntityFlags::Unlock) == protocol::AemLockEntityFlags::Unlock)
+				if ((flags & protocol::AemLockEntityFlags::Unlock) == protocol::AemLockEntityFlags::Unlock)
 				{
 					answerCallback.invoke<UnlockEntityHandler>(controller, targetID, status);
 					/*if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityUnlocked, delegate, targetID, lockID);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityUnlocked, delegate, targetID, lockedID);
 					}*/
 				}
 				else
 				{
-					answerCallback.invoke<LockEntityHandler>(controller, targetID, status, lockID);
+					answerCallback.invoke<LockEntityHandler>(controller, targetID, status, lockedID);
 					/*if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityLocked, delegate, targetID, lockID);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityLocked, delegate, targetID, lockedID);
 					}*/
 				}
 			}
@@ -606,11 +597,11 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				auto const[descriptorType, descriptorIndex, nameIndex, configurationIndex, name] = protocol::aemPayload::deserializeSetNameResponse(aem.getPayload());
 #else // !__cpp_structured_bindings
 				auto const result = protocol::aemPayload::deserializeSetNameResponse(aem.getPayload());
-				model::DescriptorType descriptorType = std::get<0>(result);
-				model::DescriptorIndex descriptorIndex = std::get<1>(result);
-				std::uint16_t nameIndex = std::get<2>(result);
-				model::ConfigurationIndex configurationIndex = std::get<3>(result);
-				model::AvdeccFixedString name = std::get<4>(result);
+				model::DescriptorType const descriptorType = std::get<0>(result);
+				model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				std::uint16_t const nameIndex = std::get<2>(result);
+				model::ConfigurationIndex const configurationIndex = std::get<3>(result);
+				model::AvdeccFixedString const name = std::get<4>(result);
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
@@ -1237,30 +1228,46 @@ void ControllerEntityImpl::processAcmpResponse(protocol::Acmpdu const* const res
 /* Discovery Protocol (ADP) */
 
 /* Enumeration and Control Protocol (AECP) */
-void ControllerEntityImpl::queryEntityAvailable(UniqueIdentifier const targetEntityID, QueryEntityAvailableHandler const& handler) const noexcept
+#pragma message("TBD: Change the API to allow partial EM acquire")
+void ControllerEntityImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, AcquireEntityHandler const& handler) const noexcept
 {
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
-	sendAemCommand(targetEntityID, protocol::AemCommandType::EntityAvailable, nullptr, 0, errorCallback, handler);
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeAcquireEntityCommand(isPersistent ? protocol::AemAcquireEntityFlags::Persistent : protocol::AemAcquireEntityFlags::None, getNullIdentifier(), model::DescriptorType::Entity, 0);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier());
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize acquireEntity: ") + e.what());
+	}
 }
 
-void ControllerEntityImpl::queryControllerAvailable(UniqueIdentifier const targetEntityID, QueryControllerAvailableHandler const& handler) const noexcept
+#pragma message("TBD: Change the API to allow partial EM acquire")
+void ControllerEntityImpl::releaseEntity(UniqueIdentifier const targetEntityID, ReleaseEntityHandler const& handler) const noexcept
 {
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
-	sendAemCommand(targetEntityID, protocol::AemCommandType::ControllerAvailable, nullptr, 0, errorCallback, handler);
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeAcquireEntityCommand(protocol::AemAcquireEntityFlags::Release, getNullIdentifier(), model::DescriptorType::Entity, 0);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier());
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize releaseEntity: ") + e.what());
+	}
 }
 
+#pragma message("TBD: Change the API to allow partial EM lock")
 void ControllerEntityImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntityHandler const& handler) const noexcept
 {
 	try
 	{
-		Serializer<protocol::aemPayload::AecpAemLockEntityCommandPayloadSize> ser;
-		ser << protocol::AemLockEntityFlags::None; // aem_lock_flags
-		ser << getNullIdentifier(); // locked_entity_id
-#pragma message("TBD: Change the API to allow partial EM lock")
-		ser << model::DescriptorType::Entity; // descriptor_type
-		ser << model::DescriptorIndex{ 0 }; // descriptor_index
-
+		auto const ser = protocol::aemPayload::serializeLockEntityCommand(protocol::AemLockEntityFlags::None, getNullIdentifier(), model::DescriptorType::Entity, 0);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier());
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::LockEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1273,14 +1280,9 @@ void ControllerEntityImpl::unlockEntity(UniqueIdentifier const targetEntityID, U
 {
 	try
 	{
-		Serializer<protocol::aemPayload::AecpAemLockEntityCommandPayloadSize> ser;
-		ser << protocol::AemLockEntityFlags::Unlock; // aem_lock_flags
-		ser << getNullIdentifier(); // locked_entity_id
-#pragma message("TBD: Change the API to allow partial EM lock")
-		ser << model::DescriptorType::Entity; // descriptor_type
-		ser << model::DescriptorIndex{ 0 }; // descriptor_index
-
+		auto const ser = protocol::aemPayload::serializeLockEntityCommand(protocol::AemLockEntityFlags::Unlock, getNullIdentifier(), model::DescriptorType::Entity, 0);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::LockEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1289,55 +1291,31 @@ void ControllerEntityImpl::unlockEntity(UniqueIdentifier const targetEntityID, U
 	}
 }
 
-void ControllerEntityImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, AcquireEntityHandler const& handler) const noexcept
+void ControllerEntityImpl::queryEntityAvailable(UniqueIdentifier const targetEntityID, QueryEntityAvailableHandler const& handler) const noexcept
 {
-	try
-	{
-		Serializer<protocol::aemPayload::AecpAemAcquireEntityCommandPayloadSize> ser;
-		ser << (isPersistent ? protocol::AemAcquireEntityFlags::Persistent : protocol::AemAcquireEntityFlags::None); // aem_acquire_flags
-		ser << getNullIdentifier(); // owner_entity_id
-#pragma message("TBD: Change the API to allow partial EM acquire")
-		ser << model::DescriptorType::Entity; // descriptor_type
-		ser << model::DescriptorIndex{ 0 }; // descriptor_index
+	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
 
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier());
-		sendAemCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
-	}
-	catch (std::exception const& e)
-	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize acquireEntity: ") + e.what());
-	}
+	sendAemCommand(targetEntityID, protocol::AemCommandType::EntityAvailable, nullptr, 0, errorCallback, handler);
 }
 
-void ControllerEntityImpl::releaseEntity(UniqueIdentifier const targetEntityID, ReleaseEntityHandler const& handler) const noexcept
+void ControllerEntityImpl::queryControllerAvailable(UniqueIdentifier const targetEntityID, QueryControllerAvailableHandler const& handler) const noexcept
 {
-	try
-	{
-		Serializer<protocol::aemPayload::AecpAemAcquireEntityCommandPayloadSize> ser;
-		ser << protocol::AemAcquireEntityFlags::Release; // aem_acquire_flags
-		ser << getNullIdentifier(); // owner_entity_id
-#pragma message("TBD: Change the API to allow partial EM acquire")
-		ser << model::DescriptorType::Entity; // descriptor_type
-		ser << model::DescriptorIndex{ 0 }; // descriptor_index
+	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
 
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier());
-		sendAemCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
-	}
-	catch (std::exception const& e)
-	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize releaseEntity: ") + e.what());
-	}
+	sendAemCommand(targetEntityID, protocol::AemCommandType::ControllerAvailable, nullptr, 0, errorCallback, handler);
 }
 
 void ControllerEntityImpl::registerUnsolicitedNotifications(UniqueIdentifier const targetEntityID, RegisterUnsolicitedNotificationsHandler const& handler) const noexcept
 {
 	auto errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
+
 	sendAemCommand(targetEntityID, protocol::AemCommandType::RegisterUnsolicitedNotification, nullptr, 0, errorCallback, handler);
 }
 
 void ControllerEntityImpl::unregisterUnsolicitedNotifications(UniqueIdentifier const targetEntityID, UnregisterUnsolicitedNotificationsHandler const& handler) const noexcept
 {
 	auto errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
+
 	sendAemCommand(targetEntityID, protocol::AemCommandType::DeregisterUnsolicitedNotification, nullptr, 0, errorCallback, handler);
 }
 
