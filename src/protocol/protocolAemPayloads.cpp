@@ -33,10 +33,137 @@ namespace protocol
 namespace aemPayload
 {
 
-// SET_NAME Command - Clause 7.4.17.1
-Serializer<protocol::AecpAemSetNameCommandPayloadSize> serializeSetNameCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString name)
+/** ACQUIRE_ENTITY Command - Clause 7.4.1.1 */
+Serializer<protocol::aemPayload::AecpAemAcquireEntityCommandPayloadSize> serializeAcquireEntityCommand(protocol::AemAcquireEntityFlags flags, UniqueIdentifier ownerID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
-	Serializer<protocol::AecpAemSetNameCommandPayloadSize> ser;
+	Serializer<protocol::aemPayload::AecpAemAcquireEntityCommandPayloadSize> ser;
+
+	ser << flags;
+	ser << ownerID;
+	ser << descriptorType << descriptorIndex;
+
+	return ser;
+}
+
+std::tuple<protocol::AemAcquireEntityFlags, UniqueIdentifier, entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeAcquireEntityCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemAcquireEntityCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	protocol::AemAcquireEntityFlags flags{ protocol::AemAcquireEntityFlags::None };
+	UniqueIdentifier ownerID{ getUninitializedIdentifier() };
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+
+	des >> flags;
+	des >> ownerID;
+	des >> descriptorType >> descriptorIndex;
+
+	assert(des.usedBytes() == protocol::aemPayload::AecpAemAcquireEntityCommandPayloadSize && "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(flags, ownerID, descriptorType, descriptorIndex);
+}
+
+/** ACQUIRE_ENTITY Response - Clause 7.4.1.1 */
+Serializer<protocol::aemPayload::AecpAemAcquireEntityResponsePayloadSize> serializeAcquireEntityResponse(protocol::AemAcquireEntityFlags flags, UniqueIdentifier ownerID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	// Same as ACQUIRE_ENTITY Command
+	static_assert(AecpAemAcquireEntityResponsePayloadSize == AecpAemAcquireEntityCommandPayloadSize, "ACQUIRE_ENTITY Response no longer the same as ACQUIRE_ENTITY Command");
+	return serializeAcquireEntityCommand(std::move(flags), std::move(ownerID), std::move(descriptorType), std::move(descriptorIndex));
+}
+
+std::tuple<protocol::AemAcquireEntityFlags, UniqueIdentifier, entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeAcquireEntityResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as ACQUIRE_ENTITY Command
+	static_assert(AecpAemAcquireEntityResponsePayloadSize == AecpAemAcquireEntityCommandPayloadSize, "ACQUIRE_ENTITY Response no longer the same as ACQUIRE_ENTITY Command");
+	return deserializeAcquireEntityCommand(payload);
+}
+
+/** LOCK_ENTITY Command - Clause 7.4.2.1 */
+Serializer<protocol::aemPayload::AecpAemLockEntityCommandPayloadSize> serializeLockEntityCommand(protocol::AemLockEntityFlags flags, UniqueIdentifier lockedID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	Serializer<protocol::aemPayload::AecpAemLockEntityCommandPayloadSize> ser;
+
+	ser << flags;
+	ser << lockedID;
+	ser << descriptorType << descriptorIndex;
+
+	return ser;
+}
+
+std::tuple<protocol::AemLockEntityFlags, UniqueIdentifier, entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeLockEntityCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemLockEntityCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	protocol::AemLockEntityFlags flags{ protocol::AemLockEntityFlags::None };
+	UniqueIdentifier lockedID{ getUninitializedIdentifier() };
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+
+	des >> flags;
+	des >> lockedID;
+	des >> descriptorType >> descriptorIndex;
+
+	assert(des.usedBytes() == protocol::aemPayload::AecpAemLockEntityCommandPayloadSize && "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(flags, lockedID, descriptorType, descriptorIndex);
+}
+
+/** LOCK_ENTITY Response - Clause 7.4.2.1 */
+Serializer<protocol::aemPayload::AecpAemLockEntityResponsePayloadSize> serializeLockEntityResponse(protocol::AemLockEntityFlags flags, UniqueIdentifier lockedID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	// Same as LOCK_ENTITY Command
+	static_assert(AecpAemLockEntityResponsePayloadSize == AecpAemLockEntityCommandPayloadSize, "LOCK_ENTITY Response no longer the same as LOCK_ENTITY Command");
+	return serializeLockEntityCommand(std::move(flags), std::move(lockedID), std::move(descriptorType), std::move(descriptorIndex));
+}
+
+std::tuple<protocol::AemLockEntityFlags, UniqueIdentifier, entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeLockEntityResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as LOCK_ENTITY Command
+	static_assert(AecpAemLockEntityResponsePayloadSize == AecpAemLockEntityCommandPayloadSize, "LOCK_ENTITY Response no longer the same as LOCK_ENTITY Command");
+	return deserializeLockEntityCommand(payload);
+}
+
+/** READ_DESCRIPTOR Command - Clause 7.4.5.1 */
+
+/** READ_DESCRIPTOR Response - Clause 7.4.5.2 */
+
+/** SET_STREAM_FORMAT Command - Clause 7.4.9.1 */
+
+/** SET_STREAM_FORMAT Response - Clause 7.4.9.1 */
+
+/** GET_AUDIO_MAP Command  - Clause 7.4.44.1 */
+
+/** GET_AUDIO_MAP Response  - Clause 7.4.44.2 */
+
+/** ADD_AUDIO_MAPPINGS Command  - Clause 7.4.45.1 */
+
+/** ADD_AUDIO_MAPPINGS Response  - Clause 7.4.45.1 */
+
+/** REMOVE_AUDIO_MAPPINGS Command  - Clause 7.4.46.1 */
+
+/** REMOVE_AUDIO_MAPPINGS Response  - Clause 7.4.46.1 */
+
+/** GET_STREAM_INFO Command - Clause 7.4.16.1 */
+
+/** GET_STREAM_INFO Response - Clause 7.4.16.2 */
+
+
+/** SET_NAME Command - Clause 7.4.17.1 */
+Serializer<protocol::aemPayload::AecpAemSetNameCommandPayloadSize> serializeSetNameCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString name)
+{
+	Serializer<protocol::aemPayload::AecpAemSetNameCommandPayloadSize> ser;
 
 	ser << descriptorType << descriptorIndex;
 	ser << nameIndex << configurationIndex;
@@ -50,7 +177,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::u
 	auto* const commandPayload = payload.first;
 	auto const commandPayloadLength = payload.second;
 
-	if (commandPayload == nullptr || commandPayloadLength < protocol::AecpAemSetNameCommandPayloadSize) // Malformed packet
+	if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemSetNameCommandPayloadSize) // Malformed packet
 		throw IncorrectPayloadSizeException();
 
 	// Check payload
@@ -64,13 +191,13 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::u
 	des >> descriptorType >> descriptorIndex;
 	des >> nameIndex >> configurationIndex >> name;
 
-	assert(des.usedBytes() == protocol::AecpAemSetNameCommandPayloadSize && "Used more bytes than specified in protocol constant");
+	assert(des.usedBytes() == protocol::aemPayload::AecpAemSetNameCommandPayloadSize && "Used more bytes than specified in protocol constant");
 
 	return std::make_tuple(descriptorType, descriptorIndex, nameIndex, configurationIndex, name);
 }
 
-// SET_NAME Response - Clause 7.4.17.1
-Serializer<protocol::AecpAemSetNameResponsePayloadSize> serializeSetNameResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString name)
+/** SET_NAME Response - Clause 7.4.17.1 */
+Serializer<protocol::aemPayload::AecpAemSetNameResponsePayloadSize> serializeSetNameResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString name)
 {
 	// Same as SET_NAME Command
 	static_assert(AecpAemSetNameResponsePayloadSize == AecpAemSetNameCommandPayloadSize, "SET_NAME Response no longer the same as SET_NAME Command");
@@ -84,10 +211,10 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::u
 	return deserializeSetNameCommand(payload);
 }
 
-// GET_NAME Command - Clause 7.4.18.1
-Serializer<protocol::AecpAemGetNameCommandPayloadSize> serializeGetNameCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex)
+/** GET_NAME Command - Clause 7.4.18.1 */
+Serializer<protocol::aemPayload::AecpAemGetNameCommandPayloadSize> serializeGetNameCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex)
 {
-	Serializer<protocol::AecpAemGetNameCommandPayloadSize> ser;
+	Serializer<protocol::aemPayload::AecpAemGetNameCommandPayloadSize> ser;
 
 	ser << descriptorType << descriptorIndex;
 	ser << nameIndex << configurationIndex;
@@ -100,7 +227,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::u
 	auto* const commandPayload = payload.first;
 	auto const commandPayloadLength = payload.second;
 
-	if (commandPayload == nullptr || commandPayloadLength < protocol::AecpAemGetNameCommandPayloadSize) // Malformed packet
+	if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemGetNameCommandPayloadSize) // Malformed packet
 		throw IncorrectPayloadSizeException();
 
 	// Check payload
@@ -113,13 +240,13 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::u
 	des >> descriptorType >> descriptorIndex;
 	des >> nameIndex >> configurationIndex;
 
-	assert(des.usedBytes() == protocol::AecpAemGetNameCommandPayloadSize && "Used more bytes than specified in protocol constant");
+	assert(des.usedBytes() == protocol::aemPayload::AecpAemGetNameCommandPayloadSize && "Used more bytes than specified in protocol constant");
 
 	return std::make_tuple(descriptorType, descriptorIndex, nameIndex, configurationIndex);
 }
 
-// GET_NAME Response - Clause 7.4.17.1
-Serializer<protocol::AecpAemGetNameResponsePayloadSize> serializeGetNameResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString name)
+/** GET_NAME Response - Clause 7.4.17.1 */
+Serializer<protocol::aemPayload::AecpAemGetNameResponsePayloadSize> serializeGetNameResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString name)
 {
 	// Same as SET_NAME Command
 	static_assert(AecpAemGetNameResponsePayloadSize == AecpAemSetNameCommandPayloadSize, "GET_NAME Response no longer the same as SET_NAME Command");

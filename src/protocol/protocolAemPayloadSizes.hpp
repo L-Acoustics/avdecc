@@ -32,17 +32,19 @@ namespace avdecc
 {
 namespace protocol
 {
+namespace aemPayload
+{
 
 /** ACQUIRE_ENTITY Command - Clause 7.4.1.1 */
 constexpr size_t AecpAemAcquireEntityCommandPayloadSize = 16u;
 
-/** ACQUIRE_ENTITY Response - Clause 7.4.1.2 */
+/** ACQUIRE_ENTITY Response - Clause 7.4.1.1 */
 constexpr size_t AecpAemAcquireEntityResponsePayloadSize = 16u;
 
 /** LOCK_ENTITY Command - Clause 7.4.2.1 */
 constexpr size_t AecpAemLockEntityCommandPayloadSize = 16u;
 
-/** LOCK_ENTITY Response - Clause 7.4.2.2 */
+/** LOCK_ENTITY Response - Clause 7.4.2.1 */
 constexpr size_t AecpAemLockEntityResponsePayloadSize = 16u;
 
 /** READ_DESCRIPTOR Command - Clause 7.4.5.1 */
@@ -87,16 +89,16 @@ constexpr size_t AecpAemGetStreamInfoCommandPayloadSize = 4u;
 /** GET_STREAM_INFO Response - Clause 7.4.16.2 */
 constexpr size_t AecpAemGetStreamInfoResponsePayloadSize = 48u;
 
-/** SET_NAME Command - Clause 7.4.16.1 */
+/** SET_NAME Command - Clause 7.4.17.1 */
 constexpr size_t AecpAemSetNameCommandPayloadSize = 72u;
 
-/** SET_NAME Response - Clause 7.4.16.2 */
+/** SET_NAME Response - Clause 7.4.17.1 */
 constexpr size_t AecpAemSetNameResponsePayloadSize = 72u;
 
-/** GET_NAME Command - Clause 7.4.16.1 */
+/** GET_NAME Command - Clause 7.4.18.1 */
 constexpr size_t AecpAemGetNameCommandPayloadSize = 8u;
 
-/** GET_NAME Response - Clause 7.4.16.2 */
+/** GET_NAME Response - Clause 7.4.17.1 */
 constexpr size_t AecpAemGetNameResponsePayloadSize = 72u;
 
 /** START_STREAMING Command - Clause 7.4.35.1 */
@@ -111,6 +113,7 @@ constexpr size_t AecpAemStopStreamingCommandPayloadSize = 4u;
 /** STOP_STREAMING Response - Clause 7.4.36.1 */
 constexpr size_t AecpAemStopStreamingResponsePayloadSize = 4u;
 
+} // namespace aemPayload
 } // namespace protocol
 } // namespace avdecc
 } // namespace la

@@ -216,7 +216,7 @@ public:
 	using TypedDefine::TypedDefine;
 
 	static AemLockEntityFlags const None;
-	static AemLockEntityFlags const Release;
+	static AemLockEntityFlags const Unlock;
 };
 
 /** ACMP Message Type - Clause 8.2.1.5 */

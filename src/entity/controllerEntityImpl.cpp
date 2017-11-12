@@ -260,7 +260,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				auto* const commandPayload = payloadInfo.first;
 				auto const commandPayloadLength = payloadInfo.second;
 
-				if (commandPayload == nullptr || commandPayloadLength < protocol::AecpAemAcquireEntityResponsePayloadSize) // Malformed packet
+				if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemAcquireEntityResponsePayloadSize) // Malformed packet
 					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: ACQUIRE_ENTITY");
 
 				// Check payload for acquire/release status
@@ -270,7 +270,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				model::DescriptorType descriptorType;
 				model::DescriptorIndex descriptorIndex;
 				des >> aemAcquireFlags >> ownerID >> descriptorType >> descriptorIndex;
-				assert(des.usedBytes() == protocol::AecpAemAcquireEntityResponsePayloadSize && "Used more bytes than specified in protocol constant");
+				assert(des.usedBytes() == protocol::aemPayload::AecpAemAcquireEntityResponsePayloadSize && "Used more bytes than specified in protocol constant");
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
@@ -299,7 +299,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				auto* const commandPayload = payloadInfo.first;
 				auto const commandPayloadLength = payloadInfo.second;
 
-				if (commandPayload == nullptr || commandPayloadLength < protocol::AecpAemLockEntityResponsePayloadSize) // Malformed packet
+				if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemLockEntityResponsePayloadSize) // Malformed packet
 					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: LOCK_ENTITY");
 
 				// Check payload for lock/release status
@@ -309,11 +309,11 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				model::DescriptorType descriptorType;
 				model::DescriptorIndex descriptorIndex;
 				des >> aemLockFlags >> lockID >> descriptorType >> descriptorIndex;
-				assert(des.usedBytes() == protocol::AecpAemLockEntityResponsePayloadSize && "Used more bytes than specified in protocol constant");
+				assert(des.usedBytes() == protocol::aemPayload::AecpAemLockEntityResponsePayloadSize && "Used more bytes than specified in protocol constant");
 
 				auto const targetID = aem.getTargetEntityID();
 				//auto* delegate = controller->getDelegate();
-				if ((aemLockFlags & protocol::AemLockEntityFlags::Release) == protocol::AemLockEntityFlags::Release)
+				if ((aemLockFlags & protocol::AemLockEntityFlags::Unlock) == protocol::AemLockEntityFlags::Unlock)
 				{
 					answerCallback.invoke<UnlockEntityHandler>(controller, targetID, status);
 					/*if (aem.getUnsolicited() && delegate && !!status)
@@ -352,7 +352,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				auto* const commandPayload = payloadInfo.first;
 				auto const commandPayloadLength = payloadInfo.second;
 
-				if (commandPayload == nullptr || commandPayloadLength < protocol::AecpAemReadDescriptorResponsePayloadMinSize) // Malformed packet
+				if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemReadDescriptorResponsePayloadMinSize) // Malformed packet
 					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: READ_DESCRIPTOR");
 
 				// Check payload read descriptor data
@@ -362,14 +362,14 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				model::DescriptorType descriptorType;
 				model::DescriptorIndex descriptorIndex;
 				des >> configuration_index >> reserved >> descriptorType >> descriptorIndex;
-				assert(des.usedBytes() == protocol::AecpAemReadDescriptorResponsePayloadMinSize && "Used more bytes than specified in protocol constant");
+				assert(des.usedBytes() == protocol::aemPayload::AecpAemReadDescriptorResponsePayloadMinSize && "Used more bytes than specified in protocol constant");
 
 				auto const targetID = aem.getTargetEntityID();
 				switch (descriptorType)
 				{
 					case model::DescriptorType::Entity:
 					{
-						if (commandPayloadLength < protocol::AecpAemReadEntityDescriptorResponsePayloadSize) // Malformed packet
+						if (commandPayloadLength < protocol::aemPayload::AecpAemReadEntityDescriptorResponsePayloadSize) // Malformed packet
 							throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: DESCRIPTOR_ENTITY");
 
 						// Read descriptor fields
@@ -386,7 +386,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 						des >> entityDescriptor.groupName;
 						des >> entityDescriptor.serialNumber;
 						des >> entityDescriptor.configurationsCount >> entityDescriptor.currentConfiguration;
-						assert(des.usedBytes() == protocol::AecpAemReadEntityDescriptorResponsePayloadSize && "Used more bytes than specified in protocol constant");
+						assert(des.usedBytes() == protocol::aemPayload::AecpAemReadEntityDescriptorResponsePayloadSize && "Used more bytes than specified in protocol constant");
 						// Notify handlers
 						answerCallback.invoke<EntityDescriptorHandler>(controller, targetID, status, entityDescriptor);
 						break;
@@ -394,7 +394,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 
 					case model::DescriptorType::Configuration:
 					{
-						if (commandPayloadLength < protocol::AecpAemReadConfigurationDescriptorResponsePayloadMinSize) // Malformed packet
+						if (commandPayloadLength < protocol::aemPayload::AecpAemReadConfigurationDescriptorResponsePayloadMinSize) // Malformed packet
 							throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: DESCRIPTOR_CONFIGURATION");
 
 						// Read descriptor fields
@@ -415,7 +415,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 							des >> type >> count;
 							configurationDescriptor.descriptorCounts[type] = count;
 						}
-						assert(des.usedBytes() == (protocol::AecpAemReadConfigurationDescriptorResponsePayloadMinSize + descriptorCountsSize) && "Used more bytes than specified in protocol constant");
+						assert(des.usedBytes() == (protocol::aemPayload::AecpAemReadConfigurationDescriptorResponsePayloadMinSize + descriptorCountsSize) && "Used more bytes than specified in protocol constant");
 						// Notify handlers
 						answerCallback.invoke<ConfigurationDescriptorHandler>(controller, targetID, status, configurationDescriptor);
 						break;
@@ -423,14 +423,14 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 
 					case model::DescriptorType::Locale:
 					{
-						if (commandPayloadLength < protocol::AecpAemReadLocaleDescriptorResponsePayloadSize) // Malformed packet
+						if (commandPayloadLength < protocol::aemPayload::AecpAemReadLocaleDescriptorResponsePayloadSize) // Malformed packet
 							throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: DESCRIPTOR_LOCALE");
 
 						// Read descriptor fields
 						model::LocaleDescriptor localeDescriptor{ {descriptorType, descriptorIndex } };
 						des >> localeDescriptor.localeID;
 						des >> localeDescriptor.numberOfStringDescriptors >> localeDescriptor.baseStringDescriptorIndex;
-						assert(des.usedBytes() == protocol::AecpAemReadLocaleDescriptorResponsePayloadSize && "Used more bytes than specified in protocol constant");
+						assert(des.usedBytes() == protocol::aemPayload::AecpAemReadLocaleDescriptorResponsePayloadSize && "Used more bytes than specified in protocol constant");
 						// Notify handlers
 						answerCallback.invoke<LocaleDescriptorHandler>(controller, targetID, status, localeDescriptor);
 						break;
@@ -438,7 +438,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 
 					case model::DescriptorType::Strings:
 					{
-						if (commandPayloadLength < protocol::AecpAemReadStringsDescriptorResponsePayloadSize) // Malformed packet
+						if (commandPayloadLength < protocol::aemPayload::AecpAemReadStringsDescriptorResponsePayloadSize) // Malformed packet
 							throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: DESCRIPTOR_STRINGS");
 
 						// Read descriptor fields
@@ -447,19 +447,19 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 						{
 							des >> stringsDescriptor.strings[strIndex];
 						}
-						assert(des.usedBytes() == protocol::AecpAemReadStringsDescriptorResponsePayloadSize && "Used more bytes than specified in protocol constant");
+						assert(des.usedBytes() == protocol::aemPayload::AecpAemReadStringsDescriptorResponsePayloadSize && "Used more bytes than specified in protocol constant");
 						// Notify handlers
 						answerCallback.invoke<StringsDescriptorHandler>(controller, targetID, status, stringsDescriptor);
 						break;
 					}
 
 					case model::DescriptorType::StreamInput:
-						if (commandPayloadLength < protocol::AecpAemReadStreamDescriptorResponsePayloadMinSize) // Malformed packet
+						if (commandPayloadLength < protocol::aemPayload::AecpAemReadStreamDescriptorResponsePayloadMinSize) // Malformed packet
 							throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: DESCRIPTOR_STREAM_INPUT");
 						// Don't break, let's handle both input and output streams together
 					case model::DescriptorType::StreamOutput:
 					{
-						if (commandPayloadLength < protocol::AecpAemReadStreamDescriptorResponsePayloadMinSize) // Malformed packet
+						if (commandPayloadLength < protocol::aemPayload::AecpAemReadStreamDescriptorResponsePayloadMinSize) // Malformed packet
 							throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: DESCRIPTOR_STREAM_OUTPUT");
 
 						// Read descriptor fields
@@ -493,7 +493,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 							des >> format;
 							streamDescriptor.formats.push_back(format);
 						}
-						assert(des.usedBytes() == (protocol::AecpAemReadStreamDescriptorResponsePayloadMinSize + formatsSize) && "Used more bytes than specified in protocol constant");
+						assert(des.usedBytes() == (protocol::aemPayload::AecpAemReadStreamDescriptorResponsePayloadMinSize + formatsSize) && "Used more bytes than specified in protocol constant");
 						// Notify handlers
 						if (descriptorType == model::DescriptorType::StreamInput)
 							answerCallback.invoke<StreamInputDescriptorHandler>(controller, targetID, status, streamDescriptor);
@@ -520,7 +520,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				auto* const commandPayload = payloadInfo.first;
 				auto const commandPayloadLength = payloadInfo.second;
 
-				if (commandPayload == nullptr || commandPayloadLength < protocol::AecpAemSetStreamFormatResponsePayloadSize) // Malformed packet
+				if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemSetStreamFormatResponsePayloadSize) // Malformed packet
 					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: SET_STREAM_FORMAT");
 
 				// Check payload stream format data
@@ -529,7 +529,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				model::DescriptorIndex descriptorIndex;
 				model::StreamFormat streamFormat;
 				des >> descriptorType >> descriptorIndex >> streamFormat;
-				assert(des.usedBytes() == protocol::AecpAemSetStreamFormatResponsePayloadSize && "Used more bytes than specified in protocol constant");
+				assert(des.usedBytes() == protocol::aemPayload::AecpAemSetStreamFormatResponsePayloadSize && "Used more bytes than specified in protocol constant");
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
@@ -563,7 +563,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				auto* const commandPayload = payloadInfo.first;
 				auto const commandPayloadLength = payloadInfo.second;
 
-				if (commandPayload == nullptr || commandPayloadLength < protocol::AecpAemGetStreamInfoResponsePayloadSize) // Malformed packet
+				if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemGetStreamInfoResponsePayloadSize) // Malformed packet
 					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: GET_STREAM_INFO");
 
 				// Check payload stream format data
@@ -573,7 +573,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				des >> streamInfo.streamInfoFlags >> streamInfo.streamFormat >> streamInfo.streamID >> streamInfo.msrpAccumulatedLatency;
 				des.unpackBuffer(streamInfo.streamDestMac.data(), static_cast<std::uint16_t>(streamInfo.streamDestMac.size()));
 				des >> streamInfo.msrpFailureCode >> streamInfo.reserved >> streamInfo.msrpFailureBridgeID >> streamInfo.streamVlanID >> streamInfo.reserved2;
-				assert(des.usedBytes() == protocol::AecpAemGetStreamInfoResponsePayloadSize && "Used more bytes than specified in protocol constant");
+				assert(des.usedBytes() == protocol::aemPayload::AecpAemGetStreamInfoResponsePayloadSize && "Used more bytes than specified in protocol constant");
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
@@ -725,7 +725,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				auto* const commandPayload = payloadInfo.first;
 				auto const commandPayloadLength = payloadInfo.second;
 
-				if (commandPayload == nullptr || commandPayloadLength < protocol::AecpAemStartStreamingResponsePayloadSize) // Malformed packet
+				if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemStartStreamingResponsePayloadSize) // Malformed packet
 					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: START_STREAMING");
 
 				// Check payload
@@ -733,7 +733,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				model::DescriptorType descriptorType;
 				model::DescriptorIndex descriptorIndex;
 				des >> descriptorType >> descriptorIndex;
-				assert(des.usedBytes() == protocol::AecpAemStartStreamingResponsePayloadSize && "Used more bytes than specified in protocol constant");
+				assert(des.usedBytes() == protocol::aemPayload::AecpAemStartStreamingResponsePayloadSize && "Used more bytes than specified in protocol constant");
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
@@ -765,7 +765,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				auto* const commandPayload = payloadInfo.first;
 				auto const commandPayloadLength = payloadInfo.second;
 
-				if (commandPayload == nullptr || commandPayloadLength < protocol::AecpAemStopStreamingResponsePayloadSize) // Malformed packet
+				if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemStopStreamingResponsePayloadSize) // Malformed packet
 					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: STOP_STREAMING");
 
 				// Check payload
@@ -773,7 +773,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				model::DescriptorType descriptorType;
 				model::DescriptorIndex descriptorIndex;
 				des >> descriptorType >> descriptorIndex;
-				assert(des.usedBytes() == protocol::AecpAemStopStreamingResponsePayloadSize && "Used more bytes than specified in protocol constant");
+				assert(des.usedBytes() == protocol::aemPayload::AecpAemStopStreamingResponsePayloadSize && "Used more bytes than specified in protocol constant");
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
@@ -821,7 +821,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				auto* const commandPayload = payloadInfo.first;
 				auto const commandPayloadLength = payloadInfo.second;
 
-				if (commandPayload == nullptr || commandPayloadLength < protocol::AecpAemGetAudioMapResponsePayloadMinSize) // Malformed packet
+				if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemGetAudioMapResponsePayloadMinSize) // Malformed packet
 					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: GET_AUDIO_MAP");
 
 				// Check payload audio map data
@@ -847,7 +847,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					des >> mapping.streamIndex >> mapping.streamChannel >> mapping.clusterOffset >> mapping.clusterChannel;
 					mappings.push_back(mapping);
 				}
-				assert(des.usedBytes() == (protocol::AecpAemGetAudioMapResponsePayloadMinSize + mappingsSize) && "Used more bytes than specified in protocol constant");
+				assert(des.usedBytes() == (protocol::aemPayload::AecpAemGetAudioMapResponsePayloadMinSize + mappingsSize) && "Used more bytes than specified in protocol constant");
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
@@ -879,7 +879,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				auto* const commandPayload = payloadInfo.first;
 				auto const commandPayloadLength = payloadInfo.second;
 
-				if (commandPayload == nullptr || commandPayloadLength < protocol::AecpAemAddAudioMappingsResponsePayloadMinSize) // Malformed packet
+				if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemAddAudioMappingsResponsePayloadMinSize) // Malformed packet
 					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: ADD_AUDIO_MAPPINGS");
 
 				// Check payload audio map data
@@ -903,7 +903,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					des >> mapping.streamIndex >> mapping.streamChannel >> mapping.clusterOffset >> mapping.clusterChannel;
 					mappings.push_back(mapping);
 				}
-				assert(des.usedBytes() == (protocol::AecpAemAddAudioMappingsResponsePayloadMinSize + mappingsSize) && "Used more bytes than specified in protocol constant");
+				assert(des.usedBytes() == (protocol::aemPayload::AecpAemAddAudioMappingsResponsePayloadMinSize + mappingsSize) && "Used more bytes than specified in protocol constant");
 
 				auto const targetID = aem.getTargetEntityID();
 				// Notify handlers
@@ -927,7 +927,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				auto* const commandPayload = payloadInfo.first;
 				auto const commandPayloadLength = payloadInfo.second;
 
-				if (commandPayload == nullptr || commandPayloadLength < protocol::AecpAemRemoveAudioMappingsResponsePayloadMinSize) // Malformed packet
+				if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemRemoveAudioMappingsResponsePayloadMinSize) // Malformed packet
 					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: REMOVE_AUDIO_MAPPINGS");
 
 				// Check payload audio map data
@@ -951,7 +951,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					des >> mapping.streamIndex >> mapping.streamChannel >> mapping.clusterOffset >> mapping.clusterChannel;
 					mappings.push_back(mapping);
 				}
-				assert(des.usedBytes() == (protocol::AecpAemRemoveAudioMappingsResponsePayloadMinSize + mappingsSize) && "Used more bytes than specified in protocol constant");
+				assert(des.usedBytes() == (protocol::aemPayload::AecpAemRemoveAudioMappingsResponsePayloadMinSize + mappingsSize) && "Used more bytes than specified in protocol constant");
 
 				auto const targetID = aem.getTargetEntityID();
 				// Notify handlers
@@ -1253,7 +1253,7 @@ void ControllerEntityImpl::lockEntity(UniqueIdentifier const targetEntityID, Loc
 {
 	try
 	{
-		Serializer<protocol::AecpAemLockEntityCommandPayloadSize> ser;
+		Serializer<protocol::aemPayload::AecpAemLockEntityCommandPayloadSize> ser;
 		ser << protocol::AemLockEntityFlags::None; // aem_lock_flags
 		ser << getNullIdentifier(); // locked_entity_id
 #pragma message("TBD: Change the API to allow partial EM lock")
@@ -1273,8 +1273,8 @@ void ControllerEntityImpl::unlockEntity(UniqueIdentifier const targetEntityID, U
 {
 	try
 	{
-		Serializer<protocol::AecpAemLockEntityCommandPayloadSize> ser;
-		ser << protocol::AemLockEntityFlags::Release; // aem_lock_flags
+		Serializer<protocol::aemPayload::AecpAemLockEntityCommandPayloadSize> ser;
+		ser << protocol::AemLockEntityFlags::Unlock; // aem_lock_flags
 		ser << getNullIdentifier(); // locked_entity_id
 #pragma message("TBD: Change the API to allow partial EM lock")
 		ser << model::DescriptorType::Entity; // descriptor_type
@@ -1293,7 +1293,7 @@ void ControllerEntityImpl::acquireEntity(UniqueIdentifier const targetEntityID, 
 {
 	try
 	{
-		Serializer<protocol::AecpAemAcquireEntityCommandPayloadSize> ser;
+		Serializer<protocol::aemPayload::AecpAemAcquireEntityCommandPayloadSize> ser;
 		ser << (isPersistent ? protocol::AemAcquireEntityFlags::Persistent : protocol::AemAcquireEntityFlags::None); // aem_acquire_flags
 		ser << getNullIdentifier(); // owner_entity_id
 #pragma message("TBD: Change the API to allow partial EM acquire")
@@ -1313,7 +1313,7 @@ void ControllerEntityImpl::releaseEntity(UniqueIdentifier const targetEntityID, 
 {
 	try
 	{
-		Serializer<protocol::AecpAemAcquireEntityCommandPayloadSize> ser;
+		Serializer<protocol::aemPayload::AecpAemAcquireEntityCommandPayloadSize> ser;
 		ser << protocol::AemAcquireEntityFlags::Release; // aem_acquire_flags
 		ser << getNullIdentifier(); // owner_entity_id
 #pragma message("TBD: Change the API to allow partial EM acquire")
@@ -1345,7 +1345,7 @@ void ControllerEntityImpl::readEntityDescriptor(UniqueIdentifier const targetEnt
 {
 	try
 	{
-		Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
+		Serializer<protocol::aemPayload::AecpAemReadDescriptorCommandPayloadSize> ser;
 		ser << model::ConfigurationIndex{ 0x0000 }; // configuration_index
 		ser << std::uint16_t{ 0x0000 }; // reserved
 		ser << model::DescriptorType::Entity; // descriptor_type
@@ -1365,7 +1365,7 @@ void ControllerEntityImpl::readConfigurationDescriptor(UniqueIdentifier const ta
 {
 	try
 	{
-		Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
+		Serializer<protocol::aemPayload::AecpAemReadDescriptorCommandPayloadSize> ser;
 		ser << model::ConfigurationIndex{ 0x0000 }; // configuration_index
 		ser << std::uint16_t{ 0x0000 }; // reserved
 		ser << model::DescriptorType::Configuration; // descriptor_type
@@ -1385,7 +1385,7 @@ void ControllerEntityImpl::readLocaleDescriptor(UniqueIdentifier const targetEnt
 {
 	try
 	{
-		Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
+		Serializer<protocol::aemPayload::AecpAemReadDescriptorCommandPayloadSize> ser;
 		ser << model::ConfigurationIndex{ configurationIndex }; // configuration_index
 		ser << std::uint16_t{ 0x0000 }; // reserved
 		ser << model::DescriptorType::Locale; // descriptor_type
@@ -1405,7 +1405,7 @@ void ControllerEntityImpl::readStringsDescriptor(UniqueIdentifier const targetEn
 {
 	try
 	{
-		Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
+		Serializer<protocol::aemPayload::AecpAemReadDescriptorCommandPayloadSize> ser;
 		ser << model::ConfigurationIndex{ configurationIndex }; // configuration_index
 		ser << std::uint16_t{ 0x0000 }; // reserved
 		ser << model::DescriptorType::Strings; // descriptor_type
@@ -1425,7 +1425,7 @@ void ControllerEntityImpl::readStreamInputDescriptor(UniqueIdentifier const targ
 {
 	try
 	{
-		Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
+		Serializer<protocol::aemPayload::AecpAemReadDescriptorCommandPayloadSize> ser;
 		ser << model::ConfigurationIndex{ configurationIndex }; // configuration_index
 		ser << std::uint16_t{ 0x0000 }; // reserved
 		ser << model::DescriptorType::StreamInput; // descriptor_type
@@ -1445,7 +1445,7 @@ void ControllerEntityImpl::readStreamOutputDescriptor(UniqueIdentifier const tar
 {
 	try
 	{
-		Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
+		Serializer<protocol::aemPayload::AecpAemReadDescriptorCommandPayloadSize> ser;
 		ser << model::ConfigurationIndex{ configurationIndex }; // configuration_index
 		ser << std::uint16_t{ 0x0000 }; // reserved
 		ser << model::DescriptorType::StreamOutput; // descriptor_type
@@ -1465,7 +1465,7 @@ void ControllerEntityImpl::setStreamInputFormat(UniqueIdentifier const targetEnt
 {
 	try
 	{
-		Serializer<protocol::AecpAemSetStreamFormatCommandPayloadSize> ser;
+		Serializer<protocol::aemPayload::AecpAemSetStreamFormatCommandPayloadSize> ser;
 		ser << model::DescriptorType::StreamInput; // descriptor_type
 		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
 		ser << streamFormat; // stream_format
@@ -1483,7 +1483,7 @@ void ControllerEntityImpl::setStreamOutputFormat(UniqueIdentifier const targetEn
 {
 	try
 	{
-		Serializer<protocol::AecpAemSetStreamFormatCommandPayloadSize> ser;
+		Serializer<protocol::aemPayload::AecpAemSetStreamFormatCommandPayloadSize> ser;
 		ser << model::DescriptorType::StreamOutput; // descriptor_type
 		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
 		ser << streamFormat; // stream_format
@@ -1501,7 +1501,7 @@ void ControllerEntityImpl::getStreamInputAudioMap(UniqueIdentifier const targetE
 {
 	try
 	{
-		Serializer<protocol::AecpAemGetAudioMapCommandPayloadSize> ser;
+		Serializer<protocol::aemPayload::AecpAemGetAudioMapCommandPayloadSize> ser;
 		ser << model::DescriptorType::StreamInput; // descriptor_type
 		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
 		ser << model::MapIndex(mapIndex); // map_index
@@ -1520,7 +1520,7 @@ void ControllerEntityImpl::getStreamOutputAudioMap(UniqueIdentifier const target
 {
 	try
 	{
-		Serializer<protocol::AecpAemGetAudioMapCommandPayloadSize> ser;
+		Serializer<protocol::aemPayload::AecpAemGetAudioMapCommandPayloadSize> ser;
 		ser << model::DescriptorType::StreamOutput; // descriptor_type
 		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
 		ser << model::MapIndex(mapIndex); // map_index
@@ -1539,7 +1539,7 @@ void ControllerEntityImpl::addStreamInputAudioMappings(UniqueIdentifier const ta
 {
 	try
 	{
-		Serializer<protocol::AecpAemAddAudioMappingsCommandPayloadMaxSize> ser;
+		Serializer<protocol::aemPayload::AecpAemAddAudioMappingsCommandPayloadMaxSize> ser;
 		ser << model::DescriptorType::StreamInput; // descriptor_type
 		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
 		ser << model::MapIndex(mappings.size()); // number_of_mappings
@@ -1562,7 +1562,7 @@ void ControllerEntityImpl::addStreamOutputAudioMappings(UniqueIdentifier const t
 {
 	try
 	{
-		Serializer<protocol::AecpAemAddAudioMappingsCommandPayloadMaxSize> ser;
+		Serializer<protocol::aemPayload::AecpAemAddAudioMappingsCommandPayloadMaxSize> ser;
 		ser << model::DescriptorType::StreamOutput; // descriptor_type
 		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
 		ser << model::MapIndex(mappings.size()); // number_of_mappings
@@ -1585,7 +1585,7 @@ void ControllerEntityImpl::removeStreamInputAudioMappings(UniqueIdentifier const
 {
 	try
 	{
-		Serializer<protocol::AecpAemRemoveAudioMappingsCommandPayloadMaxSize> ser;
+		Serializer<protocol::aemPayload::AecpAemRemoveAudioMappingsCommandPayloadMaxSize> ser;
 		ser << model::DescriptorType::StreamInput; // descriptor_type
 		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
 		ser << model::MapIndex(mappings.size()); // number_of_mappings
@@ -1608,7 +1608,7 @@ void ControllerEntityImpl::removeStreamOutputAudioMappings(UniqueIdentifier cons
 {
 	try
 	{
-		Serializer<protocol::AecpAemRemoveAudioMappingsCommandPayloadMaxSize> ser;
+		Serializer<protocol::aemPayload::AecpAemRemoveAudioMappingsCommandPayloadMaxSize> ser;
 		ser << model::DescriptorType::StreamOutput; // descriptor_type
 		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
 		ser << model::MapIndex(mappings.size()); // number_of_mappings
@@ -1631,7 +1631,7 @@ void ControllerEntityImpl::getStreamInputInfo(UniqueIdentifier const targetEntit
 {
 	try
 	{
-		Serializer<protocol::AecpAemGetStreamInfoCommandPayloadSize> ser;
+		Serializer<protocol::aemPayload::AecpAemGetStreamInfoCommandPayloadSize> ser;
 		ser << model::DescriptorType::StreamInput; // descriptor_type
 		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
 
@@ -1798,7 +1798,7 @@ void ControllerEntityImpl::startStreamInput(UniqueIdentifier const targetEntityI
 {
 	try
 	{
-		Serializer<protocol::AecpAemStartStreamingCommandPayloadSize> ser;
+		Serializer<protocol::aemPayload::AecpAemStartStreamingCommandPayloadSize> ser;
 		ser << model::DescriptorType::StreamInput; // descriptor_type
 		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
 
@@ -1815,7 +1815,7 @@ void ControllerEntityImpl::startStreamOutput(UniqueIdentifier const targetEntity
 {
 	try
 	{
-		Serializer<protocol::AecpAemStartStreamingCommandPayloadSize> ser;
+		Serializer<protocol::aemPayload::AecpAemStartStreamingCommandPayloadSize> ser;
 		ser << model::DescriptorType::StreamOutput; // descriptor_type
 		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
 
@@ -1832,7 +1832,7 @@ void ControllerEntityImpl::stopStreamInput(UniqueIdentifier const targetEntityID
 {
 	try
 	{
-		Serializer<protocol::AecpAemStopStreamingCommandPayloadSize> ser;
+		Serializer<protocol::aemPayload::AecpAemStopStreamingCommandPayloadSize> ser;
 		ser << model::DescriptorType::StreamInput; // descriptor_type
 		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
 
@@ -1849,7 +1849,7 @@ void ControllerEntityImpl::stopStreamOutput(UniqueIdentifier const targetEntityI
 {
 	try
 	{
-		Serializer<protocol::AecpAemStopStreamingCommandPayloadSize> ser;
+		Serializer<protocol::aemPayload::AecpAemStopStreamingCommandPayloadSize> ser;
 		ser << model::DescriptorType::StreamOutput; // descriptor_type
 		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
 

@@ -20,11 +20,13 @@
 #include <gtest/gtest.h>
 #include "protocol/protocolAemPayloads.hpp"
 
+#define CHECK_PAYLOAD(MessageName, ...) checkPayload(la::avdecc::protocol::aemPayload::serialize##MessageName, la::avdecc::protocol::aemPayload::deserialize##MessageName, la::avdecc::protocol::aemPayload::AecpAem##MessageName##PayloadSize, __VA_ARGS__);
 template<typename SerializeMethod, typename DeserializeMethod, typename... Parameters>
-void checkPayload(SerializeMethod&& serializeMethod, DeserializeMethod&& deserializeMethod, Parameters&&... params)
+void checkPayload(SerializeMethod&& serializeMethod, DeserializeMethod&& deserializeMethod, size_t const payloadSize, Parameters&&... params)
 {
 	EXPECT_NO_THROW(
 		auto const ser = serializeMethod(std::forward<Parameters>(params)...);
+		EXPECT_EQ(payloadSize, ser.size());
 
 		auto const inputTuple = std::tuple<Parameters...>(std::forward<Parameters>(params)...);
 		auto const result = deserializeMethod({ ser.data(), ser.usedBytes() });
@@ -33,38 +35,50 @@ void checkPayload(SerializeMethod&& serializeMethod, DeserializeMethod&& deseria
 		);
 }
 
+TEST(AemPayloads, AcquireEntityCommand)
+{
+	CHECK_PAYLOAD(AcquireEntityCommand, la::avdecc::protocol::AemAcquireEntityFlags::None, la::avdecc::getUninitializedIdentifier(), la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0));
+	CHECK_PAYLOAD(AcquireEntityCommand, la::avdecc::protocol::AemAcquireEntityFlags::Persistent | la::avdecc::protocol::AemAcquireEntityFlags::Release, la::avdecc::getNullIdentifier(), la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
+}
+
+TEST(AemPayloads, AcquireEntityResponse)
+{
+	CHECK_PAYLOAD(AcquireEntityResponse, la::avdecc::protocol::AemAcquireEntityFlags::None, la::avdecc::getUninitializedIdentifier(), la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0));
+	CHECK_PAYLOAD(AcquireEntityResponse, la::avdecc::protocol::AemAcquireEntityFlags::Persistent | la::avdecc::protocol::AemAcquireEntityFlags::Release, la::avdecc::getNullIdentifier(), la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
+}
+
+TEST(AemPayloads, LockEntityCommand)
+{
+	CHECK_PAYLOAD(LockEntityCommand, la::avdecc::protocol::AemLockEntityFlags::None, la::avdecc::getUninitializedIdentifier(), la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0));
+	CHECK_PAYLOAD(LockEntityCommand, la::avdecc::protocol::AemLockEntityFlags::Unlock, la::avdecc::getNullIdentifier(), la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
+}
+
+TEST(AemPayloads, LockEntityResponse)
+{
+	CHECK_PAYLOAD(LockEntityResponse, la::avdecc::protocol::AemLockEntityFlags::None, la::avdecc::getUninitializedIdentifier(), la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0));
+	CHECK_PAYLOAD(LockEntityResponse, la::avdecc::protocol::AemLockEntityFlags::Unlock, la::avdecc::getNullIdentifier(), la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
+}
+
 TEST(AemPayloads, SetNameCommand)
 {
-	checkPayload(la::avdecc::protocol::aemPayload::serializeSetNameCommand, la::avdecc::protocol::aemPayload::deserializeSetNameCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(0u), la::avdecc::entity::model::ConfigurationIndex(0), la::avdecc::entity::model::AvdeccFixedString("Hi"));
-	checkPayload(la::avdecc::protocol::aemPayload::serializeSetNameCommand, la::avdecc::protocol::aemPayload::deserializeSetNameCommand, la::avdecc::entity::model::DescriptorType::AudioCluster, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(0u), la::avdecc::entity::model::ConfigurationIndex(0), la::avdecc::entity::model::AvdeccFixedString("Hi"));
-	checkPayload(la::avdecc::protocol::aemPayload::serializeSetNameCommand, la::avdecc::protocol::aemPayload::deserializeSetNameCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(5), std::uint16_t(0u), la::avdecc::entity::model::ConfigurationIndex(0), la::avdecc::entity::model::AvdeccFixedString("Hi"));
-	checkPayload(la::avdecc::protocol::aemPayload::serializeSetNameCommand, la::avdecc::protocol::aemPayload::deserializeSetNameCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(8u), la::avdecc::entity::model::ConfigurationIndex(0), la::avdecc::entity::model::AvdeccFixedString("Hi"));
-	checkPayload(la::avdecc::protocol::aemPayload::serializeSetNameCommand, la::avdecc::protocol::aemPayload::deserializeSetNameCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(8u), la::avdecc::entity::model::ConfigurationIndex(16), la::avdecc::entity::model::AvdeccFixedString("Hi"));
+	CHECK_PAYLOAD(SetNameCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(0u), la::avdecc::entity::model::ConfigurationIndex(0), la::avdecc::entity::model::AvdeccFixedString("Hi"));
+	CHECK_PAYLOAD(SetNameCommand, la::avdecc::entity::model::DescriptorType::AudioCluster, la::avdecc::entity::model::DescriptorIndex(5), std::uint16_t(8u), la::avdecc::entity::model::ConfigurationIndex(16), la::avdecc::entity::model::AvdeccFixedString("Hi"));
 }
 
 TEST(AemPayloads, SetNameResponse)
 {
-	checkPayload(la::avdecc::protocol::aemPayload::serializeSetNameResponse, la::avdecc::protocol::aemPayload::deserializeSetNameResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(0u), la::avdecc::entity::model::ConfigurationIndex(0), la::avdecc::entity::model::AvdeccFixedString("Hi"));
-	checkPayload(la::avdecc::protocol::aemPayload::serializeSetNameResponse, la::avdecc::protocol::aemPayload::deserializeSetNameResponse, la::avdecc::entity::model::DescriptorType::AudioUnit, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(0u), la::avdecc::entity::model::ConfigurationIndex(0), la::avdecc::entity::model::AvdeccFixedString("Hi"));
-	checkPayload(la::avdecc::protocol::aemPayload::serializeSetNameResponse, la::avdecc::protocol::aemPayload::deserializeSetNameResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(18), std::uint16_t(0u), la::avdecc::entity::model::ConfigurationIndex(0), la::avdecc::entity::model::AvdeccFixedString("Hi"));
-	checkPayload(la::avdecc::protocol::aemPayload::serializeSetNameResponse, la::avdecc::protocol::aemPayload::deserializeSetNameResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(22u), la::avdecc::entity::model::ConfigurationIndex(0), la::avdecc::entity::model::AvdeccFixedString("Hi"));
-	checkPayload(la::avdecc::protocol::aemPayload::serializeSetNameResponse, la::avdecc::protocol::aemPayload::deserializeSetNameResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(0u), la::avdecc::entity::model::ConfigurationIndex(44), la::avdecc::entity::model::AvdeccFixedString("Hi"));
+	CHECK_PAYLOAD(SetNameResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(0u), la::avdecc::entity::model::ConfigurationIndex(0), la::avdecc::entity::model::AvdeccFixedString("Hi"));
+	CHECK_PAYLOAD(SetNameResponse, la::avdecc::entity::model::DescriptorType::AudioUnit, la::avdecc::entity::model::DescriptorIndex(18), std::uint16_t(22u), la::avdecc::entity::model::ConfigurationIndex(44), la::avdecc::entity::model::AvdeccFixedString("Hi"));
 }
 
 TEST(AemPayloads, GetNameCommand)
 {
-	checkPayload(la::avdecc::protocol::aemPayload::serializeGetNameCommand, la::avdecc::protocol::aemPayload::deserializeGetNameCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(0u), la::avdecc::entity::model::ConfigurationIndex(0));
-	checkPayload(la::avdecc::protocol::aemPayload::serializeGetNameCommand, la::avdecc::protocol::aemPayload::deserializeGetNameCommand, la::avdecc::entity::model::DescriptorType::SignalTranscoder, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(0u), la::avdecc::entity::model::ConfigurationIndex(0));
-	checkPayload(la::avdecc::protocol::aemPayload::serializeGetNameCommand, la::avdecc::protocol::aemPayload::deserializeGetNameCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(100), std::uint16_t(0u), la::avdecc::entity::model::ConfigurationIndex(0));
-	checkPayload(la::avdecc::protocol::aemPayload::serializeGetNameCommand, la::avdecc::protocol::aemPayload::deserializeGetNameCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(20u), la::avdecc::entity::model::ConfigurationIndex(0));
-	checkPayload(la::avdecc::protocol::aemPayload::serializeGetNameCommand, la::avdecc::protocol::aemPayload::deserializeGetNameCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(0u), la::avdecc::entity::model::ConfigurationIndex(101));
+	CHECK_PAYLOAD(GetNameCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(0u), la::avdecc::entity::model::ConfigurationIndex(0));
+	CHECK_PAYLOAD(GetNameCommand, la::avdecc::entity::model::DescriptorType::SignalTranscoder, la::avdecc::entity::model::DescriptorIndex(100), std::uint16_t(20u), la::avdecc::entity::model::ConfigurationIndex(101));
 }
 
 TEST(AemPayloads, GetNameResponse)
 {
-	checkPayload(la::avdecc::protocol::aemPayload::serializeGetNameResponse, la::avdecc::protocol::aemPayload::deserializeGetNameResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(0u), la::avdecc::entity::model::ConfigurationIndex(0), la::avdecc::entity::model::AvdeccFixedString("Hi"));
-	checkPayload(la::avdecc::protocol::aemPayload::serializeGetNameResponse, la::avdecc::protocol::aemPayload::deserializeGetNameResponse, la::avdecc::entity::model::DescriptorType::JackInput, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(0u), la::avdecc::entity::model::ConfigurationIndex(0), la::avdecc::entity::model::AvdeccFixedString("Hi"));
-	checkPayload(la::avdecc::protocol::aemPayload::serializeGetNameResponse, la::avdecc::protocol::aemPayload::deserializeGetNameResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(9), std::uint16_t(0u), la::avdecc::entity::model::ConfigurationIndex(0), la::avdecc::entity::model::AvdeccFixedString("Hi"));
-	checkPayload(la::avdecc::protocol::aemPayload::serializeGetNameResponse, la::avdecc::protocol::aemPayload::deserializeGetNameResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(19u), la::avdecc::entity::model::ConfigurationIndex(0), la::avdecc::entity::model::AvdeccFixedString("Hi"));
-	checkPayload(la::avdecc::protocol::aemPayload::serializeGetNameResponse, la::avdecc::protocol::aemPayload::deserializeGetNameResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(0u), la::avdecc::entity::model::ConfigurationIndex(27), la::avdecc::entity::model::AvdeccFixedString("Hi"));
+	CHECK_PAYLOAD(GetNameResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(0u), la::avdecc::entity::model::ConfigurationIndex(0), la::avdecc::entity::model::AvdeccFixedString("Hi"));
+	CHECK_PAYLOAD(GetNameResponse, la::avdecc::entity::model::DescriptorType::JackInput, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(19u), la::avdecc::entity::model::ConfigurationIndex(27), la::avdecc::entity::model::AvdeccFixedString("Hi"));
 }
