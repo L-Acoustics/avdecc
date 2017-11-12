@@ -264,8 +264,8 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				auto const result = protocol::aemPayload::deserializeAcquireEntityResponse(aem.getPayload());
 				protocol::AemAcquireEntityFlags const flags = std::get<0>(result);
 				UniqueIdentifier const ownerID = std::get<1>(result);
-				entity::model::DescriptorType const descriptorType = std::get<2>(result);
-				entity::model::DescriptorIndex const descriptorIndex = std::get<3>(result);
+				//entity::model::DescriptorType const descriptorType = std::get<2>(result);
+				//entity::model::DescriptorIndex const descriptorIndex = std::get<3>(result);
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
@@ -298,8 +298,8 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				auto const result = protocol::aemPayload::deserializeLockEntityResponse(aem.getPayload());
 				protocol::AemLockEntityFlags const flags = std::get<0>(result);
 				UniqueIdentifier const lockedID = std::get<1>(result);
-				entity::model::DescriptorType const descriptorType = std::get<2>(result);
-				entity::model::DescriptorIndex const descriptorIndex = std::get<3>(result);
+				//entity::model::DescriptorType const descriptorType = std::get<2>(result);
+				//entity::model::DescriptorIndex const descriptorIndex = std::get<3>(result);
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
