@@ -507,20 +507,15 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 		// Set Stream Format
 		{ protocol::AemCommandType::SetStreamFormat.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
-				auto const payloadInfo = aem.getPayload();
-				auto* const commandPayload = payloadInfo.first;
-				auto const commandPayloadLength = payloadInfo.second;
-
-				if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemSetStreamFormatResponsePayloadSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: SET_STREAM_FORMAT");
-
-				// Check payload stream format data
-				Deserializer des(commandPayload, commandPayloadLength);
-				model::DescriptorType descriptorType;
-				model::DescriptorIndex descriptorIndex;
-				model::StreamFormat streamFormat;
-				des >> descriptorType >> descriptorIndex >> streamFormat;
-				assert(des.usedBytes() == protocol::aemPayload::AecpAemSetStreamFormatResponsePayloadSize && "Used more bytes than specified in protocol constant");
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex, streamFormat] = protocol::aemPayload::deserializeSetStreamFormatResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeSetStreamFormatResponse(aem.getPayload());
+				model::DescriptorType const descriptorType = std::get<0>(result);
+				model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				entity::model::StreamFormat const streamFormat = std::get<2>(result);
+#endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
@@ -1443,12 +1438,9 @@ void ControllerEntityImpl::setStreamInputFormat(UniqueIdentifier const targetEnt
 {
 	try
 	{
-		Serializer<protocol::aemPayload::AecpAemSetStreamFormatCommandPayloadSize> ser;
-		ser << model::DescriptorType::StreamInput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-		ser << streamFormat; // stream_format
-
+		auto const ser = protocol::aemPayload::serializeSetStreamFormatCommand(model::DescriptorType::StreamInput, streamIndex, streamFormat);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::SetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1461,12 +1453,9 @@ void ControllerEntityImpl::setStreamOutputFormat(UniqueIdentifier const targetEn
 {
 	try
 	{
-		Serializer<protocol::aemPayload::AecpAemSetStreamFormatCommandPayloadSize> ser;
-		ser << model::DescriptorType::StreamOutput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-		ser << streamFormat; // stream_format
-
+		auto const ser = protocol::aemPayload::serializeSetStreamFormatCommand(model::DescriptorType::StreamOutput, streamIndex, streamFormat);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::SetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)

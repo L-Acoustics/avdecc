@@ -77,6 +77,12 @@ constexpr size_t AecpAemGetConfigurationResponsePayloadSize = 4u;
 constexpr size_t AecpAemSetStreamFormatCommandPayloadSize = 12u;
 constexpr size_t AecpAemSetStreamFormatResponsePayloadSize = 12u;
 
+/** GET_STREAM_FORMAT Command - Clause 7.4.10.1 */
+constexpr size_t AecpAemGetStreamFormatCommandPayloadSize = 4u;
+
+/** GET_STREAM_FORMAT Respones - Clause 7.4.10.2 */
+constexpr size_t AecpAemGetStreamFormatResponsePayloadSize = 12u;
+
 /** GET_STREAM_INFO Command - Clause 7.4.16.1 */
 constexpr size_t AecpAemGetStreamInfoCommandPayloadSize = 4u;
 
