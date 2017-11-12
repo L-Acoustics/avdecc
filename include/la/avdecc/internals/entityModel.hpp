@@ -232,26 +232,23 @@ using AudioMappings = std::vector<AudioMapping>;
 /** GET_STREAM_INFO and SET_STREAM_INFO Dynamic Information - Clause 7.4.16.2 */
 struct StreamInfo
 {
-	CommonDescriptor common{};
 	StreamInfoFlags streamInfoFlags{ StreamInfoFlags::None };
 	StreamFormat streamFormat{ getNullStreamFormat() };
 	UniqueIdentifier streamID{ getNullIdentifier() };
 	std::uint32_t msrpAccumulatedLatency{ 0u };
 	la::avdecc::networkInterface::MacAddress streamDestMac{};
 	std::uint8_t msrpFailureCode{ 0u };
-	std::uint8_t reserved{ 0u };
 	UniqueIdentifier msrpFailureBridgeID{ getNullIdentifier() };
 	std::uint16_t streamVlanID{ 0u };
-	std::uint16_t reserved2{ 0u };
-
-	// Constructors
-	StreamInfo() noexcept = default;
-	StreamInfo(DescriptorType const type, DescriptorIndex const descriptorIndex = 0u) noexcept
-	{
-		common.descriptorType = type;
-		common.descriptorIndex = descriptorIndex;
-	}
 };
+
+constexpr bool operator==(StreamInfo const& lhs, StreamInfo const& rhs) noexcept
+{
+	return (lhs.streamInfoFlags  == rhs.streamInfoFlags) && (lhs.streamFormat == rhs.streamFormat) &&
+		(lhs.streamID == rhs.streamID) && (lhs.msrpAccumulatedLatency == rhs.msrpAccumulatedLatency) &&
+		(lhs.streamDestMac == rhs.streamDestMac) && (lhs.msrpFailureCode == rhs.msrpFailureCode) &&
+		(lhs.msrpFailureBridgeID == rhs.msrpFailureBridgeID) && (lhs.streamVlanID == rhs.streamVlanID);
+}
 
 /**
 * @brief Make a VendorEntityModel from vendorID, deviceID and modelID.

@@ -115,6 +115,22 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 Serializer<AecpAemGetStreamFormatResponsePayloadSize> serializeGetStreamFormatResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamFormat const streamFormat);
 std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::StreamFormat> deserializeGetStreamFormatResponse(AemAecpdu::Payload const& payload);
 
+/** SET_STREAM_INFO Command - Clause 7.4.15.1 */
+Serializer<AecpAemSetStreamInfoCommandPayloadSize> serializeSetStreamInfoCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamInfo const& streamInfo);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::StreamInfo> deserializeSetStreamInfoCommand(AemAecpdu::Payload const& payload);
+
+/** SET_STREAM_INFO Response - Clause 7.4.15.1 */
+Serializer<AecpAemSetStreamInfoResponsePayloadSize> serializeSetStreamInfoResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamInfo const& streamInfo);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::StreamInfo> deserializeSetStreamInfoResponse(AemAecpdu::Payload const& payload);
+
+/** GET_STREAM_INFO Command - Clause 7.4.16.1 */
+Serializer<AecpAemGetStreamInfoCommandPayloadSize> serializeGetStreamInfoCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeGetStreamInfoCommand(AemAecpdu::Payload const& payload);
+
+/** GET_STREAM_INFO Response - Clause 7.4.16.2 */
+Serializer<AecpAemGetStreamInfoResponsePayloadSize> serializeGetStreamInfoResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamInfo const& streamInfo);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::StreamInfo> deserializeGetStreamInfoResponse(AemAecpdu::Payload const& payload);
+
 /** SET_NAME Command - Clause 7.4.17.1 */
 Serializer<AecpAemSetNameCommandPayloadSize> serializeSetNameCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& name);
 std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t, entity::model::ConfigurationIndex, entity::model::AvdeccFixedString> deserializeSetNameCommand(AemAecpdu::Payload const& payload);
@@ -130,6 +146,38 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::u
 /** GET_NAME Response - Clause 7.4.18.2 */
 Serializer<AecpAemGetNameResponsePayloadSize> serializeGetNameResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& name);
 std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t, entity::model::ConfigurationIndex, entity::model::AvdeccFixedString> deserializeGetNameResponse(AemAecpdu::Payload const& payload);
+
+/** SET_SAMPLING_RATE Command - Clause 7.4.21.1 */
+/** SET_SAMPLING_RATE Response - Clause 7.4.21.1 */
+/** GET_SAMPLING_RATE Command - Clause 7.4.22.1 */
+/** GET_SAMPLING_RATE Response - Clause 7.4.22.2 */
+/** SET_CLOCK_SOURCE Command - Clause 7.4.23.1 */
+/** SET_CLOCK_SOURCE Response - Clause 7.4.23.1 */
+/** GET_CLOCK_SOURCE Command - Clause 7.4.24.1 */
+/** GET_CLOCK_SOURCE Response - Clause 7.4.24.2 */
+/** START_STREAMING Command - Clause 7.4.35.1 */
+/** START_STREAMING Response - Clause 7.4.35.1 */
+/** STOP_STREAMING Command - Clause 7.4.36.1 */
+/** STOP_STREAMING Response - Clause 7.4.36.1 */
+
+/** REGISTER_UNSOLICITED_NOTIFICATION Command - Clause 7.4.37.1 */
+// No payload
+
+/** REGISTER_UNSOLICITED_NOTIFICATION Response - Clause 7.4.37.1 */
+// No payload
+
+/** DEREGISTER_UNSOLICITED_NOTIFICATION Command - Clause 7.4.38.1 */
+// No payload
+
+/** DEREGISTER_UNSOLICITED_NOTIFICATION Response - Clause 7.4.38.1 */
+// No payload
+
+/** GET_AVB_INFO Command - Clause 7.4.40.1 */
+/** GET_AVB_INFO Response - Clause 7.4.40.2 */
+/** GET_AS_PATH Command - Clause 7.4.41.1 */
+/** GET_AS_PATH Response - Clause 7.4.41.2 */
+/** GET_COUNTERS Command - Clause 7.4.42.1 */
+/** GET_COUNTERS Response - Clause 7.4.42.2 */
 
 } // namespace aemPayload
 } // namespace protocol

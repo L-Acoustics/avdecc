@@ -545,39 +545,33 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 		// Get Stream Info
 		{ protocol::AemCommandType::GetStreamInfo.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
-				auto const payloadInfo = aem.getPayload();
-				auto* const commandPayload = payloadInfo.first;
-				auto const commandPayloadLength = payloadInfo.second;
-
-				if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemGetStreamInfoResponsePayloadSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: GET_STREAM_INFO");
-
-				// Check payload stream format data
-				Deserializer des(commandPayload, commandPayloadLength);
-				model::StreamInfo streamInfo;
-				des >> streamInfo.common.descriptorType >> streamInfo.common.descriptorIndex;
-				des >> streamInfo.streamInfoFlags >> streamInfo.streamFormat >> streamInfo.streamID >> streamInfo.msrpAccumulatedLatency;
-				des.unpackBuffer(streamInfo.streamDestMac.data(), static_cast<std::uint16_t>(streamInfo.streamDestMac.size()));
-				des >> streamInfo.msrpFailureCode >> streamInfo.reserved >> streamInfo.msrpFailureBridgeID >> streamInfo.streamVlanID >> streamInfo.reserved2;
-				assert(des.usedBytes() == protocol::aemPayload::AecpAemGetStreamInfoResponsePayloadSize && "Used more bytes than specified in protocol constant");
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex, streamInfo] = protocol::aemPayload::deserializeGetStreamInfoResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeGetStreamInfoResponse(aem.getPayload());
+				model::DescriptorType const descriptorType = std::get<0>(result);
+				model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				entity::model::StreamInfo const streamInfo = std::get<2>(result);
+#endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
 				// Notify handlers
-				if (streamInfo.common.descriptorType == model::DescriptorType::StreamInput)
+				if (descriptorType == model::DescriptorType::StreamInput)
 				{
-					answerCallback.invoke<GetStreamInputInfoHandler>(controller, targetID, status, streamInfo.common.descriptorIndex, streamInfo);
+					answerCallback.invoke<GetStreamInputInfoHandler>(controller, targetID, status, descriptorIndex, streamInfo);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputInfoChanged, delegate, targetID, streamInfo.common.descriptorIndex, streamInfo);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputInfoChanged, delegate, targetID, descriptorIndex, streamInfo);
 					}
 				}
-				else if (streamInfo.common.descriptorType == model::DescriptorType::StreamOutput)
+				else if (descriptorType == model::DescriptorType::StreamOutput)
 				{
-					answerCallback.invoke<GetStreamOutputInfoHandler>(controller, targetID, status, streamInfo.common.descriptorIndex, streamInfo);
+					answerCallback.invoke<GetStreamOutputInfoHandler>(controller, targetID, status, descriptorIndex, streamInfo);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputInfoChanged, delegate, targetID, streamInfo.common.descriptorIndex, streamInfo);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputInfoChanged, delegate, targetID, descriptorIndex, streamInfo);
 					}
 				}
 				else

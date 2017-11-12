@@ -163,7 +163,8 @@ std::tuple<AemLockEntityFlags, UniqueIdentifier, entity::model::DescriptorType, 
 Serializer<AecpAemSetConfigurationCommandPayloadSize> serializeSetConfigurationCommand(entity::model::ConfigurationIndex const configurationIndex)
 {
 	Serializer<AecpAemSetConfigurationCommandPayloadSize> ser;
-	std::uint16_t reserved{ 0u };
+	std::uint16_t const reserved{ 0u };
+
 	ser << reserved << configurationIndex;
 
 	assert(ser.usedBytes() == ser.capacity() && "Used bytes do not match the protocol constant");
@@ -319,6 +320,126 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	// Same as SET_STREAM_FORMAT Command
 	static_assert(AecpAemGetStreamFormatResponsePayloadSize == AecpAemSetStreamFormatCommandPayloadSize, "GET_STREAM_FORMAT Response no longer the same as SET_STREAM_FORMAT Command");
 	return deserializeSetStreamFormatCommand(payload);
+}
+
+/** SET_STREAM_INFO Command - Clause 7.4.15.1 */
+Serializer<AecpAemSetStreamInfoCommandPayloadSize> serializeSetStreamInfoCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamInfo const& streamInfo)
+{
+	Serializer<AecpAemSetStreamInfoCommandPayloadSize> ser;
+	std::uint8_t const reserved{ 0u };
+	std::uint16_t const reserved2{ 0u };
+
+	ser << descriptorType << descriptorIndex;
+	ser << streamInfo.streamInfoFlags;
+	ser << streamInfo.streamFormat;
+	ser << streamInfo.streamID;
+	ser << streamInfo.msrpAccumulatedLatency;
+	ser.packBuffer(streamInfo.streamDestMac.data(), streamInfo.streamDestMac.size());
+	ser << streamInfo.msrpFailureCode;
+	ser << reserved;
+	ser << streamInfo.msrpFailureBridgeID;
+	ser << streamInfo.streamVlanID;
+	ser << reserved2;
+
+	assert(ser.usedBytes() == ser.capacity() && "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::StreamInfo> deserializeSetStreamInfoCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemSetStreamInfoCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+	entity::model::StreamInfo streamInfo{};
+	std::uint8_t reserved{ 0u };
+	std::uint16_t reserved2{ 0u };
+
+	des >> descriptorType >> descriptorIndex;
+	des >> streamInfo.streamInfoFlags;
+	des >> streamInfo.streamFormat;
+	des >> streamInfo.streamID;
+	des >> streamInfo.msrpAccumulatedLatency;
+	des.unpackBuffer(streamInfo.streamDestMac.data(), streamInfo.streamDestMac.size());
+	des >> streamInfo.msrpFailureCode;
+	des >> reserved;
+	des >> streamInfo.msrpFailureBridgeID;
+	des >> streamInfo.streamVlanID;
+	des >> reserved2;
+
+	assert(des.usedBytes() == AecpAemSetStreamInfoCommandPayloadSize && "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(descriptorType, descriptorIndex, streamInfo);
+}
+
+/** SET_STREAM_INFO Response - Clause 7.4.15.1 */
+Serializer<AecpAemSetStreamInfoResponsePayloadSize> serializeSetStreamInfoResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamInfo const& streamInfo)
+{
+	// Same as SET_STREAM_INFO Command
+	static_assert(AecpAemSetStreamInfoResponsePayloadSize == AecpAemSetStreamInfoCommandPayloadSize, "SET_STREAM_INFO Response no longer the same as SET_STREAM_INFO Command");
+	return serializeSetStreamInfoCommand(descriptorType, descriptorIndex, streamInfo);
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::StreamInfo> deserializeSetStreamInfoResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as SET_STREAM_INFO Command
+	static_assert(AecpAemSetStreamInfoResponsePayloadSize == AecpAemSetStreamInfoCommandPayloadSize, "SET_STREAM_INFO Response no longer the same as SET_STREAM_INFO Command");
+	return deserializeSetStreamInfoCommand(payload);
+}
+
+/** GET_STREAM_INFO Command - Clause 7.4.16.1 */
+Serializer<AecpAemGetStreamInfoCommandPayloadSize> serializeGetStreamInfoCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	Serializer<AecpAemGetStreamInfoCommandPayloadSize> ser;
+
+	ser << descriptorType << descriptorIndex;
+
+	assert(ser.usedBytes() == ser.capacity() && "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeGetStreamInfoCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetStreamInfoCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+
+	des >> descriptorType >> descriptorIndex;
+
+	assert(des.usedBytes() == AecpAemGetStreamInfoCommandPayloadSize && "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(descriptorType, descriptorIndex);
+}
+
+
+/** GET_STREAM_INFO Response - Clause 7.4.16.2 */
+Serializer<AecpAemGetStreamInfoResponsePayloadSize> serializeGetStreamInfoResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamInfo const& streamInfo)
+{
+	// Same as SET_STREAM_INFO Command
+	static_assert(AecpAemGetStreamInfoResponsePayloadSize == AecpAemSetStreamInfoCommandPayloadSize, "GET_STREAM_INFO Response no longer the same as SET_STREAM_INFO Command");
+	return serializeSetStreamInfoCommand(descriptorType, descriptorIndex, streamInfo);
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::StreamInfo> deserializeGetStreamInfoResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as SET_STREAM_INFO Command
+	static_assert(AecpAemGetStreamInfoResponsePayloadSize == AecpAemSetStreamInfoCommandPayloadSize, "GET_STREAM_INFO Response no longer the same as SET_STREAM_INFO Command");
+	return deserializeSetStreamInfoCommand(payload);
 }
 
 /** GET_AUDIO_MAP Command  - Clause 7.4.44.1 */
