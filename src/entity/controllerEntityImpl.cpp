@@ -49,6 +49,12 @@ static model::AvdeccFixedString const s_emptyAvdeccFixedString{}; // Empty Avdec
 /* ************************************************************************** */
 /* Exceptions                                                                 */
 /* ************************************************************************** */
+class InvalidDescriptorTypeException final : public Exception
+{
+public:
+	InvalidDescriptorTypeException() : Exception("Invalid DescriptorType") {}
+};
+
 #pragma message("TODO: To remove: CommandException")
 class CommandException final : public std::exception
 {
@@ -491,7 +497,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 						else if (descriptorType == model::DescriptorType::StreamOutput)
 							answerCallback.invoke<StreamOutputDescriptorHandler>(controller, targetID, status, streamDescriptor);
 						else
-							throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: Unknown DESCRIPTOR_STREAM type"); // Malformed packet
+							throw InvalidDescriptorTypeException();
 						break;
 					}
 
@@ -537,7 +543,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					}
 				}
 				else
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: Unknown DESCRIPTOR_STREAM type"); // Malformed packet
+					throw InvalidDescriptorTypeException();
 			}
 		},
 		// Get Stream Format
@@ -575,7 +581,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					}
 				}
 				else
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: Unknown DESCRIPTOR_STREAM type"); // Malformed packet
+					throw InvalidDescriptorTypeException();
 			}
 		},
 		// Set Name
@@ -730,7 +736,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					}
 				}
 				else
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: Unknown DESCRIPTOR_STREAM type"); // Malformed packet
+					throw InvalidDescriptorTypeException();
 			}
 		},
 		// Stop Streaming
@@ -765,7 +771,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					}
 				}
 				else
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: Unknown DESCRIPTOR_STREAM type"); // Malformed packet
+					throw InvalidDescriptorTypeException();
 			}
 		},
 		// Register Unsolicited Notifications
@@ -839,7 +845,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					}
 				}
 				else
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: Unknown DESCRIPTOR_STREAM type"); // Malformed packet
+					throw InvalidDescriptorTypeException();
 			}
 		},
 		// Add Audio Mappings
@@ -887,7 +893,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					answerCallback.invoke<AddStreamOutputAudioMappingsHandler>(controller, targetID, status, descriptorIndex, mappings);
 				}
 				else
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: Unknown DESCRIPTOR_STREAM type"); // Malformed packet
+					throw InvalidDescriptorTypeException();
 			}
 		},
 		// Remove Audio Mappings
@@ -935,7 +941,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					answerCallback.invoke<RemoveStreamOutputAudioMappingsHandler>(controller, targetID, status, descriptorIndex, mappings);
 				}
 				else
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: Unknown DESCRIPTOR_STREAM type"); // Malformed packet
+					throw InvalidDescriptorTypeException();
 			}
 		},
 		// Set Memory Object Length
@@ -983,6 +989,12 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 			invokeProtectedHandler(onErrorCallback, st);
 			return;
 		}
+		catch (InvalidDescriptorTypeException const& e)
+		{
+			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Failed to process ") + std::string(aem.getCommandType()) + "AEM response: " + e.what());
+			invokeProtectedHandler(onErrorCallback, AemCommandStatus::ProtocolError);
+			return;
+		}
 		catch (CommandException const& e)
 		{
 			auto st = e.getStatus();
@@ -993,13 +1005,13 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				st = status;
 			}
 #endif // IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Failed to process AEM response: ") + e.what());
+			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Failed to process ") + std::string(aem.getCommandType()) + "AEM response: " + e.what());
 			invokeProtectedHandler(onErrorCallback, st);
 			return;
 		}
 		catch (std::exception const& e) // Mainly unpacking errors
 		{
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Failed to process AEM response: ") + e.what());
+			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Failed to process ") + std::string(aem.getCommandType()) + "AEM response: " + e.what());
 			invokeProtectedHandler(onErrorCallback, AemCommandStatus::ProtocolError);
 			return;
 		}
