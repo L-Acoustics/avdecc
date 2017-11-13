@@ -659,6 +659,106 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return deserializeSetSamplingRateCommand(payload);
 }
 
+/** SET_CLOCK_SOURCE Command - Clause 7.4.23.1 */
+Serializer<AecpAemSetClockSourceCommandPayloadSize> serializeSetClockSourceCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::ClockSourceIndex const clockSourceIndex)
+{
+	Serializer<AecpAemSetClockSourceCommandPayloadSize> ser;
+	std::uint16_t const reserved{ 0u };
+
+	ser << descriptorType << descriptorIndex;
+	ser << clockSourceIndex << reserved;
+
+	assert(ser.usedBytes() == ser.capacity() && "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::ClockSourceIndex> deserializeSetClockSourceCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemSetClockSourceCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+	entity::model::ClockSourceIndex clockSourceIndex{ 0u };
+	std::uint16_t reserved{ 0u };
+
+	des >> descriptorType >> descriptorIndex;
+	des >> clockSourceIndex >> reserved;
+
+	assert(des.usedBytes() == AecpAemSetClockSourceCommandPayloadSize && "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(descriptorType, descriptorIndex, clockSourceIndex);
+}
+
+/** SET_CLOCK_SOURCE Response - Clause 7.4.23.1 */
+Serializer<AecpAemSetClockSourceResponsePayloadSize> serializeSetClockSourceResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::ClockSourceIndex const clockSourceIndex)
+{
+	// Same as PROTONAME Command
+	static_assert(AecpAemSetClockSourceResponsePayloadSize == AecpAemSetClockSourceCommandPayloadSize, "PROTONAME Response no longer the same as PROTONAME Command");
+	return serializeSetClockSourceCommand(descriptorType, descriptorIndex, clockSourceIndex);
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::ClockSourceIndex> deserializeSetClockSourceResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as PROTONAME Command
+	static_assert(AecpAemSetClockSourceResponsePayloadSize == AecpAemSetClockSourceCommandPayloadSize, "PROTONAME Response no longer the same as PROTONAME Command");
+	return deserializeSetClockSourceCommand(payload);
+}
+
+/** GET_CLOCK_SOURCE Command - Clause 7.4.24.1 */
+Serializer<AecpAemGetClockSourceCommandPayloadSize> serializeGetClockSourceCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	Serializer<AecpAemGetClockSourceCommandPayloadSize> ser;
+
+	ser << descriptorType << descriptorIndex;
+
+	assert(ser.usedBytes() == ser.capacity() && "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeGetClockSourceCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetClockSourceCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+
+	des >> descriptorType >> descriptorIndex;
+
+	assert(des.usedBytes() == AecpAemGetClockSourceCommandPayloadSize && "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(descriptorType, descriptorIndex);
+}
+
+/** GET_CLOCK_SOURCE Response - Clause 7.4.24.2 */
+Serializer<AecpAemGetClockSourceResponsePayloadSize> serializeGetClockSourceResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::ClockSourceIndex const clockSourceIndex)
+{
+	// Same as SET_CLOCK_SOURCE Command
+	static_assert(AecpAemGetClockSourceResponsePayloadSize == AecpAemSetClockSourceCommandPayloadSize, "GET_CLOCK_SOURCE Response no longer the same as SET_CLOCK_SOURCE Command");
+	return serializeSetClockSourceCommand(descriptorType, descriptorIndex, clockSourceIndex);
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::ClockSourceIndex> deserializeGetClockSourceResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as SET_CLOCK_SOURCE Command
+	static_assert(AecpAemGetClockSourceResponsePayloadSize == AecpAemSetClockSourceCommandPayloadSize, "GET_CLOCK_SOURCE Response no longer the same as SET_CLOCK_SOURCE Command");
+	return deserializeSetClockSourceCommand(payload);
+}
+
+
 } // namespace aemPayload
 } // namespace protocol
 } // namespace avdecc
