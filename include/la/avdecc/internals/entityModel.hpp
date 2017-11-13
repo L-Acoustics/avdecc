@@ -59,6 +59,11 @@ constexpr StreamFormat getNullStreamFormat() noexcept
 	return StreamFormat(0u);
 }
 
+constexpr SamplingRate getNullSamplingRate() noexcept
+{
+	return SamplingRate(0u);
+}
+
 enum class DescriptorType : std::uint16_t
 {
 	Entity = 0,

@@ -562,6 +562,103 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::u
 	return deserializeSetNameCommand(payload);
 }
 
+/** SET_SAMPLING_RATE Command - Clause 7.4.21.1 */
+Serializer<AecpAemSetSamplingRateCommandPayloadSize> serializeSetSamplingRateCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::SamplingRate const samplingRate)
+{
+	Serializer<AecpAemSetSamplingRateCommandPayloadSize> ser;
+
+	ser << descriptorType << descriptorIndex;
+	ser << samplingRate;
+
+	assert(ser.usedBytes() == ser.capacity() && "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::SamplingRate> deserializeSetSamplingRateCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemSetSamplingRateCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+	entity::model::SamplingRate samplingRate{ entity::model::getNullSamplingRate() };
+
+	des >> descriptorType >> descriptorIndex;
+	des >> samplingRate;
+
+	assert(des.usedBytes() == AecpAemSetSamplingRateCommandPayloadSize && "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(descriptorType, descriptorIndex, samplingRate);
+}
+
+/** SET_SAMPLING_RATE Response - Clause 7.4.21.1 */
+Serializer<AecpAemSetSamplingRateResponsePayloadSize> serializeSetSamplingRateResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::SamplingRate const samplingRate)
+{
+	// Same as SET_SAMPLING_RATE Command
+	static_assert(AecpAemSetSamplingRateResponsePayloadSize == AecpAemSetSamplingRateCommandPayloadSize, "SET_SAMPLING_RATE Response no longer the same as SET_SAMPLING_RATE Command");
+	return serializeSetSamplingRateCommand(descriptorType, descriptorIndex, samplingRate);
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::SamplingRate> deserializeSetSamplingRateResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as SET_SAMPLING_RATE Command
+	static_assert(AecpAemSetSamplingRateResponsePayloadSize == AecpAemSetSamplingRateCommandPayloadSize, "SET_SAMPLING_RATE Response no longer the same as SET_SAMPLING_RATE Command");
+	return deserializeSetSamplingRateCommand(payload);
+}
+
+/** GET_SAMPLING_RATE Command - Clause 7.4.22.1 */
+Serializer<AecpAemGetSamplingRateCommandPayloadSize> serializeGetSamplingRateCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	Serializer<AecpAemGetSamplingRateCommandPayloadSize> ser;
+
+	ser << descriptorType << descriptorIndex;
+
+	assert(ser.usedBytes() == ser.capacity() && "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeGetSamplingRateCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetSamplingRateCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+
+	des >> descriptorType >> descriptorIndex;
+
+	assert(des.usedBytes() == AecpAemGetSamplingRateCommandPayloadSize && "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(descriptorType, descriptorIndex);
+}
+
+/** GET_SAMPLING_RATE Response - Clause 7.4.22.2 */
+Serializer<AecpAemGetSamplingRateResponsePayloadSize> serializeGetSamplingRateResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::SamplingRate const samplingRate)
+{
+	// Same as SET_SAMPLING_RATE Command
+	static_assert(AecpAemGetSamplingRateResponsePayloadSize == AecpAemSetSamplingRateCommandPayloadSize, "GET_SAMPLING_RATE Response no longer the same as SET_SAMPLING_RATE Command");
+	return serializeSetSamplingRateCommand(descriptorType, descriptorIndex, samplingRate);
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::SamplingRate> deserializeGetSamplingRateResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as SET_SAMPLING_RATE Command
+	static_assert(AecpAemGetSamplingRateResponsePayloadSize == AecpAemSetSamplingRateCommandPayloadSize, "GET_SAMPLING_RATE Response no longer the same as SET_SAMPLING_RATE Command");
+	return deserializeSetSamplingRateCommand(payload);
+}
+
 } // namespace aemPayload
 } // namespace protocol
 } // namespace avdecc

@@ -44,11 +44,12 @@ using VendorEntityModel = std::uint64_t;
 using ConfigurationIndex = std::uint16_t;
 using LocaleIndex = std::uint16_t;
 using StringsIndex = std::uint16_t;
-using LocalizedStringReference = std::uint16_t;
+using LocalizedStringReference = std::uint16_t; /** Localized String Reference packed value - Clause 7.3.6 */
 using StreamIndex = std::uint16_t;
-using StreamFormat = std::uint64_t;
+using StreamFormat = std::uint64_t; /** Stream Format packed value - Clause 7.3.2 */
 using DescriptorIndex = std::uint16_t;
 using MapIndex = std::uint16_t;
+using SamplingRate = std::uint32_t; /** Sampling Rate packed value - Clause 7.3.1 */
 
 /** UTF-8 String */
 class AvdeccFixedString final

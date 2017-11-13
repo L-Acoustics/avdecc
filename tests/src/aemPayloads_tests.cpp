@@ -18,21 +18,37 @@
 */
 
 #include <gtest/gtest.h>
+#include <array>
+#include <cstdint>
 #include "protocol/protocolAemPayloads.hpp"
 
-#define CHECK_PAYLOAD(MessageName, ...) checkPayload(la::avdecc::protocol::aemPayload::serialize##MessageName, la::avdecc::protocol::aemPayload::deserialize##MessageName, la::avdecc::protocol::aemPayload::AecpAem##MessageName##PayloadSize, __VA_ARGS__);
-template<typename SerializeMethod, typename DeserializeMethod, typename... Parameters>
-void checkPayload(SerializeMethod&& serializeMethod, DeserializeMethod&& deserializeMethod, size_t const payloadSize, Parameters&&... params)
+#define CHECK_PAYLOAD(MessageName, ...) checkPayload<la::avdecc::protocol::aemPayload::AecpAem##MessageName##PayloadSize>(la::avdecc::protocol::aemPayload::serialize##MessageName, la::avdecc::protocol::aemPayload::deserialize##MessageName, __VA_ARGS__);
+template<size_t PayloadSize, typename SerializeMethod, typename DeserializeMethod, typename... Parameters>
+void checkPayload(SerializeMethod&& serializeMethod, DeserializeMethod&& deserializeMethod, Parameters&&... params)
 {
 	EXPECT_NO_THROW(
 		auto const ser = serializeMethod(std::forward<Parameters>(params)...);
-		EXPECT_EQ(payloadSize, ser.size());
+		EXPECT_EQ(PayloadSize, ser.size());
 
 		auto const inputTuple = std::tuple<Parameters...>(std::forward<Parameters>(params)...);
 		auto const result = deserializeMethod({ ser.data(), ser.usedBytes() });
 
 		EXPECT_EQ(inputTuple, result);
-		);
+		) << "Serialization/deserialization should not throw anything";
+
+	{
+		auto ser = serializeMethod(std::forward<Parameters>(params)...);
+		EXPECT_THROW(
+			ser << std::uint8_t(0u);
+		, std::invalid_argument) << "Trying to serialize past the buffer should throw";
+	}
+
+	{
+		std::array<std::uint8_t, PayloadSize - 1> const buf{ 0u };
+		EXPECT_THROW(
+			deserializeMethod({ buf.data(), buf.size() });
+		, la::avdecc::protocol::aemPayload::IncorrectPayloadSizeException) << "Trying to deserialize past the buffer should throw";
+	}
 }
 
 TEST(AemPayloads, AcquireEntityCommand)
@@ -150,4 +166,28 @@ TEST(AemPayloads, GetNameResponse)
 {
 	CHECK_PAYLOAD(GetNameResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(0u), la::avdecc::entity::model::ConfigurationIndex(0), la::avdecc::entity::model::AvdeccFixedString("Hi"));
 	CHECK_PAYLOAD(GetNameResponse, la::avdecc::entity::model::DescriptorType::JackInput, la::avdecc::entity::model::DescriptorIndex(0), std::uint16_t(19u), la::avdecc::entity::model::ConfigurationIndex(27), la::avdecc::entity::model::AvdeccFixedString("Hi"));
+}
+
+TEST(AemPayloads, SetSamplingRateCommand)
+{
+	CHECK_PAYLOAD(SetSamplingRateCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::getNullSamplingRate());
+	CHECK_PAYLOAD(SetSamplingRateCommand, la::avdecc::entity::model::DescriptorType::StreamInput, la::avdecc::entity::model::DescriptorIndex(5), la::avdecc::entity::model::SamplingRate(159));
+}
+
+TEST(AemPayloads, SetSamplingRateResponse)
+{
+	CHECK_PAYLOAD(SetSamplingRateResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::getNullSamplingRate());
+	CHECK_PAYLOAD(SetSamplingRateResponse, la::avdecc::entity::model::DescriptorType::StreamOutput, la::avdecc::entity::model::DescriptorIndex(50), la::avdecc::entity::model::SamplingRate(501369));
+}
+
+TEST(AemPayloads, GetSamplingRateCommand)
+{
+	CHECK_PAYLOAD(GetSamplingRateCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0));
+	CHECK_PAYLOAD(GetSamplingRateCommand, la::avdecc::entity::model::DescriptorType::StreamInput, la::avdecc::entity::model::DescriptorIndex(5));
+}
+
+TEST(AemPayloads, GetSamplingRateResponse)
+{
+	CHECK_PAYLOAD(GetSamplingRateResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::getNullSamplingRate());
+	CHECK_PAYLOAD(GetSamplingRateResponse, la::avdecc::entity::model::DescriptorType::StreamOutput, la::avdecc::entity::model::DescriptorIndex(50), la::avdecc::entity::model::SamplingRate(501369));
 }
