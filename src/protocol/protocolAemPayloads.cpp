@@ -758,6 +758,82 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return deserializeSetClockSourceCommand(payload);
 }
 
+/** START_STREAMING Command - Clause 7.4.35.1 */
+Serializer<AecpAemStartStreamingCommandPayloadSize> serializeStartStreamingCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	Serializer<AecpAemStartStreamingCommandPayloadSize> ser;
+
+	ser << descriptorType << descriptorIndex;
+
+	assert(ser.usedBytes() == ser.capacity() && "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeStartStreamingCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemStartStreamingCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+
+	des >> descriptorType >> descriptorIndex;
+
+	assert(des.usedBytes() == AecpAemStartStreamingCommandPayloadSize && "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(descriptorType, descriptorIndex);
+}
+
+/** START_STREAMING Response - Clause 7.4.35.1 */
+Serializer<AecpAemStartStreamingResponsePayloadSize> serializeStartStreamingResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	// Same as START_STREAMING Command
+	static_assert(AecpAemStartStreamingResponsePayloadSize == AecpAemStartStreamingCommandPayloadSize, "START_STREAMING Response no longer the same as START_STREAMING Command");
+	return serializeStartStreamingCommand(descriptorType, descriptorIndex);
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeStartStreamingResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as START_STREAMING Command
+	static_assert(AecpAemStartStreamingResponsePayloadSize == AecpAemStartStreamingCommandPayloadSize, "START_STREAMING Response no longer the same as START_STREAMING Command");
+	return deserializeStartStreamingCommand(payload);
+}
+
+/** STOP_STREAMING Command - Clause 7.4.36.1 */
+Serializer<AecpAemStopStreamingCommandPayloadSize> serializeStopStreamingCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	// Same as START_STREAMING Command
+	static_assert(AecpAemStopStreamingCommandPayloadSize == AecpAemStartStreamingCommandPayloadSize, "STOP_STREAMING Command no longer the same as START_STREAMING Command");
+	return serializeStartStreamingCommand(descriptorType, descriptorIndex);
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeStopStreamingCommand(AemAecpdu::Payload const& payload)
+{
+	// Same as START_STREAMING Command
+	static_assert(AecpAemStopStreamingCommandPayloadSize == AecpAemStartStreamingCommandPayloadSize, "STOP_STREAMING Command no longer the same as START_STREAMING Command");
+	return deserializeStartStreamingCommand(payload);
+}
+
+/** STOP_STREAMING Response - Clause 7.4.36.1 */
+Serializer<AecpAemStopStreamingResponsePayloadSize> serializeStopStreamingResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	// Same as START_STREAMING Command
+	static_assert(AecpAemStopStreamingResponsePayloadSize == AecpAemStartStreamingCommandPayloadSize, "STOP_STREAMING Response no longer the same as START_STREAMING Command");
+	return serializeStartStreamingCommand(descriptorType, descriptorIndex);
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeStopStreamingResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as START_STREAMING Command
+	static_assert(AecpAemStopStreamingResponsePayloadSize == AecpAemStartStreamingCommandPayloadSize, "STOP_STREAMING Response no longer the same as START_STREAMING Command");
+	return deserializeStartStreamingCommand(payload);
+}
 
 } // namespace aemPayload
 } // namespace protocol

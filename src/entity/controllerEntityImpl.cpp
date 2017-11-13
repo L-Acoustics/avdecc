@@ -701,19 +701,14 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 		// Start Streaming
 		{ protocol::AemCommandType::StartStreaming.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
-				auto const payloadInfo = aem.getPayload();
-				auto* const commandPayload = payloadInfo.first;
-				auto const commandPayloadLength = payloadInfo.second;
-
-				if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemStartStreamingResponsePayloadSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: START_STREAMING");
-
-				// Check payload
-				Deserializer des(commandPayload, commandPayloadLength);
-				model::DescriptorType descriptorType;
-				model::DescriptorIndex descriptorIndex;
-				des >> descriptorType >> descriptorIndex;
-				assert(des.usedBytes() == protocol::aemPayload::AecpAemStartStreamingResponsePayloadSize && "Used more bytes than specified in protocol constant");
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex] = protocol::aemPayload::deserializeStartStreamingResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeStartStreamingResponse(aem.getPayload());
+				entity::model::DescriptorType const descriptorType = std::get<0>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+#endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
@@ -741,19 +736,14 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 		// Stop Streaming
 		{ protocol::AemCommandType::StopStreaming.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
-				auto const payloadInfo = aem.getPayload();
-				auto* const commandPayload = payloadInfo.first;
-				auto const commandPayloadLength = payloadInfo.second;
-
-				if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemStopStreamingResponsePayloadSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: STOP_STREAMING");
-
-				// Check payload
-				Deserializer des(commandPayload, commandPayloadLength);
-				model::DescriptorType descriptorType;
-				model::DescriptorIndex descriptorIndex;
-				des >> descriptorType >> descriptorIndex;
-				assert(des.usedBytes() == protocol::aemPayload::AecpAemStopStreamingResponsePayloadSize && "Used more bytes than specified in protocol constant");
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex] = protocol::aemPayload::deserializeStopStreamingResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeStopStreamingResponse(aem.getPayload());
+				entity::model::DescriptorType const descriptorType = std::get<0>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+#endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
@@ -1759,11 +1749,9 @@ void ControllerEntityImpl::startStreamInput(UniqueIdentifier const targetEntityI
 {
 	try
 	{
-		Serializer<protocol::aemPayload::AecpAemStartStreamingCommandPayloadSize> ser;
-		ser << model::DescriptorType::StreamInput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-
+		auto const ser = protocol::aemPayload::serializeStartStreamingCommand(model::DescriptorType::StreamInput, streamIndex);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::StartStreaming, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1776,11 +1764,9 @@ void ControllerEntityImpl::startStreamOutput(UniqueIdentifier const targetEntity
 {
 	try
 	{
-		Serializer<protocol::aemPayload::AecpAemStartStreamingCommandPayloadSize> ser;
-		ser << model::DescriptorType::StreamOutput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-
+		auto const ser = protocol::aemPayload::serializeStartStreamingCommand(model::DescriptorType::StreamOutput, streamIndex);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::StartStreaming, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1793,11 +1779,9 @@ void ControllerEntityImpl::stopStreamInput(UniqueIdentifier const targetEntityID
 {
 	try
 	{
-		Serializer<protocol::aemPayload::AecpAemStopStreamingCommandPayloadSize> ser;
-		ser << model::DescriptorType::StreamInput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-
+		auto const ser = protocol::aemPayload::serializeStopStreamingCommand(model::DescriptorType::StreamInput, streamIndex);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::StopStreaming, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1810,11 +1794,9 @@ void ControllerEntityImpl::stopStreamOutput(UniqueIdentifier const targetEntityI
 {
 	try
 	{
-		Serializer<protocol::aemPayload::AecpAemStopStreamingCommandPayloadSize> ser;
-		ser << model::DescriptorType::StreamOutput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-
+		auto const ser = protocol::aemPayload::serializeStopStreamingCommand(model::DescriptorType::StreamOutput, streamIndex);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::StopStreaming, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)

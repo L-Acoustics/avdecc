@@ -215,3 +215,27 @@ TEST(AemPayloads, GetClockSourceResponse)
 	CHECK_PAYLOAD(GetClockSourceResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::ClockSourceIndex(0u));
 	CHECK_PAYLOAD(GetClockSourceResponse, la::avdecc::entity::model::DescriptorType::StreamOutput, la::avdecc::entity::model::DescriptorIndex(50), la::avdecc::entity::model::ClockSourceIndex(501369));
 }
+
+TEST(AemPayloads, StartStreamingCommand)
+{
+	CHECK_PAYLOAD(StartStreamingCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0));
+	CHECK_PAYLOAD(StartStreamingCommand, la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
+}
+
+TEST(AemPayloads, StartStreamingResponse)
+{
+	CHECK_PAYLOAD(StartStreamingResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0));
+	CHECK_PAYLOAD(StartStreamingResponse, la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
+}
+
+TEST(AemPayloads, StopStreamingCommand)
+{
+	CHECK_PAYLOAD(StopStreamingCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0));
+	CHECK_PAYLOAD(StopStreamingCommand, la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
+}
+
+TEST(AemPayloads, StopStreamingResponse)
+{
+	CHECK_PAYLOAD(StopStreamingResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0));
+	CHECK_PAYLOAD(StopStreamingResponse, la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
+}
