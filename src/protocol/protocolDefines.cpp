@@ -39,6 +39,20 @@ AdpMessageType const AdpMessageType::EntityDeparting{ 1 };
 AdpMessageType const AdpMessageType::EntityDiscover{ 2 };
 /* 3-15 reserved for future use */
 
+AdpMessageType::operator std::string() const noexcept
+{
+	static std::unordered_map<AdpMessageType::value_type, std::string> s_AdpMessageTypeMapping = {
+		{ AdpMessageType::EntityAvailable.getValue(), "ENTITY_AVAILABLE" },
+		{ AdpMessageType::EntityDeparting.getValue(), "ENTITY_DEPARTING" },
+		{ AdpMessageType::EntityDiscover.getValue(), "ENTITY_DISCOVER" },
+	};
+
+	auto const& it = s_AdpMessageTypeMapping.find(getValue());
+	if (it == s_AdpMessageTypeMapping.end())
+		return "INVALID_MESSAGE_TYPE";
+	return it->second;
+}
+
 /** AECP Message Type - Clause 9.2.1.1.5 */
 AecpMessageType const AecpMessageType::AemCommand{ 0 };
 AecpMessageType const AecpMessageType::AemResponse{ 1 };
@@ -53,6 +67,29 @@ AecpMessageType const AecpMessageType::HdcpAemResponse{ 9 };
 /* 10-13 reserved for future use */
 AecpMessageType const AecpMessageType::ExtendedCommand{ 14 };
 AecpMessageType const AecpMessageType::ExtendedResponse{ 15 };
+
+AecpMessageType::operator std::string() const noexcept
+{
+	static std::unordered_map<AecpMessageType::value_type, std::string> s_AecpMessageTypeMapping = {
+		{ AecpMessageType::AemCommand.getValue(), "AEM_COMMAND" },
+		{ AecpMessageType::AemResponse.getValue(), "AEM_RESPONSE" },
+		{ AecpMessageType::AddressAccessCommand.getValue(), "ADDRESS_ACCESS_COMMAND" },
+		{ AecpMessageType::AddressAccessResponse.getValue(), "ADDRESS_ACCESS_RESPONSE" },
+		{ AecpMessageType::AvcCommand.getValue(), "AVC_COMMAND" },
+		{ AecpMessageType::AvcResponse.getValue(), "AVC_RESPONSE" },
+		{ AecpMessageType::VendorUniqueCommand.getValue(), "VENDOR_UNIQUE_COMMAND" },
+		{ AecpMessageType::VendorUniqueResponse.getValue(), "VENDOR_UNIQUE_RESPONSE" },
+		{ AecpMessageType::HdcpAemCommand.getValue(), "HDCP_AEM_COMMAND" },
+		{ AecpMessageType::HdcpAemResponse.getValue(), "HDCP_AEM_RESPONSE" },
+		{ AecpMessageType::ExtendedCommand.getValue(), "EXTENDED_COMMAND" },
+		{ AecpMessageType::ExtendedResponse.getValue(), "EXTENDED_RESPONSE" },
+	};
+
+	auto const& it = s_AecpMessageTypeMapping.find(getValue());
+	if (it == s_AecpMessageTypeMapping.end())
+		return "INVALID_MESSAGE_TYPE";
+	return it->second;
+}
 
 /** AECP Status - Clause 9.2.1.1.6 */
 AecpStatus const AecpStatus::Success{ 0 };

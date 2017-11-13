@@ -960,7 +960,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 		// If this is an unsolicited notification, simply log we do not handle the message
 		if (aem.getUnsolicited())
 		{
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unsolicited AEM response ") + std::string(aem.getCommandType()) + " not handled (" + toHexString(aem.getCommandType().getValue())  + ")");
+			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unsolicited AEM response ") + std::string(aem.getCommandType()) + " not handled (" + toHexString(aem.getCommandType().getValue()) + ")");
 		}
 		// But if it's an expected response, this is an internal error since we sent a command and didn't implement the code to handle the response
 		else
@@ -1701,7 +1701,7 @@ void ControllerEntityImpl::setStreamInputName(UniqueIdentifier const targetEntit
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::StreamInput, streamIndex, 0, configurationIndex, streamInputName);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex);
-		
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1716,7 +1716,7 @@ void ControllerEntityImpl::getStreamInputName(UniqueIdentifier const targetEntit
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::StreamInput, streamIndex, 0, configurationIndex);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, s_emptyAvdeccFixedString);
-		
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1731,7 +1731,7 @@ void ControllerEntityImpl::setStreamOutputName(UniqueIdentifier const targetEnti
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::StreamOutput, streamIndex, 0, configurationIndex, streamOutputName);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex);
-		
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1746,7 +1746,7 @@ void ControllerEntityImpl::getStreamOutputName(UniqueIdentifier const targetEnti
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::StreamOutput, streamIndex, 0, configurationIndex);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, s_emptyAvdeccFixedString);
-		
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
