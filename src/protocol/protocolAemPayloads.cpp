@@ -140,6 +140,42 @@ std::tuple<AemLockEntityFlags, UniqueIdentifier, entity::model::DescriptorType, 
 }
 
 /** READ_DESCRIPTOR Command - Clause 7.4.5.1 */
+Serializer<AecpAemReadDescriptorCommandPayloadSize> serializeReadDescriptorCommand(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	Serializer<AecpAemReadDescriptorCommandPayloadSize> ser;
+	std::uint16_t const reserved{ 0u };
+
+	ser << configurationIndex << reserved;
+	ser << descriptorType << descriptorIndex;
+
+	assert(ser.usedBytes() == ser.capacity() && "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::ConfigurationIndex, entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeReadDescriptorCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemReadDescriptorCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::ConfigurationIndex configurationIndex{ 0u };
+	std::uint16_t reserved{ 0u };
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+
+	des >> configurationIndex >> reserved;
+	des >> descriptorType >> descriptorIndex;
+
+	assert(des.usedBytes() == AecpAemReadDescriptorCommandPayloadSize && "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(configurationIndex, descriptorType, descriptorIndex);
+}
+
 
 /** READ_DESCRIPTOR Response - Clause 7.4.5.2 */
 

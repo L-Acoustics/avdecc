@@ -1314,14 +1314,10 @@ void ControllerEntityImpl::readEntityDescriptor(UniqueIdentifier const targetEnt
 {
 	try
 	{
-		Serializer<protocol::aemPayload::AecpAemReadDescriptorCommandPayloadSize> ser;
-		ser << model::ConfigurationIndex{ 0x0000 }; // configuration_index
-		ser << std::uint16_t{ 0x0000 }; // reserved
-		ser << model::DescriptorType::Entity; // descriptor_type
-		ser << model::DescriptorIndex{ 0 }; // descriptor_index
-
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(0, model::DescriptorType::Entity, 0);
 		model::EntityDescriptor const emptyDescriptor{ { model::DescriptorType::Entity, model::DescriptorIndex{ 0 } } };
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1334,14 +1330,10 @@ void ControllerEntityImpl::readConfigurationDescriptor(UniqueIdentifier const ta
 {
 	try
 	{
-		Serializer<protocol::aemPayload::AecpAemReadDescriptorCommandPayloadSize> ser;
-		ser << model::ConfigurationIndex{ 0x0000 }; // configuration_index
-		ser << std::uint16_t{ 0x0000 }; // reserved
-		ser << model::DescriptorType::Configuration; // descriptor_type
-		ser << model::DescriptorIndex{ configurationIndex }; // descriptor_index
-
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(0, model::DescriptorType::Configuration, configurationIndex);
 		model::ConfigurationDescriptor const emptyDescriptor{ { model::DescriptorType::Configuration, configurationIndex } };
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1354,14 +1346,10 @@ void ControllerEntityImpl::readLocaleDescriptor(UniqueIdentifier const targetEnt
 {
 	try
 	{
-		Serializer<protocol::aemPayload::AecpAemReadDescriptorCommandPayloadSize> ser;
-		ser << model::ConfigurationIndex{ configurationIndex }; // configuration_index
-		ser << std::uint16_t{ 0x0000 }; // reserved
-		ser << model::DescriptorType::Locale; // descriptor_type
-		ser << model::DescriptorIndex{ localeIndex }; // descriptor_index
-
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::Locale, localeIndex);
 		model::LocaleDescriptor const emptyDescriptor{ { model::DescriptorType::Locale, localeIndex } };
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1374,14 +1362,10 @@ void ControllerEntityImpl::readStringsDescriptor(UniqueIdentifier const targetEn
 {
 	try
 	{
-		Serializer<protocol::aemPayload::AecpAemReadDescriptorCommandPayloadSize> ser;
-		ser << model::ConfigurationIndex{ configurationIndex }; // configuration_index
-		ser << std::uint16_t{ 0x0000 }; // reserved
-		ser << model::DescriptorType::Strings; // descriptor_type
-		ser << model::DescriptorIndex{ stringsIndex }; // descriptor_index
-
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::Strings, stringsIndex);
 		model::StringsDescriptor const emptyDescriptor{ { model::DescriptorType::Strings, stringsIndex } };
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1394,14 +1378,10 @@ void ControllerEntityImpl::readStreamInputDescriptor(UniqueIdentifier const targ
 {
 	try
 	{
-		Serializer<protocol::aemPayload::AecpAemReadDescriptorCommandPayloadSize> ser;
-		ser << model::ConfigurationIndex{ configurationIndex }; // configuration_index
-		ser << std::uint16_t{ 0x0000 }; // reserved
-		ser << model::DescriptorType::StreamInput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::StreamInput, streamIndex);
 		model::StreamDescriptor const emptyDescriptor{ model::DescriptorType::StreamInput, streamIndex };
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1414,14 +1394,10 @@ void ControllerEntityImpl::readStreamOutputDescriptor(UniqueIdentifier const tar
 {
 	try
 	{
-		Serializer<protocol::aemPayload::AecpAemReadDescriptorCommandPayloadSize> ser;
-		ser << model::ConfigurationIndex{ configurationIndex }; // configuration_index
-		ser << std::uint16_t{ 0x0000 }; // reserved
-		ser << model::DescriptorType::StreamOutput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::StreamOutput, streamIndex);
 		model::StreamDescriptor const emptyDescriptor{ model::DescriptorType::StreamOutput, streamIndex };
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)

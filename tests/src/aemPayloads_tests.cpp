@@ -239,3 +239,9 @@ TEST(AemPayloads, StopStreamingResponse)
 	CHECK_PAYLOAD(StopStreamingResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0));
 	CHECK_PAYLOAD(StopStreamingResponse, la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
 }
+
+TEST(AemPayloads, ReadDescriptorCommand)
+{
+	CHECK_PAYLOAD(ReadDescriptorCommand, la::avdecc::entity::model::ConfigurationIndex(0), la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0));
+	CHECK_PAYLOAD(ReadDescriptorCommand, la::avdecc::entity::model::ConfigurationIndex(123), la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
+}
