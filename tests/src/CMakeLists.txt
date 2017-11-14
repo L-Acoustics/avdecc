@@ -19,6 +19,7 @@ set(ADD_LINK_LIBRARIES gtest)
 set(TESTS_SOURCE
 	main.cpp
 	aemPayloads_tests.cpp
+	any_tests.cpp
 	avdeccFixedString_tests.cpp
 	controllerStateMachine_tests.cpp
 	protocolAvtpdu_tests.cpp

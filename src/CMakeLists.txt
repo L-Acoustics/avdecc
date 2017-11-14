@@ -40,6 +40,7 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/logger.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/networkInterfaceHelper.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/utils.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/any.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/controllerEntity.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/endian.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/endStation.hpp

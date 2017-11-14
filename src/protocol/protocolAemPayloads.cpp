@@ -176,7 +176,6 @@ std::tuple<entity::model::ConfigurationIndex, entity::model::DescriptorType, ent
 	return std::make_tuple(configurationIndex, descriptorType, descriptorIndex);
 }
 
-
 /** READ_DESCRIPTOR Response - Clause 7.4.5.2 */
 
 /** WRITE_DESCRIPTOR Command - Clause 7.4.6.1 */
