@@ -89,7 +89,7 @@ struct dynamic_vtable
 template<typename DecayedValueType>
 static vtable* get_vtable()
 {
-	using VTableType = typename dynamic_vtable<DecayedValueType>;
+	using VTableType = dynamic_vtable<DecayedValueType>;
 	static vtable s_table = {
 		VTableType::destroy,
 		VTableType::copy, VTableType::move,
@@ -134,7 +134,7 @@ public:
 		}
 	}
 
-	template <typename ValueType, typename DecayedValueType = ::std::decay<ValueType>::type, typename = ::std::enable_if<!::std::is_same<typename DecayedValueType, any>::value>>
+	template <typename ValueType, typename DecayedValueType = typename ::std::decay<ValueType>::type, typename = typename ::std::enable_if<!::std::is_same<DecayedValueType, any>::value>>
 	constexpr any(ValueType&& value)
 	{
 		static_assert(details::is_copy_constructible<DecayedValueType>::value, "ValueType not CopyConstructible");
@@ -159,7 +159,7 @@ public:
 		return *this;
 	}
 
-	template <typename ValueType, typename DecayedValueType = ::std::decay<ValueType>::type, typename = ::std::enable_if<!::std::is_same<typename DecayedValueType, any>::value>>
+	template <typename ValueType, typename DecayedValueType = typename ::std::decay<ValueType>::type, typename = typename ::std::enable_if<!::std::is_same<DecayedValueType, any>::value>>
 	constexpr any& operator=(ValueType&& value)
 	{
 		static_assert(details::is_copy_constructible<DecayedValueType>::value, "ValueType not CopyConstructible");
@@ -294,7 +294,7 @@ constexpr ValueType* any_cast(any* value) noexcept
 }
 
 template <typename ValueType>
-constexpr any make_any(ValueType&& value)
+inline any make_any(ValueType&& value)
 {
 	return any(std::move(value));
 }
