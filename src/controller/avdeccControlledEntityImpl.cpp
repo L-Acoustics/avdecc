@@ -199,9 +199,29 @@ void ControlledEntityImpl::setConfigurationDescriptor(entity::model::Configurati
 	_completedQueries.set(static_cast<std::size_t>(EntityQuery::ConfigurationDescriptor));
 }
 
-bool ControlledEntityImpl::addLocaleDescriptor(entity::model::LocaleDescriptor const& descriptor) noexcept
+void ControlledEntityImpl::addInputStreamDescriptor(entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept
 {
-	_localeDescriptors[descriptor.common.descriptorIndex] = descriptor;
+	_inputStreams[streamIndex] = descriptor;
+	// Check if we have all input stream descriptors
+	if (_configurationDescriptor.descriptorCounts[entity::model::DescriptorType::StreamInput] == _inputStreams.size())
+	{
+		_completedQueries.set(static_cast<std::size_t>(EntityQuery::InputStreamDescriptor));
+	}
+}
+
+void ControlledEntityImpl::addOutputStreamDescriptor(entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept
+{
+	_outputStreams[streamIndex] = descriptor;
+	// Check if we have all output stream descriptors
+	if (_configurationDescriptor.descriptorCounts[entity::model::DescriptorType::StreamOutput] == _outputStreams.size())
+	{
+		_completedQueries.set(static_cast<std::size_t>(EntityQuery::OutputStreamDescriptor));
+	}
+}
+
+bool ControlledEntityImpl::addLocaleDescriptor(entity::model::LocaleIndex const localeIndex, entity::model::LocaleDescriptor const& descriptor) noexcept
+{
+	_localeDescriptors[localeIndex] = descriptor;
 	// Check if we have all locale descriptors
 	if (_configurationDescriptor.descriptorCounts[entity::model::DescriptorType::Locale] == _localeDescriptors.size())
 	{
@@ -211,11 +231,11 @@ bool ControlledEntityImpl::addLocaleDescriptor(entity::model::LocaleDescriptor c
 	return false;
 }
 
-void ControlledEntityImpl::addStringsDescriptor(entity::model::StringsDescriptor const& descriptor, entity::model::StringsIndex const baseStringDescriptorIndex) noexcept
+void ControlledEntityImpl::addStringsDescriptor(entity::model::StringsIndex const stringsIndex, entity::model::StringsDescriptor const& descriptor, entity::model::StringsIndex const baseStringDescriptorIndex) noexcept
 {
 	for (auto strIndex = 0u; strIndex < descriptor.strings.size(); ++strIndex)
 	{
-		auto localizedStringIndex = entity::model::StringsIndex((descriptor.common.descriptorIndex - baseStringDescriptorIndex) * descriptor.strings.size() + strIndex);
+		auto localizedStringIndex = entity::model::StringsIndex((stringsIndex - baseStringDescriptorIndex) * descriptor.strings.size() + strIndex);
 		_localizedStrings[localizedStringIndex] = descriptor.strings.at(strIndex);
 	}
 	// Check if we have all strings descriptors
@@ -225,26 +245,6 @@ void ControlledEntityImpl::addStringsDescriptor(entity::model::StringsDescriptor
 	if (_localizedStrings.size() == (it->second.numberOfStringDescriptors * 7u))
 	{
 		_completedQueries.set(static_cast<std::size_t>(EntityQuery::StringsDescriptor));
-	}
-}
-
-void ControlledEntityImpl::addInputStreamDescriptor(entity::model::StreamDescriptor const& descriptor) noexcept
-{
-	_inputStreams[descriptor.common.descriptorIndex] = descriptor;
-	// Check if we have all input stream descriptors
-	if (_configurationDescriptor.descriptorCounts[entity::model::DescriptorType::StreamInput] == _inputStreams.size())
-	{
-		_completedQueries.set(static_cast<std::size_t>(EntityQuery::InputStreamDescriptor));
-	}
-}
-
-void ControlledEntityImpl::addOutputStreamDescriptor(entity::model::StreamDescriptor const& descriptor) noexcept
-{
-	_outputStreams[descriptor.common.descriptorIndex] = descriptor;
-	// Check if we have all output stream descriptors
-	if (_configurationDescriptor.descriptorCounts[entity::model::DescriptorType::StreamOutput] == _outputStreams.size())
-	{
-		_completedQueries.set(static_cast<std::size_t>(EntityQuery::OutputStreamDescriptor));
 	}
 }
 

@@ -29,6 +29,11 @@
 #include "la/avdecc/internals/entityModel.hpp"
 #include <cstdint>
 #include <tuple>
+#if __cpp_lib_any
+#include <any>
+#else // !__cpp_lib_any
+#include <la/avdecc/internals/any.hpp>
+#endif // __cpp_lib_any
 
 namespace la
 {
@@ -81,6 +86,13 @@ Serializer<AecpAemReadDescriptorCommandPayloadSize> serializeReadDescriptorComma
 std::tuple<entity::model::ConfigurationIndex, entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeReadDescriptorCommand(AemAecpdu::Payload const& payload);
 
 /** READ_DESCRIPTOR Response - Clause 7.4.5.2 */
+//Serializer<AemAecpdu::MaximumPayloadLength> serializeReadDescriptorResponse(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex);
+std::tuple<size_t, entity::model::ConfigurationIndex, entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeReadDescriptorCommonResponse(AemAecpdu::Payload const& payload);
+entity::model::EntityDescriptor deserializeReadEntityDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status);
+entity::model::ConfigurationDescriptor deserializeReadConfigurationDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status);
+entity::model::StreamDescriptor deserializeReadStreamDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status);
+entity::model::LocaleDescriptor deserializeReadLocaleDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status);
+entity::model::StringsDescriptor deserializeReadStringsDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status);
 
 /** WRITE_DESCRIPTOR Command - Clause 7.4.6.1 */
 

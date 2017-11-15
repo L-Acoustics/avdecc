@@ -113,11 +113,11 @@ private:
 	void updateAcquiredState(ControlledEntityImpl& entity, UniqueIdentifier const owningEntity, bool const undefined = false) const noexcept; // TBD: We should later have a descriptor and index passed too, so we now which part of the EM graph has been acquired/released
 	/* Enumeration and Control Protocol (AECP) handlers */
 	void onEntityDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::EntityDescriptor const& descriptor) noexcept;
-	void onConfigurationDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationDescriptor const& descriptor) noexcept;
-	void onLocaleDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::LocaleDescriptor const& descriptor) noexcept;
-	void onStringsDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StringsDescriptor const& descriptor, entity::model::StringsIndex const baseStringDescriptorIndex) noexcept;
-	void onStreamInputDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamDescriptor const& descriptor) noexcept;
-	void onStreamOutputDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamDescriptor const& descriptor) noexcept;
+	void onConfigurationDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ConfigurationDescriptor const& descriptor) noexcept;
+	void onStreamInputDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept;
+	void onStreamOutputDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept;
+	void onLocaleDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::LocaleIndex const localeIndex, entity::model::LocaleDescriptor const& descriptor) noexcept;
+	void onStringsDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::LocaleIndex const localeIndex, entity::model::StringsDescriptor const& descriptor, entity::model::StringsIndex const baseStringDescriptorIndex) noexcept;
 	void onGetStreamInputAudioMapResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings) noexcept;
 	void onGetStreamOutputAudioMapResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings) noexcept;
 	/* Connection Management Protocol (ACMP) handlers */
@@ -358,7 +358,7 @@ void ControllerImpl::onEntityDescriptorResult(entity::ControllerEntity const* co
 		if (!!status)
 		{
 			controlledEntity->setEntityDescriptor(descriptor);
-			controller->readConfigurationDescriptor(entityID, descriptor.currentConfiguration, std::bind(&ControllerImpl::onConfigurationDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+			controller->readConfigurationDescriptor(entityID, descriptor.currentConfiguration, std::bind(&ControllerImpl::onConfigurationDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
 		}
 		else
 		{
@@ -367,7 +367,7 @@ void ControllerImpl::onEntityDescriptorResult(entity::ControllerEntity const* co
 	}
 }
 
-void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationDescriptor const& descriptor) noexcept
+void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::ConfigurationDescriptor const& descriptor) noexcept
 {
 	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onConfigurationDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + ")");
 
@@ -389,7 +389,7 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 					auto count = countIt->second;
 					for (auto index = entity::model::LocaleIndex(0); index < count; ++index)
 					{
-						controller->readLocaleDescriptor(entityID, entityDescriptor.currentConfiguration, index, std::bind(&ControllerImpl::onLocaleDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+						controller->readLocaleDescriptor(entityID, entityDescriptor.currentConfiguration, index, std::bind(&ControllerImpl::onLocaleDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 					}
 				}
 				else
@@ -407,7 +407,7 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 					for (auto index = entity::model::StreamIndex(0); index < count; ++index)
 					{
 						controller->getListenerStreamState(entityID, index, std::bind(&ControllerImpl::onGetListenerStreamStateResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7, std::placeholders::_8));
-						controller->readStreamInputDescriptor(entityID, entityDescriptor.currentConfiguration, index, std::bind(&ControllerImpl::onStreamInputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+						controller->readStreamInputDescriptor(entityID, entityDescriptor.currentConfiguration, index, std::bind(&ControllerImpl::onStreamInputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 						controller->getStreamInputAudioMap(entityID, index, 0, std::bind(&ControllerImpl::onGetStreamInputAudioMapResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7));
 					}
 				}
@@ -426,7 +426,7 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 					auto count = countIt->second;
 					for (auto index = entity::model::StreamIndex(0); index < count; ++index)
 					{
-						controller->readStreamOutputDescriptor(entityID, entityDescriptor.currentConfiguration, index, std::bind(&ControllerImpl::onStreamOutputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+						controller->readStreamOutputDescriptor(entityID, entityDescriptor.currentConfiguration, index, std::bind(&ControllerImpl::onStreamOutputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 						controller->getStreamOutputAudioMap(entityID, index, 0, std::bind(&ControllerImpl::onGetStreamOutputAudioMapResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7));
 					}
 				}
@@ -444,7 +444,51 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 	}
 }
 
-void ControllerImpl::onLocaleDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::LocaleDescriptor const& descriptor) noexcept
+void ControllerImpl::onStreamInputDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept
+{
+	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStreamInputDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + ")");
+
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+	auto entityIt = _controlledEntities.find(entityID);
+	if (entityIt != _controlledEntities.end())
+	{
+		auto& controlledEntity = entityIt->second;
+		if (!!status)
+		{
+			controlledEntity->addInputStreamDescriptor(streamIndex, descriptor);
+		}
+		else
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, controlledEntity.get(), QueryCommandError::StreamInputDescriptor);
+		}
+		checkAdvertiseEntity(controlledEntity.get());
+	}
+}
+
+void ControllerImpl::onStreamOutputDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept
+{
+	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStreamOutputDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + ")");
+
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+	auto entityIt = _controlledEntities.find(entityID);
+	if (entityIt != _controlledEntities.end())
+	{
+		auto& controlledEntity = entityIt->second;
+		if (!!status)
+		{
+			controlledEntity->addOutputStreamDescriptor(streamIndex, descriptor);
+		}
+		else
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, controlledEntity.get(), QueryCommandError::StreamOutputDescriptor);
+		}
+		checkAdvertiseEntity(controlledEntity.get());
+	}
+}
+
+void ControllerImpl::onLocaleDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::LocaleIndex const localeIndex, entity::model::LocaleDescriptor const& descriptor) noexcept
 {
 	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onLocaleDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + ")");
 
@@ -456,7 +500,7 @@ void ControllerImpl::onLocaleDescriptorResult(entity::ControllerEntity const* co
 		auto& controlledEntity = entityIt->second;
 		if (!!status)
 		{
-			bool const allLocaleLoaded = controlledEntity->addLocaleDescriptor(descriptor);
+			bool const allLocaleLoaded = controlledEntity->addLocaleDescriptor(localeIndex, descriptor);
 			if (allLocaleLoaded)
 			{
 				entity::model::LocaleDescriptor const* localeDescriptor{ nullptr };
@@ -473,7 +517,7 @@ void ControllerImpl::onLocaleDescriptorResult(entity::ControllerEntity const* co
 						auto const& entityDescriptor = controlledEntity->getEntityDescriptor();
 						for (auto index = entity::model::StringsIndex(0); index < localeDescriptor->numberOfStringDescriptors; ++index)
 						{
-							controller->readStringsDescriptor(entityID, entityDescriptor.currentConfiguration, localeDescriptor->baseStringDescriptorIndex + index, std::bind(&ControllerImpl::onStringsDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, localeDescriptor->baseStringDescriptorIndex));
+							controller->readStringsDescriptor(entityID, entityDescriptor.currentConfiguration, localeDescriptor->baseStringDescriptorIndex + index, std::bind(&ControllerImpl::onStringsDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, localeDescriptor->baseStringDescriptorIndex));
 						}
 					}
 				}
@@ -496,7 +540,7 @@ void ControllerImpl::onLocaleDescriptorResult(entity::ControllerEntity const* co
 	}
 }
 
-void ControllerImpl::onStringsDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StringsDescriptor const& descriptor, entity::model::StringsIndex const baseStringDescriptorIndex) noexcept
+void ControllerImpl::onStringsDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::StringsIndex const stringsIndex, entity::model::StringsDescriptor const& descriptor, entity::model::StringsIndex const baseStringDescriptorIndex) noexcept
 {
 	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStringsDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + "," + std::to_string(baseStringDescriptorIndex) + ")");
 
@@ -510,55 +554,11 @@ void ControllerImpl::onStringsDescriptorResult(entity::ControllerEntity const* c
 		{
 			// Only process strings descriptor if locale descriptor is complete (can be incomplete in case an entity went offline then online again, in the middle of a strings enumeration)
 			if (controlledEntity->isQueryComplete(ControlledEntity::EntityQuery::LocaleDescriptor))
-				controlledEntity->addStringsDescriptor(descriptor, baseStringDescriptorIndex);
+				controlledEntity->addStringsDescriptor(stringsIndex, descriptor, baseStringDescriptorIndex);
 		}
 		else
 		{
 			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, controlledEntity.get(), QueryCommandError::StringsDescriptor);
-		}
-		checkAdvertiseEntity(controlledEntity.get());
-	}
-}
-
-void ControllerImpl::onStreamInputDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamDescriptor const& descriptor) noexcept
-{
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStreamInputDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + ")");
-
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
-
-	auto entityIt = _controlledEntities.find(entityID);
-	if (entityIt != _controlledEntities.end())
-	{
-		auto& controlledEntity = entityIt->second;
-		if (!!status)
-		{
-			controlledEntity->addInputStreamDescriptor(descriptor);
-		}
-		else
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, controlledEntity.get(), QueryCommandError::StreamInputDescriptor);
-		}
-		checkAdvertiseEntity(controlledEntity.get());
-	}
-}
-
-void ControllerImpl::onStreamOutputDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamDescriptor const& descriptor) noexcept
-{
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStreamOutputDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + ")");
-
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
-
-	auto entityIt = _controlledEntities.find(entityID);
-	if (entityIt != _controlledEntities.end())
-	{
-		auto& controlledEntity = entityIt->second;
-		if (!!status)
-		{
-			controlledEntity->addOutputStreamDescriptor(descriptor);
-		}
-		else
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, controlledEntity.get(), QueryCommandError::StreamOutputDescriptor);
 		}
 		checkAdvertiseEntity(controlledEntity.get());
 	}

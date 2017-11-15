@@ -258,11 +258,16 @@ public:
 		return _pos;
 	}
 
-	void setUsedBytes(const size_t usedBytes)
+	void setPosition(const size_t position)
 	{
-		if (usedBytes > _size)
-			throw std::invalid_argument("Trying to setUsedBytes more bytes than available");
-		_pos = usedBytes;
+		if (position > _size)
+			throw std::invalid_argument("Trying to setPosition more bytes than available");
+		_pos = position;
+	}
+
+	void const* currentData() const noexcept
+	{
+		return static_cast<std::uint8_t const*>(_ptr) + _pos;
 	}
 
 private:

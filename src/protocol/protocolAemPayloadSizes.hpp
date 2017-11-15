@@ -56,12 +56,11 @@ constexpr size_t AecpAemReadDescriptorCommandPayloadSize = 8u;
 
 /** READ_DESCRIPTOR Response - Clause 7.4.5.2 */
 constexpr size_t AecpAemReadCommonDescriptorResponsePayloadSize = 8u;
-constexpr size_t AecpAemReadDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize;
 constexpr size_t AecpAemReadEntityDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 308u;
 constexpr size_t AecpAemReadConfigurationDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 70u;
+constexpr size_t AecpAemReadStreamDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 128u;
 constexpr size_t AecpAemReadLocaleDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 68u;
 constexpr size_t AecpAemReadStringsDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 448u;
-constexpr size_t AecpAemReadStreamDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 128u;
 
 /** SET_CONFIGURATION Command and Response - Clause 7.4.7.1 */
 constexpr size_t AecpAemSetConfigurationCommandPayloadSize = 4u;

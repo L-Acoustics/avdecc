@@ -73,10 +73,10 @@ public:
 	void setOwningController(UniqueIdentifier const controllerID) noexcept;
 	void setEntityDescriptor(entity::model::EntityDescriptor const& descriptor) noexcept;
 	void setConfigurationDescriptor(entity::model::ConfigurationDescriptor const& descriptor) noexcept;
-	bool addLocaleDescriptor(entity::model::LocaleDescriptor const& descriptor) noexcept; /* True if all locale descriptors loaded */
-	void addStringsDescriptor(entity::model::StringsDescriptor const& descriptor, entity::model::StringsIndex const baseStringDescriptorIndex) noexcept;
-	void addInputStreamDescriptor(entity::model::StreamDescriptor const& descriptor) noexcept;
-	void addOutputStreamDescriptor(entity::model::StreamDescriptor const& descriptor) noexcept;
+	void addInputStreamDescriptor(entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept;
+	void addOutputStreamDescriptor(entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept;
+	bool addLocaleDescriptor(entity::model::LocaleIndex const localeIndex, entity::model::LocaleDescriptor const& descriptor) noexcept; /* True if all locale descriptors loaded */
+	void addStringsDescriptor(entity::model::StringsIndex const stringsIndex, entity::model::StringsDescriptor const& descriptor, entity::model::StringsIndex const baseStringDescriptorIndex) noexcept;
 	bool setInputStreamState(entity::model::StreamIndex const inputStreamIndex, entity::model::StreamConnectedState const& state) noexcept; /* True if state changed */
 	bool setInputStreamFormat(entity::model::StreamIndex const inputStreamIndex, entity::model::StreamFormat const streamFormat); /* True if format changed */
 	bool setOutputStreamFormat(entity::model::StreamIndex const outputStreamIndex, entity::model::StreamFormat const streamFormat); /* True if format changed */

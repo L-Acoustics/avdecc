@@ -115,17 +115,10 @@ constexpr bool operator==(DescriptorType const lhs, std::underlying_type_t<Descr
 	return static_cast<std::underlying_type_t<DescriptorType>>(lhs) == rhs;
 }
 
-struct CommonDescriptor
-{
-	DescriptorType descriptorType;
-	DescriptorIndex descriptorIndex{ 0u };
-};
-
 /** ENTITY Descriptor - Clause 7.2.1 */
 
 struct EntityDescriptor
 {
-	CommonDescriptor common{ DescriptorType::Entity };
 	UniqueIdentifier entityID{ getNullIdentifier() };
 	VendorEntityModel vendorEntityModelID{ getNullVendorEntityModel() };
 	EntityCapabilities entityCapabilities{ EntityCapabilities::None };
@@ -149,7 +142,6 @@ struct EntityDescriptor
 /** CONFIGURATION Descriptor - Clause 7.2.2 */
 struct ConfigurationDescriptor
 {
-	CommonDescriptor common{ DescriptorType::Configuration };
 	AvdeccFixedString objectName{};
 	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
 	std::uint16_t descriptorCountsCount{ 0u };
@@ -157,28 +149,9 @@ struct ConfigurationDescriptor
 	std::unordered_map<DescriptorType, std::uint16_t, la::avdecc::EnumClassHash> descriptorCounts{};
 };
 
-/** LOCALE Descriptor - Clause 7.2.11 */
-
-struct LocaleDescriptor
-{
-	CommonDescriptor common{ DescriptorType::Locale };
-	AvdeccFixedString localeID{};
-	std::uint16_t numberOfStringDescriptors{ 0u };
-	StringsIndex baseStringDescriptorIndex{ StringsIndex(0u) };
-};
-
-/** STRINGS Descriptor - Clause 7.2.12 */
-
-struct StringsDescriptor
-{
-	CommonDescriptor common{ DescriptorType::Strings };
-	std::array<AvdeccFixedString, 7> strings{};
-};
-
 /** STREAM_INPUT and STREAM_OUTPUT Descriptor - Clause 7.2.6 */
 struct StreamDescriptor
 {
-	CommonDescriptor common{};
 	AvdeccFixedString objectName{};
 	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
 	std::uint16_t clockDomainIndex{ 0u };
@@ -197,14 +170,21 @@ struct StreamDescriptor
 	std::uint16_t avbInterfaceIndex{ 0u };
 	std::uint32_t bufferLength{ 0u };
 	std::vector<StreamFormat> formats{};
+};
 
-	// Constructors
-	StreamDescriptor() noexcept {} /* = default; */ // Cannot '= default' due to clang4.0 bug
-	StreamDescriptor(DescriptorType const type, DescriptorIndex const descriptorIndex = 0u) noexcept
-	{
-		common.descriptorType = type;
-		common.descriptorIndex = descriptorIndex;
-	}
+/** LOCALE Descriptor - Clause 7.2.11 */
+struct LocaleDescriptor
+{
+	AvdeccFixedString localeID{};
+	std::uint16_t numberOfStringDescriptors{ 0u };
+	StringsIndex baseStringDescriptorIndex{ StringsIndex(0u) };
+};
+
+/** STRINGS Descriptor - Clause 7.2.12 */
+
+struct StringsDescriptor
+{
+	std::array<AvdeccFixedString, 7> strings{};
 };
 
 struct StreamConnectedState
