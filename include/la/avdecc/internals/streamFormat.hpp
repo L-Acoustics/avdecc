@@ -91,7 +91,7 @@ public:
 	* @param[in] streamFormat The stream format to parse.
 	* @return A new StreamFormatInfo as a StreamFormatInfo::UniquePointer.
 	*/
-	static UniquePointer create(StreamFormat const& streamFormat)
+	static UniquePointer create(StreamFormat const& streamFormat) noexcept
 	{
 		auto deleter = [](StreamFormatInfo* sampleClass)
 		{
