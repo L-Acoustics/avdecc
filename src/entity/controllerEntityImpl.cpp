@@ -250,26 +250,26 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				auto const result = protocol::aemPayload::deserializeAcquireEntityResponse(aem.getPayload());
 				protocol::AemAcquireEntityFlags const flags = std::get<0>(result);
 				UniqueIdentifier const ownerID = std::get<1>(result);
-				//entity::model::DescriptorType const descriptorType = std::get<2>(result);
-				//entity::model::DescriptorIndex const descriptorIndex = std::get<3>(result);
+				entity::model::DescriptorType const descriptorType = std::get<2>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<3>(result);
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
 				if ((flags & protocol::AemAcquireEntityFlags::Release) == protocol::AemAcquireEntityFlags::Release)
 				{
-					answerCallback.invoke<ReleaseEntityHandler>(controller, targetID, status, ownerID);
+					answerCallback.invoke<ReleaseEntityHandler>(controller, targetID, status, ownerID, descriptorType, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityReleased, delegate, targetID, ownerID);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityReleased, delegate, targetID, ownerID, descriptorType, descriptorIndex);
 					}
 				}
 				else
 				{
-					answerCallback.invoke<AcquireEntityHandler>(controller, targetID, status, ownerID);
+					answerCallback.invoke<AcquireEntityHandler>(controller, targetID, status, ownerID, descriptorType, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityAcquired, delegate, targetID, ownerID);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityAcquired, delegate, targetID, ownerID, descriptorType, descriptorIndex);
 					}
 				}
 			}
@@ -1127,12 +1127,12 @@ void ControllerEntityImpl::processAcmpResponse(protocol::Acmpdu const* const res
 
 /* Enumeration and Control Protocol (AECP) */
 #pragma message("TBD: Change the API to allow partial EM acquire")
-void ControllerEntityImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, AcquireEntityHandler const& handler) const noexcept
+void ControllerEntityImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, AcquireEntityHandler const& handler) const noexcept
 {
 	try
 	{
-		auto const ser = protocol::aemPayload::serializeAcquireEntityCommand(isPersistent ? protocol::AemAcquireEntityFlags::Persistent : protocol::AemAcquireEntityFlags::None, getNullIdentifier(), model::DescriptorType::Entity, 0);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier());
+		auto const ser = protocol::aemPayload::serializeAcquireEntityCommand(isPersistent ? protocol::AemAcquireEntityFlags::Persistent : protocol::AemAcquireEntityFlags::None, getNullIdentifier(), descriptorType, descriptorIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier(), descriptorType, descriptorIndex);
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1143,12 +1143,12 @@ void ControllerEntityImpl::acquireEntity(UniqueIdentifier const targetEntityID, 
 }
 
 #pragma message("TBD: Change the API to allow partial EM acquire")
-void ControllerEntityImpl::releaseEntity(UniqueIdentifier const targetEntityID, ReleaseEntityHandler const& handler) const noexcept
+void ControllerEntityImpl::releaseEntity(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, ReleaseEntityHandler const& handler) const noexcept
 {
 	try
 	{
-		auto const ser = protocol::aemPayload::serializeAcquireEntityCommand(protocol::AemAcquireEntityFlags::Release, getNullIdentifier(), model::DescriptorType::Entity, 0);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier());
+		auto const ser = protocol::aemPayload::serializeAcquireEntityCommand(protocol::AemAcquireEntityFlags::Release, getNullIdentifier(), descriptorType, descriptorIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier(), descriptorType, descriptorIndex);
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
