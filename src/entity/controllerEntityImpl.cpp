@@ -593,9 +593,96 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 			}
 		},
 		// Get Name
-		{ protocol::AemCommandType::GetName.getValue(), [](ControllerEntityImpl const* const /*controller*/, AemCommandStatus const /*status*/, protocol::AemAecpdu const& /*aem*/, AnswerCallback const& /*answerCallback*/)
+		{ protocol::AemCommandType::GetName.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
-				assert(false && "todo");
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex, nameIndex, configurationIndex, name] = protocol::aemPayload::deserializeGetNameResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeGetNameResponse(aem.getPayload());
+				model::DescriptorType const descriptorType = std::get<0>(result);
+				model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				std::uint16_t const nameIndex = std::get<2>(result);
+				model::ConfigurationIndex const configurationIndex = std::get<3>(result);
+				model::AvdeccFixedString const name = std::get<4>(result);
+#endif // __cpp_structured_bindings
+
+				auto const targetID = aem.getTargetEntityID();
+
+				// Notify handlers
+				switch (descriptorType)
+				{
+					case model::DescriptorType::Entity:
+					{
+						if (descriptorIndex != 0)
+						{
+							Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Invalid descriptorIndex in GET_NAME response for Entity Descriptor: ") + std::to_string(descriptorIndex));
+						}
+						if (configurationIndex != 0)
+						{
+							Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Invalid configurationIndex in GET_NAME response for Entity Descriptor: ") + std::to_string(configurationIndex));
+						}
+						switch (nameIndex)
+						{
+							case 0: // entity_name
+								answerCallback.invoke<GetEntityNameHandler>(controller, targetID, status, name);
+								break;
+							case 1: // group_name
+								answerCallback.invoke<GetEntityGroupNameHandler>(controller, targetID, status, name);
+								break;
+							default:
+								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in GET_NAME response for Entity Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::Configuration:
+					{
+						if (configurationIndex != 0)
+						{
+							Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Invalid configurationIndex in GET_NAME response for Configuration Descriptor: ") + std::to_string(configurationIndex));
+						}
+						switch (nameIndex)
+						{
+							case 0: // configuration_name
+								answerCallback.invoke<GetConfigurationNameHandler>(controller, targetID, status, descriptorIndex, name);
+								break;
+							default:
+								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in GET_NAME response for Configuration Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::StreamInput:
+					{
+						switch (nameIndex)
+						{
+							case 0: // stream_name
+								answerCallback.invoke<GetStreamInputNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex, name);
+								break;
+							default:
+								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in GET_NAME response for StreamInput Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::StreamOutput:
+					{
+						switch (nameIndex)
+						{
+							case 0: // stream_name
+								answerCallback.invoke<GetStreamOutputNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex, name);
+								break;
+							default:
+								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in GET_NAME response for StreamOutput Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+								break;
+						}
+						break;
+					}
+					default:
+						Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled descriptorType in GET_NAME response: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+						break;
+				}
 			}
 		},
 		// Start Streaming
