@@ -164,12 +164,26 @@ entity::model::AudioMappings const& ControlledEntityImpl::getStreamOutputAudioMa
 
 entity::model::EntityDescriptor& ControlledEntityImpl::getEntityDescriptor()
 {
+	// Implemented over getEntityDescriptor() const overload
 	return const_cast<entity::model::EntityDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getEntityDescriptor());
 }
 
 entity::model::ConfigurationDescriptor& ControlledEntityImpl::getConfigurationDescriptor()
 {
+	// Implemented over getConfigurationDescriptor() const overload
 	return const_cast<entity::model::ConfigurationDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getConfigurationDescriptor());
+}
+
+entity::model::StreamDescriptor& ControlledEntityImpl::getStreamInputDescriptor(entity::model::StreamIndex const streamIndex)
+{
+	// Implemented over getStreamInputDescriptor() const overload
+	return const_cast<entity::model::StreamDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getStreamInputDescriptor(streamIndex));
+}
+
+entity::model::StreamDescriptor& ControlledEntityImpl::getStreamOutputDescriptor(entity::model::StreamIndex const streamIndex)
+{
+	// Implemented over getStreamOutputDescriptor() const overload
+	return const_cast<entity::model::StreamDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getStreamOutputDescriptor(streamIndex));
 }
 
 void ControlledEntityImpl::updateEntity(entity::Entity const& entity) noexcept

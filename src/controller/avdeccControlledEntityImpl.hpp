@@ -66,6 +66,8 @@ public:
 	// Non-const getters
 	entity::model::EntityDescriptor& getEntityDescriptor(); // Throws Exception::NotSupported if EM not supported by the Entity
 	entity::model::ConfigurationDescriptor& getConfigurationDescriptor(); // Throws Exception::NotSupported if EM not supported by the Entity
+	entity::model::StreamDescriptor& getStreamInputDescriptor(entity::model::StreamIndex const streamIndex); // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidStreamIndex if streamIndex do not exist
+	entity::model::StreamDescriptor& getStreamOutputDescriptor(entity::model::StreamIndex const streamIndex); // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidStreamIndex if streamIndex do not exist
 
 	// Setters (of the model, not the physical entity)
 	void updateEntity(entity::Entity const& entity) noexcept;

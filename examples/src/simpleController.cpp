@@ -115,7 +115,7 @@ int doJob()
 				outputText("Uncaught exception in onEntityAvailableResult");
 			}
 		}
-		void onEntityAcquireResult(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const /*owningEntity*/) noexcept
+		void onEntityAcquireResult(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const /*owningEntity*/, la::avdecc::entity::model::DescriptorType const /*descriptorType*/, la::avdecc::entity::model::DescriptorIndex const /*descriptorIndex*/) noexcept
 		{
 			try
 			{
@@ -162,14 +162,14 @@ int doJob()
 				if (descriptor.entityName == std::string("macMini AVB Talker"))
 				{
 					_talker = entityID;
-					controller->acquireEntity(entityID, false, std::bind(&ControllerDelegate::onEntityAcquireResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+					controller->acquireEntity(entityID, false, la::avdecc::entity::model::DescriptorType::Entity, 0u, std::bind(&ControllerDelegate::onEntityAcquireResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 					_talkerConfiguration = descriptor.currentConfiguration;
 					controller->readConfigurationDescriptor(entityID, _talkerConfiguration, std::bind(&ControllerDelegate::onConfigurationDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
 				}
 				if (descriptor.entityName == std::string("LA12X"))
 				{
 					_listener = entityID;
-					controller->acquireEntity(entityID, false, std::bind(&ControllerDelegate::onEntityAcquireResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+					controller->acquireEntity(entityID, false, la::avdecc::entity::model::DescriptorType::Entity, 0u, std::bind(&ControllerDelegate::onEntityAcquireResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 					_listenerConfiguration = descriptor.currentConfiguration;
 					controller->readConfigurationDescriptor(entityID, _listenerConfiguration, std::bind(&ControllerDelegate::onConfigurationDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
 				}
