@@ -143,14 +143,12 @@ constexpr size_t AecpAemGetAvbInfoCommandPayloadSize = 4u;
 
 /** GET_AVB_INFO Response - Clause 7.4.40.2 */
 constexpr size_t AecpAemGetAvbInfoResponsePayloadMinSize = 20u;
-constexpr size_t AecpAemGetAvbInfoResponsePayloadMaxSize = Aecpdu::MaximumLength - Aecpdu::HeaderLength - AemAecpdu::HeaderLength;
 
 /** GET_AS_PATH Command - Clause 7.4.41.1 */
 constexpr size_t AecpAemGetAsPathCommandPayloadSize = 4u;
 
 /** GET_AS_PATH Response - Clause 7.4.41.2 */
 constexpr size_t AecpAemGetAsPathResponsePayloadMinSize = 4u;
-constexpr size_t AecpAemGetAsPathResponsePayloadMaxSize = Aecpdu::MaximumLength - Aecpdu::HeaderLength - AemAecpdu::HeaderLength;
 
 /** GET_COUNTERS Command - Clause 7.4.42.1 */
 constexpr size_t AecpAemGetCountersCommandPayloadSize = 4u;
@@ -165,13 +163,13 @@ constexpr size_t AecpAemGetAudioMapCommandPayloadSize = 8u;
 constexpr size_t AecpAemGetAudioMapResponsePayloadMinSize = 12u;
 
 /** ADD_AUDIO_MAPPINGS Command - Clause 7.4.45.1 */
-constexpr size_t AecpAemAddAudioMappingsCommandPayloadMaxSize = Aecpdu::MaximumLength - Aecpdu::HeaderLength - AemAecpdu::HeaderLength;
+constexpr size_t AecpAemAddAudioMappingsCommandPayloadMinSize = 8u;
 
 /** ADD_AUDIO_MAPPINGS Response - Clause 7.4.45.1 */
 constexpr size_t AecpAemAddAudioMappingsResponsePayloadMinSize = 8u;
 
 /** REMOVE_AUDIO_MAPPINGS Command - Clause 7.4.46.1 */
-constexpr size_t AecpAemRemoveAudioMappingsCommandPayloadMaxSize = Aecpdu::MaximumLength - Aecpdu::HeaderLength - AemAecpdu::HeaderLength;
+constexpr size_t AecpAemRemoveAudioMappingsCommandPayloadMinSize = 8u;
 
 /** REMOVE_AUDIO_MAPPINGS Response - Clause 7.4.46.1 */
 constexpr size_t AecpAemRemoveAudioMappingsResponsePayloadMinSize = 8u;

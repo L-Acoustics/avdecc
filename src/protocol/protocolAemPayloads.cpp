@@ -1092,6 +1092,213 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 	return deserializeStartStreamingCommand(payload);
 }
 
+/** GET_AVB_INFO Command - Clause 7.4.40.1 */
+/** GET_AVB_INFO Response - Clause 7.4.40.2 */
+/** GET_AS_PATH Command - Clause 7.4.41.1 */
+/** GET_AS_PATH Response - Clause 7.4.41.2 */
+/** GET_COUNTERS Command - Clause 7.4.42.1 */
+/** GET_COUNTERS Response - Clause 7.4.42.2 */
+
+/** GET_AUDIO_MAP Command - Clause 7.4.44.1 */
+Serializer<AecpAemGetAudioMapCommandPayloadSize> serializeGetAudioMapCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::MapIndex const mapIndex)
+{
+	Serializer<AecpAemGetAudioMapCommandPayloadSize> ser;
+	std::uint16_t const reserved{ 0u };
+
+	ser << descriptorType << descriptorIndex;
+	ser << mapIndex << reserved;
+
+	assert(ser.usedBytes() == ser.capacity() && "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::MapIndex> deserializeGetAudioMapCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetAudioMapCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+	entity::model::MapIndex mapIndex{ 0u };
+	std::uint16_t reserved{ 0u };
+
+	des >> descriptorType >> descriptorIndex;
+	des >> mapIndex >> reserved;
+
+	assert(des.usedBytes() == AecpAemGetAudioMapCommandPayloadSize && "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(descriptorType, descriptorIndex, mapIndex);
+}
+
+/** GET_AUDIO_MAP Response - Clause 7.4.44.2 */
+Serializer<AemAecpdu::MaximumPayloadLength> serializeGetAudioMapResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::MapIndex const mapIndex, entity::model::MapIndex const numberOfMaps, entity::model::AudioMappings const& mappings)
+{
+	Serializer<AemAecpdu::MaximumPayloadLength> ser;
+	std::uint16_t const reserved{ 0u };
+
+	ser << descriptorType << descriptorIndex;
+	ser << mapIndex << numberOfMaps << static_cast<std::uint16_t>(mappings.size()) << reserved;
+
+	// Serialize variable data
+	for (auto const& mapping : mappings)
+	{
+		ser << mapping.streamIndex << mapping.streamChannel << mapping.clusterOffset << mapping.clusterChannel;
+	}
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::MapIndex, entity::model::MapIndex, entity::model::AudioMappings> deserializeGetAudioMapResponse(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetAudioMapResponsePayloadMinSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+	entity::model::MapIndex mapIndex{ 0u };
+	entity::model::MapIndex numberOfMaps{ 0u };
+	std::uint16_t numberOfMappings{ 0u };
+	std::uint16_t reserved{ 0u };
+
+	des >> descriptorType >> descriptorIndex;
+	des >> mapIndex >> numberOfMaps >> numberOfMappings >> reserved;
+
+	// Check variable size
+	constexpr size_t mapInfoSize = sizeof(entity::model::AudioMapping::streamIndex) + sizeof(entity::model::AudioMapping::streamChannel) + sizeof(entity::model::AudioMapping::clusterOffset) + sizeof(entity::model::AudioMapping::clusterChannel);
+	auto const mappingsSize = mapInfoSize * numberOfMappings;
+	if (des.remaining() < mappingsSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Unpack remaining data
+	entity::model::AudioMappings mappings;
+	for (auto index = 0u; index < numberOfMappings; ++index)
+	{
+		entity::model::AudioMapping mapping;
+		des >> mapping.streamIndex >> mapping.streamChannel >> mapping.clusterOffset >> mapping.clusterChannel;
+		mappings.push_back(mapping);
+	}
+	assert(des.usedBytes() == (protocol::aemPayload::AecpAemGetAudioMapResponsePayloadMinSize + mappingsSize) && "Used more bytes than specified in protocol constant");
+
+	if (des.remaining() != 0)
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "GetAudioMap Response deserialize warning: Remaining bytes in buffer");
+
+	return std::make_tuple(descriptorType, descriptorIndex, mapIndex, numberOfMaps, mappings);
+}
+
+/** ADD_AUDIO_MAPPINGS Command - Clause 7.4.45.1 */
+Serializer<AemAecpdu::MaximumPayloadLength> serializeAddAudioMappingsCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::AudioMappings const& mappings)
+{
+	Serializer<AemAecpdu::MaximumPayloadLength> ser;
+	std::uint16_t const reserved{ 0u };
+
+	ser << descriptorType << descriptorIndex;
+	ser << static_cast<std::uint16_t>(mappings.size()) << reserved;
+
+	// Serialize variable data
+	for (auto const& mapping : mappings)
+	{
+		ser << mapping.streamIndex << mapping.streamChannel << mapping.clusterOffset << mapping.clusterChannel;
+	}
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::AudioMappings> deserializeAddAudioMappingsCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemAddAudioMappingsCommandPayloadMinSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+	std::uint16_t numberOfMappings{ 0u };
+	std::uint16_t reserved{ 0u };
+
+	des >> descriptorType >> descriptorIndex;
+	des >> numberOfMappings >> reserved;
+
+	// Check variable size
+	constexpr size_t mapInfoSize = sizeof(entity::model::AudioMapping::streamIndex) + sizeof(entity::model::AudioMapping::streamChannel) + sizeof(entity::model::AudioMapping::clusterOffset) + sizeof(entity::model::AudioMapping::clusterChannel);
+	auto const mappingsSize = mapInfoSize * numberOfMappings;
+	if (des.remaining() < mappingsSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Unpack remaining data
+	entity::model::AudioMappings mappings;
+	for (auto index = 0u; index < numberOfMappings; ++index)
+	{
+		entity::model::AudioMapping mapping;
+		des >> mapping.streamIndex >> mapping.streamChannel >> mapping.clusterOffset >> mapping.clusterChannel;
+		mappings.push_back(mapping);
+	}
+	assert(des.usedBytes() == (protocol::aemPayload::AecpAemAddAudioMappingsCommandPayloadMinSize + mappingsSize) && "Used more bytes than specified in protocol constant");
+
+	if (des.remaining() != 0)
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "AddAudioMap (or RemoveAudioMap) Command (or Response) deserialize warning: Remaining bytes in buffer");
+
+	return std::make_tuple(descriptorType, descriptorIndex, mappings);
+}
+
+/** ADD_AUDIO_MAPPINGS Response - Clause 7.4.45.2 */
+Serializer<AemAecpdu::MaximumPayloadLength> serializeAddAudioMappingsResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::AudioMappings const& mappings)
+{
+	// Same as ADD_AUDIO_MAPPINGS Command
+	static_assert(AecpAemAddAudioMappingsResponsePayloadMinSize == AecpAemAddAudioMappingsCommandPayloadMinSize, "ADD_AUDIO_MAPPINGS Response no longer the same as ADD_AUDIO_MAPPINGS Command");
+	return serializeAddAudioMappingsCommand(descriptorType, descriptorIndex, mappings);
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::AudioMappings> deserializeAddAudioMappingsResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as ADD_AUDIO_MAPPINGS Command
+	static_assert(AecpAemAddAudioMappingsResponsePayloadMinSize == AecpAemAddAudioMappingsCommandPayloadMinSize, "ADD_AUDIO_MAPPINGS Response no longer the same as ADD_AUDIO_MAPPINGS Command");
+	return deserializeAddAudioMappingsCommand(payload);
+}
+
+/** REMOVE_AUDIO_MAPPINGS Command - Clause 7.4.46.1 */
+Serializer<AemAecpdu::MaximumPayloadLength> serializeRemoveAudioMappingsCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::AudioMappings const& mappings)
+{
+	// Same as ADD_AUDIO_MAPPINGS Command
+	static_assert(AecpAemRemoveAudioMappingsCommandPayloadMinSize == AecpAemAddAudioMappingsCommandPayloadMinSize, "REMOVE_AUDIO_MAPPINGS Command no longer the same as ADD_AUDIO_MAPPINGS Command");
+	return serializeAddAudioMappingsCommand(descriptorType, descriptorIndex, mappings);
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::AudioMappings> deserializeRemoveAudioMappingsCommand(AemAecpdu::Payload const& payload)
+{
+	// Same as ADD_AUDIO_MAPPINGS Command
+	static_assert(AecpAemRemoveAudioMappingsCommandPayloadMinSize == AecpAemAddAudioMappingsCommandPayloadMinSize, "REMOVE_AUDIO_MAPPINGS Command no longer the same as ADD_AUDIO_MAPPINGS Command");
+	return deserializeAddAudioMappingsCommand(payload);
+}
+
+/** REMOVE_AUDIO_MAPPINGS Response - Clause 7.4.46.2 */
+Serializer<AemAecpdu::MaximumPayloadLength> serializeRemoveAudioMappingsResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::AudioMappings const& mappings)
+{
+	// Same as ADD_AUDIO_MAPPINGS Command
+	static_assert(AecpAemRemoveAudioMappingsResponsePayloadMinSize == AecpAemAddAudioMappingsCommandPayloadMinSize, "REMOVE_AUDIO_MAPPINGS Response no longer the same as ADD_AUDIO_MAPPINGS Command");
+	return serializeAddAudioMappingsCommand(descriptorType, descriptorIndex, mappings);
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::AudioMappings> deserializeRemoveAudioMappingsResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as ADD_AUDIO_MAPPINGS Command
+	static_assert(AecpAemRemoveAudioMappingsResponsePayloadMinSize == AecpAemAddAudioMappingsCommandPayloadMinSize, "REMOVE_AUDIO_MAPPINGS Response no longer the same as ADD_AUDIO_MAPPINGS Command");
+	return deserializeAddAudioMappingsCommand(payload);
+}
+
 } // namespace aemPayload
 } // namespace protocol
 } // namespace avdecc

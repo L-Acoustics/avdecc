@@ -245,3 +245,56 @@ TEST(AemPayloads, ReadDescriptorCommand)
 	CHECK_PAYLOAD(ReadDescriptorCommand, la::avdecc::entity::model::ConfigurationIndex(0), la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0));
 	CHECK_PAYLOAD(ReadDescriptorCommand, la::avdecc::entity::model::ConfigurationIndex(123), la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
 }
+
+#pragma message("TBD: ReadDescriptorResponse tests")
+
+TEST(AemPayloads, GetAudioMapCommand)
+{
+	CHECK_PAYLOAD(GetAudioMapCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::MapIndex(0));
+	CHECK_PAYLOAD(GetAudioMapCommand, la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5), la::avdecc::entity::model::MapIndex(11));
+}
+
+TEST(AemPayloads, GetAudioMapResponse)
+{
+	EXPECT_NO_THROW(
+		auto const ser = la::avdecc::protocol::aemPayload::serializeGetAudioMapResponse(la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::MapIndex(0), la::avdecc::entity::model::MapIndex(0), la::avdecc::entity::model::AudioMappings{});
+		EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemGetAudioMapResponsePayloadMinSize, ser.size());
+		la::avdecc::protocol::aemPayload::deserializeGetAudioMapResponse({ ser.data(), ser.usedBytes() });
+	) << "Serialization/deserialization should not throw anything";
+}
+
+TEST(AemPayloads, AddAudioMappingsCommand)
+{
+	EXPECT_NO_THROW(
+		auto const ser = la::avdecc::protocol::aemPayload::serializeAddAudioMappingsCommand(la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::AudioMappings{});
+	EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemAddAudioMappingsCommandPayloadMinSize, ser.size());
+	la::avdecc::protocol::aemPayload::deserializeAddAudioMappingsCommand({ ser.data(), ser.usedBytes() });
+	) << "Serialization/deserialization should not throw anything";
+}
+
+TEST(AemPayloads, AddAudioMappingsResponse)
+{
+	EXPECT_NO_THROW(
+		auto const ser = la::avdecc::protocol::aemPayload::serializeAddAudioMappingsResponse(la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::AudioMappings{});
+	EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemAddAudioMappingsResponsePayloadMinSize, ser.size());
+	la::avdecc::protocol::aemPayload::deserializeAddAudioMappingsResponse({ ser.data(), ser.usedBytes() });
+	) << "Serialization/deserialization should not throw anything";
+}
+
+TEST(AemPayloads, RemoveAudioMappingsCommand)
+{
+	EXPECT_NO_THROW(
+		auto const ser = la::avdecc::protocol::aemPayload::serializeRemoveAudioMappingsCommand(la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::AudioMappings{});
+	EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemRemoveAudioMappingsCommandPayloadMinSize, ser.size());
+	la::avdecc::protocol::aemPayload::deserializeRemoveAudioMappingsCommand({ ser.data(), ser.usedBytes() });
+	) << "Serialization/deserialization should not throw anything";
+}
+
+TEST(AemPayloads, RemoveAudioMappingsResponse)
+{
+	EXPECT_NO_THROW(
+		auto const ser = la::avdecc::protocol::aemPayload::serializeRemoveAudioMappingsResponse(la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::AudioMappings{});
+	EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemRemoveAudioMappingsResponsePayloadMinSize, ser.size());
+	la::avdecc::protocol::aemPayload::deserializeRemoveAudioMappingsResponse({ ser.data(), ser.usedBytes() });
+	) << "Serialization/deserialization should not throw anything";
+}

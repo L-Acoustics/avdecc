@@ -55,26 +55,6 @@ public:
 	InvalidDescriptorTypeException() : Exception("Invalid DescriptorType") {}
 };
 
-#pragma message("TODO: To remove: CommandException")
-class CommandException final : public std::exception
-{
-public:
-	CommandException(ControllerEntity::AemCommandStatus const status, char const* const text) : _status(status), _text(text)
-	{
-	}
-	ControllerEntity::AemCommandStatus getStatus() const
-	{
-		return _status;
-	}
-	virtual char const* what() const noexcept override
-	{
-		return _text;
-	}
-private:
-	ControllerEntity::AemCommandStatus _status{ ControllerEntity::AemCommandStatus::InternalError };
-	char const* _text{ nullptr };
-};
-
 class ControlException final : public std::exception
 {
 public:
@@ -707,37 +687,17 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 		// Get Audio Map
 		{ protocol::AemCommandType::GetAudioMap.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
-				auto const payloadInfo = aem.getPayload();
-				auto* const commandPayload = payloadInfo.first;
-				auto const commandPayloadLength = payloadInfo.second;
-
-				if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemGetAudioMapResponsePayloadMinSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: GET_AUDIO_MAP");
-
-				// Check payload audio map data
-				Deserializer des(commandPayload, commandPayloadLength);
-				model::DescriptorType descriptorType;
-				model::DescriptorIndex descriptorIndex;
-				model::MapIndex mapIndex;
-				model::MapIndex numberOfMaps;
-				model::MapIndex numberOfMappings;
-				std::uint16_t reserved;
-				des >> descriptorType >> descriptorIndex >> mapIndex >> numberOfMaps >> numberOfMappings >> reserved;
-
-				// Check descriptor variable size
-				constexpr size_t mapInfoSize = sizeof(model::AudioMapping::streamIndex) + sizeof(model::AudioMapping::streamChannel) + sizeof(model::AudioMapping::clusterOffset) + sizeof(model::AudioMapping::clusterChannel);
-				auto const mappingsSize = mapInfoSize * numberOfMappings;
-				if (des.remaining() < mappingsSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: GET_AUDIO_MAP"); // Malformed packet
-				// Unpack descriptor remaining data
-				model::AudioMappings mappings;
-				for (auto index = 0u; index < numberOfMappings; ++index)
-				{
-					model::AudioMapping mapping;
-					des >> mapping.streamIndex >> mapping.streamChannel >> mapping.clusterOffset >> mapping.clusterChannel;
-					mappings.push_back(mapping);
-				}
-				assert(des.usedBytes() == (protocol::aemPayload::AecpAemGetAudioMapResponsePayloadMinSize + mappingsSize) && "Used more bytes than specified in protocol constant");
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex, mapIndex, numberOfMaps, mappings] = protocol::aemPayload::deserializeGetAudioMapResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeGetAudioMapResponse(aem.getPayload());
+				entity::model::DescriptorType const descriptorType = std::get<0>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				entity::model::MapIndex const mapIndex = std::get<2>(result);
+				entity::model::MapIndex const numberOfMaps = std::get<3>(result);
+				entity::model::AudioMappings const mappings = std::get<4>(result);
+#endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
@@ -765,35 +725,15 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 		// Add Audio Mappings
 		{ protocol::AemCommandType::AddAudioMappings.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
-				auto const payloadInfo = aem.getPayload();
-				auto* const commandPayload = payloadInfo.first;
-				auto const commandPayloadLength = payloadInfo.second;
-
-				if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemAddAudioMappingsResponsePayloadMinSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: ADD_AUDIO_MAPPINGS");
-
-				// Check payload audio map data
-				Deserializer des(commandPayload, commandPayloadLength);
-				model::DescriptorType descriptorType;
-				model::DescriptorIndex descriptorIndex;
-				model::MapIndex numberOfMappings;
-				std::uint16_t reserved;
-				des >> descriptorType >> descriptorIndex >> numberOfMappings >> reserved;
-
-				// Check descriptor variable size
-				constexpr size_t mapInfoSize = sizeof(model::AudioMapping::streamIndex) + sizeof(model::AudioMapping::streamChannel) + sizeof(model::AudioMapping::clusterOffset) + sizeof(model::AudioMapping::clusterChannel);
-				auto const mappingsSize = mapInfoSize * numberOfMappings;
-				if (des.remaining() < mappingsSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: ADD_AUDIO_MAPPINGS"); // Malformed packet
-				// Unpack descriptor remaining data
-				model::AudioMappings mappings;
-				for (auto index = 0u; index < numberOfMappings; ++index)
-				{
-					model::AudioMapping mapping;
-					des >> mapping.streamIndex >> mapping.streamChannel >> mapping.clusterOffset >> mapping.clusterChannel;
-					mappings.push_back(mapping);
-				}
-				assert(des.usedBytes() == (protocol::aemPayload::AecpAemAddAudioMappingsResponsePayloadMinSize + mappingsSize) && "Used more bytes than specified in protocol constant");
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex, mappings] = protocol::aemPayload::deserializeAddAudioMappingsResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeAddAudioMappingsResponse(aem.getPayload());
+				entity::model::DescriptorType const descriptorType = std::get<0>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				entity::model::AudioMappings const mappings = std::get<2>(result);
+#endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
 				// Notify handlers
@@ -813,35 +753,15 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 		// Remove Audio Mappings
 		{ protocol::AemCommandType::RemoveAudioMappings.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
-				auto const payloadInfo = aem.getPayload();
-				auto* const commandPayload = payloadInfo.first;
-				auto const commandPayloadLength = payloadInfo.second;
-
-				if (commandPayload == nullptr || commandPayloadLength < protocol::aemPayload::AecpAemRemoveAudioMappingsResponsePayloadMinSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: REMOVE_AUDIO_MAPPINGS");
-
-				// Check payload audio map data
-				Deserializer des(commandPayload, commandPayloadLength);
-				model::DescriptorType descriptorType;
-				model::DescriptorIndex descriptorIndex;
-				model::MapIndex numberOfMappings;
-				std::uint16_t reserved;
-				des >> descriptorType >> descriptorIndex >> numberOfMappings >> reserved;
-
-				// Check descriptor variable size
-				constexpr size_t mapInfoSize = sizeof(model::AudioMapping::streamIndex) + sizeof(model::AudioMapping::streamChannel) + sizeof(model::AudioMapping::clusterOffset) + sizeof(model::AudioMapping::clusterChannel);
-				auto const mappingsSize = mapInfoSize * numberOfMappings;
-				if (des.remaining() < mappingsSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: REMOVE_AUDIO_MAPPINGS"); // Malformed packet
-				// Unpack descriptor remaining data
-				model::AudioMappings mappings;
-				for (auto index = 0u; index < numberOfMappings; ++index)
-				{
-					model::AudioMapping mapping;
-					des >> mapping.streamIndex >> mapping.streamChannel >> mapping.clusterOffset >> mapping.clusterChannel;
-					mappings.push_back(mapping);
-				}
-				assert(des.usedBytes() == (protocol::aemPayload::AecpAemRemoveAudioMappingsResponsePayloadMinSize + mappingsSize) && "Used more bytes than specified in protocol constant");
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex, mappings] = protocol::aemPayload::deserializeRemoveAudioMappingsResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeRemoveAudioMappingsResponse(aem.getPayload());
+				entity::model::DescriptorType const descriptorType = std::get<0>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				entity::model::AudioMappings const mappings = std::get<2>(result);
+#endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
 				// Notify handlers
@@ -907,20 +827,6 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 		{
 			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Failed to process ") + std::string(aem.getCommandType()) + " AEM response: " + e.what());
 			invokeProtectedHandler(onErrorCallback, AemCommandStatus::ProtocolError);
-			return;
-		}
-		catch (CommandException const& e)
-		{
-			auto st = e.getStatus();
-#if defined(IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES)
-			if (st == AemCommandStatus::ProtocolError && status != AemCommandStatus::Success)
-			{
-				// Allow this packet to go through as a non-success response, but some fields might have the default initial value which might not be valid (the spec says even in a response message, some fields have a meaningful value)
-				st = status;
-			}
-#endif // IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Failed to process ") + std::string(aem.getCommandType()) + " AEM response: " + e.what());
-			invokeProtectedHandler(onErrorCallback, st);
 			return;
 		}
 		catch (std::exception const& e) // Mainly unpacking errors
@@ -1348,13 +1254,9 @@ void ControllerEntityImpl::getStreamInputAudioMap(UniqueIdentifier const targetE
 {
 	try
 	{
-		Serializer<protocol::aemPayload::AecpAemGetAudioMapCommandPayloadSize> ser;
-		ser << model::DescriptorType::StreamInput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-		ser << model::MapIndex(mapIndex); // map_index
-		ser << std::uint16_t{ 0x0000 }; // reserved
-
+		auto const ser = protocol::aemPayload::serializeGetAudioMapCommand(model::DescriptorType::StreamInput, streamIndex, mapIndex);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::MapIndex(0), mapIndex, s_emptyMappings);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::GetAudioMap, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1367,13 +1269,9 @@ void ControllerEntityImpl::getStreamOutputAudioMap(UniqueIdentifier const target
 {
 	try
 	{
-		Serializer<protocol::aemPayload::AecpAemGetAudioMapCommandPayloadSize> ser;
-		ser << model::DescriptorType::StreamOutput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-		ser << model::MapIndex(mapIndex); // map_index
-		ser << std::uint16_t{ 0x0000 }; // reserved
-
+		auto const ser = protocol::aemPayload::serializeGetAudioMapCommand(model::DescriptorType::StreamOutput, streamIndex, mapIndex);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::MapIndex(0), mapIndex, s_emptyMappings);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::GetAudioMap, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1386,17 +1284,9 @@ void ControllerEntityImpl::addStreamInputAudioMappings(UniqueIdentifier const ta
 {
 	try
 	{
-		Serializer<protocol::aemPayload::AecpAemAddAudioMappingsCommandPayloadMaxSize> ser;
-		ser << model::DescriptorType::StreamInput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-		ser << model::MapIndex(mappings.size()); // number_of_mappings
-		ser << std::uint16_t{ 0x0000 }; // reserved
-		for (auto const& map : mappings)
-		{
-			ser << map.streamIndex << map.streamChannel << map.clusterOffset << map.clusterChannel;
-		}
-
+		auto const ser = protocol::aemPayload::serializeAddAudioMappingsCommand(model::DescriptorType::StreamInput, streamIndex, mappings);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyMappings);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::AddAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1409,17 +1299,9 @@ void ControllerEntityImpl::addStreamOutputAudioMappings(UniqueIdentifier const t
 {
 	try
 	{
-		Serializer<protocol::aemPayload::AecpAemAddAudioMappingsCommandPayloadMaxSize> ser;
-		ser << model::DescriptorType::StreamOutput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-		ser << model::MapIndex(mappings.size()); // number_of_mappings
-		ser << std::uint16_t{ 0x0000 }; // reserved
-		for (auto const& map : mappings)
-		{
-			ser << map.streamIndex << map.streamChannel << map.clusterOffset << map.clusterChannel;
-		}
-
+		auto const ser = protocol::aemPayload::serializeAddAudioMappingsCommand(model::DescriptorType::StreamOutput, streamIndex, mappings);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyMappings);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::AddAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1432,17 +1314,9 @@ void ControllerEntityImpl::removeStreamInputAudioMappings(UniqueIdentifier const
 {
 	try
 	{
-		Serializer<protocol::aemPayload::AecpAemRemoveAudioMappingsCommandPayloadMaxSize> ser;
-		ser << model::DescriptorType::StreamInput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-		ser << model::MapIndex(mappings.size()); // number_of_mappings
-		ser << std::uint16_t{ 0x0000 }; // reserved
-		for (auto const& map : mappings)
-		{
-			ser << map.streamIndex << map.streamChannel << map.clusterOffset << map.clusterChannel;
-		}
-
+		auto const ser = protocol::aemPayload::serializeRemoveAudioMappingsCommand(model::DescriptorType::StreamInput, streamIndex, mappings);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyMappings);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::RemoveAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1455,17 +1329,9 @@ void ControllerEntityImpl::removeStreamOutputAudioMappings(UniqueIdentifier cons
 {
 	try
 	{
-		Serializer<protocol::aemPayload::AecpAemRemoveAudioMappingsCommandPayloadMaxSize> ser;
-		ser << model::DescriptorType::StreamOutput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-		ser << model::MapIndex(mappings.size()); // number_of_mappings
-		ser << std::uint16_t{ 0x0000 }; // reserved
-		for (auto const& map : mappings)
-		{
-			ser << map.streamIndex << map.streamChannel << map.clusterOffset << map.clusterChannel;
-		}
-
+		auto const ser = protocol::aemPayload::serializeRemoveAudioMappingsCommand(model::DescriptorType::StreamOutput, streamIndex, mappings);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyMappings);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::RemoveAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1478,11 +1344,9 @@ void ControllerEntityImpl::getStreamInputInfo(UniqueIdentifier const targetEntit
 {
 	try
 	{
-		Serializer<protocol::aemPayload::AecpAemGetStreamInfoCommandPayloadSize> ser;
-		ser << model::DescriptorType::StreamInput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-
+		auto const ser = protocol::aemPayload::serializeGetStreamInfoCommand(model::DescriptorType::StreamInput, streamIndex);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyStreamInfo);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::GetStreamInfo, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
