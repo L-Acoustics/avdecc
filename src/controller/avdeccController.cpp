@@ -523,9 +523,9 @@ void ControllerImpl::onLocaleDescriptorResult(entity::ControllerEntity const* co
 	}
 }
 
-void ControllerImpl::onStringsDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::StringsIndex const stringsIndex, entity::model::StringsDescriptor const& descriptor, entity::model::StringsIndex const baseStringDescriptorIndex) noexcept
+void ControllerImpl::onStringsDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const stringsIndex, entity::model::StringsDescriptor const& descriptor, entity::model::StringsIndex const baseStringDescriptorIndex) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStringsDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + "," + std::to_string(baseStringDescriptorIndex) + ")");
+	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStringsDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + "," + std::to_string(configurationIndex) + "," + std::to_string(stringsIndex) + "," + std::to_string(baseStringDescriptorIndex) + ")");
 
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
