@@ -94,6 +94,11 @@ public:
 	virtual void stopStreamInput(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, StopStreamInputHandler const& handler) const noexcept override;
 	virtual void startStreamOutput(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, StartStreamOutputHandler const& handler) const noexcept override;
 	virtual void stopStreamOutput(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, StopStreamOutputHandler const& handler) const noexcept override;
+	virtual void setEntityName(UniqueIdentifier const targetEntityID, entity::model::AvdeccFixedString const& name, SetEntityNameHandler const& handler) const noexcept override;
+	virtual void setEntityGroupName(UniqueIdentifier const targetEntityID, entity::model::AvdeccFixedString const& name, SetEntityGroupNameHandler const& handler) const noexcept override;
+	virtual void setConfigurationName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& name, SetConfigurationNameHandler const& handler) const noexcept override;
+	virtual void setStreamInputName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& name, SetStreamInputNameHandler const& handler) const noexcept override;
+	virtual void setStreamOutputName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& name, SetStreamOutputNameHandler const& handler) const noexcept override;
 
 	/* Connection Management Protocol (ACMP) */
 	virtual void connectStream(UniqueIdentifier const talkerEntityID, entity::model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, entity::model::StreamIndex const listenerStreamIndex, ConnectStreamHandler const& handler) const noexcept override;
@@ -105,15 +110,15 @@ public:
 private:
 	void checkAdvertiseEntity(ControlledEntityImpl* const entity) const noexcept;
 	void handleStreamStateNotification(ControlledEntityImpl* const listenerEntity, UniqueIdentifier const talkerEntityID, entity::model::StreamIndex const talkerStreamIndex, entity::model::StreamIndex const listenerStreamIndex, bool const isConnected, entity::ConnectionFlags const flags, bool const isSniffed) const noexcept;
-	void updateAcquiredState(ControlledEntityImpl& entity, UniqueIdentifier const owningEntity, bool const undefined = false) const noexcept; // TBD: We should later have a descriptor and index passed too, so we now which part of the EM graph has been acquired/released
 	/* Enumeration and Control Protocol (AECP) handlers */
 	void onEntityDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::EntityDescriptor const& descriptor) noexcept;
-	void onConfigurationDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationDescriptor const& descriptor) noexcept;
-	void onLocaleDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::LocaleDescriptor const& descriptor) noexcept;
-	void onStringsDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StringsDescriptor const& descriptor, entity::model::StringsIndex const baseStringDescriptorIndex) noexcept;
-	void onStreamInputDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamDescriptor const& descriptor) noexcept;
-	void onStreamOutputDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamDescriptor const& descriptor) noexcept;
+	void onConfigurationDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ConfigurationDescriptor const& descriptor) noexcept;
+	void onStreamInputDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept;
+	void onStreamOutputDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept;
+	void onLocaleDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::LocaleIndex const localeIndex, entity::model::LocaleDescriptor const& descriptor) noexcept;
+	void onStringsDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::LocaleIndex const localeIndex, entity::model::StringsDescriptor const& descriptor, entity::model::StringsIndex const baseStringDescriptorIndex) noexcept;
 	void onGetStreamInputAudioMapResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings) noexcept;
+	void onGetStreamOutputAudioMapResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings) noexcept;
 	/* Connection Management Protocol (ACMP) handlers */
 	void onConnectStreamResult(entity::ControllerEntity const* const controller, UniqueIdentifier const talkerEntityID, entity::model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, entity::model::StreamIndex const listenerStreamIndex, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept;
 	void onDisconnectStreamResult(entity::ControllerEntity const* const controller, UniqueIdentifier const talkerEntityID, entity::model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, entity::model::StreamIndex const listenerStreamIndex, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept;
@@ -132,16 +137,37 @@ private:
 	virtual void onDisconnectStreamSniffed(entity::ControllerEntity const* const controller, UniqueIdentifier const talkerEntityID, entity::model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, entity::model::StreamIndex const listenerStreamIndex, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept override;
 	virtual void onGetListenerStreamStateSniffed(entity::ControllerEntity const* const controller, UniqueIdentifier const listenerEntityID, entity::model::StreamIndex const listenerStreamIndex, UniqueIdentifier const talkerEntityID, entity::model::StreamIndex const talkerStreamIndex, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept override;
 	/* Unsolicited notifications (not triggered for our own commands, the command's 'result' method will be called in that case) and only if command has no error */
-	virtual void onEntityAcquired(UniqueIdentifier const acquiredEntity, UniqueIdentifier const owningEntity) noexcept override;
-	virtual void onEntityReleased(UniqueIdentifier const releasedEntity, UniqueIdentifier const owningEntity) noexcept override;
+	virtual void onEntityAcquired(UniqueIdentifier const acquiredEntity, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept override;
+	virtual void onEntityReleased(UniqueIdentifier const releasedEntity, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept override;
 	virtual void onStreamInputFormatChanged(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) noexcept override;
 	virtual void onStreamOutputFormatChanged(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) noexcept override;
 	virtual void onStreamInputAudioMappingsChanged(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings) noexcept override;
 	virtual void onStreamOutputAudioMappingsChanged(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings) noexcept override;
+	virtual void onStreamInputInfoChanged(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept override;
+	virtual void onStreamOutputInfoChanged(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept override;
+	virtual void onEntityNameChanged(UniqueIdentifier const entityID, entity::model::AvdeccFixedString const& entityName) noexcept override;
+	virtual void onEntityGroupNameChanged(UniqueIdentifier const entityID, entity::model::AvdeccFixedString const& entityGroupName) noexcept override;
+	virtual void onConfigurationNameChanged(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& configurationName) noexcept override;
+	virtual void onStreamInputNameChanged(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamName) noexcept override;
+	virtual void onStreamOutputNameChanged(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamName) noexcept override;
 	virtual void onStreamInputStarted(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept override;
 	virtual void onStreamOutputStarted(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept override;
 	virtual void onStreamInputStopped(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept override;
 	virtual void onStreamOutputStopped(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept override;
+
+	// Private methods used to update AEM and notify observers
+	void updateAcquiredState(ControlledEntityImpl& entity, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, bool const undefined = false) const;
+	void updateStreamInputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) const;
+	void updateStreamOutputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) const;
+	void updateStreamInputAudioMappingsAdded(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::AudioMappings const& mappings) const;
+	void updateStreamInputAudioMappingsRemoved(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::AudioMappings const& mappings) const;
+	void updateStreamOutputAudioMappingsAdded(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::AudioMappings const& mappings) const;
+	void updateStreamOutputAudioMappingsRemoved(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::AudioMappings const& mappings) const;
+	void updateEntityName(ControlledEntityImpl& controlledEntity, entity::model::AvdeccFixedString const& entityName) const;
+	void updateEntityGroupName(ControlledEntityImpl& controlledEntity, entity::model::AvdeccFixedString const& entityGroupName) const;
+	void updateConfigurationName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& configurationName) const;
+	void updateStreamInputName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamInputName) const;
+	void updateStreamOutputName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamOutputName) const;
 
 	mutable std::recursive_mutex _lockEntities{}; // Lock for _controlledEntities (required since ControllerEntity::Delegate notifications can occur from 2 different threads)
 	std::unordered_map<UniqueIdentifier, ControlledEntityImpl::UniquePointer> _controlledEntities;
@@ -180,7 +206,7 @@ ControllerImpl::ControllerImpl(EndStation::ProtocolInterfaceType const protocolI
 				throw Exception(Error::InternalError, e.what());
 		}
 	}
-	catch (la::avdecc::Exception const& e)
+	catch (Exception const& e)
 	{
 		assert(false && "Unhandled exception");
 		throw Exception(Error::InternalError, e.what());
@@ -215,7 +241,7 @@ ControllerImpl::~ControllerImpl()
 			if (controlledEntity->isAcquired())
 			{
 				auto const& entityID = entityKV.first;
-				_controller->releaseEntity(entityID, nullptr); // We don't need the result handler, let's just hope our message was properly sent and received!
+				_controller->releaseEntity(entityID, entity::model::DescriptorType::Entity, 0u, nullptr); // We don't need the result handler, let's just hope our message was properly sent and received!
 			}
 		}
 		_controlledEntities.clear();
@@ -301,25 +327,6 @@ void ControllerImpl::handleStreamStateNotification(ControlledEntityImpl* const l
 	}
 }
 
-void ControllerImpl::updateAcquiredState(ControlledEntityImpl& entity, UniqueIdentifier const owningEntity, bool const undefined) const noexcept
-{
-	if (undefined)
-	{
-		entity.setOwningController(getUninitializedIdentifier());
-		entity.setAcquireState(ControlledEntity::AcquireState::Undefined);
-	}
-	else
-	{
-		entity.setOwningController(owningEntity);
-		if (!isValidUniqueIdentifier(owningEntity)) // No more controller
-			entity.setAcquireState(ControlledEntity::AcquireState::NotAcquired);
-		else if (owningEntity == _controller->getEntityID()) // Controlled by myself
-			entity.setAcquireState(ControlledEntity::AcquireState::Acquired);
-		else // Or acquired by another controller
-			entity.setAcquireState(ControlledEntity::AcquireState::AcquiredByOther);
-	}
-}
-
 /* Enumeration and Control Protocol (AECP) handlers */
 void ControllerImpl::onEntityDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::EntityDescriptor const& descriptor) noexcept
 {
@@ -334,7 +341,7 @@ void ControllerImpl::onEntityDescriptorResult(entity::ControllerEntity const* co
 		if (!!status)
 		{
 			controlledEntity->setEntityDescriptor(descriptor);
-			controller->readConfigurationDescriptor(entityID, descriptor.currentConfiguration, std::bind(&ControllerImpl::onConfigurationDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+			controller->readConfigurationDescriptor(entityID, descriptor.currentConfiguration, std::bind(&ControllerImpl::onConfigurationDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
 		}
 		else
 		{
@@ -343,7 +350,7 @@ void ControllerImpl::onEntityDescriptorResult(entity::ControllerEntity const* co
 	}
 }
 
-void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationDescriptor const& descriptor) noexcept
+void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::ConfigurationDescriptor const& descriptor) noexcept
 {
 	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onConfigurationDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + ")");
 
@@ -365,7 +372,7 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 					auto count = countIt->second;
 					for (auto index = entity::model::LocaleIndex(0); index < count; ++index)
 					{
-						controller->readLocaleDescriptor(entityID, entityDescriptor.currentConfiguration, index, std::bind(&ControllerImpl::onLocaleDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+						controller->readLocaleDescriptor(entityID, entityDescriptor.currentConfiguration, index, std::bind(&ControllerImpl::onLocaleDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 					}
 				}
 				else
@@ -383,7 +390,7 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 					for (auto index = entity::model::StreamIndex(0); index < count; ++index)
 					{
 						controller->getListenerStreamState(entityID, index, std::bind(&ControllerImpl::onGetListenerStreamStateResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7, std::placeholders::_8));
-						controller->readStreamInputDescriptor(entityID, entityDescriptor.currentConfiguration, index, std::bind(&ControllerImpl::onStreamInputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+						controller->readStreamInputDescriptor(entityID, entityDescriptor.currentConfiguration, index, std::bind(&ControllerImpl::onStreamInputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 						controller->getStreamInputAudioMap(entityID, index, 0, std::bind(&ControllerImpl::onGetStreamInputAudioMapResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7));
 					}
 				}
@@ -402,12 +409,14 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 					auto count = countIt->second;
 					for (auto index = entity::model::StreamIndex(0); index < count; ++index)
 					{
-						controller->readStreamOutputDescriptor(entityID, entityDescriptor.currentConfiguration, index, std::bind(&ControllerImpl::onStreamOutputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+						controller->readStreamOutputDescriptor(entityID, entityDescriptor.currentConfiguration, index, std::bind(&ControllerImpl::onStreamOutputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+						controller->getStreamOutputAudioMap(entityID, index, 0, std::bind(&ControllerImpl::onGetStreamOutputAudioMapResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7));
 					}
 				}
 				else
 				{
 					controlledEntity->setIgnoreQuery(ControlledEntity::EntityQuery::OutputStreamDescriptor);
+					controlledEntity->setIgnoreQuery(ControlledEntity::EntityQuery::OutputStreamAudioMappings);
 				}
 			}
 		}
@@ -418,7 +427,51 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 	}
 }
 
-void ControllerImpl::onLocaleDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::LocaleDescriptor const& descriptor) noexcept
+void ControllerImpl::onStreamInputDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept
+{
+	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStreamInputDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + ")");
+
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+	auto entityIt = _controlledEntities.find(entityID);
+	if (entityIt != _controlledEntities.end())
+	{
+		auto& controlledEntity = entityIt->second;
+		if (!!status)
+		{
+			controlledEntity->addInputStreamDescriptor(streamIndex, descriptor);
+		}
+		else
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, controlledEntity.get(), QueryCommandError::StreamInputDescriptor);
+		}
+		checkAdvertiseEntity(controlledEntity.get());
+	}
+}
+
+void ControllerImpl::onStreamOutputDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept
+{
+	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStreamOutputDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + ")");
+
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+	auto entityIt = _controlledEntities.find(entityID);
+	if (entityIt != _controlledEntities.end())
+	{
+		auto& controlledEntity = entityIt->second;
+		if (!!status)
+		{
+			controlledEntity->addOutputStreamDescriptor(streamIndex, descriptor);
+		}
+		else
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, controlledEntity.get(), QueryCommandError::StreamOutputDescriptor);
+		}
+		checkAdvertiseEntity(controlledEntity.get());
+	}
+}
+
+void ControllerImpl::onLocaleDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::LocaleIndex const localeIndex, entity::model::LocaleDescriptor const& descriptor) noexcept
 {
 	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onLocaleDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + ")");
 
@@ -430,7 +483,7 @@ void ControllerImpl::onLocaleDescriptorResult(entity::ControllerEntity const* co
 		auto& controlledEntity = entityIt->second;
 		if (!!status)
 		{
-			bool const allLocaleLoaded = controlledEntity->addLocaleDescriptor(descriptor);
+			bool const allLocaleLoaded = controlledEntity->addLocaleDescriptor(localeIndex, descriptor);
 			if (allLocaleLoaded)
 			{
 				entity::model::LocaleDescriptor const* localeDescriptor{ nullptr };
@@ -447,7 +500,7 @@ void ControllerImpl::onLocaleDescriptorResult(entity::ControllerEntity const* co
 						auto const& entityDescriptor = controlledEntity->getEntityDescriptor();
 						for (auto index = entity::model::StringsIndex(0); index < localeDescriptor->numberOfStringDescriptors; ++index)
 						{
-							controller->readStringsDescriptor(entityID, entityDescriptor.currentConfiguration, localeDescriptor->baseStringDescriptorIndex + index, std::bind(&ControllerImpl::onStringsDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, localeDescriptor->baseStringDescriptorIndex));
+							controller->readStringsDescriptor(entityID, entityDescriptor.currentConfiguration, localeDescriptor->baseStringDescriptorIndex + index, std::bind(&ControllerImpl::onStringsDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, localeDescriptor->baseStringDescriptorIndex));
 						}
 					}
 				}
@@ -470,9 +523,9 @@ void ControllerImpl::onLocaleDescriptorResult(entity::ControllerEntity const* co
 	}
 }
 
-void ControllerImpl::onStringsDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StringsDescriptor const& descriptor, entity::model::StringsIndex const baseStringDescriptorIndex) noexcept
+void ControllerImpl::onStringsDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const stringsIndex, entity::model::StringsDescriptor const& descriptor, entity::model::StringsIndex const baseStringDescriptorIndex) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStringsDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + "," + std::to_string(baseStringDescriptorIndex) + ")");
+	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStringsDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + "," + std::to_string(configurationIndex) + "," + std::to_string(stringsIndex) + "," + std::to_string(baseStringDescriptorIndex) + ")");
 
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
@@ -484,55 +537,11 @@ void ControllerImpl::onStringsDescriptorResult(entity::ControllerEntity const* c
 		{
 			// Only process strings descriptor if locale descriptor is complete (can be incomplete in case an entity went offline then online again, in the middle of a strings enumeration)
 			if (controlledEntity->isQueryComplete(ControlledEntity::EntityQuery::LocaleDescriptor))
-				controlledEntity->addStringsDescriptor(descriptor, baseStringDescriptorIndex);
+				controlledEntity->addStringsDescriptor(stringsIndex, descriptor, baseStringDescriptorIndex);
 		}
 		else
 		{
 			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, controlledEntity.get(), QueryCommandError::StringsDescriptor);
-		}
-		checkAdvertiseEntity(controlledEntity.get());
-	}
-}
-
-void ControllerImpl::onStreamInputDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamDescriptor const& descriptor) noexcept
-{
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStreamInputDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + ")");
-
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
-
-	auto entityIt = _controlledEntities.find(entityID);
-	if (entityIt != _controlledEntities.end())
-	{
-		auto& controlledEntity = entityIt->second;
-		if (!!status)
-		{
-			controlledEntity->addInputStreamDescriptor(descriptor);
-		}
-		else
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, controlledEntity.get(), QueryCommandError::StreamInputDescriptor);
-		}
-		checkAdvertiseEntity(controlledEntity.get());
-	}
-}
-
-void ControllerImpl::onStreamOutputDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamDescriptor const& descriptor) noexcept
-{
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStreamOutputDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + ")");
-
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
-
-	auto entityIt = _controlledEntities.find(entityID);
-	if (entityIt != _controlledEntities.end())
-	{
-		auto& controlledEntity = entityIt->second;
-		if (!!status)
-		{
-			controlledEntity->addOutputStreamDescriptor(descriptor);
-		}
-		else
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, controlledEntity.get(), QueryCommandError::StreamOutputDescriptor);
 		}
 		checkAdvertiseEntity(controlledEntity.get());
 	}
@@ -570,6 +579,44 @@ void ControllerImpl::onGetStreamInputAudioMapResult(entity::ControllerEntity con
 			else
 			{
 				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, controlledEntity.get(), QueryCommandError::StreamInputAudioMap);
+			}
+		}
+		checkAdvertiseEntity(controlledEntity.get());
+	}
+}
+
+void ControllerImpl::onGetStreamOutputAudioMapResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings) noexcept
+{
+	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onGetStreamOutputAudioMapResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + "," + std::to_string(streamIndex) + "," + std::to_string(numberOfMaps) + "," + std::to_string(mapIndex) + ")");
+
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+	auto entityIt = _controlledEntities.find(entityID);
+	if (entityIt != _controlledEntities.end())
+	{
+		auto& controlledEntity = entityIt->second;
+		if (!!status)
+		{
+			if (mapIndex == 0)
+				controlledEntity->clearOutputStreamAudioMappings(streamIndex);
+			bool isComplete = mapIndex == (numberOfMaps - 1);
+			controlledEntity->addOutputStreamAudioMappings(streamIndex, mappings, isComplete);
+			if (!isComplete)
+			{
+				controller->getStreamOutputAudioMap(entityID, streamIndex, mapIndex + 1, std::bind(&ControllerImpl::onGetStreamOutputAudioMapResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7));
+			}
+		}
+		else
+		{
+			// Many devices do not implement dynamic audio mapping (Apple, Motu) so we just ignore the states
+			if (hasFlag(controlledEntity->getEntity().getTalkerCapabilities(), entity::TalkerCapabilities::Implemented) && (status == entity::ControllerEntity::AemCommandStatus::NotImplemented))
+			{
+				controlledEntity->clearOutputStreamAudioMappings(streamIndex);
+				controlledEntity->addOutputStreamAudioMappings(streamIndex, mappings, true); // Fill with empty mapping
+			}
+			else
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, controlledEntity.get(), QueryCommandError::StreamOutputAudioMap);
 			}
 		}
 		checkAdvertiseEntity(controlledEntity.get());
@@ -633,7 +680,7 @@ void ControllerImpl::onEntityOnline(entity::ControllerEntity const* const contro
 		auto& controlledEntity = _controlledEntities.insert(std::make_pair(entityID, std::make_unique<ControlledEntityImpl>(entity))).first->second;
 
 		// Check if AEM is supported by this entity
-		if (la::avdecc::hasFlag(entity.getEntityCapabilities(), la::avdecc::entity::EntityCapabilities::AemSupported))
+		if (hasFlag(entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
 		{
 			// Register for unsolicited notifications
 			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("Registering for unsolicited notifications"));
@@ -688,7 +735,8 @@ void ControllerImpl::onEntityOffline(entity::ControllerEntity const* const /*con
 	if (entityIt != _controlledEntities.end())
 	{
 		auto const& controlledEntity = entityIt->second;
-		updateAcquiredState(*controlledEntity, getUninitializedIdentifier(), true);
+		updateAcquiredState(*controlledEntity, getUninitializedIdentifier(), entity::model::DescriptorType::Entity, 0u, true);
+
 		// Entity was advertised to the user, notify observers
 		if (controlledEntity->wasAdvertised())
 		{
@@ -771,32 +819,42 @@ void ControllerImpl::onGetListenerStreamStateSniffed(entity::ControllerEntity co
 }
 
 /* Unsolicited notifications (not triggered for our own commands, the command's 'result' method will be called in that case) and only if command has no error */
-void ControllerImpl::onEntityAcquired(UniqueIdentifier const acquiredEntity, UniqueIdentifier const owningEntity) noexcept
+void ControllerImpl::onEntityAcquired(UniqueIdentifier const entityID, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
-	auto entityIt = _controlledEntities.find(acquiredEntity);
+	auto entityIt = _controlledEntities.find(entityID);
 	if (entityIt != _controlledEntities.end())
 	{
-		auto& controlledEntity = entityIt->second;
-		updateAcquiredState(*controlledEntity, owningEntity);
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityAcquired, controlledEntity.get(), owningEntity);
+		try
+		{
+			auto& controlledEntity = entityIt->second;
+			updateAcquiredState(*controlledEntity, owningEntity, descriptorType, descriptorIndex);
+		}
+		catch (controller::ControlledEntity::Exception const& e)
+		{
+			assert(false && "onEntityAcquired succeeded on the entity, but failed to update local model");
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onEntityAcquired(" + toHexString(entityID, true) + "," + toHexString(owningEntity, true) + "," + std::to_string(to_integral(descriptorType)) + "," + std::to_string(descriptorIndex) + ") failed: " + e.what()));
+		}
 	}
 }
 
-void ControllerImpl::onEntityReleased(UniqueIdentifier const releasedEntity, UniqueIdentifier const owningEntity) noexcept
+void ControllerImpl::onEntityReleased(UniqueIdentifier const entityID, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
-	auto entityIt = _controlledEntities.find(releasedEntity);
+	auto entityIt = _controlledEntities.find(entityID);
 	if (entityIt != _controlledEntities.end())
 	{
-		auto& controlledEntity = entityIt->second;
-		updateAcquiredState(*controlledEntity, owningEntity);
-		// Only notify when there actually is a release of the entity
-		if (!isValidUniqueIdentifier(owningEntity))
+		try
 		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityReleased, controlledEntity.get());
+			auto& controlledEntity = entityIt->second;
+			updateAcquiredState(*controlledEntity, owningEntity, descriptorType, descriptorIndex);
+		}
+		catch (controller::ControlledEntity::Exception const& e)
+		{
+			assert(false && "onEntityReleased succeeded on the entity, but failed to update local model");
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onEntityReleased(" + toHexString(entityID, true) + "," + toHexString(owningEntity, true) + "," + std::to_string(to_integral(descriptorType)) + "," + std::to_string(descriptorIndex) + ") failed: " + e.what()));
 		}
 	}
 }
@@ -811,15 +869,12 @@ void ControllerImpl::onStreamInputFormatChanged(UniqueIdentifier const entityID,
 		try
 		{
 			auto& controlledEntity = entityIt->second;
-			controlledEntity->setInputStreamFormat(streamIndex, streamFormat);
-			if (controlledEntity->wasAdvertised())
-			{
-				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputFormatChanged, controlledEntity.get(), streamIndex, streamFormat);
-			}
+			updateStreamInputFormat(*controlledEntity, streamIndex, streamFormat);
 		}
-		catch (la::avdecc::controller::ControlledEntity::Exception const& e)
+		catch (controller::ControlledEntity::Exception const& e)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Debug, std::string("onStreamInputFormatChanged(" + toHexString(entityID, true) + "," + std::to_string(streamIndex) + "," + toHexString(streamFormat, true) + ") failed: " + e.what()));
+			assert(false && "onStreamInputFormatChanged succeeded on the entity, but failed to update local model");
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onStreamInputFormatChanged(" + toHexString(entityID, true) + "," + std::to_string(streamIndex) + "," + toHexString(streamFormat, true) + ") failed: " + e.what()));
 		}
 	}
 }
@@ -834,15 +889,12 @@ void ControllerImpl::onStreamOutputFormatChanged(UniqueIdentifier const entityID
 		try
 		{
 			auto& controlledEntity = entityIt->second;
-			controlledEntity->setOutputStreamFormat(streamIndex, streamFormat);
-			if (controlledEntity->wasAdvertised())
-			{
-				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputFormatChanged, controlledEntity.get(), streamIndex, streamFormat);
-			}
+			updateStreamOutputFormat(*controlledEntity, streamIndex, streamFormat);
 		}
-		catch (la::avdecc::controller::ControlledEntity::Exception const& e)
+		catch (controller::ControlledEntity::Exception const& e)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Debug, std::string("onStreamOutputFormatChanged(" + toHexString(entityID, true) + "," + std::to_string(streamIndex) + "," + toHexString(streamFormat, true) + ") failed: " + e.what()));
+			assert(false && "onStreamOutputFormatChanged succeeded on the entity, but failed to update local model");
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onStreamOutputFormatChanged(" + toHexString(entityID, true) + "," + std::to_string(streamIndex) + "," + toHexString(streamFormat, true) + ") failed: " + e.what()));
 		}
 	}
 }
@@ -854,23 +906,155 @@ void ControllerImpl::onStreamInputAudioMappingsChanged(UniqueIdentifier const en
 	auto entityIt = _controlledEntities.find(entityID);
 	if (entityIt != _controlledEntities.end())
 	{
-		auto& controlledEntity = entityIt->second;
-		// Only support the case where numberOfMaps == 1
-		if (numberOfMaps != 1 || mapIndex != 0)
-			return;
-
-		controlledEntity->clearInputStreamAudioMappings(streamIndex);
-		controlledEntity->addInputStreamAudioMappings(streamIndex, mappings);
-
-		if (controlledEntity->wasAdvertised())
+		try
 		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputAudioMappingsChanged, controlledEntity.get(), streamIndex);
+			auto& controlledEntity = entityIt->second;
+			// Only support the case where numberOfMaps == 1
+			if (numberOfMaps != 1 || mapIndex != 0)
+				return;
+
+			controlledEntity->clearInputStreamAudioMappings(streamIndex);
+			updateStreamInputAudioMappingsAdded(*controlledEntity, streamIndex, mappings);
+		}
+		catch (controller::ControlledEntity::Exception const& e)
+		{
+			assert(false && "onStreamInputAudioMappingsChanged succeeded on the entity, but failed to update local model");
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onStreamInputAudioMappingsChanged(" + toHexString(entityID, true) + "," + std::to_string(streamIndex) + "," + std::to_string(numberOfMaps) + "," + std::to_string(mapIndex) + ") failed: " + e.what()));
 		}
 	}
 }
 
-void ControllerImpl::onStreamOutputAudioMappingsChanged(UniqueIdentifier const /*entityID*/, entity::model::StreamIndex const /*streamIndex*/, entity::model::MapIndex const /*numberOfMaps*/, entity::model::MapIndex const /*mapIndex*/, entity::model::AudioMappings const& /*mappings*/) noexcept
+void ControllerImpl::onStreamOutputAudioMappingsChanged(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings) noexcept
 {
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+	auto entityIt = _controlledEntities.find(entityID);
+	if (entityIt != _controlledEntities.end())
+	{
+		try
+		{
+			auto& controlledEntity = entityIt->second;
+			// Only support the case where numberOfMaps == 1
+			if (numberOfMaps != 1 || mapIndex != 0)
+				return;
+
+			controlledEntity->clearOutputStreamAudioMappings(streamIndex);
+			updateStreamOutputAudioMappingsAdded(*controlledEntity, streamIndex, mappings);
+		}
+		catch (controller::ControlledEntity::Exception const& e)
+		{
+			assert(false && "onStreamOutputAudioMappingsChanged succeeded on the entity, but failed to update local model");
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onStreamOutputAudioMappingsChanged(" + toHexString(entityID, true) + "," + std::to_string(streamIndex) + "," + std::to_string(numberOfMaps) + "," + std::to_string(mapIndex) + ") failed: " + e.what()));
+		}
+	}
+}
+
+void ControllerImpl::onStreamInputInfoChanged(UniqueIdentifier const /*entityID*/, entity::model::StreamIndex const /*streamIndex*/, entity::model::StreamInfo const& /*info*/) noexcept
+{
+}
+
+void ControllerImpl::onStreamOutputInfoChanged(UniqueIdentifier const /*entityID*/, entity::model::StreamIndex const /*streamIndex*/, entity::model::StreamInfo const& /*info*/) noexcept
+{
+}
+
+void ControllerImpl::onEntityNameChanged(UniqueIdentifier const entityID, entity::model::AvdeccFixedString const& entityName) noexcept
+{
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+	auto entityIt = _controlledEntities.find(entityID);
+	if (entityIt != _controlledEntities.end())
+	{
+		try
+		{
+			auto& controlledEntity = entityIt->second;
+			updateEntityName(*controlledEntity, entityName);
+		}
+		catch (controller::ControlledEntity::Exception const& e)
+		{
+			assert(false && "onEntityNameChanged succeeded on the entity, but failed to update local model");
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onEntityNameChanged(" + toHexString(entityID, true) + "," + std::string(entityName) + ") failed: " + e.what()));
+		}
+	}
+}
+
+void ControllerImpl::onEntityGroupNameChanged(UniqueIdentifier const entityID, entity::model::AvdeccFixedString const& entityGroupName) noexcept
+{
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+	auto entityIt = _controlledEntities.find(entityID);
+	if (entityIt != _controlledEntities.end())
+	{
+		try
+		{
+			auto& controlledEntity = entityIt->second;
+			updateEntityGroupName(*controlledEntity, entityGroupName);
+		}
+		catch (controller::ControlledEntity::Exception const& e)
+		{
+			assert(false && "onEntityGroupNameChanged succeeded on the entity, but failed to update local model");
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onEntityGroupNameChanged(" + toHexString(entityID, true) + "," + std::string(entityGroupName) + ") failed: " + e.what()));
+		}
+	}
+}
+
+void ControllerImpl::onConfigurationNameChanged(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& configurationName) noexcept
+{
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+	auto entityIt = _controlledEntities.find(entityID);
+	if (entityIt != _controlledEntities.end())
+	{
+		try
+		{
+			auto& controlledEntity = entityIt->second;
+			updateConfigurationName(*controlledEntity, configurationIndex, configurationName);
+		}
+		catch (controller::ControlledEntity::Exception const& e)
+		{
+			assert(false && "onConfigurationNameChanged succeeded on the entity, but failed to update local model");
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onConfigurationNameChanged(" + toHexString(entityID, true) + "," + std::to_string(configurationIndex ) + "," + std::string(configurationName) + ") failed: " + e.what()));
+		}
+	}
+}
+
+void ControllerImpl::onStreamInputNameChanged(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamName) noexcept
+{
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+	auto entityIt = _controlledEntities.find(entityID);
+	if (entityIt != _controlledEntities.end())
+	{
+		try
+		{
+			auto& controlledEntity = entityIt->second;
+			updateStreamInputName(*controlledEntity, configurationIndex, streamIndex, streamName);
+		}
+		catch (controller::ControlledEntity::Exception const& e)
+		{
+			assert(false && "onStreamInputNameChanged succeeded on the entity, but failed to update local model");
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onStreamInputNameChanged(" + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(streamIndex ) + "," + std::string(streamName) + ") failed: " + e.what()));
+		}
+	}
+}
+
+void ControllerImpl::onStreamOutputNameChanged(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamName) noexcept
+{
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+	auto entityIt = _controlledEntities.find(entityID);
+	if (entityIt != _controlledEntities.end())
+	{
+		try
+		{
+			auto& controlledEntity = entityIt->second;
+			updateStreamOutputName(*controlledEntity, configurationIndex, streamIndex, streamName);
+		}
+		catch (controller::ControlledEntity::Exception const& e)
+		{
+			assert(false && "onStreamOutputNameChanged succeeded on the entity, but failed to update local model");
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onStreamOutputNameChanged(" + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(streamIndex) + "," + std::string(streamName) + ") failed: " + e.what()));
+		}
+	}
 }
 
 void ControllerImpl::onStreamInputStarted(UniqueIdentifier const /*entityID*/, entity::model::StreamIndex const /*streamIndex*/) noexcept
@@ -922,7 +1106,7 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 			return;
 		}
 		controlledEntity->setAcquireState(ControlledEntity::AcquireState::TryAcquire);
-		_controller->acquireEntity(targetEntityID, isPersistent, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity)
+		_controller->acquireEntity(targetEntityID, isPersistent, entity::model::DescriptorType::Entity, 0u, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex)
 		{
 			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("acquireEntity result for ") + toHexString(entityID, true) + ": " + entity::ControllerEntity::statusToString(status));
 			std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
@@ -931,34 +1115,42 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 			if (entityIt != _controlledEntities.end())
 			{
 				auto& controlledEntity = entityIt->second;
-				switch (status)
+				try
 				{
-					case entity::ControllerEntity::AemCommandStatus::Success:
-						updateAcquiredState(*controlledEntity, owningEntity);
-						break;
-					case entity::ControllerEntity::AemCommandStatus::AcquiredByOther:
-						updateAcquiredState(*controlledEntity, owningEntity);
-						break;
-					case entity::ControllerEntity::AemCommandStatus::NotImplemented:
-					case entity::ControllerEntity::AemCommandStatus::NotSupported:
-						updateAcquiredState(*controlledEntity, getNullIdentifier());
-						break;
-					default:
-						// In case of error, set the state to undefined
-						updateAcquiredState(*controlledEntity, getUninitializedIdentifier(), true);
-						break;
+					switch (status)
+					{
+						case entity::ControllerEntity::AemCommandStatus::Success:
+							updateAcquiredState(*controlledEntity, owningEntity, descriptorType, descriptorIndex);
+							break;
+						case entity::ControllerEntity::AemCommandStatus::AcquiredByOther:
+							updateAcquiredState(*controlledEntity, owningEntity, descriptorType, descriptorIndex);
+							break;
+						case entity::ControllerEntity::AemCommandStatus::NotImplemented:
+						case entity::ControllerEntity::AemCommandStatus::NotSupported:
+							updateAcquiredState(*controlledEntity, getNullIdentifier(), descriptorType, descriptorIndex);
+							break;
+						default:
+							// In case of error, set the state to undefined
+							updateAcquiredState(*controlledEntity, getUninitializedIdentifier(), descriptorType, descriptorIndex, true);
+							break;
+					}
 				}
-				la::avdecc::invokeProtectedHandler(handler, controlledEntity.get(), status, owningEntity);
+				catch (controller::ControlledEntity::Exception const& e)
+				{
+					assert(false && "acquireEntity succeeded on the entity, but failed to update local model");
+					Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("acquireEntity succeeded on the entity, but failed to update local model: ") + e.what());
+				}
+				invokeProtectedHandler(handler, controlledEntity.get(), status, owningEntity);
 			}
 			else // The entity went offline right after we sent our message
 			{
-				la::avdecc::invokeProtectedHandler(handler, nullptr, status, owningEntity);
+				invokeProtectedHandler(handler, nullptr, status, owningEntity);
 			}
 		});
 	}
 	else
 	{
-		la::avdecc::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, getNullIdentifier());
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, getNullIdentifier());
 	}
 }
 
@@ -970,7 +1162,7 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 	if (entityIt != _controlledEntities.end())
 	{
 		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("releaseEntity requested for ") + toHexString(targetEntityID, true));
-		_controller->releaseEntity(targetEntityID, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity)
+		_controller->releaseEntity(targetEntityID, entity::model::DescriptorType::Entity, 0u, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex)
 		{
 			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("releaseEntity result for ") + toHexString(entityID, true) + ": " + entity::ControllerEntity::statusToString(status));
 			std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
@@ -979,19 +1171,27 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 			if (entityIt != _controlledEntities.end())
 			{
 				auto& controlledEntity = entityIt->second;
-				if (status == entity::ControllerEntity::AemCommandStatus::Success) // Only change the acquire state in case of success
-					updateAcquiredState(*controlledEntity, owningEntity);
-				la::avdecc::invokeProtectedHandler(handler, controlledEntity.get(), status, owningEntity);
+				try
+				{
+					if (status == entity::ControllerEntity::AemCommandStatus::Success) // Only change the acquire state in case of success
+						updateAcquiredState(*controlledEntity, owningEntity, descriptorType, descriptorIndex);
+				}
+				catch (controller::ControlledEntity::Exception const& e)
+				{
+					assert(false && "releaseEntity succeeded on the entity, but failed to update local model");
+					Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("releaseEntity succeeded on the entity, but failed to update local model: ") + e.what());
+				}
+				invokeProtectedHandler(handler, controlledEntity.get(), status, owningEntity);
 			}
 			else // The entity went offline right after we sent our message
 			{
-				la::avdecc::invokeProtectedHandler(handler, nullptr, status, owningEntity);
+				invokeProtectedHandler(handler, nullptr, status, owningEntity);
 			}
 		});
 	}
 	else
 	{
-		la::avdecc::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, getNullIdentifier());
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, getNullIdentifier());
 	}
 }
 
@@ -1003,7 +1203,7 @@ void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID,
 	if (entityIt != _controlledEntities.end())
 	{
 		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setStreamInputFormat requested for ") + toHexString(targetEntityID, true));
-		_controller->setStreamInputFormat(targetEntityID, streamIndex, streamFormat, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamFormat const streamFormat)
+		_controller->setStreamInputFormat(targetEntityID, streamIndex, streamFormat, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat)
 		{
 			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setStreamInputFormat result for ") + toHexString(entityID, true) + ": " + entity::ControllerEntity::statusToString(status));
 			std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
@@ -1013,18 +1213,28 @@ void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID,
 			{
 				auto& controlledEntity = entityIt->second;
 				if (!!status)
-					controlledEntity->setInputStreamFormat(streamIndex, streamFormat);
-				la::avdecc::invokeProtectedHandler(handler, controlledEntity.get(), status);
+				{
+					try
+					{
+						updateStreamInputFormat(*controlledEntity, streamIndex, streamFormat);
+					}
+					catch (controller::ControlledEntity::Exception const& e)
+					{
+						assert(false && "setStreamInputFormat succeeded on the entity, but failed to update local model");
+						Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("setStreamInputFormat succeeded on the entity, but failed to update local model: ") + e.what());
+					}
+				}
+				invokeProtectedHandler(handler, controlledEntity.get(), status);
 			}
 			else // The entity went offline right after we sent our message
 			{
-				la::avdecc::invokeProtectedHandler(handler, nullptr, status);
+				invokeProtectedHandler(handler, nullptr, status);
 			}
 		});
 	}
 	else
 	{
-		la::avdecc::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1036,7 +1246,7 @@ void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID
 	if (entityIt != _controlledEntities.end())
 	{
 		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setStreamOutputFormat requested for ") + toHexString(targetEntityID, true));
-		_controller->setStreamOutputFormat(targetEntityID, streamIndex, streamFormat, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const /*streamIndex*/, la::avdecc::entity::model::StreamFormat const /*streamFormat*/)
+		_controller->setStreamOutputFormat(targetEntityID, streamIndex, streamFormat, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat)
 		{
 			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setStreamOutputFormat result for ") + toHexString(entityID, true) + ": " + entity::ControllerEntity::statusToString(status));
 			std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
@@ -1045,18 +1255,29 @@ void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID
 			if (entityIt != _controlledEntities.end())
 			{
 				auto& controlledEntity = entityIt->second;
-#pragma message("TBD: Save the stream format, if !!status")
-				la::avdecc::invokeProtectedHandler(handler, controlledEntity.get(), status);
+				if (!!status)
+				{
+					try
+					{
+						updateStreamOutputFormat(*controlledEntity, streamIndex, streamFormat);
+					}
+					catch (controller::ControlledEntity::Exception const& e)
+					{
+						assert(false && "setStreamOutputFormat succeeded on the entity, but failed to update local model");
+						Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("setStreamOutputFormat succeeded on the entity, but failed to update local model: ") + e.what());
+					}
+				}
+				invokeProtectedHandler(handler, controlledEntity.get(), status);
 			}
 			else // The entity went offline right after we sent our message
 			{
-				la::avdecc::invokeProtectedHandler(handler, nullptr, status);
+				invokeProtectedHandler(handler, nullptr, status);
 			}
 		});
 	}
 	else
 	{
-		la::avdecc::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1078,18 +1299,28 @@ void ControllerImpl::addStreamInputAudioMappings(UniqueIdentifier const targetEn
 			{
 				auto& controlledEntity = entityIt->second;
 				if (!!status)
-					controlledEntity->addInputStreamAudioMappings(streamIndex, mappings);
-				la::avdecc::invokeProtectedHandler(handler, controlledEntity.get(), status);
+				{
+					try
+					{
+						updateStreamInputAudioMappingsAdded(*controlledEntity, streamIndex, mappings);
+					}
+					catch (controller::ControlledEntity::Exception const& e)
+					{
+						assert(false && "addStreamInputAudioMappings succeeded on the entity, but failed to update local model");
+						Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("addStreamInputAudioMappings succeeded on the entity, but failed to update local model: ") + e.what());
+					}
+				}
+				invokeProtectedHandler(handler, controlledEntity.get(), status);
 			}
 			else // The entity went offline right after we sent our message
 			{
-				la::avdecc::invokeProtectedHandler(handler, nullptr, status);
+				invokeProtectedHandler(handler, nullptr, status);
 			}
 		});
 	}
 	else
 	{
-		la::avdecc::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1101,7 +1332,7 @@ void ControllerImpl::addStreamOutputAudioMappings(UniqueIdentifier const targetE
 	if (entityIt != _controlledEntities.end())
 	{
 		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("addStreamOutputAudioMappings requested for ") + toHexString(targetEntityID, true));
-		_controller->addStreamOutputAudioMappings(targetEntityID, streamIndex, mappings, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const /*streamIndex*/, entity::model::AudioMappings const& /*mappings*/)
+		_controller->addStreamOutputAudioMappings(targetEntityID, streamIndex, mappings, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::AudioMappings const& mappings)
 		{
 			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("addStreamOutputAudioMappings result for ") + toHexString(entityID, true) + ": " + entity::ControllerEntity::statusToString(status));
 			std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
@@ -1110,18 +1341,29 @@ void ControllerImpl::addStreamOutputAudioMappings(UniqueIdentifier const targetE
 			if (entityIt != _controlledEntities.end())
 			{
 				auto& controlledEntity = entityIt->second;
-#pragma message("TBD: Save the mappings, if !!status")
-				la::avdecc::invokeProtectedHandler(handler, controlledEntity.get(), status);
+				if (!!status)
+				{
+					try
+					{
+						updateStreamOutputAudioMappingsAdded(*controlledEntity, streamIndex, mappings);
+					}
+					catch (controller::ControlledEntity::Exception const& e)
+					{
+						assert(false && "addStreamOutputAudioMappings succeeded on the entity, but failed to update local model");
+						Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("addStreamOutputAudioMappings succeeded on the entity, but failed to update local model: ") + e.what());
+					}
+				}
+				invokeProtectedHandler(handler, controlledEntity.get(), status);
 			}
 			else // The entity went offline right after we sent our message
 			{
-				la::avdecc::invokeProtectedHandler(handler, nullptr, status);
+				invokeProtectedHandler(handler, nullptr, status);
 			}
 		});
 	}
 	else
 	{
-		la::avdecc::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1143,18 +1385,28 @@ void ControllerImpl::removeStreamInputAudioMappings(UniqueIdentifier const targe
 			{
 				auto& controlledEntity = entityIt->second;
 				if (!!status)
-					controlledEntity->removeInputStreamAudioMappings(streamIndex, mappings);
-				la::avdecc::invokeProtectedHandler(handler, controlledEntity.get(), status);
+				{
+					try
+					{
+						updateStreamInputAudioMappingsRemoved(*controlledEntity, streamIndex, mappings);
+					}
+					catch (controller::ControlledEntity::Exception const& e)
+					{
+						assert(false && "removeStreamInputAudioMappings succeeded on the entity, but failed to update local model");
+						Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("removeStreamInputAudioMappings succeeded on the entity, but failed to update local model: ") + e.what());
+					}
+				}
+				invokeProtectedHandler(handler, controlledEntity.get(), status);
 			}
 			else // The entity went offline right after we sent our message
 			{
-				la::avdecc::invokeProtectedHandler(handler, nullptr, status);
+				invokeProtectedHandler(handler, nullptr, status);
 			}
 		});
 	}
 	else
 	{
-		la::avdecc::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1166,7 +1418,7 @@ void ControllerImpl::removeStreamOutputAudioMappings(UniqueIdentifier const targ
 	if (entityIt != _controlledEntities.end())
 	{
 		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("removeStreamOutputAudioMappings requested for ") + toHexString(targetEntityID, true));
-		_controller->removeStreamOutputAudioMappings(targetEntityID, streamIndex, mappings, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const /*streamIndex*/, entity::model::AudioMappings const& /*mappings*/)
+		_controller->removeStreamOutputAudioMappings(targetEntityID, streamIndex, mappings, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::AudioMappings const& mappings)
 		{
 			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("removeStreamOutputAudioMappings result for ") + toHexString(entityID, true) + ": " + entity::ControllerEntity::statusToString(status));
 			std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
@@ -1175,18 +1427,29 @@ void ControllerImpl::removeStreamOutputAudioMappings(UniqueIdentifier const targ
 			if (entityIt != _controlledEntities.end())
 			{
 				auto& controlledEntity = entityIt->second;
-#pragma message("TBD: Save the mappings, if !!status")
-				la::avdecc::invokeProtectedHandler(handler, controlledEntity.get(), status);
+				if (!!status)
+				{
+					try
+					{
+						updateStreamOutputAudioMappingsRemoved(*controlledEntity, streamIndex, mappings);
+					}
+					catch (controller::ControlledEntity::Exception const& e)
+					{
+						assert(false && "removeStreamOutputAudioMappings succeeded on the entity, but failed to update local model");
+						Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("removeStreamOutputAudioMappings succeeded on the entity, but failed to update local model: ") + e.what());
+					}
+				}
+				invokeProtectedHandler(handler, controlledEntity.get(), status);
 			}
 			else // The entity went offline right after we sent our message
 			{
-				la::avdecc::invokeProtectedHandler(handler, nullptr, status);
+				invokeProtectedHandler(handler, nullptr, status);
 			}
 		});
 	}
 	else
 	{
-		la::avdecc::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1198,7 +1461,7 @@ void ControllerImpl::startStreamInput(UniqueIdentifier const targetEntityID, ent
 	if (entityIt != _controlledEntities.end())
 	{
 		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("startStreamInput requested for ") + toHexString(targetEntityID, true) + ":" + std::to_string(streamIndex));
-		_controller->startStreamInput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex)
+		_controller->startStreamInput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 		{
 			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("startStreamInput result for ") + toHexString(entityID, true) + ":" + std::to_string(streamIndex) + " -> " + entity::ControllerEntity::statusToString(status));
 			std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
@@ -1207,18 +1470,26 @@ void ControllerImpl::startStreamInput(UniqueIdentifier const targetEntityID, ent
 			if (entityIt != _controlledEntities.end())
 			{
 				auto& controlledEntity = entityIt->second;
+				try
+				{
 #pragma message("TBD: Save the stream running state, if !!status")
-				la::avdecc::invokeProtectedHandler(handler, controlledEntity.get(), status);
+				}
+				catch (controller::ControlledEntity::Exception const& e)
+				{
+					assert(false && "startStreamInput succeeded on the entity, but failed to update local model");
+					Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("startStreamInput succeeded on the entity, but failed to update local model: ") + e.what());
+				}
+				invokeProtectedHandler(handler, controlledEntity.get(), status);
 			}
 			else // The entity went offline right after we sent our message
 			{
-				la::avdecc::invokeProtectedHandler(handler, nullptr, status);
+				invokeProtectedHandler(handler, nullptr, status);
 			}
 		});
 	}
 	else
 	{
-		la::avdecc::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1230,7 +1501,7 @@ void ControllerImpl::stopStreamInput(UniqueIdentifier const targetEntityID, enti
 	if (entityIt != _controlledEntities.end())
 	{
 		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("stopStreamInput requested for ") + toHexString(targetEntityID, true) + ":" + std::to_string(streamIndex));
-		_controller->stopStreamInput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex)
+		_controller->stopStreamInput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 		{
 			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("stopStreamInput result for ") + toHexString(entityID, true) + ":" + std::to_string(streamIndex) + " -> " + entity::ControllerEntity::statusToString(status));
 			std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
@@ -1239,18 +1510,26 @@ void ControllerImpl::stopStreamInput(UniqueIdentifier const targetEntityID, enti
 			if (entityIt != _controlledEntities.end())
 			{
 				auto& controlledEntity = entityIt->second;
+				try
+				{
 #pragma message("TBD: Save the stream running state, if !!status")
-				la::avdecc::invokeProtectedHandler(handler, controlledEntity.get(), status);
+				}
+				catch (controller::ControlledEntity::Exception const& e)
+				{
+					assert(false && "stopStreamInput succeeded on the entity, but failed to update local model");
+					Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("stopStreamInput succeeded on the entity, but failed to update local model: ") + e.what());
+				}
+				invokeProtectedHandler(handler, controlledEntity.get(), status);
 			}
 			else // The entity went offline right after we sent our message
 			{
-				la::avdecc::invokeProtectedHandler(handler, nullptr, status);
+				invokeProtectedHandler(handler, nullptr, status);
 			}
 		});
 	}
 	else
 	{
-		la::avdecc::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1262,7 +1541,7 @@ void ControllerImpl::startStreamOutput(UniqueIdentifier const targetEntityID, en
 	if (entityIt != _controlledEntities.end())
 	{
 		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("startStreamOutput requested for ") + toHexString(targetEntityID, true) + ":" + std::to_string(streamIndex));
-		_controller->startStreamOutput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex)
+		_controller->startStreamOutput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 		{
 			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("startStreamOutput result for ") + toHexString(entityID, true) + ":" + std::to_string(streamIndex) + " -> " + entity::ControllerEntity::statusToString(status));
 			std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
@@ -1271,18 +1550,26 @@ void ControllerImpl::startStreamOutput(UniqueIdentifier const targetEntityID, en
 			if (entityIt != _controlledEntities.end())
 			{
 				auto& controlledEntity = entityIt->second;
+				try
+				{
 #pragma message("TBD: Save the stream running state, if !!status")
-				la::avdecc::invokeProtectedHandler(handler, controlledEntity.get(), status);
+				}
+				catch (controller::ControlledEntity::Exception const& e)
+				{
+					assert(false && "startStreamOutput succeeded on the entity, but failed to update local model");
+					Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("startStreamOutput succeeded on the entity, but failed to update local model: ") + e.what());
+				}
+				invokeProtectedHandler(handler, controlledEntity.get(), status);
 			}
 			else // The entity went offline right after we sent our message
 			{
-				la::avdecc::invokeProtectedHandler(handler, nullptr, status);
+				invokeProtectedHandler(handler, nullptr, status);
 			}
 		});
 	}
 	else
 	{
-		la::avdecc::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1294,7 +1581,7 @@ void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, ent
 	if (entityIt != _controlledEntities.end())
 	{
 		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("stopStreamOutput requested for ") + toHexString(targetEntityID, true) + ":" + std::to_string(streamIndex));
-		_controller->stopStreamOutput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex)
+		_controller->stopStreamOutput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 		{
 			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("stopStreamOutput result for ") + toHexString(entityID, true) + ":" + std::to_string(streamIndex) + " -> " + entity::ControllerEntity::statusToString(status));
 			std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
@@ -1303,18 +1590,241 @@ void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, ent
 			if (entityIt != _controlledEntities.end())
 			{
 				auto& controlledEntity = entityIt->second;
+				try
+				{
 #pragma message("TBD: Save the stream running state, if !!status")
-				la::avdecc::invokeProtectedHandler(handler, controlledEntity.get(), status);
+				}
+				catch (controller::ControlledEntity::Exception const& e)
+				{
+					assert(false && "stopStreamOutput succeeded on the entity, but failed to update local model");
+					Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("stopStreamOutput succeeded on the entity, but failed to update local model: ") + e.what());
+				}
+				invokeProtectedHandler(handler, controlledEntity.get(), status);
 			}
 			else // The entity went offline right after we sent our message
 			{
-				la::avdecc::invokeProtectedHandler(handler, nullptr, status);
+				invokeProtectedHandler(handler, nullptr, status);
 			}
 		});
 	}
 	else
 	{
-		la::avdecc::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity::model::AvdeccFixedString const& name, SetEntityNameHandler const& handler) const noexcept
+{
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+	auto entityIt = _controlledEntities.find(targetEntityID);
+	if (entityIt != _controlledEntities.end())
+	{
+		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setEntityName requested for ") + toHexString(targetEntityID, true));
+		_controller->setEntityName(targetEntityID, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status)
+		{
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setEntityName result for ") + toHexString(entityID, true) + " -> " + entity::ControllerEntity::statusToString(status));
+			std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+			auto entityIt = _controlledEntities.find(entityID);
+			if (entityIt != _controlledEntities.end())
+			{
+				auto& controlledEntity = entityIt->second;
+				if (!!status) // Only change the name in case of success
+				{
+					try
+					{
+						updateEntityName(*controlledEntity, name);
+					}
+					catch (controller::ControlledEntity::Exception const& e)
+					{
+						assert(false && "setEntityName succeeded on the entity, but failed to update local model");
+						Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("setEntityName succeeded on the entity, but failed to update local model: ") + e.what());
+					}
+				}
+				invokeProtectedHandler(handler, controlledEntity.get(), status);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status);
+			}
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, entity::model::AvdeccFixedString const& name, SetEntityGroupNameHandler const& handler) const noexcept
+{
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+	auto entityIt = _controlledEntities.find(targetEntityID);
+	if (entityIt != _controlledEntities.end())
+	{
+		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setEntityGroupName requested for ") + toHexString(targetEntityID, true));
+		_controller->setEntityGroupName(targetEntityID, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status)
+		{
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setEntityGroupName result for ") + toHexString(entityID, true) + " -> " + entity::ControllerEntity::statusToString(status));
+			std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+			auto entityIt = _controlledEntities.find(entityID);
+			if (entityIt != _controlledEntities.end())
+			{
+				auto& controlledEntity = entityIt->second;
+				if (!!status) // Only change the name in case of success
+				{
+					try
+					{
+						updateEntityGroupName(*controlledEntity, name);
+					}
+					catch (controller::ControlledEntity::Exception const& e)
+					{
+						assert(false && "setEntityGroupName succeeded on the entity, but failed to update local model");
+						Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("setEntityGroupName succeeded on the entity, but failed to update local model: ") + e.what());
+					}
+				}
+				invokeProtectedHandler(handler, controlledEntity.get(), status);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status);
+			}
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& name, SetConfigurationNameHandler const& handler) const noexcept
+{
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+	auto entityIt = _controlledEntities.find(targetEntityID);
+	if (entityIt != _controlledEntities.end())
+	{
+		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setConfigurationName requested for ") + toHexString(targetEntityID, true));
+		_controller->setConfigurationName(targetEntityID, configurationIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex)
+		{
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setConfigurationName result for ") + toHexString(entityID, true) + " -> " + entity::ControllerEntity::statusToString(status));
+			std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+			auto entityIt = _controlledEntities.find(entityID);
+			if (entityIt != _controlledEntities.end())
+			{
+				auto& controlledEntity = entityIt->second;
+				if (!!status) // Only change the name in case of success
+				{
+					try
+					{
+						updateConfigurationName(*controlledEntity, configurationIndex, name);
+					}
+					catch (controller::ControlledEntity::Exception const& e)
+					{
+						assert(false && "setConfigurationName succeeded on the entity, but failed to update local model");
+						Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("setConfigurationName succeeded on the entity, but failed to update local model: ") + e.what());
+					}
+				}
+				invokeProtectedHandler(handler, controlledEntity.get(), status);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status);
+			}
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& name, SetStreamInputNameHandler const& handler) const noexcept
+{
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+	
+	auto entityIt = _controlledEntities.find(targetEntityID);
+	if (entityIt != _controlledEntities.end())
+	{
+		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setStreamInputName requested for ") + toHexString(targetEntityID, true));
+		_controller->setStreamInputName(targetEntityID, configurationIndex, streamIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
+		{
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setStreamInputName result for ") + toHexString(entityID, true) + " -> " + entity::ControllerEntity::statusToString(status));
+			std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+			
+			auto entityIt = _controlledEntities.find(entityID);
+			if (entityIt != _controlledEntities.end())
+			{
+				auto& controlledEntity = entityIt->second;
+				if (!!status) // Only change the name in case of success
+				{
+					try
+					{
+						updateStreamInputName(*controlledEntity, configurationIndex, streamIndex, name);
+					}
+					catch (controller::ControlledEntity::Exception const& e)
+					{
+						assert(false && "setStreamInputName succeeded on the entity, but failed to update local model");
+						Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("setStreamInputName succeeded on the entity, but failed to update local model: ") + e.what());
+					}
+				}
+				invokeProtectedHandler(handler, controlledEntity.get(), status);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status);
+			}
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& name, SetStreamOutputNameHandler const& handler) const noexcept
+{
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+	
+	auto entityIt = _controlledEntities.find(targetEntityID);
+	if (entityIt != _controlledEntities.end())
+	{
+		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setStreamOutputName requested for ") + toHexString(targetEntityID, true));
+		_controller->setStreamOutputName(targetEntityID, configurationIndex, streamIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
+		{
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setStreamOutputName result for ") + toHexString(entityID, true) + " -> " + entity::ControllerEntity::statusToString(status));
+			std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+			
+			auto entityIt = _controlledEntities.find(entityID);
+			if (entityIt != _controlledEntities.end())
+			{
+				auto& controlledEntity = entityIt->second;
+				if (!!status) // Only change the name in case of success
+				{
+					try
+					{
+						updateStreamOutputName(*controlledEntity, configurationIndex, streamIndex, name);
+					}
+					catch (controller::ControlledEntity::Exception const& e)
+					{
+						assert(false && "setStreamOutputName succeeded on the entity, but failed to update local model");
+						Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("setStreamOutputName succeeded on the entity, but failed to update local model: ") + e.what());
+					}
+				}
+				invokeProtectedHandler(handler, controlledEntity.get(), status);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status);
+			}
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1347,12 +1857,12 @@ void ControllerImpl::connectStream(UniqueIdentifier const talkerEntityID, entity
 					// Do not trust the connectionCount value to determine if the listener is connected, but rather use the status code (SUCCESS means connection is established)
 					handleStreamStateNotification(listener, talkerEntityID, talkerStreamIndex, listenerStreamIndex, true, flags, false);
 			}
-			la::avdecc::invokeProtectedHandler(handler, talker, listener, talkerStreamIndex, listenerStreamIndex, controlStatus);
+			invokeProtectedHandler(handler, talker, listener, talkerStreamIndex, listenerStreamIndex, controlStatus);
 		});
 	}
 	else
 	{
-		la::avdecc::invokeProtectedHandler(handler, nullptr, nullptr, entity::model::StreamIndex(0), entity::model::StreamIndex(0), entity::ControllerEntity::ControlStatus::UnknownEntity);
+		invokeProtectedHandler(handler, nullptr, nullptr, entity::model::StreamIndex(0), entity::model::StreamIndex(0), entity::ControllerEntity::ControlStatus::UnknownEntity);
 	}
 }
 
@@ -1403,7 +1913,7 @@ void ControllerImpl::disconnectStream(UniqueIdentifier const talkerEntityID, ent
 								controlStatus = isStillConnected ? disconnectStatus : entity::ControllerEntity::ControlStatus::Success;
 							}
 						}
-						la::avdecc::invokeProtectedHandler(handler, listener, listenerStreamIndex, controlStatus);
+						invokeProtectedHandler(handler, listener, listenerStreamIndex, controlStatus);
 					});
 				}
 				else if (!!status) // No error, update the connection state
@@ -1413,12 +1923,12 @@ void ControllerImpl::disconnectStream(UniqueIdentifier const talkerEntityID, ent
 				}
 			}
 			if (shouldNotifyHandler)
-				la::avdecc::invokeProtectedHandler(handler, listener, listenerStreamIndex, controlStatus);
+				invokeProtectedHandler(handler, listener, listenerStreamIndex, controlStatus);
 		});
 	}
 	else
 	{
-		la::avdecc::invokeProtectedHandler(handler, nullptr, entity::model::StreamIndex(0), entity::ControllerEntity::ControlStatus::UnknownEntity);
+		invokeProtectedHandler(handler, nullptr, entity::model::StreamIndex(0), entity::ControllerEntity::ControlStatus::UnknownEntity);
 	}
 }
 
@@ -1455,12 +1965,221 @@ void ControllerImpl::getListenerStreamState(UniqueIdentifier const listenerEntit
 						talker = talkerEntityIt->second.get();
 				}
 			}
-			la::avdecc::invokeProtectedHandler(handler, talker, listener, talkerStreamIndex, listenerStreamIndex, connectionCount, flags, controlStatus);
+			invokeProtectedHandler(handler, talker, listener, talkerStreamIndex, listenerStreamIndex, connectionCount, flags, controlStatus);
 		});
 	}
 	else
 	{
-		la::avdecc::invokeProtectedHandler(handler, nullptr, nullptr, entity::model::StreamIndex(0), entity::model::StreamIndex(0), uint16_t(0), entity::ConnectionFlags::None, entity::ControllerEntity::ControlStatus::UnknownEntity);
+		invokeProtectedHandler(handler, nullptr, nullptr, entity::model::StreamIndex(0), entity::model::StreamIndex(0), uint16_t(0), entity::ConnectionFlags::None, entity::ControllerEntity::ControlStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::updateAcquiredState(ControlledEntityImpl& controlledEntity, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const /*descriptorIndex*/, bool const undefined) const
+{
+#pragma message("TBD: Handle acquire state tree")
+	if (descriptorType == entity::model::DescriptorType::Entity)
+	{
+		auto owningController{ getUninitializedIdentifier() };
+		auto acquireState{ ControlledEntity::AcquireState::Undefined };
+		if (undefined)
+		{
+			owningController = getUninitializedIdentifier();
+			acquireState = ControlledEntity::AcquireState::Undefined;
+		}
+		else
+		{
+			owningController = owningEntity;
+
+			if (!isValidUniqueIdentifier(owningEntity)) // No more controller
+				acquireState = ControlledEntity::AcquireState::NotAcquired;
+			else if (owningEntity == _controller->getEntityID()) // Controlled by myself
+				acquireState = ControlledEntity::AcquireState::Acquired;
+			else // Or acquired by another controller
+				acquireState = ControlledEntity::AcquireState::AcquiredByOther;
+		}
+
+		controlledEntity.setAcquireState(acquireState);
+		controlledEntity.setOwningController(owningController);
+
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAcquireStateChanged, &controlledEntity, acquireState, owningController);
+		}
+	}
+}
+
+void ControllerImpl::updateStreamInputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) const
+{
+	controlledEntity.setInputStreamFormat(streamIndex, streamFormat);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputFormatChanged, &controlledEntity, streamIndex, streamFormat);
+	}
+}
+
+void ControllerImpl::updateStreamOutputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) const
+{
+	controlledEntity.setOutputStreamFormat(streamIndex, streamFormat);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputFormatChanged, &controlledEntity, streamIndex, streamFormat);
+	}
+}
+
+void ControllerImpl::updateStreamInputAudioMappingsAdded(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::AudioMappings const& mappings) const
+{
+	controlledEntity.addInputStreamAudioMappings(streamIndex, mappings);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputAudioMappingsChanged, &controlledEntity, streamIndex);
+	}
+}
+
+void ControllerImpl::updateStreamInputAudioMappingsRemoved(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::AudioMappings const& mappings) const
+{
+	controlledEntity.removeInputStreamAudioMappings(streamIndex, mappings);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputAudioMappingsChanged, &controlledEntity, streamIndex);
+	}
+}
+
+void ControllerImpl::updateStreamOutputAudioMappingsAdded(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::AudioMappings const& mappings) const
+{
+	controlledEntity.addOutputStreamAudioMappings(streamIndex, mappings);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputAudioMappingsChanged, &controlledEntity, streamIndex);
+	}
+}
+
+void ControllerImpl::updateStreamOutputAudioMappingsRemoved(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::AudioMappings const& mappings) const
+{
+	controlledEntity.removeOutputStreamAudioMappings(streamIndex, mappings);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputAudioMappingsChanged, &controlledEntity, streamIndex);
+	}
+}
+
+void ControllerImpl::updateEntityName(ControlledEntityImpl& controlledEntity, entity::model::AvdeccFixedString const& entityName) const
+{
+	try
+	{
+		auto& entityDescriptor = controlledEntity.getEntityDescriptor();
+		entityDescriptor.entityName = entityName;
+
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityNameChanged, &controlledEntity, entityName);
+		}
+	}
+	catch (Exception const&)
+	{
+	}
+}
+
+void ControllerImpl::updateEntityGroupName(ControlledEntityImpl& controlledEntity, entity::model::AvdeccFixedString const& entityGroupName) const
+{
+	try
+	{
+		auto& entityDescriptor = controlledEntity.getEntityDescriptor();
+		entityDescriptor.groupName = entityGroupName;
+
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityGroupNameChanged, &controlledEntity, entityGroupName);
+		}
+	}
+	catch (Exception const&)
+	{
+	}
+}
+
+void ControllerImpl::updateConfigurationName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& configurationName) const
+{
+	try
+	{
+		auto& entityDescriptor = controlledEntity.getEntityDescriptor();
+
+#pragma message("TBD: Handle multiple configurations, not just the active one")
+		if (entityDescriptor.currentConfiguration == configurationIndex)
+		{
+			auto& configurationDescriptor = controlledEntity.getConfigurationDescriptor();
+			configurationDescriptor.objectName = configurationName;
+		}
+
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onConfigurationNameChanged, &controlledEntity, configurationIndex, configurationName);
+		}
+	}
+	catch (Exception const&)
+	{
+	}
+}
+	
+void ControllerImpl::updateStreamInputName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamInputName) const
+{
+	try
+	{
+		auto& entityDescriptor = controlledEntity.getEntityDescriptor();
+
+#pragma message("TBD: Handle multiple configurations, not just the active one")
+		if (entityDescriptor.currentConfiguration == configurationIndex)
+		{
+			auto& streamDescriptor = controlledEntity.getStreamInputDescriptor(streamIndex);
+			streamDescriptor.objectName = streamInputName;
+		}
+
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputNameChanged, &controlledEntity, configurationIndex, streamIndex, streamInputName);
+		}
+	}
+	catch (Exception const&)
+	{
+	}
+}
+
+void ControllerImpl::updateStreamOutputName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamOutputName) const
+{
+	try
+	{
+		auto& entityDescriptor = controlledEntity.getEntityDescriptor();
+
+#pragma message("TBD: Handle multiple configurations, not just the active one")
+		if (entityDescriptor.currentConfiguration == configurationIndex)
+		{
+			auto& streamDescriptor = controlledEntity.getStreamOutputDescriptor(streamIndex);
+			streamDescriptor.objectName = streamOutputName;
+		}
+
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputNameChanged, &controlledEntity, configurationIndex, streamIndex, streamOutputName);
+		}
+	}
+	catch (Exception const&)
+	{
 	}
 }
 

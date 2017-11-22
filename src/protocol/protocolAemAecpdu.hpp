@@ -39,9 +39,10 @@ namespace protocol
 class AemAecpdu final : public Aecpdu
 {
 public:
-	static constexpr size_t HeaderLength = 2; /* Unsolicited + CommentType */
+	static constexpr size_t HeaderLength = 2; /* Unsolicited + CommandType */
 	static constexpr size_t MaximumPayloadLength = Aecpdu::MaximumLength - Aecpdu::HeaderLength - HeaderLength;
 	static la::avdecc::networkInterface::MacAddress Identify_Mac_Address;
+	using Payload = std::pair<void const*, size_t>;
 
 	/**
 	* @brief Factory method to create a new AemAecpdu.
@@ -90,7 +91,7 @@ public:
 	{
 		return _commandType;
 	}
-	std::pair<void const*, size_t> getPayload() const noexcept
+	Payload getPayload() const noexcept
 	{
 		return std::make_pair(_commandSpecificData.data(), _commandSpecificDataLength);
 	}

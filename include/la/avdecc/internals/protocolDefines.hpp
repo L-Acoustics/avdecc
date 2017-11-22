@@ -56,6 +56,8 @@ public:
 	static AdpMessageType const EntityAvailable;
 	static AdpMessageType const EntityDeparting;
 	static AdpMessageType const EntityDiscover;
+
+	operator std::string() const noexcept;
 };
 
 /** AECP Message Type - Clause 9.2.1.1.5 */
@@ -76,6 +78,8 @@ public:
 	static AecpMessageType const HdcpAemResponse;
 	static AecpMessageType const ExtendedCommand;
 	static AecpMessageType const ExtendedResponse;
+
+	operator std::string() const noexcept;
 };
 
 /** AECP Status - Clause 9.2.1.1.6 */
@@ -216,7 +220,7 @@ public:
 	using TypedDefine::TypedDefine;
 
 	static AemLockEntityFlags const None;
-	static AemLockEntityFlags const Release;
+	static AemLockEntityFlags const Unlock;
 };
 
 /** ACMP Message Type - Clause 8.2.1.5 */

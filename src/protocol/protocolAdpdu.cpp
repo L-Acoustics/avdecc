@@ -93,7 +93,7 @@ void Adpdu::deserialize(DeserializationBuffer& buffer)
 #ifdef DEBUG
 	// Do not log this error in release, it might happen too often if an entity is bugged
 	if (buffer.remaining() != 0)
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "Adpdu::deserialize warning: Remaining bytes in buffer for AdpMessageType: " + la::avdecc::toHexString(getMessageType().getValue()));
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "Adpdu::deserialize warning: Remaining bytes in buffer for AdpMessageType " + std::string(getMessageType()) + " (" + la::avdecc::toHexString(getMessageType().getValue()) + ")");
 #endif // DEBUG
 }
 

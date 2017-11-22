@@ -44,27 +44,15 @@ constexpr int DISCOVER_SEND_DELAY = 10000;
 
 static model::AudioMappings const s_emptyMappings{ 0 }; // Empty audio channel mappings used by timeout callback (needs a ref to an AudioMappings)
 static model::StreamInfo const s_emptyStreamInfo{ }; // Empty stream info used by timeout callback (needs a ref to a StreamInfo)
+static model::AvdeccFixedString const s_emptyAvdeccFixedString{}; // Empty AvdeccFixedString used by timeout callback (needs a ref to a std::string)
 
 /* ************************************************************************** */
 /* Exceptions                                                                 */
 /* ************************************************************************** */
-class CommandException final : public std::exception
+class InvalidDescriptorTypeException final : public Exception
 {
 public:
-	CommandException(ControllerEntity::AemCommandStatus const status, char const* const text) : _status(status), _text(text)
-	{
-	}
-	ControllerEntity::AemCommandStatus getStatus() const
-	{
-		return _status;
-	}
-	virtual char const* what() const noexcept override
-	{
-		return _text;
-	}
-private:
-	ControllerEntity::AemCommandStatus _status{ ControllerEntity::AemCommandStatus::InternalError };
-	char const* _text{ nullptr };
+	InvalidDescriptorTypeException() : Exception("Invalid DescriptorType") {}
 };
 
 class ControlException final : public std::exception
@@ -100,7 +88,7 @@ ControllerEntityImpl::ControllerEntityImpl(protocol::ProtocolInterface* const pr
 	// Create the state machine thread
 	_discoveryThread = std::thread([this]
 	{
-		la::avdecc::setCurrentThreadName("avdecc::ControllerDiscovery");
+		setCurrentThreadName("avdecc::ControllerDiscovery");
 		while (!_shouldTerminate)
 		{
 			// Request a discovery
@@ -250,42 +238,38 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 	auto const& aem = static_cast<protocol::AemAecpdu const&>(*response);
 	auto const status = static_cast<AemCommandStatus>(aem.getStatus().getValue()); // We have to convert protocol status to our extended status
 
-	static std::unordered_map<protocol::AemCommandType::value_type, std::function<void(ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)>> s_Dispatch{
+	static std::unordered_map<protocol::AemCommandType::value_type, std::function<void(ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)>> s_Dispatch
+	{
 		// Acquire Entity
 		{ protocol::AemCommandType::AcquireEntity.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
-				auto const payloadInfo = aem.getPayload();
-				auto* const commandPayload = payloadInfo.first;
-				auto const commandPayloadLength = payloadInfo.second;
-
-				if (commandPayload == nullptr || commandPayloadLength < protocol::AecpAemAcquireEntityResponsePayloadSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: ACQUIRE_ENTITY");
-
-				// Check payload for acquire/release status
-				Deserializer des(commandPayload, commandPayloadLength);
-				auto aemAcquireFlags{ protocol::AemAcquireEntityFlags::None };
-				UniqueIdentifier ownerID;
-				model::DescriptorType descriptorType;
-				model::DescriptorIndex descriptorIndex;
-				des >> aemAcquireFlags >> ownerID >> descriptorType >> descriptorIndex;
-				assert(des.usedBytes() == protocol::AecpAemAcquireEntityResponsePayloadSize && "Used more bytes than specified in protocol constant");
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[flags, ownerID, descriptorType, descriptorIndex] = protocol::aemPayload::deserializeAcquireEntityResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeAcquireEntityResponse(aem.getPayload());
+				protocol::AemAcquireEntityFlags const flags = std::get<0>(result);
+				UniqueIdentifier const ownerID = std::get<1>(result);
+				entity::model::DescriptorType const descriptorType = std::get<2>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<3>(result);
+#endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
-				if ((aemAcquireFlags & protocol::AemAcquireEntityFlags::Release) == protocol::AemAcquireEntityFlags::Release)
+				if ((flags & protocol::AemAcquireEntityFlags::Release) == protocol::AemAcquireEntityFlags::Release)
 				{
-					answerCallback.invoke<ReleaseEntityHandler>(controller, targetID, status, ownerID);
+					answerCallback.invoke<ReleaseEntityHandler>(controller, targetID, status, ownerID, descriptorType, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityReleased, delegate, targetID, ownerID);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityReleased, delegate, targetID, ownerID, descriptorType, descriptorIndex);
 					}
 				}
 				else
 				{
-					answerCallback.invoke<AcquireEntityHandler>(controller, targetID, status, ownerID);
+					answerCallback.invoke<AcquireEntityHandler>(controller, targetID, status, ownerID, descriptorType, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityAcquired, delegate, targetID, ownerID);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityAcquired, delegate, targetID, ownerID, descriptorType, descriptorIndex);
 					}
 				}
 			}
@@ -293,38 +277,33 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 		// Lock Entity
 		{ protocol::AemCommandType::LockEntity.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
-				auto const payloadInfo = aem.getPayload();
-				auto* const commandPayload = payloadInfo.first;
-				auto const commandPayloadLength = payloadInfo.second;
-
-				if (commandPayload == nullptr || commandPayloadLength < protocol::AecpAemLockEntityResponsePayloadSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: LOCK_ENTITY");
-
-				// Check payload for lock/release status
-				Deserializer des(commandPayload, commandPayloadLength);
-				auto aemLockFlags{ protocol::AemLockEntityFlags::None };
-				UniqueIdentifier lockID;
-				model::DescriptorType descriptorType;
-				model::DescriptorIndex descriptorIndex;
-				des >> aemLockFlags >> lockID >> descriptorType >> descriptorIndex;
-				assert(des.usedBytes() == protocol::AecpAemLockEntityResponsePayloadSize && "Used more bytes than specified in protocol constant");
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[flags, lockedID, descriptorType, descriptorIndex] = protocol::aemPayload::deserializeLockEntityResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeLockEntityResponse(aem.getPayload());
+				protocol::AemLockEntityFlags const flags = std::get<0>(result);
+				UniqueIdentifier const lockedID = std::get<1>(result);
+				//entity::model::DescriptorType const descriptorType = std::get<2>(result);
+				//entity::model::DescriptorIndex const descriptorIndex = std::get<3>(result);
+#endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
 				//auto* delegate = controller->getDelegate();
-				if ((aemLockFlags & protocol::AemLockEntityFlags::Release) == protocol::AemLockEntityFlags::Release)
+				if ((flags & protocol::AemLockEntityFlags::Unlock) == protocol::AemLockEntityFlags::Unlock)
 				{
 					answerCallback.invoke<UnlockEntityHandler>(controller, targetID, status);
 					/*if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityUnlocked, delegate, targetID, lockID);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityUnlocked, delegate, targetID, lockedID);
 					}*/
 				}
 				else
 				{
-					answerCallback.invoke<LockEntityHandler>(controller, targetID, status, lockID);
+					answerCallback.invoke<LockEntityHandler>(controller, targetID, status, lockedID);
 					/*if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityLocked, delegate, targetID, lockID);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityLocked, delegate, targetID, lockedID);
 					}*/
 				}
 			}
@@ -346,45 +325,26 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 		// Read Descriptor
 		{ protocol::AemCommandType::ReadDescriptor.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
-				auto const payloadInfo = aem.getPayload();
-				auto* const commandPayload = payloadInfo.first;
-				auto const commandPayloadLength = payloadInfo.second;
-
-				if (commandPayload == nullptr || commandPayloadLength < protocol::AecpAemReadDescriptorResponsePayloadMinSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: READ_DESCRIPTOR");
-
-				// Check payload read descriptor data
-				Deserializer des(commandPayload, commandPayloadLength);
-				model::ConfigurationIndex configuration_index;
-				std::uint16_t reserved;
-				model::DescriptorType descriptorType;
-				model::DescriptorIndex descriptorIndex;
-				des >> configuration_index >> reserved >> descriptorType >> descriptorIndex;
-				assert(des.usedBytes() == protocol::AecpAemReadDescriptorResponsePayloadMinSize && "Used more bytes than specified in protocol constant");
+				auto const payload = aem.getPayload();
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[commonSize, configurationIndex, descriptorType, descriptorIndex] = protocol::aemPayload::deserializeReadDescriptorCommonResponse(payload);
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeReadDescriptorCommonResponse(payload);
+				size_t const commonSize = std::get<0>(result);
+				entity::model::ConfigurationIndex const configurationIndex = std::get<1>(result);
+				entity::model::DescriptorType const descriptorType = std::get<2>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<3>(result);
+#endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
+				auto const aemStatus = protocol::AemAecpStatus(static_cast<protocol::AemAecpStatus::value_type>(status));
 				switch (descriptorType)
 				{
 					case model::DescriptorType::Entity:
 					{
-						if (commandPayloadLength < protocol::AecpAemReadEntityDescriptorResponsePayloadSize) // Malformed packet
-							throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: DESCRIPTOR_ENTITY");
-
-						// Read descriptor fields
-						model::EntityDescriptor entityDescriptor{ {descriptorType, descriptorIndex } };
-						des >> entityDescriptor.entityID >> entityDescriptor.vendorEntityModelID >> entityDescriptor.entityCapabilities;
-						des >> entityDescriptor.talkerStreamSources >> entityDescriptor.talkerCapabilities;
-						des >> entityDescriptor.listenerStreamSinks >> entityDescriptor.listenerCapabilities;
-						des >> entityDescriptor.controllerCapabilities;
-						des >> entityDescriptor.availableIndex;
-						des >> entityDescriptor.associationID;
-						des >> entityDescriptor.entityName;
-						des >> entityDescriptor.vendorNameString >> entityDescriptor.modelNameString;
-						des >> entityDescriptor.firmwareVersion;
-						des >> entityDescriptor.groupName;
-						des >> entityDescriptor.serialNumber;
-						des >> entityDescriptor.configurationsCount >> entityDescriptor.currentConfiguration;
-						assert(des.usedBytes() == protocol::AecpAemReadEntityDescriptorResponsePayloadSize && "Used more bytes than specified in protocol constant");
+						// Deserialize entity descriptor
+						auto entityDescriptor = protocol::aemPayload::deserializeReadEntityDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
 						answerCallback.invoke<EntityDescriptorHandler>(controller, targetID, status, entityDescriptor);
 						break;
@@ -392,113 +352,46 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 
 					case model::DescriptorType::Configuration:
 					{
-						if (commandPayloadLength < protocol::AecpAemReadConfigurationDescriptorResponsePayloadMinSize) // Malformed packet
-							throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: DESCRIPTOR_CONFIGURATION");
-
-						// Read descriptor fields
-						model::ConfigurationDescriptor configurationDescriptor{ {descriptorType, descriptorIndex } };
-						des >> configurationDescriptor.objectName;
-						des >> configurationDescriptor.localizedDescription;
-						des >> configurationDescriptor.descriptorCountsCount >> configurationDescriptor.descriptorCountsOffset;
-						// Check descriptor variable size
-						constexpr size_t descriptorInfoSize = sizeof(model::DescriptorType) + sizeof(std::uint16_t);
-						auto const descriptorCountsSize = descriptorInfoSize * configurationDescriptor.descriptorCountsCount;
-						if (des.remaining() < descriptorCountsSize) // Malformed packet
-							throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: DESCRIPTOR_CONFIGURATION");
-						// Unpack descriptor remaining data
-						for (auto index = 0u; index < configurationDescriptor.descriptorCountsCount; ++index)
-						{
-							model::DescriptorType type;
-							std::uint16_t count;
-							des >> type >> count;
-							configurationDescriptor.descriptorCounts[type] = count;
-						}
-						assert(des.usedBytes() == (protocol::AecpAemReadConfigurationDescriptorResponsePayloadMinSize + descriptorCountsSize) && "Used more bytes than specified in protocol constant");
+						// Deserialize configuration descriptor
+						auto configurationDescriptor = protocol::aemPayload::deserializeReadConfigurationDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<ConfigurationDescriptorHandler>(controller, targetID, status, configurationDescriptor);
+						answerCallback.invoke<ConfigurationDescriptorHandler>(controller, targetID, status, configurationIndex, configurationDescriptor);
+						break;
+					}
+
+					case model::DescriptorType::StreamInput:
+					{
+						// Deserialize stream input descriptor
+						auto streamDescriptor = protocol::aemPayload::deserializeReadStreamDescriptorResponse(payload, commonSize, aemStatus);
+						// Notify handlers
+						answerCallback.invoke<StreamInputDescriptorHandler>(controller, targetID, status, configurationIndex, descriptorIndex, streamDescriptor);
+						break;
+					}
+
+					case model::DescriptorType::StreamOutput:
+					{
+						// Deserialize stream output descriptor
+						auto streamDescriptor = protocol::aemPayload::deserializeReadStreamDescriptorResponse(payload, commonSize, aemStatus);
+						// Notify handlers
+						answerCallback.invoke<StreamOutputDescriptorHandler>(controller, targetID, status, configurationIndex, descriptorIndex, streamDescriptor);
 						break;
 					}
 
 					case model::DescriptorType::Locale:
 					{
-						if (commandPayloadLength < protocol::AecpAemReadLocaleDescriptorResponsePayloadSize) // Malformed packet
-							throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: DESCRIPTOR_LOCALE");
-
-						// Read descriptor fields
-						model::LocaleDescriptor localeDescriptor{ {descriptorType, descriptorIndex } };
-						des >> localeDescriptor.localeID;
-						des >> localeDescriptor.numberOfStringDescriptors >> localeDescriptor.baseStringDescriptorIndex;
-						assert(des.usedBytes() == protocol::AecpAemReadLocaleDescriptorResponsePayloadSize && "Used more bytes than specified in protocol constant");
+						// Deserialize locale descriptor
+						auto localeDescriptor = protocol::aemPayload::deserializeReadLocaleDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<LocaleDescriptorHandler>(controller, targetID, status, localeDescriptor);
+						answerCallback.invoke<LocaleDescriptorHandler>(controller, targetID, status, configurationIndex, descriptorIndex, localeDescriptor);
 						break;
 					}
 
 					case model::DescriptorType::Strings:
 					{
-						if (commandPayloadLength < protocol::AecpAemReadStringsDescriptorResponsePayloadSize) // Malformed packet
-							throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: DESCRIPTOR_STRINGS");
-
-						// Read descriptor fields
-						model::StringsDescriptor stringsDescriptor{ {descriptorType, descriptorIndex } };
-						for (auto strIndex = 0u; strIndex < stringsDescriptor.strings.size(); ++strIndex)
-						{
-							des >> stringsDescriptor.strings[strIndex];
-						}
-						assert(des.usedBytes() == protocol::AecpAemReadStringsDescriptorResponsePayloadSize && "Used more bytes than specified in protocol constant");
+						// Deserialize strings descriptor
+						auto stringsDescriptor = protocol::aemPayload::deserializeReadStringsDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<StringsDescriptorHandler>(controller, targetID, status, stringsDescriptor);
-						break;
-					}
-
-					case model::DescriptorType::StreamInput:
-						if (commandPayloadLength < protocol::AecpAemReadStreamDescriptorResponsePayloadMinSize) // Malformed packet
-							throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: DESCRIPTOR_STREAM_INPUT");
-						// Don't break, let's handle both input and output streams together
-					case model::DescriptorType::StreamOutput:
-					{
-						if (commandPayloadLength < protocol::AecpAemReadStreamDescriptorResponsePayloadMinSize) // Malformed packet
-							throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: DESCRIPTOR_STREAM_OUTPUT");
-
-						// Read descriptor fields
-						model::StreamDescriptor streamDescriptor{ descriptorType, descriptorIndex };
-						des >> streamDescriptor.objectName;
-						des >> streamDescriptor.localizedDescription >> streamDescriptor.clockDomainIndex >> streamDescriptor.streamFlags;
-						des >> streamDescriptor.currentFormat >> streamDescriptor.formatsOffset >> streamDescriptor.numberOfFormats;
-						des >> streamDescriptor.backupTalkerEntityID_0 >> streamDescriptor.backupTalkerUniqueID_0;
-						des >> streamDescriptor.backupTalkerEntityID_1 >> streamDescriptor.backupTalkerUniqueID_1;
-						des >> streamDescriptor.backupTalkerEntityID_2 >> streamDescriptor.backupTalkerUniqueID_2;
-						des >> streamDescriptor.backedupTalkerEntityID >> streamDescriptor.backedupTalkerUnique;
-						des >> streamDescriptor.avbInterfaceIndex >> streamDescriptor.bufferLength;
-
-						// Check descriptor variable size
-						constexpr size_t formatInfoSize = sizeof(std::uint64_t);
-						auto const formatsSize = formatInfoSize * streamDescriptor.numberOfFormats;
-						if (des.remaining() < formatsSize) // Malformed packet
-							throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: DESCRIPTOR_STREAM_INPUT/OUTPUT"); // Malformed packet
-
-						// Unpack formats
-						// Clause 7.2.6 says that the formats should start at streamDescriptor.formatsOffset from the begining of the descriptor
-						// which starts after 'sizeof(configuration_index) + sizeof(reserved)' in our case since ReadDescriptor response includes descriptorType+descriptorIndex (see Claude 7.4.5.2)
-						auto const formatsOffset = sizeof(configuration_index) + sizeof(reserved) + streamDescriptor.formatsOffset;
-						if (formatsOffset < des.usedBytes())
-							throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: DESCRIPTOR_STREAM_INPUT/OUTPUT"); // Malformed packet
-						des.setUsedBytes(formatsOffset);
-						// Let's loop over the formats
-						for (auto index = 0u; index < streamDescriptor.numberOfFormats; ++index)
-						{
-							std::uint64_t format;
-							des >> format;
-							streamDescriptor.formats.push_back(format);
-						}
-						assert(des.usedBytes() == (protocol::AecpAemReadStreamDescriptorResponsePayloadMinSize + formatsSize) && "Used more bytes than specified in protocol constant");
-						// Notify handlers
-						if (descriptorType == model::DescriptorType::StreamInput)
-							answerCallback.invoke<StreamInputDescriptorHandler>(controller, targetID, status, streamDescriptor);
-						else if (descriptorType == model::DescriptorType::StreamOutput)
-							answerCallback.invoke<StreamOutputDescriptorHandler>(controller, targetID, status, streamDescriptor);
-						else
-							throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: Unknown DESCRIPTOR_STREAM type"); // Malformed packet
+						answerCallback.invoke<StringsDescriptorHandler>(controller, targetID, status, configurationIndex, descriptorIndex, stringsDescriptor);
 						break;
 					}
 
@@ -514,20 +407,15 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 		// Set Stream Format
 		{ protocol::AemCommandType::SetStreamFormat.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
-				auto const payloadInfo = aem.getPayload();
-				auto* const commandPayload = payloadInfo.first;
-				auto const commandPayloadLength = payloadInfo.second;
-
-				if (commandPayload == nullptr || commandPayloadLength < protocol::AecpAemSetStreamFormatResponsePayloadSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: SET_STREAM_FORMAT");
-
-				// Check payload stream format data
-				Deserializer des(commandPayload, commandPayloadLength);
-				model::DescriptorType descriptorType;
-				model::DescriptorIndex descriptorIndex;
-				model::StreamFormat streamFormat;
-				des >> descriptorType >> descriptorIndex >> streamFormat;
-				assert(des.usedBytes() == protocol::AecpAemSetStreamFormatResponsePayloadSize && "Used more bytes than specified in protocol constant");
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex, streamFormat] = protocol::aemPayload::deserializeSetStreamFormatResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeSetStreamFormatResponse(aem.getPayload());
+				model::DescriptorType const descriptorType = std::get<0>(result);
+				model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				entity::model::StreamFormat const streamFormat = std::get<2>(result);
+#endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
@@ -549,7 +437,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					}
 				}
 				else
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: Unknown DESCRIPTOR_STREAM type"); // Malformed packet
+					throw InvalidDescriptorTypeException();
 			}
 		},
 		// Get Stream Format
@@ -557,63 +445,257 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 		// Get Stream Info
 		{ protocol::AemCommandType::GetStreamInfo.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
-				auto const payloadInfo = aem.getPayload();
-				auto* const commandPayload = payloadInfo.first;
-				auto const commandPayloadLength = payloadInfo.second;
-
-				if (commandPayload == nullptr || commandPayloadLength < protocol::AecpAemGetStreamInfoResponsePayloadSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: GET_STREAM_INFO");
-
-				// Check payload stream format data
-				Deserializer des(commandPayload, commandPayloadLength);
-				model::StreamInfo streamInfo;
-				des >> streamInfo.common.descriptorType >> streamInfo.common.descriptorIndex;
-				des >> streamInfo.streamInfoFlags >> streamInfo.streamFormat >> streamInfo.streamID >> streamInfo.msrpAccumulatedLatency;
-				des.unpackBuffer(streamInfo.streamDestMac.data(), static_cast<std::uint16_t>(streamInfo.streamDestMac.size()));
-				des >> streamInfo.msrpFailureCode >> streamInfo.reserved >> streamInfo.msrpFailureBridgeID >> streamInfo.streamVlanID >> streamInfo.reserved2;
-				assert(des.usedBytes() == protocol::AecpAemGetStreamInfoResponsePayloadSize && "Used more bytes than specified in protocol constant");
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex, streamInfo] = protocol::aemPayload::deserializeGetStreamInfoResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeGetStreamInfoResponse(aem.getPayload());
+				model::DescriptorType const descriptorType = std::get<0>(result);
+				model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				entity::model::StreamInfo const streamInfo = std::get<2>(result);
+#endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
 				// Notify handlers
-				if (streamInfo.common.descriptorType == model::DescriptorType::StreamInput)
+				if (descriptorType == model::DescriptorType::StreamInput)
 				{
-					answerCallback.invoke<GetStreamInputInfoHandler>(controller, targetID, status, streamInfo.common.descriptorIndex, streamInfo);
+					answerCallback.invoke<GetStreamInputInfoHandler>(controller, targetID, status, descriptorIndex, streamInfo);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputInfoChanged, delegate, targetID, streamInfo.common.descriptorIndex, streamInfo);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputInfoChanged, delegate, targetID, descriptorIndex, streamInfo);
 					}
 				}
-				else if (streamInfo.common.descriptorType == model::DescriptorType::StreamOutput)
+				else if (descriptorType == model::DescriptorType::StreamOutput)
 				{
-					answerCallback.invoke<GetStreamOutputInfoHandler>(controller, targetID, status, streamInfo.common.descriptorIndex, streamInfo);
+					answerCallback.invoke<GetStreamOutputInfoHandler>(controller, targetID, status, descriptorIndex, streamInfo);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputInfoChanged, delegate, targetID, streamInfo.common.descriptorIndex, streamInfo);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputInfoChanged, delegate, targetID, descriptorIndex, streamInfo);
 					}
 				}
 				else
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: Unknown DESCRIPTOR_STREAM type"); // Malformed packet
+					throw InvalidDescriptorTypeException();
 			}
 		},
 		// Set Name
+		{ protocol::AemCommandType::SetName.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
+			{
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex, nameIndex, configurationIndex, name] = protocol::aemPayload::deserializeSetNameResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeSetNameResponse(aem.getPayload());
+				model::DescriptorType const descriptorType = std::get<0>(result);
+				model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				std::uint16_t const nameIndex = std::get<2>(result);
+				model::ConfigurationIndex const configurationIndex = std::get<3>(result);
+				model::AvdeccFixedString const name = std::get<4>(result);
+#endif // __cpp_structured_bindings
+
+				auto const targetID = aem.getTargetEntityID();
+				auto* delegate = controller->getDelegate();
+
+				// Notify handlers
+				switch (descriptorType)
+				{
+					case model::DescriptorType::Entity:
+					{
+						if (descriptorIndex != 0)
+						{
+							Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Invalid descriptorIndex in SET_NAME response for Entity Descriptor: ") + std::to_string(descriptorIndex));
+						}
+						if (configurationIndex != 0)
+						{
+							Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Invalid configurationIndex in SET_NAME response for Entity Descriptor: ") + std::to_string(configurationIndex));
+						}
+						switch (nameIndex)
+						{
+							case 0: // entity_name
+								answerCallback.invoke<SetEntityNameHandler>(controller, targetID, status);
+								if (aem.getUnsolicited() && delegate && !!status)
+								{
+									invokeProtectedMethod(&ControllerEntity::Delegate::onEntityNameChanged, delegate, targetID, name);
+								}
+								break;
+							case 1: // group_name
+								answerCallback.invoke<SetEntityGroupNameHandler>(controller, targetID, status);
+								if (aem.getUnsolicited() && delegate && !!status)
+								{
+									invokeProtectedMethod(&ControllerEntity::Delegate::onEntityGroupNameChanged, delegate, targetID, name);
+								}
+								break;
+							default:
+								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in SET_NAME response for Entity Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::Configuration:
+					{
+						if (configurationIndex != 0)
+						{
+							Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Invalid configurationIndex in SET_NAME response for Configuration Descriptor: ") + std::to_string(configurationIndex));
+						}
+						switch (nameIndex)
+						{
+							case 0: // configuration_name
+								answerCallback.invoke<SetConfigurationNameHandler>(controller, targetID, status, descriptorIndex);
+								if (aem.getUnsolicited() && delegate && !!status)
+								{
+									invokeProtectedMethod(&ControllerEntity::Delegate::onConfigurationNameChanged, delegate, targetID, descriptorIndex, name);
+								}
+								break;
+							default:
+								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in SET_NAME response for Configuration Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::StreamInput:
+					{
+						switch (nameIndex)
+						{
+							case 0: // stream_name
+								answerCallback.invoke<SetStreamInputNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex);
+								if (aem.getUnsolicited() && delegate && !!status)
+								{
+									invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputNameChanged, delegate, targetID, configurationIndex, descriptorIndex, name);
+								}
+								break;
+							default:
+								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in SET_NAME response for StreamInput Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::StreamOutput:
+					{
+						switch (nameIndex)
+						{
+							case 0: // stream_name
+								answerCallback.invoke<SetStreamOutputNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex);
+								if (aem.getUnsolicited() && delegate && !!status)
+								{
+									invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputNameChanged, delegate, targetID, configurationIndex, descriptorIndex, name);
+								}
+								break;
+							default:
+								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in SET_NAME response for StreamOutput Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+								break;
+						}
+						break;
+					}
+					default:
+						Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled descriptorType in SET_NAME response: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+						break;
+				}
+			}
+		},
 		// Get Name
+		{ protocol::AemCommandType::GetName.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
+			{
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex, nameIndex, configurationIndex, name] = protocol::aemPayload::deserializeGetNameResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeGetNameResponse(aem.getPayload());
+				model::DescriptorType const descriptorType = std::get<0>(result);
+				model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				std::uint16_t const nameIndex = std::get<2>(result);
+				model::ConfigurationIndex const configurationIndex = std::get<3>(result);
+				model::AvdeccFixedString const name = std::get<4>(result);
+#endif // __cpp_structured_bindings
+
+				auto const targetID = aem.getTargetEntityID();
+
+				// Notify handlers
+				switch (descriptorType)
+				{
+					case model::DescriptorType::Entity:
+					{
+						if (descriptorIndex != 0)
+						{
+							Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Invalid descriptorIndex in GET_NAME response for Entity Descriptor: ") + std::to_string(descriptorIndex));
+						}
+						if (configurationIndex != 0)
+						{
+							Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Invalid configurationIndex in GET_NAME response for Entity Descriptor: ") + std::to_string(configurationIndex));
+						}
+						switch (nameIndex)
+						{
+							case 0: // entity_name
+								answerCallback.invoke<GetEntityNameHandler>(controller, targetID, status, name);
+								break;
+							case 1: // group_name
+								answerCallback.invoke<GetEntityGroupNameHandler>(controller, targetID, status, name);
+								break;
+							default:
+								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in GET_NAME response for Entity Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::Configuration:
+					{
+						if (configurationIndex != 0)
+						{
+							Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Invalid configurationIndex in GET_NAME response for Configuration Descriptor: ") + std::to_string(configurationIndex));
+						}
+						switch (nameIndex)
+						{
+							case 0: // configuration_name
+								answerCallback.invoke<GetConfigurationNameHandler>(controller, targetID, status, descriptorIndex, name);
+								break;
+							default:
+								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in GET_NAME response for Configuration Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::StreamInput:
+					{
+						switch (nameIndex)
+						{
+							case 0: // stream_name
+								answerCallback.invoke<GetStreamInputNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex, name);
+								break;
+							default:
+								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in GET_NAME response for StreamInput Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::StreamOutput:
+					{
+						switch (nameIndex)
+						{
+							case 0: // stream_name
+								answerCallback.invoke<GetStreamOutputNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex, name);
+								break;
+							default:
+								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in GET_NAME response for StreamOutput Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+								break;
+						}
+						break;
+					}
+					default:
+						Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled descriptorType in GET_NAME response: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+						break;
+				}
+			}
+		},
 		// Start Streaming
 		{ protocol::AemCommandType::StartStreaming.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
-				auto const payloadInfo = aem.getPayload();
-				auto* const commandPayload = payloadInfo.first;
-				auto const commandPayloadLength = payloadInfo.second;
-
-				if (commandPayload == nullptr || commandPayloadLength < protocol::AecpAemStartStreamingResponsePayloadSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: START_STREAMING");
-
-				// Check payload
-				Deserializer des(commandPayload, commandPayloadLength);
-				model::DescriptorType descriptorType;
-				model::DescriptorIndex descriptorIndex;
-				des >> descriptorType >> descriptorIndex;
-				assert(des.usedBytes() == protocol::AecpAemStartStreamingResponsePayloadSize && "Used more bytes than specified in protocol constant");
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex] = protocol::aemPayload::deserializeStartStreamingResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeStartStreamingResponse(aem.getPayload());
+				entity::model::DescriptorType const descriptorType = std::get<0>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+#endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
@@ -635,25 +717,20 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					}
 				}
 				else
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: Unknown DESCRIPTOR_STREAM type"); // Malformed packet
+					throw InvalidDescriptorTypeException();
 			}
 		},
 		// Stop Streaming
 		{ protocol::AemCommandType::StopStreaming.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
-				auto const payloadInfo = aem.getPayload();
-				auto* const commandPayload = payloadInfo.first;
-				auto const commandPayloadLength = payloadInfo.second;
-
-				if (commandPayload == nullptr || commandPayloadLength < protocol::AecpAemStopStreamingResponsePayloadSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: STOP_STREAMING");
-
-				// Check payload
-				Deserializer des(commandPayload, commandPayloadLength);
-				model::DescriptorType descriptorType;
-				model::DescriptorIndex descriptorIndex;
-				des >> descriptorType >> descriptorIndex;
-				assert(des.usedBytes() == protocol::AecpAemStopStreamingResponsePayloadSize && "Used more bytes than specified in protocol constant");
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex] = protocol::aemPayload::deserializeStopStreamingResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeStopStreamingResponse(aem.getPayload());
+				entity::model::DescriptorType const descriptorType = std::get<0>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+#endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
@@ -675,7 +752,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					}
 				}
 				else
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: Unknown DESCRIPTOR_STREAM type"); // Malformed packet
+					throw InvalidDescriptorTypeException();
 			}
 		},
 		// Register Unsolicited Notifications
@@ -697,37 +774,17 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 		// Get Audio Map
 		{ protocol::AemCommandType::GetAudioMap.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
-				auto const payloadInfo = aem.getPayload();
-				auto* const commandPayload = payloadInfo.first;
-				auto const commandPayloadLength = payloadInfo.second;
-
-				if (commandPayload == nullptr || commandPayloadLength < protocol::AecpAemGetAudioMapResponsePayloadMinSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: GET_AUDIO_MAP");
-
-				// Check payload audio map data
-				Deserializer des(commandPayload, commandPayloadLength);
-				model::DescriptorType descriptorType;
-				model::DescriptorIndex descriptorIndex;
-				model::MapIndex mapIndex;
-				model::MapIndex numberOfMaps;
-				model::MapIndex numberOfMappings;
-				std::uint16_t reserved;
-				des >> descriptorType >> descriptorIndex >> mapIndex >> numberOfMaps >> numberOfMappings >> reserved;
-
-				// Check descriptor variable size
-				constexpr size_t mapInfoSize = sizeof(model::AudioMapping::streamIndex) + sizeof(model::AudioMapping::streamChannel) + sizeof(model::AudioMapping::clusterOffset) + sizeof(model::AudioMapping::clusterChannel);
-				auto const mappingsSize = mapInfoSize * numberOfMappings;
-				if (des.remaining() < mappingsSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: GET_AUDIO_MAP"); // Malformed packet
-				// Unpack descriptor remaining data
-				model::AudioMappings mappings;
-				for (auto index = 0u; index < numberOfMappings; ++index)
-				{
-					model::AudioMapping mapping;
-					des >> mapping.streamIndex >> mapping.streamChannel >> mapping.clusterOffset >> mapping.clusterChannel;
-					mappings.push_back(mapping);
-				}
-				assert(des.usedBytes() == (protocol::AecpAemGetAudioMapResponsePayloadMinSize + mappingsSize) && "Used more bytes than specified in protocol constant");
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex, mapIndex, numberOfMaps, mappings] = protocol::aemPayload::deserializeGetAudioMapResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeGetAudioMapResponse(aem.getPayload());
+				entity::model::DescriptorType const descriptorType = std::get<0>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				entity::model::MapIndex const mapIndex = std::get<2>(result);
+				entity::model::MapIndex const numberOfMaps = std::get<3>(result);
+				entity::model::AudioMappings const mappings = std::get<4>(result);
+#endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
@@ -749,41 +806,21 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					}
 				}
 				else
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: Unknown DESCRIPTOR_STREAM type"); // Malformed packet
+					throw InvalidDescriptorTypeException();
 			}
 		},
 		// Add Audio Mappings
 		{ protocol::AemCommandType::AddAudioMappings.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
-				auto const payloadInfo = aem.getPayload();
-				auto* const commandPayload = payloadInfo.first;
-				auto const commandPayloadLength = payloadInfo.second;
-
-				if (commandPayload == nullptr || commandPayloadLength < protocol::AecpAemAddAudioMappingsResponsePayloadMinSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: ADD_AUDIO_MAPPINGS");
-
-				// Check payload audio map data
-				Deserializer des(commandPayload, commandPayloadLength);
-				model::DescriptorType descriptorType;
-				model::DescriptorIndex descriptorIndex;
-				model::MapIndex numberOfMappings;
-				std::uint16_t reserved;
-				des >> descriptorType >> descriptorIndex >> numberOfMappings >> reserved;
-
-				// Check descriptor variable size
-				constexpr size_t mapInfoSize = sizeof(model::AudioMapping::streamIndex) + sizeof(model::AudioMapping::streamChannel) + sizeof(model::AudioMapping::clusterOffset) + sizeof(model::AudioMapping::clusterChannel);
-				auto const mappingsSize = mapInfoSize * numberOfMappings;
-				if (des.remaining() < mappingsSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: ADD_AUDIO_MAPPINGS"); // Malformed packet
-				// Unpack descriptor remaining data
-				model::AudioMappings mappings;
-				for (auto index = 0u; index < numberOfMappings; ++index)
-				{
-					model::AudioMapping mapping;
-					des >> mapping.streamIndex >> mapping.streamChannel >> mapping.clusterOffset >> mapping.clusterChannel;
-					mappings.push_back(mapping);
-				}
-				assert(des.usedBytes() == (protocol::AecpAemAddAudioMappingsResponsePayloadMinSize + mappingsSize) && "Used more bytes than specified in protocol constant");
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex, mappings] = protocol::aemPayload::deserializeAddAudioMappingsResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeAddAudioMappingsResponse(aem.getPayload());
+				entity::model::DescriptorType const descriptorType = std::get<0>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				entity::model::AudioMappings const mappings = std::get<2>(result);
+#endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
 				// Notify handlers
@@ -797,41 +834,21 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					answerCallback.invoke<AddStreamOutputAudioMappingsHandler>(controller, targetID, status, descriptorIndex, mappings);
 				}
 				else
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: Unknown DESCRIPTOR_STREAM type"); // Malformed packet
+					throw InvalidDescriptorTypeException();
 			}
 		},
 		// Remove Audio Mappings
 		{ protocol::AemCommandType::RemoveAudioMappings.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
-				auto const payloadInfo = aem.getPayload();
-				auto* const commandPayload = payloadInfo.first;
-				auto const commandPayloadLength = payloadInfo.second;
-
-				if (commandPayload == nullptr || commandPayloadLength < protocol::AecpAemRemoveAudioMappingsResponsePayloadMinSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: REMOVE_AUDIO_MAPPINGS");
-
-				// Check payload audio map data
-				Deserializer des(commandPayload, commandPayloadLength);
-				model::DescriptorType descriptorType;
-				model::DescriptorIndex descriptorIndex;
-				model::MapIndex numberOfMappings;
-				std::uint16_t reserved;
-				des >> descriptorType >> descriptorIndex >> numberOfMappings >> reserved;
-
-				// Check descriptor variable size
-				constexpr size_t mapInfoSize = sizeof(model::AudioMapping::streamIndex) + sizeof(model::AudioMapping::streamChannel) + sizeof(model::AudioMapping::clusterOffset) + sizeof(model::AudioMapping::clusterChannel);
-				auto const mappingsSize = mapInfoSize * numberOfMappings;
-				if (des.remaining() < mappingsSize) // Malformed packet
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: REMOVE_AUDIO_MAPPINGS"); // Malformed packet
-				// Unpack descriptor remaining data
-				model::AudioMappings mappings;
-				for (auto index = 0u; index < numberOfMappings; ++index)
-				{
-					model::AudioMapping mapping;
-					des >> mapping.streamIndex >> mapping.streamChannel >> mapping.clusterOffset >> mapping.clusterChannel;
-					mappings.push_back(mapping);
-				}
-				assert(des.usedBytes() == (protocol::AecpAemRemoveAudioMappingsResponsePayloadMinSize + mappingsSize) && "Used more bytes than specified in protocol constant");
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex, mappings] = protocol::aemPayload::deserializeRemoveAudioMappingsResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeRemoveAudioMappingsResponse(aem.getPayload());
+				entity::model::DescriptorType const descriptorType = std::get<0>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				entity::model::AudioMappings const mappings = std::get<2>(result);
+#endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
 				// Notify handlers
@@ -845,7 +862,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					answerCallback.invoke<RemoveStreamOutputAudioMappingsHandler>(controller, targetID, status, descriptorIndex, mappings);
 				}
 				else
-					throw CommandException(AemCommandStatus::ProtocolError, "Malformed AEM response: Unknown DESCRIPTOR_STREAM type"); // Malformed packet
+					throw InvalidDescriptorTypeException();
 			}
 		},
 		// Set Memory Object Length
@@ -860,7 +877,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 		// If this is an unsolicited notification, simply log we do not handle the message
 		if (aem.getUnsolicited())
 		{
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unsolicited AEM response ") + std::string(aem.getCommandType()) + " not handled (" + toHexString(aem.getCommandType().getValue())  + ")");
+			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unsolicited AEM response ") + std::string(aem.getCommandType()) + " not handled (" + toHexString(aem.getCommandType().getValue()) + ")");
 		}
 		// But if it's an expected response, this is an internal error since we sent a command and didn't implement the code to handle the response
 		else
@@ -875,23 +892,33 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 		{
 			it->second(this, status, aem, answerCallback);
 		}
-		catch (CommandException const& e)
+		catch (protocol::aemPayload::IncorrectPayloadSizeException const& e)
 		{
-			auto st = e.getStatus();
+			auto st = AemCommandStatus::ProtocolError;
 #if defined(IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES)
-			if (st == AemCommandStatus::ProtocolError && status != AemCommandStatus::Success)
+			if (status != AemCommandStatus::Success)
 			{
 				// Allow this packet to go through as a non-success response, but some fields might have the default initial value which might not be valid (the spec says even in a response message, some fields have a meaningful value)
 				st = status;
+				Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Received an invalid non-success ") + std::string(aem.getCommandType()) + "AEM response (" + e.what() + ") from " + toHexString(aem.getTargetEntityID(), true) + " but still processing it because of define IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES");
 			}
 #endif // IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Failed to process AEM response: ") + e.what());
+			if (st == AemCommandStatus::ProtocolError)
+			{
+				Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Failed to process ") + std::string(aem.getCommandType()) + " AEM response: " + e.what());
+			}
 			invokeProtectedHandler(onErrorCallback, st);
+			return;
+		}
+		catch (InvalidDescriptorTypeException const& e)
+		{
+			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Failed to process ") + std::string(aem.getCommandType()) + " AEM response: " + e.what());
+			invokeProtectedHandler(onErrorCallback, AemCommandStatus::ProtocolError);
 			return;
 		}
 		catch (std::exception const& e) // Mainly unpacking errors
 		{
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Failed to process AEM response: ") + e.what());
+			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Failed to process ") + std::string(aem.getCommandType()) + " AEM response: " + e.what());
 			invokeProtectedHandler(onErrorCallback, AemCommandStatus::ProtocolError);
 			return;
 		}
@@ -1099,30 +1126,46 @@ void ControllerEntityImpl::processAcmpResponse(protocol::Acmpdu const* const res
 /* Discovery Protocol (ADP) */
 
 /* Enumeration and Control Protocol (AECP) */
-void ControllerEntityImpl::queryEntityAvailable(UniqueIdentifier const targetEntityID, QueryEntityAvailableHandler const& handler) const noexcept
+#pragma message("TBD: Change the API to allow partial EM acquire")
+void ControllerEntityImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, AcquireEntityHandler const& handler) const noexcept
 {
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
-	sendAemCommand(targetEntityID, protocol::AemCommandType::EntityAvailable, nullptr, 0, errorCallback, handler);
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeAcquireEntityCommand(isPersistent ? protocol::AemAcquireEntityFlags::Persistent : protocol::AemAcquireEntityFlags::None, getNullIdentifier(), descriptorType, descriptorIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier(), descriptorType, descriptorIndex);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize acquireEntity: ") + e.what());
+	}
 }
 
-void ControllerEntityImpl::queryControllerAvailable(UniqueIdentifier const targetEntityID, QueryControllerAvailableHandler const& handler) const noexcept
+#pragma message("TBD: Change the API to allow partial EM acquire")
+void ControllerEntityImpl::releaseEntity(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, ReleaseEntityHandler const& handler) const noexcept
 {
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
-	sendAemCommand(targetEntityID, protocol::AemCommandType::ControllerAvailable, nullptr, 0, errorCallback, handler);
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeAcquireEntityCommand(protocol::AemAcquireEntityFlags::Release, getNullIdentifier(), descriptorType, descriptorIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier(), descriptorType, descriptorIndex);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize releaseEntity: ") + e.what());
+	}
 }
 
+#pragma message("TBD: Change the API to allow partial EM lock")
 void ControllerEntityImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntityHandler const& handler) const noexcept
 {
 	try
 	{
-		Serializer<protocol::AecpAemLockEntityCommandPayloadSize> ser;
-		ser << protocol::AemLockEntityFlags::None; // aem_lock_flags
-		ser << getNullIdentifier(); // locked_entity_id
-#pragma message("TBD: Change the API to allow partial EM lock")
-		ser << model::DescriptorType::Entity; // descriptor_type
-		ser << model::DescriptorIndex{ 0 }; // descriptor_index
-
+		auto const ser = protocol::aemPayload::serializeLockEntityCommand(protocol::AemLockEntityFlags::None, getNullIdentifier(), model::DescriptorType::Entity, 0);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier());
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::LockEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1135,14 +1178,9 @@ void ControllerEntityImpl::unlockEntity(UniqueIdentifier const targetEntityID, U
 {
 	try
 	{
-		Serializer<protocol::AecpAemLockEntityCommandPayloadSize> ser;
-		ser << protocol::AemLockEntityFlags::Release; // aem_lock_flags
-		ser << getNullIdentifier(); // locked_entity_id
-#pragma message("TBD: Change the API to allow partial EM lock")
-		ser << model::DescriptorType::Entity; // descriptor_type
-		ser << model::DescriptorIndex{ 0 }; // descriptor_index
-
+		auto const ser = protocol::aemPayload::serializeLockEntityCommand(protocol::AemLockEntityFlags::Unlock, getNullIdentifier(), model::DescriptorType::Entity, 0);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::LockEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1151,55 +1189,31 @@ void ControllerEntityImpl::unlockEntity(UniqueIdentifier const targetEntityID, U
 	}
 }
 
-void ControllerEntityImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, AcquireEntityHandler const& handler) const noexcept
+void ControllerEntityImpl::queryEntityAvailable(UniqueIdentifier const targetEntityID, QueryEntityAvailableHandler const& handler) const noexcept
 {
-	try
-	{
-		Serializer<protocol::AecpAemAcquireEntityCommandPayloadSize> ser;
-		ser << (isPersistent ? protocol::AemAcquireEntityFlags::Persistent : protocol::AemAcquireEntityFlags::None); // aem_acquire_flags
-		ser << getNullIdentifier(); // owner_entity_id
-#pragma message("TBD: Change the API to allow partial EM acquire")
-		ser << model::DescriptorType::Entity; // descriptor_type
-		ser << model::DescriptorIndex{ 0 }; // descriptor_index
+	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
 
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier());
-		sendAemCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
-	}
-	catch (std::exception const& e)
-	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize acquireEntity: ") + e.what());
-	}
+	sendAemCommand(targetEntityID, protocol::AemCommandType::EntityAvailable, nullptr, 0, errorCallback, handler);
 }
 
-void ControllerEntityImpl::releaseEntity(UniqueIdentifier const targetEntityID, ReleaseEntityHandler const& handler) const noexcept
+void ControllerEntityImpl::queryControllerAvailable(UniqueIdentifier const targetEntityID, QueryControllerAvailableHandler const& handler) const noexcept
 {
-	try
-	{
-		Serializer<protocol::AecpAemAcquireEntityCommandPayloadSize> ser;
-		ser << protocol::AemAcquireEntityFlags::Release; // aem_acquire_flags
-		ser << getNullIdentifier(); // owner_entity_id
-#pragma message("TBD: Change the API to allow partial EM acquire")
-		ser << model::DescriptorType::Entity; // descriptor_type
-		ser << model::DescriptorIndex{ 0 }; // descriptor_index
+	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
 
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier());
-		sendAemCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
-	}
-	catch (std::exception const& e)
-	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize releaseEntity: ") + e.what());
-	}
+	sendAemCommand(targetEntityID, protocol::AemCommandType::ControllerAvailable, nullptr, 0, errorCallback, handler);
 }
 
 void ControllerEntityImpl::registerUnsolicitedNotifications(UniqueIdentifier const targetEntityID, RegisterUnsolicitedNotificationsHandler const& handler) const noexcept
 {
 	auto errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
+
 	sendAemCommand(targetEntityID, protocol::AemCommandType::RegisterUnsolicitedNotification, nullptr, 0, errorCallback, handler);
 }
 
 void ControllerEntityImpl::unregisterUnsolicitedNotifications(UniqueIdentifier const targetEntityID, UnregisterUnsolicitedNotificationsHandler const& handler) const noexcept
 {
 	auto errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
+
 	sendAemCommand(targetEntityID, protocol::AemCommandType::DeregisterUnsolicitedNotification, nullptr, 0, errorCallback, handler);
 }
 
@@ -1207,14 +1221,9 @@ void ControllerEntityImpl::readEntityDescriptor(UniqueIdentifier const targetEnt
 {
 	try
 	{
-		Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
-		ser << model::ConfigurationIndex{ 0x0000 }; // configuration_index
-		ser << std::uint16_t{ 0x0000 }; // reserved
-		ser << model::DescriptorType::Entity; // descriptor_type
-		ser << model::DescriptorIndex{ 0 }; // descriptor_index
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(0, model::DescriptorType::Entity, 0);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, model::EntityDescriptor{});
 
-		model::EntityDescriptor const emptyDescriptor{ { model::DescriptorType::Entity, model::DescriptorIndex{ 0 } } };
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1227,14 +1236,9 @@ void ControllerEntityImpl::readConfigurationDescriptor(UniqueIdentifier const ta
 {
 	try
 	{
-		Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
-		ser << model::ConfigurationIndex{ 0x0000 }; // configuration_index
-		ser << std::uint16_t{ 0x0000 }; // reserved
-		ser << model::DescriptorType::Configuration; // descriptor_type
-		ser << model::DescriptorIndex{ configurationIndex }; // descriptor_index
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(0, model::DescriptorType::Configuration, configurationIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, model::ConfigurationDescriptor{});
 
-		model::ConfigurationDescriptor const emptyDescriptor{ { model::DescriptorType::Configuration, configurationIndex } };
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1243,58 +1247,13 @@ void ControllerEntityImpl::readConfigurationDescriptor(UniqueIdentifier const ta
 	}
 }
 
-void ControllerEntityImpl::readLocaleDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::LocaleIndex const localeIndex, LocaleDescriptorHandler const& handler) const noexcept
-{
-	try
-	{
-		Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
-		ser << model::ConfigurationIndex{ configurationIndex }; // configuration_index
-		ser << std::uint16_t{ 0x0000 }; // reserved
-		ser << model::DescriptorType::Locale; // descriptor_type
-		ser << model::DescriptorIndex{ localeIndex }; // descriptor_index
-
-		model::LocaleDescriptor const emptyDescriptor{ { model::DescriptorType::Locale, localeIndex } };
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
-	}
-	catch (std::exception const& e)
-	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readLocaleDescriptor: ") + e.what());
-	}
-}
-
-void ControllerEntityImpl::readStringsDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StringsIndex const stringsIndex, StringsDescriptorHandler const& handler) const noexcept
-{
-	try
-	{
-		Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
-		ser << model::ConfigurationIndex{ configurationIndex }; // configuration_index
-		ser << std::uint16_t{ 0x0000 }; // reserved
-		ser << model::DescriptorType::Strings; // descriptor_type
-		ser << model::DescriptorIndex{ stringsIndex }; // descriptor_index
-
-		model::StringsDescriptor const emptyDescriptor{ { model::DescriptorType::Strings, stringsIndex } };
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
-	}
-	catch (std::exception const& e)
-	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readStringsDescriptor: ") + e.what());
-	}
-}
-
 void ControllerEntityImpl::readStreamInputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const streamIndex, StreamInputDescriptorHandler const& handler) const noexcept
 {
 	try
 	{
-		Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
-		ser << model::ConfigurationIndex{ configurationIndex }; // configuration_index
-		ser << std::uint16_t{ 0x0000 }; // reserved
-		ser << model::DescriptorType::StreamInput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::StreamInput, streamIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, model::StreamDescriptor{});
 
-		model::StreamDescriptor const emptyDescriptor{ model::DescriptorType::StreamInput, streamIndex };
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1307,14 +1266,9 @@ void ControllerEntityImpl::readStreamOutputDescriptor(UniqueIdentifier const tar
 {
 	try
 	{
-		Serializer<protocol::AecpAemReadDescriptorCommandPayloadSize> ser;
-		ser << model::ConfigurationIndex{ configurationIndex }; // configuration_index
-		ser << std::uint16_t{ 0x0000 }; // reserved
-		ser << model::DescriptorType::StreamOutput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::StreamOutput, streamIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, model::StreamDescriptor{});
 
-		model::StreamDescriptor const emptyDescriptor{ model::DescriptorType::StreamOutput, streamIndex };
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, emptyDescriptor);
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1323,16 +1277,43 @@ void ControllerEntityImpl::readStreamOutputDescriptor(UniqueIdentifier const tar
 	}
 }
 
+void ControllerEntityImpl::readLocaleDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::LocaleIndex const localeIndex, LocaleDescriptorHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::Locale, localeIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, localeIndex, model::LocaleDescriptor{});
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readLocaleDescriptor: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::readStringsDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StringsIndex const stringsIndex, StringsDescriptorHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::Strings, stringsIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, stringsIndex, model::StringsDescriptor{});
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readStringsDescriptor: ") + e.what());
+	}
+}
+
 void ControllerEntityImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamFormat const streamFormat, SetStreamInputFormatHandler const& handler) const noexcept
 {
 	try
 	{
-		Serializer<protocol::AecpAemSetStreamFormatCommandPayloadSize> ser;
-		ser << model::DescriptorType::StreamInput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-		ser << streamFormat; // stream_format
-
+		auto const ser = protocol::aemPayload::serializeSetStreamFormatCommand(model::DescriptorType::StreamInput, streamIndex, streamFormat);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::SetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1345,12 +1326,9 @@ void ControllerEntityImpl::setStreamOutputFormat(UniqueIdentifier const targetEn
 {
 	try
 	{
-		Serializer<protocol::AecpAemSetStreamFormatCommandPayloadSize> ser;
-		ser << model::DescriptorType::StreamOutput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-		ser << streamFormat; // stream_format
-
+		auto const ser = protocol::aemPayload::serializeSetStreamFormatCommand(model::DescriptorType::StreamOutput, streamIndex, streamFormat);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::SetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1363,13 +1341,9 @@ void ControllerEntityImpl::getStreamInputAudioMap(UniqueIdentifier const targetE
 {
 	try
 	{
-		Serializer<protocol::AecpAemGetAudioMapCommandPayloadSize> ser;
-		ser << model::DescriptorType::StreamInput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-		ser << model::MapIndex(mapIndex); // map_index
-		ser << std::uint16_t{ 0x0000 }; // reserved
-
+		auto const ser = protocol::aemPayload::serializeGetAudioMapCommand(model::DescriptorType::StreamInput, streamIndex, mapIndex);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::MapIndex(0), mapIndex, s_emptyMappings);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::GetAudioMap, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1382,13 +1356,9 @@ void ControllerEntityImpl::getStreamOutputAudioMap(UniqueIdentifier const target
 {
 	try
 	{
-		Serializer<protocol::AecpAemGetAudioMapCommandPayloadSize> ser;
-		ser << model::DescriptorType::StreamOutput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-		ser << model::MapIndex(mapIndex); // map_index
-		ser << std::uint16_t{ 0x0000 }; // reserved
-
+		auto const ser = protocol::aemPayload::serializeGetAudioMapCommand(model::DescriptorType::StreamOutput, streamIndex, mapIndex);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::MapIndex(0), mapIndex, s_emptyMappings);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::GetAudioMap, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1401,17 +1371,9 @@ void ControllerEntityImpl::addStreamInputAudioMappings(UniqueIdentifier const ta
 {
 	try
 	{
-		Serializer<protocol::AecpAemAddAudioMappingsCommandPayloadMaxSize> ser;
-		ser << model::DescriptorType::StreamInput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-		ser << model::MapIndex(mappings.size()); // number_of_mappings
-		ser << std::uint16_t{ 0x0000 }; // reserved
-		for (auto const& map : mappings)
-		{
-			ser << map.streamIndex << map.streamChannel << map.clusterOffset << map.clusterChannel;
-		}
-
+		auto const ser = protocol::aemPayload::serializeAddAudioMappingsCommand(model::DescriptorType::StreamInput, streamIndex, mappings);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyMappings);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::AddAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1424,17 +1386,9 @@ void ControllerEntityImpl::addStreamOutputAudioMappings(UniqueIdentifier const t
 {
 	try
 	{
-		Serializer<protocol::AecpAemAddAudioMappingsCommandPayloadMaxSize> ser;
-		ser << model::DescriptorType::StreamOutput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-		ser << model::MapIndex(mappings.size()); // number_of_mappings
-		ser << std::uint16_t{ 0x0000 }; // reserved
-		for (auto const& map : mappings)
-		{
-			ser << map.streamIndex << map.streamChannel << map.clusterOffset << map.clusterChannel;
-		}
-
+		auto const ser = protocol::aemPayload::serializeAddAudioMappingsCommand(model::DescriptorType::StreamOutput, streamIndex, mappings);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyMappings);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::AddAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1447,17 +1401,9 @@ void ControllerEntityImpl::removeStreamInputAudioMappings(UniqueIdentifier const
 {
 	try
 	{
-		Serializer<protocol::AecpAemRemoveAudioMappingsCommandPayloadMaxSize> ser;
-		ser << model::DescriptorType::StreamInput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-		ser << model::MapIndex(mappings.size()); // number_of_mappings
-		ser << std::uint16_t{ 0x0000 }; // reserved
-		for (auto const& map : mappings)
-		{
-			ser << map.streamIndex << map.streamChannel << map.clusterOffset << map.clusterChannel;
-		}
-
+		auto const ser = protocol::aemPayload::serializeRemoveAudioMappingsCommand(model::DescriptorType::StreamInput, streamIndex, mappings);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyMappings);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::RemoveAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1470,17 +1416,9 @@ void ControllerEntityImpl::removeStreamOutputAudioMappings(UniqueIdentifier cons
 {
 	try
 	{
-		Serializer<protocol::AecpAemRemoveAudioMappingsCommandPayloadMaxSize> ser;
-		ser << model::DescriptorType::StreamOutput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-		ser << model::MapIndex(mappings.size()); // number_of_mappings
-		ser << std::uint16_t{ 0x0000 }; // reserved
-		for (auto const& map : mappings)
-		{
-			ser << map.streamIndex << map.streamChannel << map.clusterOffset << map.clusterChannel;
-		}
-
+		auto const ser = protocol::aemPayload::serializeRemoveAudioMappingsCommand(model::DescriptorType::StreamOutput, streamIndex, mappings);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyMappings);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::RemoveAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1493,11 +1431,9 @@ void ControllerEntityImpl::getStreamInputInfo(UniqueIdentifier const targetEntit
 {
 	try
 	{
-		Serializer<protocol::AecpAemGetStreamInfoCommandPayloadSize> ser;
-		ser << model::DescriptorType::StreamInput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-
+		auto const ser = protocol::aemPayload::serializeGetStreamInfoCommand(model::DescriptorType::StreamInput, streamIndex);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyStreamInfo);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::GetStreamInfo, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1506,15 +1442,163 @@ void ControllerEntityImpl::getStreamInputInfo(UniqueIdentifier const targetEntit
 	}
 }
 
+void ControllerEntityImpl::setEntityName(UniqueIdentifier const targetEntityID, model::AvdeccFixedString const& entityName, SetEntityNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::Entity, 0, 0, 0, entityName);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setName: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::getEntityName(UniqueIdentifier const targetEntityID, GetEntityNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::Entity, 0, 0, 0);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, s_emptyAvdeccFixedString);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize getName: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, model::AvdeccFixedString const& entityGroupName, SetEntityGroupNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::Entity, 0, 1, 0, entityGroupName);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setName: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::getEntityGroupName(UniqueIdentifier const targetEntityID, GetEntityGroupNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::Entity, 0, 1, 0);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, s_emptyAvdeccFixedString);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize getName: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::setConfigurationName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& entityGroupName, SetConfigurationNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::Configuration, configurationIndex, 0, 0, entityGroupName);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setName: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::getConfigurationName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, GetConfigurationNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::Configuration, configurationIndex, 0, 0);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, s_emptyAvdeccFixedString);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize getName: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::setStreamInputName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const streamIndex, model::AvdeccFixedString const& streamInputName, SetStreamInputNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::StreamInput, streamIndex, 0, configurationIndex, streamInputName);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setName: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::getStreamInputName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const streamIndex, GetStreamInputNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::StreamInput, streamIndex, 0, configurationIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, s_emptyAvdeccFixedString);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize getName: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const streamIndex, model::AvdeccFixedString const& streamOutputName, SetStreamOutputNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::StreamOutput, streamIndex, 0, configurationIndex, streamOutputName);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setName: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::getStreamOutputName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const streamIndex, GetStreamOutputNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::StreamOutput, streamIndex, 0, configurationIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, s_emptyAvdeccFixedString);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize getName: ") + e.what());
+	}
+}
+
 void ControllerEntityImpl::startStreamInput(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, StartStreamInputHandler const& handler) const noexcept
 {
 	try
 	{
-		Serializer<protocol::AecpAemStartStreamingCommandPayloadSize> ser;
-		ser << model::DescriptorType::StreamInput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-
+		auto const ser = protocol::aemPayload::serializeStartStreamingCommand(model::DescriptorType::StreamInput, streamIndex);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::StartStreaming, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1527,11 +1611,9 @@ void ControllerEntityImpl::startStreamOutput(UniqueIdentifier const targetEntity
 {
 	try
 	{
-		Serializer<protocol::AecpAemStartStreamingCommandPayloadSize> ser;
-		ser << model::DescriptorType::StreamOutput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-
+		auto const ser = protocol::aemPayload::serializeStartStreamingCommand(model::DescriptorType::StreamOutput, streamIndex);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::StartStreaming, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1544,11 +1626,9 @@ void ControllerEntityImpl::stopStreamInput(UniqueIdentifier const targetEntityID
 {
 	try
 	{
-		Serializer<protocol::AecpAemStopStreamingCommandPayloadSize> ser;
-		ser << model::DescriptorType::StreamInput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-
+		auto const ser = protocol::aemPayload::serializeStopStreamingCommand(model::DescriptorType::StreamInput, streamIndex);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::StopStreaming, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1561,11 +1641,9 @@ void ControllerEntityImpl::stopStreamOutput(UniqueIdentifier const targetEntityI
 {
 	try
 	{
-		Serializer<protocol::AecpAemStopStreamingCommandPayloadSize> ser;
-		ser << model::DescriptorType::StreamOutput; // descriptor_type
-		ser << model::DescriptorIndex{ streamIndex }; // descriptor_index
-
+		auto const ser = protocol::aemPayload::serializeStopStreamingCommand(model::DescriptorType::StreamOutput, streamIndex);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
+
 		sendAemCommand(targetEntityID, protocol::AemCommandType::StopStreaming, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch (std::exception const& e)
@@ -1608,34 +1686,34 @@ ControllerEntityImpl::Delegate* ControllerEntityImpl::getDelegate() const noexce
 /* protocol::ProtocolInterface::Observer overrides                            */
 /* ************************************************************************** */
 /* **** Global notifications **** */
-void ControllerEntityImpl::onTransportError(la::avdecc::protocol::ProtocolInterface const* const /*pi*/) noexcept
+void ControllerEntityImpl::onTransportError(protocol::ProtocolInterface const* const /*pi*/) noexcept
 {
 	invokeProtectedMethod(&ControllerEntity::Delegate::onTransportError, _delegate);
 }
 
 /* **** Discovery notifications **** */
-void ControllerEntityImpl::onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface const* const pi, DiscoveredEntity const& entity) noexcept
+void ControllerEntityImpl::onLocalEntityOnline(protocol::ProtocolInterface const* const pi, DiscoveredEntity const& entity) noexcept
 {
 	// The controller doesn't make any difference btw a local and a remote entity, just ignore ourself
 	if (getEntityID() != entity.getEntityID())
 		onRemoteEntityOnline(pi, entity);
 }
 
-void ControllerEntityImpl::onLocalEntityOffline(la::avdecc::protocol::ProtocolInterface const* const pi, UniqueIdentifier const entityID) noexcept
+void ControllerEntityImpl::onLocalEntityOffline(protocol::ProtocolInterface const* const pi, UniqueIdentifier const entityID) noexcept
 {
 	// The controller doesn't make any difference btw a local and a remote entity, just ignore ourself
 	if (getEntityID() != entityID)
 		onRemoteEntityOffline(pi, entityID); // The controller doesn't make any difference btw a local and a remote entity
 }
 
-void ControllerEntityImpl::onLocalEntityUpdated(la::avdecc::protocol::ProtocolInterface const* const pi, DiscoveredEntity const& entity) noexcept
+void ControllerEntityImpl::onLocalEntityUpdated(protocol::ProtocolInterface const* const pi, DiscoveredEntity const& entity) noexcept
 {
 	// The controller doesn't make any difference btw a local and a remote entity, just ignore ourself
 	if (getEntityID() != entity.getEntityID())
 		onRemoteEntityUpdated(pi, entity); // The controller doesn't make any difference btw a local and a remote entity
 }
 
-void ControllerEntityImpl::onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface const* const /*pi*/, DiscoveredEntity const& entity) noexcept
+void ControllerEntityImpl::onRemoteEntityOnline(protocol::ProtocolInterface const* const /*pi*/, DiscoveredEntity const& entity) noexcept
 {
 	auto const entityID = entity.getEntityID();
 	{
@@ -1657,7 +1735,7 @@ void ControllerEntityImpl::onRemoteEntityOnline(la::avdecc::protocol::ProtocolIn
 	invokeProtectedMethod(&ControllerEntity::Delegate::onEntityOnline, _delegate, this, entityID, entity);
 }
 
-void ControllerEntityImpl::onRemoteEntityOffline(la::avdecc::protocol::ProtocolInterface const* const /*pi*/, UniqueIdentifier const entityID) noexcept
+void ControllerEntityImpl::onRemoteEntityOffline(protocol::ProtocolInterface const* const /*pi*/, UniqueIdentifier const entityID) noexcept
 {
 	{
 		// Lock entities
@@ -1670,7 +1748,7 @@ void ControllerEntityImpl::onRemoteEntityOffline(la::avdecc::protocol::ProtocolI
 	invokeProtectedMethod(&ControllerEntity::Delegate::onEntityOffline, _delegate, this, entityID);
 }
 
-void ControllerEntityImpl::onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface const* const /*pi*/, DiscoveredEntity const& entity) noexcept
+void ControllerEntityImpl::onRemoteEntityUpdated(protocol::ProtocolInterface const* const /*pi*/, DiscoveredEntity const& entity) noexcept
 {
 	auto const entityID = entity.getEntityID();
 	{
@@ -1693,7 +1771,7 @@ void ControllerEntityImpl::onRemoteEntityUpdated(la::avdecc::protocol::ProtocolI
 }
 
 /* **** AECP notifications **** */
-void ControllerEntityImpl::onAecpCommand(la::avdecc::protocol::ProtocolInterface const* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Aecpdu const& aecpdu) noexcept
+void ControllerEntityImpl::onAecpCommand(protocol::ProtocolInterface const* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Aecpdu const& aecpdu) noexcept
 {
 	auto const selfID = getEntityID();
 	auto const targetID = aecpdu.getTargetEntityID();
@@ -1743,7 +1821,7 @@ void ControllerEntityImpl::onAecpCommand(la::avdecc::protocol::ProtocolInterface
 	}
 }
 
-void ControllerEntityImpl::onAecpUnsolicitedResponse(la::avdecc::protocol::ProtocolInterface const* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Aecpdu const& aecpdu) noexcept
+void ControllerEntityImpl::onAecpUnsolicitedResponse(protocol::ProtocolInterface const* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Aecpdu const& aecpdu) noexcept
 {
 	auto const messageType = aecpdu.getMessageType();
 
@@ -1760,11 +1838,11 @@ void ControllerEntityImpl::onAecpUnsolicitedResponse(la::avdecc::protocol::Proto
 }
 
 /* **** ACMP notifications **** */
-void ControllerEntityImpl::onAcmpSniffedCommand(la::avdecc::protocol::ProtocolInterface const* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Acmpdu const& /*acmpdu*/) noexcept
+void ControllerEntityImpl::onAcmpSniffedCommand(protocol::ProtocolInterface const* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Acmpdu const& /*acmpdu*/) noexcept
 {
 }
 
-void ControllerEntityImpl::onAcmpSniffedResponse(la::avdecc::protocol::ProtocolInterface const* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Acmpdu const& acmpdu) noexcept
+void ControllerEntityImpl::onAcmpSniffedResponse(protocol::ProtocolInterface const* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Acmpdu const& acmpdu) noexcept
 {
 	processAcmpResponse(&acmpdu, OnACMPErrorCallback(), AnswerCallback(), true);
 }

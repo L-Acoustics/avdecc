@@ -61,6 +61,13 @@ public:
 	/** Get connected information about a listener's stream (TalkerID and StreamIndex might be filled even if isConnected is not true, in case of FastConnect) */
 	virtual entity::model::StreamConnectedState getConnectedSinkState(entity::model::StreamIndex const listenerIndex) const override; // Throws Exception::InvalidStreamIndex if streamIndex do not exist
 	virtual entity::model::AudioMappings const& getStreamInputAudioMappings(entity::model::StreamIndex const streamIndex) const override; // Throws Exception::InvalidStreamIndex if streamIndex do not exist
+	virtual entity::model::AudioMappings const& getStreamOutputAudioMappings(entity::model::StreamIndex const streamIndex) const override; // Throws Exception::InvalidStreamIndex if streamIndex do not exist
+
+	// Non-const getters
+	entity::model::EntityDescriptor& getEntityDescriptor(); // Throws Exception::NotSupported if EM not supported by the Entity
+	entity::model::ConfigurationDescriptor& getConfigurationDescriptor(); // Throws Exception::NotSupported if EM not supported by the Entity
+	entity::model::StreamDescriptor& getStreamInputDescriptor(entity::model::StreamIndex const streamIndex); // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidStreamIndex if streamIndex do not exist
+	entity::model::StreamDescriptor& getStreamOutputDescriptor(entity::model::StreamIndex const streamIndex); // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidStreamIndex if streamIndex do not exist
 
 	// Setters (of the model, not the physical entity)
 	void updateEntity(entity::Entity const& entity) noexcept;
@@ -68,16 +75,19 @@ public:
 	void setOwningController(UniqueIdentifier const controllerID) noexcept;
 	void setEntityDescriptor(entity::model::EntityDescriptor const& descriptor) noexcept;
 	void setConfigurationDescriptor(entity::model::ConfigurationDescriptor const& descriptor) noexcept;
-	bool addLocaleDescriptor(entity::model::LocaleDescriptor const& descriptor) noexcept; /* True if all locale descriptors loaded */
-	void addStringsDescriptor(entity::model::StringsDescriptor const& descriptor, entity::model::StringsIndex const baseStringDescriptorIndex) noexcept;
-	void addInputStreamDescriptor(entity::model::StreamDescriptor const& descriptor) noexcept;
-	void addOutputStreamDescriptor(entity::model::StreamDescriptor const& descriptor) noexcept;
+	void addInputStreamDescriptor(entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept;
+	void addOutputStreamDescriptor(entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept;
+	bool addLocaleDescriptor(entity::model::LocaleIndex const localeIndex, entity::model::LocaleDescriptor const& descriptor) noexcept; /* True if all locale descriptors loaded */
+	void addStringsDescriptor(entity::model::StringsIndex const stringsIndex, entity::model::StringsDescriptor const& descriptor, entity::model::StringsIndex const baseStringDescriptorIndex) noexcept;
 	bool setInputStreamState(entity::model::StreamIndex const inputStreamIndex, entity::model::StreamConnectedState const& state) noexcept; /* True if state changed */
 	bool setInputStreamFormat(entity::model::StreamIndex const inputStreamIndex, entity::model::StreamFormat const streamFormat); /* True if format changed */
 	bool setOutputStreamFormat(entity::model::StreamIndex const outputStreamIndex, entity::model::StreamFormat const streamFormat); /* True if format changed */
 	void clearInputStreamAudioMappings(entity::model::StreamIndex const inputStreamIndex) noexcept;
+	void clearOutputStreamAudioMappings(entity::model::StreamIndex const outputStreamIndex) noexcept;
 	void addInputStreamAudioMappings(entity::model::StreamIndex const inputStreamIndex, entity::model::AudioMappings const& mappings, bool const isComplete = false) noexcept;
+	void addOutputStreamAudioMappings(entity::model::StreamIndex const outputStreamIndex, entity::model::AudioMappings const& mappings, bool const isComplete = false) noexcept;
 	void removeInputStreamAudioMappings(entity::model::StreamIndex const inputStreamIndex, entity::model::AudioMappings const& mappings) noexcept;
+	void removeOutputStreamAudioMappings(entity::model::StreamIndex const outputStreamIndex, entity::model::AudioMappings const& mappings) noexcept;
 
 	void setIgnoreQuery(EntityQuery const query) noexcept;
 	void setAllIgnored() noexcept;
@@ -93,6 +103,16 @@ public:
 	ControlledEntityImpl& operator=(ControlledEntityImpl&&) = default;
 
 private:
+	template<typename DescriptorType, DescriptorType ControlledEntityImpl::*MemberPtr>
+	DescriptorType const& getRootDescriptor() const
+	{
+		if (!hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+			throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
+
+		return this->*MemberPtr;
+	}
+	void checkValidStreamIndex(entity::model::DescriptorType const descriptorType, entity::model::StreamIndex const streamIndex) const;
+
 	// Controller variables
 	std::bitset<static_cast<std::size_t>(EntityQuery::CountQueries)> _completedQueries{};
 	bool _advertised{ false };
@@ -109,6 +129,7 @@ private:
 	std::unordered_map<entity::model::StreamIndex, entity::model::StreamDescriptor> _outputStreams{};
 	std::unordered_map<entity::model::StreamIndex, entity::model::StreamConnectedState> _inputStreamStates{};
 	std::unordered_map<entity::model::StreamIndex, entity::model::AudioMappings> _inputStreamAudioMappings{};
+	std::unordered_map<entity::model::StreamIndex, entity::model::AudioMappings> _outputStreamAudioMappings{};
 };
 
 } // namespace controller

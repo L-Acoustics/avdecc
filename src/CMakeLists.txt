@@ -40,16 +40,18 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/logger.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/networkInterfaceHelper.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/utils.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/any.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/controllerEntity.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/endian.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/endStation.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entity.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModel.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTypes.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/exception.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/exports.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolDefines.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/streamFormat.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/types.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/entityEnums.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/uniqueIdentifier.hpp
 )
 
@@ -59,6 +61,7 @@ set (HEADER_FILES_PROTOCOL
 	protocol/protocolAdpdu.hpp
 	protocol/protocolAecpdu.hpp
 	protocol/protocolAemAecpdu.hpp
+	protocol/protocolAemPayloadSizes.hpp
 	protocol/protocolAemPayloads.hpp
 	protocol/protocolAvtpdu.hpp
 )
@@ -68,6 +71,7 @@ set (SOURCE_FILES_PROTOCOL
 	protocol/protocolAdpdu.cpp
 	protocol/protocolAecpdu.cpp
 	protocol/protocolAemAecpdu.cpp
+	protocol/protocolAemPayloads.cpp
 	protocol/protocolAvtpdu.cpp
 	protocol/protocolDefines.cpp
 )
