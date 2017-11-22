@@ -31,10 +31,12 @@
 #include <array>
 #include <cassert>
 #include <unordered_map>
+#include <iostream>
 #include <tuple>
-#include "types.hpp"
+#include "entityEnums.hpp"
 #include "uniqueIdentifier.hpp"
 #include "protocolDefines.hpp"
+#include "entityModelTypes.hpp"
 #include "la/avdecc/utils.hpp"
 #include "la/avdecc/networkInterfaceHelper.hpp"
 
@@ -47,18 +49,7 @@ namespace entity
 namespace model
 {
 
-using VendorEntityModel = std::uint64_t;
-using AvdeccFixedString = std::array<char, 64>;
-using ConfigurationIndex = std::uint16_t;
-using LocaleIndex = std::uint16_t;
-using StringsIndex = std::uint16_t;
-using LocalizedStringReference = std::uint16_t;
-using StreamIndex = std::uint16_t;
-using StreamFormat = std::uint64_t;
-using DescriptorIndex = std::uint16_t;
-using MapIndex = std::uint16_t;
-
-constexpr StreamFormat getNullVendorEntityModel() noexcept
+constexpr VendorEntityModel getNullVendorEntityModel() noexcept
 {
 	return VendorEntityModel(0u);
 }
@@ -66,6 +57,11 @@ constexpr StreamFormat getNullVendorEntityModel() noexcept
 constexpr StreamFormat getNullStreamFormat() noexcept
 {
 	return StreamFormat(0u);
+}
+
+constexpr SamplingRate getNullSamplingRate() noexcept
+{
+	return SamplingRate(0u);
 }
 
 enum class DescriptorType : std::uint16_t
@@ -109,22 +105,20 @@ enum class DescriptorType : std::uint16_t
 	ClockDomain = 36,
 	ControlBlock = 37,
 };
+constexpr bool operator==(DescriptorType const lhs, DescriptorType const rhs)
+{
+	return static_cast<std::underlying_type_t<DescriptorType>>(lhs) == static_cast<std::underlying_type_t<DescriptorType>>(rhs);
+}
+
 constexpr bool operator==(DescriptorType const lhs, std::underlying_type_t<DescriptorType> const rhs)
 {
 	return static_cast<std::underlying_type_t<DescriptorType>>(lhs) == rhs;
 }
 
-struct CommonDescriptor
-{
-	DescriptorType descriptorType;
-	DescriptorIndex descriptorIndex{ 0u };
-};
-
 /** ENTITY Descriptor - Clause 7.2.1 */
 
 struct EntityDescriptor
 {
-	CommonDescriptor common{ DescriptorType::Entity };
 	UniqueIdentifier entityID{ getNullIdentifier() };
 	VendorEntityModel vendorEntityModelID{ getNullVendorEntityModel() };
 	EntityCapabilities entityCapabilities{ EntityCapabilities::None };
@@ -135,12 +129,12 @@ struct EntityDescriptor
 	ControllerCapabilities controllerCapabilities{ ControllerCapabilities::None };
 	std::uint32_t availableIndex{ 0u };
 	UniqueIdentifier associationID{ getNullIdentifier() };
-	std::string entityName{};
+	AvdeccFixedString entityName{};
 	std::uint16_t vendorNameString{ 0u };
 	std::uint16_t modelNameString{ 0u };
-	std::string firmwareVersion{};
-	std::string groupName{};
-	std::string serialNumber{};
+	AvdeccFixedString firmwareVersion{};
+	AvdeccFixedString groupName{};
+	AvdeccFixedString serialNumber{};
 	std::uint16_t configurationsCount{ 0u };
 	std::uint16_t currentConfiguration{ 0u };
 };
@@ -148,37 +142,17 @@ struct EntityDescriptor
 /** CONFIGURATION Descriptor - Clause 7.2.2 */
 struct ConfigurationDescriptor
 {
-	CommonDescriptor common{ DescriptorType::Configuration };
-	std::string objectName{};
+	AvdeccFixedString objectName{};
 	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
 	std::uint16_t descriptorCountsCount{ 0u };
 	std::uint16_t descriptorCountsOffset{ 0u };
 	std::unordered_map<DescriptorType, std::uint16_t, la::avdecc::EnumClassHash> descriptorCounts{};
 };
 
-/** LOCALE Descriptor - Clause 7.2.11 */
-
-struct LocaleDescriptor
-{
-	CommonDescriptor common{ DescriptorType::Locale };
-	LocaleIdentifier localeID{};
-	std::uint16_t numberOfStringDescriptors{ 0u };
-	StringsIndex baseStringDescriptorIndex{ StringsIndex(0u) };
-};
-
-/** STRINGS Descriptor - Clause 7.2.12 */
-
-struct StringsDescriptor
-{
-	CommonDescriptor common{ DescriptorType::Strings };
-	std::array<std::string, 7> strings{};
-};
-
 /** STREAM_INPUT and STREAM_OUTPUT Descriptor - Clause 7.2.6 */
 struct StreamDescriptor
 {
-	CommonDescriptor common{};
-	std::string objectName{};
+	AvdeccFixedString objectName{};
 	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
 	std::uint16_t clockDomainIndex{ 0u };
 	StreamFlags streamFlags{ StreamFlags::None };
@@ -196,14 +170,21 @@ struct StreamDescriptor
 	std::uint16_t avbInterfaceIndex{ 0u };
 	std::uint32_t bufferLength{ 0u };
 	std::vector<StreamFormat> formats{};
+};
 
-	// Constructors
-	StreamDescriptor() noexcept {} /* = default; */ // Cannot '= default' due to clang4.0 bug
-	StreamDescriptor(DescriptorType const type, DescriptorIndex const descriptorIndex = 0u) noexcept
-	{
-		common.descriptorType = type;
-		common.descriptorIndex = descriptorIndex;
-	}
+/** LOCALE Descriptor - Clause 7.2.11 */
+struct LocaleDescriptor
+{
+	AvdeccFixedString localeID{};
+	std::uint16_t numberOfStringDescriptors{ 0u };
+	StringsIndex baseStringDescriptorIndex{ StringsIndex(0u) };
+};
+
+/** STRINGS Descriptor - Clause 7.2.12 */
+
+struct StringsDescriptor
+{
+	std::array<AvdeccFixedString, 7> strings{};
 };
 
 struct StreamConnectedState
@@ -236,26 +217,23 @@ using AudioMappings = std::vector<AudioMapping>;
 /** GET_STREAM_INFO and SET_STREAM_INFO Dynamic Information - Clause 7.4.16.2 */
 struct StreamInfo
 {
-	CommonDescriptor common{};
 	StreamInfoFlags streamInfoFlags{ StreamInfoFlags::None };
 	StreamFormat streamFormat{ getNullStreamFormat() };
 	UniqueIdentifier streamID{ getNullIdentifier() };
 	std::uint32_t msrpAccumulatedLatency{ 0u };
 	la::avdecc::networkInterface::MacAddress streamDestMac{};
 	std::uint8_t msrpFailureCode{ 0u };
-	std::uint8_t reserved{ 0u };
 	UniqueIdentifier msrpFailureBridgeID{ getNullIdentifier() };
 	std::uint16_t streamVlanID{ 0u };
-	std::uint16_t reserved2{ 0u };
-
-	// Constructors
-	StreamInfo() noexcept = default;
-	StreamInfo(DescriptorType const type, DescriptorIndex const descriptorIndex = 0u) noexcept
-	{
-		common.descriptorType = type;
-		common.descriptorIndex = descriptorIndex;
-	}
 };
+
+constexpr bool operator==(StreamInfo const& lhs, StreamInfo const& rhs) noexcept
+{
+	return (lhs.streamInfoFlags  == rhs.streamInfoFlags) && (lhs.streamFormat == rhs.streamFormat) &&
+		(lhs.streamID == rhs.streamID) && (lhs.msrpAccumulatedLatency == rhs.msrpAccumulatedLatency) &&
+		(lhs.streamDestMac == rhs.streamDestMac) && (lhs.msrpFailureCode == rhs.msrpFailureCode) &&
+		(lhs.msrpFailureBridgeID == rhs.msrpFailureBridgeID) && (lhs.streamVlanID == rhs.streamVlanID);
+}
 
 /**
 * @brief Make a VendorEntityModel from vendorID, deviceID and modelID.

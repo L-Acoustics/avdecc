@@ -66,17 +66,23 @@ void deinitOutput()
 #endif // USE_CURSES
 }
 
-void outputText(std::string const& str)
+void outputText(std::string const& str) noexcept
 {
-	static std::mutex mut;
-	std::lock_guard<decltype(mut)> const lg(mut);
-	
+	try
+	{
+		static std::mutex mut;
+		std::lock_guard<decltype(mut)> const lg(mut);
+
 #ifdef _WIN32
-	std::cout << str;
+		std::cout << str;
 #else // !_WIN32
-	wprintw(s_Window, str.c_str());
-	wrefresh(s_Window);
+		wprintw(s_Window, str.c_str());
+		wrefresh(s_Window);
 #endif // _WIN32
+	}
+	catch (...)
+	{
+	}
 }
 
 la::avdecc::EndStation::ProtocolInterfaceType chooseProtocolInterfaceType()

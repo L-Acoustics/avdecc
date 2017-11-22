@@ -43,7 +43,13 @@ la::avdecc::networkInterface::MacAddress AemAecpdu::Identify_Mac_Address{ { 0x91
 AemAecpdu::AemAecpdu() noexcept
 {
 	// Initialize parent's specific data length field
-	Aecpdu::setAecpSpecificDataLength(AemAecpdu::HeaderLength); // Might throw, but it's not possible from here (if a compiler complains about this constructor declared as 'noexcept' but calling a method not tagged as 'noexcept', add a try-catch)
+	try
+	{
+		Aecpdu::setAecpSpecificDataLength(AemAecpdu::HeaderLength); // This method might throw, but it's not possible from here
+	}
+	catch (std::exception const&)
+	{
+	}
 }
 
 void AemAecpdu::serialize(SerializationBuffer& buffer) const
@@ -92,14 +98,14 @@ void AemAecpdu::deserialize(DeserializationBuffer& buffer)
 		_commandSpecificDataLength = remainingBytes;
 		logLevel = Logger::Level::Debug;
 #endif // IGNORE_INVALID_CONTROL_DATA_LENGTH
-		Logger::getInstance().log(Logger::Layer::Protocol, logLevel, "AemAecpdu::deserialize error: ControlDataLength field advertises more bytes than remaining bytes in buffer for AemCommandType: " + la::avdecc::toHexString(_commandType.getValue()));
+		Logger::getInstance().log(Logger::Layer::Protocol, logLevel, "AemAecpdu::deserialize error: ControlDataLength field advertises more bytes than remaining bytes in buffer for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + ")");
 	}
 	buffer.unpackBuffer(_commandSpecificData.data(), _commandSpecificDataLength);
 
 #ifdef DEBUG
 	// Do not log this error in release, it might happen too often if an entity is bugged
 	if (buffer.remaining() != 0 && buffer.usedBytes() >= EthernetPayloadMinimumSize)
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "AemAecpdu::deserialize warning: Remaining bytes in buffer for AemCommandType: " + la::avdecc::toHexString(_commandType.getValue()));
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "AemAecpdu::deserialize warning: Remaining bytes in buffer for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + ")");
 #endif // DEBUG
 }
 

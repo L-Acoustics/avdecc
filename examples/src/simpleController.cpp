@@ -49,190 +49,286 @@ int doJob()
 		{
 			outputText("[" + la::avdecc::Logger::getInstance().layerToString(layer) + "," + la::avdecc::Logger::getInstance().levelToString(level) + "] " + message + "\n");
 		}
+		// la::avdecc::entity::ControllerEntity::Delegate overrides
 		/* Discovery Protocol (ADP) */
 		virtual void onEntityOnline(la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::Entity const& entity) noexcept override
 		{
-			std::stringstream ss;
-			ss << std::hex << "### Unit online (" << la::avdecc::toHexString(entityID, true) << ")";
-			if (la::avdecc::hasFlag(entity.getEntityCapabilities(), la::avdecc::entity::EntityCapabilities::AemSupported))
+			try
 			{
-				ss << std::hex << ", querying EntityModel" << std::endl;
-				controller->readEntityDescriptor(entityID, std::bind(&ControllerDelegate::onEntityDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+				std::stringstream ss;
+				ss << std::hex << "### Unit online (" << la::avdecc::toHexString(entityID, true) << ")";
+				if (la::avdecc::hasFlag(entity.getEntityCapabilities(), la::avdecc::entity::EntityCapabilities::AemSupported))
+				{
+					ss << std::hex << ", querying EntityModel" << std::endl;
+					controller->readEntityDescriptor(entityID, std::bind(&ControllerDelegate::onEntityDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+				}
+				else
+				{
+					ss << std::hex << ", but EntityModel not supported" << std::endl;
+				}
+				outputText(ss.str());
 			}
-			else
+			catch (...)
 			{
-				ss << std::hex << ", but EntityModel not supported" << std::endl;
+				outputText("Uncaught exception in onEntityOnline");
 			}
-			outputText(ss.str());
 		}
 		virtual void onEntityOffline(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID) noexcept override
 		{
-			std::stringstream ss;
-			ss << std::hex << "### Unit offline (" << la::avdecc::toHexString(entityID, true) << ")" << std::endl;
-			outputText(ss.str());
+			try
+			{
+				std::stringstream ss;
+				ss << std::hex << "### Unit offline (" << la::avdecc::toHexString(entityID, true) << ")" << std::endl;
+				outputText(ss.str());
+			}
+			catch (...)
+			{
+				outputText("Uncaught exception in onEntityOffline");
+			}
 		}
 		virtual void onEntityUpdate(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::Entity const& /*entity*/) noexcept override
 		{
-			std::stringstream ss;
-			ss << std::hex << "### Unit updated (" << la::avdecc::toHexString(entityID, true) << ")" << std::endl;
-			outputText(ss.str());
+			try
+			{
+				std::stringstream ss;
+				ss << std::hex << "### Unit updated (" << la::avdecc::toHexString(entityID, true) << ")" << std::endl;
+				outputText(ss.str());
+			}
+			catch (...)
+			{
+				outputText("Uncaught exception in onEntityUpdate");
+			}
 		}
+
+		// Result handlers
 		/* Enumeration and Control Protocol (AECP) */
 		void onEntityAvailableResult(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status) noexcept
 		{
-			std::stringstream ss;
-			ss << std::hex << "Unit available status (" << la::avdecc::toHexString(entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
-			outputText(ss.str());
-		}
-		void onEntityAcquireResult(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const /*owningEntity*/) noexcept
-		{
-			std::stringstream ss;
-			ss << std::hex << "Unit acquire status (" << la::avdecc::toHexString(entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
-			if (!!status)
+			try
 			{
-				if (entityID == _talker)
-					_talkerAcquired = true;
-				if (entityID == _listener)
-					_listenerAcquired = true;
+				std::stringstream ss;
+				ss << std::hex << "Unit available status (" << la::avdecc::toHexString(entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
+				outputText(ss.str());
 			}
-			outputText(ss.str());
+			catch (...)
+			{
+				outputText("Uncaught exception in onEntityAvailableResult");
+			}
+		}
+		void onEntityAcquireResult(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const /*owningEntity*/, la::avdecc::entity::model::DescriptorType const /*descriptorType*/, la::avdecc::entity::model::DescriptorIndex const /*descriptorIndex*/) noexcept
+		{
+			try
+			{
+				std::stringstream ss;
+				ss << std::hex << "Unit acquire status (" << la::avdecc::toHexString(entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
+				if (!!status)
+				{
+					if (entityID == _talker)
+						_talkerAcquired = true;
+					if (entityID == _listener)
+						_listenerAcquired = true;
+				}
+				outputText(ss.str());
+			}
+			catch (...)
+			{
+				outputText("Uncaught exception in onEntityAcquireResult");
+			}
 		}
 		void onEntityReleaseResult(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status) noexcept
 		{
-			std::stringstream ss;
-			ss << std::hex << "Unit release status (" << la::avdecc::toHexString(entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
-			outputText(ss.str());
+			try
+			{
+				std::stringstream ss;
+				ss << std::hex << "Unit release status (" << la::avdecc::toHexString(entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
+				outputText(ss.str());
+			}
+			catch (...)
+			{
+				outputText("Uncaught exception in onEntityReleaseResult");
+			}
 		}
 		void onEntityDescriptorResult(la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::EntityDescriptor const& descriptor) noexcept
 		{
-			std::stringstream ss;
-			ss << std::hex << "Entity descriptor status (" << la::avdecc::toHexString(entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
-			if (!!status)
+			try
 			{
-				ss << "Unit name: " << descriptor.entityName << std::endl;
-			}
-
-			if (descriptor.entityName == std::string("macMini AVB Talker"))
-			{
-				_talker = entityID;
-				controller->acquireEntity(entityID, false, std::bind(&ControllerDelegate::onEntityAcquireResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
-				_talkerConfiguration = descriptor.currentConfiguration;
-				controller->readConfigurationDescriptor(entityID, _talkerConfiguration, std::bind(&ControllerDelegate::onConfigurationDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
-			}
-			if (descriptor.entityName == std::string("LA12X"))
-			{
-				_listener = entityID;
-				controller->acquireEntity(entityID, false, std::bind(&ControllerDelegate::onEntityAcquireResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
-				_listenerConfiguration = descriptor.currentConfiguration;
-				controller->readConfigurationDescriptor(entityID, _listenerConfiguration, std::bind(&ControllerDelegate::onConfigurationDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
-			}
-
-			outputText(ss.str());
-		}
-		void onConfigurationDescriptorResult(la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationDescriptor const& descriptor) noexcept
-		{
-			std::stringstream ss;
-			ss << std::hex << "Configuration descriptor status (" << la::avdecc::toHexString(entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
-			if (!!status)
-			{
-				if (entityID == _talker)
+				std::stringstream ss;
+				ss << std::hex << "Entity descriptor status (" << la::avdecc::toHexString(entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
+				if (!!status)
 				{
-					// Read output streams
-					la::avdecc::entity::model::StreamIndex count{ 0 };
-					auto countIt = descriptor.descriptorCounts.find(la::avdecc::entity::model::DescriptorType::StreamOutput);
-					if (countIt != descriptor.descriptorCounts.end())
-						count = la::avdecc::entity::model::StreamIndex(countIt->second);
-					ss << std::dec << "Talker configuration " << descriptor.common.descriptorIndex << " has " << count << " OUTPUT STREAMS" << std::endl;
-					for (auto index = la::avdecc::entity::model::StreamIndex(0); index < count; ++index)
-						controller->readStreamOutputDescriptor(entityID, _talkerConfiguration, index, std::bind(&ControllerDelegate::onStreamOutputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+					ss << "Unit name: " << descriptor.entityName << std::endl;
 				}
-				if (entityID == _listener)
+
+				if (descriptor.entityName == std::string("macMini AVB Talker"))
 				{
-					// Read locales
+					_talker = entityID;
+					controller->acquireEntity(entityID, false, la::avdecc::entity::model::DescriptorType::Entity, 0u, std::bind(&ControllerDelegate::onEntityAcquireResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+					_talkerConfiguration = descriptor.currentConfiguration;
+					controller->readConfigurationDescriptor(entityID, _talkerConfiguration, std::bind(&ControllerDelegate::onConfigurationDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
+				}
+				if (descriptor.entityName == std::string("LA12X"))
+				{
+					_listener = entityID;
+					controller->acquireEntity(entityID, false, la::avdecc::entity::model::DescriptorType::Entity, 0u, std::bind(&ControllerDelegate::onEntityAcquireResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+					_listenerConfiguration = descriptor.currentConfiguration;
+					controller->readConfigurationDescriptor(entityID, _listenerConfiguration, std::bind(&ControllerDelegate::onConfigurationDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
+				}
+
+				outputText(ss.str());
+			}
+			catch (...)
+			{
+				outputText("Uncaught exception in onEntityDescriptorResult");
+			}
+		}
+		void onConfigurationDescriptorResult(la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ConfigurationDescriptor const& descriptor) noexcept
+		{
+			try
+			{
+				std::stringstream ss;
+				ss << std::hex << "Configuration descriptor status (" << la::avdecc::toHexString(entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
+				if (!!status)
+				{
+					if (entityID == _talker)
 					{
-						std::uint16_t count{ 0 };
-						auto countIt = descriptor.descriptorCounts.find(la::avdecc::entity::model::DescriptorType::Locale);
-						if (countIt != descriptor.descriptorCounts.end())
-							count = countIt->second;
-						ss << std::dec << "Listener configuration '" << descriptor.objectName << "' has " << count << " LOCALES" << std::endl;
-						for (auto index = la::avdecc::entity::model::LocaleIndex(0); index < count; ++index)
-							controller->readLocaleDescriptor(entityID, _listenerConfiguration, index, [this](la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::LocaleDescriptor const& descriptor)
-						{
-							if (!!status)
-							{
-								std::stringstream ss;
-								ss << "Locales for index " << descriptor.common.descriptorIndex << ": " << descriptor.numberOfStringDescriptors << " string descriptors (start at offset " << descriptor.baseStringDescriptorIndex << ")" << std::endl;
-								outputText(ss.str());
-								for (auto stringDescriptorIndex = la::avdecc::entity::model::StringsIndex(0); stringDescriptorIndex < descriptor.numberOfStringDescriptors; ++stringDescriptorIndex)
-								{
-									controller->readStringsDescriptor(entityID, _listenerConfiguration, descriptor.baseStringDescriptorIndex + stringDescriptorIndex, [localeIdentifier = descriptor.localeID](la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::StringsDescriptor const& descriptor)
-									{
-										std::stringstream ss;
-										if (!!status)
-										{
-											for (auto strIndex = 0u; strIndex < descriptor.strings.size(); ++strIndex)
-											{
-												ss << "String " << (descriptor.common.descriptorIndex * descriptor.strings.size()) + strIndex << " locale " << localeIdentifier << ": " << descriptor.strings[strIndex] << std::endl;
-											}
-										}
-										else
-										{
-											ss << "Error getting strings descriptor " << descriptor.common.descriptorIndex << ": " << la::avdecc::to_integral(status) << std::endl;
-										}
-										outputText(ss.str());
-									});
-								}
-							}
-						});
-					}
-					// Read input streams
-					{
+						// Read output streams
 						la::avdecc::entity::model::StreamIndex count{ 0 };
-						auto countIt = descriptor.descriptorCounts.find(la::avdecc::entity::model::DescriptorType::StreamInput);
+						auto countIt = descriptor.descriptorCounts.find(la::avdecc::entity::model::DescriptorType::StreamOutput);
 						if (countIt != descriptor.descriptorCounts.end())
 							count = la::avdecc::entity::model::StreamIndex(countIt->second);
-						ss << std::dec << "Listener configuration '" << descriptor.objectName << "' has " << count << " INPUT STREAMS" << std::endl;
+						ss << std::dec << "Talker configuration " << configurationIndex << " has " << count << " OUTPUT STREAMS" << std::endl;
 						for (auto index = la::avdecc::entity::model::StreamIndex(0); index < count; ++index)
-							controller->readStreamInputDescriptor(entityID, _listenerConfiguration, index, std::bind(&ControllerDelegate::onStreamInputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+							controller->readStreamOutputDescriptor(entityID, _talkerConfiguration, index, std::bind(&ControllerDelegate::onStreamOutputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+					}
+					if (entityID == _listener)
+					{
+						// Read locales
+						{
+							std::uint16_t count{ 0 };
+							auto countIt = descriptor.descriptorCounts.find(la::avdecc::entity::model::DescriptorType::Locale);
+							if (countIt != descriptor.descriptorCounts.end())
+								count = countIt->second;
+							ss << std::dec << "Listener configuration '" << descriptor.objectName << "' has " << count << " LOCALES" << std::endl;
+							for (auto index = la::avdecc::entity::model::LocaleIndex(0); index < count; ++index)
+								controller->readLocaleDescriptor(entityID, _listenerConfiguration, index, [this](la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::LocaleIndex const localeIndex, la::avdecc::entity::model::LocaleDescriptor const& descriptor)
+							{
+								if (!!status)
+								{
+									std::stringstream ss;
+									ss << "Locales for index " << localeIndex << ": " << descriptor.numberOfStringDescriptors << " string descriptors (start at offset " << descriptor.baseStringDescriptorIndex << ")" << std::endl;
+									outputText(ss.str());
+									for (auto stringDescriptorIndex = la::avdecc::entity::model::StringsIndex(0); stringDescriptorIndex < descriptor.numberOfStringDescriptors; ++stringDescriptorIndex)
+									{
+										controller->readStringsDescriptor(entityID, _listenerConfiguration, descriptor.baseStringDescriptorIndex + stringDescriptorIndex, [localeIdentifier = descriptor.localeID](la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::StringsIndex const stringsIndex, la::avdecc::entity::model::StringsDescriptor const& descriptor)
+										{
+											std::stringstream ss;
+											if (!!status)
+											{
+												for (auto strIndex = 0u; strIndex < descriptor.strings.size(); ++strIndex)
+												{
+													ss << "String " << (stringsIndex * descriptor.strings.size()) + strIndex << " locale " << localeIdentifier << ": " << descriptor.strings[strIndex] << std::endl;
+												}
+											}
+											else
+											{
+												ss << "Error getting strings descriptor " << stringsIndex << ": " << la::avdecc::to_integral(status) << std::endl;
+											}
+											outputText(ss.str());
+										});
+									}
+								}
+							});
+						}
+						// Read input streams
+						{
+							la::avdecc::entity::model::StreamIndex count{ 0 };
+							auto countIt = descriptor.descriptorCounts.find(la::avdecc::entity::model::DescriptorType::StreamInput);
+							if (countIt != descriptor.descriptorCounts.end())
+								count = la::avdecc::entity::model::StreamIndex(countIt->second);
+							ss << std::dec << "Listener configuration '" << descriptor.objectName << "' has " << count << " INPUT STREAMS" << std::endl;
+							for (auto index = la::avdecc::entity::model::StreamIndex(0); index < count; ++index)
+								controller->readStreamInputDescriptor(entityID, _listenerConfiguration, index, std::bind(&ControllerDelegate::onStreamInputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+						}
 					}
 				}
-			}
-			outputText(ss.str());
-		}
-		void onStreamInputDescriptorResult(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamDescriptor const& descriptor) noexcept
-		{
-			if (!!status)
-			{
-				std::stringstream ss;
-				ss << "Stream input for index " << descriptor.common.descriptorIndex << ": " << descriptor.objectName << std::endl;
 				outputText(ss.str());
 			}
-		}
-		void onStreamOutputDescriptorResult(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamDescriptor const& descriptor) noexcept
-		{
-			if (!!status)
+			catch (...)
 			{
-				std::stringstream ss;
-				ss << "Stream output for index " << descriptor.common.descriptorIndex << ": " << descriptor.objectName << std::endl;
-				outputText(ss.str());
+				outputText("Uncaught exception in onConfigurationDescriptorResult");
+			}
+		}
+		void onStreamInputDescriptorResult(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const /*configurationIndex*/, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamDescriptor const& descriptor) noexcept
+		{
+			try
+			{
+				if (!!status)
+				{
+					std::stringstream ss;
+					ss << "Stream input for index " << streamIndex << ": " << descriptor.objectName << std::endl;
+					outputText(ss.str());
+				}
+			}
+			catch (...)
+			{
+				outputText("Uncaught exception in onStreamInputDescriptorResult");
+			}
+		}
+		void onStreamOutputDescriptorResult(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const /*configurationIndex*/, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamDescriptor const& descriptor) noexcept
+		{
+			try
+			{
+				if (!!status)
+				{
+					std::stringstream ss;
+					ss << "Stream output for index " << streamIndex << ": " << descriptor.objectName << std::endl;
+					outputText(ss.str());
+				}
+			}
+			catch (...)
+			{
+				outputText("Uncaught exception in onStreamOutputDescriptorResult");
 			}
 		}
 		/* Connection Management Protocol sniffed messages (ACMP) */
 		virtual void onConnectStreamSniffed(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const talkerEntityID, la::avdecc::entity::model::StreamIndex const /*talkerStreamIndex*/, la::avdecc::UniqueIdentifier const listenerEntityID, la::avdecc::entity::model::StreamIndex const /*listenerStreamIndex*/, uint16_t const /*connectionCount*/, la::avdecc::entity::ConnectionFlags const /*flags*/, la::avdecc::entity::ControllerEntity::ControlStatus const status) noexcept override
 		{
-			std::stringstream ss;
-			ss << std::hex << "Stream connect status (" << la::avdecc::toHexString(listenerEntityID, true) << " -> " << la::avdecc::toHexString(talkerEntityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
-			outputText(ss.str());
+			try
+			{
+				std::stringstream ss;
+				ss << std::hex << "Stream connect status (" << la::avdecc::toHexString(listenerEntityID, true) << " -> " << la::avdecc::toHexString(talkerEntityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
+				outputText(ss.str());
+			}
+			catch (...)
+			{
+				outputText("Uncaught exception in onConnectStreamSniffed");
+			}
 		}
 		virtual void onDisconnectStreamSniffed(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const talkerEntityID, la::avdecc::entity::model::StreamIndex const /*talkerStreamIndex*/, la::avdecc::UniqueIdentifier const listenerEntityID, la::avdecc::entity::model::StreamIndex const /*listenerStreamIndex*/, uint16_t const /*connectionCount*/, la::avdecc::entity::ConnectionFlags const /*flags*/, la::avdecc::entity::ControllerEntity::ControlStatus const status) noexcept override
 		{
-			std::stringstream ss;
-			ss << std::hex << "Stream disconnect status (" << la::avdecc::toHexString(listenerEntityID, true) << " -> " << la::avdecc::toHexString(talkerEntityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
-			outputText(ss.str());
+			try
+			{
+				std::stringstream ss;
+				ss << std::hex << "Stream disconnect status (" << la::avdecc::toHexString(listenerEntityID, true) << " -> " << la::avdecc::toHexString(talkerEntityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
+				outputText(ss.str());
+			}
+			catch (...)
+			{
+				outputText("Uncaught exception in onDisconnectStreamSniffed");
+			}
 		}
 		virtual void onGetListenerStreamStateSniffed(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const /*listenerEntityID*/, la::avdecc::entity::model::StreamIndex const /*listenerStreamIndex*/, la::avdecc::UniqueIdentifier const /*talkerEntityID*/, la::avdecc::entity::model::StreamIndex const /*talkerStreamIndex*/, uint16_t const /*connectionCount*/, la::avdecc::entity::ConnectionFlags const /*flags*/, la::avdecc::entity::ControllerEntity::ControlStatus const /*status*/) noexcept override
 		{
+			try
+			{
+			}
+			catch (...)
+			{
+				outputText("Uncaught exception in onGetListenerStreamStateSniffed");
+			}
 		}
+
+
 
 	private:
 		la::avdecc::UniqueIdentifier _talker{ 0 };

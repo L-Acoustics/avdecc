@@ -31,7 +31,7 @@
 #if defined(__APPLE__)
 # include <machine/endian.h>
 #elif defined(__GNUC__)
-# include <endian.hpp>
+# include <endian.h>
 #endif
 
 #if defined(__BYTE_ORDER)

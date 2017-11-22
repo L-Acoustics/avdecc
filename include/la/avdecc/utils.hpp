@@ -45,7 +45,7 @@ LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION setCurrentThreadName(std::string co
 
 /** Useful template to be used with streams, it prevents a char (or uint8_t) to be printed as a char instead of the numeric value */
 template <typename T>
-constexpr auto forceNumeric(T const t)
+constexpr auto forceNumeric(T const t) noexcept
 {
 	static_assert(std::numeric_limits<T>::is_integer, "forceNumeric requires an integer value");
 
@@ -55,18 +55,25 @@ constexpr auto forceNumeric(T const t)
 
 /** Useful template to convert any integer value to it's hex representation. Can be filled with zeros (ex: int16(0x123) = 0x0123) and printed in uppercase. */
 template<typename T>
-std::string toHexString(T const v, bool const zeroFilled = false, bool const upper = false)
+std::string toHexString(T const v, bool const zeroFilled = false, bool const upper = false) noexcept
 {
 	static_assert(std::numeric_limits<T>::is_integer, "toHexString requires an integer value");
 
-	std::stringstream stream;
-	stream << "0x";
-	if (zeroFilled)
-		stream << std::setfill('0') << std::setw(sizeof(T) * 2);
-	if (upper)
-		stream << std::uppercase;
-	stream << std::hex << forceNumeric(v);
-	return stream.str();
+	try
+	{
+		std::stringstream stream;
+		stream << "0x";
+		if (zeroFilled)
+			stream << std::setfill('0') << std::setw(sizeof(T) * 2);
+		if (upper)
+			stream << std::uppercase;
+		stream << std::hex << forceNumeric(v);
+		return stream.str();
+	}
+	catch (...)
+	{
+		return "[Invalid Conversion]";
+	}
 }
 
 /**
@@ -677,6 +684,7 @@ class TypedSubject : public Subject<TypedSubject<Tag, Mut>, Mut>
 public:
 	using Subject<TypedSubject<Tag, Mut>, Mut>::notifyObservers;
 	using Subject<TypedSubject<Tag, Mut>, Mut>::notifyObserversMethod;
+	using Subject<TypedSubject<Tag, Mut>, Mut>::removeAllObservers;
 };
 
 } // namespace avdecc

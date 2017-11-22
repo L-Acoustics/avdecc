@@ -18,9 +18,9 @@
 */
 
 /**
-* @file types.hpp
+* @file entityEnums.hpp
 * @author Christophe Calmejane
-* @brief Avdecc entity types and constants.
+* @brief Avdecc entity enums.
 */
 
 #pragma once
@@ -35,8 +35,6 @@ namespace avdecc
 {
 namespace entity
 {
-
-using LocaleIdentifier = std::string; /** Encoded in UTF-8 */
 
 /** ADP Entity Capabilities - Clause 6.2.1.10 */
 enum class EntityCapabilities : std::uint32_t
