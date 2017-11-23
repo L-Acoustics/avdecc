@@ -57,7 +57,7 @@ public:
 
 	~EndStationImpl() noexcept
 	{
-		// Remove all entities before shuting down the protocol interface
+		// Remove all entities before shuting down the protocol interface (so they have a chance to send a ENTITY_DEPARTING message)
 		_entities.clear();
 		// Shutdown protocolInterface now
 		_protocolInterface->shutdown();
