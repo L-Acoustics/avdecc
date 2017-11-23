@@ -234,8 +234,8 @@ if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 	# Setup common library options
 	setup_library_options(la_avdecc_static "la_avdecc")
 
-	# Additional private include directory
-	target_include_directories(la_avdecc_static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}) # Include root source directory for access to private headers
+	# Additional include directory (only for build interface)
+	target_include_directories(la_avdecc_static PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>) # Include root source directory for access to private headers
 
 	# Set installation rule
 	if(INSTALL_AVDECC_LIB_STATIC)
