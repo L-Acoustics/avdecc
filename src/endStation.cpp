@@ -205,7 +205,7 @@ EndStation* LA_AVDECC_CALL_CONVENTION EndStation::createRawEndStation(ProtocolIn
 				throw Exception(Error::InterfaceNotFound, e.what());
 			case protocol::ProtocolInterface::Error::InterfaceInvalid:
 				throw Exception(Error::InterfaceInvalid, e.what());
-			case protocol::ProtocolInterface::Error::NotSupported:
+			case protocol::ProtocolInterface::Error::InterfaceNotSupported:
 				throw Exception(Error::InvalidProtocolInterfaceType, e.what());
 			default:
 				assert(false && "Unhandled exception");

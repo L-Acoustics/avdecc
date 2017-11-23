@@ -60,7 +60,8 @@ public:
 		DuplicateLocalEntityID = 6, /**< The EntityID specified in a LocalEntity is already in use by another local entity. */
 		InterfaceNotFound = 7, /**< Specified interface not found. */
 		InterfaceInvalid = 8, /**< Specified interface is invalid. */
-		NotSupported = 9, /**< This protocol interface is not in the list of supported protocol interfaces. */
+		InterfaceNotSupported = 9, /**< This protocol interface is not in the list of supported protocol interfaces. */
+		MessageNotSupported = 10, /**< This type of message is not supported by this protocol interface. */
 		InternalError = 99, /**< Internal error, please report the issue. */
 	};
 
@@ -125,6 +126,12 @@ public:
 	virtual Error discoverRemoteEntities() const noexcept = 0;
 	/** Requests a targetted remote entity discovery. */
 	virtual Error discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept = 0;
+	/** Sends an ADP message directly on the network (not supported by all kinds of ProtocolInterface). */
+	virtual Error sendAdpMessage(Adpdu::UniquePointer&& adpdu) const noexcept = 0;
+	/** Sends an AECP message directly on the network (not supported by all kinds of ProtocolInterface). */
+	virtual Error sendAecpMessage(Aecpdu::UniquePointer&& aecpdu) const noexcept = 0;
+	/** Sends an ACMP message directly on the network (not supported by all kinds of ProtocolInterface). */
+	virtual Error sendAcmpMessage(Acmpdu::UniquePointer&& acmpdu) const noexcept = 0;
 	/** Sends an AECP command message. */
 	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& macAddress, AecpCommandResultHandler const& onResult) const noexcept = 0;
 	/** Sends an AECP response message. */

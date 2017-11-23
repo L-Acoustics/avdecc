@@ -158,8 +158,11 @@ public:
 	/** Serialization method */
 	void serialize(SerializationBuffer& buffer) const;
 
-	// Deserialization method
+	/** Deserialization method */
 	void deserialize(DeserializationBuffer& buffer);
+
+	/** Copy method */
+	UniquePointer copy() const;
 
 	// Defaulted compiler auto-generated methods
 	Acmpdu(Acmpdu&&) = default;

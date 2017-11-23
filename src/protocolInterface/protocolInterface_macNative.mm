@@ -210,6 +210,21 @@ namespace la
 					return ProtocolInterface::Error::TransportError;
 				}
 				
+				virtual Error sendAdpMessage(Adpdu::UniquePointer&& adpdu) const noexcept override
+				{
+					return Error::MessageNotSupported;
+				}
+
+				virtual Error sendAecpMessage(Aecpdu::UniquePointer&& aecpdu) const noexcept override
+				{
+					return Error::MessageNotSupported;
+				}
+
+				virtual Error sendAcmpMessage(Acmpdu::UniquePointer&& acmpdu) const noexcept override
+				{
+					return Error::MessageNotSupported;
+				}
+
 				virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& macAddress, AecpCommandResultHandler const& onResult) const noexcept override
 				{
 					return [_bridge sendAecpCommand:std::move(aecpdu) macAddress:macAddress handler:onResult];

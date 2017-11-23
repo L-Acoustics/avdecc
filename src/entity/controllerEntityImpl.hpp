@@ -192,9 +192,9 @@ private:
 	/* ************************************************************************** */
 	ControllerEntity::Delegate* _delegate{ nullptr };
 	bool _shouldTerminate{ false };
-	std::thread _discoveryThread{};
 	mutable std::mutex _lockDiscoveredEntities{};
 	DiscoveredEntities _discoveredEntities{};
+	std::thread _discoveryThread{};
 };
 
 } // namespace entity

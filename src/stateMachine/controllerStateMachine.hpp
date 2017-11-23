@@ -227,10 +227,10 @@ private:
 	Delegate* const _delegate{ nullptr };
 	size_t _maxInflightAecpMessages{ 0 };
 	bool _shouldTerminate{ false };
-	std::thread _stateMachineThread{};
 	mutable std::recursive_mutex _lockEntities{}; /** Lock to protect _localEntities and _discoveredEntities */
 	DiscoveredEntities _discoveredEntities{};
 	std::unordered_map<UniqueIdentifier, LocalEntityInfo> _localEntities{}; /** Local entities declared by the running program */
+	std::thread _stateMachineThread{};
 };
 
 } // namespace stateMachine

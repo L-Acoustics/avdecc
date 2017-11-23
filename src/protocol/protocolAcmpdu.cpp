@@ -86,6 +86,16 @@ void Acmpdu::deserialize(DeserializationBuffer& buffer)
 #endif // DEBUG
 }
 
+/** Copy method */
+Acmpdu::UniquePointer Acmpdu::copy() const
+{
+	auto deleter = [](Acmpdu* self)
+	{
+		static_cast<Acmpdu*>(self)->destroy();
+	};
+	return UniquePointer(new Acmpdu(*this), deleter);
+}
+
 /** Entry point */
 Acmpdu* Acmpdu::createRawAcmpdu()
 {
