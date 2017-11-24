@@ -154,6 +154,7 @@ private:
 		try
 		{
 			auto* const pcap = _pcap.get();
+			assert(pcap && "Trying to send a message but pcapLibrary has been uninitialized");
 			if (pcap != nullptr)
 			{
 				if (_pcapLibrary.sendpacket(pcap, buffer.data(), static_cast<int>(length)) == 0)
@@ -168,9 +169,15 @@ private:
 
 	virtual void shutdown() noexcept override
 	{
+		// Notify the thread we are shutting down
 		_shouldTerminate = true;
+
+		// Wait for the thread to complete its pending tasks
 		if (_captureThread.joinable())
 			_captureThread.join();
+
+		// Release the pcapLibrary
+		_pcap.reset();
 	}
 
 	virtual Error registerLocalEntity(entity::LocalEntity& entity) noexcept override

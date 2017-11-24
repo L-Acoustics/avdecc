@@ -43,9 +43,11 @@ namespace entity
 /* ************************************************************************** */
 /* ControllerEntityImpl                                                       */
 /* ************************************************************************** */
-class ControllerEntityImpl final : public LocalEntityImpl<ControllerEntity>, public protocol::ProtocolInterface::Observer
+class ControllerEntityImpl : public LocalEntityImpl<ControllerEntity>, public protocol::ProtocolInterface::Observer
 {
-public:
+private:
+	friend class LocalEntityGuard<ControllerEntityImpl>;
+
 	/* ************************************************************************** */
 	/* ControllerEntityImpl life cycle                                            */
 	/* ************************************************************************** */

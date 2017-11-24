@@ -108,10 +108,13 @@ ControllerEntityImpl::ControllerEntityImpl(protocol::ProtocolInterface* const pr
 
 ControllerEntityImpl::~ControllerEntityImpl() noexcept
 {
-	// Unregister observer
+	// Unregister ourself as a ProtocolInterface observer
 	invokeProtectedMethod(&protocol::ProtocolInterface::unregisterObserver, getProtocolInterface(), this);
 
+	// Notify the thread we are shutting down
 	_shouldTerminate = true;
+
+	// Wait for the thread to complete its pending tasks
 	if (_discoveryThread.joinable())
 		_discoveryThread.join();
 }

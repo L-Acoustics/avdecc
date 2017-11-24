@@ -57,7 +57,7 @@ public:
 
 	~EndStationImpl() noexcept
 	{
-		// Remove all entities before shuting down the protocol interface
+		// Remove all entities before shuting down the protocol interface (so they have a chance to send a ENTITY_DEPARTING message)
 		_entities.clear();
 		// Shutdown protocolInterface now
 		_protocolInterface->shutdown();
@@ -66,10 +66,10 @@ public:
 	// EndStation overrides
 	virtual entity::ControllerEntity* addControllerEntity(std::uint16_t const progID, entity::model::VendorEntityModel const vendorEntityModelID, entity::ControllerEntity::Delegate* const delegate) override
 	{
-		std::unique_ptr<entity::ControllerEntityImpl> controller{ nullptr };
+		std::unique_ptr<entity::LocalEntityGuard<entity::ControllerEntityImpl>> controller{ nullptr };
 		try
 		{
-			controller = std::make_unique<entity::ControllerEntityImpl>(_protocolInterface.get(), progID, vendorEntityModelID, delegate);
+			controller = std::make_unique<entity::LocalEntityGuard<entity::ControllerEntityImpl>>(_protocolInterface.get(), progID, vendorEntityModelID, delegate);
 		}
 		catch (la::avdecc::Exception const& e) // Because entity::ControllerEntityImpl::ControllerEntityImpl might throw if an entityID cannot be generated
 		{
