@@ -84,6 +84,7 @@ public:
 	/* Enumeration and Control Protocol (AECP) */
 	virtual void acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, AcquireEntityHandler const& handler) const noexcept override;
 	virtual void releaseEntity(UniqueIdentifier const targetEntityID, ReleaseEntityHandler const& handler) const noexcept override;
+	virtual void setConfiguration(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, SetConfigurationHandler const& handler) const noexcept override;
 	virtual void setStreamInputFormat(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat, SetStreamInputFormatHandler const& handler) const noexcept override;
 	virtual void setStreamOutputFormat(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat, SetStreamOutputFormatHandler const& handler) const noexcept override;
 	virtual void addStreamInputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, std::vector<entity::model::AudioMapping> const& mappings, AddStreamInputAudioMappingsHandler const& handler) const noexcept override;
@@ -126,7 +127,7 @@ private:
 
 	// entity::ControllerEntity::Delegate overrides
 	/* Global notifications */
-	virtual void onTransportError() noexcept override;
+	virtual void onTransportError(entity::ControllerEntity const* const /*controller*/) noexcept override;
 	/* Discovery Protocol (ADP) delegate */
 	virtual void onEntityOnline(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const /*entityID*/, entity::Entity const& /*entity*/) noexcept override;
 	virtual void onEntityUpdate(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const /*entityID*/, entity::Entity const& /*entity*/) noexcept override; // When GpgpGrandMasterID, GpgpDomainNumber or EntityCapabilities changed
@@ -137,26 +138,28 @@ private:
 	virtual void onDisconnectStreamSniffed(entity::ControllerEntity const* const controller, UniqueIdentifier const talkerEntityID, entity::model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, entity::model::StreamIndex const listenerStreamIndex, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept override;
 	virtual void onGetListenerStreamStateSniffed(entity::ControllerEntity const* const controller, UniqueIdentifier const listenerEntityID, entity::model::StreamIndex const listenerStreamIndex, UniqueIdentifier const talkerEntityID, entity::model::StreamIndex const talkerStreamIndex, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept override;
 	/* Unsolicited notifications (not triggered for our own commands, the command's 'result' method will be called in that case) and only if command has no error */
-	virtual void onEntityAcquired(UniqueIdentifier const acquiredEntity, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept override;
-	virtual void onEntityReleased(UniqueIdentifier const releasedEntity, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept override;
-	virtual void onStreamInputFormatChanged(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) noexcept override;
-	virtual void onStreamOutputFormatChanged(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) noexcept override;
-	virtual void onStreamInputAudioMappingsChanged(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings) noexcept override;
-	virtual void onStreamOutputAudioMappingsChanged(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings) noexcept override;
-	virtual void onStreamInputInfoChanged(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept override;
-	virtual void onStreamOutputInfoChanged(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept override;
-	virtual void onEntityNameChanged(UniqueIdentifier const entityID, entity::model::AvdeccFixedString const& entityName) noexcept override;
-	virtual void onEntityGroupNameChanged(UniqueIdentifier const entityID, entity::model::AvdeccFixedString const& entityGroupName) noexcept override;
-	virtual void onConfigurationNameChanged(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& configurationName) noexcept override;
-	virtual void onStreamInputNameChanged(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamName) noexcept override;
-	virtual void onStreamOutputNameChanged(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamName) noexcept override;
-	virtual void onStreamInputStarted(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept override;
-	virtual void onStreamOutputStarted(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept override;
-	virtual void onStreamInputStopped(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept override;
-	virtual void onStreamOutputStopped(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept override;
+	virtual void onEntityAcquired(entity::ControllerEntity const* const controller, UniqueIdentifier const acquiredEntity, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept override;
+	virtual void onEntityReleased(entity::ControllerEntity const* const controller, UniqueIdentifier const releasedEntity, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept override;
+	virtual void onConfigurationChanged(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex) noexcept override;
+	virtual void onStreamInputFormatChanged(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) noexcept override;
+	virtual void onStreamOutputFormatChanged(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) noexcept override;
+	virtual void onStreamInputAudioMappingsChanged(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings) noexcept override;
+	virtual void onStreamOutputAudioMappingsChanged(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings) noexcept override;
+	virtual void onStreamInputInfoChanged(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept override;
+	virtual void onStreamOutputInfoChanged(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept override;
+	virtual void onEntityNameChanged(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::model::AvdeccFixedString const& entityName) noexcept override;
+	virtual void onEntityGroupNameChanged(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::model::AvdeccFixedString const& entityGroupName) noexcept override;
+	virtual void onConfigurationNameChanged(entity::ControllerEntity const* const controller, UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& configurationName) noexcept override;
+	virtual void onStreamInputNameChanged(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamName) noexcept override;
+	virtual void onStreamOutputNameChanged(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamName) noexcept override;
+	virtual void onStreamInputStarted(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept override;
+	virtual void onStreamOutputStarted(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept override;
+	virtual void onStreamInputStopped(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept override;
+	virtual void onStreamOutputStopped(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept override;
 
 	// Private methods used to update AEM and notify observers
 	void updateAcquiredState(ControlledEntityImpl& entity, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, bool const undefined = false) const;
+	void updateConfiguration(entity::ControllerEntity const* const controller, ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex) const;
 	void updateStreamInputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) const;
 	void updateStreamOutputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) const;
 	void updateStreamInputAudioMappingsAdded(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::AudioMappings const& mappings) const;
@@ -330,7 +333,7 @@ void ControllerImpl::handleStreamStateNotification(ControlledEntityImpl* const l
 /* Enumeration and Control Protocol (AECP) handlers */
 void ControllerImpl::onEntityDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::EntityDescriptor const& descriptor) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onEntityDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + ")");
+	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onEntityDescriptorResult(") + toHexString(entityID, true) + "," + entity::ControllerEntity::statusToString(status) + ")");
 
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
@@ -350,9 +353,9 @@ void ControllerImpl::onEntityDescriptorResult(entity::ControllerEntity const* co
 	}
 }
 
-void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::ConfigurationDescriptor const& descriptor) noexcept
+void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ConfigurationDescriptor const& descriptor) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onConfigurationDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + ")");
+	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onConfigurationDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
 
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
@@ -427,9 +430,9 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 	}
 }
 
-void ControllerImpl::onStreamInputDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept
+void ControllerImpl::onStreamInputDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStreamInputDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + ")");
+	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStreamInputDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(streamIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
 
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
@@ -449,9 +452,9 @@ void ControllerImpl::onStreamInputDescriptorResult(entity::ControllerEntity cons
 	}
 }
 
-void ControllerImpl::onStreamOutputDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept
+void ControllerImpl::onStreamOutputDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStreamOutputDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + ")");
+	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStreamOutputDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(streamIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
 
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
@@ -471,9 +474,9 @@ void ControllerImpl::onStreamOutputDescriptorResult(entity::ControllerEntity con
 	}
 }
 
-void ControllerImpl::onLocaleDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::LocaleIndex const localeIndex, entity::model::LocaleDescriptor const& descriptor) noexcept
+void ControllerImpl::onLocaleDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::LocaleIndex const localeIndex, entity::model::LocaleDescriptor const& descriptor) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onLocaleDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + ")");
+	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onLocaleDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(localeIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
 
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
@@ -525,7 +528,7 @@ void ControllerImpl::onLocaleDescriptorResult(entity::ControllerEntity const* co
 
 void ControllerImpl::onStringsDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const stringsIndex, entity::model::StringsDescriptor const& descriptor, entity::model::StringsIndex const baseStringDescriptorIndex) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStringsDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + "," + std::to_string(configurationIndex) + "," + std::to_string(stringsIndex) + "," + std::to_string(baseStringDescriptorIndex) + ")");
+	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStringsDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(stringsIndex) + "," + std::to_string(baseStringDescriptorIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
 
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
@@ -549,7 +552,7 @@ void ControllerImpl::onStringsDescriptorResult(entity::ControllerEntity const* c
 
 void ControllerImpl::onGetStreamInputAudioMapResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onGetStreamInputAudioMapResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + "," + std::to_string(streamIndex) + "," + std::to_string(numberOfMaps) + "," + std::to_string(mapIndex) + ")");
+	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onGetStreamInputAudioMapResult(") + toHexString(entityID, true) + "," + std::to_string(streamIndex) + "," + std::to_string(numberOfMaps) + "," + std::to_string(mapIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
 
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
@@ -587,7 +590,7 @@ void ControllerImpl::onGetStreamInputAudioMapResult(entity::ControllerEntity con
 
 void ControllerImpl::onGetStreamOutputAudioMapResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onGetStreamOutputAudioMapResult(") + toHexString(entityID, true) + "," + std::to_string(to_integral(status)) + "," + std::to_string(streamIndex) + "," + std::to_string(numberOfMaps) + "," + std::to_string(mapIndex) + ")");
+	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onGetStreamOutputAudioMapResult(") + toHexString(entityID, true) + "," + std::to_string(streamIndex) + "," + std::to_string(numberOfMaps) + "," + std::to_string(mapIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
 
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
@@ -626,17 +629,17 @@ void ControllerImpl::onGetStreamOutputAudioMapResult(entity::ControllerEntity co
 /* Connection Management Protocol (ACMP) handlers */
 void ControllerImpl::onConnectStreamResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const talkerEntityID, entity::model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, entity::model::StreamIndex const listenerStreamIndex, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onConnectStreamResult(") + toHexString(talkerEntityID, true) + "," + std::to_string(talkerStreamIndex) + "," + toHexString(listenerEntityID, true) + "," + std::to_string(listenerStreamIndex) + "," + std::to_string(connectionCount) + "," + toHexString(to_integral(flags), true) + "," + std::to_string(to_integral(status)) + ")");
+	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onConnectStreamResult(") + toHexString(talkerEntityID, true) + "," + std::to_string(talkerStreamIndex) + "," + toHexString(listenerEntityID, true) + "," + std::to_string(listenerStreamIndex) + "," + std::to_string(connectionCount) + "," + toHexString(to_integral(flags), true) + "," + entity::ControllerEntity::statusToString(status) + ")");
 }
 
 void ControllerImpl::onDisconnectStreamResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const talkerEntityID, entity::model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, entity::model::StreamIndex const listenerStreamIndex, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onDisconnectStreamResult(") + toHexString(talkerEntityID, true) + "," + std::to_string(talkerStreamIndex) + "," + toHexString(listenerEntityID, true) + "," + std::to_string(listenerStreamIndex) + "," + std::to_string(connectionCount) + "," + toHexString(to_integral(flags), true) + "," + std::to_string(to_integral(status)) + ")");
+	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onDisconnectStreamResult(") + toHexString(talkerEntityID, true) + "," + std::to_string(talkerStreamIndex) + "," + toHexString(listenerEntityID, true) + "," + std::to_string(listenerStreamIndex) + "," + std::to_string(connectionCount) + "," + toHexString(to_integral(flags), true) + "," + entity::ControllerEntity::statusToString(status) + ")");
 }
 
 void ControllerImpl::onGetListenerStreamStateResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const listenerEntityID, entity::model::StreamIndex const listenerStreamIndex, UniqueIdentifier const talkerEntityID, entity::model::StreamIndex const talkerStreamIndex, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onGetListenerStreamStateResult: ") + toHexString(listenerEntityID, true) + " status=" + std::to_string(to_integral(status)));
+	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onGetListenerStreamStateResult(") + toHexString(listenerEntityID, true) + "," + entity::ControllerEntity::statusToString(status) + ")");
 
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
@@ -658,7 +661,7 @@ void ControllerImpl::onGetListenerStreamStateResult(entity::ControllerEntity con
 }
 
 /* Global notifications */
-void ControllerImpl::onTransportError() noexcept
+void ControllerImpl::onTransportError(entity::ControllerEntity const* const /*controller*/) noexcept
 {
 	notifyObserversMethod<Controller::Observer>(&Controller::Observer::onTransportError);
 }
@@ -819,7 +822,7 @@ void ControllerImpl::onGetListenerStreamStateSniffed(entity::ControllerEntity co
 }
 
 /* Unsolicited notifications (not triggered for our own commands, the command's 'result' method will be called in that case) and only if command has no error */
-void ControllerImpl::onEntityAcquired(UniqueIdentifier const entityID, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
+void ControllerImpl::onEntityAcquired(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
@@ -839,7 +842,7 @@ void ControllerImpl::onEntityAcquired(UniqueIdentifier const entityID, UniqueIde
 	}
 }
 
-void ControllerImpl::onEntityReleased(UniqueIdentifier const entityID, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
+void ControllerImpl::onEntityReleased(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
@@ -859,7 +862,27 @@ void ControllerImpl::onEntityReleased(UniqueIdentifier const entityID, UniqueIde
 	}
 }
 
-void ControllerImpl::onStreamInputFormatChanged(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) noexcept
+void ControllerImpl::onConfigurationChanged(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex) noexcept
+{
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+	auto entityIt = _controlledEntities.find(entityID);
+	if (entityIt != _controlledEntities.end())
+	{
+		try
+		{
+			auto& controlledEntity = entityIt->second;
+			updateConfiguration(controller, *controlledEntity, configurationIndex);
+		}
+		catch (controller::ControlledEntity::Exception const& e)
+		{
+			assert(false && "onConfigurationChanged succeeded on the entity, but failed to update local model");
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onConfigurationChanged(" + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + ") failed: " + e.what()));
+		}
+	}
+}
+
+void ControllerImpl::onStreamInputFormatChanged(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) noexcept
 {
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
@@ -879,7 +902,7 @@ void ControllerImpl::onStreamInputFormatChanged(UniqueIdentifier const entityID,
 	}
 }
 
-void ControllerImpl::onStreamOutputFormatChanged(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) noexcept
+void ControllerImpl::onStreamOutputFormatChanged(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) noexcept
 {
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
@@ -899,7 +922,7 @@ void ControllerImpl::onStreamOutputFormatChanged(UniqueIdentifier const entityID
 	}
 }
 
-void ControllerImpl::onStreamInputAudioMappingsChanged(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings) noexcept
+void ControllerImpl::onStreamInputAudioMappingsChanged(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings) noexcept
 {
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
@@ -924,7 +947,7 @@ void ControllerImpl::onStreamInputAudioMappingsChanged(UniqueIdentifier const en
 	}
 }
 
-void ControllerImpl::onStreamOutputAudioMappingsChanged(UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings) noexcept
+void ControllerImpl::onStreamOutputAudioMappingsChanged(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings) noexcept
 {
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
@@ -949,15 +972,15 @@ void ControllerImpl::onStreamOutputAudioMappingsChanged(UniqueIdentifier const e
 	}
 }
 
-void ControllerImpl::onStreamInputInfoChanged(UniqueIdentifier const /*entityID*/, entity::model::StreamIndex const /*streamIndex*/, entity::model::StreamInfo const& /*info*/) noexcept
+void ControllerImpl::onStreamInputInfoChanged(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const /*entityID*/, entity::model::StreamIndex const /*streamIndex*/, entity::model::StreamInfo const& /*info*/) noexcept
 {
 }
 
-void ControllerImpl::onStreamOutputInfoChanged(UniqueIdentifier const /*entityID*/, entity::model::StreamIndex const /*streamIndex*/, entity::model::StreamInfo const& /*info*/) noexcept
+void ControllerImpl::onStreamOutputInfoChanged(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const /*entityID*/, entity::model::StreamIndex const /*streamIndex*/, entity::model::StreamInfo const& /*info*/) noexcept
 {
 }
 
-void ControllerImpl::onEntityNameChanged(UniqueIdentifier const entityID, entity::model::AvdeccFixedString const& entityName) noexcept
+void ControllerImpl::onEntityNameChanged(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::model::AvdeccFixedString const& entityName) noexcept
 {
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
@@ -977,7 +1000,7 @@ void ControllerImpl::onEntityNameChanged(UniqueIdentifier const entityID, entity
 	}
 }
 
-void ControllerImpl::onEntityGroupNameChanged(UniqueIdentifier const entityID, entity::model::AvdeccFixedString const& entityGroupName) noexcept
+void ControllerImpl::onEntityGroupNameChanged(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::model::AvdeccFixedString const& entityGroupName) noexcept
 {
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
@@ -997,7 +1020,7 @@ void ControllerImpl::onEntityGroupNameChanged(UniqueIdentifier const entityID, e
 	}
 }
 
-void ControllerImpl::onConfigurationNameChanged(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& configurationName) noexcept
+void ControllerImpl::onConfigurationNameChanged(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& configurationName) noexcept
 {
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
@@ -1017,7 +1040,7 @@ void ControllerImpl::onConfigurationNameChanged(UniqueIdentifier const entityID,
 	}
 }
 
-void ControllerImpl::onStreamInputNameChanged(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamName) noexcept
+void ControllerImpl::onStreamInputNameChanged(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamName) noexcept
 {
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
@@ -1037,7 +1060,7 @@ void ControllerImpl::onStreamInputNameChanged(UniqueIdentifier const entityID, e
 	}
 }
 
-void ControllerImpl::onStreamOutputNameChanged(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamName) noexcept
+void ControllerImpl::onStreamOutputNameChanged(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamName) noexcept
 {
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
 
@@ -1057,19 +1080,19 @@ void ControllerImpl::onStreamOutputNameChanged(UniqueIdentifier const entityID, 
 	}
 }
 
-void ControllerImpl::onStreamInputStarted(UniqueIdentifier const /*entityID*/, entity::model::StreamIndex const /*streamIndex*/) noexcept
+void ControllerImpl::onStreamInputStarted(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const /*entityID*/, entity::model::StreamIndex const /*streamIndex*/) noexcept
 {
 }
 
-void ControllerImpl::onStreamOutputStarted(UniqueIdentifier const /*entityID*/, entity::model::StreamIndex const /*streamIndex*/) noexcept
+void ControllerImpl::onStreamOutputStarted(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const /*entityID*/, entity::model::StreamIndex const /*streamIndex*/) noexcept
 {
 }
 
-void ControllerImpl::onStreamInputStopped(UniqueIdentifier const /*entityID*/, entity::model::StreamIndex const /*streamIndex*/) noexcept
+void ControllerImpl::onStreamInputStopped(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const /*entityID*/, entity::model::StreamIndex const /*streamIndex*/) noexcept
 {
 }
 
-void ControllerImpl::onStreamOutputStopped(UniqueIdentifier const /*entityID*/, entity::model::StreamIndex const /*streamIndex*/) noexcept
+void ControllerImpl::onStreamOutputStopped(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const /*entityID*/, entity::model::StreamIndex const /*streamIndex*/) noexcept
 {
 }
 
@@ -1192,6 +1215,49 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 	else
 	{
 		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, getNullIdentifier());
+	}
+}
+
+void ControllerImpl::setConfiguration(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, SetConfigurationHandler const& handler) const noexcept
+{
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+	auto entityIt = _controlledEntities.find(targetEntityID);
+	if (entityIt != _controlledEntities.end())
+	{
+		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setConfiguration requested for ") + toHexString(targetEntityID, true));
+		_controller->setConfiguration(targetEntityID, configurationIndex, [this, handler](entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex)
+		{
+			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setConfiguration result for ") + toHexString(entityID, true) + " -> " + entity::ControllerEntity::statusToString(status));
+			std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities); // Lock _controlledEntities
+
+			auto entityIt = _controlledEntities.find(entityID);
+			if (entityIt != _controlledEntities.end())
+			{
+				auto& controlledEntity = entityIt->second;
+				if (!!status)
+				{
+					try
+					{
+						updateConfiguration(controller, *controlledEntity, configurationIndex);
+					}
+					catch (controller::ControlledEntity::Exception const& e)
+					{
+						assert(false && "setConfiguration succeeded on the entity, but failed to update local model");
+						Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("setConfiguration succeeded on the entity, but failed to update local model: ") + e.what());
+					}
+				}
+				invokeProtectedHandler(handler, controlledEntity.get(), status);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status);
+			}
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -2006,6 +2072,25 @@ void ControllerImpl::updateAcquiredState(ControlledEntityImpl& controlledEntity,
 		{
 			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAcquireStateChanged, &controlledEntity, acquireState, owningController);
 		}
+	}
+}
+
+void ControllerImpl::updateConfiguration(entity::ControllerEntity const* const controller, ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex) const
+{
+	try
+	{
+		auto& entityDescriptor = controlledEntity.getEntityDescriptor();
+		entityDescriptor.currentConfiguration = configurationIndex;
+
+		// Right now, simulate the entity going offline then online again - TBD: Handle multiple configurations, see https://github.com/L-Acoustics/avdecc/issues/3
+		auto const e = controlledEntity.getEntity(); // Make a copy of the Entity object since it will be destroyed during onEntityOffline
+		auto const entityID = e.getEntityID();
+		auto* self = const_cast<ControllerImpl*>(this);
+		self->onEntityOffline(controller, entityID);
+		self->onEntityOnline(controller, entityID, e);
+	}
+	catch (Exception const&)
+	{
 	}
 }
 
