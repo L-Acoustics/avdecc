@@ -264,7 +264,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					answerCallback.invoke<ReleaseEntityHandler>(controller, targetID, status, ownerID, descriptorType, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityReleased, delegate, targetID, ownerID, descriptorType, descriptorIndex);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityReleased, delegate, controller, targetID, ownerID, descriptorType, descriptorIndex);
 					}
 				}
 				else
@@ -272,7 +272,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					answerCallback.invoke<AcquireEntityHandler>(controller, targetID, status, ownerID, descriptorType, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityAcquired, delegate, targetID, ownerID, descriptorType, descriptorIndex);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityAcquired, delegate, controller, targetID, ownerID, descriptorType, descriptorIndex);
 					}
 				}
 			}
@@ -298,7 +298,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					answerCallback.invoke<UnlockEntityHandler>(controller, targetID, status);
 					/*if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityUnlocked, delegate, targetID, lockedID);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityUnlocked, delegate, controller, targetID, lockedID);
 					}*/
 				}
 				else
@@ -306,7 +306,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					answerCallback.invoke<LockEntityHandler>(controller, targetID, status, lockedID);
 					/*if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityLocked, delegate, targetID, lockedID);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityLocked, delegate, controller, targetID, lockedID);
 					}*/
 				}
 			}
@@ -358,7 +358,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 						// Deserialize configuration descriptor
 						auto configurationDescriptor = protocol::aemPayload::deserializeReadConfigurationDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<ConfigurationDescriptorHandler>(controller, targetID, status, configurationIndex, configurationDescriptor);
+						answerCallback.invoke<ConfigurationDescriptorHandler>(controller, targetID, status, static_cast<model::ConfigurationIndex>(descriptorIndex), configurationDescriptor); // Passing descriptorIndex as ConfigurationIndex here is NOT an error. See 7.4.5.1
 						break;
 					}
 
@@ -406,6 +406,26 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 		},
 		// Write Descriptor
 		// Set Configuration
+		{ protocol::AemCommandType::SetConfiguration.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
+			{
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[configurationIndex] = protocol::aemPayload::deserializeSetConfigurationResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeSetConfigurationResponse(aem.getPayload());
+				model::ConfigurationIndex const configurationIndex = std::get<0>(result);
+#endif // __cpp_structured_bindings
+
+				auto const targetID = aem.getTargetEntityID();
+				auto* delegate = controller->getDelegate();
+				// Notify handlers
+				answerCallback.invoke<SetConfigurationHandler>(controller, targetID, status, configurationIndex);
+				if (aem.getUnsolicited() && delegate && !!status)
+				{
+					invokeProtectedMethod(&ControllerEntity::Delegate::onConfigurationChanged, delegate, controller, targetID, configurationIndex);
+				}
+			}
+		},
 		// Get Configuration
 		// Set Stream Format
 		{ protocol::AemCommandType::SetStreamFormat.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
@@ -428,7 +448,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					answerCallback.invoke<SetStreamInputFormatHandler>(controller, targetID, status, descriptorIndex, streamFormat);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputFormatChanged, delegate, targetID, descriptorIndex, streamFormat);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputFormatChanged, delegate, controller, targetID, descriptorIndex, streamFormat);
 					}
 				}
 				else if (descriptorType == model::DescriptorType::StreamOutput)
@@ -436,7 +456,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					answerCallback.invoke<SetStreamOutputFormatHandler>(controller, targetID, status, descriptorIndex, streamFormat);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputFormatChanged, delegate, targetID, descriptorIndex, streamFormat);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputFormatChanged, delegate, controller, targetID, descriptorIndex, streamFormat);
 					}
 				}
 				else
@@ -466,7 +486,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					answerCallback.invoke<GetStreamInputInfoHandler>(controller, targetID, status, descriptorIndex, streamInfo);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputInfoChanged, delegate, targetID, descriptorIndex, streamInfo);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputInfoChanged, delegate, controller, targetID, descriptorIndex, streamInfo);
 					}
 				}
 				else if (descriptorType == model::DescriptorType::StreamOutput)
@@ -474,7 +494,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					answerCallback.invoke<GetStreamOutputInfoHandler>(controller, targetID, status, descriptorIndex, streamInfo);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputInfoChanged, delegate, targetID, descriptorIndex, streamInfo);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputInfoChanged, delegate, controller, targetID, descriptorIndex, streamInfo);
 					}
 				}
 				else
@@ -518,14 +538,14 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 								answerCallback.invoke<SetEntityNameHandler>(controller, targetID, status);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									invokeProtectedMethod(&ControllerEntity::Delegate::onEntityNameChanged, delegate, targetID, name);
+									invokeProtectedMethod(&ControllerEntity::Delegate::onEntityNameChanged, delegate, controller, targetID, name);
 								}
 								break;
 							case 1: // group_name
 								answerCallback.invoke<SetEntityGroupNameHandler>(controller, targetID, status);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									invokeProtectedMethod(&ControllerEntity::Delegate::onEntityGroupNameChanged, delegate, targetID, name);
+									invokeProtectedMethod(&ControllerEntity::Delegate::onEntityGroupNameChanged, delegate, controller, targetID, name);
 								}
 								break;
 							default:
@@ -546,7 +566,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 								answerCallback.invoke<SetConfigurationNameHandler>(controller, targetID, status, descriptorIndex);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									invokeProtectedMethod(&ControllerEntity::Delegate::onConfigurationNameChanged, delegate, targetID, descriptorIndex, name);
+									invokeProtectedMethod(&ControllerEntity::Delegate::onConfigurationNameChanged, delegate, controller, targetID, descriptorIndex, name);
 								}
 								break;
 							default:
@@ -563,7 +583,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 								answerCallback.invoke<SetStreamInputNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputNameChanged, delegate, targetID, configurationIndex, descriptorIndex, name);
+									invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
 								}
 								break;
 							default:
@@ -580,7 +600,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 								answerCallback.invoke<SetStreamOutputNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputNameChanged, delegate, targetID, configurationIndex, descriptorIndex, name);
+									invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
 								}
 								break;
 							default:
@@ -708,7 +728,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					answerCallback.invoke<StartStreamInputHandler>(controller, targetID, status, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputStarted, delegate, targetID, descriptorIndex);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputStarted, delegate, controller, targetID, descriptorIndex);
 					}
 				}
 				else if (descriptorType == model::DescriptorType::StreamOutput)
@@ -716,7 +736,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					answerCallback.invoke<StartStreamOutputHandler>(controller, targetID, status, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputStarted, delegate, targetID, descriptorIndex);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputStarted, delegate, controller, targetID, descriptorIndex);
 					}
 				}
 				else
@@ -743,7 +763,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					answerCallback.invoke<StopStreamInputHandler>(controller, targetID, status, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputStopped, delegate, targetID, descriptorIndex);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputStopped, delegate, controller, targetID, descriptorIndex);
 					}
 				}
 				else if (descriptorType == model::DescriptorType::StreamOutput)
@@ -751,7 +771,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					answerCallback.invoke<StopStreamOutputHandler>(controller, targetID, status, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputStopped, delegate, targetID, descriptorIndex);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputStopped, delegate, controller, targetID, descriptorIndex);
 					}
 				}
 				else
@@ -797,7 +817,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					answerCallback.invoke<GetStreamInputAudioMapHandler>(controller, targetID, status, descriptorIndex, numberOfMaps, mapIndex, mappings);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputAudioMappingsChanged, delegate, targetID, descriptorIndex, numberOfMaps, mapIndex, mappings);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputAudioMappingsChanged, delegate, controller, targetID, descriptorIndex, numberOfMaps, mapIndex, mappings);
 					}
 				}
 				else if (descriptorType == model::DescriptorType::StreamOutput)
@@ -805,7 +825,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					answerCallback.invoke<GetStreamOutputAudioMapHandler>(controller, targetID, status, descriptorIndex, numberOfMaps, mapIndex, mappings);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputAudioMappingsChanged, delegate, targetID, descriptorIndex, numberOfMaps, mapIndex, mappings);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputAudioMappingsChanged, delegate, controller, targetID, descriptorIndex, numberOfMaps, mapIndex, mappings);
 					}
 				}
 				else
@@ -1129,7 +1149,6 @@ void ControllerEntityImpl::processAcmpResponse(protocol::Acmpdu const* const res
 /* Discovery Protocol (ADP) */
 
 /* Enumeration and Control Protocol (AECP) */
-#pragma message("TBD: Change the API to allow partial EM acquire")
 void ControllerEntityImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, AcquireEntityHandler const& handler) const noexcept
 {
 	try
@@ -1145,7 +1164,6 @@ void ControllerEntityImpl::acquireEntity(UniqueIdentifier const targetEntityID, 
 	}
 }
 
-#pragma message("TBD: Change the API to allow partial EM acquire")
 void ControllerEntityImpl::releaseEntity(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, ReleaseEntityHandler const& handler) const noexcept
 {
 	try
@@ -1161,9 +1179,9 @@ void ControllerEntityImpl::releaseEntity(UniqueIdentifier const targetEntityID, 
 	}
 }
 
-#pragma message("TBD: Change the API to allow partial EM lock")
 void ControllerEntityImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntityHandler const& handler) const noexcept
 {
+#pragma message("TBD: Change the API to allow partial EM lock")
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeLockEntityCommand(protocol::AemLockEntityFlags::None, getNullIdentifier(), model::DescriptorType::Entity, 0);
@@ -1179,6 +1197,7 @@ void ControllerEntityImpl::lockEntity(UniqueIdentifier const targetEntityID, Loc
 
 void ControllerEntityImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockEntityHandler const& handler) const noexcept
 {
+#pragma message("TBD: Change the API to allow partial EM unlock")
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeLockEntityCommand(protocol::AemLockEntityFlags::Unlock, getNullIdentifier(), model::DescriptorType::Entity, 0);
@@ -1224,7 +1243,7 @@ void ControllerEntityImpl::readEntityDescriptor(UniqueIdentifier const targetEnt
 {
 	try
 	{
-		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(0, model::DescriptorType::Entity, 0);
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(model::ConfigurationIndex(0u), model::DescriptorType::Entity, model::DescriptorIndex(0u));
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, model::EntityDescriptor{});
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
@@ -1239,7 +1258,7 @@ void ControllerEntityImpl::readConfigurationDescriptor(UniqueIdentifier const ta
 {
 	try
 	{
-		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(0, model::DescriptorType::Configuration, configurationIndex);
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(model::ConfigurationIndex(0u), model::DescriptorType::Configuration, static_cast<model::DescriptorIndex>(configurationIndex)); // Passing configurationIndex as a DescriptorIndex is NOT an error. See 7.4.5.1
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, model::ConfigurationDescriptor{});
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
@@ -1307,6 +1326,21 @@ void ControllerEntityImpl::readStringsDescriptor(UniqueIdentifier const targetEn
 	catch (std::exception const& e)
 	{
 		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readStringsDescriptor: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::setConfiguration(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, SetConfigurationHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetConfigurationCommand(configurationIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::SetConfiguration, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setConfiguration: ") + e.what());
 	}
 }
 
@@ -1691,7 +1725,7 @@ ControllerEntityImpl::Delegate* ControllerEntityImpl::getDelegate() const noexce
 /* **** Global notifications **** */
 void ControllerEntityImpl::onTransportError(protocol::ProtocolInterface const* const /*pi*/) noexcept
 {
-	invokeProtectedMethod(&ControllerEntity::Delegate::onTransportError, _delegate);
+	invokeProtectedMethod(&ControllerEntity::Delegate::onTransportError, _delegate, this);
 }
 
 /* **** Discovery notifications **** */
