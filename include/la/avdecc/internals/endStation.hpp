@@ -48,6 +48,7 @@ public:
 		PCap = 1, /**< Packet Capture protocol interface. */
 		MacOSNative = 2, /**< macOS native API protocol interface - Only usable on macOS. */
 		Proxy = 3, /**< IEEE Std 1722.1 Proxy protocol interface. */
+		Virtual = 4, /**< Virtual protocol interface. */
 	};
 
 	enum class Error

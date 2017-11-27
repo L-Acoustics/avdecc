@@ -169,6 +169,17 @@ if(BUILD_AVDECC_INTERFACE_PROXY)
 	list(APPEND ADD_COMPILE_OPTIONS "-DHAVE_PROTOCOL_INTERFACE_PROXY")
 endif()
 
+# Virtual Protocol interface
+if(BUILD_AVDECC_INTERFACE_VIRTUAL)
+	list(APPEND SOURCE_FILES_PROTOCOL_INTERFACE
+		protocolInterface/protocolInterface_virtual.cpp
+	)
+	list(APPEND HEADER_FILES_PROTOCOL_INTERFACE
+		protocolInterface/protocolInterface_virtual.hpp
+	)
+	list(APPEND ADD_COMPILE_OPTIONS "-DHAVE_PROTOCOL_INTERFACE_VIRTUAL")
+endif()
+
 # Set other required base libraries
 if(CMAKE_HOST_APPLE)
 	list(APPEND ADD_LINK_LIBS "-framework Foundation")
