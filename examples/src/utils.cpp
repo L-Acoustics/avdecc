@@ -90,12 +90,19 @@ la::avdecc::EndStation::ProtocolInterfaceType chooseProtocolInterfaceType()
 	auto protocolInterfaceType{ la::avdecc::EndStation::ProtocolInterfaceType::None };
 
 	// Get the list of supported protocol interface types, and ask the user to choose one (if many available)
-	auto const protocolInterfaceTypes = la::avdecc::EndStation::getSupportedProtocolInterfaceTypes();
+	auto protocolInterfaceTypes = la::avdecc::EndStation::getSupportedProtocolInterfaceTypes();
 	if (protocolInterfaceTypes.empty())
 	{
 		outputText(std::string("No protocol interface supported on this computer\n"));
 		return protocolInterfaceType;
 	}
+
+	// Remove Virtual interface
+	protocolInterfaceTypes.erase(std::remove_if(protocolInterfaceTypes.begin(), protocolInterfaceTypes.end(), [](auto const type)
+	{
+		return type == la::avdecc::EndStation::ProtocolInterfaceType::Virtual;
+	}), protocolInterfaceTypes.end());
+
 	if (protocolInterfaceTypes.size() == 1)
 		protocolInterfaceType = protocolInterfaceTypes[0];
 	else
