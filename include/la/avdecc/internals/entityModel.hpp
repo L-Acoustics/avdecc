@@ -144,8 +144,6 @@ struct ConfigurationDescriptor
 {
 	AvdeccFixedString objectName{};
 	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
-	std::uint16_t descriptorCountsCount{ 0u };
-	std::uint16_t descriptorCountsOffset{ 0u };
 	std::unordered_map<DescriptorType, std::uint16_t, la::avdecc::EnumClassHash> descriptorCounts{};
 };
 
@@ -157,8 +155,6 @@ struct StreamDescriptor
 	std::uint16_t clockDomainIndex{ 0u };
 	StreamFlags streamFlags{ StreamFlags::None };
 	StreamFormat currentFormat{ getNullStreamFormat() };
-	std::uint16_t formatsOffset{ 0u };
-	std::uint16_t numberOfFormats{ 0u };
 	UniqueIdentifier backupTalkerEntityID_0{ getNullIdentifier() };
 	std::uint16_t backupTalkerUniqueID_0{ 0u };
 	UniqueIdentifier backupTalkerEntityID_1{ getNullIdentifier() };
