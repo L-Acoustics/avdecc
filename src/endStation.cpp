@@ -38,6 +38,9 @@
 #error "Not implemented yet"
 #include "protocolInterface/protocolInterface_proxy.hpp"
 #endif // HAVE_PROTOCOL_INTERFACE_PROXY
+#ifdef HAVE_PROTOCOL_INTERFACE_VIRTUAL
+#include "protocolInterface/protocolInterface_virtual.hpp"
+#endif // HAVE_PROTOCOL_INTERFACE_VIRTUAL
 
 // Entities
 #include "entity/controllerEntityImpl.hpp"
@@ -122,6 +125,8 @@ std::string LA_AVDECC_CALL_CONVENTION EndStation::typeToString(ProtocolInterface
 			return "macOS native";
 		case ProtocolInterfaceType::Proxy:
 			return "IEEE Std 1722.1 proxy";
+		case ProtocolInterfaceType::Virtual:
+			return "Virtual interface";
 		default:
 			return "Unknown protocol interface type";
 	}
@@ -156,6 +161,14 @@ EndStation::SupportedProtocolInterfaceTypes LA_AVDECC_CALL_CONVENTION EndStation
 			s_supportedProtocolInterfaceTypes.push_back(ProtocolInterfaceType::Proxy);
 		}
 #endif // HAVE_PROTOCOL_INTERFACE_PROXY
+
+		// Virtual
+#if defined(HAVE_PROTOCOL_INTERFACE_VIRTUAL)
+		if (protocol::ProtocolInterfaceVirtual::isSupported())
+		{
+			s_supportedProtocolInterfaceTypes.push_back(ProtocolInterfaceType::Virtual);
+		}
+#endif // HAVE_PROTOCOL_INTERFACE_VIRTUAL
 	}
 
 	return s_supportedProtocolInterfaceTypes;
@@ -188,6 +201,11 @@ EndStation* LA_AVDECC_CALL_CONVENTION EndStation::createRawEndStation(ProtocolIn
 				assert(false && "TBD: Proxy protocol interface to create");
 				break;
 #endif // HAVE_PROTOCOL_INTERFACE_PROXY
+#if defined(HAVE_PROTOCOL_INTERFACE_VIRTUAL)
+			case ProtocolInterfaceType::Virtual:
+				pi = protocol::ProtocolInterfaceVirtual::create(networkInterfaceName, { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } });
+				break;
+#endif // HAVE_PROTOCOL_INTERFACE_VIRTUAL
 			default:
 				throw Exception(Error::InvalidProtocolInterfaceType, "Unknown protocol interface type");
 		}

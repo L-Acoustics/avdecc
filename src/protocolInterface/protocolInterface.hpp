@@ -148,11 +148,26 @@ public:
 	ProtocolInterface& operator=(ProtocolInterface&&) = delete;
 
 protected:
-	// Throws an Exception if networkInterfaceName is not usable
+	/**
+	* @brief Create a ProtocolInterface associated with specified network interface name.
+	* @details Create a ProtocolInterface associated with specified network interface name, checking the interface actually exists.
+	* @param[in] networkInterfaceName The name of the network interface.
+	* @note Throws Exception if networkInterfaceName is invalid or inaccessible.
+	*/
 	ProtocolInterface(std::string const& networkInterfaceName);
 
+	/**
+	* @brief Create a ProtocolInterface associated with specified network interface name and MAC address.
+	* @details Create a ProtocolInterface associated with specified network interface name and MAC address, not checking if the interface exists.
+	* @param[in] networkInterfaceName The name of the network interface.
+	* @param[in] macAddress The MAC address associated with the network interface. Cannot be all 0.
+	* @note Throws Exception if networkInterfaceName or macAddress is invalid or inaccessible.
+	*/
+	ProtocolInterface(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress);
+
+	std::string const _networkInterfaceName{};
+
 private:
-	std::string _networkInterfaceName{};
 	networkInterface::MacAddress _networkInterfaceMacAddress{};
 	std::uint16_t _interfaceIndex{};
 };

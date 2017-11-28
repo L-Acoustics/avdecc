@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Support for setConfiguration command
 - [Partial support for SET_CONFIGURATION unsolicited notification](https://github.com/L-Acoustics/avdecc/issues/3)
+- Virtual ProtocolInterface, allowing better unit testing
 ### Fixed
 - Possible crash during shutdown
 

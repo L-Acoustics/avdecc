@@ -199,7 +199,7 @@ public:
 	~LocalEntityGuard() noexcept
 	{
 		// Shutdown method shall be called first by any class inheriting from LocalEntityImpl
-		shutdown();
+		SuperClass::shutdown();
 	}
 };
 
