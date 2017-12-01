@@ -911,11 +911,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 	}
 	else
 	{
-		try
-		{
-			it->second(this, status, aem, answerCallback);
-		}
-		catch (protocol::aemPayload::IncorrectPayloadSizeException const& e)
+		auto checkProcessInvalidNonSuccessResponse = [status, &aem, &onErrorCallback](char const* const what)
 		{
 			auto st = AemCommandStatus::ProtocolError;
 #if defined(IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES)
@@ -923,20 +919,28 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 			{
 				// Allow this packet to go through as a non-success response, but some fields might have the default initial value which might not be valid (the spec says even in a response message, some fields have a meaningful value)
 				st = status;
-				Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Received an invalid non-success ") + std::string(aem.getCommandType()) + "AEM response (" + e.what() + ") from " + toHexString(aem.getTargetEntityID(), true) + " but still processing it because of define IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES");
+				Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Received an invalid non-success ") + std::string(aem.getCommandType()) + "AEM response (" + what + ") from " + toHexString(aem.getTargetEntityID(), true) + " but still processing it because of define IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES");
 			}
 #endif // IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES
 			if (st == AemCommandStatus::ProtocolError)
 			{
-				Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Failed to process ") + std::string(aem.getCommandType()) + " AEM response: " + e.what());
+				Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Failed to process ") + std::string(aem.getCommandType()) + " AEM response: " + what);
 			}
 			invokeProtectedHandler(onErrorCallback, st);
+		};
+
+		try
+		{
+			it->second(this, status, aem, answerCallback);
+		}
+		catch (protocol::aemPayload::IncorrectPayloadSizeException const& e)
+		{
+			checkProcessInvalidNonSuccessResponse(e.what());
 			return;
 		}
 		catch (InvalidDescriptorTypeException const& e)
 		{
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Failed to process ") + std::string(aem.getCommandType()) + " AEM response: " + e.what());
-			invokeProtectedHandler(onErrorCallback, AemCommandStatus::ProtocolError);
+			checkProcessInvalidNonSuccessResponse(e.what());
 			return;
 		}
 		catch (std::exception const& e) // Mainly unpacking errors

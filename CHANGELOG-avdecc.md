@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Virtual ProtocolInterface, allowing better unit testing
 ### Fixed
 - Possible crash during shutdown
+- IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES flag not properly working for Motu devices
 
 ## [2.1.0] - 2017-11-22
 ### Changed
