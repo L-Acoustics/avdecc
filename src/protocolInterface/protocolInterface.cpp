@@ -38,9 +38,11 @@ ProtocolInterface::ProtocolInterface(std::string const& networkInterfaceName)
 	try
 	{
 		auto const interface = la::avdecc::networkInterface::getInterfaceByName(networkInterfaceName);
+
 		// Check we have a valid mac address
 		if (!la::avdecc::networkInterface::isMacAddressValid(interface.macAddress))
 			throw Exception(Error::InterfaceInvalid, "Network interface has an invalid mac address");
+
 		_networkInterfaceMacAddress = interface.macAddress;
 #pragma message("TBD: Try to get interface number from 'interface' struct")
 		_interfaceIndex = 0;
@@ -50,6 +52,22 @@ ProtocolInterface::ProtocolInterface(std::string const& networkInterfaceName)
 		throw Exception(Error::InterfaceNotFound, "No interface found with specified name");
 	}
 }
+
+ProtocolInterface::ProtocolInterface(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress)
+	: _networkInterfaceName(networkInterfaceName), _networkInterfaceMacAddress(macAddress)
+{
+	// Check we have a valid name
+	if (networkInterfaceName.empty())
+		throw Exception(Error::InterfaceInvalid, "Network interface name should not be empty");
+
+	// Check we have a valid mac address
+	if (!la::avdecc::networkInterface::isMacAddressValid(macAddress))
+		throw Exception(Error::InterfaceInvalid, "Network interface has an invalid mac address");
+
+#pragma message("TBD: Try to get interface number from 'interface' struct")
+	_interfaceIndex = 0;
+}
+
 
 la::avdecc::networkInterface::MacAddress const& ProtocolInterface::getMacAddress() const noexcept
 {

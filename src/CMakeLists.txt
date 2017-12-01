@@ -169,6 +169,17 @@ if(BUILD_AVDECC_INTERFACE_PROXY)
 	list(APPEND ADD_COMPILE_OPTIONS "-DHAVE_PROTOCOL_INTERFACE_PROXY")
 endif()
 
+# Virtual Protocol interface
+if(BUILD_AVDECC_INTERFACE_VIRTUAL)
+	list(APPEND SOURCE_FILES_PROTOCOL_INTERFACE
+		protocolInterface/protocolInterface_virtual.cpp
+	)
+	list(APPEND HEADER_FILES_PROTOCOL_INTERFACE
+		protocolInterface/protocolInterface_virtual.hpp
+	)
+	list(APPEND ADD_COMPILE_OPTIONS "-DHAVE_PROTOCOL_INTERFACE_VIRTUAL")
+endif()
+
 # Set other required base libraries
 if(CMAKE_HOST_APPLE)
 	list(APPEND ADD_LINK_LIBS "-framework Foundation")
@@ -234,8 +245,8 @@ if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 	# Setup common library options
 	setup_library_options(la_avdecc_static "la_avdecc")
 
-	# Additional private include directory
-	target_include_directories(la_avdecc_static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}) # Include root source directory for access to private headers
+	# Additional include directory (only for build interface)
+	target_include_directories(la_avdecc_static PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>) # Include root source directory for access to private headers
 
 	# Set installation rule
 	if(INSTALL_AVDECC_LIB_STATIC)

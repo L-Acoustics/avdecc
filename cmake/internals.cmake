@@ -235,6 +235,15 @@ function(setup_executable_options TARGET_NAME)
 	# Add link libraries
 	target_link_libraries(${TARGET_NAME} PRIVATE ${LINK_LIBRARIES})
 
+	# Set full warnings (including treat warnings as error)
+	set_maximum_warnings(${TARGET_NAME})
+	
+	# Set the "DEBUG" define in debug compilation mode
+	set_debug_define(${TARGET_NAME})
+	
+	# Prevent visual studio deprecated warnings about CRT and Sockets
+	remove_vs_deprecated_warnings(${TARGET_NAME})
+	
 	# Add a postfix in debug mode
 	set_target_properties(${TARGET_NAME} PROPERTIES DEBUG_POSTFIX "-d")
 
@@ -262,7 +271,7 @@ function(setup_executable_options TARGET_NAME)
 		set_target_properties(${TARGET_NAME} PROPERTIES INSTALL_RPATH "../lib")
 	endif()
 	
-	target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}" "${CMAKE_SOURCE_DIR}/include")
+	target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}" "${LA_ROOT_DIR}/include")
 
 endfunction(setup_executable_options)
 

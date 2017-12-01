@@ -8,8 +8,8 @@ cmake_minimum_required(VERSION 3.6)
 # Using Semantic Versioning (http://semver.org/spec/v2.0.0.html)
 # Project version number x.y.z on main branch, x.y.z.w on dev and task branches
 # Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task)
-set(LA_AVDECC_VERSION 2.1.0)
-set(LA_AVDECC_CONTROLLER_VERSION 2.1.0)
+set(LA_AVDECC_VERSION 2.2.0)
+set(LA_AVDECC_CONTROLLER_VERSION 2.2.0)
 
 ############ Override from command line "CMake -D<OPTION>=TRUE/FALSE/0/1/ON/OFF"
 
@@ -24,6 +24,7 @@ option(BUILD_AVDECC_INTERFACE_PCAP "Build the pcap protocol interface." TRUE)
 option(BUILD_AVDECC_INTERFACE_PCAP_DYNAMIC_LINKING "Pcap protocol interface uses dynamic shared library linking (instead of static linking)." FALSE)
 option(BUILD_AVDECC_INTERFACE_MAC "Build the macOS native protocol interface (macOS only)." TRUE)
 option(BUILD_AVDECC_INTERFACE_PROXY "Build the proxy protocol interface." FALSE)
+option(BUILD_AVDECC_INTERFACE_VIRTUAL "Build the virtual protocol interface (for unit tests)." TRUE)
 # Install options
 option(INSTALL_AVDECC_EXAMPLES "Install examples." FALSE)
 option(INSTALL_AVDECC_TESTS "Install unit tests." FALSE)

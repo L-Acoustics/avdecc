@@ -154,6 +154,7 @@ private:
 		try
 		{
 			auto* const pcap = _pcap.get();
+			assert(pcap && "Trying to send a message but pcapLibrary has been uninitialized");
 			if (pcap != nullptr)
 			{
 				if (_pcapLibrary.sendpacket(pcap, buffer.data(), static_cast<int>(length)) == 0)
@@ -168,9 +169,15 @@ private:
 
 	virtual void shutdown() noexcept override
 	{
+		// Notify the thread we are shutting down
 		_shouldTerminate = true;
+
+		// Wait for the thread to complete its pending tasks
 		if (_captureThread.joinable())
 			_captureThread.join();
+
+		// Release the pcapLibrary
+		_pcap.reset();
 	}
 
 	virtual Error registerLocalEntity(entity::LocalEntity& entity) noexcept override
@@ -219,6 +226,24 @@ private:
 	virtual Error discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept override
 	{
 		return _controllerStateMachine.discoverRemoteEntity(entityID);
+	}
+
+	virtual Error sendAdpMessage(Adpdu::UniquePointer&& adpdu) const noexcept override
+	{
+		// Directly send the message on the network
+		return sendMessage(static_cast<Adpdu const&>(*adpdu));
+	}
+
+	virtual Error sendAecpMessage(Aecpdu::UniquePointer&& aecpdu) const noexcept override
+	{
+		// Directly send the message on the network
+		return sendMessage(static_cast<Aecpdu const&>(*aecpdu));
+	}
+
+	virtual Error sendAcmpMessage(Acmpdu::UniquePointer&& acmpdu) const noexcept override
+	{
+		// Directly send the message on the network
+		return sendMessage(static_cast<Acmpdu const&>(*acmpdu));
 	}
 
 	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& /*macAddress*/, AecpCommandResultHandler const& onResult) const noexcept override
@@ -506,8 +531,8 @@ private:
 	std::unique_ptr<pcap_t, std::function<void(pcap_t*)>> _pcap{ nullptr, nullptr };
 	int _fd{ -1 };
 	bool _shouldTerminate{ false };
-	std::thread _captureThread{};
 	mutable stateMachine::ControllerStateMachine _controllerStateMachine{ this, this };
+	std::thread _captureThread{};
 };
 
 ProtocolInterfacePcap::ProtocolInterfacePcap(std::string const& networkInterfaceName)

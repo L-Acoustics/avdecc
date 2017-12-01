@@ -43,9 +43,11 @@ namespace entity
 /* ************************************************************************** */
 /* ControllerEntityImpl                                                       */
 /* ************************************************************************** */
-class ControllerEntityImpl final : public LocalEntityImpl<ControllerEntity>, public protocol::ProtocolInterface::Observer
+class ControllerEntityImpl : public LocalEntityImpl<ControllerEntity>, public protocol::ProtocolInterface::Observer
 {
-public:
+private:
+	friend class LocalEntityGuard<ControllerEntityImpl>;
+
 	/* ************************************************************************** */
 	/* ControllerEntityImpl life cycle                                            */
 	/* ************************************************************************** */
@@ -137,6 +139,7 @@ private:
 	virtual void readStringsDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StringsIndex const stringsIndex, StringsDescriptorHandler const& handler) const noexcept override;
 	virtual void readStreamInputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const streamIndex, StreamInputDescriptorHandler const& handler) const noexcept override;
 	virtual void readStreamOutputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const streamIndex, StreamOutputDescriptorHandler const& handler) const noexcept override;
+	virtual void setConfiguration(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, SetConfigurationHandler const& handler) const noexcept override;
 	virtual void setStreamInputFormat(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamFormat const streamFormat, SetStreamInputFormatHandler const& handler) const noexcept override;
 	virtual void setStreamOutputFormat(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamFormat const streamFormat, SetStreamOutputFormatHandler const& handler) const noexcept override;
 	virtual void getStreamInputAudioMap(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, entity::model::MapIndex const mapIndex, GetStreamInputAudioMapHandler const& handler) const noexcept override;
@@ -192,9 +195,9 @@ private:
 	/* ************************************************************************** */
 	ControllerEntity::Delegate* _delegate{ nullptr };
 	bool _shouldTerminate{ false };
-	std::thread _discoveryThread{};
 	mutable std::mutex _lockDiscoveredEntities{};
 	DiscoveredEntities _discoveredEntities{};
+	std::thread _discoveryThread{};
 };
 
 } // namespace entity

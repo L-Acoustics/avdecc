@@ -79,7 +79,10 @@ ControllerStateMachine::ControllerStateMachine(ProtocolInterface const* const pr
 
 ControllerStateMachine::~ControllerStateMachine() noexcept
 {
+	// Notify the thread we are shutting down
 	_shouldTerminate = true;
+
+	// Wait for the thread to complete its pending tasks
 	if (_stateMachineThread.joinable())
 		_stateMachineThread.join();
 }

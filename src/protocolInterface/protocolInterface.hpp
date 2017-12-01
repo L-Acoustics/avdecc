@@ -60,7 +60,8 @@ public:
 		DuplicateLocalEntityID = 6, /**< The EntityID specified in a LocalEntity is already in use by another local entity. */
 		InterfaceNotFound = 7, /**< Specified interface not found. */
 		InterfaceInvalid = 8, /**< Specified interface is invalid. */
-		NotSupported = 9, /**< This protocol interface is not in the list of supported protocol interfaces. */
+		InterfaceNotSupported = 9, /**< This protocol interface is not in the list of supported protocol interfaces. */
+		MessageNotSupported = 10, /**< This type of message is not supported by this protocol interface. */
 		InternalError = 99, /**< Internal error, please report the issue. */
 	};
 
@@ -125,6 +126,12 @@ public:
 	virtual Error discoverRemoteEntities() const noexcept = 0;
 	/** Requests a targetted remote entity discovery. */
 	virtual Error discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept = 0;
+	/** Sends an ADP message directly on the network (not supported by all kinds of ProtocolInterface). */
+	virtual Error sendAdpMessage(Adpdu::UniquePointer&& adpdu) const noexcept = 0;
+	/** Sends an AECP message directly on the network (not supported by all kinds of ProtocolInterface). */
+	virtual Error sendAecpMessage(Aecpdu::UniquePointer&& aecpdu) const noexcept = 0;
+	/** Sends an ACMP message directly on the network (not supported by all kinds of ProtocolInterface). */
+	virtual Error sendAcmpMessage(Acmpdu::UniquePointer&& acmpdu) const noexcept = 0;
 	/** Sends an AECP command message. */
 	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& macAddress, AecpCommandResultHandler const& onResult) const noexcept = 0;
 	/** Sends an AECP response message. */
@@ -141,11 +148,26 @@ public:
 	ProtocolInterface& operator=(ProtocolInterface&&) = delete;
 
 protected:
-	// Throws an Exception if networkInterfaceName is not usable
+	/**
+	* @brief Create a ProtocolInterface associated with specified network interface name.
+	* @details Create a ProtocolInterface associated with specified network interface name, checking the interface actually exists.
+	* @param[in] networkInterfaceName The name of the network interface.
+	* @note Throws Exception if networkInterfaceName is invalid or inaccessible.
+	*/
 	ProtocolInterface(std::string const& networkInterfaceName);
 
+	/**
+	* @brief Create a ProtocolInterface associated with specified network interface name and MAC address.
+	* @details Create a ProtocolInterface associated with specified network interface name and MAC address, not checking if the interface exists.
+	* @param[in] networkInterfaceName The name of the network interface.
+	* @param[in] macAddress The MAC address associated with the network interface. Cannot be all 0.
+	* @note Throws Exception if networkInterfaceName or macAddress is invalid or inaccessible.
+	*/
+	ProtocolInterface(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress);
+
+	std::string const _networkInterfaceName{};
+
 private:
-	std::string _networkInterfaceName{};
 	networkInterface::MacAddress _networkInterfaceMacAddress{};
 	std::uint16_t _interfaceIndex{};
 };

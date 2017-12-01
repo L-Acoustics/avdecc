@@ -66,10 +66,6 @@ public:
 
 	virtual ~LocalEntityImpl() noexcept override
 	{
-		// Disable advertising
-		disableEntityAdvertising();
-		// Unregister local entity
-		_protocolInterface->unregisterLocalEntity(*this); // Ignore errors
 	}
 
 	/* ************************************************************************** */
@@ -153,6 +149,17 @@ public:
 		_lock.unlock();
 	}
 
+protected:
+	/** Shutdown method that has to be called by any class inheriting from this one */
+	void shutdown() noexcept
+	{
+		// Disable advertising
+		disableEntityAdvertising();
+
+		// Unregister local entity
+		_protocolInterface->unregisterLocalEntity(*this); // Ignore errors
+	}
+
 private:
 	UniqueIdentifier generateEID(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID) const
 	{
@@ -178,6 +185,22 @@ private:
 	std::recursive_mutex _lock{}; // Lock to protect writable fields and dirty state
 	protocol::ProtocolInterface* const _protocolInterface{ nullptr }; // Weak reference to the protocolInterface
 	bool _dirty{ false }; // Is the entity dirty and should send an ENTITY_AVAILABLE message
+};
+
+/** Class to be used as final LocalEntityImpl inherited class in order to properly shutdown any inflight messages. */
+template<class SuperClass>
+class LocalEntityGuard final : public SuperClass
+{
+public:
+	LocalEntityGuard(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, entity::model::VendorEntityModel const vendorEntityModelID, ControllerEntity::Delegate* const delegate)
+		: SuperClass(protocolInterface, progID, vendorEntityModelID, delegate)
+	{
+	}
+	~LocalEntityGuard() noexcept
+	{
+		// Shutdown method shall be called first by any class inheriting from LocalEntityImpl
+		SuperClass::shutdown();
+	}
 };
 
 } // namespace entity

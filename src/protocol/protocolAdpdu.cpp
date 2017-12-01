@@ -97,6 +97,16 @@ void Adpdu::deserialize(DeserializationBuffer& buffer)
 #endif // DEBUG
 }
 
+/** Copy method */
+Adpdu::UniquePointer Adpdu::copy() const
+{
+	auto deleter = [](Adpdu* self)
+	{
+		static_cast<Adpdu*>(self)->destroy();
+	};
+	return UniquePointer(new Adpdu(*this), deleter);
+}
+
 /** Entry point */
 Adpdu* Adpdu::createRawAdpdu()
 {

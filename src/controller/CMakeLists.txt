@@ -23,6 +23,7 @@ set (PUBLIC_HEADER_FILES
 source_group("Header Files\\Public\\Controller" FILES ${PUBLIC_HEADER_FILES})
 
 set (HEADER_FILES_COMMON
+	${CMAKE_CURRENT_BINARY_DIR}/config.h
 	avdeccControlledEntityImpl.hpp
 )
 

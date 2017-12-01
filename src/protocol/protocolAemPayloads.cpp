@@ -260,19 +260,21 @@ entity::model::ConfigurationDescriptor deserializeReadConfigurationDescriptorRes
 
 		// Check configuration descriptor payload - Clause 7.2.2
 		Deserializer des(commandPayload, commandPayloadLength);
+		std::uint16_t descriptorCountsCount{ 0u };
+		std::uint16_t descriptorCountsOffset{ 0u };
 		des.setPosition(commonSize); // Skip already unpacked common header
 		des >> configurationDescriptor.objectName;
 		des >> configurationDescriptor.localizedDescription;
-		des >> configurationDescriptor.descriptorCountsCount >> configurationDescriptor.descriptorCountsOffset;
+		des >> descriptorCountsCount >> descriptorCountsOffset;
 
 		// Check descriptor variable size
 		constexpr size_t descriptorInfoSize = sizeof(entity::model::DescriptorType) + sizeof(std::uint16_t);
-		auto const descriptorCountsSize = descriptorInfoSize * configurationDescriptor.descriptorCountsCount;
+		auto const descriptorCountsSize = descriptorInfoSize * descriptorCountsCount;
 		if (des.remaining() < descriptorCountsSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
 		// Unpack descriptor remaining data
-		for (auto index = 0u; index < configurationDescriptor.descriptorCountsCount; ++index)
+		for (auto index = 0u; index < descriptorCountsCount; ++index)
 		{
 			entity::model::DescriptorType type;
 			std::uint16_t count;
@@ -303,10 +305,12 @@ entity::model::StreamDescriptor deserializeReadStreamDescriptorResponse(AemAecpd
 
 		// Check stream descriptor payload - Clause 7.2.6
 		Deserializer des(commandPayload, commandPayloadLength);
+		std::uint16_t formatsOffset{ 0u };
+		std::uint16_t numberOfFormats{ 0u };
 		des.setPosition(commonSize); // Skip already unpacked common header
 		des >> streamDescriptor.objectName;
 		des >> streamDescriptor.localizedDescription >> streamDescriptor.clockDomainIndex >> streamDescriptor.streamFlags;
-		des >> streamDescriptor.currentFormat >> streamDescriptor.formatsOffset >> streamDescriptor.numberOfFormats;
+		des >> streamDescriptor.currentFormat >> formatsOffset >> numberOfFormats;
 		des >> streamDescriptor.backupTalkerEntityID_0 >> streamDescriptor.backupTalkerUniqueID_0;
 		des >> streamDescriptor.backupTalkerEntityID_1 >> streamDescriptor.backupTalkerUniqueID_1;
 		des >> streamDescriptor.backupTalkerEntityID_2 >> streamDescriptor.backupTalkerUniqueID_2;
@@ -315,12 +319,12 @@ entity::model::StreamDescriptor deserializeReadStreamDescriptorResponse(AemAecpd
 
 		// Check descriptor variable size
 		constexpr size_t formatInfoSize = sizeof(std::uint64_t);
-		auto const formatsSize = formatInfoSize * streamDescriptor.numberOfFormats;
+		auto const formatsSize = formatInfoSize * numberOfFormats;
 		if (des.remaining() < formatsSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
 		// Compute deserializer offset for formats (Clause 7.4.5.2 says the formats_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
-		auto const formatsOffset = sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t) + streamDescriptor.formatsOffset;
+		formatsOffset += sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
 
 		// Set deserializer position
 		if (formatsOffset < des.usedBytes())
@@ -328,7 +332,7 @@ entity::model::StreamDescriptor deserializeReadStreamDescriptorResponse(AemAecpd
 		des.setPosition(formatsOffset);
 
 		// Let's loop over the formats
-		for (auto index = 0u; index < streamDescriptor.numberOfFormats; ++index)
+		for (auto index = 0u; index < numberOfFormats; ++index)
 		{
 			std::uint64_t format;
 			des >> format;
