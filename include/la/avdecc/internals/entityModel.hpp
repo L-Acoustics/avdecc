@@ -26,13 +26,14 @@
 #pragma once
 
 #include <cstdint>
-#include <vector>
 #include <string>
 #include <array>
 #include <cassert>
 #include <unordered_map>
 #include <iostream>
+#include <set>
 #include <tuple>
+#include <vector>
 #include "entityEnums.hpp"
 #include "uniqueIdentifier.hpp"
 #include "protocolDefines.hpp"
@@ -64,59 +65,7 @@ constexpr SamplingRate getNullSamplingRate() noexcept
 	return SamplingRate(0u);
 }
 
-enum class DescriptorType : std::uint16_t
-{
-	Entity = 0,
-	Configuration = 1,
-	AudioUnit = 2,
-	VideoUnit = 3,
-	SensorUnit = 4,
-	StreamInput = 5,
-	StreamOutput = 6,
-	JackInput = 7,
-	JackOutput = 8,
-	AvbInterface = 9,
-	ClockSource = 10,
-	MemoryObject = 11,
-	Locale = 12,
-	Strings = 13,
-	StreamPortInput = 14,
-	StreamPortOutput = 15,
-	ExternalPortInput = 16,
-	ExternalPortOutput = 17,
-	InternalPortInput = 18,
-	InternalPortOutput = 19,
-	AudioCluster = 20,
-	VideoCluster = 21,
-	SensorCluster = 22,
-	AudioMap = 23,
-	VideoMap = 24,
-	SensorMap = 25,
-	Control = 26,
-	SignalSelector = 27,
-	Mixer = 28,
-	Matrix = 29,
-	MatrixSignal = 30,
-	SignalSplitter = 31,
-	SignalCombiner = 32,
-	SignalDemultiplexer = 33,
-	SignalMultiplexer = 34,
-	SignalTranscoder = 35,
-	ClockDomain = 36,
-	ControlBlock = 37,
-};
-constexpr bool operator==(DescriptorType const lhs, DescriptorType const rhs)
-{
-	return static_cast<std::underlying_type_t<DescriptorType>>(lhs) == static_cast<std::underlying_type_t<DescriptorType>>(rhs);
-}
-
-constexpr bool operator==(DescriptorType const lhs, std::underlying_type_t<DescriptorType> const rhs)
-{
-	return static_cast<std::underlying_type_t<DescriptorType>>(lhs) == rhs;
-}
-
 /** ENTITY Descriptor - Clause 7.2.1 */
-
 struct EntityDescriptor
 {
 	UniqueIdentifier entityID{ getNullIdentifier() };
@@ -147,12 +96,58 @@ struct ConfigurationDescriptor
 	std::unordered_map<DescriptorType, std::uint16_t, la::avdecc::EnumClassHash> descriptorCounts{};
 };
 
+/** AUDIO_UNIT Descriptor - Clause 7.2.3 */
+struct AudioUnitDescriptor
+{
+	AvdeccFixedString objectName{};
+	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
+	ClockDomainIndex clockDomainIndex{ 0u };
+	std::uint16_t numberOfStreamInputPorts{ 0u };
+	StreamPortIndex baseStreamInputPort{ StreamPortIndex(0u) };
+	std::uint16_t numberOfStreamOutputPorts{ 0u };
+	StreamPortIndex baseStreamOutputPort{ StreamPortIndex(0u) };
+	std::uint16_t numberOfExternalInputPorts{ 0u };
+	ExternalPortIndex baseExternalInputPort{ ExternalPortIndex(0u) };
+	std::uint16_t numberOfExternalOutputPorts{ 0u };
+	ExternalPortIndex baseExternalOutputPort{ ExternalPortIndex(0u) };
+	std::uint16_t numberOfInternalInputPorts{ 0u };
+	InternalPortIndex baseInternalInputPort{ InternalPortIndex(0u) };
+	std::uint16_t numberOfInternalOutputPorts{ 0u };
+	InternalPortIndex baseInternalOutputPort{ InternalPortIndex(0u) };
+	std::uint16_t numberOfControls{ 0u };
+	ControlIndex baseControl{ ControlIndex(0u) };
+	std::uint16_t numberOfSignalSelectors{ 0u };
+	SignalSelectorIndex baseSignalSelector{ SignalSelectorIndex(0u) };
+	std::uint16_t numberOfMixers{ 0u };
+	MixerIndex baseMixer{ MixerIndex(0u) };
+	std::uint16_t numberOfMatrices{ 0u };
+	MatrixIndex baseMatrix{ MatrixIndex(0u) };
+	std::uint16_t numberOfSplitters{ 0u };
+	SignalSplitterIndex baseSplitter{ SignalSplitterIndex(0u) };
+	std::uint16_t numberOfCombiners{ 0u };
+	SignalCombinerIndex baseCombiner{ SignalCombinerIndex(0u) };
+	std::uint16_t numberOfDemultiplexers{ 0u };
+	SignalDemultiplexerIndex baseDemultiplexer{ SignalDemultiplexerIndex(0u) };
+	std::uint16_t numberOfMultiplexers{ 0u };
+	SignalMultiplexerIndex baseMultiplexer{ SignalMultiplexerIndex(0u) };
+	std::uint16_t numberOfTranscoders{ 0u };
+	SignalTranscoderIndex baseTranscoder{ SignalTranscoderIndex(0u) };
+	std::uint16_t numberOfControlBlocks{ 0u };
+	ControlBlockIndex baseControlBlock{ ControlBlockIndex(0u) };
+	SamplingRate currentSamplingRate{ getNullSamplingRate() };
+	std::set<SamplingRate> samplingRates{};
+};
+
+/** VIDEO_UNIT Descriptor - Clause 7.2.4 */
+
+/** SENSOR_UNIT Descriptor - Clause 7.2.5 */
+
 /** STREAM_INPUT and STREAM_OUTPUT Descriptor - Clause 7.2.6 */
 struct StreamDescriptor
 {
 	AvdeccFixedString objectName{};
 	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
-	std::uint16_t clockDomainIndex{ 0u };
+	ClockDomainIndex clockDomainIndex{ ClockDomainIndex(0u) };
 	StreamFlags streamFlags{ StreamFlags::None };
 	StreamFormat currentFormat{ getNullStreamFormat() };
 	UniqueIdentifier backupTalkerEntityID_0{ getNullIdentifier() };
@@ -163,9 +158,65 @@ struct StreamDescriptor
 	std::uint16_t backupTalkerUniqueID_2{ 0u };
 	UniqueIdentifier backedupTalkerEntityID{ getNullIdentifier() };
 	std::uint16_t backedupTalkerUnique{ 0u };
-	std::uint16_t avbInterfaceIndex{ 0u };
+	AvbInterfaceIndex avbInterfaceIndex{ AvbInterfaceIndex(0u) };
 	std::uint32_t bufferLength{ 0u };
-	std::vector<StreamFormat> formats{};
+	std::set<StreamFormat> formats{};
+};
+
+/** JACK_INPUT and JACK_OUTPUT Descriptor - Clause 7.2.7 */
+struct JackDescriptor
+{
+	AvdeccFixedString objectName{};
+	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
+	JackFlags jackFlags{ JackFlags::None };
+	JackType jackType{ JackType::Speaker };
+	std::uint16_t numberOfControls{ 0u };
+	ControlIndex baseControl{ ControlIndex(0u) };
+};
+
+/** AVB_INTERFACE Descriptor - Clause 7.2.8 */
+struct AvbInterfaceDescriptor
+{
+	AvdeccFixedString objectName{};
+	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
+	networkInterface::MacAddress macAddress{};
+	AvbInterfaceFlags interfaceFlags{ AvbInterfaceFlags::None };
+	UniqueIdentifier clockIdentify{ 0u };
+	std::uint8_t priority1{ 0xff };
+	std::uint8_t clockClass{ 0xff };
+	std::uint16_t offsetScaledLogVariance{ 0x0000 };
+	std::uint8_t clockAccuracy{ 0xff };
+	std::uint8_t priority2{ 0xff };
+	std::uint8_t domainNumber{ 0u };
+	std::uint8_t logSyncInterval{ 0u };
+	std::uint8_t logAnnounceInterval{ 0u };
+	std::uint8_t logPDelayInterval{ 0u };
+	std::uint16_t portNumber{ 0x0000 };
+};
+
+/** CLOCK_SOURCE Descriptor - Clause 7.2.9 */
+struct ClockSourceDescriptor
+{
+	AvdeccFixedString objectName{};
+	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
+	ClockSourceFlags clockSourceFlags{ ClockSourceFlags::None };
+	ClockSourceType clockSourceType{ ClockSourceType::Internal };
+	UniqueIdentifier clockSourceIdentifier{ getNullIdentifier() };
+	DescriptorType clockSourceLocationType{ DescriptorType::Invalid };
+	DescriptorIndex clockSourceLocationIndex{ DescriptorIndex(0u) };
+};
+
+/** MEMORY_OBJECT Descriptor - Clause 7.2.10 */
+struct MemoryObjectDescriptor
+{
+	AvdeccFixedString objectName{};
+	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
+	MemoryObjectType memoryObjectType{ MemoryObjectType::FirmwareImage };
+	DescriptorType targetDescriptorType{ DescriptorType::Invalid };
+	DescriptorIndex targetDescriptorIndex{ DescriptorIndex(0u) };
+	std::uint64_t startAddress{ 0u };
+	std::uint64_t maximumLength{ 0u };
+	std::uint64_t length{ 0u };
 };
 
 /** LOCALE Descriptor - Clause 7.2.11 */
@@ -177,11 +228,110 @@ struct LocaleDescriptor
 };
 
 /** STRINGS Descriptor - Clause 7.2.12 */
-
 struct StringsDescriptor
 {
 	std::array<AvdeccFixedString, 7> strings{};
 };
+
+/** STREAM_PORT Descriptor - Clause 7.2.13 */
+struct StreamPortDescriptor
+{
+	ClockDomainIndex clockDomainIndex{ ClockDomainIndex(0u) };
+	PortFlags portFlags{ PortFlags::None };
+	std::uint16_t numberOfControls{ 0u };
+	ControlIndex baseControl{ ControlIndex(0u) };
+	std::uint16_t numberOfClusters{ 0u };
+	ClusterIndex baseCluster{ ClusterIndex(0u) };
+	std::uint16_t numberOfMaps{ 0u };
+	MapIndex baseMap{ MapIndex(0u) };
+};
+
+/** EXTERNAL_PORT Descriptor - Clause 7.2.14 */
+struct ExternalPortDescriptor
+{
+	ClockDomainIndex clockDomainIndex{ ClockDomainIndex(0u) };
+	PortFlags portFlags{ PortFlags::None };
+	std::uint16_t numberOfControls{ 0u };
+	ControlIndex baseControl{ ControlIndex(0u) };
+	DescriptorType signalType{ DescriptorType::Invalid };
+	DescriptorIndex signalIndex{ DescriptorIndex(0u) };
+	std::uint16_t signalOutput{ 0u };
+	std::uint32_t blockLatency{ 0u };
+	JackIndex jackIndex{ JackIndex(0u) };
+};
+
+/** INTERNAL_PORT Descriptor - Clause 7.2.15 */
+struct InternalPortDescriptor
+{
+	ClockDomainIndex clockDomainIndex{ ClockDomainIndex(0u) };
+	PortFlags portFlags{ PortFlags::None };
+	std::uint16_t numberOfControls{ 0u };
+	ControlIndex baseControl{ ControlIndex(0u) };
+	DescriptorType signalType{ DescriptorType::Invalid };
+	DescriptorIndex signalIndex{ DescriptorIndex(0u) };
+	std::uint16_t signalOutput{ 0u };
+	std::uint32_t blockLatency{ 0u };
+	InternalPortIndex internalIndex{ InternalPortIndex(0u) };
+};
+
+/** AUDIO_CLUSTER Descriptor - Clause 7.2.16 */
+struct AudioClusterDescriptor
+{
+	AvdeccFixedString objectName{};
+	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
+	DescriptorType signalType{ DescriptorType::Invalid };
+	DescriptorIndex signalIndex{ DescriptorIndex(0u) };
+	std::uint16_t signalOutput{ 0u };
+	std::uint32_t pathLatency{ 0u };
+	std::uint32_t blockLatency{ 0u };
+	std::uint16_t channelCount{ 0u };
+	AudioClusterFormat format{ AudioClusterFormat::Iec60958 };
+};
+
+/** VIDEO_CLUSTER Descriptor - Clause 7.2.17 */
+
+/** SENSOR_CLUSTER Descriptor - Clause 7.2.18 */
+
+/** AUDIO_MAP Descriptor - Clause 7.2.19 */
+struct AudioMapDescriptor
+{
+	AudioMappings mappings{};
+};
+
+/** VIDEO_MAP Descriptor - Clause 7.2.20 */
+
+/** SENSOR_MAP Descriptor - Clause 7.2.21 */
+
+/** CONTROL Descriptor - Clause 7.2.22 */
+
+/** SIGNAL_SELECTOR Descriptor - Clause 7.2.23 */
+
+/** MIXER Descriptor - Clause 7.2.24 */
+
+/** MATRIX Descriptor - Clause 7.2.25 */
+
+/** MATRIX_SIGNAL Descriptor - Clause 7.2.26 */
+
+/** SIGNAL_SPLITTER Descriptor - Clause 7.2.27 */
+
+/** SIGNAL_COMBINER Descriptor - Clause 7.2.28 */
+
+/** SIGNAL_DEMULTIPLEXER Descriptor - Clause 7.2.29 */
+
+/** SIGNAL_MULTIPLEXER Descriptor - Clause 7.2.30 */
+
+/** SIGNAL_TRANSCODER Descriptor - Clause 7.2.31 */
+
+/** CLOCK_DOMAIN Descriptor - Clause 7.2.32 */
+struct ClockDomainDescriptor
+{
+	AvdeccFixedString objectName{};
+	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
+	ClockSourceIndex clockSourceIndex{ ClockSourceIndex(0u) };
+	std::vector<ClockSourceIndex> clockSources{};
+};
+
+/** CONTROL_BLOCK Descriptor - Clause 7.2.33 */
 
 struct StreamConnectedState
 {
@@ -201,15 +351,6 @@ constexpr bool operator!=(StreamConnectedState const& lhs, StreamConnectedState 
 	return !(lhs == rhs);
 }
 
-struct AudioMapping
-{
-	std::uint16_t streamIndex{ 0u };
-	std::uint16_t streamChannel{ 0u };
-	std::uint16_t clusterOffset{ 0u };
-	std::uint16_t clusterChannel{ 0u };
-};
-using AudioMappings = std::vector<AudioMapping>;
-
 /** GET_STREAM_INFO and SET_STREAM_INFO Dynamic Information - Clause 7.4.16.2 */
 struct StreamInfo
 {
@@ -225,7 +366,7 @@ struct StreamInfo
 
 constexpr bool operator==(StreamInfo const& lhs, StreamInfo const& rhs) noexcept
 {
-	return (lhs.streamInfoFlags  == rhs.streamInfoFlags) && (lhs.streamFormat == rhs.streamFormat) &&
+	return (lhs.streamInfoFlags == rhs.streamInfoFlags) && (lhs.streamFormat == rhs.streamFormat) &&
 		(lhs.streamID == rhs.streamID) && (lhs.msrpAccumulatedLatency == rhs.msrpAccumulatedLatency) &&
 		(lhs.streamDestMac == rhs.streamDestMac) && (lhs.msrpFailureCode == rhs.msrpFailureCode) &&
 		(lhs.msrpFailureBridgeID == rhs.msrpFailureBridgeID) && (lhs.streamVlanID == rhs.streamVlanID);

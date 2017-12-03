@@ -135,10 +135,25 @@ private:
 	virtual void unregisterUnsolicitedNotifications(UniqueIdentifier const targetEntityID, UnregisterUnsolicitedNotificationsHandler const& handler) const noexcept override;
 	virtual void readEntityDescriptor(UniqueIdentifier const targetEntityID, EntityDescriptorHandler const& handler) const noexcept override;
 	virtual void readConfigurationDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, ConfigurationDescriptorHandler const& handler) const noexcept override;
-	virtual void readLocaleDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::LocaleIndex const localeIndex, LocaleDescriptorHandler const& handler) const noexcept override;
-	virtual void readStringsDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StringsIndex const stringsIndex, StringsDescriptorHandler const& handler) const noexcept override;
+	virtual void readAudioUnitDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AudioUnitIndex const audioUnitIndex, AudioUnitDescriptorHandler const& handler) const noexcept override;
 	virtual void readStreamInputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const streamIndex, StreamInputDescriptorHandler const& handler) const noexcept override;
 	virtual void readStreamOutputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const streamIndex, StreamOutputDescriptorHandler const& handler) const noexcept override;
+	virtual void readJackInputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::JackIndex const jackIndex, JackInputDescriptorHandler const& handler) const noexcept override;
+	virtual void readJackOutputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::JackIndex const jackIndex, JackOutputDescriptorHandler const& handler) const noexcept override;
+	virtual void readAvbInterfaceDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AvbInterfaceIndex const avbInterfaceIndex, AvbInterfaceDescriptorHandler const& handler) const noexcept override;
+	virtual void readClockSourceDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClockSourceIndex const clockSourceIndex, ClockSourceDescriptorHandler const& handler) const noexcept override;
+	virtual void readMemoryObjectDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::MemoryObjectIndex const memoryObjectIndex, MemoryObjectDescriptorHandler const& handler) const noexcept override;
+	virtual void readLocaleDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::LocaleIndex const localeIndex, LocaleDescriptorHandler const& handler) const noexcept override;
+	virtual void readStringsDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StringsIndex const stringsIndex, StringsDescriptorHandler const& handler) const noexcept override;
+	virtual void readStreamPortInputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamPortIndex const streamPortIndex, StreamPortInputDescriptorHandler const& handler) const noexcept override;
+	virtual void readStreamPortOutputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamPortIndex const streamPortIndex, StreamPortOutputDescriptorHandler const& handler) const noexcept override;
+	virtual void readExternalPortInputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ExternalPortIndex const externalPortIndex, ExternalPortInputDescriptorHandler const& handler) const noexcept override;
+	virtual void readExternalPortOutputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ExternalPortIndex const externalPortIndex, ExternalPortOutputDescriptorHandler const& handler) const noexcept override;
+	virtual void readInternalPortInputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::InternalPortIndex const internalPortIndex, InternalPortInputDescriptorHandler const& handler) const noexcept override;
+	virtual void readInternalPortOutputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::InternalPortIndex const internalPortIndex, InternalPortOutputDescriptorHandler const& handler) const noexcept override;
+	virtual void readAudioClusterDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClusterIndex const clusterIndex, AudioClusterDescriptorHandler const& handler) const noexcept override;
+	virtual void readAudioMapDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::MapIndex const mapIndex, AudioMapDescriptorHandler const& handler) const noexcept override;
+	virtual void readClockDomainDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClockDomainIndex const clockDomainIndex, ClockDomainDescriptorHandler const& handler) const noexcept override;
 	virtual void setConfiguration(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, SetConfigurationHandler const& handler) const noexcept override;
 	virtual void setStreamInputFormat(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamFormat const streamFormat, SetStreamInputFormatHandler const& handler) const noexcept override;
 	virtual void setStreamOutputFormat(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamFormat const streamFormat, SetStreamOutputFormatHandler const& handler) const noexcept override;
@@ -175,20 +190,20 @@ private:
 	/* protocol::ProtocolInterface::Observer overrides                            */
 	/* ************************************************************************** */
 	/* **** Global notifications **** */
-	virtual void onTransportError(la::avdecc::protocol::ProtocolInterface const* const pi) noexcept override;
+	virtual void onTransportError(protocol::ProtocolInterface const* const pi) noexcept override;
 	/* **** Discovery notifications **** */
-	virtual void onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept override;
-	virtual void onLocalEntityOffline(la::avdecc::protocol::ProtocolInterface const* const pi, UniqueIdentifier const entityID) noexcept override;
-	virtual void onLocalEntityUpdated(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept override;
-	virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept override;
-	virtual void onRemoteEntityOffline(la::avdecc::protocol::ProtocolInterface const* const pi, UniqueIdentifier const entityID) noexcept override;
-	virtual void onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept override;
+	virtual void onLocalEntityOnline(protocol::ProtocolInterface const* const pi, DiscoveredEntity const& entity) noexcept override;
+	virtual void onLocalEntityOffline(protocol::ProtocolInterface const* const pi, UniqueIdentifier const entityID) noexcept override;
+	virtual void onLocalEntityUpdated(protocol::ProtocolInterface const* const pi, DiscoveredEntity const& entity) noexcept override;
+	virtual void onRemoteEntityOnline(protocol::ProtocolInterface const* const pi, DiscoveredEntity const& entity) noexcept override;
+	virtual void onRemoteEntityOffline(protocol::ProtocolInterface const* const pi, UniqueIdentifier const entityID) noexcept override;
+	virtual void onRemoteEntityUpdated(protocol::ProtocolInterface const* const pi, DiscoveredEntity const& entity) noexcept override;
 	/* **** AECP notifications **** */
-	virtual void onAecpCommand(la::avdecc::protocol::ProtocolInterface const* const pi, entity::LocalEntity const& entity, protocol::Aecpdu const& aecpdu) noexcept override;
-	virtual void onAecpUnsolicitedResponse(la::avdecc::protocol::ProtocolInterface const* const pi, entity::LocalEntity const& entity, protocol::Aecpdu const& aecpdu) noexcept override;
+	virtual void onAecpCommand(protocol::ProtocolInterface const* const pi, entity::LocalEntity const& entity, protocol::Aecpdu const& aecpdu) noexcept override;
+	virtual void onAecpUnsolicitedResponse(protocol::ProtocolInterface const* const pi, entity::LocalEntity const& entity, protocol::Aecpdu const& aecpdu) noexcept override;
 	/* **** ACMP notifications **** */
-	virtual void onAcmpSniffedCommand(la::avdecc::protocol::ProtocolInterface const* const pi, entity::LocalEntity const& entity, protocol::Acmpdu const& acmpdu) noexcept override;
-	virtual void onAcmpSniffedResponse(la::avdecc::protocol::ProtocolInterface const* const pi, entity::LocalEntity const& entity, protocol::Acmpdu const& acmpdu) noexcept override;
+	virtual void onAcmpSniffedCommand(protocol::ProtocolInterface const* const pi, entity::LocalEntity const& entity, protocol::Acmpdu const& acmpdu) noexcept override;
+	virtual void onAcmpSniffedResponse(protocol::ProtocolInterface const* const pi, entity::LocalEntity const& entity, protocol::Acmpdu const& acmpdu) noexcept override;
 
 	/* ************************************************************************** */
 	/* Internal variables                                                         */

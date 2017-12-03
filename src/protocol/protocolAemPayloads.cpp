@@ -60,7 +60,7 @@ std::tuple<AemAcquireEntityFlags, UniqueIdentifier, entity::model::DescriptorTyp
 	Deserializer des(commandPayload, commandPayloadLength);
 	AemAcquireEntityFlags flags{ AemAcquireEntityFlags::None };
 	UniqueIdentifier ownerID{ getUninitializedIdentifier() };
-	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 
 	des >> flags;
@@ -113,7 +113,7 @@ std::tuple<AemLockEntityFlags, UniqueIdentifier, entity::model::DescriptorType, 
 	Deserializer des(commandPayload, commandPayloadLength);
 	AemLockEntityFlags flags{ AemLockEntityFlags::None };
 	UniqueIdentifier lockedID{ getUninitializedIdentifier() };
-	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 
 	des >> flags;
@@ -166,7 +166,7 @@ std::tuple<entity::model::ConfigurationIndex, entity::model::DescriptorType, ent
 	Deserializer des(commandPayload, commandPayloadLength);
 	entity::model::ConfigurationIndex configurationIndex{ 0u };
 	std::uint16_t reserved{ 0u };
-	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 
 	des >> configurationIndex >> reserved;
@@ -195,7 +195,7 @@ std::tuple<size_t, entity::model::ConfigurationIndex, entity::model::DescriptorT
 	Deserializer des(commandPayload, commandPayloadLength);
 	entity::model::ConfigurationIndex configurationIndex{ 0u };
 	std::uint16_t reserved{ 0u };
-	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 
 	// Read common READ_DESCRIPTOR Response fields
@@ -290,6 +290,72 @@ entity::model::ConfigurationDescriptor deserializeReadConfigurationDescriptorRes
 	return configurationDescriptor;
 }
 
+entity::model::AudioUnitDescriptor deserializeReadAudioUnitDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
+{
+	entity::model::AudioUnitDescriptor audioUnitDescriptor{};
+
+	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	if (status == AecpStatus::Success)
+	{
+		auto* const commandPayload = payload.first;
+		auto const commandPayloadLength = payload.second;
+
+		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadAudioUnitDescriptorResponsePayloadMinSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Check audio unit descriptor payload - Clause 7.2.3
+		Deserializer des(commandPayload, commandPayloadLength);
+		std::uint16_t samplingRatesOffset{ 0u };
+		std::uint16_t numberOfSamplingRates{ 0u };
+		des.setPosition(commonSize); // Skip already unpacked common header
+		des >> audioUnitDescriptor.objectName;
+		des >> audioUnitDescriptor.localizedDescription >> audioUnitDescriptor.clockDomainIndex;
+		des >> audioUnitDescriptor.numberOfStreamInputPorts >> audioUnitDescriptor.baseStreamInputPort;
+		des >> audioUnitDescriptor.numberOfStreamOutputPorts >> audioUnitDescriptor.baseStreamOutputPort;
+		des >> audioUnitDescriptor.numberOfExternalInputPorts >> audioUnitDescriptor.baseExternalInputPort;
+		des >> audioUnitDescriptor.numberOfExternalOutputPorts >> audioUnitDescriptor.baseExternalOutputPort;
+		des >> audioUnitDescriptor.numberOfInternalInputPorts >> audioUnitDescriptor.baseInternalInputPort;
+		des >> audioUnitDescriptor.numberOfInternalOutputPorts >> audioUnitDescriptor.baseInternalOutputPort;
+		des >> audioUnitDescriptor.numberOfControls >> audioUnitDescriptor.baseControl;
+		des >> audioUnitDescriptor.numberOfSignalSelectors >> audioUnitDescriptor.baseSignalSelector;
+		des >> audioUnitDescriptor.numberOfMixers >> audioUnitDescriptor.baseMixer;
+		des >> audioUnitDescriptor.numberOfMatrices >> audioUnitDescriptor.baseMatrix;
+		des >> audioUnitDescriptor.numberOfSplitters >> audioUnitDescriptor.baseSplitter;
+		des >> audioUnitDescriptor.numberOfCombiners >> audioUnitDescriptor.baseCombiner;
+		des >> audioUnitDescriptor.numberOfDemultiplexers >> audioUnitDescriptor.baseDemultiplexer;
+		des >> audioUnitDescriptor.numberOfMultiplexers >> audioUnitDescriptor.baseMultiplexer;
+		des >> audioUnitDescriptor.numberOfTranscoders >> audioUnitDescriptor.baseTranscoder;
+		des >> audioUnitDescriptor.numberOfControlBlocks >> audioUnitDescriptor.baseControlBlock;
+		des >> audioUnitDescriptor.currentSamplingRate >> samplingRatesOffset >> numberOfSamplingRates;
+
+		// Check descriptor variable size
+		auto const samplingRatesSize = sizeof(entity::model::SamplingRate) * numberOfSamplingRates;
+		if (des.remaining() < samplingRatesSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Compute deserializer offset for sampling rates (Clause 7.4.5.2 says the sampling_rates_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+		samplingRatesOffset += sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
+
+		// Set deserializer position
+		if (samplingRatesOffset < des.usedBytes())
+			throw IncorrectPayloadSizeException();
+		des.setPosition(samplingRatesOffset);
+
+		// Let's loop over the sampling rates
+		for (auto index = 0u; index < numberOfSamplingRates; ++index)
+		{
+			entity::model::SamplingRate rate;
+			des >> rate;
+			audioUnitDescriptor.samplingRates.insert(rate);
+		}
+
+		if (des.remaining() != 0)
+			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for AUDIO_UNIT");
+	}
+
+	return audioUnitDescriptor;
+}
+
 entity::model::StreamDescriptor deserializeReadStreamDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
 {
 	entity::model::StreamDescriptor streamDescriptor{};
@@ -336,7 +402,7 @@ entity::model::StreamDescriptor deserializeReadStreamDescriptorResponse(AemAecpd
 		{
 			std::uint64_t format;
 			des >> format;
-			streamDescriptor.formats.push_back(format);
+			streamDescriptor.formats.insert(format);
 		}
 
 		if (des.remaining() != 0)
@@ -344,6 +410,134 @@ entity::model::StreamDescriptor deserializeReadStreamDescriptorResponse(AemAecpd
 	}
 
 	return streamDescriptor;
+}
+
+entity::model::JackDescriptor deserializeReadJackDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
+{
+	entity::model::JackDescriptor jackDescriptor{};
+
+	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	if (status == AecpStatus::Success)
+	{
+		auto* const commandPayload = payload.first;
+		auto const commandPayloadLength = payload.second;
+
+		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadJackDescriptorResponsePayloadSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Check jack descriptor payload - Clause 7.2.7
+		Deserializer des(commandPayload, commandPayloadLength);
+		des.setPosition(commonSize); // Skip already unpacked common header
+		des >> jackDescriptor.objectName;
+		des >> jackDescriptor.localizedDescription;
+		des >> jackDescriptor.jackFlags >> jackDescriptor.jackType;
+		des >> jackDescriptor.numberOfControls >> jackDescriptor.baseControl;
+
+		assert(des.usedBytes() == AecpAemReadJackDescriptorResponsePayloadSize && "Used more bytes than specified in protocol constant");
+
+		if (des.remaining() != 0)
+			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for JACK");
+	}
+
+	return jackDescriptor;
+}
+
+entity::model::AvbInterfaceDescriptor deserializeReadAvbInterfaceDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
+{
+	entity::model::AvbInterfaceDescriptor avbInterfaceDescriptor{};
+
+	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	if (status == AecpStatus::Success)
+	{
+		auto* const commandPayload = payload.first;
+		auto const commandPayloadLength = payload.second;
+
+		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadAvbInterfaceDescriptorResponsePayloadSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Check avb interface descriptor payload - Clause 7.2.8
+		Deserializer des(commandPayload, commandPayloadLength);
+		des.setPosition(commonSize); // Skip already unpacked common header
+		des >> avbInterfaceDescriptor.objectName;
+		des >> avbInterfaceDescriptor.localizedDescription;
+		des >> avbInterfaceDescriptor.macAddress;
+		des >> avbInterfaceDescriptor.interfaceFlags;
+		des >> avbInterfaceDescriptor.clockIdentify;
+		des >> avbInterfaceDescriptor.priority1 >> avbInterfaceDescriptor.clockClass;
+		des >> avbInterfaceDescriptor.offsetScaledLogVariance >> avbInterfaceDescriptor.clockAccuracy;
+		des >> avbInterfaceDescriptor.priority2 >> avbInterfaceDescriptor.domainNumber;
+		des >> avbInterfaceDescriptor.logSyncInterval >> avbInterfaceDescriptor.logAnnounceInterval >> avbInterfaceDescriptor.logPDelayInterval;
+		des >> avbInterfaceDescriptor.portNumber;
+
+		assert(des.usedBytes() == AecpAemReadAvbInterfaceDescriptorResponsePayloadSize && "Used more bytes than specified in protocol constant");
+
+		if (des.remaining() != 0)
+			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for AVB_INTERFACE");
+	}
+
+	return avbInterfaceDescriptor;
+}
+
+entity::model::ClockSourceDescriptor deserializeReadClockSourceDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
+{
+	entity::model::ClockSourceDescriptor clockSourceDescriptor{};
+
+	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	if (status == AecpStatus::Success)
+	{
+		auto* const commandPayload = payload.first;
+		auto const commandPayloadLength = payload.second;
+
+		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadClockSourceDescriptorResponsePayloadSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Check clock source descriptor payload - Clause 7.2.9
+		Deserializer des(commandPayload, commandPayloadLength);
+		des.setPosition(commonSize); // Skip already unpacked common header
+		des >> clockSourceDescriptor.objectName;
+		des >> clockSourceDescriptor.localizedDescription;
+		des >> clockSourceDescriptor.clockSourceFlags >> clockSourceDescriptor.clockSourceType;
+		des >> clockSourceDescriptor.clockSourceIdentifier;
+		des >> clockSourceDescriptor.clockSourceLocationType >> clockSourceDescriptor.clockSourceLocationIndex;
+
+		assert(des.usedBytes() == AecpAemReadClockSourceDescriptorResponsePayloadSize && "Used more bytes than specified in protocol constant");
+
+		if (des.remaining() != 0)
+			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for CLOCK_SOURCE");
+	}
+
+	return clockSourceDescriptor;
+}
+
+entity::model::MemoryObjectDescriptor deserializeReadMemoryObjectDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
+{
+	entity::model::MemoryObjectDescriptor memoryObjectDescriptor{};
+
+	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	if (status == AecpStatus::Success)
+	{
+		auto* const commandPayload = payload.first;
+		auto const commandPayloadLength = payload.second;
+
+		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadMemoryObjectDescriptorResponsePayloadSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Check memory object descriptor payload - Clause 7.2.10
+		Deserializer des(commandPayload, commandPayloadLength);
+		des.setPosition(commonSize); // Skip already unpacked common header
+		des >> memoryObjectDescriptor.objectName;
+		des >> memoryObjectDescriptor.localizedDescription;
+		des >> memoryObjectDescriptor.memoryObjectType;
+		des >> memoryObjectDescriptor.targetDescriptorType >> memoryObjectDescriptor.targetDescriptorIndex;
+		des >> memoryObjectDescriptor.startAddress >> memoryObjectDescriptor.maximumLength >> memoryObjectDescriptor.length;
+
+		assert(des.usedBytes() == AecpAemReadMemoryObjectDescriptorResponsePayloadSize && "Used more bytes than specified in protocol constant");
+
+		if (des.remaining() != 0)
+			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for MEMORY_OBJECT");
+	}
+
+	return memoryObjectDescriptor;
 }
 
 entity::model::LocaleDescriptor deserializeReadLocaleDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
@@ -402,6 +596,226 @@ entity::model::StringsDescriptor deserializeReadStringsDescriptorResponse(AemAec
 	}
 
 	return stringsDescriptor;
+}
+
+entity::model::StreamPortDescriptor deserializeReadStreamPortDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
+{
+	entity::model::StreamPortDescriptor streamPortDescriptor{};
+
+	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	if (status == AecpStatus::Success)
+	{
+		auto* const commandPayload = payload.first;
+		auto const commandPayloadLength = payload.second;
+
+		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadStreamPortDescriptorResponsePayloadSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Check stream port descriptor payload - Clause 7.2.13
+		Deserializer des(commandPayload, commandPayloadLength);
+		des.setPosition(commonSize); // Skip already unpacked common header
+		des >> streamPortDescriptor.clockDomainIndex >> streamPortDescriptor.portFlags;
+		des >> streamPortDescriptor.numberOfControls >> streamPortDescriptor.baseControl;
+		des >> streamPortDescriptor.numberOfClusters >> streamPortDescriptor.baseCluster;
+		des >> streamPortDescriptor.numberOfMaps >> streamPortDescriptor.baseMap;
+
+		assert(des.usedBytes() == AecpAemReadStreamPortDescriptorResponsePayloadSize && "Used more bytes than specified in protocol constant");
+
+		if (des.remaining() != 0)
+			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for STREAM_PORT");
+	}
+
+	return streamPortDescriptor;
+}
+
+entity::model::ExternalPortDescriptor deserializeReadExternalPortDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
+{
+	entity::model::ExternalPortDescriptor externalPortDescriptor{};
+
+	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	if (status == AecpStatus::Success)
+	{
+		auto* const commandPayload = payload.first;
+		auto const commandPayloadLength = payload.second;
+
+		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadExternalPortDescriptorResponsePayloadSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Check external port descriptor payload - Clause 7.2.14
+		Deserializer des(commandPayload, commandPayloadLength);
+		des.setPosition(commonSize); // Skip already unpacked common header
+		des >> externalPortDescriptor.clockDomainIndex >> externalPortDescriptor.portFlags;
+		des >> externalPortDescriptor.numberOfControls >> externalPortDescriptor.baseControl;
+		des >> externalPortDescriptor.signalType >> externalPortDescriptor.signalIndex >> externalPortDescriptor.signalOutput;
+		des >> externalPortDescriptor.blockLatency >> externalPortDescriptor.jackIndex;
+
+		assert(des.usedBytes() == AecpAemReadExternalPortDescriptorResponsePayloadSize && "Used more bytes than specified in protocol constant");
+
+		if (des.remaining() != 0)
+			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for EXTERNAL_PORT");
+	}
+
+	return externalPortDescriptor;
+}
+
+entity::model::InternalPortDescriptor deserializeReadInternalPortDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
+{
+	entity::model::InternalPortDescriptor internalPortDescriptor{};
+
+	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	if (status == AecpStatus::Success)
+	{
+		auto* const commandPayload = payload.first;
+		auto const commandPayloadLength = payload.second;
+
+		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadInternalPortDescriptorResponsePayloadSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Check internal port descriptor payload - Clause 7.2.15
+		Deserializer des(commandPayload, commandPayloadLength);
+		des.setPosition(commonSize); // Skip already unpacked common header
+		des >> internalPortDescriptor.clockDomainIndex >> internalPortDescriptor.portFlags;
+		des >> internalPortDescriptor.numberOfControls >> internalPortDescriptor.baseControl;
+		des >> internalPortDescriptor.signalType >> internalPortDescriptor.signalIndex >> internalPortDescriptor.signalOutput;
+		des >> internalPortDescriptor.blockLatency >> internalPortDescriptor.internalIndex;
+
+		assert(des.usedBytes() == AecpAemReadInternalPortDescriptorResponsePayloadSize && "Used more bytes than specified in protocol constant");
+
+		if (des.remaining() != 0)
+			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for INTERNAL_PORT");
+	}
+
+	return internalPortDescriptor;
+}
+
+entity::model::AudioClusterDescriptor deserializeReadAudioClusterDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
+{
+	entity::model::AudioClusterDescriptor audioClusterDescriptor{};
+
+	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	if (status == AecpStatus::Success)
+	{
+		auto* const commandPayload = payload.first;
+		auto const commandPayloadLength = payload.second;
+
+		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadAudioClusterDescriptorResponsePayloadSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Check audio cluster descriptor payload - Clause 7.2.16
+		Deserializer des(commandPayload, commandPayloadLength);
+		des.setPosition(commonSize); // Skip already unpacked common header
+		des >> audioClusterDescriptor.objectName;
+		des >> audioClusterDescriptor.localizedDescription;
+		des >> audioClusterDescriptor.signalType >> audioClusterDescriptor.signalIndex >> audioClusterDescriptor.signalOutput;
+		des >> audioClusterDescriptor.pathLatency >> audioClusterDescriptor.blockLatency;
+		des >> audioClusterDescriptor.channelCount >> audioClusterDescriptor.format;
+
+		assert(des.usedBytes() == AecpAemReadAudioClusterDescriptorResponsePayloadSize && "Used more bytes than specified in protocol constant");
+
+		if (des.remaining() != 0)
+			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for AUDIO_CLUSTER");
+	}
+
+	return audioClusterDescriptor;
+}
+
+entity::model::AudioMapDescriptor deserializeReadAudioMapDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
+{
+	entity::model::AudioMapDescriptor audioMapDescriptor{};
+
+	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	if (status == AecpStatus::Success)
+	{
+		auto* const commandPayload = payload.first;
+		auto const commandPayloadLength = payload.second;
+
+		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadAudioMapDescriptorResponsePayloadMinSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Check audio map descriptor payload - Clause 7.2.19
+		Deserializer des(commandPayload, commandPayloadLength);
+		std::uint16_t mappingsOffset{ 0u };
+		std::uint16_t numberOfMappings{ 0u };
+		des.setPosition(commonSize); // Skip already unpacked common header
+		des >> mappingsOffset >> numberOfMappings;
+
+		// Check descriptor variable size
+		auto const mappingsSize = entity::model::AudioMapping::size() * numberOfMappings;
+		if (des.remaining() < mappingsSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Compute deserializer offset for sampling rates (Clause 7.4.5.2 says the mappings_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+		mappingsOffset += sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
+
+		// Set deserializer position
+		if (mappingsOffset < des.usedBytes())
+			throw IncorrectPayloadSizeException();
+		des.setPosition(mappingsOffset);
+
+		// Let's loop over the mappings
+		for (auto index = 0u; index < numberOfMappings; ++index)
+		{
+			entity::model::AudioMapping mapping;
+			des >> mapping.streamIndex >> mapping.streamChannel >> mapping.clusterOffset >> mapping.clusterChannel;
+			audioMapDescriptor.mappings.push_back(mapping);
+		}
+
+		if (des.remaining() != 0)
+			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for AUDIO_MAP");
+	}
+
+	return audioMapDescriptor;
+}
+
+entity::model::ClockDomainDescriptor deserializeReadClockDomainDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
+{
+	entity::model::ClockDomainDescriptor clockDomainDescriptor{};
+
+	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	if (status == AecpStatus::Success)
+	{
+		auto* const commandPayload = payload.first;
+		auto const commandPayloadLength = payload.second;
+
+		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadClockDomainDescriptorResponsePayloadMinSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Check clock domain descriptor payload - Clause 7.2.32
+		Deserializer des(commandPayload, commandPayloadLength);
+		std::uint16_t clockSourcesOffset{ 0u };
+		std::uint16_t numberOfClockSources{ 0u };
+		des.setPosition(commonSize); // Skip already unpacked common header
+		des >> clockDomainDescriptor.objectName;
+		des >> clockDomainDescriptor.localizedDescription;
+		des >> clockDomainDescriptor.clockSourceIndex;
+		des >> clockSourcesOffset >> numberOfClockSources;
+
+		// Check descriptor variable size
+		auto const clockSourcesSize = sizeof(entity::model::ClockSourceIndex) * numberOfClockSources;
+		if (des.remaining() < clockSourcesSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Compute deserializer offset for sampling rates (Clause 7.4.5.2 says the clock_sources_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+		clockSourcesOffset += sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
+
+		// Set deserializer position
+		if (clockSourcesOffset < des.usedBytes())
+			throw IncorrectPayloadSizeException();
+		des.setPosition(clockSourcesOffset);
+
+		// Let's loop over the clock sources
+		for (auto index = 0u; index < numberOfClockSources; ++index)
+		{
+			entity::model::ClockSourceIndex clockSourceIndex;
+			des >> clockSourceIndex;
+			clockDomainDescriptor.clockSources.push_back(clockSourceIndex);
+		}
+
+		if (des.remaining() != 0)
+			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for CLOCK_DOMAIN");
+	}
+
+	return clockDomainDescriptor;
 }
 
 /** WRITE_DESCRIPTOR Command - Clause 7.4.6.1 */
@@ -509,7 +923,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
-	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 	entity::model::StreamFormat streamFormat{ entity::model::getNullStreamFormat() };
 
@@ -558,7 +972,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
-	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 
 	des >> descriptorType >> descriptorIndex;
@@ -617,7 +1031,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
-	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 	entity::model::StreamInfo streamInfo{};
 	std::uint8_t reserved{ 0u };
@@ -677,7 +1091,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
-	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 
 	des >> descriptorType >> descriptorIndex;
@@ -846,7 +1260,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
-	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 	entity::model::SamplingRate samplingRate{ entity::model::getNullSamplingRate() };
 
@@ -895,7 +1309,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
-	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 
 	des >> descriptorType >> descriptorIndex;
@@ -944,7 +1358,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
-	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 	entity::model::ClockSourceIndex clockSourceIndex{ 0u };
 	std::uint16_t reserved{ 0u };
@@ -994,7 +1408,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
-	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 
 	des >> descriptorType >> descriptorIndex;
@@ -1041,7 +1455,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
-	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 
 	des >> descriptorType >> descriptorIndex;
@@ -1127,7 +1541,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
-	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 	entity::model::MapIndex mapIndex{ 0u };
 	std::uint16_t reserved{ 0u };
@@ -1168,7 +1582,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
-	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 	entity::model::MapIndex mapIndex{ 0u };
 	entity::model::MapIndex numberOfMaps{ 0u };
@@ -1179,8 +1593,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	des >> mapIndex >> numberOfMaps >> numberOfMappings >> reserved;
 
 	// Check variable size
-	constexpr size_t mapInfoSize = sizeof(entity::model::AudioMapping::streamIndex) + sizeof(entity::model::AudioMapping::streamChannel) + sizeof(entity::model::AudioMapping::clusterOffset) + sizeof(entity::model::AudioMapping::clusterChannel);
-	auto const mappingsSize = mapInfoSize * numberOfMappings;
+	auto const mappingsSize = entity::model::AudioMapping::size() * numberOfMappings;
 	if (des.remaining() < mappingsSize) // Malformed packet
 		throw IncorrectPayloadSizeException();
 
@@ -1228,7 +1641,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
-	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 	std::uint16_t numberOfMappings{ 0u };
 	std::uint16_t reserved{ 0u };

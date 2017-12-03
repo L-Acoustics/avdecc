@@ -130,6 +130,44 @@ enum class StreamFlags : std::uint16_t
 	/* Bits 0 to 5 reserved for future use */
 };
 
+/** JackFlags - Clause 7.2.7.1 */
+enum class JackFlags : std::uint16_t
+{
+	None = 0u,
+	ClockSyncSource = 1u << 0, /**< Indicates that the Jack can be used as a clock synchronization source. */
+	Captive = 1u << 1, /**< Indicates that the Jack connection is hardwired, cannot be disconnected and may be physically within the device's structure. */
+	/* Bits 0 to 13 reserved for future use */
+};
+
+/** AvbInterfaceFlags - Clause 7.2.8.1 */
+enum class AvbInterfaceFlags : std::uint16_t
+{
+	None = 0u,
+	GptpGrandmasterSupported = 1u << 0, /**< Indicates that the interface supports the IEEE Std 802.1AS-2011 grandmaster functionality. */
+	GptpSupported = 1u << 1, /**< Indicates that the interface supports the IEEE Std 802.1AS-2011 functionality. */
+	SrpSupported = 1u << 2, /**< Indicates that the interface supports Clause 35 of IEEE Std 802.1Q-2011, "Stream Reservation Protocol (SRP)" functionality. */
+	/* Bits 0 to 12 reserved for future use */
+};
+
+/** ClockSourceFlags - Clause 7.2.9.1 */
+enum class ClockSourceFlags : std::uint16_t
+{
+	None = 0u,
+	StreamID = 1u << 0, /**< The INPUT_STREAM Clock Source is identified by the stream_id. */
+	LocalID = 1u << 1, /**< The INPUT_STREAM Clock Source is identified by its local ID. */
+	/* Bits 0 to 13 reserved for future use */
+};
+
+/** PortFlags - Clause 7.2.13.1 */
+enum class PortFlags : std::uint16_t
+{
+	None = 0u,
+	ClockSyncSource = 1u << 0, /**< Indicates that the Port can be used as a clock synchronization source. */
+	AsyncSampleRateConv = 1u << 1, /**< Indicates that the Port has an asynchronous sample rate convertor to convert sample rates between another Clock Domain and the Unit's. */
+	SyncSampleRateConv = 1u << 2, /**< Indicates that the Port has a synchronous sample rate convertor to convert between sample rates in the same Clock Domain. */
+	/* Bits 0 to 12 reserved for future use */
+};
+
 /** StreamInfo Flags - Clause 7.4.15.1 */
 enum class StreamInfoFlags : std::uint32_t
 {
@@ -191,6 +229,34 @@ struct enum_traits<entity::ConnectionFlags>
 // Define bitfield enum traits for StreamFlags
 template<>
 struct enum_traits<entity::StreamFlags>
+{
+	static constexpr bool is_bitfield = true;
+};
+
+// Define bitfield enum traits for JackFlags
+template<>
+struct enum_traits<entity::JackFlags>
+{
+	static constexpr bool is_bitfield = true;
+};
+
+// Define bitfield enum traits for AvbInterfaceFlags
+template<>
+struct enum_traits<entity::AvbInterfaceFlags>
+{
+	static constexpr bool is_bitfield = true;
+};
+
+// Define bitfield enum traits for ClockSourceFlags
+template<>
+struct enum_traits<entity::ClockSourceFlags>
+{
+	static constexpr bool is_bitfield = true;
+};
+
+// Define bitfield enum traits for PortFlags
+template<>
+struct enum_traits<entity::PortFlags>
 {
 	static constexpr bool is_bitfield = true;
 };

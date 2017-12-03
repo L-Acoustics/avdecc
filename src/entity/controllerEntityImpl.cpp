@@ -362,6 +362,15 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 						break;
 					}
 
+					case model::DescriptorType::AudioUnit:
+					{
+						// Deserialize audio unit descriptor
+						auto audioUnitDescriptor = protocol::aemPayload::deserializeReadAudioUnitDescriptorResponse(payload, commonSize, aemStatus);
+						// Notify handlers
+						answerCallback.invoke<AudioUnitDescriptorHandler>(controller, targetID, status, configurationIndex, descriptorIndex, audioUnitDescriptor);
+						break;
+					}
+
 					case model::DescriptorType::StreamInput:
 					{
 						// Deserialize stream input descriptor
@@ -380,6 +389,51 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 						break;
 					}
 
+					case model::DescriptorType::JackInput:
+					{
+						// Deserialize jack input descriptor
+						auto jackDescriptor = protocol::aemPayload::deserializeReadJackDescriptorResponse(payload, commonSize, aemStatus);
+						// Notify handlers
+						answerCallback.invoke<JackInputDescriptorHandler>(controller, targetID, status, configurationIndex, descriptorIndex, jackDescriptor);
+						break;
+					}
+
+					case model::DescriptorType::JackOutput:
+					{
+						// Deserialize jack output descriptor
+						auto jackDescriptor = protocol::aemPayload::deserializeReadJackDescriptorResponse(payload, commonSize, aemStatus);
+						// Notify handlers
+						answerCallback.invoke<JackOutputDescriptorHandler>(controller, targetID, status, configurationIndex, descriptorIndex, jackDescriptor);
+						break;
+					}
+
+					case model::DescriptorType::AvbInterface:
+					{
+						// Deserialize avb interface descriptor
+						auto avbInterfaceDescriptor = protocol::aemPayload::deserializeReadAvbInterfaceDescriptorResponse(payload, commonSize, aemStatus);
+						// Notify handlers
+						answerCallback.invoke<AvbInterfaceDescriptorHandler>(controller, targetID, status, configurationIndex, descriptorIndex, avbInterfaceDescriptor);
+						break;
+					}
+
+					case model::DescriptorType::ClockSource:
+					{
+						// Deserialize clock source descriptor
+						auto clockSourceDescriptor = protocol::aemPayload::deserializeReadClockSourceDescriptorResponse(payload, commonSize, aemStatus);
+						// Notify handlers
+						answerCallback.invoke<ClockSourceDescriptorHandler>(controller, targetID, status, configurationIndex, descriptorIndex, clockSourceDescriptor);
+						break;
+					}
+
+					case model::DescriptorType::MemoryObject:
+					{
+						// Deserialize memory object descriptor
+						auto memoryObjectDescriptor = protocol::aemPayload::deserializeReadMemoryObjectDescriptorResponse(payload, commonSize, aemStatus);
+						// Notify handlers
+						answerCallback.invoke<MemoryObjectDescriptorHandler>(controller, targetID, status, configurationIndex, descriptorIndex, memoryObjectDescriptor);
+						break;
+					}
+
 					case model::DescriptorType::Locale:
 					{
 						// Deserialize locale descriptor
@@ -395,6 +449,87 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 						auto stringsDescriptor = protocol::aemPayload::deserializeReadStringsDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
 						answerCallback.invoke<StringsDescriptorHandler>(controller, targetID, status, configurationIndex, descriptorIndex, stringsDescriptor);
+						break;
+					}
+
+					case model::DescriptorType::StreamPortInput:
+					{
+						// Deserialize stream port descriptor
+						auto streamPortDescriptor = protocol::aemPayload::deserializeReadStreamPortDescriptorResponse(payload, commonSize, aemStatus);
+						// Notify handlers
+						answerCallback.invoke<StreamPortInputDescriptorHandler>(controller, targetID, status, configurationIndex, descriptorIndex, streamPortDescriptor);
+						break;
+					}
+
+					case model::DescriptorType::StreamPortOutput:
+					{
+						// Deserialize stream port descriptor
+						auto streamPortDescriptor = protocol::aemPayload::deserializeReadStreamPortDescriptorResponse(payload, commonSize, aemStatus);
+						// Notify handlers
+						answerCallback.invoke<StreamPortOutputDescriptorHandler>(controller, targetID, status, configurationIndex, descriptorIndex, streamPortDescriptor);
+						break;
+					}
+
+					case model::DescriptorType::ExternalPortInput:
+					{
+						// Deserialize external port descriptor
+						auto externalPortDescriptor = protocol::aemPayload::deserializeReadExternalPortDescriptorResponse(payload, commonSize, aemStatus);
+						// Notify handlers
+						answerCallback.invoke<ExternalPortInputDescriptorHandler>(controller, targetID, status, configurationIndex, descriptorIndex, externalPortDescriptor);
+						break;
+					}
+
+					case model::DescriptorType::ExternalPortOutput:
+					{
+						// Deserialize external port descriptor
+						auto externalPortDescriptor = protocol::aemPayload::deserializeReadExternalPortDescriptorResponse(payload, commonSize, aemStatus);
+						// Notify handlers
+						answerCallback.invoke<ExternalPortOutputDescriptorHandler>(controller, targetID, status, configurationIndex, descriptorIndex, externalPortDescriptor);
+						break;
+					}
+
+					case model::DescriptorType::InternalPortInput:
+					{
+						// Deserialize internal port descriptor
+						auto internalPortDescriptor = protocol::aemPayload::deserializeReadInternalPortDescriptorResponse(payload, commonSize, aemStatus);
+						// Notify handlers
+						answerCallback.invoke<InternalPortInputDescriptorHandler>(controller, targetID, status, configurationIndex, descriptorIndex, internalPortDescriptor);
+						break;
+					}
+
+					case model::DescriptorType::InternalPortOutput:
+					{
+						// Deserialize internal port descriptor
+						auto internalPortDescriptor = protocol::aemPayload::deserializeReadInternalPortDescriptorResponse(payload, commonSize, aemStatus);
+						// Notify handlers
+						answerCallback.invoke<InternalPortOutputDescriptorHandler>(controller, targetID, status, configurationIndex, descriptorIndex, internalPortDescriptor);
+						break;
+					}
+
+					case model::DescriptorType::AudioCluster:
+					{
+						// Deserialize audio cluster descriptor
+						auto audioClusterDescriptor = protocol::aemPayload::deserializeReadAudioClusterDescriptorResponse(payload, commonSize, aemStatus);
+						// Notify handlers
+						answerCallback.invoke<AudioClusterDescriptorHandler>(controller, targetID, status, configurationIndex, descriptorIndex, audioClusterDescriptor);
+						break;
+					}
+
+					case model::DescriptorType::AudioMap:
+					{
+						// Deserialize audio map descriptor
+						auto audioMapDescriptor = protocol::aemPayload::deserializeReadAudioMapDescriptorResponse(payload, commonSize, aemStatus);
+						// Notify handlers
+						answerCallback.invoke<AudioMapDescriptorHandler>(controller, targetID, status, configurationIndex, descriptorIndex, audioMapDescriptor);
+						break;
+					}
+
+					case model::DescriptorType::ClockDomain:
+					{
+						// Deserialize clock domain descriptor
+						auto clockDomainDescriptor = protocol::aemPayload::deserializeReadClockDomainDescriptorResponse(payload, commonSize, aemStatus);
+						// Notify handlers
+						answerCallback.invoke<ClockDomainDescriptorHandler>(controller, targetID, status, configurationIndex, descriptorIndex, clockDomainDescriptor);
 						break;
 					}
 
@@ -1273,6 +1408,21 @@ void ControllerEntityImpl::readConfigurationDescriptor(UniqueIdentifier const ta
 	}
 }
 
+void ControllerEntityImpl::readAudioUnitDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AudioUnitIndex const audioUnitIndex, AudioUnitDescriptorHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::AudioUnit, audioUnitIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, audioUnitIndex, model::AudioUnitDescriptor{});
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readAudioUnitDescriptor: ") + e.what());
+	}
+}
+
 void ControllerEntityImpl::readStreamInputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const streamIndex, StreamInputDescriptorHandler const& handler) const noexcept
 {
 	try
@@ -1303,6 +1453,81 @@ void ControllerEntityImpl::readStreamOutputDescriptor(UniqueIdentifier const tar
 	}
 }
 
+void ControllerEntityImpl::readJackInputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::JackIndex const jackIndex, JackInputDescriptorHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::JackInput, jackIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, jackIndex, model::JackDescriptor{});
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readJackInputDescriptor: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::readJackOutputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::JackIndex const jackIndex, JackOutputDescriptorHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::JackOutput, jackIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, jackIndex, model::JackDescriptor{});
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readJackOutputDescriptor: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::readAvbInterfaceDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AvbInterfaceIndex const avbInterfaceIndex, AvbInterfaceDescriptorHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::AvbInterface, avbInterfaceIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, avbInterfaceIndex, model::AvbInterfaceDescriptor{});
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readAvbInterfaceDescriptor: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::readClockSourceDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClockSourceIndex const clockSourceIndex, ClockSourceDescriptorHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::ClockSource, clockSourceIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, clockSourceIndex, model::ClockSourceDescriptor{});
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readClockSourceDescriptor: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::readMemoryObjectDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::MemoryObjectIndex const memoryObjectIndex, MemoryObjectDescriptorHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::MemoryObject, memoryObjectIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex, model::MemoryObjectDescriptor{});
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readMemoryObjectDescriptor: ") + e.what());
+	}
+}
+
 void ControllerEntityImpl::readLocaleDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::LocaleIndex const localeIndex, LocaleDescriptorHandler const& handler) const noexcept
 {
 	try
@@ -1330,6 +1555,141 @@ void ControllerEntityImpl::readStringsDescriptor(UniqueIdentifier const targetEn
 	catch (std::exception const& e)
 	{
 		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readStringsDescriptor: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::readStreamPortInputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamPortIndex const streamPortIndex, StreamPortInputDescriptorHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::StreamPortInput, streamPortIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamPortIndex, model::StreamPortDescriptor{});
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readStreamPortInputDescriptor: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::readStreamPortOutputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamPortIndex const streamPortIndex, StreamPortOutputDescriptorHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::StreamPortOutput, streamPortIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamPortIndex, model::StreamPortDescriptor{});
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readStreamPortOutputDescriptor: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::readExternalPortInputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ExternalPortIndex const externalPortIndex, ExternalPortInputDescriptorHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::ExternalPortInput, externalPortIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, externalPortIndex, model::ExternalPortDescriptor{});
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readExternalPortInputDescriptor: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::readExternalPortOutputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ExternalPortIndex const externalPortIndex, ExternalPortOutputDescriptorHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::ExternalPortOutput, externalPortIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, externalPortIndex, model::ExternalPortDescriptor{});
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readExternalPortInputDescriptor: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::readInternalPortInputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::InternalPortIndex const internalPortIndex, InternalPortInputDescriptorHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::InternalPortInput, internalPortIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, internalPortIndex, model::InternalPortDescriptor{});
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readInternalPortInputDescriptor: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::readInternalPortOutputDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::InternalPortIndex const internalPortIndex, InternalPortOutputDescriptorHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::InternalPortOutput, internalPortIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, internalPortIndex, model::InternalPortDescriptor{});
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readInternalPortOutputDescriptor: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::readAudioClusterDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClusterIndex const clusterIndex, AudioClusterDescriptorHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::AudioCluster, clusterIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, clusterIndex, model::AudioClusterDescriptor{});
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readAudioClusterDescriptor: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::readAudioMapDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::MapIndex const mapIndex, AudioMapDescriptorHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::AudioMap, mapIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, mapIndex, model::AudioMapDescriptor{});
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readAudioMapDescriptor: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::readClockDomainDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClockDomainIndex const clockDomainIndex, ClockDomainDescriptorHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::ClockDomain, clockDomainIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, clockDomainIndex, model::ClockDomainDescriptor{});
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readClockDomainDescriptor: ") + e.what());
 	}
 }
 
