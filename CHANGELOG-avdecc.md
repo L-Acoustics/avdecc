@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 #### Added
 - Support for the following read descriptors: AudioUnit, Jack, AvbInterface, ClockSource, MemoryObject, StreamPort, ExternalPort, InternalPort, AudioCluster, AudioMap, ClockDomain
+- Cole Peterson's redundant streams association detection
+### Fixed
+- 50 msec delay before sending a new AECP message using pcap protocol interface
 
 ## [2.2.0] - 2017-12-01
 ### Added

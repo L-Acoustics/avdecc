@@ -62,10 +62,9 @@ void AemAecpdu::serialize(SerializationBuffer& buffer) const
 	buffer << static_cast<std::uint16_t>(((_unsolicited << 15) & 0x8000) | (_commandType.getValue() & 0x7fff));
 	buffer.packBuffer(_commandSpecificData.data(), _commandSpecificDataLength);
 
-	if ((buffer.size() - previousSize) != (HeaderLength + _commandSpecificDataLength))
+	if (!AVDECC_ASSERT_WITH_RET((buffer.size() - previousSize) == (HeaderLength + _commandSpecificDataLength), "AemAecpdu::serialize error: Packed buffer length != expected header length"))
 	{
 		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Error, "AemAecpdu::serialize error: Packed buffer length != expected header length");
-		assert((buffer.size() - previousSize) == (HeaderLength + _commandSpecificDataLength) && "AemAecpdu::serialize error: Packed buffer length != expected header length");
 	}
 }
 
@@ -74,10 +73,9 @@ void AemAecpdu::deserialize(DeserializationBuffer& buffer)
 	// First call parent
 	Aecpdu::deserialize(buffer);
 
-	if (buffer.remaining() < HeaderLength)
+	if (!AVDECC_ASSERT_WITH_RET(buffer.remaining() >= HeaderLength, "AemAecpdu::deserialize error: Not enough data in buffer"))
 	{
 		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Error, "AemAecpdu::deserialize error: Not enough data in buffer");
-		assert(buffer.remaining() >= HeaderLength && "AemAecpdu::deserialize error: Not enough data in buffer");
 		throw std::invalid_argument("Not enough data to deserialize");
 	}
 

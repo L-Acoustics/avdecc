@@ -92,8 +92,8 @@ ProtocolInterface::Error ControllerStateMachine::sendAecpCommand(Aecpdu::UniqueP
 	auto* aecp = static_cast<Aecpdu*>(aecpdu.get());
 	auto const targetEntityID = aecp->getTargetEntityID();
 
-	// Lock entities
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	// Lock self
+	std::lock_guard<ControllerStateMachine> const lg(getSelf());
 
 	// Search our local entity info
 	auto const& localEntityIt = _localEntities.find(aecp->getControllerEntityID());
@@ -111,7 +111,7 @@ ProtocolInterface::Error ControllerStateMachine::sendAecpCommand(Aecpdu::UniqueP
 
 	try
 	{
-#pragma message("TBD: If Entity is a LocalEntity, then bypass networking and inflight stuff, and directly call processAecpdu()")
+#pragma message("TODO: If Entity is a LocalEntity, then bypass networking and inflight stuff, and directly call processAecpdu()")
 		// Record the query for when we get a response (so we can send it again if it timed out)
 		AecpCommandInfo command{ sequenceID, std::move(aecpdu), onResult };
 		{
@@ -140,8 +140,8 @@ ProtocolInterface::Error ControllerStateMachine::sendAcmpCommand(Acmpdu::UniqueP
 {
 	auto* acmp = static_cast<Acmpdu*>(acmpdu.get());
 
-	// Lock entities
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	// Lock self
+	std::lock_guard<ControllerStateMachine> const lg(getSelf());
 
 	// Search our local entity info
 	auto const& localEntityIt = _localEntities.find(acmp->getControllerEntityID());
@@ -160,7 +160,7 @@ ProtocolInterface::Error ControllerStateMachine::sendAcmpCommand(Acmpdu::UniqueP
 	auto error{ ProtocolInterface::Error::NoError };
 	try
 	{
-#pragma message("TBD: If Entity is a LocalEntity, then bypass networking and inflight stuff, and directly call processAcmpdu()")
+#pragma message("TODO: If Entity is a LocalEntity, then bypass networking and inflight stuff, and directly call processAcmpdu()")
 		// Record the query for when we get a response (so we can send it again if it timed out)
 		AcmpCommandInfo command{ sequenceID, std::move(acmpdu), onResult };
 
@@ -253,8 +253,8 @@ bool ControllerStateMachine::processAecpdu(Aecpdu const& aecpdu) noexcept
 	bool processedBySomeone{ false };
 
 	// Check if the message is for one of our registered controllers
-	// Lock entities
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	// Lock self
+	std::lock_guard<ControllerStateMachine> const lg(getSelf());
 
 	for (auto& localEntityKV : _localEntities)
 	{
@@ -331,8 +331,8 @@ bool ControllerStateMachine::processAcmpdu(Acmpdu const& acmpdu) noexcept
 	bool processedBySomeone{ false };
 
 	// Check if the message is for one of our registered controllers
-	// Lock entities
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	// Lock self
+	std::lock_guard<ControllerStateMachine> const lg(getSelf());
 
 	for (auto& localEntityKV : _localEntities)
 	{
@@ -391,8 +391,8 @@ bool ControllerStateMachine::processAcmpdu(Acmpdu const& acmpdu) noexcept
 
 ProtocolInterface::Error ControllerStateMachine::registerLocalEntity(entity::LocalEntity& entity) noexcept
 {
-	// Lock entities
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	// Lock self
+	std::lock_guard<ControllerStateMachine> const lg(getSelf());
 
 	// Check if an entity has already been registered with the same EntityID
 	auto const entityID = entity.getEntityID();
@@ -413,8 +413,8 @@ ProtocolInterface::Error ControllerStateMachine::registerLocalEntity(entity::Loc
 
 ProtocolInterface::Error ControllerStateMachine::unregisterLocalEntity(entity::LocalEntity& entity) noexcept
 {
-	// Lock entities
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	// Lock self
+	std::lock_guard<ControllerStateMachine> const lg(getSelf());
 
 	for (auto it = std::begin(_localEntities); it != std::end(_localEntities); /* Iterate inside the loop */)
 	{
@@ -438,8 +438,8 @@ ProtocolInterface::Error ControllerStateMachine::unregisterLocalEntity(entity::L
 
 ProtocolInterface::Error ControllerStateMachine::enableEntityAdvertising(entity::LocalEntity const& entity) noexcept
 {
-	// Lock entities
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	// Lock self
+	std::lock_guard<ControllerStateMachine> const lg(getSelf());
 
 	// Search our local entity info
 	auto const& localEntityIt = _localEntities.find(entity.getEntityID());
@@ -455,8 +455,8 @@ ProtocolInterface::Error ControllerStateMachine::enableEntityAdvertising(entity:
 
 ProtocolInterface::Error ControllerStateMachine::disableEntityAdvertising(entity::LocalEntity& entity) noexcept
 {
-	// Lock entities
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	// Lock self
+	std::lock_guard<ControllerStateMachine> const lg(getSelf());
 
 	// Search our local entity info
 	auto const& localEntityIt = _localEntities.find(entity.getEntityID());
@@ -486,6 +486,16 @@ ProtocolInterface::Error ControllerStateMachine::discoverRemoteEntity(UniqueIden
 {
 	auto frame = makeDiscoveryMessage(entityID);
 	return _delegate->sendMessage(frame);
+}
+
+void ControllerStateMachine::lock() noexcept
+{
+	_lock.lock();
+}
+
+void ControllerStateMachine::unlock() noexcept
+{
+	_lock.unlock();
 }
 
 Adpdu ControllerStateMachine::makeDiscoveryMessage(UniqueIdentifier const entityID) const noexcept
@@ -591,8 +601,7 @@ void ControllerStateMachine::resetAcmpCommandTimeoutValue(AcmpCommandInfo& comma
 
 	std::uint32_t timeout{ 250 };
 	auto const it = s_AcmpCommandTimeoutMap.find(command.command->getMessageType());
-	assert(it != s_AcmpCommandTimeoutMap.end() && "Timeout for ACMP message not defined!");
-	if (it != s_AcmpCommandTimeoutMap.end())
+	if (AVDECC_ASSERT_WITH_RET(it != s_AcmpCommandTimeoutMap.end(), "Timeout for ACMP message not defined!"))
 		timeout = it->second;
 
 	command.timeout = std::chrono::system_clock::now() + std::chrono::milliseconds(timeout);
@@ -616,15 +625,15 @@ AcmpSequenceID ControllerStateMachine::getNextAcmpSequenceID(LocalEntityInfo& in
 
 std::chrono::time_point<std::chrono::system_clock> ControllerStateMachine::computeNextAdvertiseTime(entity::Entity const& entity) const noexcept
 {
-#pragma message("TBD: Compute a random delay. See IEEE-P1722.1-cor1-D8.pdf clause 6.2.4.2.2")
+#pragma message("TODO: Compute a random delay. See IEEE-P1722.1-cor1-D8.pdf clause 6.2.4.2.2")
 	auto const randomDelay{ 0u };
 	return std::chrono::system_clock::now() + std::chrono::milliseconds(std::max(1000u, entity.getValidTime() * 1000 / 2 + randomDelay));
 }
 
 void ControllerStateMachine::checkLocalEntitiesAnnouncement() noexcept
 {
-	// Lock entities
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	// Lock self
+	std::lock_guard<ControllerStateMachine> const lg(getSelf());
 
 	auto const now = std::chrono::system_clock::now();
 
@@ -657,8 +666,8 @@ void ControllerStateMachine::checkEntitiesTimeoutExpiracy() noexcept
 {
 	std::chrono::time_point<std::chrono::system_clock> currentTime = std::chrono::system_clock::now();
 
-	// Lock entities
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	// Lock self
+	std::lock_guard<ControllerStateMachine> const lg(getSelf());
 
 	for (auto it = _discoveredEntities.begin(); it != _discoveredEntities.end(); /* Iterate inside the loop */)
 	{
@@ -679,8 +688,8 @@ void ControllerStateMachine::checkInflightCommandsTimeoutExpiracy() noexcept
 {
 	std::chrono::time_point<std::chrono::system_clock> currentTime = std::chrono::system_clock::now();
 
-	// Lock entities
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	// Lock self
+	std::lock_guard<ControllerStateMachine> const lg(getSelf());
 
 	for (auto& localEntityKV : _localEntities)
 	{
@@ -781,8 +790,8 @@ void ControllerStateMachine::handleAdpEntityAvailable(Adpdu const& adpdu) noexce
 	DiscoveredEntityInfo info{ timeout, adpdu };
 	Adpdu previousAdpdu;
 
-	// Lock entities
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	// Lock self
+	std::lock_guard<ControllerStateMachine> const lg(getSelf());
 
 	// Check if we already know this entity
 	auto entityIt = _discoveredEntities.find(entityID);
@@ -829,8 +838,8 @@ void ControllerStateMachine::handleAdpEntityDeparting(Adpdu const& adpdu) noexce
 
 	auto const entityID = adpdu.getEntityID();
 
-	// Lock entities
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	// Lock self
+	std::lock_guard<ControllerStateMachine> const lg(getSelf());
 
 	// Check if we already know this entity
 	auto entityIt = _discoveredEntities.find(entityID);
@@ -853,8 +862,8 @@ void ControllerStateMachine::handleAdpEntityDiscover(Adpdu const& adpdu) noexcep
 	// Don't ignore requests coming from the same computer, we might have another controller running on it
 
 	// Check if one (or many) of our local entities is targetted by the discover request
-	// Lock entities
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	// Lock self
+	std::lock_guard<ControllerStateMachine> const lg(getSelf());
 
 	for (auto& entityKV : _localEntities)
 	{
@@ -878,7 +887,8 @@ void ControllerStateMachine::handleAdpEntityDiscover(Adpdu const& adpdu) noexcep
 
 bool ControllerStateMachine::isLocalEntity(UniqueIdentifier const entityID) const noexcept
 {
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	// Lock self
+	std::lock_guard<ControllerStateMachine> const lg(getSelf());
 
 	return _localEntities.find(entityID) != _localEntities.end();
 }

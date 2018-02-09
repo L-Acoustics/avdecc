@@ -61,7 +61,7 @@ constexpr T clearMask()
 	return std::integral_constant<T, ~(contiguousBitMask<FirstBit, LastBit, T>())>::value;
 }
 
-#pragma message("TBD: Make this template works on all endianess")
+#pragma message("TODO: Make this template works on all endianess")
 template<std::uint8_t FirstBit, std::uint8_t LastBit, typename T = std::uint8_t>
 T getField(StreamFormat const& format) noexcept
 {
@@ -109,7 +109,7 @@ public:
 
 	virtual StreamFormat getAdaptedStreamFormat(std::uint16_t const channelsCount) const noexcept override
 	{
-		assert(_upToChannelsCount == false && "getAdaptedStreamFormat must be specialized for StreamFormat supported upToChannelsCount");
+		AVDECC_ASSERT(_upToChannelsCount == false, "getAdaptedStreamFormat must be specialized for StreamFormat supported upToChannelsCount");
 		if (channelsCount != _channelsCount)
 			return getNullStreamFormat();
 		return getStreamFormat();
@@ -504,8 +504,8 @@ StreamFormatInfo* LA_AVDECC_CALL_CONVENTION StreamFormatInfo::createRawStreamFor
 									auto const label_midi_cnt = getField<56, 59>(streamFormat);
 									auto const label_smptecnt = getField<60, 63>(streamFormat);
 									// The sum of the 4 fields must be equal to dbs
-									assert((label_iec_60958_cnt + label_mbla_cnt + label_midi_cnt + label_smptecnt) == dbs);
-									assert(label_mbla_cnt == dbs); // We assume all bits are in mbla, but it might not be true
+									AVDECC_ASSERT((label_iec_60958_cnt + label_mbla_cnt + label_midi_cnt + label_smptecnt) == dbs, "The sum of the 4 fields must be equal to dbs");
+									AVDECC_ASSERT(label_mbla_cnt == dbs, "We assume all bits are in mbla, but it might not be true");
 									return new StreamFormatInfoIEC_61883_6_AM824(streamFormat, fdf_sfc, dbs, b != 0, nb != 0, ut != 0, sc != 0, label_iec_60958_cnt, label_mbla_cnt, label_midi_cnt, label_smptecnt);
 								}
 								default:
@@ -556,7 +556,7 @@ StreamFormatInfo* LA_AVDECC_CALL_CONVENTION StreamFormatInfo::createRawStreamFor
 	}
 	catch (...)
 	{
-		// TBD: Catch and log the invalid_argument exception. Maybe re-throw, instead of having this method noexcept
+		// TODO: Catch and log the invalid_argument exception. Maybe re-throw, instead of having this method noexcept
 	}
 	return new StreamFormatInfoBase<>(streamFormat, Type::Unsupported); // Unsupported
 }

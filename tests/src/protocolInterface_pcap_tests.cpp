@@ -18,6 +18,9 @@
 */
 
 #include <gtest/gtest.h>
+#include <future>
+#include <chrono>
+#include <iostream>
 #include "protocolInterface/protocolInterface_pcap.hpp"
 
 TEST(ProtocolInterfacePCap, InvalidName)
@@ -32,4 +35,57 @@ TEST(ProtocolInterfacePCap, InvalidName)
 	{
 		EXPECT_EQ(la::avdecc::protocol::ProtocolInterface::Error::InterfaceNotFound, e.getError());
 	}
+}
+
+TEST(ProtocolInterfacePCap, TransportError)
+{
+	static std::promise<void> entityOnlinePromise;
+	static std::promise<void> completedPromise;
+
+	class Observer : public la::avdecc::protocol::ProtocolInterface::Observer
+	{
+	private:
+		// la::avdecc::protocol::ProtocolInterface::Observer overrides
+		virtual void onTransportError(la::avdecc::protocol::ProtocolInterface* const pi) noexcept override
+		{
+			std::this_thread::sleep_for(std::chrono::seconds(15)); // Wait for an entity to go offline
+			// Now we are sure ProtocolInterface (from avdecc::ControllerStateMachine thread) wants to acquire the observers lock, but we currently own this lock
+			// So let's call something that wants to acquire the ControllerStateMachine and see if we deadlock or not
+			pi->lock(); // This will use CSM's lock
+			pi->unlock();
+		}
+		virtual void onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept override {}
+		virtual void onLocalEntityOffline(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::UniqueIdentifier const entityID) noexcept override {}
+		virtual void onLocalEntityUpdated(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept override {}
+		virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept override
+		{
+			static auto done{ false };
+			if (!done)
+			{
+				entityOnlinePromise.set_value();
+				std::cout << "Found an entity, now trigger a transport error by disabling the network interface\n";
+				done = true;
+			}
+		}
+		virtual void onRemoteEntityOffline(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::UniqueIdentifier const entityID) noexcept override
+		{
+			completedPromise.set_value();
+		}
+		virtual void onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept override {}
+		virtual void onAecpCommand(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override {}
+		virtual void onAecpUnsolicitedResponse(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override {}
+		virtual void onAcmpSniffedCommand(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Acmpdu const& acmpdu) noexcept override {}
+		virtual void onAcmpSniffedResponse(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Acmpdu const& acmpdu) noexcept override {}
+		DECLARE_AVDECC_OBSERVER_GUARD(Observer);
+	};
+
+	Observer obs;
+	auto intfc = la::avdecc::protocol::ProtocolInterfacePcap::create("\\Device\\NPF_{1AC618CE-7A20-4B2D-BCFB-DE0DFC7C4089}");
+	intfc->registerObserver(&obs);
+
+	auto status = entityOnlinePromise.get_future().wait_for(std::chrono::seconds(5));
+	ASSERT_NE(std::future_status::timeout, status) << "Failed to detect an online entity... stopping the test";
+
+	status = completedPromise.get_future().wait_for(std::chrono::seconds(60));
+	ASSERT_NE(std::future_status::timeout, status) << "Either deadlock or you didn't follow instructions quickly enough";
 }

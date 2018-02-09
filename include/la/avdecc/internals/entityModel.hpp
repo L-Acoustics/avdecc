@@ -65,6 +65,12 @@ constexpr SamplingRate getNullSamplingRate() noexcept
 	return SamplingRate(0u);
 }
 
+constexpr LocalizedStringReference getNullLocalizedStringReference() noexcept
+{
+	// Clause 7.3.6
+	return LocalizedStringReference(0xFFFF);
+}
+
 /** ENTITY Descriptor - Clause 7.2.1 */
 struct EntityDescriptor
 {
@@ -79,8 +85,8 @@ struct EntityDescriptor
 	std::uint32_t availableIndex{ 0u };
 	UniqueIdentifier associationID{ getNullIdentifier() };
 	AvdeccFixedString entityName{};
-	std::uint16_t vendorNameString{ 0u };
-	std::uint16_t modelNameString{ 0u };
+	LocalizedStringReference vendorNameString{ 0u };
+	LocalizedStringReference modelNameString{ 0u };
 	AvdeccFixedString firmwareVersion{};
 	AvdeccFixedString groupName{};
 	AvdeccFixedString serialNumber{};
@@ -161,6 +167,7 @@ struct StreamDescriptor
 	AvbInterfaceIndex avbInterfaceIndex{ AvbInterfaceIndex(0u) };
 	std::uint32_t bufferLength{ 0u };
 	std::set<StreamFormat> formats{};
+	std::set<StreamIndex> redundantStreams{};
 };
 
 /** JACK_INPUT and JACK_OUTPUT Descriptor - Clause 7.2.7 */

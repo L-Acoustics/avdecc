@@ -23,6 +23,7 @@
 */
 
 #include "la/avdecc/logger.hpp"
+#include "la/avdecc/utils.hpp"
 #include <vector>
 #include <mutex>
 #include <algorithm>
@@ -92,7 +93,7 @@ public:
 				case Layer::Listener:
 					return "Listener";
 				default:
-					assert(false && "Layer not handled");
+					AVDECC_ASSERT(false, "Layer not handled");
 			}
 		}
 		return "Layer" + std::to_string(std::underlying_type_t<Layer>(layer));
@@ -115,7 +116,7 @@ public:
 			case Level::None:
 				return "None";
 			default:
-				assert(false && "Level not handled");
+				AVDECC_ASSERT(false, "Level not handled");
 		}
 		return "Unknown Level";
 	}

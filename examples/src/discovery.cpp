@@ -76,6 +76,7 @@ private:
 
 private:
 	la::avdecc::controller::Controller::UniquePointer _controller{ nullptr, nullptr }; // Read/Write from the UI thread (and read only from la::avdecc::controller::Controller::Observer callbacks)
+	DECLARE_AVDECC_OBSERVER_GUARD(Discovery); // Not really needed because the _controller field will be destroyed before parent class destruction
 };
 
 Discovery::Discovery(la::avdecc::EndStation::ProtocolInterfaceType const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, la::avdecc::entity::model::VendorEntityModel const vendorEntityModelID, std::string const& preferedLocale)
@@ -106,8 +107,8 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 	auto const entityID = entity->getEntity().getEntityID();
 	if (la::avdecc::hasFlag(entity->getEntity().getEntityCapabilities(), la::avdecc::entity::EntityCapabilities::AemSupported))
 	{
-		auto const& entityDescriptor = entity->getEntityDescriptor();
-		std::uint32_t const vendorID = std::get<0>(la::avdecc::entity::model::splitVendorEntityModel(entityDescriptor.vendorEntityModelID));
+		auto const& entityDescriptor = entity->getEntityNode().entityDescriptor;
+		std::uint32_t const vendorID = std::get<0>(la::avdecc::entity::model::splitVendorEntityModel(entityDescriptor->vendorEntityModelID));
 		// Filter entities from the same vendor as this controller
 		if (vendorID == VENDOR_ID)
 		{

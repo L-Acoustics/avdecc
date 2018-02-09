@@ -190,7 +190,7 @@ protected:
 		constexpr std::uint8_t minValidTime = 1;
 		constexpr std::uint8_t maxValidTime = 31;
 
-		assert(validTime >= 1 && validTime <= 31 && "setValidTime: Invalid validTime value (must be comprised btw 1 and 31 inclusive)");
+		AVDECC_ASSERT(validTime >= 1 && validTime <= 31, "setValidTime: Invalid validTime value (must be comprised btw 1 and 31 inclusive)");
 		_validTime = std::min(maxValidTime, std::max(minValidTime, validTime));
 	}
 

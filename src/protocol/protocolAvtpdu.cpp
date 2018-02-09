@@ -48,16 +48,15 @@ void EtherLayer2::serialize(SerializationBuffer& buffer) const
 	buffer << _etherType;
 
 #ifdef DEBUG
-	assert((buffer.size() - previousSize) == HeaderLength && "EtherLayer2::serialize error: Packed buffer length != expected header length");
+	AVDECC_ASSERT((buffer.size() - previousSize) == HeaderLength, "EtherLayer2::serialize error: Packed buffer length != expected header length");
 #endif // DEBUG
 }
 
 void EtherLayer2::deserialize(DeserializationBuffer& buffer)
 {
-	if (buffer.remaining() < HeaderLength)
+	if (!AVDECC_ASSERT_WITH_RET(buffer.remaining() >= HeaderLength, "EtherLayer2::deserialize error: Not enough data in buffer"))
 	{
 		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Error, "EtherLayer2::deserialize error: Not enough data in buffer");
-		assert(buffer.remaining() >= HeaderLength && "EtherLayer2::deserialize error: Not enough data in buffer");
 		throw std::invalid_argument("Not enough data to deserialize");
 	}
 	buffer.unpackBuffer(_destAddress.data(), _destAddress.size());
@@ -96,16 +95,15 @@ void AvtpduControl::serialize(SerializationBuffer& buffer) const
 	buffer << _streamID;
 
 #ifdef DEBUG
-	assert((buffer.size() - previousSize) == HeaderLength && "AvtpduControl::serialize error: Packed buffer length != expected header length");
+	AVDECC_ASSERT((buffer.size() - previousSize) == HeaderLength, "AvtpduControl::serialize error: Packed buffer length != expected header length");
 #endif // DEBUG
 }
 
 void AvtpduControl::deserialize(DeserializationBuffer& buffer)
 {
-	if (buffer.remaining() < HeaderLength)
+	if (!AVDECC_ASSERT_WITH_RET(buffer.remaining() >= HeaderLength, "EtherLayer2::deserialize error: Not enough data in buffer"))
 	{
 		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Error, "AvtpduControl::deserialize error: Not enough data in buffer");
-		assert(buffer.remaining() >= HeaderLength && "EtherLayer2::deserialize error: Not enough data in buffer");
 		throw std::invalid_argument("Not enough data to deserialize");
 	}
 

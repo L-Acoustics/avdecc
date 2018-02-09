@@ -51,7 +51,7 @@ private:
 	/* ************************************************************************** */
 	/* ControllerEntityImpl life cycle                                            */
 	/* ************************************************************************** */
-	ControllerEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, entity::model::VendorEntityModel const vendorEntityModelID, ControllerEntity::Delegate* const delegate);
+	ControllerEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, model::VendorEntityModel const vendorEntityModelID, ControllerEntity::Delegate* const delegate);
 	~ControllerEntityImpl() noexcept;
 
 private:
@@ -83,7 +83,7 @@ private:
 		}
 	};
 
-	using DiscoveredEntities = std::unordered_map<UniqueIdentifier, entity::DiscoveredEntity>;
+	using DiscoveredEntities = std::unordered_map<UniqueIdentifier, DiscoveredEntity>;
 	using OnAECPErrorCallback = std::function<void(ControllerEntity::AemCommandStatus const error) noexcept>;
 	using OnACMPErrorCallback = std::function<void(ControllerEntity::ControlStatus const error) noexcept>;
 	using OnErrorCallback = std::function<void() noexcept>;
@@ -117,7 +117,7 @@ private:
 	void sendAemCommand(UniqueIdentifier const targetEntityID, protocol::AemCommandType const commandType, void const* const payload, size_t const payloadLength, OnAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
 	void processAemResponse(protocol::Aecpdu const* const response, OnAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
 	void sendAemResponse(protocol::AemAecpdu const& commandAem, protocol::AecpStatus const status, void const* const payload, size_t const payloadLength) const noexcept;
-	void sendAcmpCommand(protocol::AcmpMessageType const messageType, UniqueIdentifier const talkerEntityID, entity::model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, entity::model::StreamIndex const listenerStreamIndex, OnACMPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
+	void sendAcmpCommand(protocol::AcmpMessageType const messageType, UniqueIdentifier const talkerEntityID, model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, model::StreamIndex const listenerStreamIndex, OnACMPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
 	void processAcmpResponse(protocol::Acmpdu const* const response, OnACMPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback, bool const sniffed) const noexcept;
 
 	/* ************************************************************************** */
@@ -157,12 +157,12 @@ private:
 	virtual void setConfiguration(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, SetConfigurationHandler const& handler) const noexcept override;
 	virtual void setStreamInputFormat(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamFormat const streamFormat, SetStreamInputFormatHandler const& handler) const noexcept override;
 	virtual void setStreamOutputFormat(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamFormat const streamFormat, SetStreamOutputFormatHandler const& handler) const noexcept override;
-	virtual void getStreamInputAudioMap(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, entity::model::MapIndex const mapIndex, GetStreamInputAudioMapHandler const& handler) const noexcept override;
-	virtual void getStreamOutputAudioMap(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, entity::model::MapIndex const mapIndex, GetStreamOutputAudioMapHandler const& handler) const noexcept override;
-	virtual void addStreamInputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, std::vector<model::AudioMapping> const& mappings, AddStreamInputAudioMappingsHandler const& handler) const noexcept override;
-	virtual void addStreamOutputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::AudioMappings const& mappings, AddStreamOutputAudioMappingsHandler const& handler) const noexcept override;
-	virtual void removeStreamInputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, std::vector<model::AudioMapping> const& mappings, RemoveStreamInputAudioMappingsHandler const& handler) const noexcept override;
-	virtual void removeStreamOutputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::AudioMappings const& mappings, RemoveStreamOutputAudioMappingsHandler const& handler) const noexcept override;
+	virtual void getStreamPortInputAudioMap(UniqueIdentifier const targetEntityID, model::StreamPortIndex const streamPortIndex, model::MapIndex const mapIndex, GetStreamPortInputAudioMapHandler const& handler) const noexcept override;
+	virtual void getStreamPortOutputAudioMap(UniqueIdentifier const targetEntityID, model::StreamPortIndex const streamPortIndex, model::MapIndex const mapIndex, GetStreamPortOutputAudioMapHandler const& handler) const noexcept override;
+	virtual void addStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamPortIndex const streamPortIndex, std::vector<model::AudioMapping> const& mappings, AddStreamPortInputAudioMappingsHandler const& handler) const noexcept override;
+	virtual void addStreamPortOutputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamPortIndex const streamPortIndex, model::AudioMappings const& mappings, AddStreamPortOutputAudioMappingsHandler const& handler) const noexcept override;
+	virtual void removeStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamPortIndex const streamPortIndex, std::vector<model::AudioMapping> const& mappings, RemoveStreamPortInputAudioMappingsHandler const& handler) const noexcept override;
+	virtual void removeStreamPortOutputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamPortIndex const streamPortIndex, model::AudioMappings const& mappings, RemoveStreamPortOutputAudioMappingsHandler const& handler) const noexcept override;
 	virtual void getStreamInputInfo(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, GetStreamInputInfoHandler const& handler) const noexcept override;
 	virtual void setEntityName(UniqueIdentifier const targetEntityID, model::AvdeccFixedString const& entityName, SetEntityNameHandler const& handler) const noexcept override;
 	virtual void getEntityName(UniqueIdentifier const targetEntityID, GetEntityNameHandler const& handler) const noexcept override;
@@ -174,6 +174,10 @@ private:
 	virtual void getStreamInputName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const streamIndex, GetStreamInputNameHandler const& handler) const noexcept override;
 	virtual void setStreamOutputName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const streamIndex, model::AvdeccFixedString const& streamOutputName, SetStreamOutputNameHandler const& handler) const noexcept override;
 	virtual void getStreamOutputName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const streamIndex, GetStreamOutputNameHandler const& handler) const noexcept override;
+	virtual void setAudioUnitSamplingRate(UniqueIdentifier const targetEntityID, model::AudioUnitIndex const audioUnitIndex, model::SamplingRate const samplingRate, SetAudioUnitSamplingRateHandler const& handler) const noexcept override;
+	virtual void setVideoClusterSamplingRate(UniqueIdentifier const targetEntityID, model::ClusterIndex const videoClusterIndex, model::SamplingRate const samplingRate, SetVideoClusterSamplingRateHandler const& handler) const noexcept override;
+	virtual void setSensorClusterSamplingRate(UniqueIdentifier const targetEntityID, model::ClusterIndex const sensorClusterIndex, model::SamplingRate const samplingRate, SetSensorClusterSamplingRateHandler const& handler) const noexcept override;
+	virtual void setClockSource(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, model::ClockSourceIndex const clockSourceIndex, SetClockSourceHandler const& handler) const noexcept override;
 	virtual void startStreamInput(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, StartStreamInputHandler const& handler) const noexcept override;
 	virtual void startStreamOutput(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, StartStreamOutputHandler const& handler) const noexcept override;
 	virtual void stopStreamInput(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, StopStreamInputHandler const& handler) const noexcept override;
@@ -190,27 +194,26 @@ private:
 	/* protocol::ProtocolInterface::Observer overrides                            */
 	/* ************************************************************************** */
 	/* **** Global notifications **** */
-	virtual void onTransportError(protocol::ProtocolInterface const* const pi) noexcept override;
+	virtual void onTransportError(protocol::ProtocolInterface* const pi) noexcept override;
 	/* **** Discovery notifications **** */
-	virtual void onLocalEntityOnline(protocol::ProtocolInterface const* const pi, DiscoveredEntity const& entity) noexcept override;
-	virtual void onLocalEntityOffline(protocol::ProtocolInterface const* const pi, UniqueIdentifier const entityID) noexcept override;
-	virtual void onLocalEntityUpdated(protocol::ProtocolInterface const* const pi, DiscoveredEntity const& entity) noexcept override;
-	virtual void onRemoteEntityOnline(protocol::ProtocolInterface const* const pi, DiscoveredEntity const& entity) noexcept override;
-	virtual void onRemoteEntityOffline(protocol::ProtocolInterface const* const pi, UniqueIdentifier const entityID) noexcept override;
-	virtual void onRemoteEntityUpdated(protocol::ProtocolInterface const* const pi, DiscoveredEntity const& entity) noexcept override;
+	virtual void onLocalEntityOnline(protocol::ProtocolInterface* const pi, DiscoveredEntity const& entity) noexcept override;
+	virtual void onLocalEntityOffline(protocol::ProtocolInterface* const pi, UniqueIdentifier const entityID) noexcept override;
+	virtual void onLocalEntityUpdated(protocol::ProtocolInterface* const pi, DiscoveredEntity const& entity) noexcept override;
+	virtual void onRemoteEntityOnline(protocol::ProtocolInterface* const pi, DiscoveredEntity const& entity) noexcept override;
+	virtual void onRemoteEntityOffline(protocol::ProtocolInterface* const pi, UniqueIdentifier const entityID) noexcept override;
+	virtual void onRemoteEntityUpdated(protocol::ProtocolInterface* const pi, DiscoveredEntity const& entity) noexcept override;
 	/* **** AECP notifications **** */
-	virtual void onAecpCommand(protocol::ProtocolInterface const* const pi, entity::LocalEntity const& entity, protocol::Aecpdu const& aecpdu) noexcept override;
-	virtual void onAecpUnsolicitedResponse(protocol::ProtocolInterface const* const pi, entity::LocalEntity const& entity, protocol::Aecpdu const& aecpdu) noexcept override;
+	virtual void onAecpCommand(protocol::ProtocolInterface* const pi, LocalEntity const& entity, protocol::Aecpdu const& aecpdu) noexcept override;
+	virtual void onAecpUnsolicitedResponse(protocol::ProtocolInterface* const pi, LocalEntity const& entity, protocol::Aecpdu const& aecpdu) noexcept override;
 	/* **** ACMP notifications **** */
-	virtual void onAcmpSniffedCommand(protocol::ProtocolInterface const* const pi, entity::LocalEntity const& entity, protocol::Acmpdu const& acmpdu) noexcept override;
-	virtual void onAcmpSniffedResponse(protocol::ProtocolInterface const* const pi, entity::LocalEntity const& entity, protocol::Acmpdu const& acmpdu) noexcept override;
+	virtual void onAcmpSniffedCommand(protocol::ProtocolInterface* const pi, LocalEntity const& entity, protocol::Acmpdu const& acmpdu) noexcept override;
+	virtual void onAcmpSniffedResponse(protocol::ProtocolInterface* const pi, LocalEntity const& entity, protocol::Acmpdu const& acmpdu) noexcept override;
 
 	/* ************************************************************************** */
 	/* Internal variables                                                         */
 	/* ************************************************************************** */
 	ControllerEntity::Delegate* _delegate{ nullptr };
 	bool _shouldTerminate{ false };
-	mutable std::mutex _lockDiscoveredEntities{};
 	DiscoveredEntities _discoveredEntities{};
 	std::thread _discoveryThread{};
 };

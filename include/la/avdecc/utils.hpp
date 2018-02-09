@@ -27,7 +27,8 @@
 
 #include <type_traits>
 #include <functional>
-#include <iomanip> // setfill
+#include <cstdarg>
+#include <iomanip> // setprecision / setfill
 #include <ios> // uppercase
 #include <string> // string
 #include <sstream> // stringstream
@@ -42,12 +43,62 @@ namespace avdecc
 {
 
 LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION setCurrentThreadName(std::string const& name);
+LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION enableAssert() noexcept;
+LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION disableAssert() noexcept;
+LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION isAssertEnabled() noexcept;
+LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsigned const line, char const* const message, va_list arg) noexcept;
+
+template<typename Cond>
+bool avdeccAssert(char const* const file, unsigned const line, Cond const condition, char const* const message, ...) noexcept
+{
+	bool const result = !!condition;
+	if (isAssertEnabled())
+	{
+		if (!result)
+		{
+			va_list argptr;
+			va_start(argptr, message);
+			displayAssertDialog(file, line, message, argptr);
+			va_end(argptr);
+		}
+	}
+	return result;
+}
+
+template<typename Cond>
+bool avdeccAssert(char const* const file, unsigned const line, Cond const condition, std::string const& message) noexcept
+{
+	return avdeccAssert(file, line, condition, message.c_str());
+}
+
+template<typename Cond>
+bool avdeccAssertRelease(Cond const condition) noexcept
+{
+	bool const result = !!condition;
+	return result;
+}
+
+} // namespace avdecc
+} // namespace la
+
+#if defined(DEBUG) || defined(COMPILE_AVDECC_ASSERT)
+#define AVDECC_ASSERT(cond, msg, ...) (void)la::avdecc::avdeccAssert(__FILE__, __LINE__, cond, msg, ##__VA_ARGS__)
+#define AVDECC_ASSERT_WITH_RET(cond, msg, ...) la::avdecc::avdeccAssert(__FILE__, __LINE__, cond, msg, ##__VA_ARGS__)
+#else // !DEBUG && !COMPILE_AVDECC_ASSERT
+#define AVDECC_ASSERT(cond, msg, ...)
+#define AVDECC_ASSERT_WITH_RET(cond, msg, ...) la::avdecc::avdeccAssertRelease(cond)
+#endif // DEBUG || COMPILE_AVDECC_ASSERT
+
+namespace la
+{
+namespace avdecc
+{
 
 /** Useful template to be used with streams, it prevents a char (or uint8_t) to be printed as a char instead of the numeric value */
 template <typename T>
 constexpr auto forceNumeric(T const t) noexcept
 {
-	static_assert(std::numeric_limits<T>::is_integer, "forceNumeric requires an integer value");
+	static_assert(std::is_arithmetic<T>::value, "forceNumeric requires an arithmetic value");
 
 	// Promote a built-in type to at least (unsigned)int
 	return +t;
@@ -108,12 +159,17 @@ struct EnumClassHash
 template<typename EnumType, typename = std::enable_if_t<std::is_enum<EnumType>::value>>
 struct enum_traits {};
 
+} // namespace avdecc
+} // namespace la
+
+/* The following operator overloads are declared in the global namespace, so they can easily be accessed (as long as the traits are enabled for the desired enum) */
+
 /**
 * @brief operator& for a bitfield enum.
 * @details The is_bitfield trait must be defined to true.
 */
-template<typename EnumType, typename = std::enable_if_t<enum_traits<EnumType>::is_bitfield>>
-constexpr EnumType operator&(EnumType const lhs, EnumType const rhs)
+template<typename EnumType>
+constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, EnumType> operator&(EnumType const lhs, EnumType const rhs)
 {
 	return static_cast<EnumType>(static_cast<std::underlying_type_t<EnumType>>(lhs) & static_cast<std::underlying_type_t<EnumType>>(rhs));
 }
@@ -122,8 +178,8 @@ constexpr EnumType operator&(EnumType const lhs, EnumType const rhs)
 * @brief operator| for a bitfield enum.
 * @details The is_bitfield trait must be defined to true.
 */
-template<typename EnumType, typename = std::enable_if_t<enum_traits<EnumType>::is_bitfield>>
-constexpr EnumType operator|(EnumType const lhs, EnumType const rhs)
+template<typename EnumType>
+constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, EnumType> operator|(EnumType const lhs, EnumType const rhs)
 {
 	return static_cast<EnumType>(static_cast<std::underlying_type_t<EnumType>>(lhs) | static_cast<std::underlying_type_t<EnumType>>(rhs));
 }
@@ -132,12 +188,17 @@ constexpr EnumType operator|(EnumType const lhs, EnumType const rhs)
 * @brief operator|= for a bitfield enum.
 * @details The is_bitfield trait must be defined to true.
 */
-template<typename EnumType, typename = std::enable_if_t<enum_traits<EnumType>::is_bitfield>>
-constexpr EnumType& operator|=(EnumType& lhs, EnumType const rhs)
+template<typename EnumType>
+constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, EnumType>& operator|=(EnumType& lhs, EnumType const rhs)
 {
 	lhs = lhs | rhs;
 	return lhs;
 }
+
+namespace la
+{
+namespace avdecc
+{
 
 /**
 * @brief Test method for a bitfield enum to check if the specified flag is set.
@@ -147,7 +208,7 @@ constexpr EnumType& operator|=(EnumType& lhs, EnumType const rhs)
 * @return Returns true if the specified flag is set in the specified value.
 */
 template<typename EnumType>
-constexpr typename std::enable_if_t<enum_traits<EnumType>::is_bitfield, bool> hasFlag(EnumType const value, EnumType const flag)
+constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, bool> hasFlag(EnumType const value, EnumType const flag)
 {
 	return (value & flag) != static_cast<EnumType>(0);
 }
@@ -159,7 +220,7 @@ constexpr typename std::enable_if_t<enum_traits<EnumType>::is_bitfield, bool> ha
 * @return Returns true if any flag is set in the specified value.
 */
 template<typename EnumType>
-constexpr typename std::enable_if_t<enum_traits<EnumType>::is_bitfield, bool> hasAnyFlag(EnumType const value)
+constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, bool> hasAnyFlag(EnumType const value)
 {
 	return value != static_cast<EnumType>(0);
 }
@@ -167,16 +228,24 @@ constexpr typename std::enable_if_t<enum_traits<EnumType>::is_bitfield, bool> ha
 
 /**
 * @brief Function to safely call a handler (in the form of a std::function), forwarding all parameters to it.
-* @details Calls the specified handler, protecting the caller from any thrown exception in the handler itself.
+* @param[in] handler The callable object to be invoked.
+* @param[in] params The parameters to pass to the handler.
+* @details Calls the specified handler in the current thread, protecting the caller from any thrown exception in the handler itself.
 */
-template<typename T, typename... Ts>
-void invokeProtectedHandler(std::function<T> const& handler, Ts&&... params) noexcept
+template<typename CallableType, typename... Ts>
+void invokeProtectedHandler(CallableType&& handler, Ts&&... params) noexcept
 {
 	if (handler)
 	{
 		try
 		{
 			handler(std::forward<Ts>(params)...);
+		}
+		catch (std::exception const& e)
+		{
+			/* Forcing the assert to fail, but with code so we don't get a warning on gcc */
+			AVDECC_ASSERT(handler == nullptr, (std::string("invokeProtectedHandler caught an exception in handler: ") + e.what()).c_str());
+			(void)e;
 		}
 		catch (...)
 		{
@@ -196,6 +265,12 @@ void invokeProtectedMethod(Method&& method, Object* const object, Parameters&&..
 		try
 		{
 			(object->*method)(std::forward<Parameters>(params)...);
+		}
+		catch (std::exception const& e)
+		{
+			/* Forcing the assert to fail, but with code so we don't get a warning on gcc */
+			AVDECC_ASSERT(method == nullptr, (std::string("invokeProtectedMethod caught an exception in method: ") + e.what()).c_str());
+			(void)e;
 		}
 		catch (...)
 		{
@@ -266,12 +341,17 @@ private:
 template<typename TypedDefineType, typename = std::enable_if_t<std::is_base_of<TypedDefine<typename TypedDefineType::value_type>, TypedDefineType>::value>>
 struct typed_define_traits {};
 
+} // namespace avdecc
+} // namespace la
+
+/* The following operator overloads are declared in the global namespace, so they can easily be accessed (as long as the traits are enabled for the desired enum) */
+
 /**
 * @brief operator& for a bitfield TypedDefine.
 * @details The is_bitfield trait must be defined to true.
 */
-template<typename TypedDefineType, typename = std::enable_if_t<typed_define_traits<TypedDefineType>::is_bitfield>>
-constexpr TypedDefineType operator&(TypedDefineType const& lhs, TypedDefineType const& rhs)
+template<typename TypedDefineType>
+constexpr std::enable_if_t<la::avdecc::typed_define_traits<TypedDefineType>::is_bitfield, TypedDefineType> operator&(TypedDefineType const& lhs, TypedDefineType const& rhs)
 {
 	return TypedDefineType(lhs.getValue() & rhs.getValue());
 }
@@ -280,33 +360,40 @@ constexpr TypedDefineType operator&(TypedDefineType const& lhs, TypedDefineType 
 * @brief operator| for a bitfield TypedDefine.
 * @details The is_bitfield trait must be defined to true.
 */
-template<typename TypedDefineType, typename = std::enable_if_t<typed_define_traits<TypedDefineType>::is_bitfield>>
-constexpr TypedDefineType operator|(TypedDefineType const& lhs, TypedDefineType const& rhs)
+template<typename TypedDefineType>
+constexpr std::enable_if_t<la::avdecc::typed_define_traits<TypedDefineType>::is_bitfield, TypedDefineType> operator|(TypedDefineType const& lhs, TypedDefineType const& rhs)
 {
 	return TypedDefineType(lhs.getValue() | rhs.getValue());
 }
+
+namespace la
+{
+namespace avdecc
+{
 
 /** EmptyLock implementing the BasicLockable concept. Can be used as template parameter for Observer and Subject classes in this file. */
 class EmptyLock
 {
 public:
-	void lock() noexcept
+	void lock() const noexcept
 	{
 	}
-	void unlock() noexcept
+	void unlock() const noexcept
 	{
 	}
 	// Defaulted compiler auto-generated methods
-	EmptyLock() = default;
-	~EmptyLock() = default;
-	EmptyLock(EmptyLock&&) = default;
-	EmptyLock(EmptyLock const&) = default;
-	EmptyLock& operator=(EmptyLock const&) = default;
-	EmptyLock& operator=(EmptyLock&&) = default;
+	EmptyLock() noexcept = default;
+	~EmptyLock() noexcept = default;
+	EmptyLock(EmptyLock&&) noexcept = default;
+	EmptyLock(EmptyLock const&) noexcept = default;
+	EmptyLock& operator=(EmptyLock const&) noexcept = default;
+	EmptyLock& operator=(EmptyLock&&) noexcept = default;
 };
 
 // Forward declare Subject template class
 template<class Derived, class Mut> class Subject;
+// Forward declare ObserverGuard template class
+template<class ObserverType> class ObserverGuard;
 
 /** Dummy struct required to postpone the Observer template resolution when it's actually needed. This is required because of the forward declaration of the Subject template class, in order to access it's mutex_type typedef. */
 template<typename Subject>
@@ -315,21 +402,68 @@ struct GetMutexType
 	using type = typename Subject::mutex_type;
 };
 
-
 /**
 * @brief An observer base class.
 * @details Observer base class using RAII concept to automatically remove itself from Subjects upon destruction.
 * @note This class is thread-safe and the mutex type can be specified as template parameter.<BR>
 *       A no lock version is possible using EmptyLock instead of a real mutex type.
+* @warning Not catching std::system_error from mutex, which will cause std::terminate() to be called if a critical system error occurs
 */
 template<class Observable>
 class Observer
 {
 public:
 	using mutex_type = typename GetMutexType<Observable>::type;
-	virtual ~Observer()
+
+	virtual ~Observer() noexcept
 	{
-		// Unregister from all the Subjects
+		// Lock Subjects
+		try
+		{
+			std::lock_guard<decltype(_mutex)> const lg(_mutex);
+			AVDECC_ASSERT(_subjects.empty(), "All subjects must be unregistered before Observer is destroyed. Either manually call subject->unregisterObserver or add an ObserverGuard member at the end of your Observer derivated class.");
+			for (auto subject : _subjects)
+			{
+				try
+				{
+					subject->removeObserver(this);
+				}
+				catch (std::invalid_argument const&)
+				{
+					// Ignore error
+				}
+			}
+		}
+		catch (...)
+		{
+		}
+	}
+
+	/**
+	* @brief Gets the count of currently registered Subjects.
+	* @return The count of currently registered Subjects.
+	*/
+	size_t countSubjects() const noexcept
+	{
+		// Lock Subjects
+		std::lock_guard<decltype(_mutex)> const lg(_mutex);
+		return _subjects.size();
+	}
+
+	// Defaulted compiler auto-generated methods
+	Observer() = default;
+	Observer(Observer&&) = default;
+	Observer(Observer const&) = default;
+	Observer& operator=(Observer const&) = default;
+	Observer& operator=(Observer&&) = default;
+
+private:
+	friend class Subject<Observable, mutex_type>;
+	template<class ObserverType>
+	friend class ObserverGuard;
+
+	void removeAllSubjects() noexcept
+	{
 		// Lock Subjects
 		std::lock_guard<decltype(_mutex)> const lg(_mutex);
 		for (auto subject : _subjects)
@@ -343,23 +477,10 @@ public:
 				// Ignore error
 			}
 		}
+		_subjects.clear();
 	}
 
-	/**
-	* @brief Gets the count of currently registered Subjects.
-	* @return The count of currently registered Subjects.
-	*/
-	size_t countSubjects() const
-	{
-		// Lock Subjects
-		std::lock_guard<decltype(_mutex)> const lg(_mutex);
-		return _subjects.size();
-	}
-
-private:
-	friend class Subject<Observable, mutex_type>;
-
-	void registerSubject(Observable* const subject)
+	void registerSubject(Observable const* const subject) const
 	{
 		// Lock Subjects
 		std::lock_guard<decltype(_mutex)> const lg(_mutex);
@@ -370,7 +491,7 @@ private:
 		_subjects.insert(subject);
 	}
 
-	void unregisterSubject(Observable* const subject)
+	void unregisterSubject(Observable const* const subject) const
 	{
 		// Lock Subjects
 		std::lock_guard<decltype(_mutex)> const lg(_mutex);
@@ -384,9 +505,41 @@ private:
 
 	// Private variables
 	mutable mutex_type _mutex{};
-	std::set<Observable*> _subjects{};
+	mutable std::set<Observable const*> _subjects{};
 };
 
+/**
+* @brief An Observer guard class to allow safe RAII usage of an Observer class.
+* @details This class is intended to be used in conjunction with an Observer class to allow safe RAII usage of the Observer.<BR>
+*          Because a class has to inherit from an Observer to override notification handlers, it means by the time the Observer destructor is called
+*          the derivated class portion has already been destroyed. If the subject is notifying observers at the same time from another thread, the derivated
+*          vtable is no longer valid and will cause a crash. This class can be used for full RAII by simply declaring a member of this type in the derivated class,
+*          at the end of the data members list.
+* @warning Not catching std::system_error from mutex, which will cause std::terminate() to be called if a critical system error occurs
+*/
+template<class ObserverType>
+class ObserverGuard final
+{
+public:
+	ObserverGuard(ObserverType& observer) noexcept
+		: _observer(observer)
+	{
+	}
+
+	~ObserverGuard() noexcept
+	{
+		_observer.removeAllSubjects();
+	}
+
+	// Defaulted compiler auto-generated methods
+	ObserverGuard(ObserverGuard&&) noexcept = default;
+	ObserverGuard(ObserverGuard const&) noexcept = default;
+	ObserverGuard& operator=(ObserverGuard const&) noexcept = default;
+	ObserverGuard& operator=(ObserverGuard&&) noexcept = default;
+
+private:
+	ObserverType & _observer{ nullptr };
+};
 
 /**
 * @brief A Subject base class.
@@ -396,7 +549,8 @@ private:
 *       A no lock version is possible using EmptyLock instead of a real mutex type.<BR>
 *       Subject and Observer classes use CRTP pattern.
 * @warning If the derived class wants to allow observers to be destroyed inside an event handler, it shall use a
-*          recursive mutex kind as template parameter.
+*          recursive mutex kind as template parameter.<BR>
+*          Not catching std::system_error from mutex, which will cause std::terminate() to be called if a critical system error occurs
 */
 template<class Derived, class Mut>
 class Subject
@@ -405,27 +559,39 @@ public:
 	using mutex_type = Mut;
 	using observer_type = Observer<Derived>;
 
-	void registerObserver(observer_type* const observer)
+	void registerObserver(observer_type* const observer) const
 	{
 		if (observer == nullptr)
 			throw std::invalid_argument("Observer cannot be nullptr");
 
-		// Lock observers
-		std::lock_guard<decltype(_mutex)> const lg(_mutex);
-		// Search if observer already registered
-		if (_observers.find(observer) != _observers.end())
-			throw std::invalid_argument("Observer already registered");
-		// Register to the observer
+		{
+			// Lock observers
+			std::lock_guard<decltype(_mutex)> const lg(_mutex);
+			// Search if observer already registered
+			if (_observers.find(observer) != _observers.end())
+				throw std::invalid_argument("Observer already registered");
+			// Register to the observer
+			try
+			{
+				observer->registerSubject(self());
+			}
+			catch (std::invalid_argument const&)
+			{
+				// Already registered
+			}
+			// Add observer
+			_observers.insert(observer);
+		}
+
+		// Inform the subject that a new observer has registered
 		try
 		{
-			observer->registerSubject(self());
+			const_cast<Subject*>(this)->onObserverRegistered(observer);
 		}
-		catch (std::invalid_argument const&)
+		catch (...)
 		{
-			// Already registered
+			// Ignore exceptions in handler
 		}
-		// Add observer
-		_observers.insert(observer);
 	}
 
 	/**
@@ -438,7 +604,7 @@ public:
 	*       using a recursive mutex kind, this method will throw a std::system_error
 	*       and the observer will not be removed (strong exception guarantee).
 	*/
-	void unregisterObserver(observer_type* const observer)
+	void unregisterObserver(observer_type* const observer) const
 	{
 		if (observer == nullptr)
 			throw std::invalid_argument("Observer cannot be nullptr");
@@ -476,13 +642,13 @@ public:
 	}
 
 	/** BasicLockable concept 'lock' method for the whole Subject */
-	void lock()
+	void lock() noexcept
 	{
 		_mutex.lock();
 	}
 
 	/** BasicLockable concept 'unlock' method for the whole Subject */
-	void unlock()
+	void unlock() noexcept
 	{
 		_mutex.unlock();
 	}
@@ -491,7 +657,7 @@ public:
 	* @brief Gets the count of currently registered observers.
 	* @return The count of currently registered observers.
 	*/
-	size_t countObservers() const
+	size_t countObservers() const noexcept
 	{
 		// Lock observers
 		std::lock_guard<decltype(_mutex)> const lg(_mutex);
@@ -503,7 +669,7 @@ public:
 	* @param[in] observer Observer to check for
 	* @return Returns true if the specified observer is currently registered, false otherwise.
 	*/
-	bool isObserverRegistered(observer_type* const observer) const
+	bool isObserverRegistered(observer_type* const observer) const noexcept
 	{
 		// Lock observers
 		std::lock_guard<decltype(_mutex)> const lg(_mutex);
@@ -511,12 +677,31 @@ public:
 		return _observers.find(observer) != _observers.end();
 	}
 
-	virtual ~Subject()
+	virtual ~Subject() noexcept
 	{
 		removeAllObservers();
 	}
 
+	// Defaulted compiler auto-generated methods
+	Subject() = default;
+	Subject(Subject&&) = default;
+	Subject(Subject const&) = default;
+	Subject& operator=(Subject const&) = default;
+	Subject& operator=(Subject&&) = default;
+
 protected:
+#ifdef DEBUG
+	mutex_type& getMutex() noexcept
+	{
+		return _mutex;
+	}
+
+	mutex_type const& getMutex() const noexcept
+	{
+		return _mutex;
+	}
+#endif // DEBUG
+
 	/**
 	* @brief Convenience method to notify all observers.
 	* @details Convenience method to notify all observers in a thread-safe way.
@@ -588,7 +773,7 @@ protected:
 				// Using try-catch to protect ourself from errors in the handler
 				try
 				{
-					(static_cast<DerivedObserver*>(*it)->*method)(self(), std::forward<Parameters>(params)...);
+					(static_cast<DerivedObserver*>(*it)->*method)(std::forward<Parameters>(params)...);
 				}
 				catch (...)
 				{
@@ -611,10 +796,7 @@ protected:
 		}
 	}
 
-	/**
-	* @brief Remove all observers from the subject.
-	* @details Remove all observers from the subject.
-	*/
+	/** Remove all observers from the subject. */
 	void removeAllObservers() noexcept
 	{
 		// Unregister from all the observers
@@ -631,6 +813,11 @@ protected:
 				// Ignore error
 			}
 		}
+	}
+
+	/** Allow the Subject to be informed when a new observer has registered. */
+	virtual void onObserverRegistered(observer_type* const /*observer*/) noexcept
+	{
 	}
 
 	/** Convenience method to return this as the real Derived class type */
@@ -686,6 +873,14 @@ public:
 	using Subject<TypedSubject<Tag, Mut>, Mut>::notifyObserversMethod;
 	using Subject<TypedSubject<Tag, Mut>, Mut>::removeAllObservers;
 };
+
+#define DECLARE_AVDECC_OBSERVER_GUARD_NAME(selfClassType, variableName) \
+	friend class la::avdecc::ObserverGuard<selfClassType>; \
+	la::avdecc::ObserverGuard<selfClassType> variableName{ *this }
+
+#define DECLARE_AVDECC_OBSERVER_GUARD(selfClassType) \
+	friend class la::avdecc::ObserverGuard<selfClassType>; \
+	la::avdecc::ObserverGuard<selfClassType> _observer_guard_{ *this }
 
 } // namespace avdecc
 } // namespace la

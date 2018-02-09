@@ -27,6 +27,7 @@
 #include <exception>
 #include <iomanip> // setfill
 #include <ios> // uppercase
+#include <mutex>
 
 namespace la
 {
@@ -43,15 +44,20 @@ inline auto forceNumeric(T&& t)
 }
 
 static Interfaces s_NetworkInterfaces{};
+static std::recursive_mutex s_Mutex;
 
 void LA_AVDECC_CALL_CONVENTION refreshInterfaces() noexcept
 {
+	std::lock_guard<decltype(s_Mutex)> const lg(s_Mutex);
+
 	s_NetworkInterfaces.clear();
 	refreshInterfaces(s_NetworkInterfaces);
 }
 
 void LA_AVDECC_CALL_CONVENTION enumerateInterfaces(std::function<void(la::avdecc::networkInterface::Interface const& intfc) noexcept> const& onInterface) noexcept
 {
+	std::lock_guard<decltype(s_Mutex)> const lg(s_Mutex);
+
 	if (onInterface == nullptr)
 		return;
 
@@ -68,6 +74,8 @@ void LA_AVDECC_CALL_CONVENTION enumerateInterfaces(std::function<void(la::avdecc
 
 Interface LA_AVDECC_CALL_CONVENTION getInterfaceByName(std::string const& name)
 {
+	std::lock_guard<decltype(s_Mutex)> const lg(s_Mutex);
+
 	// No interfaces, force a refresh
 	if (s_NetworkInterfaces.empty())
 		refreshInterfaces();

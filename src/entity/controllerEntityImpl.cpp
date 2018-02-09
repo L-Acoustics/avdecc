@@ -135,15 +135,15 @@ ControllerEntity::AemCommandStatus ControllerEntityImpl::convertErrorToAemComman
 		case protocol::ProtocolInterface::Error::UnknownRemoteEntity:
 			return AemCommandStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::UnknownLocalEntity:
-			assert(false && "Trying to sendAemCommand from a non-existing local entity");
+			AVDECC_ASSERT(false, "Trying to sendAemCommand from a non-existing local entity");
 			return AemCommandStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::InvalidEntityType:
-			assert(false && "Trying to sendAemCommand from a non-controller entity");
+			AVDECC_ASSERT(false, "Trying to sendAemCommand from a non-controller entity");
 			return AemCommandStatus::InternalError;
 		case protocol::ProtocolInterface::Error::InternalError:
 			return AemCommandStatus::InternalError;
 		default:
-			assert(false && "ProtocolInterface error code not handled");
+			AVDECC_ASSERT(false, "ProtocolInterface error code not handled");
 	}
 	return AemCommandStatus::InternalError;
 }
@@ -161,14 +161,14 @@ ControllerEntity::ControlStatus ControllerEntityImpl::convertErrorToControlStatu
 		case protocol::ProtocolInterface::Error::UnknownRemoteEntity:
 			return ControlStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::UnknownLocalEntity:
-			assert(false && "Trying to sendAcmpCommand from a non-existing local entity");
+			AVDECC_ASSERT(false, "Trying to sendAcmpCommand from a non-existing local entity");
 			return ControlStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::InvalidEntityType:
 			return ControlStatus::InternalError;
 		case protocol::ProtocolInterface::Error::InternalError:
 			return ControlStatus::InternalError;
 		default:
-			assert(false && "ProtocolInterface error code not handled");
+			AVDECC_ASSERT(false, "ProtocolInterface error code not handled");
 	}
 	return ControlStatus::InternalError;
 }
@@ -177,25 +177,28 @@ void ControllerEntityImpl::sendAemCommand(UniqueIdentifier const targetEntityID,
 {
 	try
 	{
-		auto* pi = getProtocolInterface();
+		auto* pi = const_cast<ControllerEntityImpl*>(this)->getProtocolInterface();
 		auto targetMacAddress = networkInterface::MacAddress{};
 
 		// Search target mac address based on its entityID
 		{
-			// Lock entities
-			std::lock_guard<decltype(_lockDiscoveredEntities)> const lg(_lockDiscoveredEntities);
+			// Lock ProtocolInterface
+			std::lock_guard<decltype(*pi)> const lg(*pi);
 
 			auto const it = _discoveredEntities.find(targetEntityID);
 
-			// Return an error if entity is not found in the list
-			if (it == _discoveredEntities.end())
+			if (it != _discoveredEntities.end())
 			{
-				onErrorCallback(AemCommandStatus::UnknownEntity);
-				return;
+				// Get entity mac address
+				targetMacAddress = it->second.getMacAddress();
 			}
+		}
 
-			// Get entity mac address
-			targetMacAddress = it->second.getMacAddress();
+		// Return an error if entity is not found in the list
+		if (!networkInterface::isMacAddressValid(targetMacAddress))
+		{
+			onErrorCallback(AemCommandStatus::UnknownEntity);
+			return;
 		}
 
 		// Build AEM-AECPDU frame
@@ -534,7 +537,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					}
 
 					default:
-						assert(false && "Unhandled descriptor type");
+						AVDECC_ASSERT(false, "Unhandled descriptor type");
 						break;
 				}
 			}
@@ -843,6 +846,73 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				}
 			}
 		},
+		// Set Sampling Rate
+		{ protocol::AemCommandType::SetSamplingRate.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
+			{
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex, samplingRate] = protocol::aemPayload::deserializeSetSamplingRateResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeSetSamplingRateResponse(aem.getPayload());
+				entity::model::DescriptorType const descriptorType = std::get<0>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				entity::model::SamplingRate const samplingRate = std::get<2>(result);
+#endif // __cpp_structured_bindings
+
+				auto const targetID = aem.getTargetEntityID();
+				auto* delegate = controller->getDelegate();
+				// Notify handlers
+				if (descriptorType == model::DescriptorType::AudioUnit)
+				{
+					answerCallback.invoke<SetAudioUnitSamplingRateHandler>(controller, targetID, status, descriptorIndex, samplingRate);
+					if (aem.getUnsolicited() && delegate && !!status)
+					{
+						invokeProtectedMethod(&ControllerEntity::Delegate::onAudioUnitSamplingRateChanged, delegate, controller, targetID, descriptorIndex, samplingRate);
+					}
+				}
+				else if (descriptorType == model::DescriptorType::VideoCluster)
+				{
+					answerCallback.invoke<SetVideoClusterSamplingRateHandler>(controller, targetID, status, descriptorIndex, samplingRate);
+					if (aem.getUnsolicited() && delegate && !!status)
+					{
+						invokeProtectedMethod(&ControllerEntity::Delegate::onVideoClusterSamplingRateChanged, delegate, controller, targetID, descriptorIndex, samplingRate);
+					}
+				}
+				else if (descriptorType == model::DescriptorType::SensorCluster)
+				{
+					answerCallback.invoke<SetSensorClusterSamplingRateHandler>(controller, targetID, status, descriptorIndex, samplingRate);
+					if (aem.getUnsolicited() && delegate && !!status)
+					{
+						invokeProtectedMethod(&ControllerEntity::Delegate::onSensorClusterSamplingRateChanged, delegate, controller, targetID, descriptorIndex , samplingRate);
+					}
+				}
+				else
+					throw InvalidDescriptorTypeException();
+			}
+		},
+		// Set Clock Source
+		{ protocol::AemCommandType::SetClockSource.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
+			{
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex, clockSourceIndex] = protocol::aemPayload::deserializeSetClockSourceResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeSetClockSourceResponse(aem.getPayload());
+				//entity::model::DescriptorType const descriptorType = std::get<0>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				entity::model::ClockSourceIndex const clockSourceIndex = std::get<2>(result);
+#endif // __cpp_structured_bindings
+
+				auto const targetID = aem.getTargetEntityID();
+				auto* delegate = controller->getDelegate();
+				// Notify handlers
+				answerCallback.invoke<SetClockSourceHandler>(controller, targetID, status, descriptorIndex, clockSourceIndex);
+				if (aem.getUnsolicited() && delegate && !!status)
+				{
+					invokeProtectedMethod(&ControllerEntity::Delegate::onClockSourceChanged, delegate, controller, targetID, descriptorIndex, clockSourceIndex);
+				}
+			}
+		},
 		// Start Streaming
 		{ protocol::AemCommandType::StartStreaming.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
@@ -947,20 +1017,20 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
 				// Notify handlers
-				if (descriptorType == model::DescriptorType::StreamInput)
+				if (descriptorType == model::DescriptorType::StreamPortInput)
 				{
-					answerCallback.invoke<GetStreamInputAudioMapHandler>(controller, targetID, status, descriptorIndex, numberOfMaps, mapIndex, mappings);
+					answerCallback.invoke<GetStreamPortInputAudioMapHandler>(controller, targetID, status, descriptorIndex, numberOfMaps, mapIndex, mappings);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputAudioMappingsChanged, delegate, controller, targetID, descriptorIndex, numberOfMaps, mapIndex, mappings);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamPortInputAudioMappingsChanged, delegate, controller, targetID, descriptorIndex, numberOfMaps, mapIndex, mappings);
 					}
 				}
-				else if (descriptorType == model::DescriptorType::StreamOutput)
+				else if (descriptorType == model::DescriptorType::StreamPortOutput)
 				{
-					answerCallback.invoke<GetStreamOutputAudioMapHandler>(controller, targetID, status, descriptorIndex, numberOfMaps, mapIndex, mappings);
+					answerCallback.invoke<GetStreamPortOutputAudioMapHandler>(controller, targetID, status, descriptorIndex, numberOfMaps, mapIndex, mappings);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputAudioMappingsChanged, delegate, controller, targetID, descriptorIndex, numberOfMaps, mapIndex, mappings);
+						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamPortOutputAudioMappingsChanged, delegate, controller, targetID, descriptorIndex, numberOfMaps, mapIndex, mappings);
 					}
 				}
 				else
@@ -982,14 +1052,14 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 
 				auto const targetID = aem.getTargetEntityID();
 				// Notify handlers
-#pragma message("TBD: Handle unsolicited notification (add handler, and handle it in controller code)")
-				if (descriptorType == model::DescriptorType::StreamInput)
+#pragma message("TODO: Handle unsolicited notification (add handler, and handle it in controller code)")
+				if (descriptorType == model::DescriptorType::StreamPortInput)
 				{
-					answerCallback.invoke<AddStreamInputAudioMappingsHandler>(controller, targetID, status, descriptorIndex, mappings);
+					answerCallback.invoke<AddStreamPortInputAudioMappingsHandler>(controller, targetID, status, descriptorIndex, mappings);
 				}
-				else if (descriptorType == model::DescriptorType::StreamOutput)
+				else if (descriptorType == model::DescriptorType::StreamPortOutput)
 				{
-					answerCallback.invoke<AddStreamOutputAudioMappingsHandler>(controller, targetID, status, descriptorIndex, mappings);
+					answerCallback.invoke<AddStreamPortOutputAudioMappingsHandler>(controller, targetID, status, descriptorIndex, mappings);
 				}
 				else
 					throw InvalidDescriptorTypeException();
@@ -1010,14 +1080,14 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 
 				auto const targetID = aem.getTargetEntityID();
 				// Notify handlers
-#pragma message("TBD: Handle unsolicited notification (add handler, and handle it in controller code)")
-				if (descriptorType == model::DescriptorType::StreamInput)
+#pragma message("TODO: Handle unsolicited notification (add handler, and handle it in controller code)")
+				if (descriptorType == model::DescriptorType::StreamPortInput)
 				{
-					answerCallback.invoke<RemoveStreamInputAudioMappingsHandler>(controller, targetID, status, descriptorIndex, mappings);
+					answerCallback.invoke<RemoveStreamPortInputAudioMappingsHandler>(controller, targetID, status, descriptorIndex, mappings);
 				}
-				else if (descriptorType == model::DescriptorType::StreamOutput)
+				else if (descriptorType == model::DescriptorType::StreamPortOutput)
 				{
-					answerCallback.invoke<RemoveStreamOutputAudioMappingsHandler>(controller, targetID, status, descriptorIndex, mappings);
+					answerCallback.invoke<RemoveStreamPortOutputAudioMappingsHandler>(controller, targetID, status, descriptorIndex, mappings);
 				}
 				else
 					throw InvalidDescriptorTypeException();
@@ -1054,7 +1124,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 			{
 				// Allow this packet to go through as a non-success response, but some fields might have the default initial value which might not be valid (the spec says even in a response message, some fields have a meaningful value)
 				st = status;
-				Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Received an invalid non-success ") + std::string(aem.getCommandType()) + "AEM response (" + what + ") from " + toHexString(aem.getTargetEntityID(), true) + " but still processing it because of define IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES");
+				Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Received an invalid non-success ") + std::string(aem.getCommandType()) + " AEM response (" + what + ") from " + toHexString(aem.getTargetEntityID(), true) + " but still processing it because of compilation option IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES");
 			}
 #endif // IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES
 			if (st == AemCommandStatus::ProtocolError)
@@ -1243,8 +1313,7 @@ void ControllerEntityImpl::processAcmpResponse(protocol::Acmpdu const* const res
 			}
 		},
 	};
-
-
+	
 	auto const& it = s_Dispatch.find(acmp.getMessageType().getValue());
 	if (it == s_Dispatch.end())
 	{
@@ -1320,7 +1389,7 @@ void ControllerEntityImpl::releaseEntity(UniqueIdentifier const targetEntityID, 
 
 void ControllerEntityImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntityHandler const& handler) const noexcept
 {
-#pragma message("TBD: Change the API to allow partial EM lock")
+#pragma message("TODO: Change the API to allow partial EM lock")
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeLockEntityCommand(protocol::AemLockEntityFlags::None, getNullIdentifier(), model::DescriptorType::Entity, 0);
@@ -1336,7 +1405,7 @@ void ControllerEntityImpl::lockEntity(UniqueIdentifier const targetEntityID, Loc
 
 void ControllerEntityImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockEntityHandler const& handler) const noexcept
 {
-#pragma message("TBD: Change the API to allow partial EM unlock")
+#pragma message("TODO: Change the API to allow partial EM unlock")
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeLockEntityCommand(protocol::AemLockEntityFlags::Unlock, getNullIdentifier(), model::DescriptorType::Entity, 0);
@@ -1738,12 +1807,12 @@ void ControllerEntityImpl::setStreamOutputFormat(UniqueIdentifier const targetEn
 	}
 }
 
-void ControllerEntityImpl::getStreamInputAudioMap(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::MapIndex const mapIndex, GetStreamInputAudioMapHandler const& handler) const noexcept
+void ControllerEntityImpl::getStreamPortInputAudioMap(UniqueIdentifier const targetEntityID, model::StreamPortIndex const streamPortIndex, model::MapIndex const mapIndex, GetStreamPortInputAudioMapHandler const& handler) const noexcept
 {
 	try
 	{
-		auto const ser = protocol::aemPayload::serializeGetAudioMapCommand(model::DescriptorType::StreamInput, streamIndex, mapIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::MapIndex(0), mapIndex, s_emptyMappings);
+		auto const ser = protocol::aemPayload::serializeGetAudioMapCommand(model::DescriptorType::StreamPortInput, streamPortIndex, mapIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamPortIndex, model::MapIndex(0), mapIndex, s_emptyMappings);
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::GetAudioMap, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1753,12 +1822,12 @@ void ControllerEntityImpl::getStreamInputAudioMap(UniqueIdentifier const targetE
 	}
 }
 
-void ControllerEntityImpl::getStreamOutputAudioMap(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::MapIndex const mapIndex, GetStreamOutputAudioMapHandler const& handler) const noexcept
+void ControllerEntityImpl::getStreamPortOutputAudioMap(UniqueIdentifier const targetEntityID, model::StreamPortIndex const streamPortIndex, model::MapIndex const mapIndex, GetStreamPortOutputAudioMapHandler const& handler) const noexcept
 {
 	try
 	{
-		auto const ser = protocol::aemPayload::serializeGetAudioMapCommand(model::DescriptorType::StreamOutput, streamIndex, mapIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::MapIndex(0), mapIndex, s_emptyMappings);
+		auto const ser = protocol::aemPayload::serializeGetAudioMapCommand(model::DescriptorType::StreamPortOutput, streamPortIndex, mapIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamPortIndex, model::MapIndex(0), mapIndex, s_emptyMappings);
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::GetAudioMap, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1768,12 +1837,12 @@ void ControllerEntityImpl::getStreamOutputAudioMap(UniqueIdentifier const target
 	}
 }
 
-void ControllerEntityImpl::addStreamInputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, std::vector<model::AudioMapping> const& mappings, AddStreamInputAudioMappingsHandler const& handler) const noexcept
+void ControllerEntityImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamPortIndex const streamPortIndex, std::vector<model::AudioMapping> const& mappings, AddStreamPortInputAudioMappingsHandler const& handler) const noexcept
 {
 	try
 	{
-		auto const ser = protocol::aemPayload::serializeAddAudioMappingsCommand(model::DescriptorType::StreamInput, streamIndex, mappings);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyMappings);
+		auto const ser = protocol::aemPayload::serializeAddAudioMappingsCommand(model::DescriptorType::StreamPortInput, streamPortIndex, mappings);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamPortIndex, s_emptyMappings);
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::AddAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1783,12 +1852,12 @@ void ControllerEntityImpl::addStreamInputAudioMappings(UniqueIdentifier const ta
 	}
 }
 
-void ControllerEntityImpl::addStreamOutputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::AudioMappings const& mappings, AddStreamOutputAudioMappingsHandler const& handler) const noexcept
+void ControllerEntityImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamPortIndex const streamPortIndex, model::AudioMappings const& mappings, AddStreamPortOutputAudioMappingsHandler const& handler) const noexcept
 {
 	try
 	{
-		auto const ser = protocol::aemPayload::serializeAddAudioMappingsCommand(model::DescriptorType::StreamOutput, streamIndex, mappings);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyMappings);
+		auto const ser = protocol::aemPayload::serializeAddAudioMappingsCommand(model::DescriptorType::StreamPortOutput, streamPortIndex, mappings);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamPortIndex, s_emptyMappings);
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::AddAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1798,12 +1867,12 @@ void ControllerEntityImpl::addStreamOutputAudioMappings(UniqueIdentifier const t
 	}
 }
 
-void ControllerEntityImpl::removeStreamInputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, std::vector<model::AudioMapping> const& mappings, RemoveStreamInputAudioMappingsHandler const& handler) const noexcept
+void ControllerEntityImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamPortIndex const streamPortIndex, std::vector<model::AudioMapping> const& mappings, RemoveStreamPortInputAudioMappingsHandler const& handler) const noexcept
 {
 	try
 	{
-		auto const ser = protocol::aemPayload::serializeRemoveAudioMappingsCommand(model::DescriptorType::StreamInput, streamIndex, mappings);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyMappings);
+		auto const ser = protocol::aemPayload::serializeRemoveAudioMappingsCommand(model::DescriptorType::StreamPortInput, streamPortIndex, mappings);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamPortIndex, s_emptyMappings);
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::RemoveAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1813,12 +1882,12 @@ void ControllerEntityImpl::removeStreamInputAudioMappings(UniqueIdentifier const
 	}
 }
 
-void ControllerEntityImpl::removeStreamOutputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::AudioMappings const& mappings, RemoveStreamOutputAudioMappingsHandler const& handler) const noexcept
+void ControllerEntityImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamPortIndex const streamPortIndex, model::AudioMappings const& mappings, RemoveStreamPortOutputAudioMappingsHandler const& handler) const noexcept
 {
 	try
 	{
-		auto const ser = protocol::aemPayload::serializeRemoveAudioMappingsCommand(model::DescriptorType::StreamOutput, streamIndex, mappings);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyMappings);
+		auto const ser = protocol::aemPayload::serializeRemoveAudioMappingsCommand(model::DescriptorType::StreamPortOutput, streamPortIndex, mappings);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamPortIndex, s_emptyMappings);
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::RemoveAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1993,6 +2062,67 @@ void ControllerEntityImpl::getStreamOutputName(UniqueIdentifier const targetEnti
 	}
 }
 
+void ControllerEntityImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntityID, model::AudioUnitIndex const audioUnitIndex, model::SamplingRate const samplingRate, SetAudioUnitSamplingRateHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetSamplingRateCommand(model::DescriptorType::AudioUnit, audioUnitIndex, samplingRate);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, audioUnitIndex, model::getNullSamplingRate());
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::SetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setAudioUnitSamplingRate: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::setVideoClusterSamplingRate(UniqueIdentifier const targetEntityID, model::ClusterIndex const videoClusterIndex, model::SamplingRate const samplingRate, SetVideoClusterSamplingRateHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetSamplingRateCommand(model::DescriptorType::VideoCluster, videoClusterIndex, samplingRate);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, videoClusterIndex, model::getNullSamplingRate());
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::SetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setVideoClusterSamplingRate: ") + e.what());
+	}
+}
+
+void ControllerEntityImpl::setSensorClusterSamplingRate(UniqueIdentifier const targetEntityID, model::ClusterIndex const sensorClusterIndex, model::SamplingRate const samplingRate, SetSensorClusterSamplingRateHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetSamplingRateCommand(model::DescriptorType::SensorCluster, sensorClusterIndex, samplingRate);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, sensorClusterIndex, model::getNullSamplingRate());
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::SetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setSensorClusterSamplingRate: ") + e.what());
+	}
+}
+
+
+void ControllerEntityImpl::setClockSource(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, model::ClockSourceIndex const clockSourceIndex, SetClockSourceHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetClockSourceCommand(model::DescriptorType::ClockDomain, clockDomainIndex, clockSourceIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, clockDomainIndex, model::ClockSourceIndex{ 0u });
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::SetClockSource, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch (std::exception const& e)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setClockSource: ") + e.what());
+	}
+}
+
 void ControllerEntityImpl::startStreamInput(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, StartStreamInputHandler const& handler) const noexcept
 {
 	try
@@ -2087,46 +2217,45 @@ ControllerEntityImpl::Delegate* ControllerEntityImpl::getDelegate() const noexce
 /* protocol::ProtocolInterface::Observer overrides                            */
 /* ************************************************************************** */
 /* **** Global notifications **** */
-void ControllerEntityImpl::onTransportError(protocol::ProtocolInterface const* const /*pi*/) noexcept
+void ControllerEntityImpl::onTransportError(protocol::ProtocolInterface* const /*pi*/) noexcept
 {
 	invokeProtectedMethod(&ControllerEntity::Delegate::onTransportError, _delegate, this);
 }
 
 /* **** Discovery notifications **** */
-void ControllerEntityImpl::onLocalEntityOnline(protocol::ProtocolInterface const* const pi, DiscoveredEntity const& entity) noexcept
+void ControllerEntityImpl::onLocalEntityOnline(protocol::ProtocolInterface* const pi, DiscoveredEntity const& entity) noexcept
 {
 	// The controller doesn't make any difference btw a local and a remote entity, just ignore ourself
 	if (getEntityID() != entity.getEntityID())
 		onRemoteEntityOnline(pi, entity);
 }
 
-void ControllerEntityImpl::onLocalEntityOffline(protocol::ProtocolInterface const* const pi, UniqueIdentifier const entityID) noexcept
+void ControllerEntityImpl::onLocalEntityOffline(protocol::ProtocolInterface* const pi, UniqueIdentifier const entityID) noexcept
 {
 	// The controller doesn't make any difference btw a local and a remote entity, just ignore ourself
 	if (getEntityID() != entityID)
 		onRemoteEntityOffline(pi, entityID); // The controller doesn't make any difference btw a local and a remote entity
 }
 
-void ControllerEntityImpl::onLocalEntityUpdated(protocol::ProtocolInterface const* const pi, DiscoveredEntity const& entity) noexcept
+void ControllerEntityImpl::onLocalEntityUpdated(protocol::ProtocolInterface* const pi, DiscoveredEntity const& entity) noexcept
 {
 	// The controller doesn't make any difference btw a local and a remote entity, just ignore ourself
 	if (getEntityID() != entity.getEntityID())
 		onRemoteEntityUpdated(pi, entity); // The controller doesn't make any difference btw a local and a remote entity
 }
 
-void ControllerEntityImpl::onRemoteEntityOnline(protocol::ProtocolInterface const* const /*pi*/, DiscoveredEntity const& entity) noexcept
+void ControllerEntityImpl::onRemoteEntityOnline(protocol::ProtocolInterface* const pi, DiscoveredEntity const& entity) noexcept
 {
 	auto const entityID = entity.getEntityID();
 	{
-		// Lock entities
-		std::lock_guard<decltype(_lockDiscoveredEntities)> const lg(_lockDiscoveredEntities);
+		// Lock ProtocolInterface
+		std::lock_guard<decltype(*pi)> const lg(*pi);
 
 		// Store or replace entity
 		{
-#pragma message("TBD: Replace with c++17 insert_or_assign")
+#pragma message("TODO: Replace with c++17 insert_or_assign")
 			auto it = _discoveredEntities.find(entityID);
-			assert(it == _discoveredEntities.end() && "ControllerEntityImpl::onRemoteEntityOnline: Entity already online");
-			if (it == _discoveredEntities.end())
+			if (AVDECC_ASSERT_WITH_RET(it == _discoveredEntities.end(), "ControllerEntityImpl::onRemoteEntityOnline: Entity already online"))
 				_discoveredEntities.insert(std::make_pair(entityID, entity));
 			else
 				it->second = entity;
@@ -2136,11 +2265,11 @@ void ControllerEntityImpl::onRemoteEntityOnline(protocol::ProtocolInterface cons
 	invokeProtectedMethod(&ControllerEntity::Delegate::onEntityOnline, _delegate, this, entityID, entity);
 }
 
-void ControllerEntityImpl::onRemoteEntityOffline(protocol::ProtocolInterface const* const /*pi*/, UniqueIdentifier const entityID) noexcept
+void ControllerEntityImpl::onRemoteEntityOffline(protocol::ProtocolInterface* const pi, UniqueIdentifier const entityID) noexcept
 {
 	{
-		// Lock entities
-		std::lock_guard<decltype(_lockDiscoveredEntities)> const lg(_lockDiscoveredEntities);
+		// Lock ProtocolInterface
+		std::lock_guard<decltype(*pi)> const lg(*pi);
 
 		// Remove entity
 		_discoveredEntities.erase(entityID);
@@ -2149,19 +2278,18 @@ void ControllerEntityImpl::onRemoteEntityOffline(protocol::ProtocolInterface con
 	invokeProtectedMethod(&ControllerEntity::Delegate::onEntityOffline, _delegate, this, entityID);
 }
 
-void ControllerEntityImpl::onRemoteEntityUpdated(protocol::ProtocolInterface const* const /*pi*/, DiscoveredEntity const& entity) noexcept
+void ControllerEntityImpl::onRemoteEntityUpdated(protocol::ProtocolInterface* const pi, DiscoveredEntity const& entity) noexcept
 {
 	auto const entityID = entity.getEntityID();
 	{
-		// Lock entities
-		std::lock_guard<decltype(_lockDiscoveredEntities)> const lg(_lockDiscoveredEntities);
+		// Lock ProtocolInterface
+		std::lock_guard<decltype(*pi)> const lg(*pi);
 
 		// Store or replace entity
 		{
-#pragma message("TBD: Replace with c++17 insert_or_assign")
+#pragma message("TODO: Replace with c++17 insert_or_assign")
 			auto it = _discoveredEntities.find(entityID);
-			assert(it != _discoveredEntities.end() && "ControllerEntityImpl::onRemoteEntityUpdated: Entity offline");
-			if (it == _discoveredEntities.end())
+			if (!AVDECC_ASSERT_WITH_RET(it != _discoveredEntities.end(), "ControllerEntityImpl::onRemoteEntityUpdated: Entity offline"))
 				_discoveredEntities.insert(std::make_pair(entityID, entity));
 			else
 				it->second = entity;
@@ -2172,14 +2300,13 @@ void ControllerEntityImpl::onRemoteEntityUpdated(protocol::ProtocolInterface con
 }
 
 /* **** AECP notifications **** */
-void ControllerEntityImpl::onAecpCommand(protocol::ProtocolInterface const* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Aecpdu const& aecpdu) noexcept
+void ControllerEntityImpl::onAecpCommand(protocol::ProtocolInterface* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Aecpdu const& aecpdu) noexcept
 {
 	auto const selfID = getEntityID();
 	auto const targetID = aecpdu.getTargetEntityID();
 
-	assert(targetID == selfID && "Should be filtered by controller_state_machine already... on mac too??");
 	// Filter messages not for me
-	if (targetID != selfID)
+	if (!AVDECC_ASSERT_WITH_RET(targetID == selfID, "Should be filtered by controller_state_machine already... on mac too??"))
 		return;
 
 	if (aecpdu.getMessageType() == protocol::AecpMessageType::AemCommand)
@@ -2222,15 +2349,14 @@ void ControllerEntityImpl::onAecpCommand(protocol::ProtocolInterface const* cons
 	}
 }
 
-void ControllerEntityImpl::onAecpUnsolicitedResponse(protocol::ProtocolInterface const* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Aecpdu const& aecpdu) noexcept
+void ControllerEntityImpl::onAecpUnsolicitedResponse(protocol::ProtocolInterface* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Aecpdu const& aecpdu) noexcept
 {
 	auto const messageType = aecpdu.getMessageType();
 
 	if (messageType == protocol::AecpMessageType::AemResponse)
 	{
 		auto const& aem = static_cast<protocol::AemAecpdu const&>(aecpdu);
-		assert(aem.getUnsolicited() && "Should only be triggered for unsollicited notifications");
-		if (aem.getUnsolicited())
+		if (AVDECC_ASSERT_WITH_RET(aem.getUnsolicited(), "Should only be triggered for unsollicited notifications"))
 		{
 			// Process AEM message without any error or answer callbacks, it's not an expected response
 			processAemResponse(&aecpdu, nullptr, {});
@@ -2239,11 +2365,11 @@ void ControllerEntityImpl::onAecpUnsolicitedResponse(protocol::ProtocolInterface
 }
 
 /* **** ACMP notifications **** */
-void ControllerEntityImpl::onAcmpSniffedCommand(protocol::ProtocolInterface const* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Acmpdu const& /*acmpdu*/) noexcept
+void ControllerEntityImpl::onAcmpSniffedCommand(protocol::ProtocolInterface* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Acmpdu const& /*acmpdu*/) noexcept
 {
 }
 
-void ControllerEntityImpl::onAcmpSniffedResponse(protocol::ProtocolInterface const* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Acmpdu const& acmpdu) noexcept
+void ControllerEntityImpl::onAcmpSniffedResponse(protocol::ProtocolInterface* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Acmpdu const& acmpdu) noexcept
 {
 	processAcmpResponse(&acmpdu, OnACMPErrorCallback(), AnswerCallback(), true);
 }
@@ -2275,7 +2401,7 @@ std::string LA_AVDECC_CALL_CONVENTION ControllerEntity::statusToString(Controlle
 		case AemCommandStatus::NoResources:
 			return "The AVDECC Entity cannot complete the command because it does not have the resources to support it";
 		case AemCommandStatus::InProgress:
-			assert(false); // Should not happen
+			AVDECC_ASSERT(false, "Should not happen");
 			return "The AVDECC Entity is processing the command and will send a second response at a later time with the result of the command";
 		case AemCommandStatus::EntityMisbehaving:
 			return "The AVDECC Entity is generated an internal error while trying to process the command";
@@ -2295,7 +2421,7 @@ std::string LA_AVDECC_CALL_CONVENTION ControllerEntity::statusToString(Controlle
 		case AemCommandStatus::InternalError:
 			return "Internal error";
 		default:
-			assert(false && "Unhandled status");
+			AVDECC_ASSERT(false, "Unhandled status");
 			return "Unknown status";
 	}
 }
@@ -2352,7 +2478,7 @@ std::string LA_AVDECC_CALL_CONVENTION ControllerEntity::statusToString(Controlle
 		case ControlStatus::InternalError:
 			return "Internal error";
 		default:
-			assert(false && "Unhandled status");
+			AVDECC_ASSERT(false, "Unhandled status");
 			return "Unknown status";
 	}
 }

@@ -50,19 +50,17 @@ void Aecpdu::serialize(SerializationBuffer& buffer) const
 
 	buffer << _controllerEntityID << _sequenceID;
 
-	if ((buffer.size() - previousSize) != HeaderLength)
+	if (!AVDECC_ASSERT_WITH_RET((buffer.size() - previousSize) == HeaderLength, "Aecpdu::serialize error: Packed buffer length != expected header length"))
 	{
 		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Warn, "Aecpdu::serialize error: Packed buffer length != expected header length");
-		assert((buffer.size() - previousSize) == HeaderLength && "Aecpdu::serialize error: Packed buffer length != expected header length");
 	}
 }
 
 void Aecpdu::deserialize(DeserializationBuffer& buffer)
 {
-	if (buffer.remaining() < HeaderLength)
+	if (!AVDECC_ASSERT_WITH_RET(buffer.remaining() >= HeaderLength, "Aecpdu::deserialize error: Not enough data in buffer"))
 	{
 		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Error, "Aecpdu::deserialize error: Not enough data in buffer");
-		assert(buffer.remaining() >= HeaderLength && "Aecpdu::deserialize error: Not enough data in buffer");
 		throw std::invalid_argument("Not enough data to deserialize");
 	}
 

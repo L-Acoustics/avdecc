@@ -43,7 +43,7 @@ namespace protocol
 namespace stateMachine
 {
 
-class ControllerStateMachine
+class ControllerStateMachine final
 {
 public:
 	class Delegate
@@ -84,6 +84,11 @@ public:
 	ProtocolInterface::Error disableEntityAdvertising(entity::LocalEntity& entity) noexcept;
 	ProtocolInterface::Error discoverRemoteEntities() noexcept;
 	ProtocolInterface::Error discoverRemoteEntity(UniqueIdentifier const entityID) noexcept;
+
+	/** BasicLockable concept 'lock' method for the whole ControllerStateMachine */
+	void lock() noexcept;
+	/** BasicLockable concept 'unlock' method for the whole ControllerStateMachine */
+	void unlock() noexcept;
 
 private:
 	struct DiscoveredEntityInfo
@@ -204,6 +209,10 @@ private:
 	};
 
 	// Private methods
+	constexpr ControllerStateMachine& getSelf() const noexcept
+	{
+		return *const_cast<ControllerStateMachine*>(this);
+	}
 	Adpdu makeDiscoveryMessage(UniqueIdentifier const entityID) const noexcept;
 	Adpdu makeEntityAvailableMessage(entity::Entity& entity) const noexcept;
 	Adpdu makeEntityDepartingMessage(entity::Entity& entity) const noexcept;
@@ -223,11 +232,11 @@ private:
 	entity::DiscoveredEntity makeEntity(Adpdu const& adpdu) const noexcept;
 
 	// Common variables
+	mutable std::recursive_mutex _lock{}; /** Lock to protect the whole class */
 	ProtocolInterface const* const _protocolInterface{ nullptr };
 	Delegate* const _delegate{ nullptr };
 	size_t _maxInflightAecpMessages{ 0 };
 	bool _shouldTerminate{ false };
-	mutable std::recursive_mutex _lockEntities{}; /** Lock to protect _localEntities and _discoveredEntities */
 	DiscoveredEntities _discoveredEntities{};
 	std::unordered_map<UniqueIdentifier, LocalEntityInfo> _localEntities{}; /** Local entities declared by the running program */
 	std::thread _stateMachineThread{};

@@ -51,11 +51,11 @@ public:
 		: ProtocolInterfacePcap(networkInterfaceName)
 	{
 		// Should always be supported. Cannot create a PCap ProtocolInterface if it's not supported.
-		assert(isSupported());
+		AVDECC_ASSERT(isSupported(), "Should always be supported. Cannot create a PCap ProtocolInterface if it's not supported");
 
 		// Open pcap on specified network interface
 		std::array<char, PCAP_ERRBUF_SIZE> errbuf;
-		auto pcap = _pcapLibrary.open_live(networkInterfaceName.c_str(), 65536, 1, 50, errbuf.data());
+		auto pcap = _pcapLibrary.open_live(networkInterfaceName.c_str(), 65536, 1, 5, errbuf.data());
 		if (pcap == nullptr)
 			throw Exception(Error::TransportError, errbuf.data());
 
@@ -90,7 +90,7 @@ public:
 			struct pcap_pkthdr* header;
 			std::uint8_t const* pkt_data;
 
-			la::avdecc::setCurrentThreadName("avdecc::PCapCapture");
+			la::avdecc::setCurrentThreadName("avdecc::PCapInterface::Capture");
 			auto* const pcap = _pcap.get();
 
 			while (!_shouldTerminate && (res = _pcapLibrary.next_ex(pcap, &header, &pkt_data)) >= 0)
@@ -124,7 +124,7 @@ public:
 			// Notify observers if we exited the loop because of an error
 			if (!_shouldTerminate)
 			{
-				notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onTransportError);
+				notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onTransportError, this);
 			}
 		});
 	}
@@ -154,7 +154,7 @@ private:
 		try
 		{
 			auto* const pcap = _pcap.get();
-			assert(pcap && "Trying to send a message but pcapLibrary has been uninitialized");
+			AVDECC_ASSERT(pcap, "Trying to send a message but pcapLibrary has been uninitialized");
 			if (pcap != nullptr)
 			{
 				if (_pcapLibrary.sendpacket(pcap, buffer.data(), static_cast<int>(length)) == 0)
@@ -188,7 +188,7 @@ private:
 		if (la::avdecc::hasFlag(entity.getControllerCapabilities(), entity::ControllerCapabilities::Implemented))
 			error |= _controllerStateMachine.registerLocalEntity(entity);
 
-#pragma message("TBD: Handle talker/listener types")
+#pragma message("TODO: Handle talker/listener types")
 		// Entity is listener capable
 		if (la::avdecc::hasFlag(entity.getListenerCapabilities(), entity::ListenerCapabilities::Implemented))
 			return ProtocolInterface::Error::InvalidEntityType; // Not supported right now
@@ -204,7 +204,7 @@ private:
 	{
 		// Remove from all state machines, without checking the type (will be done by the StateMachine)
 		_controllerStateMachine.unregisterLocalEntity(entity);
-#pragma message("TBD: Remove from talker/listener state machines too")
+#pragma message("TODO: Remove from talker/listener state machines too")
 		return ProtocolInterface::Error::NoError;
 	}
 
@@ -272,66 +272,76 @@ private:
 		return sendMessage(static_cast<Acmpdu const&>(*acmpdu));
 	}
 
+	void lock() noexcept override
+	{
+		_controllerStateMachine.lock();
+	}
+
+	void unlock() noexcept override
+	{
+		_controllerStateMachine.unlock();
+	}
+
 private:
 	// stateMachine::ControllerStateMachine::Delegate overrides
 	virtual void onLocalEntityOnline(la::avdecc::entity::DiscoveredEntity const& entity) noexcept override
 	{
 		// Notify observers
-		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onLocalEntityOnline, entity);
+		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onLocalEntityOnline, this, entity);
 	}
 
 	virtual void onLocalEntityOffline(UniqueIdentifier const entityID) noexcept override
 	{
 		// Notify observers
-		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onLocalEntityOffline, entityID);
+		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onLocalEntityOffline, this, entityID);
 	}
 
 	virtual void onLocalEntityUpdated(la::avdecc::entity::DiscoveredEntity const& entity) noexcept override
 	{
 		// Notify observers
-		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onLocalEntityUpdated, entity);
+		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onLocalEntityUpdated, this, entity);
 	}
 
 	virtual void onRemoteEntityOnline(la::avdecc::entity::DiscoveredEntity const& entity) noexcept override
 	{
 		// Notify observers
-		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityOnline, entity);
+		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityOnline, this, entity);
 	}
 
 	virtual void onRemoteEntityOffline(UniqueIdentifier const entityID) noexcept override
 	{
 		// Notify observers
-		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityOffline, entityID);
+		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityOffline, this, entityID);
 	}
 
 	virtual void onRemoteEntityUpdated(la::avdecc::entity::DiscoveredEntity const& entity) noexcept override
 	{
 		// Notify observers
-		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityUpdated, entity);
+		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityUpdated, this, entity);
 	}
 
 	virtual void onAecpCommand(entity::LocalEntity const& entity, Aecpdu const& aecpdu) noexcept override
 	{
 		// Notify observers
-		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpCommand, entity, aecpdu);
+		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpCommand, this, entity, aecpdu);
 	}
 
 	virtual void onAecpUnsolicitedResponse(entity::LocalEntity const& entity, Aecpdu const& aecpdu) noexcept override
 	{
 		// Notify observers
-		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpUnsolicitedResponse, entity, aecpdu);
+		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpUnsolicitedResponse, this, entity, aecpdu);
 	}
 
 	virtual void onAcmpSniffedCommand(entity::LocalEntity const& entity, Acmpdu const& acmpdu) noexcept override
 	{
 		// Notify observers
-		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAcmpSniffedCommand, entity, acmpdu);
+		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAcmpSniffedCommand, this, entity, acmpdu);
 	}
 
 	virtual void onAcmpSniffedResponse(entity::LocalEntity const& entity, Acmpdu const& acmpdu) noexcept override
 	{
 		// Notify observers
-		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAcmpSniffedResponse, entity, acmpdu);
+		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAcmpSniffedResponse, this, entity, acmpdu);
 	}
 
 	virtual ProtocolInterface::Error sendMessage(Adpdu const& adpdu) const noexcept override
@@ -444,7 +454,7 @@ private:
 					Aecpdu::UniquePointer aecpdu{ nullptr, nullptr };
 					auto const messageType = static_cast<AecpMessageType>(controlData);
 
-#pragma message("TBD: Handle other AECP message types")
+#pragma message("TODO: Handle other AECP message types")
 					static std::unordered_map<AecpMessageType, std::function<Aecpdu::UniquePointer()>, AecpMessageType::Hash> s_Dispatch{
 						{
 							AecpMessageType::AemCommand, []()
@@ -480,7 +490,7 @@ private:
 						deserialize<Aecpdu>(&aecp, des);
 
 						// Forward to our state machine
-#pragma message("TBD: Should not forward to *controllerStateMachine* specifically, but to all possible state machines for the local EndStation")
+#pragma message("TODO: Should not forward to *controllerStateMachine* specifically, but to all possible state machines for the local EndStation")
 						_controllerStateMachine.processAecpdu(aecp);
 					}
 					break;
@@ -501,7 +511,7 @@ private:
 					deserialize<Acmpdu>(&acmp, des);
 
 					// Forward to our state machine
-#pragma message("TBD: Should not forward to *controllerStateMachine* specifically, but to all possible state machines for the local EndStation")
+#pragma message("TODO: Should not forward to *controllerStateMachine* specifically, but to all possible state machines for the local EndStation")
 					_controllerStateMachine.processAcmpdu(acmp);
 					break;
 				}
@@ -521,7 +531,7 @@ private:
 		}
 		catch (...)
 		{
-			assert(false && "Unknown exception");
+			AVDECC_ASSERT(false, "Unknown exception");
 			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Warn, "ProtocolInterfacePCap: Packet dropped due to unknown exception");
 		}
 	}

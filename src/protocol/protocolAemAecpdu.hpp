@@ -75,7 +75,7 @@ public:
 		_commandSpecificDataLength = commandSpecificDataLength;
 		if (_commandSpecificDataLength > 0)
 		{
-			assert(commandSpecificData != nullptr && "commandSpecificData is nullptr");
+			AVDECC_ASSERT(commandSpecificData != nullptr, "commandSpecificData is nullptr");
 			memcpy(_commandSpecificData.data(), commandSpecificData, _commandSpecificDataLength);
 		}
 		// Don't forget to update parent's specific data length field

@@ -26,6 +26,7 @@
 #include <future>
 #include <chrono>
 #include "protocolInterface/protocolInterface_virtual.hpp"
+#include "instrumentationObserver.hpp"
 
 TEST(ProtocolInterfaceVirtual, InvalidName)
 {
@@ -68,20 +69,22 @@ TEST(ProtocolInterfaceVirtual, SendMessage)
 	class Observer : public la::avdecc::protocol::ProtocolInterface::Observer
 	{
 	public:
-		virtual void onTransportError(la::avdecc::protocol::ProtocolInterface const* const pi) noexcept override {}
-		virtual void onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept override {}
-		virtual void onLocalEntityOffline(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::UniqueIdentifier const entityID) noexcept override {}
-		virtual void onLocalEntityUpdated(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept override {}
-		virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface const* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept override
+		virtual void onTransportError(la::avdecc::protocol::ProtocolInterface* const pi) noexcept override {}
+		virtual void onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept override {}
+		virtual void onLocalEntityOffline(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::UniqueIdentifier const entityID) noexcept override {}
+		virtual void onLocalEntityUpdated(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept override {}
+		virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept override
 		{
 			entityOnlinePromise.set_value();
 		}
-		virtual void onRemoteEntityOffline(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::UniqueIdentifier const entityID) noexcept override {}
-		virtual void onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept override {}
-		virtual void onAecpCommand(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override {}
-		virtual void onAecpUnsolicitedResponse(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override {}
-		virtual void onAcmpSniffedCommand(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Acmpdu const& acmpdu) noexcept override {}
-		virtual void onAcmpSniffedResponse(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Acmpdu const& acmpdu) noexcept override {}
+		virtual void onRemoteEntityOffline(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::UniqueIdentifier const entityID) noexcept override {}
+		virtual void onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept override {}
+		virtual void onAecpCommand(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override {}
+		virtual void onAecpUnsolicitedResponse(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override {}
+		virtual void onAcmpSniffedCommand(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Acmpdu const& acmpdu) noexcept override {}
+		virtual void onAcmpSniffedResponse(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Acmpdu const& acmpdu) noexcept override {}
+	private:
+		DECLARE_AVDECC_OBSERVER_GUARD(Observer);
 	};
 	Observer obs;
 	auto intfc1 = la::avdecc::protocol::ProtocolInterfaceVirtual::create("VirtualInterface", { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 });
@@ -117,4 +120,101 @@ TEST(ProtocolInterfaceVirtual, SendMessage)
 	// Message is synchroneous, timeout should never trigger
 	auto const status = entityOnlinePromise.get_future().wait_for(std::chrono::milliseconds(10));
 	ASSERT_NE(std::future_status::timeout, status);
+}
+
+TEST(ProtocolInterfaceVirtual, TransportError)
+{
+	static std::promise<void> entityOnlinePromise;
+	static std::promise<void> transportErrorPromise;
+	static std::promise<void> entityOfflinePromise;
+	static std::promise<void> completedPromise;
+
+	class Observer : public la::avdecc::protocol::ProtocolInterface::Observer, public la::avdecc::InstrumentationNotifier::Observer
+	{
+	private:
+		// la::avdecc::protocol::ProtocolInterface::Observer overrides
+		virtual void onTransportError(la::avdecc::protocol::ProtocolInterface* const pi) noexcept override
+		{
+			// This is the ProtocolInterface Capture thread
+			transportErrorPromise.set_value();
+			// Wait for onRemoteEntityOffline pre notify before continuing
+			auto status = entityOfflinePromise.get_future().wait_for(std::chrono::milliseconds(50));
+			ASSERT_NE(std::future_status::timeout, status);
+			// Now we are sure ProtocolInterface (from avdecc::ControllerStateMachine thread) wants to acquire the observers lock, but we currently own this lock
+			// So let's call something that wants to acquire the ControllerStateMachine and see if we deadlock or not
+			pi->lock(); // This will use CSM's lock
+			pi->unlock();
+		}
+		virtual void onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept override {}
+		virtual void onLocalEntityOffline(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::UniqueIdentifier const entityID) noexcept override {}
+		virtual void onLocalEntityUpdated(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept override {}
+		virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept override
+		{
+			entityOnlinePromise.set_value();
+		}
+		virtual void onRemoteEntityOffline(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::UniqueIdentifier const entityID) noexcept override {}
+		virtual void onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept override {}
+		virtual void onAecpCommand(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override {}
+		virtual void onAecpUnsolicitedResponse(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override {}
+		virtual void onAcmpSniffedCommand(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Acmpdu const& acmpdu) noexcept override {}
+		virtual void onAcmpSniffedResponse(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Acmpdu const& acmpdu) noexcept override {}
+		// la::avdecc::InstrumentationNotifier::Observer overrides
+		virtual void onEvent(std::string const& eventName) noexcept override
+		{
+			if (eventName == "ProtocolInterfaceVirtual::onRemoteEntityOffline::PreNotify")
+			{
+				entityOfflinePromise.set_value();
+				// Wait for transport error before continuing
+				auto status = transportErrorPromise.get_future().wait_for(std::chrono::milliseconds(50));
+				ASSERT_NE(std::future_status::timeout, status);
+			}
+			else if (eventName == "ProtocolInterfaceVirtual::onRemoteEntityOffline::PostNotify")
+			{
+				completedPromise.set_value();
+			}
+		}
+		DECLARE_AVDECC_OBSERVER_GUARD_NAME(la::avdecc::protocol::ProtocolInterface::Observer, _guard1);
+		DECLARE_AVDECC_OBSERVER_GUARD_NAME(la::avdecc::InstrumentationNotifier::Observer, _guard2);
+	};
+
+	Observer obs;
+	la::avdecc::InstrumentationNotifier::getInstance().registerObserver(&obs);
+	auto intfc = la::avdecc::protocol::ProtocolInterfaceVirtual::create("VirtualInterface", { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 });
+	intfc->registerObserver(&obs);
+
+	// Build adpdu frame
+	auto adpdu = la::avdecc::protocol::Adpdu::create();
+	// Set Ether2 fields
+	adpdu->setSrcAddress(intfc->getMacAddress());
+	adpdu->setDestAddress(la::avdecc::protocol::Adpdu::Multicast_Mac_Address);
+	// Set ADP fields
+	adpdu->setMessageType(la::avdecc::protocol::AdpMessageType::EntityAvailable);
+	adpdu->setValidTime(0);
+	adpdu->setEntityID(0x0001020304050607);
+	adpdu->setEntityModelID(0);
+	adpdu->setEntityCapabilities(la::avdecc::entity::EntityCapabilities::None);
+	adpdu->setTalkerStreamSources(0);
+	adpdu->setTalkerCapabilities(la::avdecc::entity::TalkerCapabilities::None);
+	adpdu->setListenerStreamSinks(0);
+	adpdu->setListenerCapabilities(la::avdecc::entity::ListenerCapabilities::None);
+	adpdu->setControllerCapabilities(la::avdecc::entity::ControllerCapabilities::Implemented);
+	adpdu->setAvailableIndex(0);
+	adpdu->setGptpGrandmasterID(0);
+	adpdu->setGptpDomainNumber(0);
+	adpdu->setIdentifyControlIndex(0);
+	adpdu->setInterfaceIndex(intfc->getInterfaceIndex());
+	adpdu->setAssociationID(0);
+
+	// Send the adp message
+	intfc->sendAdpMessage(std::move(adpdu));
+
+	auto status = entityOnlinePromise.get_future().wait_for(std::chrono::milliseconds(50));
+	ASSERT_NE(std::future_status::timeout, status);
+
+	// Force a transport error
+	auto const& virtIntfc = static_cast<la::avdecc::protocol::ProtocolInterfaceVirtual const&>(*intfc);
+	virtIntfc.forceTransportError();
+
+	status = completedPromise.get_future().wait_for(std::chrono::seconds(1));
+	ASSERT_NE(std::future_status::timeout, status) << "Deadlock!";
 }

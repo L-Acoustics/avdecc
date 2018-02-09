@@ -267,7 +267,7 @@ public:
 	using value_type = char;
 
 	/** Default constructor */
-	AvdeccFixedString() noexcept = default;
+	AvdeccFixedString() noexcept {}
 
 	/** Constructor from a std::string */
 	AvdeccFixedString(std::string const& str) noexcept
