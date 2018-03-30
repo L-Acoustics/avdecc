@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -83,24 +83,24 @@ public:
 	{
 	public:
 		/* **** Global notifications **** */
-		virtual void onTransportError(la::avdecc::protocol::ProtocolInterface const* const pi) noexcept = 0;
+		virtual void onTransportError(la::avdecc::protocol::ProtocolInterface* const /*pi*/) noexcept = 0;
 		/* **** Discovery notifications **** */
-		virtual void onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept = 0;
-		virtual void onLocalEntityOffline(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::UniqueIdentifier const entityID) noexcept = 0;
-		virtual void onLocalEntityUpdated(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept = 0;
-		virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept = 0;
-		virtual void onRemoteEntityOffline(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::UniqueIdentifier const entityID) noexcept = 0;
-		virtual void onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept = 0;
+		virtual void onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept {}
+		virtual void onLocalEntityOffline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const /*entityID*/) noexcept {}
+		virtual void onLocalEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept {}
+		virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept {}
+		virtual void onRemoteEntityOffline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const /*entityID*/) noexcept {}
+		virtual void onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept {}
 		/* **** AECP notifications **** */
 		/** Notification for when an AECP Command destined to *entity* is received. */
-		virtual void onAecpCommand(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Aecpdu const& aecpdu) noexcept = 0;
+		virtual void onAecpCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept {}
 		/** Notification for when an unsolicited AECP Response destined to *entity* is received. */
-		virtual void onAecpUnsolicitedResponse(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Aecpdu const& aecpdu) noexcept = 0;
+		virtual void onAecpUnsolicitedResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept {}
 		/* **** ACMP notifications **** */
 		/** Notification for when a sniffed ACMP Command is received (Not destined to *entity*). */
-		virtual void onAcmpSniffedCommand(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Acmpdu const& acmpdu) noexcept = 0;
+		virtual void onAcmpSniffedCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept {}
 		/** Notification for when a sniffed ACMP Response is received (Not destined to *entity*). */
-		virtual void onAcmpSniffedResponse(la::avdecc::protocol::ProtocolInterface const* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Acmpdu const& acmpdu) noexcept = 0;
+		virtual void onAcmpSniffedResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept {}
 	};
 
 	virtual ~ProtocolInterface() noexcept = default;
@@ -140,6 +140,11 @@ public:
 	virtual Error sendAcmpCommand(Acmpdu::UniquePointer&& acmpdu, AcmpCommandResultHandler const& onResult) const noexcept = 0;
 	/** Sends an ACMP response message. */
 	virtual Error sendAcmpResponse(Acmpdu::UniquePointer&& acmpdu) const noexcept = 0;
+
+	/** BasicLockable concept 'lock' method for the whole ProtocolInterface */
+	virtual void lock() noexcept = 0;
+	/** BasicLockable concept 'unlock' method for the whole ProtocolInterface */
+	virtual void unlock() noexcept = 0;
 
 	// Deleted compiler auto-generated methods
 	ProtocolInterface(ProtocolInterface&&) = delete;

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -119,14 +119,14 @@ TEST(AemPayloads, GetStreamFormatResponse)
 
 TEST(AemPayloads, SetStreamInfoCommand)
 {
-	la::avdecc::entity::model::StreamInfo streamInfo{ la::avdecc::operator|(la::avdecc::entity::StreamInfoFlags::Connected, la::avdecc::entity::StreamInfoFlags::SavedState), la::avdecc::entity::model::StreamFormat(16132), la::avdecc::UniqueIdentifier(5), std::uint32_t(52), la::avdecc::networkInterface::MacAddress{1,2,3,4,5,6}, std::uint8_t(8), la::avdecc::UniqueIdentifier(99), std::uint16_t(1) };
+	la::avdecc::entity::model::StreamInfo streamInfo{ la::avdecc::entity::StreamInfoFlags::Connected | la::avdecc::entity::StreamInfoFlags::SavedState, la::avdecc::entity::model::StreamFormat(16132), la::avdecc::UniqueIdentifier(5), std::uint32_t(52), la::avdecc::networkInterface::MacAddress{1,2,3,4,5,6}, std::uint8_t(8), la::avdecc::UniqueIdentifier(99), std::uint16_t(1) };
 	CHECK_PAYLOAD(SetStreamInfoCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::StreamInfo{});
 	CHECK_PAYLOAD(SetStreamInfoCommand, la::avdecc::entity::model::DescriptorType::StreamInput, la::avdecc::entity::model::DescriptorIndex(5), streamInfo);
 }
 
 TEST(AemPayloads, SetStreamInfoResponse)
 {
-	la::avdecc::entity::model::StreamInfo streamInfo{ la::avdecc::operator|(la::avdecc::entity::StreamInfoFlags::Connected, la::avdecc::entity::StreamInfoFlags::SavedState), la::avdecc::entity::model::StreamFormat(16132), la::avdecc::UniqueIdentifier(5), std::uint32_t(52), la::avdecc::networkInterface::MacAddress{ 1,2,3,4,5,6 }, std::uint8_t(8), la::avdecc::UniqueIdentifier(99), std::uint16_t(1) };
+	la::avdecc::entity::model::StreamInfo streamInfo{ la::avdecc::entity::StreamInfoFlags::Connected | la::avdecc::entity::StreamInfoFlags::SavedState, la::avdecc::entity::model::StreamFormat(16132), la::avdecc::UniqueIdentifier(5), std::uint32_t(52), la::avdecc::networkInterface::MacAddress{ 1,2,3,4,5,6 }, std::uint8_t(8), la::avdecc::UniqueIdentifier(99), std::uint16_t(1) };
 	CHECK_PAYLOAD(SetStreamInfoResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::StreamInfo{});
 	CHECK_PAYLOAD(SetStreamInfoResponse, la::avdecc::entity::model::DescriptorType::StreamInput, la::avdecc::entity::model::DescriptorIndex(5), streamInfo);
 }
@@ -139,7 +139,7 @@ TEST(AemPayloads, GetStreamInfoCommand)
 
 TEST(AemPayloads, GetStreamInfoResponse)
 {
-	la::avdecc::entity::model::StreamInfo streamInfo{ la::avdecc::operator|(la::avdecc::entity::StreamInfoFlags::Connected, la::avdecc::entity::StreamInfoFlags::SavedState), la::avdecc::entity::model::StreamFormat(16132), la::avdecc::UniqueIdentifier(5), std::uint32_t(52), la::avdecc::networkInterface::MacAddress{ 1,2,3,4,5,6 }, std::uint8_t(8), la::avdecc::UniqueIdentifier(99), std::uint16_t(1) };
+	la::avdecc::entity::model::StreamInfo streamInfo{ la::avdecc::entity::StreamInfoFlags::Connected | la::avdecc::entity::StreamInfoFlags::SavedState, la::avdecc::entity::model::StreamFormat(16132), la::avdecc::UniqueIdentifier(5), std::uint32_t(52), la::avdecc::networkInterface::MacAddress{ 1,2,3,4,5,6 }, std::uint8_t(8), la::avdecc::UniqueIdentifier(99), std::uint16_t(1) };
 	CHECK_PAYLOAD(GetStreamInfoResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::StreamInfo{});
 	CHECK_PAYLOAD(GetStreamInfoResponse, la::avdecc::entity::model::DescriptorType::StreamInput, la::avdecc::entity::model::DescriptorIndex(5), streamInfo);
 }
@@ -246,7 +246,25 @@ TEST(AemPayloads, ReadDescriptorCommand)
 	CHECK_PAYLOAD(ReadDescriptorCommand, la::avdecc::entity::model::ConfigurationIndex(123), la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
 }
 
-#pragma message("TBD: ReadDescriptorResponse tests")
+#pragma message("TODO: ReadDescriptorResponse tests")
+
+TEST(AemPayloads, GetAvbInfoCommand)
+{
+	CHECK_PAYLOAD(GetAvbInfoCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0));
+	CHECK_PAYLOAD(GetAvbInfoCommand, la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
+}
+
+TEST(AemPayloads, GetAvbInfoResponse)
+{
+	la::avdecc::entity::model::AvbInfo avbInfo{ la::avdecc::getUninitializedIdentifier(), std::uint32_t(5), std::uint8_t(2), la::avdecc::entity::AvbInfoFlags::AsCapable, la::avdecc::entity::model::MsrpMappings{} };
+	EXPECT_NO_THROW(
+		auto const ser = la::avdecc::protocol::aemPayload::serializeGetAvbInfoResponse(la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), avbInfo);
+		EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemGetAvbInfoResponsePayloadMinSize, ser.size());
+		auto result = la::avdecc::protocol::aemPayload::deserializeGetAvbInfoResponse({ ser.data(), ser.usedBytes() });
+		auto const& info = std::get<2>(result);
+		EXPECT_EQ(avbInfo, info);
+	) << "Serialization/deserialization should not throw anything";
+}
 
 TEST(AemPayloads, GetAudioMapCommand)
 {

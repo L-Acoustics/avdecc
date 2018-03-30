@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -33,6 +33,7 @@
 #include "la/avdecc/internals/endian.hpp"
 #include "la/avdecc/utils.hpp"
 #include "la/avdecc/internals/entityModel.hpp"
+#include "la/avdecc/networkInterfaceHelper.hpp"
 
 namespace la
 {
@@ -104,20 +105,14 @@ public:
 	/** Serializes an AvdeccFixedString (without changing endianess) */
 	Serializer& operator<<(entity::model::AvdeccFixedString const& v)
 	{
-		auto const size = v.size();
+		packBuffer(v.data(), v.size());
+		return *this;
+	}
 
-		// Check enough room in buffer
-		if (remaining() < size)
-		{
-			throw std::invalid_argument("Not enough room to serialize");
-		}
-
-		// Copy data to buffer
-		std::memcpy(_buffer.data() + _pos, v.data(), size);
-
-		// Advance data pointer
-		_pos += size;
-
+	/** Serializes a MacAddress (without changing endianess) */
+	Serializer& operator<<(networkInterface::MacAddress const& v)
+	{
+		packBuffer(v.data(), v.size());
 		return *this;
 	}
 
@@ -215,21 +210,14 @@ public:
 	/** Unpacks an AvdeccFixedString (without changing endianess) */
 	Deserializer& operator>>(entity::model::AvdeccFixedString& v)
 	{
-		auto const size = v.size();
+		unpackBuffer(v.data(), v.size());
+		return *this;
+	}
 
-		// Check enough remaining data in buffer
-		if (remaining() < size)
-		{
-			throw std::invalid_argument("Not enough data to deserialize");
-		}
-
-		// Copy to AvdeccFixedString
-		auto const* const ptr = static_cast<std::uint8_t const*>(_ptr) + _pos;
-		v.assign(ptr, size);
-
-		// Advance data pointer
-		_pos += size;
-
+	/** Unpacks a MacAddress (without changing endianess) */
+	Deserializer& operator>>(networkInterface::MacAddress& v)
+	{
+		unpackBuffer(v.data(), v.size());
 		return *this;
 	}
 

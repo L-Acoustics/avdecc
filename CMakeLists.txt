@@ -1,15 +1,15 @@
 # Avdecc Library
 
 # Minimum CMake version
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.9)
 
 ############ Versioning
 
 # Using Semantic Versioning (http://semver.org/spec/v2.0.0.html)
 # Project version number x.y.z on main branch, x.y.z.w on dev and task branches
 # Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task)
-set(LA_AVDECC_VERSION 2.2.0)
-set(LA_AVDECC_CONTROLLER_VERSION 2.2.0)
+set(LA_AVDECC_VERSION 2.3.0)
+set(LA_AVDECC_CONTROLLER_VERSION 2.3.0)
 
 ############ Override from command line "CMake -D<OPTION>=TRUE/FALSE/0/1/ON/OFF"
 
@@ -37,6 +37,7 @@ option(ENABLE_AVDECC_SIGNING "Enable binaries signing." FALSE)
 # Compatibility options
 option(IGNORE_INVALID_CONTROL_DATA_LENGTH "Allow messages with an invalid advertised 'Control Data Length' field." TRUE) # Required for Motu devices sending invalid response messages
 option(IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES "Allow invalid AEM non-success responses messages." TRUE) # Required for Motu/Tesira devices sending invalid error response messages
+option(IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS "Allow Entities not supporting Dynamic Mapping and not adversiting AUDIO_MAP." TRUE) # Required for Tesira devices not implementing Dynamic Mappings and not advertising any static map
 
 ############ CMake configuration
 
@@ -147,7 +148,7 @@ if(BUILD_AVDECC_EXAMPLES)
 endif()
 
 # Add tests
-if(BUILD_AVDECC_TESTS)
+if(BUILD_AVDECC_TESTS AND NOT VS_USE_CLANG)
 	message(STATUS "Building unit tests")
 	# Setup gtest options
 	set(gtest_force_shared_crt ON CACHE BOOL "For shared crt for gtest" FORCE)

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -61,7 +61,7 @@ constexpr T clearMask()
 	return std::integral_constant<T, ~(contiguousBitMask<FirstBit, LastBit, T>())>::value;
 }
 
-#pragma message("TBD: Make this template works on all endianess")
+#pragma message("TODO: Make this template works on all endianess")
 template<std::uint8_t FirstBit, std::uint8_t LastBit, typename T = std::uint8_t>
 T getField(StreamFormat const& format) noexcept
 {
@@ -109,7 +109,7 @@ public:
 
 	virtual StreamFormat getAdaptedStreamFormat(std::uint16_t const channelsCount) const noexcept override
 	{
-		assert(_upToChannelsCount == false && "getAdaptedStreamFormat must be specialized for StreamFormat supported upToChannelsCount");
+		AVDECC_ASSERT(_upToChannelsCount == false, "getAdaptedStreamFormat must be specialized for StreamFormat supported upToChannelsCount");
 		if (channelsCount != _channelsCount)
 			return getNullStreamFormat();
 		return getStreamFormat();
@@ -145,6 +145,37 @@ public:
 		return _useSynchronousClock;
 	}
 
+	virtual std::uint16_t getSampleSize() const noexcept override
+	{
+		switch (_sampleFormat)
+		{
+			case SampleFormat::Int8:
+				return 8;
+			case SampleFormat::Int16:
+				return 16;
+			case SampleFormat::Int24:
+				return 24;
+			case SampleFormat::Int32:
+				return 32;
+			case SampleFormat::Int64:
+				return 64;
+			case SampleFormat::FixedPoint32:
+				return 32;
+			case SampleFormat::FloatingPoint32:
+				return 32;
+			case SampleFormat::Unknown:
+				return 0u;
+			default:
+				AVDECC_ASSERT(false, "Unhandled SampleFormat");
+				return 0u;
+		}
+	}
+
+	virtual std::uint16_t getSampleBitDepth() const noexcept override
+	{
+		return _sampleDepth;
+	}
+
 	virtual void destroy() noexcept override
 	{
 		delete this;
@@ -153,11 +184,12 @@ public:
 protected:
 	StreamFormat _streamFormat{ 0 };
 	StreamFormatInfo::Type _type{ StreamFormatInfo::Type::Unsupported };
-	std::uint16_t _channelsCount{ 0 };
+	std::uint16_t _channelsCount{ 0u };
 	bool _upToChannelsCount{ false };
 	StreamFormatInfo::SamplingRate _samplingRate{ StreamFormatInfo::SamplingRate::Unknown };
 	StreamFormatInfo::SampleFormat _sampleFormat{ StreamFormatInfo::SampleFormat::Unknown };
 	bool _useSynchronousClock{ false };
+	std::uint16_t _sampleDepth{ 0u };
 };
 
 /** None stream format */
@@ -243,6 +275,7 @@ public:
 		: StreamFormatInfoIEC_61883_6(streamFormat, fdf_sfc, dbs, b, nb, ut, sc), _label_iec_60958_cnt(label_iec_60958_cnt), _label_mbla_cnt(label_mbla_cnt), _label_midi_cnt(label_midi_cnt), _label_smptecnt(label_smptecnt)
 	{
 		_sampleFormat = SampleFormat::Int24;
+		_sampleDepth = 24;
 		
 		// Prevent compilation warning (unused private field)
 		(void)_label_iec_60958_cnt;
@@ -332,7 +365,7 @@ class StreamFormatInfoAAF_PCM final : public StreamFormatInfoAAF
 {
 public:
 	StreamFormatInfoAAF_PCM(StreamFormat const& streamFormat, bool const ut, std::uint8_t const nsr, std::uint8_t const format, std::uint8_t const bit_depth, std::uint16_t const channels_per_frame, std::uint16_t const samples_per_frame)
-		: StreamFormatInfoAAF(streamFormat, ut, nsr), _bit_depth(bit_depth), _samples_per_frame(samples_per_frame)
+		: StreamFormatInfoAAF(streamFormat, ut, nsr), _samples_per_frame(samples_per_frame)
 	{
 		_channelsCount = channels_per_frame;
 		switch (format)
@@ -349,9 +382,9 @@ public:
 			default:
 				throw std::invalid_argument("Unsupported AAF PCM format value");
 		}
+		_sampleDepth = bit_depth;
 
 		// Prevent compilation warning (unused private field)
-		(void)_bit_depth;
 		(void)_samples_per_frame;
 	}
 
@@ -374,7 +407,6 @@ public:
 	}
 
 private:
-	std::uint8_t _bit_depth{ 0 };
 	std::uint16_t _samples_per_frame{ 0 };
 };
 
@@ -414,6 +446,7 @@ public:
 				throw std::invalid_argument("Unsupported CRF base_frequency value");
 		}
 		_sampleFormat = SampleFormat::Int64;
+		_sampleDepth = 64;
 		_useSynchronousClock = true;
 		switch (crf_type)
 		{
@@ -504,8 +537,8 @@ StreamFormatInfo* LA_AVDECC_CALL_CONVENTION StreamFormatInfo::createRawStreamFor
 									auto const label_midi_cnt = getField<56, 59>(streamFormat);
 									auto const label_smptecnt = getField<60, 63>(streamFormat);
 									// The sum of the 4 fields must be equal to dbs
-									assert((label_iec_60958_cnt + label_mbla_cnt + label_midi_cnt + label_smptecnt) == dbs);
-									assert(label_mbla_cnt == dbs); // We assume all bits are in mbla, but it might not be true
+									AVDECC_ASSERT((label_iec_60958_cnt + label_mbla_cnt + label_midi_cnt + label_smptecnt) == dbs, "The sum of the 4 fields must be equal to dbs");
+									AVDECC_ASSERT(label_mbla_cnt == dbs, "We assume all bits are in mbla, but it might not be true");
 									return new StreamFormatInfoIEC_61883_6_AM824(streamFormat, fdf_sfc, dbs, b != 0, nb != 0, ut != 0, sc != 0, label_iec_60958_cnt, label_mbla_cnt, label_midi_cnt, label_smptecnt);
 								}
 								default:
@@ -556,9 +589,33 @@ StreamFormatInfo* LA_AVDECC_CALL_CONVENTION StreamFormatInfo::createRawStreamFor
 	}
 	catch (...)
 	{
-		// TBD: Catch and log the invalid_argument exception. Maybe re-throw, instead of having this method noexcept
+		// TODO: Catch and log the invalid_argument exception. Maybe re-throw, instead of having this method noexcept
 	}
 	return new StreamFormatInfoBase<>(streamFormat, Type::Unsupported); // Unsupported
+}
+
+bool LA_AVDECC_CALL_CONVENTION StreamFormatInfo::isListenerFormatCompatibleWithTalkerFormat(StreamFormat const& listenerStreamFormat, StreamFormat const& talkerStreamFormat) noexcept
+{
+	auto lFormatInfo = StreamFormatInfo::create(listenerStreamFormat);
+	auto tFormatInfo = StreamFormatInfo::create(talkerStreamFormat);
+
+	if (lFormatInfo->getType() == tFormatInfo->getType() // Same type
+			&& lFormatInfo->getChannelsCount() == tFormatInfo->getChannelsCount() // Same channels count
+			&& !lFormatInfo->isUpToChannelsCount() // Not an up-to channels count format (has to be an Adapted one)
+			&& !tFormatInfo->isUpToChannelsCount() // Not an up-to channels count format (has to be an Adapted one)
+			&& lFormatInfo->getSamplingRate() == tFormatInfo->getSamplingRate() // Same sampling rate
+			&& lFormatInfo->getSampleFormat() == tFormatInfo->getSampleFormat() // Same sample format
+			// Ignore SampleBitDepth, because it only affects quality, not compatibility
+			)
+	{
+		// Check clock sync compatibility (All accepted except if Talker is Async and Listener is Sync)
+		if (tFormatInfo->useSynchronousClock() || !lFormatInfo->useSynchronousClock())
+		{
+			return true;
+		}
+	}
+
+	return false;
 }
 
 } // namespace model

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -198,7 +198,7 @@ EndStation* LA_AVDECC_CALL_CONVENTION EndStation::createRawEndStation(ProtocolIn
 #endif // HAVE_PROTOCOL_INTERFACE_MAC
 #if defined(HAVE_PROTOCOL_INTERFACE_PROXY)
 			case ProtocolInterfaceType::Proxy:
-				assert(false && "TBD: Proxy protocol interface to create");
+				AVDECC_ASSERT(false, "TODO: Proxy protocol interface to create");
 				break;
 #endif // HAVE_PROTOCOL_INTERFACE_PROXY
 #if defined(HAVE_PROTOCOL_INTERFACE_VIRTUAL)
@@ -226,7 +226,7 @@ EndStation* LA_AVDECC_CALL_CONVENTION EndStation::createRawEndStation(ProtocolIn
 			case protocol::ProtocolInterface::Error::InterfaceNotSupported:
 				throw Exception(Error::InvalidProtocolInterfaceType, e.what());
 			default:
-				assert(false && "Unhandled exception");
+				AVDECC_ASSERT(false, "Unhandled exception");
 				throw Exception(Error::InternalError, e.what());
 		}
 	}

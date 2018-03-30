@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -140,13 +140,13 @@ public:
 	// BasicLockable concept lock method
 	void lock() noexcept override
 	{
-		_lock.lock();
+		_protocolInterface->lock();
 	}
 
 	// BasicLockable concept unlock method
 	void unlock() noexcept override
 	{
-		_lock.unlock();
+		_protocolInterface->unlock();
 	}
 
 protected:

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -51,6 +51,9 @@ public:
 
 	/** Destructor */
 	virtual ~ProtocolInterfaceVirtual() noexcept = default;
+
+	/** Force a transport error on the interface */
+	virtual void forceTransportError() const noexcept = 0;
 
 	// Deleted compiler auto-generated methods
 	ProtocolInterfaceVirtual(ProtocolInterfaceVirtual&&) = delete;

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -291,12 +291,12 @@ int doJob()
 			}
 		}
 		/* Connection Management Protocol sniffed messages (ACMP) */
-		virtual void onConnectStreamSniffed(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const talkerEntityID, la::avdecc::entity::model::StreamIndex const /*talkerStreamIndex*/, la::avdecc::UniqueIdentifier const listenerEntityID, la::avdecc::entity::model::StreamIndex const /*listenerStreamIndex*/, uint16_t const /*connectionCount*/, la::avdecc::entity::ConnectionFlags const /*flags*/, la::avdecc::entity::ControllerEntity::ControlStatus const status) noexcept override
+		virtual void onControllerConnectResponseSniffed(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, la::avdecc::entity::ConnectionFlags const /*flags*/, la::avdecc::entity::ControllerEntity::ControlStatus const status) noexcept override
 		{
 			try
 			{
 				std::stringstream ss;
-				ss << std::hex << "Stream connect status (" << la::avdecc::toHexString(listenerEntityID, true) << " -> " << la::avdecc::toHexString(talkerEntityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
+				ss << std::hex << "Stream connect status (" << la::avdecc::toHexString(listenerStream.entityID, true) << " -> " << la::avdecc::toHexString(talkerStream.entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
 				outputText(ss.str());
 			}
 			catch (...)
@@ -304,12 +304,12 @@ int doJob()
 				outputText("Uncaught exception in onConnectStreamSniffed");
 			}
 		}
-		virtual void onDisconnectStreamSniffed(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const talkerEntityID, la::avdecc::entity::model::StreamIndex const /*talkerStreamIndex*/, la::avdecc::UniqueIdentifier const listenerEntityID, la::avdecc::entity::model::StreamIndex const /*listenerStreamIndex*/, uint16_t const /*connectionCount*/, la::avdecc::entity::ConnectionFlags const /*flags*/, la::avdecc::entity::ControllerEntity::ControlStatus const status) noexcept override
+		virtual void onControllerDisconnectResponseSniffed(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, la::avdecc::entity::ConnectionFlags const /*flags*/, la::avdecc::entity::ControllerEntity::ControlStatus const status) noexcept override
 		{
 			try
 			{
 				std::stringstream ss;
-				ss << std::hex << "Stream disconnect status (" << la::avdecc::toHexString(listenerEntityID, true) << " -> " << la::avdecc::toHexString(talkerEntityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
+				ss << std::hex << "Stream disconnect status (" << la::avdecc::toHexString(listenerStream.entityID, true) << " -> " << la::avdecc::toHexString(talkerStream.entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
 				outputText(ss.str());
 			}
 			catch (...)
@@ -317,7 +317,7 @@ int doJob()
 				outputText("Uncaught exception in onDisconnectStreamSniffed");
 			}
 		}
-		virtual void onGetListenerStreamStateSniffed(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const /*listenerEntityID*/, la::avdecc::entity::model::StreamIndex const /*listenerStreamIndex*/, la::avdecc::UniqueIdentifier const /*talkerEntityID*/, la::avdecc::entity::model::StreamIndex const /*talkerStreamIndex*/, uint16_t const /*connectionCount*/, la::avdecc::entity::ConnectionFlags const /*flags*/, la::avdecc::entity::ControllerEntity::ControlStatus const /*status*/) noexcept override
+		virtual void onGetListenerStreamStateResponseSniffed(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::entity::model::StreamIdentification const& /*talkerStream*/, la::avdecc::entity::model::StreamIdentification const& /*listenerStream*/, uint16_t const /*connectionCount*/, la::avdecc::entity::ConnectionFlags const /*flags*/, la::avdecc::entity::ControllerEntity::ControlStatus const /*status*/) noexcept override
 		{
 			try
 			{

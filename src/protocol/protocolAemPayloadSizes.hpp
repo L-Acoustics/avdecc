@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -58,9 +58,31 @@ constexpr size_t AecpAemReadDescriptorCommandPayloadSize = 8u;
 constexpr size_t AecpAemReadCommonDescriptorResponsePayloadSize = 8u;
 constexpr size_t AecpAemReadEntityDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 308u;
 constexpr size_t AecpAemReadConfigurationDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 70u;
+constexpr size_t AecpAemReadAudioUnitDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 140u;
 constexpr size_t AecpAemReadStreamDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 128u;
+constexpr size_t AecpAemReadJackDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 74u;
+constexpr size_t AecpAemReadAvbInterfaceDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 94u;
+constexpr size_t AecpAemReadClockSourceDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 82u;
+constexpr size_t AecpAemReadMemoryObjectDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 96u;
 constexpr size_t AecpAemReadLocaleDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 68u;
 constexpr size_t AecpAemReadStringsDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 448u;
+constexpr size_t AecpAemReadStreamPortDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 16u;
+constexpr size_t AecpAemReadExternalPortDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 20u;
+constexpr size_t AecpAemReadInternalPortDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 20u;
+constexpr size_t AecpAemReadAudioClusterDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 83u;
+constexpr size_t AecpAemReadAudioMapDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 4u;
+constexpr size_t AecpAemReadControlDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 100u;
+constexpr size_t AecpAemReadSignalSelectorDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 92u;
+constexpr size_t AecpAemReadMixerDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 84u;
+constexpr size_t AecpAemReadMatrixDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 98u;
+constexpr size_t AecpAemReadMatrixSignalDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 4u;
+constexpr size_t AecpAemReadSignalSplitterDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 88u;
+constexpr size_t AecpAemReadSignalCombinerDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 84u;
+constexpr size_t AecpAemReadSignalDemultiplexerDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 88u;
+constexpr size_t AecpAemReadSignalMultiplexerDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 84u;
+constexpr size_t AecpAemReadSignalTranscoderDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 88u;
+constexpr size_t AecpAemReadClockDomainDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 72u;
+constexpr size_t AecpAemReadControlBlockDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 72u;
 
 /** SET_CONFIGURATION Command and Response - Clause 7.4.7.1 */
 constexpr size_t AecpAemSetConfigurationCommandPayloadSize = 4u;

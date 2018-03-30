@@ -49,6 +49,7 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTypes.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/exception.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/exports.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/instrumentationNotifier.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolDefines.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/streamFormat.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityEnums.hpp
@@ -213,9 +214,11 @@ set (LIB_SOURCE_FILES ${SOURCE_FILES_COMMON} ${SOURCE_FILES_PROTOCOL} ${SOURCE_F
 if(BUILD_AVDECC_LIB_SHARED_CXX)
 	set (LIB_SHARED_CXX_SOURCE_FILES ${LIB_SOURCE_FILES})
 	add_library(la_avdecc_cxx SHARED ${LIB_HEADER_FILES} ${LIB_SHARED_CXX_SOURCE_FILES} ${SHARED_LIBRARY_FILES})
-	target_link_libraries(la_avdecc_cxx PRIVATE ${ADD_LINK_LIBS})
 	if(ADD_COMPILE_OPTIONS)
 		target_compile_options(la_avdecc_cxx PRIVATE ${ADD_COMPILE_OPTIONS})
+	endif()
+	if(ADD_LINK_LIBS)
+		target_link_libraries(la_avdecc_cxx PRIVATE ${ADD_LINK_LIBS})
 	endif()
 
 	# Setup common options
@@ -240,7 +243,9 @@ if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 	if(ADD_COMPILE_OPTIONS)
 		target_compile_options(la_avdecc_static PRIVATE ${ADD_COMPILE_OPTIONS})
 	endif()
-	target_link_libraries(la_avdecc_static PUBLIC ${ADD_LINK_LIBS})
+	if(ADD_LINK_LIBS)
+		target_link_libraries(la_avdecc_static PUBLIC ${ADD_LINK_LIBS})
+	endif()
 
 	# Setup common library options
 	setup_library_options(la_avdecc_static "la_avdecc")

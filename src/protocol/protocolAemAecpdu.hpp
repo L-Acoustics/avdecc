@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -75,7 +75,7 @@ public:
 		_commandSpecificDataLength = commandSpecificDataLength;
 		if (_commandSpecificDataLength > 0)
 		{
-			assert(commandSpecificData != nullptr && "commandSpecificData is nullptr");
+			AVDECC_ASSERT(commandSpecificData != nullptr, "commandSpecificData is nullptr");
 			memcpy(_commandSpecificData.data(), commandSpecificData, _commandSpecificDataLength);
 		}
 		// Don't forget to update parent's specific data length field

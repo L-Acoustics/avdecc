@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -32,6 +32,8 @@
 #if defined(__unix__)
 #include <pthread.h>
 #endif // __unix__
+#include <iostream>
+#include <cstdio>
 
 namespace la
 {
@@ -80,6 +82,78 @@ bool LA_AVDECC_CALL_CONVENTION setCurrentThreadName(std::string const& name)
 	(void)name;
 	return false;
 #endif // !WIN32 && ! __APPLE__ && ! __unix__
+}
+
+static bool s_enableAssert = true;
+
+void LA_AVDECC_CALL_CONVENTION enableAssert() noexcept
+{
+	s_enableAssert = true;
+}
+
+void LA_AVDECC_CALL_CONVENTION disableAssert() noexcept
+{
+	s_enableAssert = false;
+}
+
+bool LA_AVDECC_CALL_CONVENTION isAssertEnabled() noexcept
+{
+	return s_enableAssert;
+}
+
+void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsigned const line, char const* const message, va_list arg) noexcept
+{
+	bool shouldBreak{ true };
+	bool shouldAbort{ true };
+	try
+	{
+		char buffer[2048];
+		auto offset = std::snprintf(buffer, sizeof(buffer), "Debug Assertion Failed!\n\nFile: %s\nLine: %u\n\n\t", file, line);
+		if (offset < sizeof(buffer) - 1)
+		{
+			offset += std::vsnprintf(buffer + offset, sizeof(buffer) - offset, message, arg);
+			buffer[sizeof(buffer) - 1] = 0; // Contrary to std::snprintf, std::vsnprintf does not add \0 if there is not enough room
+
+			std::cerr << buffer << std::endl;
+
+			if (offset < sizeof(buffer) - 1)
+			{
+				offset += std::snprintf(buffer + offset, sizeof(buffer) - offset,
+																"\n"
+																"\n"
+																"Press 'Abort' to abort immediately\n"
+																"Press 'Retry' to debug the program\n"
+																"Press 'Ignore' to try to continue normal execution\n");
+			}
+		}
+#ifdef _WIN32
+		if (IsDebuggerPresent())
+		{
+			shouldBreak = true; // Always call DebugBreak if debugger is attached
+			shouldAbort = false; // Always try to continue if debugger is attached
+		}
+		else
+		{
+			auto const value = MessageBox(nullptr, buffer, "Assert", MB_ABORTRETRYIGNORE | MB_ICONERROR);
+			shouldBreak = (value == IDRETRY);
+			shouldAbort = (value == IDABORT);
+		}
+#endif // _WIN32
+	}
+	catch (...)
+	{
+		std::cerr << "Assert at " << file << ":" << std::to_string(line) << " -> " << message << " (WARNING: Exception during va_arg expansion)" << std::endl;
+	}
+	if (shouldBreak)
+	{
+#ifdef _WIN32
+		DebugBreak();
+#endif
+	}
+	if (shouldAbort)
+	{
+		std::abort();
+	}
 }
 
 } // namespace avdecc

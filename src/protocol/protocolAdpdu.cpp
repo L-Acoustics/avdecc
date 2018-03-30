@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -61,19 +61,17 @@ void Adpdu::serialize(SerializationBuffer& buffer) const
 	buffer << _gptpGrandmasterID << static_cast<std::uint32_t>(((_gptpDomainNumber << 24) & 0xff000000) | (reserved0 & 0x00ffffff));
 	buffer << _identifyControlIndex << _interfaceIndex << _associationID << reserved1;
 
-	if ((buffer.size() - previousSize) != Length)
+	if (!AVDECC_ASSERT_WITH_RET((buffer.size() - previousSize) == Length, "Adpdu::serialize error: Packed buffer length != expected header length"))
 	{
 		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Error, "Adpdu::serialize error: Packed buffer length != expected header length");
-		assert((buffer.size() - previousSize) == Length && "Adpdu::serialize error: Packed buffer length != expected header length");
 	}
 }
 
 void Adpdu::deserialize(DeserializationBuffer& buffer)
 {
-	if (buffer.remaining() < Length)
+	if (!AVDECC_ASSERT_WITH_RET(buffer.remaining() >= Length, "Adpdu::deserialize error: Not enough data in buffer"))
 	{
 		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Error, "Adpdu::deserialize error: Not enough data in buffer");
-		assert(buffer.remaining() >= Length && "Adpdu::deserialize error: Not enough data in buffer");
 		throw std::invalid_argument("Not enough data to deserialize");
 	}
 

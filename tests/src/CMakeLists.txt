@@ -21,7 +21,9 @@ set(TESTS_SOURCE
 	aemPayloads_tests.cpp
 	any_tests.cpp
 	avdeccFixedString_tests.cpp
+	controllerEntity_tests.cpp
 	controllerStateMachine_tests.cpp
+	instrumentationObserver.hpp
 	protocolAvtpdu_tests.cpp
 	protocolInterface_pcap_tests.cpp
 	protocolInterface_virtual_tests.cpp
@@ -29,12 +31,12 @@ set(TESTS_SOURCE
 )
 list(APPEND ADD_LINK_LIBRARIES la_avdecc_static)
 
-#if(BUILD_AVDECC_CONTROLLER)
-#	list(APPEND TESTS_SOURCE
-#		controller_tests.cpp
-#	)
-#	list(APPEND ADD_LINK_LIBRARIES la_avdecc_controller_static)
-#endif()
+if(BUILD_AVDECC_CONTROLLER)
+	list(APPEND TESTS_SOURCE
+		avdeccController_tests.cpp
+	)
+	list(APPEND ADD_LINK_LIBRARIES la_avdecc_controller_static)
+endif()
 
 add_executable(Tests ${TESTS_SOURCE})
 set_target_properties(Tests PROPERTIES FOLDER "Tests")

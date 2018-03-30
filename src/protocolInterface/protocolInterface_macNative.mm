@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -102,6 +102,8 @@ struct EntityQueues
 -(BOOL)discoverRemoteEntity:(la::avdecc::UniqueIdentifier)entityID;
 -(la::avdecc::protocol::ProtocolInterface::Error)sendAecpCommand:(la::avdecc::protocol::Aecpdu::UniquePointer&&)aecpdu macAddress:(la::avdecc::networkInterface::MacAddress const&)macAddress handler:(la::avdecc::protocol::ProtocolInterface::AecpCommandResultHandler const&)onResult;
 -(la::avdecc::protocol::ProtocolInterface::Error)sendAcmpCommand:(la::avdecc::protocol::Acmpdu::UniquePointer&&)acmpdu handler:(la::avdecc::protocol::ProtocolInterface::AcmpCommandResultHandler const&)onResult;
+-(void)lock;
+-(void)unlock;
 
 // Variables
 @property (retain) AVBInterface* interface;
@@ -129,7 +131,7 @@ namespace la
 				: ProtocolInterfaceMacNative(networkInterfaceName)
 				{
 					// Should not be there if the interface is not supported
-					assert(isSupported());
+					AVDECC_ASSERT(isSupported(), "Should not be there if the interface is not supported");
 
 					auto* intName = [BridgeInterface getNSString:networkInterfaceName];
 					
@@ -232,7 +234,7 @@ namespace la
 				
 				virtual Error sendAecpResponse(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& /*macAddress*/) const noexcept override
 				{
-					assert(false && "TBD: To be implemented");
+					AVDECC_ASSERT(false, "TBD: To be implemented");
 					return ProtocolInterface::Error::InternalError;
 				}
 				
@@ -243,8 +245,18 @@ namespace la
 				
 				virtual Error sendAcmpResponse(Acmpdu::UniquePointer&& acmpdu) const noexcept override
 				{
-					assert(false && "TBD: To be implemented");
+					AVDECC_ASSERT(false, "TBD: To be implemented");
 					return ProtocolInterface::Error::InternalError;
+				}
+				
+				virtual void lock() noexcept override
+				{
+					[_bridge lock];
+				}
+				
+				virtual void unlock() noexcept override
+				{
+					[_bridge unlock];
 				}
 				
 			private:
@@ -454,7 +466,7 @@ namespace la
 				return la::avdecc::protocol::ProtocolInterface::Error::UnknownLocalEntity;
 			default:
 				NSLog(@"Not handled IOReturn error code: %x\n", code);
-				assert(false && "Not handled error code");
+				AVDECC_ASSERT(false, "Not handled error code");
 				return la::avdecc::protocol::ProtocolInterface::Error::TransportError;
 		}
 	}
@@ -472,7 +484,7 @@ namespace la
 {
 	{
 		std::lock_guard<decltype(_lockPending)> const lg(_lockPending);
-		assert(_pendingCommands > 0 && "Trying to stop async operation, but there is no pending operation");
+		AVDECC_ASSERT(_pendingCommands > 0, "Trying to stop async operation, but there is no pending operation");
 		_pendingCommands--;
 	}
 	_pendingCondVar.notify_all();
@@ -486,7 +498,7 @@ namespace la
 	{
 		return _pendingCommands == 0;
 	});
-	assert(_pendingCommands == 0 && "Waited for pending operations to complete, but there is some remaining one!");
+	AVDECC_ASSERT(_pendingCommands == 0, "Waited for pending operations to complete, but there is some remaining one!");
 }
 
 /** Initializer */
@@ -576,7 +588,7 @@ namespace la
 	_localProcessEntities.insert(decltype(_localProcessEntities)::value_type(entityID, entity));
 
 	// Notify observers (creating a DiscoveredEntity from a LocalEntity)
-	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOnline, entity);
+	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOnline, _protocolInterface, entity);
 	
 		return la::avdecc::protocol::ProtocolInterface::Error::NoError;
 }
@@ -611,7 +623,7 @@ namespace la
 	_localProcessEntities.erase(entityID);
 
 	// Notify observers
-	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOffline, entityID);
+	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOffline, _protocolInterface, entityID);
 
 	return la::avdecc::protocol::ProtocolInterface::Error::NoError;
 }
@@ -693,7 +705,7 @@ namespace la
 			auto eqIt = _entityQueues.find(aem.getTargetEntityID());
 			if (eqIt == _entityQueues.end())
 			{
-				assert(false && "Should not happen");
+				AVDECC_ASSERT(false, "Should not happen");
 				return la::avdecc::protocol::ProtocolInterface::Error::UnknownRemoteEntity;
 			}
 			queue = eqIt->second.aecpQueue;
@@ -720,7 +732,7 @@ namespace la
 					 {
 						 if (kIOReturnSuccess == (IOReturn)error.code)
 						 {
-							 assert([message messageType] == AVB17221AECPMessageTypeAEMResponse && "AECP Response to our AEM Command is NOT an AEM Response!");
+							 AVDECC_ASSERT([message messageType] == AVB17221AECPMessageTypeAEMResponse, "AECP Response to our AEM Command is NOT an AEM Response!");
 							 auto aem = [BridgeInterface makeAemResponse:static_cast<AVB17221AECPAEMMessage*>(message)];
 							 resultHandler(aem.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
 						 }
@@ -744,7 +756,7 @@ namespace la
 	}
 	else
 	{
-		assert(false && "Not supported AECP message type");
+		AVDECC_ASSERT(false, "Not supported AECP message type");
 		return la::avdecc::protocol::ProtocolInterface::Error::InternalError;
 	}
 	return la::avdecc::protocol::ProtocolInterface::Error::NoError;
@@ -795,6 +807,16 @@ namespace la
 		return la::avdecc::protocol::ProtocolInterface::Error::TransportError;
 	}
 	return la::avdecc::protocol::ProtocolInterface::Error::NoError;
+}
+
+-(void)lock
+{
+	_lockEntities.lock();
+}
+
+-(void)unlock
+{
+	_lockEntities.unlock();
 }
 
 #pragma mark AVB17221EntityDiscoveryDelegate delegate
@@ -871,7 +893,7 @@ namespace la
 
 	// Notify observers
 	auto e = [BridgeInterface makeEntity:newEntity];
-	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOnline, e);
+	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOnline, _protocolInterface, e);
 }
 
 // Notification of a departing local computer entity
@@ -880,7 +902,7 @@ namespace la
 	[self deinitEntity:oldEntity.entityID];
 
 	// Notify observers
-	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOffline, oldEntity.entityID);
+	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOffline, _protocolInterface, oldEntity.entityID);
 }
 
 -(void)didRediscoverLocalEntity:(AVB17221Entity *)entity on17221EntityDiscovery:(AVB17221EntityDiscovery *)entityDiscovery
@@ -890,7 +912,7 @@ namespace la
 		std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
 		if (_registeredAcmpHandlers.find(entity.entityID) == _registeredAcmpHandlers.end())
 		{
-			assert(false && "didRediscoverLocalEntity: Entity not registered... I thought Rediscover was called when an entity announces itself again without any change in it's ADP info... Maybe simply call didAddLocalEntity");
+			AVDECC_ASSERT(false, "didRediscoverLocalEntity: Entity not registered... I thought Rediscover was called when an entity announces itself again without any change in it's ADP info... Maybe simply call didAddLocalEntity");
 			return;
 		}
 	}
@@ -909,12 +931,12 @@ namespace la
 	// If a change occured in a forbidden flag, simulate offline/online for this entity
 	if ((changedProperties & kAVB17221EntityPropertyChangedShouldntChangeMask) != 0)
 	{
-		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOffline, e.getEntityID());
-		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOnline, e);
+		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOffline, _protocolInterface, e.getEntityID());
+		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOnline, _protocolInterface, e);
 	}
 	else
 	{
-		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityUpdated, e);
+		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityUpdated, _protocolInterface, e);
 	}
 }
 
@@ -924,7 +946,7 @@ namespace la
 
 	// Notify observers
 	auto e = [BridgeInterface makeEntity:newEntity];
-	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOnline, e);
+	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOnline, _protocolInterface, e);
 }
 
 -(void)didRemoveRemoteEntity:(AVB17221Entity *)oldEntity on17221EntityDiscovery:(AVB17221EntityDiscovery *)entityDiscovery
@@ -932,7 +954,7 @@ namespace la
 	[self deinitEntity:oldEntity.entityID];
 
 	// Notify observers
-	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOffline, oldEntity.entityID);
+	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOffline, _protocolInterface, oldEntity.entityID);
 }
 
 -(void)didRediscoverRemoteEntity:(AVB17221Entity *)entity on17221EntityDiscovery:(AVB17221EntityDiscovery *)entityDiscovery
@@ -942,7 +964,7 @@ namespace la
 		std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
 		if (_registeredAcmpHandlers.find(entity.entityID) == _registeredAcmpHandlers.end())
 		{
-			assert(false && "didRediscoverRemoteEntity: Entity not registered... I thought Rediscover was called when an entity announces itself again without any change in it's ADP info... Maybe simply call didAddRemoteEntity");
+			AVDECC_ASSERT(false, "didRediscoverRemoteEntity: Entity not registered... I thought Rediscover was called when an entity announces itself again without any change in it's ADP info... Maybe simply call didAddRemoteEntity");
 			return;
 		}
 	}
@@ -961,12 +983,12 @@ namespace la
 	// If a change occured in a forbidden flag, simulate offline/online for this entity
 	if ((changedProperties & kAVB17221EntityPropertyChangedShouldntChangeMask) != 0)
 	{
-		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOffline, e.getEntityID());
-		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOnline, e);
+		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOffline, _protocolInterface, e.getEntityID());
+		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOnline, _protocolInterface, e);
 	}
 	else
 	{
-		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityUpdated, e);
+		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityUpdated, _protocolInterface, e);
 	}
 }
 
@@ -996,7 +1018,7 @@ namespace la
 			if (aemMessage.unsolicited)
 			{
 				auto aecpdu = [BridgeInterface makeAemResponse:aemMessage];
-				_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onAecpUnsolicitedResponse, entity, *aecpdu);
+				_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onAecpUnsolicitedResponse, _protocolInterface, entity, *aecpdu);
 				return YES;
 			}
 			break;
@@ -1026,7 +1048,7 @@ namespace la
 		// Entity is controller capable
 		if (la::avdecc::hasFlag(entity.getControllerCapabilities(), la::avdecc::entity::ControllerCapabilities::Implemented))
 		{
-			_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onAcmpSniffedCommand, entity, *acmpdu);
+			_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onAcmpSniffedCommand, _protocolInterface, entity, *acmpdu);
 			processedBySomeone = YES;
 		}
 	}
@@ -1052,7 +1074,7 @@ namespace la
 		// Entity is controller capable
 		if (la::avdecc::hasFlag(entity.getControllerCapabilities(), la::avdecc::entity::ControllerCapabilities::Implemented))
 		{
-			_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onAcmpSniffedResponse, entity, *acmpdu);
+			_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onAcmpSniffedResponse, _protocolInterface, entity, *acmpdu);
 			processedBySomeone = YES;
 		}
 	}
