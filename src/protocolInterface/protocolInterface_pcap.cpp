@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 

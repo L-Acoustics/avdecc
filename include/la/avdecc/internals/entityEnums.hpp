@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -189,6 +189,16 @@ enum class StreamInfoFlags : std::uint32_t
 	StreamFormatValid = 1u << 31, /**< The value in stream_format field is valid and is to be used to change the Stream format if it is a SET_STREAM_INFO command. */
 };
 
+/** AvbInfo Flags - Clause 7.4.40.2 */
+enum class AvbInfoFlags : std::uint8_t
+{
+	None = 0u,
+	AsCapable = 1u << 0, /**< The IEEE Std 802.1AS-2011 variable asCapable is set on this interface. */
+	GptpEnabled = 1u << 1, /**< Indicates that the interface has the IEEE Std 802.1AS-2011 functionality enabled. */
+	SrpEnabled = 1u << 2, /**< Indicates that the interface has the IEEE Std 802.1Q-2011 Clause 35, "Stream Reservation Protocol (SRP)" functionality enabled. */
+	/* Bits 0 to 4 reserved for future use */
+};
+
 } // namespace entity
 
 // Define bitfield enum traits for EntityCapabilities
@@ -264,6 +274,13 @@ struct enum_traits<entity::PortFlags>
 // Define bitfield enum traits for StreamInfoFlags
 template<>
 struct enum_traits<entity::StreamInfoFlags>
+{
+	static constexpr bool is_bitfield = true;
+};
+
+// Define bitfield enum traits for AvbInfoFlags
+template<>
+struct enum_traits<entity::AvbInfoFlags>
 {
 	static constexpr bool is_bitfield = true;
 };

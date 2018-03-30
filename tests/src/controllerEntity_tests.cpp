@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -66,7 +66,7 @@ TEST(ControllerEntity, DispatchWhileSending)
 	ASSERT_NE(std::future_status::timeout, status) << "Test conception failure";
 
 	// Ok we can send a message
-	controller->getListenerStreamState(0x000102FFFE030405, 0, nullptr);
+	controller->getListenerStreamState({ 0x000102FFFE030405, 0u }, nullptr);
 
 	// Wait for the test to be completed
 	status = testCompletedPromise.get_future().wait_for(std::chrono::seconds(5));

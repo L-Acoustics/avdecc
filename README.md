@@ -1,7 +1,7 @@
 # LA AVDECC
 [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/14038.svg)](https://scan.coverity.com/projects/l-acoustics-avdecc)
 
-Copyright (C) 2016-2017, L-Acoustics and its contributors
+Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 ## What is LA_avdecc
 LA_avdecc is a set of open source libraries for controlling and monitoring AVB entities using the AVDECC protocol (IEEE 1722.1).
@@ -43,14 +43,14 @@ The controller API has 2 interfaces:
 
 ## Minimum requirements for compilation
 
-
 ### All platforms
-- CMake 3.6
+- CMake 3.9
 
 ### Windows
 - Windows 8.1
 - Visual Studio 2017, platform toolset v141 (or v141_clang_c2)
 - WinPcap 4.1.2 Developer's Pack (see [this file](externals/3rdparty/winpcap/README.md) for more details)
+- GitBash or cygwin
 
 ### macOS
 - macOS 10.12
@@ -66,7 +66,7 @@ The controller API has 2 interfaces:
 
 ### All platforms
 - Clone this repository
-- Update submodules (optional, only required for unit testing): *git submodule update --init*
+- Update submodules: *git submodule update --init*
 
 ### Windows
 - [Install WinPcap Developer's Pack](externals/3rdparty/winpcap/README.md)

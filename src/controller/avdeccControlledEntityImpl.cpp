@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -67,6 +67,18 @@ bool ControlledEntityImpl::isAcquiredByOther() const noexcept
 	return _acquireState == model::AcquireState::AcquiredByOther;
 }
 
+bool ControlledEntityImpl::isStreamInputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const
+{
+	auto const& descriptor = getStreamInputDescriptor(configurationIndex, streamIndex);
+	return descriptor.dynamicModel.isRunning;
+}
+
+bool ControlledEntityImpl::isStreamOutputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const
+{
+	auto const& descriptor = getStreamOutputDescriptor(configurationIndex, streamIndex);
+	return descriptor.dynamicModel.isRunning;
+}
+
 UniqueIdentifier ControlledEntityImpl::getOwningControllerID() const noexcept
 {
 	return _owningControllerID;
@@ -104,17 +116,17 @@ model::ConfigurationNode const& ControlledEntityImpl::getCurrentConfigurationNod
 {
 	model::EntityNode const& entityNode = getEntityNode();
 
-	if (entityNode.entityDescriptor == nullptr)
-		throw Exception(Exception::Type::Internal, "EntityDescriptor not set");
+	if (!entityNode.dynamicModel)
+		throw Exception(Exception::Type::Internal, "EntityNodeDynamicModel not set");
 
-	auto const it = entityNode.configurations.find(entityNode.entityDescriptor->currentConfiguration);
+	auto const it = entityNode.configurations.find(entityNode.dynamicModel->currentConfiguration);
 	if (it == entityNode.configurations.end())
-		throw Exception(Exception::Type::Internal, "ConfigurationDescriptor for current_configuration not set");
+		throw Exception(Exception::Type::Internal, "ConfigurationNode for current_configuration not set");
 
 	return it->second;
 }
 
-model::StreamNode const& ControlledEntityImpl::getStreamInputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const
+model::StreamInputNode const& ControlledEntityImpl::getStreamInputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const
 {
 	auto const& configNode = getConfigurationNode(configurationIndex);
 
@@ -125,7 +137,7 @@ model::StreamNode const& ControlledEntityImpl::getStreamInputNode(entity::model:
 	return it->second;
 }
 
-model::StreamNode const& ControlledEntityImpl::getStreamOutputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const
+model::StreamOutputNode const& ControlledEntityImpl::getStreamOutputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const
 {
 	auto const& configNode = getConfigurationNode(configurationIndex);
 
@@ -254,22 +266,22 @@ model::ClockDomainNode const& ControlledEntityImpl::getClockDomainNode(entity::m
 	return it->second;
 }
 
-entity::model::LocaleDescriptor const* ControlledEntityImpl::findLocaleDescriptor(entity::model::ConfigurationIndex const configurationIndex, std::string const& /*locale*/) const
+model::LocaleNodeStaticModel const* ControlledEntityImpl::findLocaleNode(entity::model::ConfigurationIndex const configurationIndex, std::string const& /*locale*/) const
 {
-	auto const& configStaticModel = getConfigurationStaticModel(configurationIndex);
+	auto const& configDescriptor = getConfigurationDescriptor(configurationIndex);
 
-	if (configStaticModel.localeDescriptors.empty())
+	if (configDescriptor.localeDescriptors.empty())
 		throw Exception(Exception::Type::InvalidLocaleName, "Entity has no locale");
 
 #pragma message("TODO: Parse 'locale' parameter and find best match")
 	// Right now, return the first locale
-	return &configStaticModel.localeDescriptors.at(0);
+	return &configDescriptor.localeDescriptors.at(0).staticModel;
 }
 
 entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString(entity::model::LocalizedStringReference const stringReference) const noexcept
 {
-	auto const& entityDescriptor = getEntityStaticModel().entityDescriptor;
-	return getLocalizedString(entityDescriptor.currentConfiguration, stringReference);
+	auto const& entityDescriptor = getEntityDescriptor();
+	return getLocalizedString(entityDescriptor.dynamicModel.currentConfiguration, stringReference);
 }
 
 entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocalizedStringReference const stringReference) const noexcept
@@ -285,9 +297,9 @@ entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString
 		auto const index = stringReference & 0x0007;
 		auto const globalOffset = ((offset * 7u) + index) & 0xFFFF;
 
-		auto const& configStaticModel = getConfigurationStaticModel(configurationIndex);
+		auto const& configDescriptor = getConfigurationDescriptor(configurationIndex);
 
-		return configStaticModel.localizedStrings.at(entity::model::StringsIndex(globalOffset));
+		return configDescriptor.dynamicModel.localizedStrings.at(entity::model::StringsIndex(globalOffset));
 	}
 	catch (...)
 	{
@@ -295,40 +307,48 @@ entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString
 	}
 }
 
-entity::model::StreamConnectedState const& ControlledEntityImpl::getConnectedSinkState(entity::model::StreamIndex const listenerIndex) const
+model::StreamConnectionState const& ControlledEntityImpl::getConnectedSinkState(entity::model::StreamIndex const streamIndex) const
 {
-	auto const& entityDescriptor = getEntityStaticModel().entityDescriptor;
-	auto const& streamDynamicModel = getStreamInputDynamicModel(entityDescriptor.currentConfiguration, listenerIndex);
+	auto const& entityDescriptor = getEntityDescriptor();
+	auto const& streamDescriptor = getStreamInputDescriptor(entityDescriptor.dynamicModel.currentConfiguration, streamIndex);
 
-	return streamDynamicModel.connectedState;
+	AVDECC_ASSERT(_entity.getEntityID() == streamDescriptor.dynamicModel.connectionState.listenerStream.entityID, "EntityID not correctly initialized");
+	AVDECC_ASSERT(streamIndex == streamDescriptor.dynamicModel.connectionState.listenerStream.streamIndex, "StreamIndex not correctly initialized");
+	return streamDescriptor.dynamicModel.connectionState;
 }
 
 entity::model::AudioMappings const& ControlledEntityImpl::getStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const
 {
-	auto const& entityDescriptor = getEntityStaticModel().entityDescriptor;
+	auto const& entityDescriptor = getEntityDescriptor();
 
 	// Check if dynamic mappings is supported by the entity
-	auto const& streamPortNode = getStreamPortInputNode(entityDescriptor.currentConfiguration, streamPortIndex);
-	if (!streamPortNode.hasDynamicAudioMap)
+	auto const& streamPortDescriptor = getStreamPortInputDescriptor(entityDescriptor.dynamicModel.currentConfiguration, streamPortIndex);
+	if (!streamPortDescriptor.staticModel.hasDynamicAudioMap)
 		throw Exception(Exception::Type::NotSupported, "Dynamic mappings not supported by this stream port");
 
-	// Get dynamic mappings for this stream port
-	auto const& streamPortDynamicModel = getStreamPortInputDynamicModel(entityDescriptor.currentConfiguration, streamPortIndex);
-	return streamPortDynamicModel.dynamicAudioMap;
+	// Return dynamic mappings for this stream port
+	return streamPortDescriptor.dynamicModel.dynamicAudioMap;
 }
 
 entity::model::AudioMappings const& ControlledEntityImpl::getStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const
 {
-	auto const& entityDescriptor = getEntityStaticModel().entityDescriptor;
+	auto const& entityDescriptor = getEntityDescriptor();
 
 	// Check if dynamic mappings is supported by the entity
-	auto const& streamPortNode = getStreamPortOutputNode(entityDescriptor.currentConfiguration, streamPortIndex);
-	if (!streamPortNode.hasDynamicAudioMap)
+	auto const& streamPortDescriptor = getStreamPortOutputDescriptor(entityDescriptor.dynamicModel.currentConfiguration, streamPortIndex);
+	if (!streamPortDescriptor.staticModel.hasDynamicAudioMap)
 		throw Exception(Exception::Type::NotSupported, "Dynamic mappings not supported by this stream port");
 
-	// Get dynamic mappings for this stream port
-	auto const& streamPortDynamicModel = getStreamPortOutputDynamicModel(entityDescriptor.currentConfiguration, streamPortIndex);
-	return streamPortDynamicModel.dynamicAudioMap;
+	// Return dynamic mappings for this stream port
+	return streamPortDescriptor.dynamicModel.dynamicAudioMap;
+}
+
+model::StreamConnections const& ControlledEntityImpl::getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const
+{
+	auto const& entityDescriptor = getEntityDescriptor();
+	auto const& streamDescriptor = getStreamOutputDescriptor(entityDescriptor.dynamicModel.currentConfiguration, streamIndex);
+
+	return streamDescriptor.dynamicModel.connections;
 }
 
 // Visitor method
@@ -359,8 +379,11 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 			// Visit ConfigurationNode (EntityModelNode is parent)
 			visitor->visit(this, &entityModel, configuration);
 
+			if (!configuration.dynamicModel)
+				continue;
+
 			// If this is the active configuration, process ConfigurationNode fields
-			if (configuration.isActiveConfiguration)
+			if (configuration.dynamicModel->isActiveConfiguration)
 			{
 				// Loop over AudioUnitNode
 				for (auto const& audioUnitKV : configuration.audioUnits)
@@ -399,50 +422,50 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 					processStreamPorts(audioUnit, audioUnit.streamPortOutputs); // streamPortOutputs
 				}
 
-				// Loop over StreamNode for inputs
+				// Loop over StreamInputNode for inputs
 				for (auto const& streamKV : configuration.streamInputs)
 				{
 					auto const& stream = streamKV.second;
-					// Visit StreamNode (ConfigurationNode is parent)
+					// Visit StreamInputNode (ConfigurationNode is parent)
 					visitor->visit(this, &configuration, stream);
 				}
 
-				// Loop over StreamNode for outputs
+				// Loop over StreamOutputNode for outputs
 				for (auto const& streamKV : configuration.streamOutputs)
 				{
 					auto const& stream = streamKV.second;
-					// Visit StreamNode (ConfigurationNode is parent)
+					// Visit StreamOutputNode (ConfigurationNode is parent)
 					visitor->visit(this, &configuration, stream);
 				}
 
-				// Loop over RedundantStreamNode for inputs
+				// Loop over RedundantStreamInputNode for inputs
 				for (auto const& redundantStreamKV : configuration.redundantStreamInputs)
 				{
 					auto const& redundantStream = redundantStreamKV.second;
-					// Visit RedundantStreamNode (ConfigurationNode is parent)
+					// Visit RedundantStreamInputNode (ConfigurationNode is parent)
 					visitor->visit(this, &configuration, redundantStream);
 
-					// Loop over StreamNode
+					// Loop over StreamInputNode
 					for (auto const& streamKV : redundantStream.redundantStreams)
 					{
-						auto const* stream = streamKV.second;
-						// Visit StreamNode (RedundantStreamNode is parent)
+						auto const* stream = static_cast<model::StreamInputNode const*>(streamKV.second);
+						// Visit StreamInputNode (RedundantStreamInputNode is parent)
 						visitor->visit(this, &redundantStream, *stream);
 					}
 				}
 
-				// Loop over RedundantStreamNode for outputs
+				// Loop over RedundantStreamOutputNode for outputs
 				for (auto const& redundantStreamKV : configuration.redundantStreamOutputs)
 				{
 					auto const& redundantStream = redundantStreamKV.second;
-					// Visit RedundantStreamNode (ConfigurationNode is parent)
+					// Visit RedundantStreamOutputNode (ConfigurationNode is parent)
 					visitor->visit(this, &configuration, redundantStream);
 
-					// Loop over StreamNode
+					// Loop over StreamOutputNode
 					for (auto const& streamKV : redundantStream.redundantStreams)
 					{
-						auto const* stream = streamKV.second;
-						// Visit StreamNode (RedundantStreamNode is parent)
+						auto const* stream = static_cast<model::StreamOutputNode const*>(streamKV.second);
+						// Visit StreamOutputNode (RedundantStreamOutputNode is parent)
 						visitor->visit(this, &redundantStream, *stream);
 					}
 				}
@@ -510,7 +533,7 @@ void ControlledEntityImpl::unlock() noexcept
 }
 
 // Const getters
-model::EntityStaticModel const& ControlledEntityImpl::getEntityStaticModel() const
+model::EntityDescriptor const& ControlledEntityImpl::getEntityDescriptor() const
 {
 	if (gotEnumerationError())
 		throw Exception(Exception::Type::EnumerationError, "Entity had an enumeration error");
@@ -518,277 +541,241 @@ model::EntityStaticModel const& ControlledEntityImpl::getEntityStaticModel() con
 	if (!hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
 		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
 
-	return _entityStaticModel;
+	return _entityModel;
 }
 
-model::ConfigurationStaticModel const& ControlledEntityImpl::getConfigurationStaticModel(entity::model::ConfigurationIndex const configurationIndex) const
+model::ConfigurationDescriptor const& ControlledEntityImpl::getConfigurationDescriptor(entity::model::ConfigurationIndex const configurationIndex) const
 {
 	if (!hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
 		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
 
-	auto const& entityStaticModel = getEntityStaticModel();
-	auto const it = entityStaticModel.configurationStaticModels.find(configurationIndex);
-	if (it == entityStaticModel.configurationStaticModels.end())
+	auto const& entityDescriptor = getEntityDescriptor();
+	auto const it = entityDescriptor.configurationDescriptors.find(configurationIndex);
+	if (it == entityDescriptor.configurationDescriptors.end())
 		throw Exception(Exception::Type::InvalidConfigurationIndex, "Invalid configuration index");
 
 	return it->second;
 }
 
-model::EntityDynamicModel const& ControlledEntityImpl::getEntityDynamicModel() const
+model::AudioUnitDescriptor const& ControlledEntityImpl::getAudioUnitDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex) const
 {
-	if (gotEnumerationError())
-		throw Exception(Exception::Type::EnumerationError, "Entity had an enumeration error");
+	auto const& configDescriptor = getConfigurationDescriptor(configurationIndex);
 
-	if (!hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
-		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
-
-	return _entityDynamicModel;
-}
-
-model::ConfigurationDynamicModel const& ControlledEntityImpl::getConfigurationDynamicModel(entity::model::ConfigurationIndex const configurationIndex) const
-{
-	if (!hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
-		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
-
-	auto const& entityDynamicModel = getEntityDynamicModel();
-	auto const it = entityDynamicModel.configurationDynamicModels.find(configurationIndex);
-	if (it == entityDynamicModel.configurationDynamicModels.end())
-		throw Exception(Exception::Type::InvalidConfigurationIndex, "Invalid configuration index");
-
-	return it->second;
-}
-
-model::StreamDynamicModel const& ControlledEntityImpl::getStreamInputDynamicModel(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const
-{
-	auto const& configDynamicModel = getConfigurationDynamicModel(configurationIndex);
-
-	auto const it = configDynamicModel.streamInputDynamicModels.find(streamIndex);
-	if (it == configDynamicModel.streamInputDynamicModels.end())
-		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid stream index");
-
-	return it->second;
-}
-
-model::StreamDynamicModel const& ControlledEntityImpl::getStreamOutputDynamicModel(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const
-{
-	auto const& configDynamicModel = getConfigurationDynamicModel(configurationIndex);
-
-	auto const it = configDynamicModel.streamOutputDynamicModels.find(streamIndex);
-	if (it == configDynamicModel.streamOutputDynamicModels.end())
-		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid stream index");
-
-	return it->second;
-}
-
-model::StreamPortDynamicModel const& ControlledEntityImpl::getStreamPortInputDynamicModel(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) const
-{
-	auto const& configDynamicModel = getConfigurationDynamicModel(configurationIndex);
-
-	auto const it = configDynamicModel.streamPortInputDynamicModels.find(streamPortIndex);
-	if (it == configDynamicModel.streamPortInputDynamicModels.end())
-		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid stream port index");
-
-	return it->second;
-}
-
-model::StreamPortDynamicModel const& ControlledEntityImpl::getStreamPortOutputDynamicModel(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) const
-{
-	auto const& configDynamicModel = getConfigurationDynamicModel(configurationIndex);
-
-	auto const it = configDynamicModel.streamPortOutputDynamicModels.find(streamPortIndex);
-	if (it == configDynamicModel.streamPortOutputDynamicModels.end())
-		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid stream port index");
-
-	return it->second;
-}
-
-entity::model::AudioUnitDescriptor const& ControlledEntityImpl::getAudioUnitDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex) const
-{
-	auto const& configStaticModel = getConfigurationStaticModel(configurationIndex);
-
-	auto const it = configStaticModel.audioUnitDescriptors.find(audioUnitIndex);
-	if (it == configStaticModel.audioUnitDescriptors.end())
+	auto const it = configDescriptor.audioUnitDescriptors.find(audioUnitIndex);
+	if (it == configDescriptor.audioUnitDescriptors.end())
 		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid audio unit index");
 
 	return it->second;
 }
 
-entity::model::StreamDescriptor const& ControlledEntityImpl::getStreamInputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const
+model::StreamInputDescriptor const& ControlledEntityImpl::getStreamInputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const
 {
-	auto const& configStaticModel = getConfigurationStaticModel(configurationIndex);
+	auto const& configDescriptor = getConfigurationDescriptor(configurationIndex);
 
-	auto const it = configStaticModel.streamInputDescriptors.find(streamIndex);
-	if (it == configStaticModel.streamInputDescriptors.end())
+	auto const it = configDescriptor.streamInputDescriptors.find(streamIndex);
+	if (it == configDescriptor.streamInputDescriptors.end())
 		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid stream index");
 
 	return it->second;
 }
 
-entity::model::StreamDescriptor const& ControlledEntityImpl::getStreamOutputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const
+model::StreamOutputDescriptor const& ControlledEntityImpl::getStreamOutputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const
 {
-	auto const& configStaticModel = getConfigurationStaticModel(configurationIndex);
+	auto const& configDescriptor = getConfigurationDescriptor(configurationIndex);
 
-	auto const it = configStaticModel.streamOutputDescriptors.find(streamIndex);
-	if (it == configStaticModel.streamOutputDescriptors.end())
+	auto const it = configDescriptor.streamOutputDescriptors.find(streamIndex);
+	if (it == configDescriptor.streamOutputDescriptors.end())
 		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid stream index");
 
 	return it->second;
 }
 
-entity::model::StreamPortDescriptor const& ControlledEntityImpl::getStreamPortInputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) const
+model::AvbInterfaceDescriptor const& ControlledEntityImpl::getAvbInterfaceDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex) const
 {
-	auto const& configStaticModel = getConfigurationStaticModel(configurationIndex);
+	auto const& configDescriptor = getConfigurationDescriptor(configurationIndex);
 
-	auto const it = configStaticModel.streamPortInputDescriptors.find(streamPortIndex);
-	if (it == configStaticModel.streamPortInputDescriptors.end())
+	auto const it = configDescriptor.avbInterfaceDescriptors.find(avbInterfaceIndex);
+	if (it == configDescriptor.avbInterfaceDescriptors.end())
+		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid avb interface index");
+
+	return it->second;
+}
+
+model::ClockSourceDescriptor const& ControlledEntityImpl::getClockSourceDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex) const
+{
+	auto const& configDescriptor = getConfigurationDescriptor(configurationIndex);
+
+	auto const it = configDescriptor.clockSourceDescriptors.find(clockSourceIndex);
+	if (it == configDescriptor.clockSourceDescriptors.end())
+		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid clock source index");
+
+	return it->second;
+}
+
+model::LocaleDescriptor const& ControlledEntityImpl::getLocaleDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocaleIndex const localeIndex) const
+{
+	auto const& configDescriptor = getConfigurationDescriptor(configurationIndex);
+
+	auto const it = configDescriptor.localeDescriptors.find(localeIndex);
+	if (it == configDescriptor.localeDescriptors.end())
+		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid locale index");
+
+	return it->second;
+}
+
+model::StringsDescriptor const& ControlledEntityImpl::getStringsDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const stringsIndex) const
+{
+	auto const& configDescriptor = getConfigurationDescriptor(configurationIndex);
+
+	auto const it = configDescriptor.stringsDescriptors.find(stringsIndex);
+	if (it == configDescriptor.stringsDescriptors.end())
+		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid strings index");
+
+	return it->second;
+}
+
+model::StreamPortDescriptor const& ControlledEntityImpl::getStreamPortInputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) const
+{
+	auto const& configDescriptor = getConfigurationDescriptor(configurationIndex);
+
+	auto const it = configDescriptor.streamPortInputDescriptors.find(streamPortIndex);
+	if (it == configDescriptor.streamPortInputDescriptors.end())
 		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid stream port index");
 
 	return it->second;
 }
 
-entity::model::StreamPortDescriptor const& ControlledEntityImpl::getStreamPortOutputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) const
+model::StreamPortDescriptor const& ControlledEntityImpl::getStreamPortOutputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) const
 {
-	auto const& configStaticModel = getConfigurationStaticModel(configurationIndex);
+	auto const& configDescriptor = getConfigurationDescriptor(configurationIndex);
 
-	auto const it = configStaticModel.streamPortOutputDescriptors.find(streamPortIndex);
-	if (it == configStaticModel.streamPortOutputDescriptors.end())
+	auto const it = configDescriptor.streamPortOutputDescriptors.find(streamPortIndex);
+	if (it == configDescriptor.streamPortOutputDescriptors.end())
 		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid stream port index");
 
 	return it->second;
 }
 
-entity::model::AudioClusterDescriptor const& ControlledEntityImpl::getAudioClusterDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex) const
+model::AudioClusterDescriptor const& ControlledEntityImpl::getAudioClusterDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex) const
 {
-	auto const& configStaticModel = getConfigurationStaticModel(configurationIndex);
+	auto const& configDescriptor = getConfigurationDescriptor(configurationIndex);
 
-	auto const it = configStaticModel.audioClusterDescriptors.find(clusterIndex);
-	if (it == configStaticModel.audioClusterDescriptors.end())
-		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid cluster index");
+	auto const it = configDescriptor.audioClusterDescriptors.find(clusterIndex);
+	if (it == configDescriptor.audioClusterDescriptors.end())
+		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid audio cluster index");
 
 	return it->second;
 }
 
-entity::model::AudioMapDescriptor const& ControlledEntityImpl::getAudioMapDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex) const
+model::AudioMapDescriptor const& ControlledEntityImpl::getAudioMapDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex) const
 {
-	auto const& configStaticModel = getConfigurationStaticModel(configurationIndex);
+	auto const& configDescriptor = getConfigurationDescriptor(configurationIndex);
 
-	auto const it = configStaticModel.audioMapDescriptors.find(mapIndex);
-	if (it == configStaticModel.audioMapDescriptors.end())
-		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid map index");
+	auto const it = configDescriptor.audioMapDescriptors.find(mapIndex);
+	if (it == configDescriptor.audioMapDescriptors.end())
+		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid audio map index");
 
 	return it->second;
 }
 
-entity::model::ClockDomainDescriptor const& ControlledEntityImpl::getClockDomainDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) const
+model::ClockDomainDescriptor const& ControlledEntityImpl::getClockDomainDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) const
 {
-	auto const& configStaticModel = getConfigurationStaticModel(configurationIndex);
+	auto const& configDescriptor = getConfigurationDescriptor(configurationIndex);
 
-	auto const it = configStaticModel.clockDomainDescriptors.find(clockDomainIndex);
-	if (it == configStaticModel.clockDomainDescriptors.end())
+	auto const it = configDescriptor.clockDomainDescriptors.find(clockDomainIndex);
+	if (it == configDescriptor.clockDomainDescriptors.end())
 		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid clock domain index");
 
 	return it->second;
 }
 
 // Non-const getters
-model::EntityStaticModel& ControlledEntityImpl::getEntityStaticModel()
+model::EntityDescriptor& ControlledEntityImpl::getEntityDescriptor()
 {
-	// Implemented over getEntityStaticModel() const overload
-	return const_cast<model::EntityStaticModel&>(static_cast<ControlledEntityImpl const*>(this)->getEntityStaticModel());
+	// Implemented over getEntityDescriptor() const overload
+	return const_cast<model::EntityDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getEntityDescriptor());
 }
 
-model::ConfigurationStaticModel& ControlledEntityImpl::getConfigurationStaticModel(entity::model::ConfigurationIndex const configurationIndex)
+model::ConfigurationDescriptor& ControlledEntityImpl::getConfigurationDescriptor(entity::model::ConfigurationIndex const configurationIndex)
 {
-	// Implemented over getConfigurationStaticModel() const overload
-	return const_cast<model::ConfigurationStaticModel&>(static_cast<ControlledEntityImpl const*>(this)->getConfigurationStaticModel(configurationIndex));
+	// Implemented over getConfigurationDescriptor() const overload
+	return const_cast<model::ConfigurationDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getConfigurationDescriptor(configurationIndex));
 }
 
-model::EntityDynamicModel& ControlledEntityImpl::getEntityDynamicModel()
-{
-	// Implemented over getEntityDynamicModel() const overload
-	return const_cast<model::EntityDynamicModel&>(static_cast<ControlledEntityImpl const*>(this)->getEntityDynamicModel());
-}
-
-model::ConfigurationDynamicModel& ControlledEntityImpl::getConfigurationDynamicModel(entity::model::ConfigurationIndex const configurationIndex)
-{
-	// Implemented over getConfigurationDynamicModel() const overload
-	return const_cast<model::ConfigurationDynamicModel&>(static_cast<ControlledEntityImpl const*>(this)->getConfigurationDynamicModel(configurationIndex));
-}
-
-model::StreamDynamicModel& ControlledEntityImpl::getStreamInputDynamicModel(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
-{
-	// Implemented over getStreamInputDynamicModel() const overload
-	return const_cast<model::StreamDynamicModel&>(static_cast<ControlledEntityImpl const*>(this)->getStreamInputDynamicModel(configurationIndex, streamIndex));
-}
-
-model::StreamDynamicModel& ControlledEntityImpl::getStreamOutputDynamicModel(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
-{
-	// Implemented over getStreamOutputDynamicModel() const overload
-	return const_cast<model::StreamDynamicModel&>(static_cast<ControlledEntityImpl const*>(this)->getStreamOutputDynamicModel(configurationIndex, streamIndex));
-}
-
-model::StreamPortDynamicModel& ControlledEntityImpl::getStreamPortInputDynamicModel(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex)
-{
-	// Implemented over getStreamPortInputDynamicModel() const overload
-	return const_cast<model::StreamPortDynamicModel&>(static_cast<ControlledEntityImpl const*>(this)->getStreamPortInputDynamicModel(configurationIndex, streamPortIndex));
-}
-
-model::StreamPortDynamicModel& ControlledEntityImpl::getStreamPortOutputDynamicModel(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex)
-{
-	// Implemented over getStreamPortOutputDynamicModel() const overload
-	return const_cast<model::StreamPortDynamicModel&>(static_cast<ControlledEntityImpl const*>(this)->getStreamPortOutputDynamicModel(configurationIndex, streamPortIndex));
-}
-
-entity::model::AudioUnitDescriptor& ControlledEntityImpl::getAudioUnitDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex)
+model::AudioUnitDescriptor& ControlledEntityImpl::getAudioUnitDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex)
 {
 	// Implemented over getAudioUnitDescriptor() const overload
-	return const_cast<entity::model::AudioUnitDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getAudioUnitDescriptor(configurationIndex, audioUnitIndex));
+	return const_cast<model::AudioUnitDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getAudioUnitDescriptor(configurationIndex, audioUnitIndex));
 }
 
-entity::model::StreamDescriptor& ControlledEntityImpl::getStreamInputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
+model::StreamInputDescriptor& ControlledEntityImpl::getStreamInputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
 {
 	// Implemented over getStreamInputDescriptor() const overload
-	return const_cast<entity::model::StreamDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getStreamInputDescriptor(configurationIndex, streamIndex));
+	return const_cast<model::StreamInputDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getStreamInputDescriptor(configurationIndex, streamIndex));
 }
 
-entity::model::StreamDescriptor& ControlledEntityImpl::getStreamOutputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
+model::StreamOutputDescriptor& ControlledEntityImpl::getStreamOutputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
 {
 	// Implemented over getStreamOutputDescriptor() const overload
-	return const_cast<entity::model::StreamDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getStreamOutputDescriptor(configurationIndex, streamIndex));
+	return const_cast<model::StreamOutputDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getStreamOutputDescriptor(configurationIndex, streamIndex));
 }
 
-entity::model::StreamPortDescriptor& ControlledEntityImpl::getStreamPortInputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex)
+model::AvbInterfaceDescriptor& ControlledEntityImpl::getAvbInterfaceDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex)
+{
+	// Implemented over getAvbInterfaceDescriptor() const overload
+	return const_cast<model::AvbInterfaceDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getAvbInterfaceDescriptor(configurationIndex, avbInterfaceIndex));
+}
+
+model::ClockSourceDescriptor& ControlledEntityImpl::getClockSourceDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex)
+{
+	// Implemented over getClockSourceDescriptor() const overload
+	return const_cast<model::ClockSourceDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getClockSourceDescriptor(configurationIndex, clockSourceIndex));
+}
+
+model::LocaleDescriptor& ControlledEntityImpl::getLocaleDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocaleIndex const localeIndex)
+{
+	// Implemented over getLocaleDescriptor() const overload
+	return const_cast<model::LocaleDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getLocaleDescriptor(configurationIndex, localeIndex));
+}
+
+model::StringsDescriptor& ControlledEntityImpl::getStringsDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const stringsIndex)
+{
+	// Implemented over getStringsDescriptor() const overload
+	return const_cast<model::StringsDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getStringsDescriptor(configurationIndex, stringsIndex));
+}
+
+model::StreamPortDescriptor& ControlledEntityImpl::getStreamPortInputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex)
 {
 	// Implemented over getStreamPortInputDescriptor() const overload
-	return const_cast<entity::model::StreamPortDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getStreamPortInputDescriptor(configurationIndex, streamPortIndex));
+	return const_cast<model::StreamPortDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getStreamPortInputDescriptor(configurationIndex, streamPortIndex));
 }
 
-entity::model::StreamPortDescriptor& ControlledEntityImpl::getStreamPortOutputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex)
+model::StreamPortDescriptor& ControlledEntityImpl::getStreamPortOutputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex)
 {
 	// Implemented over getStreamPortOutputDescriptor() const overload
-	return const_cast<entity::model::StreamPortDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getStreamPortOutputDescriptor(configurationIndex, streamPortIndex));
+	return const_cast<model::StreamPortDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getStreamPortOutputDescriptor(configurationIndex, streamPortIndex));
 }
 
-entity::model::AudioClusterDescriptor& ControlledEntityImpl::getAudioClusterDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex)
+model::AudioClusterDescriptor& ControlledEntityImpl::getAudioClusterDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex)
 {
 	// Implemented over getAudioClusterDescriptor() const overload
-	return const_cast<entity::model::AudioClusterDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getAudioClusterDescriptor(configurationIndex, clusterIndex));
+	return const_cast<model::AudioClusterDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getAudioClusterDescriptor(configurationIndex, clusterIndex));
 }
 
-entity::model::AudioMapDescriptor& ControlledEntityImpl::getAudioMapDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex)
+model::AudioMapDescriptor& ControlledEntityImpl::getAudioMapDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex)
 {
 	// Implemented over getAudioMapDescriptor() const overload
-	return const_cast<entity::model::AudioMapDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getAudioMapDescriptor(configurationIndex, mapIndex));
+	return const_cast<model::AudioMapDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getAudioMapDescriptor(configurationIndex, mapIndex));
 }
 
-entity::model::ClockDomainDescriptor& ControlledEntityImpl::getClockDomainDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex)
+model::ClockDomainDescriptor& ControlledEntityImpl::getClockDomainDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex)
 {
 	// Implemented over getClockDomainDescriptor() const overload
-	return const_cast<entity::model::ClockDomainDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getClockDomainDescriptor(configurationIndex, clockDomainIndex));
+	return const_cast<model::ClockDomainDescriptor&>(static_cast<ControlledEntityImpl const*>(this)->getClockDomainDescriptor(configurationIndex, clockDomainIndex));
 }
 
 // Setters (of the model, not the physical entity)
-void ControlledEntityImpl::updateEntity(entity::Entity const& entity) noexcept
+void ControlledEntityImpl::setEntity(entity::Entity const& entity) noexcept
 {
 	_entity = entity;
 }
@@ -805,273 +792,461 @@ void ControlledEntityImpl::setOwningController(UniqueIdentifier const controller
 
 void ControlledEntityImpl::setEntityDescriptor(entity::model::EntityDescriptor const& descriptor)
 {
-	// Wipe previous model::EntityStaticModel, we can have only one EntityDescriptor
-	_entityStaticModel = {};
-
-	// Initialize model::EntityStaticModel
-	_entityStaticModel.entityDescriptor = descriptor;
-
-	// Wipe previous model::EntityDynamicModel
-	_entityDynamicModel = {};
+	// Wipe previous model::EntityDescriptor, we can have only one EntityDescriptor
+	_entityModel = {};
 
 	// Wipe model::EntityNode
 	_entityNode = {};
+
+	// Copy static model
+	{
+		auto& m = _entityModel.staticModel;
+		m.vendorNameString = descriptor.vendorNameString;
+		m.modelNameString = descriptor.modelNameString;
+	}
+
+	// Copy dynamic model
+	{
+		auto& m = _entityModel.dynamicModel;
+		m.entityName = descriptor.entityName;
+		m.groupName = descriptor.groupName;
+		m.firmwareVersion = descriptor.firmwareVersion;
+		m.serialNumber = descriptor.serialNumber;
+		m.currentConfiguration = descriptor.currentConfiguration;
+	}
+}
+
+template<typename ProtocolDescriptorType, typename ModelDescriptorType, typename IndexType, void (ControlledEntityImpl::*MethodPtr)(ProtocolDescriptorType const&, entity::model::ConfigurationIndex, IndexType)>
+void allocateDescriptors(ControlledEntityImpl* entity, entity::model::ConfigurationIndex const configurationIndex, entity::model::ConfigurationDescriptor const& descriptor, entity::model::DescriptorType const descriptorType)
+{
+	auto countIt = descriptor.descriptorCounts.find(descriptorType);
+	if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+	{
+		auto count = countIt->second;
+		for (auto index = IndexType(0u); index < count; ++index)
+		{
+			(entity->*MethodPtr)(ProtocolDescriptorType{}, configurationIndex, index);
+		}
+	}
 }
 
 void ControlledEntityImpl::setConfigurationDescriptor(entity::model::ConfigurationDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex)
 {
-	// Create a new model::ConfigurationStaticModel for this entity
-	auto& entityStaticModel = getEntityStaticModel();
-	auto& configStaticModel = entityStaticModel.configurationStaticModels[configurationIndex];
+	auto& entityDescriptor = getEntityDescriptor();
 
-	// Initialize model::ConfigurationStaticModel
-	configStaticModel.configurationDescriptor = descriptor;
+	// Get or create a new model::ConfigurationDescriptor for this entity
+	auto& configDescriptor = entityDescriptor.configurationDescriptors[configurationIndex];
 
-	// Create a new model::ConfigurationDynamicModel for this entity
-	auto& entityDynamicModel = getEntityDynamicModel();
-	auto& configDynamicModel = entityDynamicModel.configurationDynamicModels[configurationIndex];
-
-	// Pre-allocate all stream input/output dynamic models so the getStreamInputDynamicModel() const method can access them without having an exception
+	// Copy static model
 	{
-		auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::StreamInput);
-		if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
-		{
-			auto count = countIt->second;
-			for (auto index = entity::model::StreamIndex(0); index < count; ++index)
-			{
-				configDynamicModel.streamInputDynamicModels[index];
-			}
-		}
+		auto& m = configDescriptor.staticModel;
+		m.localizedDescription = descriptor.localizedDescription;
+		m.descriptorCounts = descriptor.descriptorCounts;
 	}
+
+	// Copy dynamic model
 	{
-		auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::StreamOutput);
-		if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
-		{
-			auto count = countIt->second;
-			for (auto index = entity::model::StreamIndex(0); index < count; ++index)
-			{
-				configDynamicModel.streamOutputDynamicModels[index];
-			}
-		}
+		auto& m = configDescriptor.dynamicModel;
+		m.objectName = descriptor.objectName;
+		m.isActiveConfiguration = configurationIndex == entityDescriptor.dynamicModel.currentConfiguration;
 	}
+
+	// Pre-allocate all descriptors, in case we receive an unsolicited notification for the dynamic part of one of them, before we have retrieved them
+	allocateDescriptors<entity::model::AudioUnitDescriptor, model::AudioUnitDescriptor, entity::model::AudioUnitIndex, &ControlledEntityImpl::setAudioUnitDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::AudioUnit);
+	allocateDescriptors<entity::model::StreamDescriptor, model::StreamInputDescriptor, entity::model::StreamIndex, &ControlledEntityImpl::setStreamInputDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::StreamInput);
+	allocateDescriptors<entity::model::StreamDescriptor, model::StreamInputDescriptor, entity::model::StreamIndex, &ControlledEntityImpl::setStreamOutputDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::StreamOutput);
+	allocateDescriptors<entity::model::AvbInterfaceDescriptor, model::AvbInterfaceDescriptor, entity::model::AvbInterfaceIndex, &ControlledEntityImpl::setAvbInterfaceDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::AvbInterface);
+	allocateDescriptors<entity::model::ClockSourceDescriptor, model::ClockSourceDescriptor, entity::model::ClockSourceIndex, &ControlledEntityImpl::setClockSourceDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::ClockSource);
+	allocateDescriptors<entity::model::LocaleDescriptor, model::LocaleDescriptor, entity::model::LocaleIndex, &ControlledEntityImpl::setLocaleDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::Locale);
+	allocateDescriptors<entity::model::StringsDescriptor, model::StringsDescriptor, entity::model::StringsIndex, &ControlledEntityImpl::setStringsDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::Strings);
+	allocateDescriptors<entity::model::StreamPortDescriptor, model::StreamPortDescriptor, entity::model::StreamPortIndex, &ControlledEntityImpl::setStreamPortInputDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::StreamPortInput);
+	allocateDescriptors<entity::model::StreamPortDescriptor, model::StreamPortDescriptor, entity::model::StreamPortIndex, &ControlledEntityImpl::setStreamPortOutputDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::StreamPortOutput);
+	allocateDescriptors<entity::model::AudioClusterDescriptor, model::AudioClusterDescriptor, entity::model::ClusterIndex, &ControlledEntityImpl::setAudioClusterDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::AudioCluster);
+	allocateDescriptors<entity::model::AudioMapDescriptor, model::AudioMapDescriptor, entity::model::MapIndex, &ControlledEntityImpl::setAudioMapDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::AudioMap);
+	allocateDescriptors<entity::model::ClockDomainDescriptor, model::ClockDomainDescriptor, entity::model::ClockDomainIndex, &ControlledEntityImpl::setClockDomainDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::ClockDomain);
 }
 
 void ControlledEntityImpl::setAudioUnitDescriptor(entity::model::AudioUnitDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex)
 {
-	auto& configStaticModel = getConfigurationStaticModel(configurationIndex);
+	auto& configDescriptor = getConfigurationDescriptor(configurationIndex);
 
-	// Insert or replace the descriptor into the configuration
-#if __cpp_lib_map_try_emplace
-	configStaticModel.audioUnitDescriptors.insert_or_assign(std::make_pair(audioUnitIndex, descriptor));
-#else
-	configStaticModel.audioUnitDescriptors.erase(audioUnitIndex);
-	configStaticModel.audioUnitDescriptors.insert(std::make_pair(audioUnitIndex, descriptor));
-#endif
+	// Get or create a new model::AudioUnitDescriptor
+	auto& audioUnitDescriptor = configDescriptor.audioUnitDescriptors[audioUnitIndex];
+
+	// Copy static model
+	{
+		auto& m = audioUnitDescriptor.staticModel;
+		m.localizedDescription = descriptor.localizedDescription;
+		m.clockDomainIndex = descriptor.clockDomainIndex;
+		m.numberOfStreamInputPorts = descriptor.numberOfStreamInputPorts;
+		m.baseStreamInputPort = descriptor.baseStreamInputPort;
+		m.numberOfStreamOutputPorts = descriptor.numberOfStreamOutputPorts;
+		m.baseStreamOutputPort = descriptor.baseStreamOutputPort;
+		m.numberOfExternalInputPorts = descriptor.numberOfExternalInputPorts;
+		m.baseExternalInputPort = descriptor.baseExternalInputPort;
+		m.numberOfExternalOutputPorts = descriptor.numberOfExternalOutputPorts;
+		m.baseExternalOutputPort = descriptor.baseExternalOutputPort;
+		m.numberOfInternalInputPorts = descriptor.numberOfInternalInputPorts;
+		m.baseInternalInputPort = descriptor.baseInternalInputPort;
+		m.numberOfInternalOutputPorts = descriptor.numberOfInternalOutputPorts;
+		m.baseInternalOutputPort = descriptor.baseInternalOutputPort;
+		m.numberOfControls = descriptor.numberOfControls;
+		m.baseControl = descriptor.baseControl;
+		m.numberOfSignalSelectors = descriptor.numberOfSignalSelectors;
+		m.baseSignalSelector = descriptor.baseSignalSelector;
+		m.numberOfMixers = descriptor.numberOfMixers;
+		m.baseMixer = descriptor.baseMixer;
+		m.numberOfMatrices = descriptor.numberOfMatrices;
+		m.baseMatrix = descriptor.baseMatrix;
+		m.numberOfSplitters = descriptor.numberOfSplitters;
+		m.baseSplitter = descriptor.baseSplitter;
+		m.numberOfCombiners = descriptor.numberOfCombiners;
+		m.baseCombiner = descriptor.baseCombiner;
+		m.numberOfDemultiplexers = descriptor.numberOfDemultiplexers;
+		m.baseDemultiplexer = descriptor.baseDemultiplexer;
+		m.numberOfMultiplexers = descriptor.numberOfMultiplexers;
+		m.baseMultiplexer = descriptor.baseMultiplexer;
+		m.numberOfTranscoders = descriptor.numberOfTranscoders;
+		m.baseTranscoder = descriptor.baseTranscoder;
+		m.numberOfControlBlocks = descriptor.numberOfControlBlocks;
+		m.baseControlBlock = descriptor.baseControlBlock;
+		m.samplingRates = descriptor.samplingRates;
+	}
+
+	// Copy dynamic model
+	{
+		auto& m = audioUnitDescriptor.dynamicModel;
+		m.objectName = descriptor.objectName;
+		m.currentSamplingRate = descriptor.currentSamplingRate;
+	}
 }
 
 void ControlledEntityImpl::setStreamInputDescriptor(entity::model::StreamDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
 {
-	auto& configStaticModel = getConfigurationStaticModel(configurationIndex);
+	auto& configDescriptor = getConfigurationDescriptor(configurationIndex);
 
-	// Insert or replace the descriptor into the configuration
-#if __cpp_lib_map_try_emplace
-	configStaticModel.streamInputDescriptors.insert_or_assign(std::make_pair(streamIndex, descriptor));
-#else
-	configStaticModel.streamInputDescriptors.erase(streamIndex);
-	configStaticModel.streamInputDescriptors.insert(std::make_pair(streamIndex, descriptor));
-#endif
+	// Get or create a new model::StreamInputDescriptor
+	auto& streamInputDescriptor = configDescriptor.streamInputDescriptors[streamIndex];
+
+	// Copy static model
+	{
+		auto& m = streamInputDescriptor.staticModel;
+		m.localizedDescription = descriptor.localizedDescription;
+		m.clockDomainIndex = descriptor.clockDomainIndex;
+		m.streamFlags = descriptor.streamFlags;
+		m.backupTalkerEntityID_0 = descriptor.backupTalkerEntityID_0;
+		m.backupTalkerUniqueID_0 = descriptor.backupTalkerUniqueID_0;
+		m.backupTalkerEntityID_1 = descriptor.backupTalkerEntityID_1;
+		m.backupTalkerUniqueID_1 = descriptor.backupTalkerUniqueID_1;
+		m.backupTalkerEntityID_2 = descriptor.backupTalkerEntityID_2;
+		m.backupTalkerUniqueID_2 = descriptor.backupTalkerUniqueID_2;
+		m.backedupTalkerEntityID = descriptor.backedupTalkerEntityID;
+		m.backedupTalkerUnique = descriptor.backedupTalkerUnique;
+		m.avbInterfaceIndex = descriptor.avbInterfaceIndex;
+		m.bufferLength = descriptor.bufferLength;
+		m.formats = descriptor.formats;
+		m.redundantStreams = descriptor.redundantStreams;
+	}
+
+	// Copy dynamic model
+	{
+		auto& m = streamInputDescriptor.dynamicModel;
+		m.objectName = descriptor.objectName;
+		m.currentFormat = descriptor.currentFormat;
+		m.connectionState.listenerStream = entity::model::StreamIdentification{ _entity.getEntityID(), streamIndex };
+	}
 }
 
 void ControlledEntityImpl::setStreamOutputDescriptor(entity::model::StreamDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
 {
-	auto& configStaticModel = getConfigurationStaticModel(configurationIndex);
+	auto& configDescriptor = getConfigurationDescriptor(configurationIndex);
 
-	// Insert or replace the descriptor into the configuration
-#if __cpp_lib_map_try_emplace
-	configStaticModel.streamOutputDescriptors.insert_or_assign(std::make_pair(streamIndex, descriptor));
-#else
-	configStaticModel.streamOutputDescriptors.erase(streamIndex);
-	configStaticModel.streamOutputDescriptors.insert(std::make_pair(streamIndex, descriptor));
-#endif
+	// Get or create a new model::StreamOutputDescriptor
+	auto& streamOutputDescriptor = configDescriptor.streamOutputDescriptors[streamIndex];
+
+	// Copy static model
+	{
+		auto& m = streamOutputDescriptor.staticModel;
+		m.localizedDescription = descriptor.localizedDescription;
+		m.clockDomainIndex = descriptor.clockDomainIndex;
+		m.streamFlags = descriptor.streamFlags;
+		m.backupTalkerEntityID_0 = descriptor.backupTalkerEntityID_0;
+		m.backupTalkerUniqueID_0 = descriptor.backupTalkerUniqueID_0;
+		m.backupTalkerEntityID_1 = descriptor.backupTalkerEntityID_1;
+		m.backupTalkerUniqueID_1 = descriptor.backupTalkerUniqueID_1;
+		m.backupTalkerEntityID_2 = descriptor.backupTalkerEntityID_2;
+		m.backupTalkerUniqueID_2 = descriptor.backupTalkerUniqueID_2;
+		m.backedupTalkerEntityID = descriptor.backedupTalkerEntityID;
+		m.backedupTalkerUnique = descriptor.backedupTalkerUnique;
+		m.avbInterfaceIndex = descriptor.avbInterfaceIndex;
+		m.bufferLength = descriptor.bufferLength;
+		m.formats = descriptor.formats;
+		m.redundantStreams = descriptor.redundantStreams;
+	}
+
+	// Copy dynamic model
+	{
+		auto& m = streamOutputDescriptor.dynamicModel;
+		m.objectName = descriptor.objectName;
+		m.currentFormat = descriptor.currentFormat;
+	}
 }
 
 void ControlledEntityImpl::setAvbInterfaceDescriptor(entity::model::AvbInterfaceDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const interfaceIndex)
 {
-	auto& configStaticModel = getConfigurationStaticModel(configurationIndex);
+	auto& configDescriptor = getConfigurationDescriptor(configurationIndex);
 
-	// Insert or replace the descriptor into the configuration
-#if __cpp_lib_map_try_emplace
-	configStaticModel.avbInterfaceDescriptors.insert_or_assign(std::make_pair(interfaceIndex, descriptor));
-#else
-	configStaticModel.avbInterfaceDescriptors.erase(interfaceIndex);
-	configStaticModel.avbInterfaceDescriptors.insert(std::make_pair(interfaceIndex, descriptor));
-#endif
+	// Get or create a new model::AvbInterfaceDescriptor
+	auto& avbInterfaceDescriptor = configDescriptor.avbInterfaceDescriptors[interfaceIndex];
+
+	// Copy static model
+	{
+		auto& m = avbInterfaceDescriptor.staticModel;
+		m.localizedDescription = descriptor.localizedDescription;
+		m.macAddress = descriptor.macAddress;
+		m.interfaceFlags = descriptor.interfaceFlags;
+		m.clockIdentify = descriptor.clockIdentify;
+		m.priority1 = descriptor.priority1;
+		m.clockClass = descriptor.clockClass;
+		m.offsetScaledLogVariance = descriptor.offsetScaledLogVariance;
+		m.clockAccuracy = descriptor.clockAccuracy;
+		m.priority2 = descriptor.priority2;
+		m.domainNumber = descriptor.domainNumber;
+		m.logSyncInterval = descriptor.logSyncInterval;
+		m.logAnnounceInterval = descriptor.logAnnounceInterval;
+		m.logPDelayInterval = descriptor.logPDelayInterval;
+		m.portNumber = descriptor.portNumber;
+	}
+
+	// Copy dynamic model
+	{
+		auto& m = avbInterfaceDescriptor.dynamicModel;
+		m.objectName = descriptor.objectName;
+	}
 }
 
 void ControlledEntityImpl::setClockSourceDescriptor(entity::model::ClockSourceDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockIndex)
 {
-	auto& configStaticModel = getConfigurationStaticModel(configurationIndex);
+	auto& configDescriptor = getConfigurationDescriptor(configurationIndex);
 
-	// Insert or replace the descriptor into the configuration
-#if __cpp_lib_map_try_emplace
-	configStaticModel.clockSourceDescriptors.insert_or_assign(std::make_pair(clockIndex, descriptor));
-#else
-	configStaticModel.clockSourceDescriptors.erase(clockIndex);
-	configStaticModel.clockSourceDescriptors.insert(std::make_pair(clockIndex, descriptor));
-#endif
+	// Get or create a new model::ClockSourceDescriptor
+	auto& clockSourceDescriptor = configDescriptor.clockSourceDescriptors[clockIndex];
+
+	// Copy static model
+	{
+		auto& m = clockSourceDescriptor.staticModel;
+		m.localizedDescription = descriptor.localizedDescription;
+		m.clockSourceType = descriptor.clockSourceType;
+		m.clockSourceLocationType = descriptor.clockSourceLocationType;
+		m.clockSourceLocationIndex = descriptor.clockSourceLocationIndex;
+	}
+
+	// Copy dynamic model
+	{
+		auto& m = clockSourceDescriptor.dynamicModel;
+		m.objectName = descriptor.objectName;
+		m.clockSourceFlags = descriptor.clockSourceFlags;
+		m.clockSourceIdentifier = descriptor.clockSourceIdentifier;
+	}
 }
 
-void ControlledEntityImpl::setSelectedLocaleDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocaleDescriptor const* const descriptor)
+void ControlledEntityImpl::setSelectedLocaleBaseIndex(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const baseIndex)
 {
-	auto& configStaticModel = getConfigurationStaticModel(configurationIndex);
-	configStaticModel.selectedLocaleDescriptor = descriptor;
+	auto& configDescriptor = getConfigurationDescriptor(configurationIndex);
+	configDescriptor.dynamicModel.selectedLocaleBaseIndex = baseIndex;
 }
 
 void ControlledEntityImpl::setLocaleDescriptor(entity::model::LocaleDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::LocaleIndex const localeIndex)
 {
-	auto& configStaticModel = getConfigurationStaticModel(configurationIndex);
+	auto& configDescriptor = getConfigurationDescriptor(configurationIndex);
 
-	// Insert or replace the descriptor into the configuration
-#if __cpp_lib_map_try_emplace
-	configStaticModel.localeDescriptors.insert_or_assign(std::make_pair(localeIndex, descriptor));
-#else
-	configStaticModel.localeDescriptors.erase(localeIndex);
-	configStaticModel.localeDescriptors.insert(std::make_pair(localeIndex, descriptor));
-#endif
+	// Get or create a new model::LocaleDescriptor
+	auto& localeDescriptor = configDescriptor.localeDescriptors[localeIndex];
+
+	// Copy static model
+	{
+		auto& m = localeDescriptor.staticModel;
+		m.localeID = descriptor.localeID;
+		m.numberOfStringDescriptors = descriptor.numberOfStringDescriptors;
+		m.baseStringDescriptorIndex = descriptor.baseStringDescriptorIndex;
+	}
 }
 
-void ControlledEntityImpl::addStringsDescriptor(entity::model::StringsDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const stringsIndex, entity::model::StringsIndex const baseStringDescriptorIndex)
+void ControlledEntityImpl::setStringsDescriptor(entity::model::StringsDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const stringsIndex)
 {
-	auto& configStaticModel = getConfigurationStaticModel(configurationIndex);
+	auto& configDescriptor = getConfigurationDescriptor(configurationIndex);
 
-	// Check if we have a selected locale descriptor (and correct one), we might be receiving strings after a reset of the entity (it has gone offline then online again)
-	if (configStaticModel.selectedLocaleDescriptor == nullptr || configStaticModel.selectedLocaleDescriptor->baseStringDescriptorIndex != baseStringDescriptorIndex)
-		return;
+	// Get or create a new model::StringsDescriptor
+	auto& stringsDescriptor = configDescriptor.stringsDescriptors[stringsIndex];
 
-	// Add received localizedStrings
+	// Copy static model
+	{
+		auto& m = stringsDescriptor.staticModel;
+		m.strings = descriptor.strings;
+	}
+
+	// Copy the strings to the ConfigurationNode for a quick access
 	for (auto strIndex = 0u; strIndex < descriptor.strings.size(); ++strIndex)
 	{
-		auto localizedStringIndex = entity::model::StringsIndex((stringsIndex - baseStringDescriptorIndex) * descriptor.strings.size() + strIndex);
-		configStaticModel.localizedStrings[localizedStringIndex] = descriptor.strings.at(strIndex);
+		auto localizedStringIndex = entity::model::StringsIndex(stringsIndex * descriptor.strings.size() + strIndex);
+		configDescriptor.dynamicModel.localizedStrings[localizedStringIndex] = descriptor.strings.at(strIndex);
 	}
 }
 
 void ControlledEntityImpl::setStreamPortInputDescriptor(entity::model::StreamPortDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex)
 {
-	auto& configStaticModel = getConfigurationStaticModel(configurationIndex);
+	auto& configDescriptor = getConfigurationDescriptor(configurationIndex);
 
-	// Insert or replace the descriptor into the configuration
-#if __cpp_lib_map_try_emplace
-	configStaticModel.streamPortInputDescriptors.insert_or_assign(std::make_pair(streamPortIndex, descriptor));
-#else
-	configStaticModel.streamPortInputDescriptors.erase(streamPortIndex);
-	configStaticModel.streamPortInputDescriptors.insert(std::make_pair(streamPortIndex, descriptor));
-#endif
+	// Get or create a new model::StreamPortDescriptor
+	auto& streamPortDescriptor = configDescriptor.streamPortInputDescriptors[streamPortIndex];
+
+	// Copy static model
+	{
+		auto& m = streamPortDescriptor.staticModel;
+		m.clockDomainIndex = descriptor.clockDomainIndex;
+		m.portFlags = descriptor.portFlags;
+		m.numberOfControls = descriptor.numberOfControls;
+		m.baseControl = descriptor.baseControl;
+		m.numberOfClusters = descriptor.numberOfClusters;
+		m.baseCluster = descriptor.baseCluster;
+		m.numberOfMaps = descriptor.numberOfMaps;
+		m.baseMap = descriptor.baseMap;
+		m.hasDynamicAudioMap = m.numberOfMaps == 0;
+	}
+
+	// Nothing to copy in dynamic model
 }
 
 void ControlledEntityImpl::setStreamPortOutputDescriptor(entity::model::StreamPortDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex)
 {
-	auto& configStaticModel = getConfigurationStaticModel(configurationIndex);
+	auto& configDescriptor = getConfigurationDescriptor(configurationIndex);
 
-	// Insert or replace the descriptor into the configuration
-#if __cpp_lib_map_try_emplace
-	configStaticModel.streamPortOutputDescriptors.insert_or_assign(std::make_pair(streamPortIndex, descriptor));
-#else
-	configStaticModel.streamPortOutputDescriptors.erase(streamPortIndex);
-	configStaticModel.streamPortOutputDescriptors.insert(std::make_pair(streamPortIndex, descriptor));
-#endif
+	// Get or create a new model::StreamPortDescriptor
+	auto& streamPortDescriptor = configDescriptor.streamPortOutputDescriptors[streamPortIndex];
+
+	// Copy static model
+	{
+		auto& m = streamPortDescriptor.staticModel;
+		m.clockDomainIndex = descriptor.clockDomainIndex;
+		m.portFlags = descriptor.portFlags;
+		m.numberOfControls = descriptor.numberOfControls;
+		m.baseControl = descriptor.baseControl;
+		m.numberOfClusters = descriptor.numberOfClusters;
+		m.baseCluster = descriptor.baseCluster;
+		m.numberOfMaps = descriptor.numberOfMaps;
+		m.baseMap = descriptor.baseMap;
+		m.hasDynamicAudioMap = m.numberOfMaps == 0;
+	}
+
+	// Nothing to copy in dynamic model
 }
 
 void ControlledEntityImpl::setAudioClusterDescriptor(entity::model::AudioClusterDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex)
 {
-	auto& configStaticModel = getConfigurationStaticModel(configurationIndex);
+	auto& configDescriptor = getConfigurationDescriptor(configurationIndex);
 
-	// Insert or replace the descriptor into the configuration
-#if __cpp_lib_map_try_emplace
-	configStaticModel.audioClusterDescriptors.insert_or_assign(std::make_pair(clusterIndex, descriptor));
-#else
-	configStaticModel.audioClusterDescriptors.erase(clusterIndex);
-	configStaticModel.audioClusterDescriptors.insert(std::make_pair(clusterIndex, descriptor));
-#endif
+	// Get or create a new model::AudioClusterDescriptor
+	auto& audioClusterDescriptor = configDescriptor.audioClusterDescriptors[clusterIndex];
+
+	// Copy static model
+	{
+		auto& m = audioClusterDescriptor.staticModel;
+		m.localizedDescription = descriptor.localizedDescription;
+		m.signalType = descriptor.signalType;
+		m.signalIndex = descriptor.signalIndex;
+		m.signalOutput = descriptor.signalOutput;
+		m.pathLatency = descriptor.pathLatency;
+		m.blockLatency = descriptor.blockLatency;
+		m.channelCount = descriptor.channelCount;
+		m.format = descriptor.format;
+	}
+
+	// Copy dynamic model
+	{
+		auto& m = audioClusterDescriptor.dynamicModel;
+		m.objectName = descriptor.objectName;
+	}
 }
 
 void ControlledEntityImpl::setAudioMapDescriptor(entity::model::AudioMapDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex)
 {
-	auto& configStaticModel = getConfigurationStaticModel(configurationIndex);
+	auto& configDescriptor = getConfigurationDescriptor(configurationIndex);
 
-	// Insert or replace the descriptor into the configuration
-#if __cpp_lib_map_try_emplace
-	configStaticModel.audioMapDescriptors.insert_or_assign(std::make_pair(mapIndex, descriptor));
-#else
-	configStaticModel.audioMapDescriptors.erase(mapIndex);
-	configStaticModel.audioMapDescriptors.insert(std::make_pair(mapIndex, descriptor));
-#endif
+	// Get or create a new model::AudioMapDescriptor
+	auto& audioMapDescriptor = configDescriptor.audioMapDescriptors[mapIndex];
+
+	// Copy static model
+	{
+		auto& m = audioMapDescriptor.staticModel;
+		m.mappings = descriptor.mappings;
+	}
 }
 
 void ControlledEntityImpl::setClockDomainDescriptor(entity::model::ClockDomainDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex)
 {
-	auto& configStaticModel = getConfigurationStaticModel(configurationIndex);
+	auto& configDescriptor = getConfigurationDescriptor(configurationIndex);
 
-	// Insert or replace the descriptor into the configuration
-#if __cpp_lib_map_try_emplace
-	configStaticModel.clockDomainDescriptors.insert_or_assign(std::make_pair(clockIndex, descriptor));
-#else
-	configStaticModel.clockDomainDescriptors.erase(clockDomainIndex);
-	configStaticModel.clockDomainDescriptors.insert(std::make_pair(clockDomainIndex, descriptor));
-#endif
+	// Get or create a new model::ClockDomainDescriptor
+	auto& clockDomainDescriptor = configDescriptor.clockDomainDescriptors[clockDomainIndex];
+
+	// Copy static model
+	{
+		auto& m = clockDomainDescriptor.staticModel;
+		m.localizedDescription = descriptor.localizedDescription;
+		m.clockSources = descriptor.clockSources;
+	}
+
+	// Copy dynamic model
+	{
+		auto& m = clockDomainDescriptor.dynamicModel;
+		m.objectName = descriptor.objectName;
+		m.clockSourceIndex = descriptor.clockSourceIndex;
+	}
 }
 
-void ControlledEntityImpl::setInputStreamState(entity::model::StreamConnectedState const& state, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
+void ControlledEntityImpl::setInputStreamState(model::StreamConnectionState const& state, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
 {
-	auto& configDynamicModel = getConfigurationDynamicModel(configurationIndex);
+	AVDECC_ASSERT(_entity.getEntityID() == state.listenerStream.entityID, "EntityID not correctly initialized");
+	AVDECC_ASSERT(streamIndex == state.listenerStream.streamIndex, "StreamIndex not correctly initialized");
 
-	// Get or create model::StreamDynamicModel
-	auto& streamDynamicModel = configDynamicModel.streamInputDynamicModels[streamIndex];
+	auto& streamDescriptor = getStreamInputDescriptor(configurationIndex, streamIndex);
 
-	// Set StreamConnectedState
-	streamDynamicModel.connectedState = state;
+	// Set StreamConnectionState
+	streamDescriptor.dynamicModel.connectionState = state;
 }
 
 void ControlledEntityImpl::clearPortInputStreamAudioMappings(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex)
 {
-	auto& configDynamicModel = getConfigurationDynamicModel(configurationIndex);
-
-	// Get or create model::StreamPortDynamicModel
-	auto& streamPortDynamicModel = configDynamicModel.streamPortInputDynamicModels[streamPortIndex];
+	auto& streamPortDescriptor = getStreamPortInputDescriptor(configurationIndex, streamPortIndex);
 
 	// Clear audio mappings
-	streamPortDynamicModel.dynamicAudioMap.clear();
+	streamPortDescriptor.dynamicModel.dynamicAudioMap.clear();
 }
 
 void ControlledEntityImpl::clearPortOutputStreamAudioMappings(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex)
 {
-	auto& configDynamicModel = getConfigurationDynamicModel(configurationIndex);
-
-	// Get or create model::StreamPortDynamicModel
-	auto& streamPortDynamicModel = configDynamicModel.streamPortOutputDynamicModels[streamPortIndex];
+	auto& streamPortDescriptor = getStreamPortOutputDescriptor(configurationIndex, streamPortIndex);
 
 	// Clear audio mappings
-	streamPortDynamicModel.dynamicAudioMap.clear();
+	streamPortDescriptor.dynamicModel.dynamicAudioMap.clear();
 }
 
 void ControlledEntityImpl::addPortInputStreamAudioMappings(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 {
-	auto& configDynamicModel = getConfigurationDynamicModel(configurationIndex);
-
-	// Get or create model::StreamPortDynamicModel
-	auto& streamPortDynamicModel = configDynamicModel.streamPortInputDynamicModels[streamPortIndex];
+	auto& streamPortDescriptor = getStreamPortInputDescriptor(configurationIndex, streamPortIndex);
+	auto& dynamicMap = streamPortDescriptor.dynamicModel.dynamicAudioMap;
 
 	// Process audio mappings
 	for (auto const& map : mappings)
 	{
 		// Check if mapping must be replaced
-		auto foundIt = std::find_if(streamPortDynamicModel.dynamicAudioMap.begin(), streamPortDynamicModel.dynamicAudioMap.end(), [&map](entity::model::AudioMapping const& mapping)
+		auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(), [&map](entity::model::AudioMapping const& mapping)
 		{
 			return (map.clusterOffset == mapping.clusterOffset) && (map.clusterChannel == mapping.clusterChannel);
 		});
 		// Not found, add the new mapping
-		if (foundIt == streamPortDynamicModel.dynamicAudioMap.end())
-			streamPortDynamicModel.dynamicAudioMap.push_back(map);
+		if (foundIt == dynamicMap.end())
+			dynamicMap.push_back(map);
 		else // Otherwise, replace the previous mapping
 		{
 			foundIt->streamIndex = map.streamIndex;
@@ -1082,22 +1257,20 @@ void ControlledEntityImpl::addPortInputStreamAudioMappings(entity::model::Config
 
 void ControlledEntityImpl::addPortOutputStreamAudioMappings(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 {
-	auto& configDynamicModel = getConfigurationDynamicModel(configurationIndex);
-
-	// Get or create model::StreamPortDynamicModel
-	auto& streamPortDynamicModel = configDynamicModel.streamPortOutputDynamicModels[streamPortIndex];
+	auto& streamPortDescriptor = getStreamPortOutputDescriptor(configurationIndex, streamPortIndex);
+	auto& dynamicMap = streamPortDescriptor.dynamicModel.dynamicAudioMap;
 
 	// Process audio mappings
 	for (auto const& map : mappings)
 	{
 		// Check if mapping must be replaced
-		auto foundIt = std::find_if(streamPortDynamicModel.dynamicAudioMap.begin(), streamPortDynamicModel.dynamicAudioMap.end(), [&map](entity::model::AudioMapping const& mapping)
+		auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(), [&map](entity::model::AudioMapping const& mapping)
 		{
 			return (map.clusterOffset == mapping.clusterOffset) && (map.clusterChannel == mapping.clusterChannel);
 		});
 		// Not found, add the new mapping
-		if (foundIt == streamPortDynamicModel.dynamicAudioMap.end())
-			streamPortDynamicModel.dynamicAudioMap.push_back(map);
+		if (foundIt == dynamicMap.end())
+			dynamicMap.push_back(map);
 		else // Otherwise, replace the previous mapping
 		{
 			foundIt->streamIndex = map.streamIndex;
@@ -1108,42 +1281,93 @@ void ControlledEntityImpl::addPortOutputStreamAudioMappings(entity::model::Confi
 
 void ControlledEntityImpl::removePortInputStreamAudioMappings(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 {
-	auto& configDynamicModel = getConfigurationDynamicModel(configurationIndex);
-
-	// Get or create model::StreamPortDynamicModel
-	auto& streamPortDynamicModel = configDynamicModel.streamPortInputDynamicModels[streamPortIndex];
+	auto& streamPortDescriptor = getStreamPortInputDescriptor(configurationIndex, streamPortIndex);
+	auto& dynamicMap = streamPortDescriptor.dynamicModel.dynamicAudioMap;
 
 	// Process audio mappings
 	for (auto const& map : mappings)
 	{
 		// Check if mapping exists
-		auto foundIt = std::find_if(streamPortDynamicModel.dynamicAudioMap.begin(), streamPortDynamicModel.dynamicAudioMap.end(), [&map](entity::model::AudioMapping const& mapping)
+		auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(), [&map](entity::model::AudioMapping const& mapping)
 		{
 			return (map.clusterOffset == mapping.clusterOffset) && (map.clusterChannel == mapping.clusterChannel);
 		});
-		if (AVDECC_ASSERT_WITH_RET(foundIt != streamPortDynamicModel.dynamicAudioMap.end(), "Mapping not found"))
-			streamPortDynamicModel.dynamicAudioMap.erase(foundIt);
+		if (AVDECC_ASSERT_WITH_RET(foundIt != dynamicMap.end(), "Mapping not found"))
+			dynamicMap.erase(foundIt);
 	}
 }
 
 void ControlledEntityImpl::removePortOutputStreamAudioMappings(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 {
-	auto& configDynamicModel = getConfigurationDynamicModel(configurationIndex);
-
-	// Get or create model::StreamPortDynamicModel
-	auto& streamPortDynamicModel = configDynamicModel.streamPortOutputDynamicModels[streamPortIndex];
+	auto& streamPortDescriptor = getStreamPortOutputDescriptor(configurationIndex, streamPortIndex);
+	auto& dynamicMap = streamPortDescriptor.dynamicModel.dynamicAudioMap;
 
 	// Process audio mappings
 	for (auto const& map : mappings)
 	{
 		// Check if mapping exists
-		auto foundIt = std::find_if(streamPortDynamicModel.dynamicAudioMap.begin(), streamPortDynamicModel.dynamicAudioMap.end(), [&map](entity::model::AudioMapping const& mapping)
+		auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(), [&map](entity::model::AudioMapping const& mapping)
 		{
 			return (map.clusterOffset == mapping.clusterOffset) && (map.clusterChannel == mapping.clusterChannel);
 		});
-		if (AVDECC_ASSERT_WITH_RET(foundIt != streamPortDynamicModel.dynamicAudioMap.end(), "Mapping not found"))
-			streamPortDynamicModel.dynamicAudioMap.erase(foundIt);
+		if (AVDECC_ASSERT_WITH_RET(foundIt != dynamicMap.end(), "Mapping not found"))
+			dynamicMap.erase(foundIt);
 	}
+}
+
+void ControlledEntityImpl::clearStreamOutputConnections(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
+{
+	auto& streamDescriptor = getStreamOutputDescriptor(configurationIndex, streamIndex);
+
+	// Clear connections
+	streamDescriptor.dynamicModel.connections.clear();
+}
+
+bool ControlledEntityImpl::addStreamOutputConnection(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream)
+{
+	auto& streamDescriptor = getStreamOutputDescriptor(configurationIndex, streamIndex);
+
+	// Add connection
+	auto const result = streamDescriptor.dynamicModel.connections.insert(listenerStream);
+	return result.second;
+}
+
+bool ControlledEntityImpl::delStreamOutputConnection(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream)
+{
+	auto& streamDescriptor = getStreamOutputDescriptor(configurationIndex, streamIndex);
+
+	// Remove connection
+	return streamDescriptor.dynamicModel.connections.erase(listenerStream) > 0;
+}
+
+void ControlledEntityImpl::setInputStreamInfo(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info)
+{
+	auto& streamDescriptor = getStreamInputDescriptor(configurationIndex, streamIndex);
+
+	// Set StreamInfo
+	streamDescriptor.dynamicModel.streamInfo = info;
+
+	// Set isRunning
+	streamDescriptor.dynamicModel.isRunning = !hasFlag(info.streamInfoFlags, entity::StreamInfoFlags::StreamingWait);
+}
+
+void ControlledEntityImpl::setOutputStreamInfo(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info)
+{
+	auto& streamDescriptor = getStreamOutputDescriptor(configurationIndex, streamIndex);
+
+	// Set StreamInfo
+	streamDescriptor.dynamicModel.streamInfo = info;
+
+	// Set isRunning
+	streamDescriptor.dynamicModel.isRunning = !hasFlag(info.streamInfoFlags, entity::StreamInfoFlags::StreamingWait);
+}
+
+void ControlledEntityImpl::setAvbInfo(entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info)
+{
+	auto& avbInterfaceDescriptor = getAvbInterfaceDescriptor(configurationIndex, avbInterfaceIndex);
+
+	// Set AvbInfo
+	avbInterfaceDescriptor.dynamicModel.avbInfo = info;
 }
 
 // Expected descriptor query methods
@@ -1188,28 +1412,28 @@ void ControlledEntityImpl::clearExpectedDescriptors(entity::model::Configuration
 }
 
 // Expected dynamic info query methods
-static inline ControlledEntityImpl::DescriptorKey makeDynamicInfoKey(ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex descriptorIndex)
+static inline ControlledEntityImpl::DynamicInfoKey makeDynamicInfoKey(ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex descriptorIndex, std::uint16_t const connectionIndex)
 {
-	return (la::avdecc::to_integral(dynamicInfoType) << (sizeof(descriptorIndex) * 8)) + descriptorIndex;
+	return (static_cast<ControlledEntityImpl::DynamicInfoKey>(la::avdecc::to_integral(dynamicInfoType)) << ((sizeof(descriptorIndex) + sizeof(connectionIndex)) * 8)) + (descriptorIndex << (sizeof(connectionIndex) * 8)) + connectionIndex;
 }
 
-bool ControlledEntityImpl::checkAndClearExpectedDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept
+bool ControlledEntityImpl::checkAndClearExpectedDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const connectionIndex) noexcept
 {
 	auto const confIt = _expectedDynamicInfo.find(configurationIndex);
 
 	if (confIt == _expectedDynamicInfo.end())
 		return false;
 
-	auto const key = makeDynamicInfoKey(dynamicInfoType, descriptorIndex);
+	auto const key = makeDynamicInfoKey(dynamicInfoType, descriptorIndex, connectionIndex);
 
 	return confIt->second.erase(key) == 1;
 }
 
-void ControlledEntityImpl::setDynamicInfoExpected(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept
+void ControlledEntityImpl::setDynamicInfoExpected(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const connectionIndex) noexcept
 {
 	auto& conf = _expectedDynamicInfo[configurationIndex];
 
-	auto const key = makeDynamicInfoKey(dynamicInfoType, descriptorIndex);
+	auto const key = makeDynamicInfoKey(dynamicInfoType, descriptorIndex, connectionIndex);
 	conf.insert(key);
 }
 
@@ -1253,112 +1477,96 @@ void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
 		{
 			// Build root node (EntityNode)
 			initNode(_entityNode, entity::model::DescriptorType::Entity, 0, model::AcquireState::Undefined);
-			_entityNode.entityDescriptor = &_entityStaticModel.entityDescriptor;
+			_entityNode.staticModel = &_entityModel.staticModel;
+			_entityNode.dynamicModel = &_entityModel.dynamicModel;
 
 			// Build configuration nodes (ConfigurationNode)
-			for (auto const& configKV : _entityStaticModel.configurationStaticModels)
+			for (auto& configKV : _entityModel.configurationDescriptors)
 			{
 				auto const configIndex = configKV.first;
-				auto const& configStaticModel = configKV.second;
+				auto& configDescriptor = configKV.second;
 
 				auto& configNode = _entityNode.configurations[configIndex];
 				initNode(configNode, entity::model::DescriptorType::Configuration, configIndex, model::AcquireState::Undefined);
-				configNode.configurationDescriptor = &configStaticModel.configurationDescriptor;
-				configNode.isActiveConfiguration = configIndex == _entityStaticModel.entityDescriptor.currentConfiguration;
+				configNode.staticModel = &configDescriptor.staticModel;
+				configNode.dynamicModel = &configDescriptor.dynamicModel;
 
 				// Build audio units (AudioUnitNode)
-				for (auto const& audioUnitKV : configStaticModel.audioUnitDescriptors)
+				for (auto& audioUnitKV : configDescriptor.audioUnitDescriptors)
 				{
 					auto const audioUnitIndex = audioUnitKV.first;
-					auto const& audioUnitDescriptor = audioUnitKV.second;
+					auto& audioUnitDescriptor = audioUnitKV.second;
 
 					auto& audioUnitNode = configNode.audioUnits[audioUnitIndex];
 					initNode(audioUnitNode, entity::model::DescriptorType::AudioUnit, audioUnitIndex, model::AcquireState::Undefined);
-					audioUnitNode.audioUnitDescriptor = &audioUnitDescriptor;
+					audioUnitNode.staticModel = &audioUnitDescriptor.staticModel;
+					audioUnitNode.dynamicModel = &audioUnitDescriptor.dynamicModel;
 
 					// Build stream port inputs and outputs (StreamPortNode)
-					auto processStreamPorts = [this, &audioUnitNode, configIndex](entity::model::DescriptorType const descriptorType, std::uint16_t const numberOfStreamPorts, entity::model::StreamPortIndex const baseStreamPort)
+					auto processStreamPorts = [entity = const_cast<ControlledEntityImpl*>(this), &audioUnitNode, configIndex](entity::model::DescriptorType const descriptorType, std::uint16_t const numberOfStreamPorts, entity::model::StreamPortIndex const baseStreamPort)
 					{
 						for (auto streamPortIndexCounter = entity::model::StreamPortIndex(0); streamPortIndexCounter < numberOfStreamPorts; ++streamPortIndexCounter)
 						{
 							model::StreamPortNode* streamPortNode{ nullptr };
-							entity::model::StreamPortDescriptor const* streamPortDescriptor{ nullptr };
+							model::StreamPortDescriptor* streamPortDescriptor{ nullptr };
 							auto const streamPortIndex = entity::model::StreamPortIndex(streamPortIndexCounter + baseStreamPort);
 
 							if (descriptorType == entity::model::DescriptorType::StreamPortInput)
 							{
 								streamPortNode = &audioUnitNode.streamPortInputs[streamPortIndex];
-								streamPortDescriptor = &getStreamPortInputDescriptor(configIndex, streamPortIndex);
+								streamPortDescriptor = &entity->getStreamPortInputDescriptor(configIndex, streamPortIndex);
 							}
 							else
 							{
 								streamPortNode = &audioUnitNode.streamPortOutputs[streamPortIndex];
-								streamPortDescriptor = &getStreamPortOutputDescriptor(configIndex, streamPortIndex);
+								streamPortDescriptor = &entity->getStreamPortOutputDescriptor(configIndex, streamPortIndex);
 							}
 
 							initNode(*streamPortNode, descriptorType, streamPortIndex, model::AcquireState::Undefined);
-							streamPortNode->streamPortDescriptor = streamPortDescriptor;
-							if (streamPortDescriptor->numberOfMaps == 0)
-							{
-#if IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS
-								try
-								{
-#endif // IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS
-									if (descriptorType == entity::model::DescriptorType::StreamPortInput)
-									{
-										streamPortNode->dynamicAudioMap = &getStreamPortInputDynamicModel(configIndex, streamPortIndex).dynamicAudioMap;
-									}
-									else
-									{
-										streamPortNode->dynamicAudioMap = &getStreamPortOutputDynamicModel(configIndex, streamPortIndex).dynamicAudioMap;
-									}
-									streamPortNode->hasDynamicAudioMap = true;
-#if IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS
-								}
-								catch (Exception const&)
-								{
-								}
-#endif // IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS
-							}
+							streamPortNode->staticModel = &streamPortDescriptor->staticModel;
+							streamPortNode->dynamicModel = &streamPortDescriptor->dynamicModel;
 
 							// Build audio clusters (AudioClusterNode)
-							for (auto clusterIndexCounter = entity::model::ClusterIndex(0); clusterIndexCounter < streamPortDescriptor->numberOfClusters; ++clusterIndexCounter)
+							for (auto clusterIndexCounter = entity::model::ClusterIndex(0); clusterIndexCounter < streamPortDescriptor->staticModel.numberOfClusters; ++clusterIndexCounter)
 							{
-								auto const clusterIndex = entity::model::ClusterIndex(clusterIndexCounter + streamPortDescriptor->baseCluster);
+								auto const clusterIndex = entity::model::ClusterIndex(clusterIndexCounter + streamPortDescriptor->staticModel.baseCluster);
 								auto& audioClusterNode = streamPortNode->audioClusters[clusterIndex];
 								initNode(audioClusterNode, entity::model::DescriptorType::AudioCluster, clusterIndex, model::AcquireState::Undefined);
-								auto const& audioClusterDescriptor = getAudioClusterDescriptor(configIndex, clusterIndex);
-								audioClusterNode.audioClusterDescriptor = &audioClusterDescriptor;
+								auto& audioClusterDescriptor = entity->getAudioClusterDescriptor(configIndex, clusterIndex);
+								audioClusterNode.staticModel = &audioClusterDescriptor.staticModel;
+								audioClusterNode.dynamicModel = &audioClusterDescriptor.dynamicModel;
 							}
 
 							// Build audio maps (AudioMapNode)
-							for (auto mapIndexCounter = entity::model::MapIndex(0); mapIndexCounter < streamPortDescriptor->numberOfMaps; ++mapIndexCounter)
+							for (auto mapIndexCounter = entity::model::MapIndex(0); mapIndexCounter < streamPortDescriptor->staticModel.numberOfMaps; ++mapIndexCounter)
 							{
-								auto const mapIndex = entity::model::MapIndex(mapIndexCounter + streamPortDescriptor->baseMap);
+								auto const mapIndex = entity::model::MapIndex(mapIndexCounter + streamPortDescriptor->staticModel.baseMap);
 								auto& audioMapNode = streamPortNode->audioMaps[mapIndex];
 								initNode(audioMapNode, entity::model::DescriptorType::AudioMap, mapIndex, model::AcquireState::Undefined);
-								auto const& audioMapDescriptor = getAudioMapDescriptor(configIndex, mapIndex);
-								audioMapNode.audioMapDescriptor = &audioMapDescriptor;
+								auto const& audioMapDescriptor = entity->getAudioMapDescriptor(configIndex, mapIndex);
+								audioMapNode.staticModel = &audioMapDescriptor.staticModel;
 							}
 						}
 					};
-					processStreamPorts(entity::model::DescriptorType::StreamPortInput, audioUnitDescriptor.numberOfStreamInputPorts, audioUnitDescriptor.baseStreamInputPort);
-					processStreamPorts(entity::model::DescriptorType::StreamPortOutput, audioUnitDescriptor.numberOfStreamOutputPorts, audioUnitDescriptor.baseStreamOutputPort);
+					processStreamPorts(entity::model::DescriptorType::StreamPortInput, audioUnitDescriptor.staticModel.numberOfStreamInputPorts, audioUnitDescriptor.staticModel.baseStreamInputPort);
+					processStreamPorts(entity::model::DescriptorType::StreamPortOutput, audioUnitDescriptor.staticModel.numberOfStreamOutputPorts, audioUnitDescriptor.staticModel.baseStreamOutputPort);
 				}
 
 				// Build stream inputs (StreamNode)
-				for (auto const& streamKV : configStaticModel.streamInputDescriptors)
+				for (auto& streamKV : configDescriptor.streamInputDescriptors)
 				{
 					auto const streamIndex = streamKV.first;
-					auto const& streamDescriptor = streamKV.second;
+					auto& streamDescriptor = streamKV.second;
 
 					auto& streamNode = configNode.streamInputs[streamIndex];
 					initNode(streamNode, entity::model::DescriptorType::StreamInput, streamIndex, model::AcquireState::Undefined);
-					streamNode.streamDescriptor = &streamDescriptor;
-					streamNode.connectedState = &getConnectedSinkState(streamIndex);
+					streamNode.staticModel = &streamDescriptor.staticModel;
+					streamNode.dynamicModel = &streamDescriptor.dynamicModel;
 
 					// Build redundant input (RedundantStreamNode)
-					if (!streamDescriptor.redundantStreams.empty())
+#if SUPPORT_REDUNDANT_STREAM_ASSOCIATION
+#pragma message("TODO: Computation and detection should be done elsewhere, if possible.")
+					if (!streamDescriptor.staticModel.redundantStreams.empty())
 					{
 						// Search for an already created redundant association with the first stream index in the list (possible primary stream)
 						model::RedundantStreamNode* redundantStreamNode{ nullptr };
@@ -1382,20 +1590,23 @@ void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
 						redundantStreamNode->redundantStreams[streamIndex] = &streamNode;
 						streamNode.isRedundant = true;
 					}
+#endif // SUPPORT_REDUNDANT_STREAM_ASSOCIATION
 				}
 
 				// Build stream outputs (StreamNode)
-				for (auto const& streamKV : configStaticModel.streamOutputDescriptors)
+				for (auto& streamKV : configDescriptor.streamOutputDescriptors)
 				{
 					auto const streamIndex = streamKV.first;
-					auto const& streamDescriptor = streamKV.second;
+					auto& streamDescriptor = streamKV.second;
 
 					auto& streamNode = configNode.streamOutputs[streamIndex];
 					initNode(streamNode, entity::model::DescriptorType::StreamOutput, streamIndex, model::AcquireState::Undefined);
-					streamNode.streamDescriptor = &streamDescriptor;
+					streamNode.staticModel = &streamDescriptor.staticModel;
+					streamNode.dynamicModel = &streamDescriptor.dynamicModel;
 
 					// Build redundant output (RedundantStreamNode)
-					if (!streamDescriptor.redundantStreams.empty())
+#if SUPPORT_REDUNDANT_STREAM_ASSOCIATION
+					if (!streamDescriptor.staticModel.redundantStreams.empty())
 					{
 						// Search for an already created redundant association with the first stream index in the list (possible primary stream)
 						model::RedundantStreamNode* redundantStreamNode{ nullptr };
@@ -1419,56 +1630,60 @@ void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
 						redundantStreamNode->redundantStreams[streamIndex] = &streamNode;
 						streamNode.isRedundant = true;
 					}
+#endif // SUPPORT_REDUNDANT_STREAM_ASSOCIATION
 				}
 
 				// Build avb interfaces (AvbInterfaceNode)
-				for (auto const& interfaceKV : configStaticModel.avbInterfaceDescriptors)
+				for (auto& interfaceKV : configDescriptor.avbInterfaceDescriptors)
 				{
 					auto const interfaceIndex = interfaceKV.first;
-					auto const& interfaceDescriptor = interfaceKV.second;
+					auto& interfaceDescriptor = interfaceKV.second;
 
 					auto& interfaceNode = configNode.avbInterfaces[interfaceIndex];
 					initNode(interfaceNode, entity::model::DescriptorType::AvbInterface, interfaceIndex, model::AcquireState::Undefined);
-					interfaceNode.avbInterfaceDescriptor = &interfaceDescriptor;
+					interfaceNode.staticModel = &interfaceDescriptor.staticModel;
+					interfaceNode.dynamicModel = &interfaceDescriptor.dynamicModel;
 				}
 
 				// Build clock sources (ClockSourceNode)
-				for (auto const& sourceKV : configStaticModel.clockSourceDescriptors)
+				for (auto& sourceKV : configDescriptor.clockSourceDescriptors)
 				{
 					auto const sourceIndex = sourceKV.first;
-					auto const& sourceDescriptor = sourceKV.second;
+					auto& sourceDescriptor = sourceKV.second;
 
 					auto& sourceNode = configNode.clockSources[sourceIndex];
 					initNode(sourceNode, entity::model::DescriptorType::ClockSource, sourceIndex, model::AcquireState::Undefined);
-					sourceNode.clockSourceDescriptor = &sourceDescriptor;
+					sourceNode.staticModel = &sourceDescriptor.staticModel;
+					sourceNode.dynamicModel = &sourceDescriptor.dynamicModel;
 				}
 
 				// Build locales (LocaleNode)
-				for (auto const& localeKV : configStaticModel.localeDescriptors)
+				for (auto const& localeKV : configDescriptor.localeDescriptors)
 				{
 					auto const localeIndex = localeKV.first;
 					auto const& localeDescriptor = localeKV.second;
 
 					auto& localeNode = configNode.locales[localeIndex];
 					initNode(localeNode, entity::model::DescriptorType::Locale, localeIndex, model::AcquireState::Undefined);
-					localeNode.localeDescriptor = &localeDescriptor;
+					localeNode.staticModel = &localeDescriptor.staticModel;
 
 					// Build strings (StringsNode)
 					// TODO
 				}
 
 				// Build clock domains (ClockDomainNode)
-				for (auto const& domainKV : configStaticModel.clockDomainDescriptors)
+				for (auto& domainKV : configDescriptor.clockDomainDescriptors)
 				{
 					auto const domainIndex = domainKV.first;
-					auto const& domainDescriptor = domainKV.second;
+					auto& domainDescriptor = domainKV.second;
 
 					auto& domainNode = configNode.clockDomains[domainIndex];
 					initNode(domainNode, entity::model::DescriptorType::ClockDomain, domainIndex, model::AcquireState::Undefined);
-					domainNode.clockDomainDescriptor = &domainDescriptor;
+					domainNode.staticModel = &domainDescriptor.staticModel;
+					domainNode.dynamicModel = &domainDescriptor.dynamicModel;
 
 					// Build associated clock sources (ClockSourceNode)
-					for (auto const sourceIndex: domainDescriptor.clockSources)
+					for (auto const sourceIndex: domainDescriptor.staticModel.clockSources)
 					{
 						auto const sourceIt = configNode.clockSources.find(sourceIndex);
 						if (sourceIt != configNode.clockSources.end())

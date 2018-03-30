@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -340,24 +340,6 @@ struct ClockDomainDescriptor
 
 /** CONTROL_BLOCK Descriptor - Clause 7.2.33 */
 
-struct StreamConnectedState
-{
-	UniqueIdentifier talkerID{ getNullIdentifier() };
-	StreamIndex talkerIndex{ StreamIndex(0u) };
-	bool isConnected{ false };
-	bool isFastConnect{ false };
-};
-
-constexpr bool operator==(StreamConnectedState const& lhs, StreamConnectedState const& rhs) noexcept
-{
-	return (lhs.talkerID == rhs.talkerID) && (lhs.talkerIndex == rhs.talkerIndex) && (lhs.isConnected == rhs.isConnected) && (lhs.isFastConnect == rhs.isFastConnect);
-}
-
-constexpr bool operator!=(StreamConnectedState const& lhs, StreamConnectedState const& rhs) noexcept
-{
-	return !(lhs == rhs);
-}
-
 /** GET_STREAM_INFO and SET_STREAM_INFO Dynamic Information - Clause 7.4.16.2 */
 struct StreamInfo
 {
@@ -377,6 +359,33 @@ constexpr bool operator==(StreamInfo const& lhs, StreamInfo const& rhs) noexcept
 		(lhs.streamID == rhs.streamID) && (lhs.msrpAccumulatedLatency == rhs.msrpAccumulatedLatency) &&
 		(lhs.streamDestMac == rhs.streamDestMac) && (lhs.msrpFailureCode == rhs.msrpFailureCode) &&
 		(lhs.msrpFailureBridgeID == rhs.msrpFailureBridgeID) && (lhs.streamVlanID == rhs.streamVlanID);
+}
+
+constexpr bool operator!=(StreamInfo const& lhs, StreamInfo const& rhs) noexcept
+{
+	return !(lhs == rhs);
+}
+
+/** GET_AVB_INFO Dynamic Information - Clause 7.4.40.2 */
+struct AvbInfo
+{
+	UniqueIdentifier gptpGrandmasterID{ getNullIdentifier() };
+	std::uint32_t propagationDelay{ 0u };
+	std::uint8_t gptpDomainNumber{ 0u };
+	AvbInfoFlags flags{ AvbInfoFlags::None };
+	entity::model::MsrpMappings mappings{};
+};
+
+constexpr bool operator==(AvbInfo const& lhs, AvbInfo const& rhs) noexcept
+{
+	return (lhs.gptpGrandmasterID == rhs.gptpGrandmasterID) && (lhs.propagationDelay == rhs.propagationDelay) &&
+		(lhs.gptpDomainNumber == rhs.gptpDomainNumber) && (lhs.flags == rhs.flags) &&
+		(lhs.mappings == rhs.mappings);
+}
+
+constexpr bool operator!=(AvbInfo const& lhs, AvbInfo const& rhs) noexcept
+{
+	return !(lhs == rhs);
 }
 
 /**

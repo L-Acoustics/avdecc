@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -1542,7 +1542,94 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 }
 
 /** GET_AVB_INFO Command - Clause 7.4.40.1 */
+Serializer<AecpAemGetAvbInfoCommandPayloadSize> serializeGetAvbInfoCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	Serializer<AecpAemGetAvbInfoCommandPayloadSize> ser;
+
+	ser << descriptorType << descriptorIndex;
+
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeGetAvbInfoCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetAvbInfoCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+
+	des >> descriptorType >> descriptorIndex;
+
+	AVDECC_ASSERT(des.usedBytes() == AecpAemGetAvbInfoCommandPayloadSize, "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(descriptorType, descriptorIndex);
+}
+
 /** GET_AVB_INFO Response - Clause 7.4.40.2 */
+Serializer<AemAecpdu::MaximumPayloadLength> serializeGetAvbInfoResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::AvbInfo const& avbInfo)
+{
+	Serializer<AemAecpdu::MaximumPayloadLength> ser;
+
+	ser << descriptorType << descriptorIndex;
+	ser << avbInfo.gptpGrandmasterID << avbInfo.propagationDelay << avbInfo.gptpDomainNumber << avbInfo.flags << static_cast<std::uint16_t>(avbInfo.mappings.size());
+
+	// Serialize variable data
+	for (auto const& mapping : avbInfo.mappings)
+	{
+		ser << mapping.trafficClass << mapping.priority << mapping.vlanID;
+	}
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::AvbInfo> deserializeGetAvbInfoResponse(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetAvbInfoResponsePayloadMinSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+	entity::model::AvbInfo avbInfo{};
+	std::uint16_t numberOfMappings{ 0u };
+
+	des >> descriptorType >> descriptorIndex;
+	des >> avbInfo.gptpGrandmasterID >> avbInfo.propagationDelay >> avbInfo.gptpDomainNumber >> avbInfo.flags >> numberOfMappings;
+
+	// Check variable size
+	auto const mappingsSize = entity::model::MsrpMapping::size() * numberOfMappings;
+	if (des.remaining() < mappingsSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Unpack remaining data
+	entity::model::MsrpMappings mappings;
+	for (auto index = 0u; index < numberOfMappings; ++index)
+	{
+		entity::model::MsrpMapping mapping;
+		des >> mapping.trafficClass >> mapping.priority >> mapping.vlanID;
+		mappings.push_back(mapping);
+	}
+	AVDECC_ASSERT(des.usedBytes() == (protocol::aemPayload::AecpAemGetAvbInfoResponsePayloadMinSize + mappingsSize), "Used more bytes than specified in protocol constant");
+	avbInfo.mappings = std::move(mappings);
+
+	if (des.remaining() != 0)
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "GetAvbInfo Response deserialize warning: Remaining bytes in buffer");
+
+	return std::make_tuple(descriptorType, descriptorIndex, avbInfo);
+}
+
 /** GET_AS_PATH Command - Clause 7.4.41.1 */
 /** GET_AS_PATH Response - Clause 7.4.41.2 */
 /** GET_COUNTERS Command - Clause 7.4.42.1 */

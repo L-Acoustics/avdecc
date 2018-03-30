@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -247,6 +247,24 @@ TEST(AemPayloads, ReadDescriptorCommand)
 }
 
 #pragma message("TODO: ReadDescriptorResponse tests")
+
+TEST(AemPayloads, GetAvbInfoCommand)
+{
+	CHECK_PAYLOAD(GetAvbInfoCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0));
+	CHECK_PAYLOAD(GetAvbInfoCommand, la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
+}
+
+TEST(AemPayloads, GetAvbInfoResponse)
+{
+	la::avdecc::entity::model::AvbInfo avbInfo{ la::avdecc::getUninitializedIdentifier(), std::uint32_t(5), std::uint8_t(2), la::avdecc::entity::AvbInfoFlags::AsCapable, la::avdecc::entity::model::MsrpMappings{} };
+	EXPECT_NO_THROW(
+		auto const ser = la::avdecc::protocol::aemPayload::serializeGetAvbInfoResponse(la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), avbInfo);
+		EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemGetAvbInfoResponsePayloadMinSize, ser.size());
+		auto result = la::avdecc::protocol::aemPayload::deserializeGetAvbInfoResponse({ ser.data(), ser.usedBytes() });
+		auto const& info = std::get<2>(result);
+		EXPECT_EQ(avbInfo, info);
+	) << "Serialization/deserialization should not throw anything";
+}
 
 TEST(AemPayloads, GetAudioMapCommand)
 {

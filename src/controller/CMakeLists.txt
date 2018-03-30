@@ -22,19 +22,26 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/controller/avdeccController.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/exports.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntity.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccEntityModel.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntityModel.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntityCommonModel.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntityDynamicModel.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntityStaticModel.hpp
 )
 source_group("Header Files\\Public\\Controller" FILES ${PUBLIC_HEADER_FILES})
 
 set (HEADER_FILES_COMMON
 	${CMAKE_CURRENT_BINARY_DIR}/config.h
+	avdeccControllerImpl.hpp
 	avdeccControlledEntityImpl.hpp
-	avdeccControlledEntityDynamicModel.hpp
-	avdeccControlledEntityStaticModel.hpp
+	avdeccControlledEntityModelTree.hpp
 )
 
 set (SOURCE_FILES_COMMON
 	avdeccController.cpp
+	avdeccControllerImpl.cpp
+	avdeccControllerImplDelegateOverrides.cpp
+	avdeccControllerImplHandlers.cpp
+	avdeccControllerImplOverrides.cpp
 	avdeccControlledEntityImpl.cpp
 )
 

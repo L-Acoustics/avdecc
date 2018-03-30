@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -31,6 +31,7 @@
 #include <vector>
 #include <iostream>
 #include <cstring> // std::memcpy
+#include "uniqueIdentifier.hpp"
 
 namespace la
 {
@@ -259,11 +260,28 @@ struct AudioMapping
 };
 using AudioMappings = std::vector<AudioMapping>;
 
+/** MSRP Mapping - Clause 7.4.40.2.1 */
+struct MsrpMapping
+{
+	std::uint8_t trafficClass{ 0x00 };
+	std::uint8_t priority{ 0xff };
+	std::uint16_t vlanID{ 0u };
+
+	static constexpr size_t size() { return sizeof(trafficClass) + sizeof(priority) + sizeof(vlanID); }
+};
+
+constexpr bool operator==(MsrpMapping const& lhs, MsrpMapping const& rhs) noexcept
+{
+	return (lhs.trafficClass == rhs.trafficClass) && (lhs.priority == rhs.priority) && (lhs.vlanID == rhs.vlanID);
+}
+
+using MsrpMappings = std::vector<MsrpMapping>;
+
 /** UTF-8 String */
 class AvdeccFixedString final
 {
-	static constexpr size_t MaxLength = 64;
 public:
+	static constexpr size_t MaxLength = 64;
 	using value_type = char;
 
 	/** Default constructor */
@@ -336,10 +354,22 @@ public:
 		return _buffer == afs._buffer;
 	}
 
+	/** operator!= */
+	bool operator!=(AvdeccFixedString const& afs) const noexcept
+	{
+		return !operator==(afs);
+	}
+
 	/** operator== overload for a std::string */
 	bool operator==(std::string const& str) const noexcept
 	{
 		return operator std::string() == str;
+	}
+
+	/** operator!= overload for a std::string */
+	bool operator!=(std::string const& str) const noexcept
+	{
+		return !operator==(str);
 	}
 
 	/** Returns this AvdeccFixedString as a std::string */
@@ -373,6 +403,30 @@ public:
 private:
 	std::array<value_type, MaxLength> _buffer{};
 };
+
+
+/** Stream Identification (EntityID/StreamIndex couple) */
+struct StreamIdentification
+{
+	UniqueIdentifier entityID{ getNullIdentifier() };
+	entity::model::StreamIndex streamIndex{ entity::model::StreamIndex(0u) };
+};
+
+constexpr bool operator==(StreamIdentification const& lhs, StreamIdentification const& rhs) noexcept
+{
+	return (lhs.entityID == rhs.entityID) && (lhs.streamIndex == rhs.streamIndex);
+}
+
+constexpr bool operator!=(StreamIdentification const& lhs, StreamIdentification const& rhs) noexcept
+{
+	return !(lhs == rhs);
+}
+
+constexpr bool operator<(StreamIdentification const& lhs, StreamIdentification const& rhs) noexcept
+{
+	return (lhs.entityID < rhs.entityID) || (lhs.entityID == rhs.entityID && lhs.streamIndex < rhs.streamIndex);
+}
+
 
 } // namespace model
 } // namespace entity

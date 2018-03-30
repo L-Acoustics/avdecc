@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -40,6 +40,8 @@ TEST(StreamFormat, IIDC_61883_6_Mono_48kHz_24bits_Async)
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, format->getSamplingRate());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int24, format->getSampleFormat());
 	EXPECT_FALSE(format->useSynchronousClock());
+	EXPECT_EQ(24, format->getSampleSize());
+	EXPECT_EQ(24, format->getSampleBitDepth());
 }
 
 TEST(StreamFormat, IIDC_61883_6_Mono_48kHz_24bits_Sync)
@@ -56,6 +58,8 @@ TEST(StreamFormat, IIDC_61883_6_Mono_48kHz_24bits_Sync)
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, format->getSamplingRate());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int24, format->getSampleFormat());
 	EXPECT_TRUE(format->useSynchronousClock());
+	EXPECT_EQ(24, format->getSampleSize());
+	EXPECT_EQ(24, format->getSampleBitDepth());
 }
 
 TEST(StreamFormat, IIDC_61883_6_Octo_48kHz_24bits_Async)
@@ -72,6 +76,8 @@ TEST(StreamFormat, IIDC_61883_6_Octo_48kHz_24bits_Async)
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, format->getSamplingRate());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int24, format->getSampleFormat());
 	EXPECT_FALSE(format->useSynchronousClock());
+	EXPECT_EQ(24, format->getSampleSize());
+	EXPECT_EQ(24, format->getSampleBitDepth());
 }
 
 TEST(StreamFormat, IIDC_61883_6_Octo_48kHz_24bits_Sync)
@@ -88,6 +94,8 @@ TEST(StreamFormat, IIDC_61883_6_Octo_48kHz_24bits_Sync)
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, format->getSamplingRate());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int24, format->getSampleFormat());
 	EXPECT_TRUE(format->useSynchronousClock());
+	EXPECT_EQ(24, format->getSampleSize());
+	EXPECT_EQ(24, format->getSampleBitDepth());
 }
 
 TEST(StreamFormat, IIDC_61883_6_upTo32_48kHz_24bits_Async)
@@ -105,6 +113,8 @@ TEST(StreamFormat, IIDC_61883_6_upTo32_48kHz_24bits_Async)
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, format->getSamplingRate());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int24, format->getSampleFormat());
 	EXPECT_FALSE(format->useSynchronousClock());
+	EXPECT_EQ(24, format->getSampleSize());
+	EXPECT_EQ(24, format->getSampleBitDepth());
 }
 
 TEST(StreamFormat, IIDC_61883_6_upTo32_48kHz_24bits_Sync)
@@ -122,6 +132,8 @@ TEST(StreamFormat, IIDC_61883_6_upTo32_48kHz_24bits_Sync)
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, format->getSamplingRate());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int24, format->getSampleFormat());
 	EXPECT_TRUE(format->useSynchronousClock());
+	EXPECT_EQ(24, format->getSampleSize());
+	EXPECT_EQ(24, format->getSampleBitDepth());
 }
 
 TEST(StreamFormat, AAF_Stereo_48kHz_6spf_16bits)
@@ -138,6 +150,8 @@ TEST(StreamFormat, AAF_Stereo_48kHz_6spf_16bits)
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, format->getSamplingRate());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int16, format->getSampleFormat());
 	EXPECT_TRUE(format->useSynchronousClock());
+	EXPECT_EQ(16, format->getSampleSize());
+	EXPECT_EQ(16, format->getSampleBitDepth());
 }
 
 TEST(StreamFormat, AAF_Octo_48kHz_64spf_16bits)
@@ -154,6 +168,26 @@ TEST(StreamFormat, AAF_Octo_48kHz_64spf_16bits)
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, format->getSamplingRate());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int16, format->getSampleFormat());
 	EXPECT_TRUE(format->useSynchronousClock());
+	EXPECT_EQ(16, format->getSampleSize());
+	EXPECT_EQ(16, format->getSampleBitDepth());
+}
+
+TEST(StreamFormat, AAF_Hexa_96kHz_12spf_32bits_24depth)
+{
+	auto const fmt = 0x020702180180C000;
+	auto const format = la::avdecc::entity::model::StreamFormatInfo::create(fmt);
+	EXPECT_EQ(fmt, format->getStreamFormat());
+	EXPECT_EQ(fmt, format->getAdaptedStreamFormat(6));
+	EXPECT_EQ(la::avdecc::entity::model::getNullStreamFormat(), format->getAdaptedStreamFormat(0));
+	EXPECT_EQ(la::avdecc::entity::model::getNullStreamFormat(), format->getAdaptedStreamFormat(4));
+	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::Type::AAF, format->getType());
+	EXPECT_EQ(6, format->getChannelsCount());
+	EXPECT_FALSE(format->isUpToChannelsCount());
+	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_96, format->getSamplingRate());
+	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int32, format->getSampleFormat());
+	EXPECT_TRUE(format->useSynchronousClock());
+	EXPECT_EQ(32, format->getSampleSize());
+	EXPECT_EQ(24, format->getSampleBitDepth());
 }
 
 TEST(StreamFormat, AAF_upTo32_48kHz_64spf_16bits)
@@ -170,6 +204,8 @@ TEST(StreamFormat, AAF_upTo32_48kHz_64spf_16bits)
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, format->getSamplingRate());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int16, format->getSampleFormat());
 	EXPECT_TRUE(format->useSynchronousClock());
+	EXPECT_EQ(16, format->getSampleSize());
+	EXPECT_EQ(16, format->getSampleBitDepth());
 }
 
 TEST(StreamFormat, CR_48_6intvl_1ts)
@@ -187,6 +223,8 @@ TEST(StreamFormat, CR_48_6intvl_1ts)
 	EXPECT_EQ(6u, crfFormat->getTimestampInterval());
 	EXPECT_EQ(1u, crfFormat->getTimestampsPerPdu());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfoCRF::CRFType::AudioSample, crfFormat->getCRFType());
+	EXPECT_EQ(64, format->getSampleSize());
+	EXPECT_EQ(64, format->getSampleBitDepth());
 }
 
 TEST(StreamFormat, CR_96_12intvl_1ts)
@@ -204,6 +242,8 @@ TEST(StreamFormat, CR_96_12intvl_1ts)
 	EXPECT_EQ(12u, crfFormat->getTimestampInterval());
 	EXPECT_EQ(1u, crfFormat->getTimestampsPerPdu());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfoCRF::CRFType::AudioSample, crfFormat->getCRFType());
+	EXPECT_EQ(64, format->getSampleSize());
+	EXPECT_EQ(64, format->getSampleBitDepth());
 }
 
 TEST(StreamFormat, CR_96_320intvl_6ts)
@@ -221,6 +261,8 @@ TEST(StreamFormat, CR_96_320intvl_6ts)
 	EXPECT_EQ(320u, crfFormat->getTimestampInterval());
 	EXPECT_EQ(6u, crfFormat->getTimestampsPerPdu());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfoCRF::CRFType::AudioSample, crfFormat->getCRFType());
+	EXPECT_EQ(64, format->getSampleSize());
+	EXPECT_EQ(64, format->getSampleBitDepth());
 }
 
 TEST(StreamFormat, CR_96_768intvl_5ts)
@@ -238,4 +280,6 @@ TEST(StreamFormat, CR_96_768intvl_5ts)
 	EXPECT_EQ(768u, crfFormat->getTimestampInterval());
 	EXPECT_EQ(5u, crfFormat->getTimestampsPerPdu());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfoCRF::CRFType::AudioSample, crfFormat->getCRFType());
+	EXPECT_EQ(64, format->getSampleSize());
+	EXPECT_EQ(64, format->getSampleBitDepth());
 }

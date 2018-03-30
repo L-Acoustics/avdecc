@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -18,9 +18,10 @@
 */
 
 /**
-* @file avdeccEntityModel.hpp
+* @file avdeccControlledEntityModel.hpp
 * @author Christophe Calmejane
-* @brief Avdecc entity model tree for a #la::avdecc::controller::ControlledEntity.
+* @brief Avdecc entity model for a #la::avdecc::controller::ControlledEntity.
+* @note Nodes are only valid if the entity supports AEM.
 */
 
 #pragma once
@@ -33,10 +34,12 @@
 #else // !__cpp_lib_any
 #include <la/avdecc/internals/any.hpp>
 #endif // __cpp_lib_any
+#include "avdeccControlledEntityStaticModel.hpp"
+#include "avdeccControlledEntityDynamicModel.hpp"
 #include "exports.hpp"
 #include <vector>
 #include <map>
-#include <utility>
+#include <set>
 
 namespace la
 {
@@ -79,98 +82,133 @@ struct VirtualNode : public Node
 
 struct AudioMapNode : public EntityModelNode
 {
-	// Static info
-	entity::model::AudioMapDescriptor const* audioMapDescriptor{ nullptr };
+	// AEM Static info
+	AudioMapNodeStaticModel const* staticModel{ nullptr };
+
+	// AEM Dynamic info
+	//AudioMapNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 struct AudioClusterNode : public EntityModelNode
 {
-	// Static info
-	entity::model::AudioClusterDescriptor const* audioClusterDescriptor{ nullptr };
+	// AEM Static info
+	AudioClusterNodeStaticModel const* staticModel{ nullptr };
+
+	// AEM Dynamic info
+	AudioClusterNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 struct StreamPortNode : public EntityModelNode
 {
-	// Static info
-	entity::model::StreamPortDescriptor const* streamPortDescriptor{ nullptr };
+	// Children
 	std::map<entity::model::ClusterIndex, AudioClusterNode> audioClusters{};
 	std::map<entity::model::MapIndex, AudioMapNode> audioMaps{};
 
-	// Dynamic info
-	bool hasDynamicAudioMap{ false };
-	entity::model::AudioMappings const* dynamicAudioMap{ nullptr };
+	// AEM Static info
+	StreamPortNodeStaticModel const* staticModel{ nullptr };
+
+	// AEM Dynamic info
+	StreamPortNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 struct AudioUnitNode : public EntityModelNode
 {
-	// Static info
-	entity::model::AudioUnitDescriptor const* audioUnitDescriptor{ nullptr };
+	// Children
 	std::map<entity::model::StreamPortIndex, StreamPortNode> streamPortInputs{};
 	std::map<entity::model::StreamPortIndex, StreamPortNode> streamPortOutputs{};
 	// ExternalPortInput
 	// ExternalPortOutput
 	// InternalPortInput
 	// InternalPortOutput
+
+	// AEM Static info
+	AudioUnitNodeStaticModel const* staticModel{ nullptr };
+
+	// AEM Dynamic info
+	AudioUnitNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 struct StreamNode : public EntityModelNode
 {
-	// Static info
-	entity::model::StreamDescriptor const* streamDescriptor{ nullptr };
-	bool isRedundant{ false }; // True is stream is part of a redundant stream association
+	// AEM Static info
+	StreamNodeStaticModel const* staticModel{ nullptr };
+};
 
-	// Dynamic info
-	entity::model::StreamConnectedState const* connectedState{ nullptr }; // Not set for a STREAM_OUTPUT
+struct StreamInputNode : public StreamNode
+{
+	// AEM Dynamic info
+	StreamInputNodeDynamicModel* dynamicModel{ nullptr };
+};
+
+struct StreamOutputNode : public StreamNode
+{
+	// AEM Dynamic info
+	StreamOutputNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 struct RedundantStreamNode : public VirtualNode
 {
-	// Static info
-	std::map<entity::model::StreamIndex, StreamNode const*> redundantStreams{};
+	// Children
+	std::map<entity::model::StreamIndex, StreamNode const*> redundantStreams{}; // Either StreamInputNode or StreamOutputNode, based on Node::descriptorType
 };
 
 struct AvbInterfaceNode : public EntityModelNode
 {
-	// Static info
-	entity::model::AvbInterfaceDescriptor const* avbInterfaceDescriptor{ nullptr };
+	// AEM Static info
+	AvbInterfaceNodeStaticModel const* staticModel{ nullptr };
+
+	// AEM Dynamic info
+	AvbInterfaceNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 struct ClockSourceNode : public EntityModelNode
 {
-	// Static info
-	entity::model::ClockSourceDescriptor const* clockSourceDescriptor{ nullptr };
+	// AEM Static info
+	ClockSourceNodeStaticModel const* staticModel{ nullptr };
+
+	// AEM Dynamic info
+	ClockSourceNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 struct StringsNode : public EntityModelNode
 {
-	// Static info
-	entity::model::StringsDescriptor const* stringsDescriptor{ nullptr };
+	// AEM Static info
+	StringsNodeStaticModel const* staticModel{ nullptr };
+
+	// AEM Dynamic info
+	//StringsNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 struct LocaleNode : public EntityModelNode
 {
-	// Static info
-	entity::model::LocaleDescriptor const* localeDescriptor{ nullptr };
+	// Children
 	std::map<entity::model::StringsIndex, StringsNode> strings{};
+
+	// AEM Static info
+	LocaleNodeStaticModel const* staticModel{ nullptr };
+
+	// AEM Dynamic info
+	//LocaleNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 struct ClockDomainNode : public EntityModelNode
 {
-	// Static info
-	entity::model::ClockDomainDescriptor const* clockDomainDescriptor{ nullptr };
+	// Children
 	std::map<entity::model::ClockSourceIndex, ClockSourceNode const*> clockSources{};
+
+	// AEM Static info
+	ClockDomainNodeStaticModel const* staticModel{ nullptr };
+
+	// AEM Dynamic info
+	ClockDomainNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 struct ConfigurationNode : public EntityModelNode
 {
-	// Static info
-	entity::model::ConfigurationDescriptor const* configurationDescriptor{ nullptr };
-	bool isActiveConfiguration{ false };
-
-	// Following fields only valid if isActiveConfiguration is true
+	// Children (only set if this is the active configuration)
 	std::map<entity::model::AudioUnitIndex, AudioUnitNode> audioUnits{};
-	std::map<entity::model::StreamIndex, StreamNode> streamInputs{};
-	std::map<entity::model::StreamIndex, StreamNode> streamOutputs{};
+	std::map<entity::model::StreamIndex, StreamInputNode> streamInputs{};
+	std::map<entity::model::StreamIndex, StreamOutputNode> streamOutputs{};
 	// JackInput
 	// JackOutput
 	std::map<entity::model::AvbInterfaceIndex, AvbInterfaceNode> avbInterfaces{};
@@ -179,15 +217,26 @@ struct ConfigurationNode : public EntityModelNode
 	std::map<entity::model::LocaleIndex, LocaleNode> locales{};
 	std::map<entity::model::ClockDomainIndex, ClockDomainNode> clockDomains{};
 
-	std::map<VirtualIndex, RedundantStreamNode> redundantStreamInputs{}; /** Redundant input streams */
-	std::map<VirtualIndex, RedundantStreamNode> redundantStreamOutputs{}; /** Redundant output streams */
+	std::map<VirtualIndex, RedundantStreamNode> redundantStreamInputs{};
+	std::map<VirtualIndex, RedundantStreamNode> redundantStreamOutputs{};
+
+	// AEM Static info
+	ConfigurationNodeStaticModel const* staticModel{ nullptr };
+
+	// AEM Dynamic info
+	ConfigurationNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 struct EntityNode : public EntityModelNode
 {
-	// Static info
-	entity::model::EntityDescriptor const* entityDescriptor{ nullptr };
+	// Children
 	std::map<entity::model::ConfigurationIndex, ConfigurationNode> configurations{};
+
+	// AEM Static info
+	EntityNodeStaticModel const* staticModel{ nullptr };
+
+	// AEM Dynamic info
+	EntityNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 class EntityModelVisitor
@@ -196,7 +245,8 @@ public:
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::EntityNode const& node) noexcept = 0;
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::ConfigurationNode const& node) noexcept = 0;
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::AudioUnitNode const& node) noexcept = 0;
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::StreamNode const& node) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::StreamInputNode const& node) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::StreamOutputNode const& node) noexcept = 0;
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::AvbInterfaceNode const& node) noexcept = 0;
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::ClockSourceNode const& node) noexcept = 0;
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::LocaleNode const& node) noexcept = 0;

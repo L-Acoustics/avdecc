@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -195,6 +195,27 @@ constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, EnumT
 	return lhs;
 }
 
+/**
+* @brief operator&= for a bitfield enum.
+* @details The is_bitfield trait must be defined to true.
+*/
+template<typename EnumType>
+constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, EnumType>& operator&=(EnumType& lhs, EnumType const rhs)
+{
+	lhs = lhs & rhs;
+	return lhs;
+}
+
+/**
+* @brief operator~ for a bitfield enum.
+* @details The is_bitfield trait must be defined to true.
+*/
+template<typename EnumType>
+constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, EnumType> operator~(EnumType e)
+{
+	return static_cast<EnumType>(~static_cast<std::underlying_type_t<EnumType>>(e));
+}
+
 namespace la
 {
 namespace avdecc
@@ -225,6 +246,37 @@ constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, bool>
 	return value != static_cast<EnumType>(0);
 }
 
+/**
+* @brief Adds a flag to a bitfield enum. Multiple flags can be added at once if combined using operator|.
+* @details The is_bitfield trait must be defined to true.
+* @param[in] value Value to which the specified flag(s) is(are) to be added.
+* @param[in] flag Flag(s) to be added to the specified value.
+* @note Effectively equivalent to value |= flag
+* @return Returns a copy of the modified value.
+*/
+template<typename EnumType>
+constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, EnumType> addFlag(EnumType& value, EnumType const flag)
+{
+	value |= flag;
+
+	return value;
+}
+
+/**
+* @brief Clears a flag from a bitfield enum. Multiple flags can be cleared at once if combined using operator|.
+* @details The is_bitfield trait must be defined to true.
+* @param[in] value Value to which the specified flag(s) is(are) to be removed.
+* @param[in] flag Flag(s) to be cleared from the specified value.
+* @note Effectively equivalent to value &= ~flag
+* @return Returns a copy of the modified value.
+*/
+template<typename EnumType>
+constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, EnumType> clearFlag(EnumType& value, EnumType const flag)
+{
+	value &= ~flag;
+
+	return value;
+}
 
 /**
 * @brief Function to safely call a handler (in the form of a std::function), forwarding all parameters to it.

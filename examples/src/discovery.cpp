@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -107,8 +107,7 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 	auto const entityID = entity->getEntity().getEntityID();
 	if (la::avdecc::hasFlag(entity->getEntity().getEntityCapabilities(), la::avdecc::entity::EntityCapabilities::AemSupported))
 	{
-		auto const& entityDescriptor = entity->getEntityNode().entityDescriptor;
-		std::uint32_t const vendorID = std::get<0>(la::avdecc::entity::model::splitVendorEntityModel(entityDescriptor->vendorEntityModelID));
+		std::uint32_t const vendorID = std::get<0>(la::avdecc::entity::model::splitVendorEntityModel(entity->getEntity().getVendorEntityModelID()));
 		// Filter entities from the same vendor as this controller
 		if (vendorID == VENDOR_ID)
 		{

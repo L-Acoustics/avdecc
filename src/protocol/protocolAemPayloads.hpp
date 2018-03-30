@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -233,7 +233,13 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 // No payload
 
 /** GET_AVB_INFO Command - Clause 7.4.40.1 */
+Serializer<AecpAemGetAvbInfoCommandPayloadSize> serializeGetAvbInfoCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeGetAvbInfoCommand(AemAecpdu::Payload const& payload);
+
 /** GET_AVB_INFO Response - Clause 7.4.40.2 */
+Serializer<AemAecpdu::MaximumPayloadLength> serializeGetAvbInfoResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::AvbInfo const& avbInfo);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::AvbInfo> deserializeGetAvbInfoResponse(AemAecpdu::Payload const& payload);
+
 /** GET_AS_PATH Command - Clause 7.4.41.1 */
 /** GET_AS_PATH Response - Clause 7.4.41.2 */
 /** GET_COUNTERS Command - Clause 7.4.42.1 */

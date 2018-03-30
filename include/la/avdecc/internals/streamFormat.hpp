@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -26,7 +26,6 @@
 #pragma once
 
 #include <cstdint>
-#include <string>
 #include <memory>
 #include "entityModel.hpp"
 #include "exports.hpp"
@@ -84,6 +83,7 @@ public:
 	using UniquePointer = std::unique_ptr<StreamFormatInfo, void(*)(StreamFormatInfo*)>;
 
 	static LA_AVDECC_API StreamFormatInfo* LA_AVDECC_CALL_CONVENTION createRawStreamFormatInfo(StreamFormat const& streamFormat) noexcept;
+	static LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION isListenerFormatCompatibleWithTalkerFormat(StreamFormat const& listenerStreamFormat, StreamFormat const& talkerStreamFormat) noexcept;
 
 	/**
 	* @brief Factory method to create a new StreamFormatInfo.
@@ -130,6 +130,12 @@ public:
 
 	/** Returns whether the stream format uses a packetization clock that is synchronous to the media clock. */
 	virtual bool useSynchronousClock() const noexcept = 0;
+
+	/** Returns the size of each sample (in bits). */
+	virtual std::uint16_t getSampleSize() const noexcept = 0;
+
+	/** Returns the depth of each sample (in bits). Only valid for integer type SampleFormat (0 otherwise). This is the number of actual valid bits in each sample (value cannot exceed the value returned by getSampleSize). */
+	virtual std::uint16_t getSampleBitDepth() const noexcept = 0;
 
 	/** Constructor */
 	StreamFormatInfo() noexcept = default;

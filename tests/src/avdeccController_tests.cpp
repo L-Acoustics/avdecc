@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -81,7 +81,12 @@ private:
 		serializeNode(parent);
 		serializeNode(node);
 	}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::StreamNode const& node) noexcept override
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::StreamInputNode const& node) noexcept override
+	{
+		serializeNode(parent);
+		serializeNode(node);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::StreamOutputNode const& node) noexcept override
 	{
 		serializeNode(parent);
 		serializeNode(node);
@@ -117,6 +122,11 @@ private:
 		serializeNode(node);
 	}
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::AudioMapNode const& node) noexcept override
+	{
+		serializeNode(parent);
+		serializeNode(node);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::ClockDomainNode const& node) noexcept override
 	{
 		serializeNode(parent);
 		serializeNode(node);
@@ -184,7 +194,7 @@ TEST(Controller, DestroyWhileSending)
 		auto controllerGuard = std::make_unique<la::avdecc::entity::LocalEntityGuard<la::avdecc::entity::ControllerEntityImpl>>(pi.get(), 1, 0, nullptr);
 		auto* const controller = static_cast<la::avdecc::entity::ControllerEntity*>(controllerGuard.get());
 
-		controller->getListenerStreamState(0x000102FFFE030405, 0, [](la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::UniqueIdentifier const listenerEntityID, la::avdecc::entity::model::StreamIndex const listenerStreamIndex, la::avdecc::UniqueIdentifier const talkerEntityID, la::avdecc::entity::model::StreamIndex const talkerStreamIndex, uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::ControllerEntity::ControlStatus const status)
+		controller->getListenerStreamState({ 0x000102FFFE030405, 0u }, [](la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::ControllerEntity::ControlStatus const status)
 		{
 			// Wait a little bit so the controllerGuard has time to go out of scope and release
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -196,4 +206,37 @@ TEST(Controller, DestroyWhileSending)
 	// Wait for the handler to complete
 	auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(1));
 	ASSERT_NE(std::future_status::timeout, status);
+}
+
+TEST(StreamConnectionState, Comparison)
+{
+	// Not connected
+	{
+		auto const s1{ la::avdecc::controller::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamIdentification{}, la::avdecc::controller::model::StreamConnectionState::State::NotConnected } };
+		auto const s2{ la::avdecc::controller::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamIdentification{ 0x1, 1 }, la::avdecc::controller::model::StreamConnectionState::State::NotConnected } };
+		auto const s3{ la::avdecc::controller::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{ 0x1, 1 }, la::avdecc::entity::model::StreamIdentification{}, la::avdecc::controller::model::StreamConnectionState::State::NotConnected } };
+		EXPECT_EQ(s2, s1) << "Talker StreamIdentification ignored when not connected";
+		EXPECT_NE(s3, s1);
+		EXPECT_NE(s3, s2);
+	}
+
+	// FastConnecting
+	{
+		auto const s1{ la::avdecc::controller::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamIdentification{}, la::avdecc::controller::model::StreamConnectionState::State::FastConnecting } };
+		auto const s2{ la::avdecc::controller::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamIdentification{ 0x1, 1 }, la::avdecc::controller::model::StreamConnectionState::State::FastConnecting} };
+		auto const s3{ la::avdecc::controller::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{ 0x1, 1 }, la::avdecc::entity::model::StreamIdentification{}, la::avdecc::controller::model::StreamConnectionState::State::FastConnecting } };
+		EXPECT_NE(s2, s1) << "Talker StreamIdentification not ignored when fast connecting";
+		EXPECT_NE(s3, s1);
+		EXPECT_NE(s3, s2);
+	}
+
+	// Connected
+	{
+		auto const s1{ la::avdecc::controller::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamIdentification{}, la::avdecc::controller::model::StreamConnectionState::State::Connected } };
+		auto const s2{ la::avdecc::controller::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamIdentification{ 0x1, 1 }, la::avdecc::controller::model::StreamConnectionState::State::Connected } };
+		auto const s3{ la::avdecc::controller::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{ 0x1, 1 }, la::avdecc::entity::model::StreamIdentification{}, la::avdecc::controller::model::StreamConnectionState::State::Connected } };
+		EXPECT_NE(s2, s1) << "Talker StreamIdentification not ignored when connected";
+		EXPECT_NE(s3, s1);
+		EXPECT_NE(s3, s2);
+	}
 }

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -46,10 +46,10 @@ public:
 	virtual void unregisterObserver(Observer* const observer) noexcept override
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
-		std::remove_if(std::begin(_observers), std::end(_observers), [observer](Observer* const o)
+		_observers.erase(std::remove_if(std::begin(_observers), std::end(_observers), [observer](Observer* const o)
 		{
 			return o == observer;
-		});
+		}), _observers.end());
 	}
 
 	virtual void log(Layer const layer, Level const level, std::string const& message) noexcept override

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2017, L-Acoustics and its contributors
+* Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -134,7 +134,7 @@ public:
 		}
 	}
 
-	template <typename ValueType, typename DecayedValueType = typename ::std::decay<ValueType>::type, typename = typename ::std::enable_if<!::std::is_same<DecayedValueType, any>::value>>
+	template <typename ValueType, typename DecayedValueType = typename ::std::decay<ValueType>::type, typename = ::std::enable_if_t<!::std::is_same<DecayedValueType, any>::value>>
 	constexpr any(ValueType&& value)
 	{
 		static_assert(details::is_copy_constructible<DecayedValueType>::value, "ValueType not CopyConstructible");
@@ -159,7 +159,7 @@ public:
 		return *this;
 	}
 
-	template <typename ValueType, typename DecayedValueType = typename ::std::decay<ValueType>::type, typename = typename ::std::enable_if<!::std::is_same<DecayedValueType, any>::value>>
+	template <typename ValueType, typename DecayedValueType = typename ::std::decay<ValueType>::type, typename = ::std::enable_if_t<!::std::is_same<DecayedValueType, any>::value>>
 	constexpr any& operator=(ValueType&& value)
 	{
 		static_assert(details::is_copy_constructible<DecayedValueType>::value, "ValueType not CopyConstructible");

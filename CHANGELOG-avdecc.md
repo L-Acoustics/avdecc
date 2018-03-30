@@ -5,11 +5,18 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-#### Added
+### Added
 - Support for the following read descriptors: AudioUnit, Jack, AvbInterface, ClockSource, MemoryObject, StreamPort, ExternalPort, InternalPort, AudioCluster, AudioMap, ClockDomain
 - Cole Peterson's redundant streams association detection
+- Support for Talker Stream Connections
+- Method to forcefully remove a connection from a talker's StreamOutput (DisconnectTX spoofing)
+- Support for GetAvbInfo command and unsolicited notifications
+- getSampleSize and getSampleBitDepth to StreamFormatInfo
+### Changed
+- ACMP stream identification refactoring (new type describing the couple EntityID/StreamIndex)
 ### Fixed
 - 50 msec delay before sending a new AECP message using pcap protocol interface
+- Logger observer not removed during unregisterObserver
 
 ## [2.2.0] - 2017-12-01
 ### Added
