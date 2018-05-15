@@ -54,7 +54,7 @@ void LA_AVDECC_CALL_CONVENTION refreshInterfaces() noexcept
 	refreshInterfaces(s_NetworkInterfaces);
 }
 
-void LA_AVDECC_CALL_CONVENTION enumerateInterfaces(std::function<void(la::avdecc::networkInterface::Interface const& intfc) noexcept> const& onInterface) noexcept
+void LA_AVDECC_CALL_CONVENTION enumerateInterfaces(EnumerateInterfacesHandler const& onInterface) noexcept
 {
 	std::lock_guard<decltype(s_Mutex)> const lg(s_Mutex);
 
@@ -68,7 +68,14 @@ void LA_AVDECC_CALL_CONVENTION enumerateInterfaces(std::function<void(la::avdecc
 	// Now enumerate all interfaces
 	for (auto const& intfcKV : s_NetworkInterfaces)
 	{
-		onInterface(intfcKV.second);
+		try
+		{
+			onInterface(intfcKV.second);
+		}
+		catch (...)
+		{
+			// Ignore exceptions
+		}
 	}
 }
 
