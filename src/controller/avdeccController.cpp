@@ -57,6 +57,36 @@ std::uint32_t LA_AVDECC_CONTROLLER_CALL_CONVENTION getInterfaceVersion() noexcep
 	return InterfaceVersion;
 }
 
+CompileOptions LA_AVDECC_CONTROLLER_CALL_CONVENTION getCompileOptions() noexcept
+{
+	CompileOptions options{ CompileOptions::None };
+
+	for (auto const& info : getCompileOptionsInfo())
+	{
+		options |= info.option;
+	}
+
+	return options;
+}
+
+std::vector<CompileOptionInfo> LA_AVDECC_CONTROLLER_CALL_CONVENTION getCompileOptionsInfo() noexcept
+{
+	std::vector<CompileOptionInfo> options{};
+
+#ifdef IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS
+	options.emplace_back(CompileOptionInfo{ CompileOptions::IgnoreNeitherStaticNorDynamicMappings, "INSNDM", "Ignore Neither Static Nor Dynamic Mappings" });
+#endif // IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS
+
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	options.emplace_back(CompileOptionInfo{ CompileOptions::EnableRedundancy, "RDNCY", "Redundancy" });
+#ifdef ENABLE_AVDECC_STRICT_2018_REDUNDANCY
+	options.emplace_back(CompileOptionInfo{ CompileOptions::Strict2018Redundancy, "RDNCY2018", "Strict 2018 Redundancy" });
+#endif // ENABLE_AVDECC_STRICT_2018_REDUNDANCY
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+
+	return options;
+}
+
 /* ************************************************************ */
 /* Controller class definition                                  */
 /* ************************************************************ */

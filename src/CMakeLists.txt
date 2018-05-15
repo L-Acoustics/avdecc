@@ -16,7 +16,8 @@ if(WIN32)
 endif()
 
 set(ADD_LINK_LIBS "")
-set(ADD_COMPILE_OPTIONS "")
+set(ADD_PRIVATE_COMPILE_OPTIONS "")
+set(ADD_PUBLIC_COMPILE_OPTIONS "")
 
 # Network interface helper
 if(WIN32)
@@ -40,7 +41,6 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/logger.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/networkInterfaceHelper.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/utils.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/any.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/controllerEntity.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/endian.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/endStation.hpp
@@ -128,7 +128,7 @@ if(BUILD_AVDECC_INTERFACE_PCAP)
 	list(APPEND HEADER_FILES_PROTOCOL_INTERFACE
 		protocolInterface/protocolInterface_pcap.hpp
 	)
-	list(APPEND ADD_COMPILE_OPTIONS "-DHAVE_PROTOCOL_INTERFACE_PCAP")
+	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DHAVE_PROTOCOL_INTERFACE_PCAP")
 	if(WIN32)
 		# Winpcap include directories (always needed)
 		include_directories(${LA_WINPCAP_BASE_DIR}/Include)
@@ -160,14 +160,14 @@ if(BUILD_AVDECC_INTERFACE_MAC)
 	list(APPEND HEADER_FILES_PROTOCOL_INTERFACE
 		protocolInterface/protocolInterface_macNative.hpp
 	)
-	list(APPEND ADD_COMPILE_OPTIONS "-DHAVE_PROTOCOL_INTERFACE_MAC")
+	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DHAVE_PROTOCOL_INTERFACE_MAC")
 	list(APPEND ADD_LINK_LIBS "-framework AudioVideoBridging")
 endif()
 
 # Proxy Protocol interface
 if(BUILD_AVDECC_INTERFACE_PROXY)
 	message(FATAL_ERROR "Not supported yet")
-	list(APPEND ADD_COMPILE_OPTIONS "-DHAVE_PROTOCOL_INTERFACE_PROXY")
+	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DHAVE_PROTOCOL_INTERFACE_PROXY")
 endif()
 
 # Virtual Protocol interface
@@ -178,7 +178,7 @@ if(BUILD_AVDECC_INTERFACE_VIRTUAL)
 	list(APPEND HEADER_FILES_PROTOCOL_INTERFACE
 		protocolInterface/protocolInterface_virtual.hpp
 	)
-	list(APPEND ADD_COMPILE_OPTIONS "-DHAVE_PROTOCOL_INTERFACE_VIRTUAL")
+	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DHAVE_PROTOCOL_INTERFACE_VIRTUAL")
 endif()
 
 # Set other required base libraries
@@ -186,12 +186,23 @@ if(CMAKE_HOST_APPLE)
 	list(APPEND ADD_LINK_LIBS "-framework Foundation")
 endif()
 
+# Features
+if(ENABLE_AVDECC_FEATURE_REDUNDANCY)
+	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DENABLE_AVDECC_FEATURE_REDUNDANCY")
+endif()
+
 # Other options
+if(ENABLE_AVDECC_CUSTOM_ANY)
+	list(APPEND PUBLIC_HEADER_FILES
+		${LA_ROOT_DIR}/include/la/avdecc/internals/any.hpp
+	)
+	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DENABLE_AVDECC_CUSTOM_ANY")
+endif()
 if(IGNORE_INVALID_CONTROL_DATA_LENGTH)
-	list(APPEND ADD_COMPILE_OPTIONS "-DIGNORE_INVALID_CONTROL_DATA_LENGTH")
+	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DIGNORE_INVALID_CONTROL_DATA_LENGTH")
 endif()
 if(IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES)
-	list(APPEND ADD_COMPILE_OPTIONS "-DIGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES")
+	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DIGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES")
 endif()
 
 # Group sources
@@ -214,8 +225,11 @@ set (LIB_SOURCE_FILES ${SOURCE_FILES_COMMON} ${SOURCE_FILES_PROTOCOL} ${SOURCE_F
 if(BUILD_AVDECC_LIB_SHARED_CXX)
 	set (LIB_SHARED_CXX_SOURCE_FILES ${LIB_SOURCE_FILES})
 	add_library(la_avdecc_cxx SHARED ${LIB_HEADER_FILES} ${LIB_SHARED_CXX_SOURCE_FILES} ${SHARED_LIBRARY_FILES})
-	if(ADD_COMPILE_OPTIONS)
-		target_compile_options(la_avdecc_cxx PRIVATE ${ADD_COMPILE_OPTIONS})
+	if(ADD_PRIVATE_COMPILE_OPTIONS)
+		target_compile_options(la_avdecc_cxx PRIVATE ${ADD_PRIVATE_COMPILE_OPTIONS})
+	endif()
+	if(ADD_PUBLIC_COMPILE_OPTIONS)
+		target_compile_options(la_avdecc_cxx PUBLIC ${ADD_PUBLIC_COMPILE_OPTIONS})
 	endif()
 	if(ADD_LINK_LIBS)
 		target_link_libraries(la_avdecc_cxx PRIVATE ${ADD_LINK_LIBS})
@@ -240,8 +254,11 @@ endif()
 # Runtime-shared static library
 if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 	add_library(la_avdecc_static STATIC ${LIB_HEADER_FILES} ${LIB_SOURCE_FILES})
-	if(ADD_COMPILE_OPTIONS)
-		target_compile_options(la_avdecc_static PRIVATE ${ADD_COMPILE_OPTIONS})
+	if(ADD_PRIVATE_COMPILE_OPTIONS)
+		target_compile_options(la_avdecc_static PRIVATE ${ADD_PRIVATE_COMPILE_OPTIONS})
+	endif()
+	if(ADD_PUBLIC_COMPILE_OPTIONS)
+		target_compile_options(la_avdecc_static PUBLIC ${ADD_PUBLIC_COMPILE_OPTIONS})
 	endif()
 	if(ADD_LINK_LIBS)
 		target_link_libraries(la_avdecc_static PUBLIC ${ADD_LINK_LIBS})

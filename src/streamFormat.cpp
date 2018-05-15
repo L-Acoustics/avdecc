@@ -149,21 +149,21 @@ public:
 	{
 		switch (_sampleFormat)
 		{
-			case SampleFormat::Int8:
+			case StreamFormatInfo::SampleFormat::Int8:
 				return 8;
-			case SampleFormat::Int16:
+			case StreamFormatInfo::SampleFormat::Int16:
 				return 16;
-			case SampleFormat::Int24:
+			case StreamFormatInfo::SampleFormat::Int24:
 				return 24;
-			case SampleFormat::Int32:
+			case StreamFormatInfo::SampleFormat::Int32:
 				return 32;
-			case SampleFormat::Int64:
+			case StreamFormatInfo::SampleFormat::Int64:
 				return 64;
-			case SampleFormat::FixedPoint32:
+			case StreamFormatInfo::SampleFormat::FixedPoint32:
 				return 32;
-			case SampleFormat::FloatingPoint32:
+			case StreamFormatInfo::SampleFormat::FloatingPoint32:
 				return 32;
-			case SampleFormat::Unknown:
+			case StreamFormatInfo::SampleFormat::Unknown:
 				return 0u;
 			default:
 				AVDECC_ASSERT(false, "Unhandled SampleFormat");

@@ -26,9 +26,13 @@
 
 #pragma once
 
-#if __cpp_lib_any
-#error "This c++ compiler supports std::any, this file should no longer be used"
-#endif // __cpp_lib_any
+#if !defined(ENABLE_AVDECC_CUSTOM_ANY)
+#error "Including this file requires ENABLE_AVDECC_CUSTOM_ANY flag to be defined."
+#endif // ENABLE_AVDECC_CUSTOM_ANY
+
+// Include guard in case this exact same file is used (a copy of it) in another project ('pragma once' won't protect against this case)
+#ifndef __ANY_FOR_CPP14_H_
+#define __ANY_FOR_CPP14_H_
 
 #include <type_traits>
 #include <utility>
@@ -305,3 +309,5 @@ inline void swap(any& lhs, any& rhs) noexcept
 }
 
 }// namespace std
+
+#endif //!__ANY_FOR_CPP14_H_

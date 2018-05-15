@@ -94,8 +94,9 @@ struct StreamNodeStaticModel
 	entity::model::AvbInterfaceIndex avbInterfaceIndex{ entity::model::AvbInterfaceIndex(0u) };
 	std::uint32_t bufferLength{ 0u };
 	StreamFormats formats{};
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	RedundantStreams redundantStreams{};
-	bool isRedundant{ false }; // True is stream is part of a redundant stream association
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 };
 
 struct AvbInterfaceNodeStaticModel

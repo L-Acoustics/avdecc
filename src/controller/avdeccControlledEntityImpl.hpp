@@ -55,7 +55,7 @@ public:
 /* ************************************************************************** */
 /* ControlledEntityImpl                                                       */
 /* ************************************************************************** */
-class ControlledEntityImpl final : public ControlledEntity
+class ControlledEntityImpl : public ControlledEntity
 {
 public:
 	enum class DynamicInfoType : std::uint16_t
@@ -106,8 +106,10 @@ public:
 	virtual model::ConfigurationNode const& getCurrentConfigurationNode() const override;
 	virtual model::StreamInputNode const& getStreamInputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const override;
 	virtual model::StreamOutputNode const& getStreamOutputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const override;
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	virtual model::RedundantStreamNode const& getRedundantStreamInputNode(entity::model::ConfigurationIndex const configurationIndex, model::VirtualIndex const redundantStreamIndex) const override;
 	virtual model::RedundantStreamNode const& getRedundantStreamOutputNode(entity::model::ConfigurationIndex const configurationIndex, model::VirtualIndex const redundantStreamIndex) const override;
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 	virtual model::AudioUnitNode const& getAudioUnitNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex) const override;
 	virtual model::ClockSourceNode const& getClockSourceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex) const override;
 	virtual model::StreamPortNode const& getStreamPortInputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) const override;
@@ -221,7 +223,7 @@ public:
 	ControlledEntityImpl& operator=(ControlledEntityImpl const&) = default;
 	ControlledEntityImpl& operator=(ControlledEntityImpl&&) = default;
 
-private:
+protected:
 	template<class NodeType, typename = std::enable_if_t<std::is_base_of<model::Node, NodeType>::value>>
 	static constexpr size_t getHashCode(NodeType const* const node) noexcept
 	{
@@ -254,7 +256,11 @@ private:
 		node.virtualIndex = virtualIndex;
 	}
 
+private:
 	void checkAndBuildEntityModelGraph() const noexcept;
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	void buildRedundancyNodes(model::ConfigurationNode& configNode) const noexcept;
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 	// Private variables
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DescriptorKey>> _expectedDescriptors{};

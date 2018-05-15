@@ -27,7 +27,9 @@
 
 #include <memory>
 #include <functional>
+#include <cstdint>
 #include <string>
+#include <vector>
 #include <mutex>
 #include <la/avdecc/avdecc.hpp>
 #include <la/avdecc/utils.hpp>
@@ -56,23 +58,53 @@ constexpr std::uint32_t InterfaceVersion = 200;
 * @param[in] interfaceVersion The interface version to check for compatibility.
 * @return True if the library is compatible.
 * @note If the library is not compatible, the application should no longer use the library.<BR>
-*       When using the avdecc shared library, you must call this version to check the compatibility between the compiled and the loaded version.
+*       When using the avdecc controller shared library, you must call this version to check the compatibility between the compiled and the loaded version.
 */
 LA_AVDECC_CONTROLLER_API bool LA_AVDECC_CONTROLLER_CALL_CONVENTION isCompatibleWithInterfaceVersion(std::uint32_t const interfaceVersion) noexcept;
 
 /**
-* @brief Gets the avdecc library version.
-* @details Returns the avdecc library version.
+* @brief Gets the avdecc controller library version.
+* @details Returns the avdecc controller library version.
 * @return A string representing the library version.
 */
 LA_AVDECC_CONTROLLER_API std::string LA_AVDECC_CONTROLLER_CALL_CONVENTION getVersion() noexcept;
 
 /**
-* @brief Gets the avdecc shared library interface version.
-* @details Returns the avdecc shared library interface version.
+* @brief Gets the avdecc controller shared library interface version.
+* @details Returns the avdecc controller shared library interface version.
 * @return The interface version.
 */
 LA_AVDECC_CONTROLLER_API std::uint32_t LA_AVDECC_CONTROLLER_CALL_CONVENTION getInterfaceVersion() noexcept;
+
+enum class CompileOption : std::uint32_t
+{
+	None = 0,
+	IgnoreNeitherStaticNorDynamicMappings = 1u << 0,
+	EnableRedundancy = 1u << 15,
+	Strict2018Redundancy = 1u << 16,
+};
+using CompileOptions = CompileOption;
+
+struct CompileOptionInfo
+{
+	CompileOption option{ CompileOption::None };
+	std::string shortName{};
+	std::string longName{};
+};
+
+/**
+* @brief Gets the avdecc controller library compile options.
+* @details Returns the avdecc controller library compile options.
+* @return The compile options.
+*/
+LA_AVDECC_CONTROLLER_API CompileOptions LA_AVDECC_CONTROLLER_CALL_CONVENTION getCompileOptions() noexcept;
+
+/**
+* @brief Gets the avdecc controller library compile options info.
+* @details Returns the avdecc controller library compile options info.
+* @return The compile options info.
+*/
+LA_AVDECC_CONTROLLER_API std::vector<CompileOptionInfo> LA_AVDECC_CONTROLLER_CALL_CONVENTION getCompileOptionsInfo() noexcept;
 
 /* ************************************************************************** */
 /* Controller                                                                 */
@@ -246,9 +278,9 @@ public:
 	virtual void stopStreamInput(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, StopStreamInputHandler const& handler) const noexcept = 0;
 	virtual void startStreamOutput(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, StartStreamOutputHandler const& handler) const noexcept = 0;
 	virtual void stopStreamOutput(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, StopStreamOutputHandler const& handler) const noexcept = 0;
-	virtual void addStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, std::vector<entity::model::AudioMapping> const& mappings, AddStreamPortInputAudioMappingsHandler const& handler) const noexcept = 0;
+	virtual void addStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, AddStreamPortInputAudioMappingsHandler const& handler) const noexcept = 0;
 	virtual void addStreamPortOutputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, AddStreamPortOutputAudioMappingsHandler const& handler) const noexcept = 0;
-	virtual void removeStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, std::vector<entity::model::AudioMapping> const& mappings, RemoveStreamPortInputAudioMappingsHandler const& handler) const noexcept = 0;
+	virtual void removeStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, RemoveStreamPortInputAudioMappingsHandler const& handler) const noexcept = 0;
 	virtual void removeStreamPortOutputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, RemoveStreamPortOutputAudioMappingsHandler const& handler) const noexcept = 0;
 
 	/* Connection Management Protocol (ACMP). WARNING: The completion handler will not be called if the controller is destroyed while the query is inflight. Otherwise it will always be called. */
@@ -294,5 +326,13 @@ constexpr bool operator!(Controller::Error const error)
 }
 
 } // namespace controller
+
+// Define bitfield enum traits for controller::CompileOptions
+template<>
+struct enum_traits<controller::CompileOptions>
+{
+	static constexpr bool is_bitfield = true;
+};
+
 } // namespace avdecc
 } // namespace la

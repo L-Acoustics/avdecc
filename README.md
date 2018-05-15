@@ -30,6 +30,7 @@ We use GitHub issues for tracking requests and bugs.
 
 Implementation of the IEEE Std 1722.1-2013 specification.  
 Also implementing non-released IEEE Std 1722.1 corrigendum 1 draft 8.
+Also implementing AVnu Alliance Network Redundancy.
 
 The library exposes APIs needed to create AVDECC entities on the local computer, and to interact with other entities on the network.
 
@@ -110,7 +111,6 @@ The controller API has 2 interfaces:
 - Better unit testing using a virtual protocol interface and virtual entities
 - Ability to preload AEMXML files, and not enumerate AEM for devices with identical vendorEntityModelId
 - Support AEM for controller library
-- Partial AEM lock/acquire
 - Talker and Listener state machines (low level library)
 - Creation of a DiscoveryStateMachine so it can be used by Talker/Listener entities (moving code out of ControllerStateMachine)
 - Wrapper libraries:

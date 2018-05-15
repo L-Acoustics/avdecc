@@ -56,6 +56,7 @@ struct EntityQueues
 	la::avdecc::protocol::ProtocolInterfaceMacNativeImpl* _protocolInterface;
 	
 	std::recursive_mutex _lockEntities; /** Lock to protect _localProcessEntities and _registeredAcmpHandlers fields */
+	std::unordered_map<la::avdecc::UniqueIdentifier, std::uint32_t> _lastAvailableIndex; /** Last received AvailableIndex for each entity */
 	std::unordered_map<la::avdecc::UniqueIdentifier, la::avdecc::entity::LocalEntity&> _localProcessEntities; /** Local entities declared by the running process */
 	std::unordered_set<la::avdecc::UniqueIdentifier> _registeredAcmpHandlers; /** List of ACMP handlers that have been registered (that must be removed upon destruction, since there is no removeAllHandlers method) */
 	
@@ -526,6 +527,7 @@ namespace la
 	decltype(_registeredAcmpHandlers) registeredAcmpHandlers;
 	// Move internal lists to temporary objects while locking, so we can safely cleanup outside of the lock
 	{
+		// Lock self
 		std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
 		localProcessEntities = std::move(_localProcessEntities);
 		registeredAcmpHandlers = std::move(_registeredAcmpHandlers);
@@ -619,6 +621,7 @@ namespace la
 
 	// Lock entities now that we have removed the handlers
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+
 	// Remove the entity from our cache of local entities declared by the running program
 	_localProcessEntities.erase(entityID);
 
@@ -891,6 +894,9 @@ namespace la
 {
 	[self initEntity:newEntity.entityID];
 
+	// Lock self
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+
 	// Notify observers
 	auto e = [BridgeInterface makeEntity:newEntity];
 	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOnline, _protocolInterface, e);
@@ -900,6 +906,9 @@ namespace la
 -(void)didRemoveLocalEntity:(AVB17221Entity *)oldEntity on17221EntityDiscovery:(AVB17221EntityDiscovery *)entityDiscovery
 {
 	[self deinitEntity:oldEntity.entityID];
+
+	// Lock self
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
 
 	// Notify observers
 	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOffline, _protocolInterface, oldEntity.entityID);
@@ -928,6 +937,9 @@ namespace la
 
 	auto e = [BridgeInterface makeEntity:entity];
 
+	// Lock self
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+
 	// If a change occured in a forbidden flag, simulate offline/online for this entity
 	if ((changedProperties & kAVB17221EntityPropertyChangedShouldntChangeMask) != 0)
 	{
@@ -944,6 +956,16 @@ namespace la
 {
 	[self initEntity:newEntity.entityID];
 
+	// Lock self
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+
+	// Add entity to available index list
+	auto previousResult = _lastAvailableIndex.insert(std::make_pair(newEntity.entityID, newEntity.availableIndex));
+	if (!AVDECC_ASSERT_WITH_RET(previousResult.second, "Adding a new entity but it's already in the available index list"))
+	{
+		previousResult.first->second = newEntity.availableIndex;
+	}
+	
 	// Notify observers
 	auto e = [BridgeInterface makeEntity:newEntity];
 	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOnline, _protocolInterface, e);
@@ -952,6 +974,12 @@ namespace la
 -(void)didRemoveRemoteEntity:(AVB17221Entity *)oldEntity on17221EntityDiscovery:(AVB17221EntityDiscovery *)entityDiscovery
 {
 	[self deinitEntity:oldEntity.entityID];
+
+	// Lock self
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	
+	// Clear entity from available index list
+	_lastAvailableIndex.erase(oldEntity.entityID);
 
 	// Notify observers
 	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOffline, _protocolInterface, oldEntity.entityID);
@@ -973,6 +1001,33 @@ namespace la
 
 -(void)didUpdateRemoteEntity:(AVB17221Entity *)entity changedProperties:(AVB17221EntityPropertyChanged)changedProperties on17221EntityDiscovery:(AVB17221EntityDiscovery *)entityDiscovery
 {
+	// Lock self
+	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+
+	// Check for an invalid change in AvailableIndex
+	if ((changedProperties & AVB17221EntityPropertyChangedAvailableIndex) != 0)
+	{
+		auto previousIndexIt = _lastAvailableIndex.find(entity.entityID);
+		if (previousIndexIt == _lastAvailableIndex.end())
+		{
+			AVDECC_ASSERT(previousIndexIt != _lastAvailableIndex.end(), "didUpdateRemoteEntity called but entity is unknown");
+			_lastAvailableIndex.insert(std::make_pair(entity.entityID, entity.availableIndex));
+		}
+		else
+		{
+			auto const previousIndex = previousIndexIt->second; // Get previous index
+			previousIndexIt->second = entity.availableIndex; // Update index value with the latest one
+			
+			if (previousIndex >= entity.availableIndex)
+			{
+				auto e = [BridgeInterface makeEntity:entity];
+				_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOffline, _protocolInterface, e.getEntityID());
+				_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOnline, _protocolInterface, e);
+				return;
+			}
+		}
+	}
+	
 	constexpr NSUInteger ignoreChangeMask = 0xFFFFFFFF & ~(AVB17221EntityPropertyChangedTimeToLive | AVB17221EntityPropertyChangedAvailableIndex);
 	// If changes are only for flags we want to ignore, return
 	if ((changedProperties & ignoreChangeMask) == 0)
@@ -1002,8 +1057,10 @@ namespace la
 {
 	// This handler is called for all AECP messages to our ControllerID, even the messages that are solicited responses and which will be handled by the block of aecp.sendCommand() method
 
-	// Search our controller entity, which should be found!
+	// Lock self
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+
+	// Search our controller entity, which should be found!
 	auto it = _localProcessEntities.find([message controllerEntityID]);
 	if (it == _localProcessEntities.end())
 		return NO;
@@ -1037,10 +1094,10 @@ namespace la
 	BOOL processedBySomeone{ NO };
 	auto acmpdu = [BridgeInterface makeAcmpMessage:message];
 
-	// Dispatch sniffed message to registered controllers
-	// Lock entities
+	// Lock self
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
 
+	// Dispatch sniffed message to registered controllers
 	for (auto& localEntityIt : _localProcessEntities)
 	{
 		auto const& entity = localEntityIt.second;
@@ -1063,10 +1120,10 @@ namespace la
 	BOOL processedBySomeone{ NO };
 	auto acmpdu = [BridgeInterface makeAcmpMessage:message];
 
-	// Dispatch sniffed message to registered controllers
-	// Lock entities
+	// Lock self
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
 
+	// Dispatch sniffed message to registered controllers
 	for (auto& localEntityIt : _localProcessEntities)
 	{
 		auto const& entity = localEntityIt.second;

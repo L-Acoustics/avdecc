@@ -203,6 +203,20 @@ int main()
 
 	initOutput();
 
+	outputText(std::string("Using Avdecc Library v") + la::avdecc::getVersion() + " with compilation options:\n");
+	for (auto const& info : la::avdecc::getCompileOptionsInfo())
+	{
+		outputText(std::string(" - ") + info.longName + " (" + info.shortName + ")\n");
+	}
+	outputText("\n");
+
+	outputText(std::string("Using Avdecc Controller Library v") + la::avdecc::controller::getVersion() + " with compilation options:\n");
+	for (auto const& info : la::avdecc::controller::getCompileOptionsInfo())
+	{
+		outputText(std::string(" - ") + info.longName + " (" + info.shortName + ")\n");
+	}
+	outputText("\n");
+
 	auto ret = doJob();
 	if (ret != 0)
 	{

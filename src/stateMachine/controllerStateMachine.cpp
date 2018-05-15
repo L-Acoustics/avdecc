@@ -919,6 +919,10 @@ ControllerStateMachine::AdpduDiff ControllerStateMachine::getAdpdusDiff(Adpdu co
 	if (lhs.getAssociationID() != rhs.getAssociationID())
 		return AdpduDiff::DiffNotAllowed;
 
+	// Special case for AvailableIndex which always be increasing
+	if (lhs.getAvailableIndex() >= rhs.getAvailableIndex())
+		return AdpduDiff::DiffNotAllowed;
+
 	// Then check allowed changed fields
 	if (lhs.getEntityCapabilities() != rhs.getEntityCapabilities())
 		return AdpduDiff::DiffAllowed;

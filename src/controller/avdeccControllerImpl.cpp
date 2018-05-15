@@ -62,14 +62,21 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 
 			if (oldGptpGrandmasterID != newGptpGrandmasterID || oldGptpDomainNumber != newGptpDomainNumber)
 			{
-				auto const avbInterfaceIndex = entity.getInterfaceIndex();
-				auto const& entityDescriptor = controlledEntity.getEntityDescriptor();
-				auto& avbInterfaceDescriptor = controlledEntity.getAvbInterfaceDescriptor(entityDescriptor.dynamicModel.currentConfiguration, avbInterfaceIndex);
+				try
+				{
+					auto const avbInterfaceIndex = entity.getInterfaceIndex();
+					auto const& entityDescriptor = controlledEntity.getEntityDescriptor();
+					auto& avbInterfaceDescriptor = controlledEntity.getAvbInterfaceDescriptor(entityDescriptor.dynamicModel.currentConfiguration, avbInterfaceIndex);
 
-				auto info = avbInterfaceDescriptor.dynamicModel.avbInfo; // Copy the AvbInfo so we can alter values
-				info.gptpGrandmasterID = newGptpGrandmasterID;
-				info.gptpDomainNumber = newGptpDomainNumber;
-				updateAvbInfo(controlledEntity, entity.getInterfaceIndex(), info, false);
+					auto info = avbInterfaceDescriptor.dynamicModel.avbInfo; // Copy the AvbInfo so we can alter values
+					info.gptpGrandmasterID = newGptpGrandmasterID;
+					info.gptpDomainNumber = newGptpDomainNumber;
+					updateAvbInfo(controlledEntity, entity.getInterfaceIndex(), info, false);
+				}
+				catch (ControlledEntity::Exception const&)
+				{
+					// Ignore exceptions, in case we got an update of this entity before the AvbInterfaceDescriptor has been retrieved
+				}
 			}
 		}
 	}
@@ -550,7 +557,8 @@ void ControllerImpl::updateAvbInfo(ControlledEntityImpl& controlledEntity, entit
 		{
 			auto entity{ ModifiableEntity(controlledEntity.getEntity()) }; // Copy the Entity so we can alter values
 			auto const caps = entity.getEntityCapabilities();
-			if (hasFlag(caps, entity::EntityCapabilities::GptpSupported) && hasFlag(caps, entity::EntityCapabilities::AemInterfaceIndexValid))
+			if (hasFlag(caps, entity::EntityCapabilities::GptpSupported) &&
+				(!hasFlag(caps, entity::EntityCapabilities::AemInterfaceIndexValid) || entity.getInterfaceIndex() == avbInterfaceIndex))
 			{
 				entity.setGptpGrandmasterID(info.gptpGrandmasterID);
 				entity.setGptpDomainNumber(info.gptpDomainNumber);

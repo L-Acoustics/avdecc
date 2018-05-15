@@ -4,6 +4,13 @@ All notable changes to the Avdecc Controller Library will be documented in this 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2018-05-15
+### Added
+- Global API to retrieve the compilation options of the library
+### Fixed
+- Some devices not properly enumerated if an OutputStream is connected
+- Re-enabled AVnu Alliance Network Redundancy support
+
 ## [2.3.0] - 2018-03-30
 ### Added
 - Support for Cole Peterson's redundant streams association

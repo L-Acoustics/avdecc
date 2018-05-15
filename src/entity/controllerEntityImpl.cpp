@@ -1916,7 +1916,7 @@ void ControllerEntityImpl::getStreamPortOutputAudioMap(UniqueIdentifier const ta
 	}
 }
 
-void ControllerEntityImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamPortIndex const streamPortIndex, std::vector<model::AudioMapping> const& mappings, AddStreamPortInputAudioMappingsHandler const& handler) const noexcept
+void ControllerEntityImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamPortIndex const streamPortIndex, model::AudioMappings const& mappings, AddStreamPortInputAudioMappingsHandler const& handler) const noexcept
 {
 	try
 	{
@@ -1946,7 +1946,7 @@ void ControllerEntityImpl::addStreamPortOutputAudioMappings(UniqueIdentifier con
 	}
 }
 
-void ControllerEntityImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamPortIndex const streamPortIndex, std::vector<model::AudioMapping> const& mappings, RemoveStreamPortInputAudioMappingsHandler const& handler) const noexcept
+void ControllerEntityImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, model::StreamPortIndex const streamPortIndex, model::AudioMappings const& mappings, RemoveStreamPortInputAudioMappingsHandler const& handler) const noexcept
 {
 	try
 	{

@@ -29,11 +29,11 @@
 #include <string>
 #include <la/avdecc/avdecc.hpp>
 #include <la/avdecc/internals/exception.hpp>
-#if __cpp_lib_any
-#include <any>
-#else // !__cpp_lib_any
+#if defined(ENABLE_AVDECC_CUSTOM_ANY)
 #include <la/avdecc/internals/any.hpp>
-#endif // __cpp_lib_any
+#else // !ENABLE_AVDECC_CUSTOM_ANY
+#include <any>
+#endif // ENABLE_AVDECC_CUSTOM_ANY
 #include "avdeccControlledEntityStaticModel.hpp"
 #include "avdeccControlledEntityDynamicModel.hpp"
 #include "exports.hpp"
@@ -132,6 +132,9 @@ struct StreamNode : public EntityModelNode
 {
 	// AEM Static info
 	StreamNodeStaticModel const* staticModel{ nullptr };
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	bool isRedundant{ false }; // True if stream is part of a valid redundant stream association
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 };
 
 struct StreamInputNode : public StreamNode
@@ -146,11 +149,16 @@ struct StreamOutputNode : public StreamNode
 	StreamOutputNodeDynamicModel* dynamicModel{ nullptr };
 };
 
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 struct RedundantStreamNode : public VirtualNode
 {
 	// Children
 	std::map<entity::model::StreamIndex, StreamNode const*> redundantStreams{}; // Either StreamInputNode or StreamOutputNode, based on Node::descriptorType
+
+	// Quick access to the primary stream (which is also contained in this->redundantStreams)
+	StreamNode const* primaryStream{ nullptr }; // Either StreamInputNode or StreamOutputNode, based on Node::descriptorType
 };
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 struct AvbInterfaceNode : public EntityModelNode
 {
@@ -217,8 +225,10 @@ struct ConfigurationNode : public EntityModelNode
 	std::map<entity::model::LocaleIndex, LocaleNode> locales{};
 	std::map<entity::model::ClockDomainIndex, ClockDomainNode> clockDomains{};
 
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	std::map<VirtualIndex, RedundantStreamNode> redundantStreamInputs{};
 	std::map<VirtualIndex, RedundantStreamNode> redundantStreamOutputs{};
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 	// AEM Static info
 	ConfigurationNodeStaticModel const* staticModel{ nullptr };
@@ -255,7 +265,9 @@ public:
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::AudioClusterNode const& node) noexcept = 0;
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::AudioMapNode const& node) noexcept = 0;
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::ClockDomainNode const& node) noexcept = 0;
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::RedundantStreamNode const& node) noexcept = 0;
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 	// Defaulted compiler auto-generated methods
 	EntityModelVisitor() noexcept = default;
