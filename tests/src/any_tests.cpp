@@ -19,7 +19,7 @@
 
 #include <gtest/gtest.h>
 
-#if !__cpp_lib_any
+#if ENABLE_AVDECC_CUSTOM_ANY
 #include <la/avdecc/internals/any.hpp>
 
 // Some tests for our std::any implementation, until it's available on all c++17 compilers
@@ -82,4 +82,4 @@ TEST(Any, CopyOperator)
 	EXPECT_EQ(1.0f, value);
 }
 
-#endif // !__cpp_lib_any
+#endif // ENABLE_AVDECC_CUSTOM_ANY

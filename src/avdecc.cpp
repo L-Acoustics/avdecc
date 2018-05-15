@@ -56,5 +56,36 @@ std::uint32_t LA_AVDECC_CALL_CONVENTION getInterfaceVersion() noexcept
 	return InterfaceVersion;
 }
 
+CompileOptions LA_AVDECC_CALL_CONVENTION getCompileOptions() noexcept
+{
+	CompileOptions options{ CompileOptions::None };
+
+	for (auto const& info : getCompileOptionsInfo())
+	{
+		options |= info.option;
+	}
+
+	return options;
+}
+
+std::vector<CompileOptionInfo> LA_AVDECC_CALL_CONVENTION getCompileOptionsInfo() noexcept
+{
+	std::vector<CompileOptionInfo> options{};
+
+#ifdef IGNORE_INVALID_CONTROL_DATA_LENGTH
+	options.emplace_back(CompileOptionInfo{ CompileOptions::IgnoreInvalidControlDataLength, "IICDL", "Ignore Invalid Control Data Length" });
+#endif // IGNORE_INVALID_CONTROL_DATA_LENGTH
+
+#ifdef IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES
+	options.emplace_back(CompileOptionInfo{ CompileOptions::IgnoreInvalidNonSuccessAemResponses, "IINSAR", "Ignore Invalid Non Success AEM Responses" });
+#endif // IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES
+
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	options.emplace_back(CompileOptionInfo{ CompileOptions::EnableRedundancy, "RDNCY", "Redundancy" });
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+
+	return options;
+}
+
 } // namespace avdecc
 } // namespace la

@@ -29,11 +29,11 @@
 #include "la/avdecc/internals/entityModel.hpp"
 #include <cstdint>
 #include <tuple>
-#if __cpp_lib_any
-#include <any>
-#else // !__cpp_lib_any
+#if defined(ENABLE_AVDECC_CUSTOM_ANY)
 #include <la/avdecc/internals/any.hpp>
-#endif // __cpp_lib_any
+#else // !ENABLE_AVDECC_CUSTOM_ANY
+#include <any>
+#endif // ENABLE_AVDECC_CUSTOM_ANY
 
 namespace la
 {

@@ -1062,7 +1062,7 @@ void ControllerImpl::onGetTalkerStreamStateResult(entity::ControllerEntity const
 				{
 					talker->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamConnection, talkerStream.streamIndex, index);
 					Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("getTalkerStreamConnection(") + toHexString(talkerStream.entityID, true) + "," + std::to_string(talkerStream.streamIndex) + "," + std::to_string(index) + ")");
-					controller->getTalkerStreamConnection(talkerStream, index, std::bind(&ControllerImpl::onGetTalkerStreamConnectionResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
+					controller->getTalkerStreamConnection(talkerStream, index, std::bind(&ControllerImpl::onGetTalkerStreamConnectionResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex, index));
 				}
 
 				checkAdvertiseEntity(talker.get());
@@ -1112,16 +1112,16 @@ void ControllerImpl::onGetListenerStreamStateResult(entity::ControllerEntity con
 	}
 }
 
-void ControllerImpl::onGetTalkerStreamConnectionResult(entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const /*flags*/, entity::ControllerEntity::ControlStatus const status, entity::model::ConfigurationIndex const configurationIndex) noexcept
+void ControllerImpl::onGetTalkerStreamConnectionResult(entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const /*flags*/, entity::ControllerEntity::ControlStatus const status, entity::model::ConfigurationIndex const configurationIndex, std::uint16_t const connectionIndex) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onGetTalkerStreamConnectionResult(") + toHexString(talkerStream.entityID, true) + "," + std::to_string(talkerStream.streamIndex) + std::to_string(connectionCount) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onGetTalkerStreamConnectionResult(") + toHexString(talkerStream.entityID, true) + "," + std::to_string(talkerStream.streamIndex) + "," + std::to_string(connectionIndex) + "," + std::to_string(connectionCount) + "," + entity::ControllerEntity::statusToString(status) + ")");
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto talker = getControlledEntityImpl(talkerStream.entityID);
 
 	if (talker)
 	{
-		if (talker->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamConnection, talkerStream.streamIndex, connectionCount) && !talker->gotEnumerationError())
+		if (talker->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamConnection, talkerStream.streamIndex, connectionIndex) && !talker->gotEnumerationError())
 		{
 			if (!!status)
 			{
@@ -1130,7 +1130,7 @@ void ControllerImpl::onGetTalkerStreamConnectionResult(entity::ControllerEntity 
 			}
 			else
 			{
-				if (!checkRescheduleQuery(status, talker.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamConnection, talkerStream.streamIndex, connectionCount))
+				if (!checkRescheduleQuery(status, talker.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamConnection, talkerStream.streamIndex, connectionIndex))
 				{
 					talker->setEnumerationError(true);
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, talker.get(), QueryCommandError::TalkerStreamConnection);

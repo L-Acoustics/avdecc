@@ -16,7 +16,8 @@ if(WIN32)
 endif()
 
 set(ADD_LINK_LIBS "")
-set(ADD_COMPILE_OPTIONS "")
+set(ADD_PRIVATE_COMPILE_OPTIONS "")
+set(ADD_PUBLIC_COMPILE_OPTIONS "")
 
 set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/controller/avdeccController.hpp
@@ -45,20 +46,37 @@ set (SOURCE_FILES_COMMON
 	avdeccControlledEntityImpl.cpp
 )
 
-set (LIB_HEADER_FILES ${HEADER_FILES_COMMON} ${PUBLIC_HEADER_FILES})
-set (LIB_SOURCE_FILES ${SOURCE_FILES_COMMON})
+# Features
+if(ENABLE_AVDECC_FEATURE_REDUNDANCY)
+	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DENABLE_AVDECC_FEATURE_REDUNDANCY")
+	if(ENABLE_AVDECC_STRICT_2018_REDUNDANCY)
+		list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DENABLE_AVDECC_STRICT_2018_REDUNDANCY")
+	endif()
+endif()
 
 # Other options
-if(IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS)
-	list(APPEND ADD_COMPILE_OPTIONS "-DIGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS")
+if(ENABLE_AVDECC_CUSTOM_ANY)
+	list(APPEND PUBLIC_HEADER_FILES
+		${LA_ROOT_DIR}/include/la/avdecc/internals/any.hpp
+	)
+	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DENABLE_AVDECC_CUSTOM_ANY")
 endif()
+if(IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS)
+	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DIGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS")
+endif()
+
+set (LIB_HEADER_FILES ${HEADER_FILES_COMMON} ${PUBLIC_HEADER_FILES})
+set (LIB_SOURCE_FILES ${SOURCE_FILES_COMMON})
 
 # C++ dynamic library
 if(BUILD_AVDECC_LIB_SHARED_CXX)
 	set (LIB_SHARED_CXX_SOURCE_FILES ${LIB_SOURCE_FILES})
 	add_library(la_avdecc_controller_cxx SHARED ${LIB_HEADER_FILES} ${LIB_SHARED_CXX_SOURCE_FILES} ${SHARED_LIBRARY_FILES})
-	if(ADD_COMPILE_OPTIONS)
-		target_compile_options(la_avdecc_controller_cxx PRIVATE ${ADD_COMPILE_OPTIONS})
+	if(ADD_PRIVATE_COMPILE_OPTIONS)
+		target_compile_options(la_avdecc_controller_cxx PRIVATE ${ADD_PRIVATE_COMPILE_OPTIONS})
+	endif()
+	if(ADD_PUBLIC_COMPILE_OPTIONS)
+		target_compile_options(la_avdecc_controller_cxx PUBLIC ${ADD_PUBLIC_COMPILE_OPTIONS})
 	endif()
 	if(ADD_LINK_LIBS)
 		target_link_libraries(la_avdecc_controller_cxx PRIVATE ${ADD_LINK_LIBS})
@@ -83,8 +101,11 @@ endif()
 # Runtime-shared static library
 if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 	add_library(la_avdecc_controller_static STATIC ${LIB_HEADER_FILES} ${LIB_SOURCE_FILES})
-	if(ADD_COMPILE_OPTIONS)
-		target_compile_options(la_avdecc_controller_static PRIVATE ${ADD_COMPILE_OPTIONS})
+	if(ADD_PRIVATE_COMPILE_OPTIONS)
+		target_compile_options(la_avdecc_controller_static PRIVATE ${ADD_PRIVATE_COMPILE_OPTIONS})
+	endif()
+	if(ADD_PUBLIC_COMPILE_OPTIONS)
+		target_compile_options(la_avdecc_controller_static PUBLIC ${ADD_PUBLIC_COMPILE_OPTIONS})
 	endif()
 	if(ADD_LINK_LIBS)
 		target_link_libraries(la_avdecc_controller_static PUBLIC ${ADD_LINK_LIBS})

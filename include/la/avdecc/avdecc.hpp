@@ -40,6 +40,10 @@
 /** Symbols export definition */
 #include "internals/exports.hpp"
 
+#include <cstdint>
+#include <string>
+#include <vector>
+
 namespace la
 {
 namespace avdecc
@@ -52,7 +56,7 @@ namespace avdecc
 * (either added, removed or signature modification).
 * Any other change (including templates, inline methods, defines, typedefs, ...) are considered a modification of the interface.
 */
-constexpr std::uint32_t InterfaceVersion = 203;
+constexpr std::uint32_t InterfaceVersion = 204;
 
 /**
 * @brief Checks if the library is compatible with specified interface version.
@@ -76,6 +80,43 @@ LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION getVersion() noexcept;
 * @return The interface version.
 */
 LA_AVDECC_API std::uint32_t LA_AVDECC_CALL_CONVENTION getInterfaceVersion() noexcept;
+
+enum class CompileOption : std::uint32_t
+{
+	None = 0,
+	IgnoreInvalidControlDataLength = 1u << 0,
+	IgnoreInvalidNonSuccessAemResponses = 1u << 1,
+	EnableRedundancy = 1u << 15,
+};
+using CompileOptions = CompileOption;
+
+struct CompileOptionInfo
+{
+	CompileOption option{ CompileOption::None };
+	std::string shortName{};
+	std::string longName{};
+};
+
+/**
+* @brief Gets the avdecc library compile options.
+* @details Returns the avdecc library compile options.
+* @return The compile options.
+*/
+LA_AVDECC_API CompileOptions LA_AVDECC_CALL_CONVENTION getCompileOptions() noexcept;
+
+/**
+* @brief Gets the avdecc library compile options info.
+* @details Returns the avdecc library compile options info.
+* @return The compile options info.
+*/
+LA_AVDECC_API std::vector<CompileOptionInfo> LA_AVDECC_CALL_CONVENTION getCompileOptionsInfo() noexcept;
+
+// Define bitfield enum traits for CompileOptions
+template<>
+struct enum_traits<CompileOptions>
+{
+	static constexpr bool is_bitfield = true;
+};
 
 } // namespace avdecc
 } // namespace la

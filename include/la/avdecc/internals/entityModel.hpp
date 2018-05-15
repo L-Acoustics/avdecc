@@ -167,7 +167,9 @@ struct StreamDescriptor
 	AvbInterfaceIndex avbInterfaceIndex{ AvbInterfaceIndex(0u) };
 	std::uint32_t bufferLength{ 0u };
 	std::set<StreamFormat> formats{};
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	std::set<StreamIndex> redundantStreams{};
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 };
 
 /** JACK_INPUT and JACK_OUTPUT Descriptor - Clause 7.2.7 */

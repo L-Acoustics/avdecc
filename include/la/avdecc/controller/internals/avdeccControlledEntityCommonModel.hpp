@@ -70,7 +70,9 @@ constexpr bool operator!=(StreamConnectionState const& lhs, StreamConnectionStat
 
 using StreamConnections = std::set<entity::model::StreamIdentification>;
 using StreamFormats = std::set<entity::model::StreamFormat>;
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 using RedundantStreams = std::set<entity::model::StreamIndex>;
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 using SamplingRates = std::set<entity::model::SamplingRate>;
 using AvdeccFixedStrings = std::array<entity::model::AvdeccFixedString, 7>;
 using ClockSources = std::vector<entity::model::ClockSourceIndex>;

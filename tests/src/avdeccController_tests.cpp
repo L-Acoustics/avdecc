@@ -131,6 +131,7 @@ private:
 		serializeNode(parent);
 		serializeNode(node);
 	}
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::RedundantStreamNode const& node) noexcept override
 	{
 		serializeNode(parent);
@@ -141,50 +142,120 @@ private:
 			auto const streamIndex = streamKV.first;
 			_serializedModel += std::to_string(streamIndex) + "+";
 		}
+		serializeNode(*node.primaryStream);
 	}
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 	std::string _serializedModel{};
 };
 };
 
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 TEST(Controller, RedundantStreams)
 {
-	std::string singleLinkedModel{};
-	std::string doubleLinkedModel{};
+#ifdef ENABLE_AVDECC_STRICT_2018_REDUNDANCY
+	// Invalid redundant association: More than 2 streams in the association
+	{
+		auto const e{ la::avdecc::entity::Entity{ 0x0102030405060708, la::avdecc::networkInterface::MacAddress{}, 0x1122334455667788, la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, 0, la::avdecc::getNullIdentifier() } };
+		la::avdecc::controller::ControlledEntityImpl entity{ e };
 
-	// Single linked model
+		entity.setEntityDescriptor(la::avdecc::entity::model::EntityDescriptor{ 0x0102030405060708 , 0x1122334455667788 , la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, la::avdecc::getNullIdentifier() , std::string("Test entity"), la::avdecc::entity::model::getNullLocalizedStringReference(), la::avdecc::entity::model::getNullLocalizedStringReference(), std::string("Test firmware"), std::string("Test group"), std::string("Test serial number"), 1, 0 });
+		entity.setConfigurationDescriptor(la::avdecc::entity::model::ConfigurationDescriptor{ std::string("Test configuration"), la::avdecc::entity::model::getNullLocalizedStringReference(),{ { la::avdecc::entity::model::DescriptorType::StreamInput, 4 } } }, 0);
+		entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Test stream 1"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, 0, 0,{},{} }, 0, 0);
+		entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Secondary stream 2"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, 0, 0,{},{ 3, 2 } }, 0, 1);
+		entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Primary stream 2"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, 0, 0,{},{ 1, 3 } }, 0, 2);
+		entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Tertiary stream 2"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, 0, 0,{},{ 2, 1 } }, 0, 3);
+
+		EntityModelVisitor serializer{};
+		entity.accept(&serializer);
+		auto const serialized = serializer.getSerializedModel();
+		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,di2,pdt1,dt5,di3,", serialized.c_str());
+	}
+#endif // ENABLE_AVDECC_STRICT_2018_REDUNDANCY
+
+	// Invalid redundant association: 
+	//{
+	//	auto const e{ la::avdecc::entity::Entity{ 0x0102030405060708, la::avdecc::networkInterface::MacAddress{}, 0x1122334455667788, la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, 0, la::avdecc::getNullIdentifier() } };
+	//	la::avdecc::controller::ControlledEntityImpl entity{ e };
+	//
+	//	entity.setEntityDescriptor(la::avdecc::entity::model::EntityDescriptor{ 0x0102030405060708 , 0x1122334455667788 , la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, la::avdecc::getNullIdentifier() , std::string("Test entity"), la::avdecc::entity::model::getNullLocalizedStringReference(), la::avdecc::entity::model::getNullLocalizedStringReference(), std::string("Test firmware"), std::string("Test group"), std::string("Test serial number"), 1, 0 });
+	//	entity.setConfigurationDescriptor(la::avdecc::entity::model::ConfigurationDescriptor{ std::string("Test configuration"), la::avdecc::entity::model::getNullLocalizedStringReference(),{ { la::avdecc::entity::model::DescriptorType::StreamInput, 3 } } }, 0);
+	//	entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Test stream 1"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, 0, 0,{},{} }, 0, 0);
+	//	entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Secondary stream 2"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, 0, 0,{},{ 2 } }, 0, 1);
+	//	entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Primary stream 2"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, 0, 0,{},{ 1 } }, 0, 2);
+	//
+	//	EntityModelVisitor serializer{};
+	//	entity.accept(&serializer);
+	//	auto const serialized = serializer.getSerializedModel();
+	//	EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,di2,", serialized.c_str());
+	//}
+
+	// Invalid redundant association: Stream referencing itself
+	{
+		auto const e{ la::avdecc::entity::Entity{ 0x0102030405060708, la::avdecc::networkInterface::MacAddress{}, 0x1122334455667788, la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, 0, la::avdecc::getNullIdentifier() } };
+		la::avdecc::controller::ControlledEntityImpl entity{ e };
+	
+		entity.setEntityDescriptor(la::avdecc::entity::model::EntityDescriptor{ 0x0102030405060708 , 0x1122334455667788 , la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, la::avdecc::getNullIdentifier() , std::string("Test entity"), la::avdecc::entity::model::getNullLocalizedStringReference(), la::avdecc::entity::model::getNullLocalizedStringReference(), std::string("Test firmware"), std::string("Test group"), std::string("Test serial number"), 1, 0 });
+		entity.setConfigurationDescriptor(la::avdecc::entity::model::ConfigurationDescriptor{ std::string("Test configuration"), la::avdecc::entity::model::getNullLocalizedStringReference(),{ { la::avdecc::entity::model::DescriptorType::StreamInput, 2 } } }, 0);
+		entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Primary stream 1"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, 0, 0,{},{ 0 } }, 0, 0);
+		entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Secondary stream 1"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, 1, 0,{},{ 0 } }, 0, 1);
+
+		EntityModelVisitor serializer{};
+		entity.accept(&serializer);
+		auto const serialized = serializer.getSerializedModel();
+		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,", serialized.c_str());
+	}
+
+	// Valid redundant association (primary stream declared first)
+	{
+		auto const e{ la::avdecc::entity::Entity{ 0x0102030405060708, la::avdecc::networkInterface::MacAddress{}, 0x1122334455667788, la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, 0, la::avdecc::getNullIdentifier() } };
+		la::avdecc::controller::ControlledEntityImpl entity{ e };
+
+		entity.setEntityDescriptor(la::avdecc::entity::model::EntityDescriptor{ 0x0102030405060708 , 0x1122334455667788 , la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, la::avdecc::getNullIdentifier() , std::string("Test entity"), la::avdecc::entity::model::getNullLocalizedStringReference(), la::avdecc::entity::model::getNullLocalizedStringReference(), std::string("Test firmware"), std::string("Test group"), std::string("Test serial number"), 1, 0 });
+		entity.setConfigurationDescriptor(la::avdecc::entity::model::ConfigurationDescriptor{ std::string("Test configuration"), la::avdecc::entity::model::getNullLocalizedStringReference(),{ { la::avdecc::entity::model::DescriptorType::StreamInput, 2 } } }, 0);
+		entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Primary stream 1"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, 0, 0, {}, { 1 } }, 0, 0);
+		entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Secondary stream 1"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, 1, 0, {}, { 0 } }, 0, 1);
+
+		EntityModelVisitor serializer{};
+		entity.accept(&serializer);
+		auto const serialized = serializer.getSerializedModel();
+		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,vi0,rsi0+1+dt5,di0,pdt5,dt5,di0,pdt5,dt5,di1,", serialized.c_str());
+	}
+
+	// Valid redundant association (secondary stream declared first)
+	{
+		auto const e{ la::avdecc::entity::Entity{ 0x0102030405060708, la::avdecc::networkInterface::MacAddress{}, 0x1122334455667788, la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, 0, la::avdecc::getNullIdentifier() } };
+		la::avdecc::controller::ControlledEntityImpl entity{ e };
+
+		entity.setEntityDescriptor(la::avdecc::entity::model::EntityDescriptor{ 0x0102030405060708 , 0x1122334455667788 , la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, la::avdecc::getNullIdentifier() , std::string("Test entity"), la::avdecc::entity::model::getNullLocalizedStringReference(), la::avdecc::entity::model::getNullLocalizedStringReference(), std::string("Test firmware"), std::string("Test group"), std::string("Test serial number"), 1, 0 });
+		entity.setConfigurationDescriptor(la::avdecc::entity::model::ConfigurationDescriptor{ std::string("Test configuration"), la::avdecc::entity::model::getNullLocalizedStringReference(),{ { la::avdecc::entity::model::DescriptorType::StreamInput, 2 } } }, 0);
+		entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Secondary stream 1"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, 1, 0,{},{ 1 } }, 0, 0);
+		entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Primary stream 1"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, 0, 0,{},{ 0 } }, 0, 1);
+
+		EntityModelVisitor serializer{};
+		entity.accept(&serializer);
+		auto const serialized = serializer.getSerializedModel();
+		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,vi0,rsi0+1+dt5,di1,pdt5,dt5,di0,pdt5,dt5,di1,", serialized.c_str());
+	}
+
+	// Valid redundant association (single stream declared as well as redundant pair)
 	{
 		auto const e{ la::avdecc::entity::Entity{ 0x0102030405060708, la::avdecc::networkInterface::MacAddress{}, 0x1122334455667788, la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, 0, la::avdecc::getNullIdentifier() } };
 		la::avdecc::controller::ControlledEntityImpl entity{ e };
 
 		entity.setEntityDescriptor(la::avdecc::entity::model::EntityDescriptor{ 0x0102030405060708 , 0x1122334455667788 , la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, la::avdecc::getNullIdentifier() , std::string("Test entity"), la::avdecc::entity::model::getNullLocalizedStringReference(), la::avdecc::entity::model::getNullLocalizedStringReference(), std::string("Test firmware"), std::string("Test group"), std::string("Test serial number"), 1, 0 });
 		entity.setConfigurationDescriptor(la::avdecc::entity::model::ConfigurationDescriptor{ std::string("Test configuration"), la::avdecc::entity::model::getNullLocalizedStringReference(),{ { la::avdecc::entity::model::DescriptorType::StreamInput, 3 } } }, 0);
-		entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Test stream 1"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, 0, 0,{},{} }, 0, 0);
-		entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Secondary stream 2"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, 0, 0,{},{} }, 0, 1);
-		entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Primary stream 2"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, 0, 0,{},{ 1 } }, 0, 2);
+		entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Test stream 1"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, 0, 0, {}, {} }, 0, 0);
+		entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Secondary stream 2"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, 1, 0, {}, { 2 } }, 0, 1);
+		entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Primary stream 2"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, 0, 0, {}, { 1 } }, 0, 2);
 
 		EntityModelVisitor serializer{};
 		entity.accept(&serializer);
-		singleLinkedModel = serializer.getSerializedModel();
+		auto const serialized = serializer.getSerializedModel();
+		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,di2,pdt1,dt5,vi0,rsi1+2+dt5,di2,pdt5,dt5,di1,pdt5,dt5,di2,", serialized.c_str());
 	}
-	// Double linked model
-	{
-		auto const e{ la::avdecc::entity::Entity{ 0x0102030405060708, la::avdecc::networkInterface::MacAddress{}, 0x1122334455667788, la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, 0, la::avdecc::getNullIdentifier() } };
-		la::avdecc::controller::ControlledEntityImpl entity{ e };
-
-		entity.setEntityDescriptor(la::avdecc::entity::model::EntityDescriptor{ 0x0102030405060708 , 0x1122334455667788 , la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, la::avdecc::getNullIdentifier() , std::string("Test entity"), la::avdecc::entity::model::getNullLocalizedStringReference(), la::avdecc::entity::model::getNullLocalizedStringReference(), std::string("Test firmware"), std::string("Test group"), std::string("Test serial number"), 1, 0 });
-		entity.setConfigurationDescriptor(la::avdecc::entity::model::ConfigurationDescriptor{ std::string("Test configuration"), la::avdecc::entity::model::getNullLocalizedStringReference(),{ { la::avdecc::entity::model::DescriptorType::StreamInput, 3 } } }, 0);
-		entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Test stream 1"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, 0, 0,{},{} }, 0, 0);
-		entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Secondary stream 2"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, 0, 0,{},{ 2 } }, 0, 1);
-		entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Primary stream 2"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, la::avdecc::getNullIdentifier(), 0, 0, 0,{},{ 1 } }, 0, 2);
-
-		EntityModelVisitor serializer{};
-		entity.accept(&serializer);
-		doubleLinkedModel = serializer.getSerializedModel();
-	}
-
-	EXPECT_STREQ(singleLinkedModel.c_str(), doubleLinkedModel.c_str());
 }
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 TEST(Controller, DestroyWhileSending)
 {
