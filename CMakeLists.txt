@@ -8,8 +8,8 @@ cmake_minimum_required(VERSION 3.9)
 # Using Semantic Versioning (http://semver.org/spec/v2.0.0.html)
 # Project version number x.y.z on main branch, x.y.z.w on dev and task branches
 # Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task)
-set(LA_AVDECC_VERSION 2.4.1.1)
-set(LA_AVDECC_CONTROLLER_VERSION 2.4.1.1)
+set(LA_AVDECC_VERSION 2.4.1.2)
+set(LA_AVDECC_CONTROLLER_VERSION 2.4.1.2)
 
 ############ Override from command line "CMake -D<OPTION>=TRUE/FALSE/0/1/ON/OFF"
 
@@ -48,7 +48,7 @@ option(IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS "Allow Entities not supporting
 project(LA_avdecc)
 
 # Using c++14 standard for all targets
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 # Set minimum OSX version

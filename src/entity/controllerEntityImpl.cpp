@@ -198,7 +198,7 @@ void ControllerEntityImpl::sendAemCommand(UniqueIdentifier const targetEntityID,
 		// Return an error if entity is not found in the list
 		if (!networkInterface::isMacAddressValid(targetMacAddress))
 		{
-			onErrorCallback(AemCommandStatus::UnknownEntity);
+			invokeProtectedHandler(onErrorCallback, AemCommandStatus::UnknownEntity);
 			return;
 		}
 
@@ -223,20 +223,26 @@ void ControllerEntityImpl::sendAemCommand(UniqueIdentifier const targetEntityID,
 		auto const error = pi->sendAecpCommand(std::move(frame), targetMacAddress, [onErrorCallback, answerCallback, this](protocol::Aecpdu const* const response, protocol::ProtocolInterface::Error const error) noexcept
 		{
 			if (!error)
+			{
 				processAemResponse(response, onErrorCallback, answerCallback); // We sent an AEM command, we know it's an AEM response (so directly call processAemResponse)
+			}
 			else
-				onErrorCallback(convertErrorToAemCommandStatus(error));
+			{
+				invokeProtectedHandler(onErrorCallback, convertErrorToAemCommandStatus(error));
+			}
 		});
 		if (!!error)
-			onErrorCallback(convertErrorToAemCommandStatus(error));
+		{
+			invokeProtectedHandler(onErrorCallback, convertErrorToAemCommandStatus(error));
+		}
 	}
 	catch (std::invalid_argument const&)
 	{
-		onErrorCallback(AemCommandStatus::ProtocolError);
+		invokeProtectedHandler(onErrorCallback, AemCommandStatus::ProtocolError);
 	}
 	catch (...)
 	{
-		onErrorCallback(AemCommandStatus::InternalError);
+		invokeProtectedHandler(onErrorCallback, AemCommandStatus::InternalError);
 	}
 }
 
@@ -1035,7 +1041,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 			{
 				// Deserialize payload
 #ifdef __cpp_structured_bindings
-				auto const[descriptorType, descriptorIndex, mapIndex, numberOfMaps, &mappings] = protocol::aemPayload::deserializeGetAudioMapResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex, mapIndex, numberOfMaps, mappings] = protocol::aemPayload::deserializeGetAudioMapResponse(aem.getPayload());
 #else // !__cpp_structured_bindings
 				auto const result = protocol::aemPayload::deserializeGetAudioMapResponse(aem.getPayload());
 				entity::model::DescriptorType const descriptorType = std::get<0>(result);
@@ -1073,7 +1079,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 			{
 				// Deserialize payload
 #ifdef __cpp_structured_bindings
-				auto const[descriptorType, descriptorIndex, &mappings] = protocol::aemPayload::deserializeAddAudioMappingsResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex, mappings] = protocol::aemPayload::deserializeAddAudioMappingsResponse(aem.getPayload());
 #else // !__cpp_structured_bindings
 				auto const result = protocol::aemPayload::deserializeAddAudioMappingsResponse(aem.getPayload());
 				entity::model::DescriptorType const descriptorType = std::get<0>(result);
@@ -1101,7 +1107,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 			{
 				// Deserialize payload
 #ifdef __cpp_structured_bindings
-				auto const[descriptorType, descriptorIndex, &mappings] = protocol::aemPayload::deserializeRemoveAudioMappingsResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex, mappings] = protocol::aemPayload::deserializeRemoveAudioMappingsResponse(aem.getPayload());
 #else // !__cpp_structured_bindings
 				auto const result = protocol::aemPayload::deserializeRemoveAudioMappingsResponse(aem.getPayload());
 				entity::model::DescriptorType const descriptorType = std::get<0>(result);
@@ -1255,20 +1261,26 @@ void ControllerEntityImpl::sendAcmpCommand(protocol::AcmpMessageType const messa
 		auto const error = pi->sendAcmpCommand(std::move(frame), [onErrorCallback, answerCallback, this](protocol::Acmpdu const* const response, protocol::ProtocolInterface::Error const error) noexcept
 		{
 			if (!error)
+			{
 				processAcmpResponse(response, onErrorCallback, answerCallback, false);
+			}
 			else
-				onErrorCallback(convertErrorToControlStatus(error));
+			{
+				invokeProtectedHandler(onErrorCallback, convertErrorToControlStatus(error));
+			}
 		});
 		if (!!error)
-			onErrorCallback(convertErrorToControlStatus(error));
+		{
+			invokeProtectedHandler(onErrorCallback, convertErrorToControlStatus(error));
+		}
 	}
 	catch (std::invalid_argument const&)
 	{
-		onErrorCallback(ControlStatus::ProtocolError);
+		invokeProtectedHandler(onErrorCallback, ControlStatus::ProtocolError);
 	}
 	catch (...)
 	{
-		onErrorCallback(ControlStatus::InternalError);
+		invokeProtectedHandler(onErrorCallback, ControlStatus::InternalError);
 	}
 }
 
@@ -2444,7 +2456,7 @@ void ControllerEntityImpl::onAecpCommand(protocol::ProtocolInterface* const /*pi
 		if (controllerID == selfID)
 			return;
 
-		static std::unordered_map<protocol::AemCommandType::value_type, std::function<void(ControllerEntityImpl const* const controller, protocol::AemAecpdu const& aem)noexcept>> s_Dispatch{
+		static std::unordered_map<protocol::AemCommandType::value_type, std::function<void(ControllerEntityImpl const* const controller, protocol::AemAecpdu const& aem)>> s_Dispatch{
 			// Entity Available
 			{ protocol::AemCommandType::EntityAvailable.getValue(), [](ControllerEntityImpl const* const controller, protocol::AemAecpdu const& aem)
 				{
@@ -2464,7 +2476,7 @@ void ControllerEntityImpl::onAecpCommand(protocol::ProtocolInterface* const /*pi
 		auto const& it = s_Dispatch.find(aem.getCommandType().getValue());
 		if (it != s_Dispatch.end())
 		{
-			it->second(this, aem);
+			invokeProtectedHandler(it->second, this, aem);
 		}
 		else
 		{
