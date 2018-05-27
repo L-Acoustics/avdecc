@@ -22,8 +22,8 @@
 * @author Christophe Calmejane
 */
 
-#include "la/avdecc/logger.hpp"
 #include "pcapInterface.hpp"
+#include "la/avdecc/internals/logItems.hpp"
 
 #include <cassert>
 #include <string>
@@ -106,18 +106,21 @@ PcapInterface::PcapInterface()
 
 		if (foundAllFunctions)
 		{
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, "Using " PCAP_LIBRARY ": " + version);
+			auto const item = la::avdecc::logger::LogItemGeneric{ "Using " PCAP_LIBRARY ": " + version };
+			la::avdecc::logger::Logger::getInstance().logItem(la::avdecc::logger::Level::Info, &item);
 			_pImpl->libraryHandle = handle;
 		}
 		else
 		{
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Error, "Cannot find all the required functions in " PCAP_LIBRARY);
+			auto const item = la::avdecc::logger::LogItemGeneric{ "Cannot find all the required functions in " PCAP_LIBRARY };
+			la::avdecc::logger::Logger::getInstance().logItem(la::avdecc::logger::Level::Error, &item);
 			DL_CLOSE(handle);
 		}
 	}
 	else
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Error, "Cannot load " PCAP_LIBRARY);
+		auto const item = la::avdecc::logger::LogItemGeneric{ "Cannot load " PCAP_LIBRARY };
+		la::avdecc::logger::Logger::getInstance().logItem(la::avdecc::logger::Level::Error, &item);
 	}
 }
 

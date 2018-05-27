@@ -23,7 +23,7 @@
 */
 
 #include "protocolAecpdu.hpp"
-#include "la/avdecc/logger.hpp"
+#include "logHelper.hpp"
 #include <cassert>
 #include <string>
 
@@ -52,7 +52,7 @@ void Aecpdu::serialize(SerializationBuffer& buffer) const
 
 	if (!AVDECC_ASSERT_WITH_RET((buffer.size() - previousSize) == HeaderLength, "Aecpdu::serialize error: Packed buffer length != expected header length"))
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Warn, "Aecpdu::serialize error: Packed buffer length != expected header length");
+		LOG_SERIALIZATION_WARN(_srcAddress, "Aecpdu::serialize error: Packed buffer length != expected header length");
 	}
 }
 
@@ -60,14 +60,14 @@ void Aecpdu::deserialize(DeserializationBuffer& buffer)
 {
 	if (!AVDECC_ASSERT_WITH_RET(buffer.remaining() >= HeaderLength, "Aecpdu::deserialize error: Not enough data in buffer"))
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Error, "Aecpdu::deserialize error: Not enough data in buffer");
+		LOG_SERIALIZATION_ERROR(_srcAddress, "Aecpdu::deserialize error: Not enough data in buffer");
 		throw std::invalid_argument("Not enough data to deserialize");
 	}
 
 	// ControlDataLength exceeds maximum protocol value
 	if (_controlDataLength > Aecpdu::MaximumLength)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Warn, "Aecpdu::deserialize warning: ControlDataLength field exceeds maximum protocol value of " + std::to_string(Aecpdu::MaximumLength) + ": " + std::to_string(_controlDataLength));
+		LOG_SERIALIZATION_WARN(_srcAddress, "Aecpdu::deserialize warning: ControlDataLength field exceeds maximum protocol value of {}: {}", Aecpdu::MaximumLength, _controlDataLength);
 	}
 
 	buffer >> _controllerEntityID >> _sequenceID;

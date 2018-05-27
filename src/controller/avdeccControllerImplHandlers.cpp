@@ -23,7 +23,7 @@
 */
 
 #include "avdeccControllerImpl.hpp"
-#include "la/avdecc/logger.hpp"
+#include "avdeccControllerLogHelper.hpp"
 
 namespace la
 {
@@ -38,7 +38,7 @@ namespace controller
 /* Enumeration and Control Protocol (AECP) handlers */
 void ControllerImpl::onEntityDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::EntityDescriptor const& descriptor) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onEntityDescriptorResult(") + toHexString(entityID, true) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(entityID, "onEntityDescriptorResult: {}", entity::ControllerEntity::statusToString(status));
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
@@ -55,7 +55,7 @@ void ControllerImpl::onEntityDescriptorResult(entity::ControllerEntity const* co
 					for (auto index = entity::model::ConfigurationIndex(0u); index < descriptor.configurationsCount; ++index)
 					{
 						controlledEntity->setDescriptorExpected(0, entity::model::DescriptorType::Configuration, index);
-						Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("readConfigurationDescriptor(") + toHexString(entityID, true) + "," + std::to_string(index) + ")");
+						LOG_CONTROLLER_TRACE(entityID, "readConfigurationDescriptor (ConfigurationIndex={})", index);
 						controller->readConfigurationDescriptor(entityID, index, std::bind(&ControllerImpl::onConfigurationDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
 					}
 				}
@@ -79,7 +79,7 @@ void ControllerImpl::onEntityDescriptorResult(entity::ControllerEntity const* co
 
 void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ConfigurationDescriptor const& descriptor) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onConfigurationDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(entityID, "onConfigurationDescriptorResult (ConfigurationIndex={}): {}", configurationIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
@@ -107,7 +107,7 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 								for (auto index = entity::model::LocaleIndex(0); index < count; ++index)
 								{
 									controlledEntity->setDescriptorExpected(configurationIndex, entity::model::DescriptorType::Locale, index);
-									Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("readLocaleDescriptor(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(index) + ")");
+									LOG_CONTROLLER_TRACE(entityID, "readLocaleDescriptor (ConfigurationIndex={} LocaleIndex={})", configurationIndex, index);
 									controller->readLocaleDescriptor(entityID, configurationIndex, index, std::bind(&ControllerImpl::onLocaleDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 								}
 							}
@@ -121,7 +121,7 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 								for (auto index = entity::model::AudioUnitIndex(0); index < count; ++index)
 								{
 									controlledEntity->setDescriptorExpected(configurationIndex, entity::model::DescriptorType::AudioUnit, index);
-									Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("readAudioUnitDescriptor(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(index) + ")");
+									LOG_CONTROLLER_TRACE(entityID, "readAudioUnitDescriptor (ConfigurationIndex={} AudioUnitIndex={})", configurationIndex, index);
 									controller->readAudioUnitDescriptor(entityID, configurationIndex, index, std::bind(&ControllerImpl::onAudioUnitDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 								}
 							}
@@ -136,17 +136,17 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 								{
 									// Get RX_STATE
 									controlledEntity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamState, index);
-									Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("getListenerStreamState(") + toHexString(entityID, true) + "," + std::to_string(index) + ")");
+									LOG_CONTROLLER_TRACE(entityID, "getListenerStreamState (StreamIndex={})", index);
 									controller->getListenerStreamState({ entityID, index }, std::bind(&ControllerImpl::onGetListenerStreamStateResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
 
 									// Get Stream Info
 									controlledEntity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamInfo, index);
-									Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("getStreamInputInfo(") + toHexString(entityID, true) + "," + std::to_string(index) + ")");
+									LOG_CONTROLLER_TRACE(entityID, "getStreamInputInfo (StreamIndex={})", index);
 									controller->getStreamInputInfo(entityID, index, std::bind(&ControllerImpl::onGetStreamInputInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
 									
 									// Get Stream Descriptor
 									controlledEntity->setDescriptorExpected(configurationIndex, entity::model::DescriptorType::StreamInput, index);
-									Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("readStreamInputDescriptor(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(index) + ")");
+									LOG_CONTROLLER_TRACE(entityID, "readStreamInputDescriptor (ConfigurationIndex={} StreamIndex={})", configurationIndex, index);
 									controller->readStreamInputDescriptor(entityID, configurationIndex, index, std::bind(&ControllerImpl::onStreamInputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 								}
 							}
@@ -161,17 +161,17 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 								{
 									// Get TX_STATE
 									controlledEntity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, index);
-									Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("getTalkerStreamState(") + toHexString(entityID, true) + "," + std::to_string(index) + ")");
+									LOG_CONTROLLER_TRACE(entityID, "getTalkerStreamState (StreamIndex={})", index);
 									controller->getTalkerStreamState({ entityID, index }, std::bind(&ControllerImpl::onGetTalkerStreamStateResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
 
 									// Get Stream Info
 									controlledEntity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamInfo, index);
-									Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("getStreamOutputInfo(") + toHexString(entityID, true) + "," + std::to_string(index) + ")");
+									LOG_CONTROLLER_TRACE(entityID, "getStreamOutputInfo (StreamIndex={})", index);
 									controller->getStreamOutputInfo(entityID, index, std::bind(&ControllerImpl::onGetStreamOutputInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
 
 									// Get Stream Descriptor
 									controlledEntity->setDescriptorExpected(configurationIndex, entity::model::DescriptorType::StreamOutput, index);
-									Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("readStreamOutputDescriptor(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(index) + ")");
+									LOG_CONTROLLER_TRACE(entityID, "readStreamOutputDescriptor (ConfigurationIndex={} StreamIndex={})", configurationIndex, index);
 									controller->readStreamOutputDescriptor(entityID, configurationIndex, index, std::bind(&ControllerImpl::onStreamOutputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 								}
 							}
@@ -186,12 +186,12 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 								{
 									// Get AVB Info
 									controlledEntity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInfo, index);
-									Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("getAvbInfo(") + toHexString(entityID, true) + "," + std::to_string(index) + ")");
+									LOG_CONTROLLER_TRACE(entityID, "getAvbInfo (AvbInterfaceIndex={})", index);
 									controller->getAvbInfo(entityID, index, std::bind(&ControllerImpl::onGetAvbInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
 
 									// Get AVBInterface Descriptor
 									controlledEntity->setDescriptorExpected(configurationIndex, entity::model::DescriptorType::AvbInterface, index);
-									Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("readAvbInterfaceDescriptor(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(index) + ")");
+									LOG_CONTROLLER_TRACE(entityID, "readAvbInterfaceDescriptor (ConfigurationIndex={}, AvbInterfaceIndex={})", configurationIndex, index);
 									controller->readAvbInterfaceDescriptor(entityID, configurationIndex, index, std::bind(&ControllerImpl::onAvbInterfaceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 								}
 							}
@@ -205,7 +205,7 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 								for (auto index = entity::model::ClockSourceIndex(0); index < count; ++index)
 								{
 									controlledEntity->setDescriptorExpected(configurationIndex, entity::model::DescriptorType::ClockSource, index);
-									Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("readClockSourceDescriptor(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(index) + ")");
+									LOG_CONTROLLER_TRACE(entityID, "readClockSourceDescriptor (ConfigurationIndex={} ClockSourceIndex={})", configurationIndex, index);
 									controller->readClockSourceDescriptor(entityID, configurationIndex, index, std::bind(&ControllerImpl::onClockSourceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 								}
 							}
@@ -219,7 +219,7 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 								for (auto index = entity::model::ClockDomainIndex(0); index < count; ++index)
 								{
 									controlledEntity->setDescriptorExpected(configurationIndex, entity::model::DescriptorType::ClockDomain, index);
-									Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("readClockDomainDescriptor(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(index) + ")");
+									LOG_CONTROLLER_TRACE(entityID, "readClockDomainDescriptor (ConfigurationIndex={}, ClockDomainIndex={})", configurationIndex, index);
 									controller->readClockDomainDescriptor(entityID, configurationIndex, index, std::bind(&ControllerImpl::onClockDomainDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 								}
 							}
@@ -237,7 +237,7 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 								for (auto index = entity::model::LocaleIndex(0); index < count; ++index)
 								{
 									controlledEntity->setDescriptorExpected(configurationIndex, entity::model::DescriptorType::Locale, index);
-									Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("readLocaleDescriptor(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(index) + ")");
+									LOG_CONTROLLER_TRACE(entityID, "readLocaleDescriptor (ConfigurationIndex={} LocaleIndex={})", configurationIndex, index);
 									controller->readLocaleDescriptor(entityID, configurationIndex, index, std::bind(&ControllerImpl::onLocaleDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 								}
 							}
@@ -264,7 +264,7 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 
 void ControllerImpl::onAudioUnitDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::AudioUnitDescriptor const& descriptor) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onAudioUnitDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(audioUnitIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(entityID, "onAudioUnitDescriptorResult (ConfigurationIndex={} AudioUnitIndex={}): {}", configurationIndex, audioUnitIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
@@ -286,7 +286,7 @@ void ControllerImpl::onAudioUnitDescriptorResult(entity::ControllerEntity const*
 							for (auto index = entity::model::StreamPortIndex(0); index < descriptor.numberOfStreamInputPorts; ++index)
 							{
 								controlledEntity->setDescriptorExpected(configurationIndex, entity::model::DescriptorType::StreamPortInput, index);
-								Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("readStreamPortInputDescriptor(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(index) + ")");
+								LOG_CONTROLLER_TRACE(entityID, "readStreamPortInputDescriptor (ConfigurationIndex={}, StreamPortIndex={})", configurationIndex, index);
 								controller->readStreamPortInputDescriptor(entityID, configurationIndex, index, std::bind(&ControllerImpl::onStreamPortInputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 							}
 						}
@@ -298,7 +298,7 @@ void ControllerImpl::onAudioUnitDescriptorResult(entity::ControllerEntity const*
 							for (auto index = entity::model::StreamPortIndex(0); index < descriptor.numberOfStreamOutputPorts; ++index)
 							{
 								controlledEntity->setDescriptorExpected(configurationIndex, entity::model::DescriptorType::StreamPortOutput, index);
-								Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("readStreamPortOutputDescriptor(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(index) + ")");
+								LOG_CONTROLLER_TRACE(entityID, "readStreamPortOutputDescriptor (ConfigurationIndex={} StreamPortIndex={})", configurationIndex, index);
 								controller->readStreamPortOutputDescriptor(entityID, configurationIndex, index, std::bind(&ControllerImpl::onStreamPortOutputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 							}
 						}
@@ -325,7 +325,7 @@ void ControllerImpl::onAudioUnitDescriptorResult(entity::ControllerEntity const*
 
 void ControllerImpl::onStreamInputDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStreamInputDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(streamIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(entityID, "onStreamInputDescriptorResult (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
@@ -361,7 +361,7 @@ void ControllerImpl::onStreamInputDescriptorResult(entity::ControllerEntity cons
 
 void ControllerImpl::onStreamOutputDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStreamOutputDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(streamIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(entityID, "onStreamOutputDescriptorResult (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
@@ -397,7 +397,7 @@ void ControllerImpl::onStreamOutputDescriptorResult(entity::ControllerEntity con
 
 void ControllerImpl::onAvbInterfaceDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const interfaceIndex, entity::model::AvbInterfaceDescriptor const& descriptor) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onAvbInterfaceDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(interfaceIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(entityID, "onAvbInterfaceDescriptorResult (ConfigurationIndex={} InterfaceIndex={}): {}", configurationIndex, interfaceIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
@@ -433,7 +433,7 @@ void ControllerImpl::onAvbInterfaceDescriptorResult(entity::ControllerEntity con
 
 void ControllerImpl::onClockSourceDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockIndex, entity::model::ClockSourceDescriptor const& descriptor) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onClockSourceDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(clockIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(entityID, "onClockSourceDescriptorResult (ConfigurationIndex={} ClockIndex={}): {}", configurationIndex, clockIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
@@ -469,7 +469,7 @@ void ControllerImpl::onClockSourceDescriptorResult(entity::ControllerEntity cons
 
 void ControllerImpl::onLocaleDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::LocaleIndex const localeIndex, entity::model::LocaleDescriptor const& descriptor) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onLocaleDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(localeIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(entityID, "onLocaleDescriptorResult (ConfigurationIndex={} LocaleIndex={}): {}", configurationIndex, localeIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
@@ -507,7 +507,7 @@ void ControllerImpl::onLocaleDescriptorResult(entity::ControllerEntity const* co
 							for (auto index = entity::model::StringsIndex(0); index < localeNode->numberOfStringDescriptors; ++index)
 							{
 								controlledEntity->setDescriptorExpected(configurationIndex, entity::model::DescriptorType::Strings, index);
-								Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("readStringsDescriptor(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(localeNode->baseStringDescriptorIndex + index) + ")");
+								LOG_CONTROLLER_TRACE(entityID, "readStringsDescriptor (ConfigurationIndex={} StringsIndex={})", configurationIndex, localeNode->baseStringDescriptorIndex + index);
 								controller->readStringsDescriptor(entityID, configurationIndex, localeNode->baseStringDescriptorIndex + index, std::bind(&ControllerImpl::onStringsDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 							}
 						}
@@ -534,7 +534,7 @@ void ControllerImpl::onLocaleDescriptorResult(entity::ControllerEntity const* co
 
 void ControllerImpl::onStringsDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const stringsIndex, entity::model::StringsDescriptor const& descriptor) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStringsDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(stringsIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(entityID, "onStringsDescriptorResult (ConfigurationIndex={} StringsIndex={}): {}", configurationIndex, stringsIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
@@ -570,7 +570,7 @@ void ControllerImpl::onStringsDescriptorResult(entity::ControllerEntity const* c
 
 void ControllerImpl::onStreamPortInputDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex, entity::model::StreamPortDescriptor const& descriptor) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStreamPortInputDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(streamPortIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(entityID, "onStreamPortInputDescriptorResult (ConfigurationIndex={} StreamPortIndex={}): {}", configurationIndex, streamPortIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
@@ -592,7 +592,7 @@ void ControllerImpl::onStreamPortInputDescriptorResult(entity::ControllerEntity 
 							{
 								auto const clusterIndex = entity::model::ClusterIndex(clusterIndexCounter + descriptor.baseCluster);
 								controlledEntity->setDescriptorExpected(configurationIndex, entity::model::DescriptorType::AudioCluster, clusterIndex);
-								Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("readAudioClusterDescriptor(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(clusterIndex) + ")");
+								LOG_CONTROLLER_TRACE(entityID, "readAudioClusterDescriptor (ConfigurationIndex={} ClusterIndex={})", configurationIndex, clusterIndex);
 								controller->readAudioClusterDescriptor(entityID, configurationIndex, clusterIndex, std::bind(&ControllerImpl::onAudioClusterDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 							}
 						}
@@ -605,7 +605,7 @@ void ControllerImpl::onStreamPortInputDescriptorResult(entity::ControllerEntity 
 							{
 								auto const mapIndex = entity::model::MapIndex(mapIndexCounter + descriptor.baseMap);
 								controlledEntity->setDescriptorExpected(configurationIndex, entity::model::DescriptorType::AudioMap, mapIndex);
-								Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("readAudioMapDescriptor(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(mapIndex) + ")");
+								LOG_CONTROLLER_TRACE(entityID, "readAudioMapDescriptor (ConfigurationIndex={} MapIndex={})", configurationIndex, mapIndex);
 								controller->readAudioMapDescriptor(entityID, configurationIndex, mapIndex, std::bind(&ControllerImpl::onAudioMapDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 							}
 						}
@@ -613,7 +613,7 @@ void ControllerImpl::onStreamPortInputDescriptorResult(entity::ControllerEntity 
 						{
 							// TODO: Clause 7.4.44.3 recommands to Lock or Acquire the entity before getting the dynamic audio map
 							controlledEntity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, streamPortIndex);
-							Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("getStreamPortInputAudioMap(") + toHexString(entityID, true) + "," + std::to_string(streamPortIndex) + ")");
+							LOG_CONTROLLER_TRACE(entityID, "getStreamPortInputAudioMap (StreamPortIndex={})", streamPortIndex);
 							controller->getStreamPortInputAudioMap(entityID, streamPortIndex, entity::model::MapIndex(0u), std::bind(&ControllerImpl::onGetStreamPortInputAudioMapResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7, configurationIndex));
 						}
 					}
@@ -639,7 +639,7 @@ void ControllerImpl::onStreamPortInputDescriptorResult(entity::ControllerEntity 
 
 void ControllerImpl::onStreamPortOutputDescriptorResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex, entity::model::StreamPortDescriptor const& descriptor) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onStreamPortOutputDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(streamPortIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(entityID, "onStreamPortOutputDescriptorResult (ConfigurationIndex={} StreamPortIndex={}): {}", configurationIndex, streamPortIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
@@ -661,7 +661,7 @@ void ControllerImpl::onStreamPortOutputDescriptorResult(entity::ControllerEntity
 							{
 								auto const clusterIndex = entity::model::ClusterIndex(clusterIndexCounter + descriptor.baseCluster);
 								controlledEntity->setDescriptorExpected(configurationIndex, entity::model::DescriptorType::AudioCluster, clusterIndex);
-								Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("readAudioClusterDescriptor(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(clusterIndex) + ")");
+								LOG_CONTROLLER_TRACE(entityID, "readAudioClusterDescriptor (ConfigurationIndex={} ClusterIndex={})", configurationIndex, clusterIndex);
 								controller->readAudioClusterDescriptor(entityID, configurationIndex, clusterIndex, std::bind(&ControllerImpl::onAudioClusterDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 							}
 						}
@@ -674,7 +674,7 @@ void ControllerImpl::onStreamPortOutputDescriptorResult(entity::ControllerEntity
 							{
 								auto const mapIndex = entity::model::MapIndex(mapIndexCounter + descriptor.baseMap);
 								controlledEntity->setDescriptorExpected(configurationIndex, entity::model::DescriptorType::AudioMap, mapIndex);
-								Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("readAudioMapDescriptor(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(mapIndex) + ")");
+								LOG_CONTROLLER_TRACE(entityID, "readAudioMapDescriptor (ConfigurationIndex={} MapIndex={})", configurationIndex, mapIndex);
 								controller->readAudioMapDescriptor(entityID, configurationIndex, mapIndex, std::bind(&ControllerImpl::onAudioMapDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 							}
 						}
@@ -682,7 +682,7 @@ void ControllerImpl::onStreamPortOutputDescriptorResult(entity::ControllerEntity
 						{
 							// TODO: Clause 7.4.44.3 recommands to Lock or Acquire the entity before getting the dynamic audio map
 							controlledEntity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, streamPortIndex);
-							Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("getStreamPortOutputAudioMap(") + toHexString(entityID, true) + "," + std::to_string(streamPortIndex) + ")");
+							LOG_CONTROLLER_TRACE(entityID, "getStreamPortOutputAudioMap (StreamPortIndex={})", streamPortIndex);
 							controller->getStreamPortOutputAudioMap(entityID, streamPortIndex, entity::model::MapIndex(0u), std::bind(&ControllerImpl::onGetStreamPortOutputAudioMapResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7, configurationIndex));
 						}
 					}
@@ -708,7 +708,7 @@ void ControllerImpl::onStreamPortOutputDescriptorResult(entity::ControllerEntity
 
 void ControllerImpl::onAudioClusterDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex, entity::model::AudioClusterDescriptor const& descriptor) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onAudioClusterDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(clusterIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(entityID, "onAudioClusterDescriptorResult (ConfigurationIndex={} ClusterIndex={}): {}", configurationIndex, clusterIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
@@ -744,7 +744,7 @@ void ControllerImpl::onAudioClusterDescriptorResult(entity::ControllerEntity con
 
 void ControllerImpl::onAudioMapDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex, entity::model::AudioMapDescriptor const& descriptor) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onAudioMapDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(mapIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(entityID, "onAudioMapDescriptorResult (ConfigurationIndex={} MapIndex={}): {}", configurationIndex, mapIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
@@ -780,7 +780,7 @@ void ControllerImpl::onAudioMapDescriptorResult(entity::ControllerEntity const* 
 
 void ControllerImpl::onClockDomainDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockDomainDescriptor const& descriptor) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onClockDomainDescriptorResult(") + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(clockDomainIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(entityID, "onClockDomainDescriptorResult (ConfigurationIndex={} ClockDomainIndex={}): {}", configurationIndex, clockDomainIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
@@ -816,7 +816,7 @@ void ControllerImpl::onClockDomainDescriptorResult(entity::ControllerEntity cons
 
 void ControllerImpl::onGetStreamInputInfoResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onGetStreamInputInfoResult(") + toHexString(entityID, true) + "," + std::to_string(streamIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(entityID, "onGetStreamInputInfoResult (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
@@ -852,7 +852,7 @@ void ControllerImpl::onGetStreamInputInfoResult(entity::ControllerEntity const* 
 
 void ControllerImpl::onGetStreamOutputInfoResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onGetStreamOutputInfoResult(") + toHexString(entityID, true) + "," + std::to_string(streamIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(entityID, "onGetStreamOutputInfoResult (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
@@ -888,7 +888,7 @@ void ControllerImpl::onGetStreamOutputInfoResult(entity::ControllerEntity const*
 
 void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onGetStreamPortInputAudioMapResult(") + toHexString(entityID, true) + "," + std::to_string(streamPortIndex) + "," + std::to_string(numberOfMaps) + "," + std::to_string(mapIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(entityID, "onGetStreamPortInputAudioMapResult (StreamPortIndex={} NumberMaps={} MapIndex={}): {}", streamPortIndex, numberOfMaps, mapIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
@@ -908,7 +908,7 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::ControllerEntity
 					if (!isComplete)
 					{
 						controlledEntity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, streamPortIndex);
-						Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("getStreamPortInputAudioMap(") + toHexString(entityID, true) + "," + std::to_string(streamPortIndex) + ")");
+						LOG_CONTROLLER_TRACE(entityID, "getStreamPortInputAudioMap (StreamPortIndex={})", streamPortIndex);
 						controller->getStreamPortInputAudioMap(entityID, streamPortIndex, entity::model::MapIndex(mapIndex + 1), std::bind(&ControllerImpl::onGetStreamPortInputAudioMapResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7, configurationIndex));
 						return;
 					}
@@ -942,7 +942,7 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::ControllerEntity
 
 void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onGetStreamPortOutputAudioMapResult(") + toHexString(entityID, true) + "," + std::to_string(streamPortIndex) + "," + std::to_string(numberOfMaps) + "," + std::to_string(mapIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(entityID, "onGetStreamPortOutputAudioMapResult (StreamPortIndex={} NumberMaps={} MapIndex={}): {}", streamPortIndex, numberOfMaps, mapIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
@@ -962,7 +962,7 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::ControllerEntit
 					if (!isComplete)
 					{
 						controlledEntity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, streamPortIndex);
-						Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("getStreamPortOutputAudioMap(") + toHexString(entityID, true) + "," + std::to_string(streamPortIndex) + ")");
+						LOG_CONTROLLER_TRACE(entityID, "getStreamPortOutputAudioMap (StreamPortIndex={})", streamPortIndex);
 						controller->getStreamPortOutputAudioMap(entityID, streamPortIndex, entity::model::MapIndex(mapIndex + 1), std::bind(&ControllerImpl::onGetStreamPortOutputAudioMapResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7, configurationIndex));
 						return;
 					}
@@ -996,7 +996,7 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::ControllerEntit
 
 void ControllerImpl::onGetAvbInfoResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onGetAvbInfoResult(") + toHexString(entityID, true) + "," + std::to_string(avbInterfaceIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(entityID, "onGetAvbInfoResult (AvbInterfaceIndex={}): {}", avbInterfaceIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
@@ -1031,19 +1031,19 @@ void ControllerImpl::onGetAvbInfoResult(entity::ControllerEntity const* const /*
 }
 
 /* Connection Management Protocol (ACMP) handlers */
-void ControllerImpl::onConnectStreamResult(entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept
+void ControllerImpl::onConnectStreamResult(entity::ControllerEntity const* const /*controller*/, [[maybe_unused]] entity::model::StreamIdentification const& talkerStream, [[maybe_unused]] entity::model::StreamIdentification const& listenerStream, [[maybe_unused]] uint16_t const connectionCount, [[maybe_unused]] entity::ConnectionFlags const flags, [[maybe_unused]] entity::ControllerEntity::ControlStatus const status) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onConnectStreamResult(") + toHexString(talkerStream.entityID, true) + "," + std::to_string(talkerStream.streamIndex) + "," + toHexString(listenerStream.entityID, true) + "," + std::to_string(listenerStream.streamIndex) + "," + std::to_string(connectionCount) + "," + toHexString(to_integral(flags), true) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(la::avdecc::getNullIdentifier(), "onConnectStreamResult (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={} ConnectionCount={} Flags={}): {}", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, toHexString(listenerStream.entityID, true), listenerStream.streamIndex, connectionCount, toHexString(to_integral(flags), true), entity::ControllerEntity::statusToString(status));
 }
 
-void ControllerImpl::onDisconnectStreamResult(entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept
+void ControllerImpl::onDisconnectStreamResult(entity::ControllerEntity const* const /*controller*/, [[maybe_unused]] entity::model::StreamIdentification const& talkerStream, [[maybe_unused]] entity::model::StreamIdentification const& listenerStream, [[maybe_unused]] uint16_t const connectionCount, [[maybe_unused]] entity::ConnectionFlags const flags, [[maybe_unused]] entity::ControllerEntity::ControlStatus const status) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onDisconnectStreamResult(") + toHexString(talkerStream.entityID, true) + "," + std::to_string(talkerStream.streamIndex) + "," + toHexString(listenerStream.entityID, true) + "," + std::to_string(listenerStream.streamIndex) + "," + std::to_string(connectionCount) + "," + toHexString(to_integral(flags), true) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(la::avdecc::getNullIdentifier(), "onDisconnectStreamResult (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={} ConnectionCount={} Flags={}): {}", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, toHexString(listenerStream.entityID, true), listenerStream.streamIndex, connectionCount, toHexString(to_integral(flags), true), entity::ControllerEntity::statusToString(status));
 }
 
-void ControllerImpl::onGetTalkerStreamStateResult(entity::ControllerEntity const* const controller, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& /*listenerStream*/, uint16_t const connectionCount, entity::ConnectionFlags const /*flags*/, entity::ControllerEntity::ControlStatus const status, entity::model::ConfigurationIndex const configurationIndex) noexcept
+void ControllerImpl::onGetTalkerStreamStateResult(entity::ControllerEntity const* const controller, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& /*listenerStream*/, [[maybe_unused]] uint16_t const connectionCount, entity::ConnectionFlags const /*flags*/, entity::ControllerEntity::ControlStatus const status, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onGetTalkerStreamStateResult(") + toHexString(talkerStream.entityID, true) + "," + std::to_string(talkerStream.streamIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(la::avdecc::getNullIdentifier(), "onGetTalkerStreamStateResult (TalkerID={} TalkerIndex={} ConnectionCount={} ConfigurationIndex={}): {}", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, connectionCount, configurationIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto talker = getControlledEntityImpl(talkerStream.entityID);
@@ -1059,7 +1059,7 @@ void ControllerImpl::onGetTalkerStreamStateResult(entity::ControllerEntity const
 				for (auto index = std::uint16_t(0); index < connectionCount; ++index)
 				{
 					talker->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamConnection, talkerStream.streamIndex, index);
-					Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("getTalkerStreamConnection(") + toHexString(talkerStream.entityID, true) + "," + std::to_string(talkerStream.streamIndex) + "," + std::to_string(index) + ")");
+					LOG_CONTROLLER_TRACE(la::avdecc::getNullIdentifier(), "getTalkerStreamConnection (TalkerID={} TalkerIndex={} ConnectionIndex={})", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, index);
 					controller->getTalkerStreamConnection(talkerStream, index, std::bind(&ControllerImpl::onGetTalkerStreamConnectionResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex, index));
 				}
 
@@ -1079,7 +1079,7 @@ void ControllerImpl::onGetTalkerStreamStateResult(entity::ControllerEntity const
 
 void ControllerImpl::onGetListenerStreamStateResult(entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onGetListenerStreamStateResult(") + toHexString(listenerStream.entityID, true) + "," + std::to_string(listenerStream.streamIndex) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(la::avdecc::getNullIdentifier(), "onGetListenerStreamStateResult (ListenerID={} ListenerIndex={} ConnectionCount={} Flags={} ConfigurationIndex={}): {}", toHexString(listenerStream.entityID, true), listenerStream.streamIndex, connectionCount, toHexString(to_integral(flags), true), configurationIndex, entity::ControllerEntity::statusToString(status));
 
 	if (!!status)
 	{
@@ -1110,9 +1110,9 @@ void ControllerImpl::onGetListenerStreamStateResult(entity::ControllerEntity con
 	}
 }
 
-void ControllerImpl::onGetTalkerStreamConnectionResult(entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const /*flags*/, entity::ControllerEntity::ControlStatus const status, entity::model::ConfigurationIndex const configurationIndex, std::uint16_t const connectionIndex) noexcept
+void ControllerImpl::onGetTalkerStreamConnectionResult(entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, [[maybe_unused]] uint16_t const connectionCount, entity::ConnectionFlags const /*flags*/, entity::ControllerEntity::ControlStatus const status, entity::model::ConfigurationIndex const configurationIndex, std::uint16_t const connectionIndex) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onGetTalkerStreamConnectionResult(") + toHexString(talkerStream.entityID, true) + "," + std::to_string(talkerStream.streamIndex) + "," + std::to_string(connectionIndex) + "," + std::to_string(connectionCount) + "," + entity::ControllerEntity::statusToString(status) + ")");
+	LOG_CONTROLLER_TRACE(la::avdecc::getNullIdentifier(), "onGetTalkerStreamConnectionResult (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={} ConnectionCount={} ConfigurationIndex={} ConnectionIndex={}): {}", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, toHexString(listenerStream.entityID, true), listenerStream.streamIndex, connectionCount, configurationIndex, connectionIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto talker = getControlledEntityImpl(talkerStream.entityID);

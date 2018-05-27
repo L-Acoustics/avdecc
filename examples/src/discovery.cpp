@@ -47,7 +47,7 @@
 /* Discovery class                                                            */
 /* ************************************************************************** */
 
-class Discovery : public la::avdecc::controller::Controller::Observer, public la::avdecc::Logger::Observer
+class Discovery : public la::avdecc::controller::Controller::Observer, public la::avdecc::logger::Logger::Observer
 {
 public:
 	/** Constructor/destructor/destroy */
@@ -62,9 +62,9 @@ public:
 
 private:
 	// la::avdecc::Logger::Observer overrides
-	virtual void onLog(la::avdecc::Logger::Layer const layer, la::avdecc::Logger::Level const level, std::string const& message) noexcept override
+	virtual void onLogItem(la::avdecc::logger::Level const level, la::avdecc::logger::LogItem const* const item) noexcept override
 	{
-		outputText("[" + la::avdecc::Logger::getInstance().layerToString(layer) + "," + la::avdecc::Logger::getInstance().levelToString(level) + "] " + message + "\n");
+		outputText("[" + la::avdecc::logger::Logger::getInstance().levelToString(level) + "] " + item->getMessage() + "\n");
 	}
 	// la::avdecc::controller::Controller::Observer overrides
 	// Global notifications
@@ -83,12 +83,12 @@ Discovery::Discovery(la::avdecc::EndStation::ProtocolInterfaceType const protoco
 	: _controller(la::avdecc::controller::Controller::create(protocolInterfaceType, interfaceName, progID, vendorEntityModelID, preferedLocale))
 {
 	// Register observers
-	la::avdecc::Logger::getInstance().registerObserver(this);
+	la::avdecc::logger::Logger::getInstance().registerObserver(this);
 	_controller->registerObserver(this);
 	// Start controller advertising
 	_controller->enableEntityAdvertising(10);
 	// Set default log level
-	la::avdecc::Logger::getInstance().setLevel(la::avdecc::Logger::Level::Trace);
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Trace);
 }
 
 void Discovery::onTransportError(la::avdecc::controller::Controller const* const /*controller*/) noexcept

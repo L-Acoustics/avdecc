@@ -33,6 +33,8 @@ namespace la
 {
 namespace avdecc
 {
+namespace logger
+{
 
 class LoggerImpl final : public Logger
 {
@@ -52,15 +54,19 @@ public:
 		}), _observers.end());
 	}
 
-	virtual void log(Layer const layer, Level const level, std::string const& message) noexcept override
+	virtual void logItem(la::avdecc::logger::Level const level, LogItem const* const item) noexcept override
 	{
 		// Check if message level is currently active
 		if (level < _level)
+		{
 			return;
+		}
 
 		std::lock_guard<decltype(_lock)> const lg(_lock);
-		for (auto const& o : _observers)
-			o->onLog(layer, level, message);
+		for (auto* o : _observers)
+		{
+			invokeProtectedMethod(&Observer::onLogItem, o, level, item);
+		}
 	}
 
 	virtual void setLevel(Level const level) noexcept override
@@ -69,7 +75,9 @@ public:
 #ifndef DEBUG
 		// In release, we don't want Trace nor Debug levels, setting to next possible Level (Info)
 		if (_level == Level::Trace || _level == Level::Debug)
+		{
 			_level = Level::Info;
+		}
 #endif // !DEBUG
 	}
 
@@ -84,14 +92,20 @@ public:
 		{
 			switch (layer)
 			{
-				case Layer::Protocol:
-					return "Protocol";
+				case Layer::Generic:
+					return "Generic";
+				case Layer::Serialization:
+					return "Serialization";
+				case Layer::ProtocolInterface:
+					return "Protocol Interface";
+				case Layer::AemPayload:
+					return "Aem Payload";
+				case Layer::ControllerEntity:
+					return "Controller Entity";
+				case Layer::ControllerStateMachine:
+					return "Controller State Machine";
 				case Layer::Controller:
 					return "Controller";
-				case Layer::Talker:
-					return "Talker";
-				case Layer::Listener:
-					return "Listener";
 				default:
 					AVDECC_ASSERT(false, "Layer not handled");
 			}
@@ -103,10 +117,12 @@ public:
 	{
 		switch (level)
 		{
+#ifdef DEBUG
 			case Level::Trace:
 				return "Trace";
 			case Level::Debug:
 				return "Debug";
+#endif // DEBUG
 			case Level::Info:
 				return "Info";
 			case Level::Warn:
@@ -122,7 +138,7 @@ public:
 	}
 
 	// Defaulted compiler auto-generated methods
-	LoggerImpl() noexcept {} /* = default; */ // Cannot '= default' due to clang4.0 bug
+	LoggerImpl() noexcept {}
 	virtual ~LoggerImpl() noexcept override = default;
 	LoggerImpl(LoggerImpl&&) = default;
 	LoggerImpl(LoggerImpl const&) = default;
@@ -142,5 +158,6 @@ Logger& LA_AVDECC_CALL_CONVENTION Logger::getInstance() noexcept
 	return s_Instance;
 }
 
+} // namespace logger
 } // namespace avdecc
 } // namespace la

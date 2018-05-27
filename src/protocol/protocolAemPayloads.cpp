@@ -23,7 +23,7 @@
 */
 
 #include "protocolAemPayloads.hpp"
-#include "la/avdecc/logger.hpp"
+#include "logHelper.hpp"
 
 namespace la
 {
@@ -239,7 +239,9 @@ entity::model::EntityDescriptor deserializeReadEntityDescriptorResponse(AemAecpd
 		AVDECC_ASSERT(des.usedBytes() == AecpAemReadEntityDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
 
 		if (des.remaining() != 0)
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_ENTITY_DESCRIPTOR RESPONSE");
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_ENTITY_DESCRIPTOR RESPONSE");
+		}
 	}
 
 	return entityDescriptor;
@@ -284,7 +286,9 @@ entity::model::ConfigurationDescriptor deserializeReadConfigurationDescriptorRes
 		AVDECC_ASSERT(des.usedBytes() == (protocol::aemPayload::AecpAemReadConfigurationDescriptorResponsePayloadMinSize + descriptorCountsSize), "Used more bytes than specified in protocol constant");
 
 		if (des.remaining() != 0)
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_CONFIGURATION_DESCRIPTOR RESPONSE");
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_CONFIGURATION_DESCRIPTOR RESPONSE");
+		}
 	}
 
 	return configurationDescriptor;
@@ -350,7 +354,9 @@ entity::model::AudioUnitDescriptor deserializeReadAudioUnitDescriptorResponse(Ae
 		}
 
 		if (des.remaining() != 0)
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AUDIO_UNIT_DESCRIPTOR RESPONSE");
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AUDIO_UNIT_DESCRIPTOR RESPONSE");
+		}
 	}
 
 	return audioUnitDescriptor;
@@ -442,7 +448,9 @@ entity::model::StreamDescriptor deserializeReadStreamDescriptorResponse(AemAecpd
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 		if (des.remaining() != 0)
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_STREAM_DESCRIPTOR RESPONSE");
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_STREAM_DESCRIPTOR RESPONSE");
+		}
 	}
 
 	return streamDescriptor;
@@ -472,7 +480,9 @@ entity::model::JackDescriptor deserializeReadJackDescriptorResponse(AemAecpdu::P
 		AVDECC_ASSERT(des.usedBytes() == AecpAemReadJackDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
 
 		if (des.remaining() != 0)
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_JACK_DESCRIPTOR RESPONSE");
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_JACK_DESCRIPTOR RESPONSE");
+		}
 	}
 
 	return jackDescriptor;
@@ -508,7 +518,9 @@ entity::model::AvbInterfaceDescriptor deserializeReadAvbInterfaceDescriptorRespo
 		AVDECC_ASSERT(des.usedBytes() == AecpAemReadAvbInterfaceDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
 
 		if (des.remaining() != 0)
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AVB_INTERFACE_DESCRIPTOR RESPONSE");
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AVB_INTERFACE_DESCRIPTOR RESPONSE");
+		}
 	}
 
 	return avbInterfaceDescriptor;
@@ -539,7 +551,9 @@ entity::model::ClockSourceDescriptor deserializeReadClockSourceDescriptorRespons
 		AVDECC_ASSERT(des.usedBytes() == AecpAemReadClockSourceDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
 
 		if (des.remaining() != 0)
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_CLOCK_SOURCE_DESCRIPTOR RESPONSE");
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_CLOCK_SOURCE_DESCRIPTOR RESPONSE");
+		}
 	}
 
 	return clockSourceDescriptor;
@@ -570,7 +584,9 @@ entity::model::MemoryObjectDescriptor deserializeReadMemoryObjectDescriptorRespo
 		AVDECC_ASSERT(des.usedBytes() == AecpAemReadMemoryObjectDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
 
 		if (des.remaining() != 0)
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_MEMORY_OBJECT_DESCRIPTOR RESPONSE");
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_MEMORY_OBJECT_DESCRIPTOR RESPONSE");
+		}
 	}
 
 	return memoryObjectDescriptor;
@@ -598,7 +614,9 @@ entity::model::LocaleDescriptor deserializeReadLocaleDescriptorResponse(AemAecpd
 		AVDECC_ASSERT(des.usedBytes() == AecpAemReadLocaleDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
 
 		if (des.remaining() != 0)
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_LOCALE_DESCRIPTOR RESPONSE");
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_LOCALE_DESCRIPTOR RESPONSE");
+		}
 	}
 
 	return localeDescriptor;
@@ -628,7 +646,9 @@ entity::model::StringsDescriptor deserializeReadStringsDescriptorResponse(AemAec
 		AVDECC_ASSERT(des.usedBytes() == AecpAemReadStringsDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
 
 		if (des.remaining() != 0)
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_STRINGS_DESCRIPTOR RESPONSE");
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_STRINGS_DESCRIPTOR RESPONSE");
+		}
 	}
 
 	return stringsDescriptor;
@@ -658,7 +678,9 @@ entity::model::StreamPortDescriptor deserializeReadStreamPortDescriptorResponse(
 		AVDECC_ASSERT(des.usedBytes() == AecpAemReadStreamPortDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
 
 		if (des.remaining() != 0)
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_STREAM_PORT_DESCRIPTOR RESPONSE");
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_STREAM_PORT_DESCRIPTOR RESPONSE");
+		}
 	}
 
 	return streamPortDescriptor;
@@ -688,7 +710,9 @@ entity::model::ExternalPortDescriptor deserializeReadExternalPortDescriptorRespo
 		AVDECC_ASSERT(des.usedBytes() == AecpAemReadExternalPortDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
 
 		if (des.remaining() != 0)
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_EXTERNAL_PORT_DESCRIPTOR RESPONSE");
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_EXTERNAL_PORT_DESCRIPTOR RESPONSE");
+		}
 	}
 
 	return externalPortDescriptor;
@@ -718,7 +742,9 @@ entity::model::InternalPortDescriptor deserializeReadInternalPortDescriptorRespo
 		AVDECC_ASSERT(des.usedBytes() == AecpAemReadInternalPortDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
 
 		if (des.remaining() != 0)
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_INTERNAL_PORT_DESCRIPTOR RESPONSE");
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_INTERNAL_PORT_DESCRIPTOR RESPONSE");
+		}
 	}
 
 	return internalPortDescriptor;
@@ -749,7 +775,9 @@ entity::model::AudioClusterDescriptor deserializeReadAudioClusterDescriptorRespo
 		AVDECC_ASSERT(des.usedBytes() == AecpAemReadAudioClusterDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
 
 		if (des.remaining() != 0)
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AUDIO_CLUSTER_DESCRIPTOR RESPONSE");
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AUDIO_CLUSTER_DESCRIPTOR RESPONSE");
+		}
 	}
 
 	return audioClusterDescriptor;
@@ -797,7 +825,9 @@ entity::model::AudioMapDescriptor deserializeReadAudioMapDescriptorResponse(AemA
 		}
 
 		if (des.remaining() != 0)
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AUDIO_MAP_DESCRIPTOR RESPONSE");
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AUDIO_MAP_DESCRIPTOR RESPONSE");
+		}
 	}
 
 	return audioMapDescriptor;
@@ -848,7 +878,9 @@ entity::model::ClockDomainDescriptor deserializeReadClockDomainDescriptorRespons
 		}
 
 		if (des.remaining() != 0)
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_CLOCK_DOMAIN_DESCRIPTOR RESPONSE");
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_CLOCK_DOMAIN_DESCRIPTOR RESPONSE");
+		}
 	}
 
 	return clockDomainDescriptor;
@@ -1630,7 +1662,9 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	avbInfo.mappings = std::move(mappings);
 
 	if (des.remaining() != 0)
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "GetAvbInfo Response deserialize warning: Remaining bytes in buffer");
+	{
+		LOG_AEM_PAYLOAD_TRACE("GetAvbInfo Response deserialize warning: Remaining bytes in buffer");
+	}
 
 	return std::make_tuple(descriptorType, descriptorIndex, avbInfo);
 }
@@ -1731,7 +1765,9 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	AVDECC_ASSERT(des.usedBytes() == (protocol::aemPayload::AecpAemGetAudioMapResponsePayloadMinSize + mappingsSize), "Used more bytes than specified in protocol constant");
 
 	if (des.remaining() != 0)
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "GetAudioMap Response deserialize warning: Remaining bytes in buffer");
+	{
+		LOG_AEM_PAYLOAD_TRACE("GetAudioMap Response deserialize warning: Remaining bytes in buffer");
+	}
 
 	return std::make_tuple(descriptorType, descriptorIndex, mapIndex, numberOfMaps, mappings);
 }
@@ -1789,7 +1825,9 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	AVDECC_ASSERT(des.usedBytes() == (protocol::aemPayload::AecpAemAddAudioMappingsCommandPayloadMinSize + mappingsSize), "Used more bytes than specified in protocol constant");
 
 	if (des.remaining() != 0)
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "AddAudioMap (or RemoveAudioMap) Command (or Response) deserialize warning: Remaining bytes in buffer");
+	{
+		LOG_AEM_PAYLOAD_TRACE("AddAudioMap (or RemoveAudioMap) Command (or Response) deserialize warning: Remaining bytes in buffer");
+	}
 
 	return std::make_tuple(descriptorType, descriptorIndex, mappings);
 }

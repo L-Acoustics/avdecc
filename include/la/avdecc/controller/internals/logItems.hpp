@@ -18,42 +18,47 @@
 */
 
 /**
-* @file instrumentationNotifier.hpp
+* @file logItems.hpp
 * @author Christophe Calmejane
-* @brief Instrumentation helper class.
+* @brief Avdecc controller library LogItem declarations for the simple logger.
 */
 
 #pragma once
 
+#include "la/avdecc/logger.hpp"
 #include "la/avdecc/utils.hpp"
-#include <mutex>
-#include <string>
+#include "la/avdecc/internals/uniqueIdentifier.hpp"
 
 namespace la
 {
 namespace avdecc
 {
+namespace logger
+{
 
-class InstrumentationNotifier final : public la::avdecc::Subject<InstrumentationNotifier, la::avdecc::EmptyLock>
+class LogItemController : public la::avdecc::logger::LogItem
 {
 public:
-	class Observer : public la::avdecc::Observer<InstrumentationNotifier>
+	LogItemController(la::avdecc::UniqueIdentifier const& targetID, std::string message)
+		: LogItem(Layer::Controller), _targetID(targetID), _message(message)
 	{
-	public:
-		virtual void onEvent(std::string const& eventName) noexcept = 0;
-	};
-
-	static InstrumentationNotifier const& getInstance() noexcept
-	{
-		static InstrumentationNotifier s_instance{};
-		return s_instance;
 	}
 
-	void triggerEvent(std::string const& eventName) const noexcept
+	virtual std::string getMessage() const noexcept override
 	{
-		notifyObserversMethod<InstrumentationNotifier::Observer>(&InstrumentationNotifier::Observer::onEvent, eventName);
+		return std::string("[") + la::avdecc::toHexString(_targetID, true, false) + "] " + _message;
 	}
+
+	la::avdecc::UniqueIdentifier const& getTargetID() const noexcept
+	{
+		return _targetID;
+	}
+
+private:
+	la::avdecc::UniqueIdentifier const& _targetID;
+	std::string _message{};
 };
 
+} // namespace logger
 } // namespace avdecc
 } // namespace la

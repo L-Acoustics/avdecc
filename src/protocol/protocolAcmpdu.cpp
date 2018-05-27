@@ -23,7 +23,7 @@
 */
 
 #include "protocolAcmpdu.hpp"
-#include "la/avdecc/logger.hpp"
+#include "logHelper.hpp"
 #include <cassert>
 #include <string>
 
@@ -38,7 +38,7 @@ namespace protocol
 /* Acmpdu class definition                                 */
 /***********************************************************/
 
-static la::avdecc::networkInterface::MacAddress Multicast_Mac_Address{ { 0x91, 0xe0, 0xf0, 0x01, 0x00, 0x00 } };
+la::avdecc::networkInterface::MacAddress Acmpdu::Multicast_Mac_Address{ { 0x91, 0xe0, 0xf0, 0x01, 0x00, 0x00 } };
 
 Acmpdu::Acmpdu() noexcept
 {
@@ -59,7 +59,7 @@ void Acmpdu::serialize(SerializationBuffer& buffer) const
 
 	if (!AVDECC_ASSERT_WITH_RET((buffer.size() - previousSize) == Length, "Acmpdu::serialize error: Packed buffer length != expected header length"))
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Error, "Acmpdu::serialize error: Packed buffer length != expected header length");
+		LOG_SERIALIZATION_ERROR(_srcAddress, "Acmpdu::serialize error: Packed buffer length != expected header length");
 	}
 }
 
@@ -67,7 +67,7 @@ void Acmpdu::deserialize(DeserializationBuffer& buffer)
 {
 	if (!AVDECC_ASSERT_WITH_RET(buffer.remaining() >= Length, "Acmpdu::deserialize error: Not enough data in buffer"))
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Error, "Acmpdu::deserialize error: Not enough data in buffer");
+		LOG_SERIALIZATION_ERROR(_srcAddress, "Acmpdu::deserialize error: Not enough data in buffer");
 		throw std::invalid_argument("Not enough data to deserialize");
 	}
 
@@ -80,7 +80,7 @@ void Acmpdu::deserialize(DeserializationBuffer& buffer)
 #ifdef DEBUG
 	// Do not log this error in release, it might happen too often if an entity is bugged
 	if (buffer.remaining() != 0)
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "Acmpdu::deserialize warning: Remaining bytes in buffer for AcmpMessageType " + std::string(getMessageType()) + " (" + la::avdecc::toHexString(getMessageType().getValue()) + ")");
+		LOG_SERIALIZATION_TRACE(_srcAddress, "Acmpdu::deserialize warning: Remaining bytes in buffer for AcmpMessageType " + std::string(getMessageType()) + " (" + la::avdecc::toHexString(getMessageType().getValue()) + ")");
 #endif // DEBUG
 }
 

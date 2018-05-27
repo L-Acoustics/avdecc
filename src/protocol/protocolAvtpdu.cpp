@@ -23,7 +23,7 @@
 */
 
 #include "protocolAvtpdu.hpp"
-#include "la/avdecc/logger.hpp"
+#include "logHelper.hpp"
 #include <cassert>
 
 namespace la
@@ -56,7 +56,7 @@ void EtherLayer2::deserialize(DeserializationBuffer& buffer)
 {
 	if (!AVDECC_ASSERT_WITH_RET(buffer.remaining() >= HeaderLength, "EtherLayer2::deserialize error: Not enough data in buffer"))
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Error, "EtherLayer2::deserialize error: Not enough data in buffer");
+		LOG_SERIALIZATION_ERROR(_srcAddress, "EtherLayer2::deserialize error: Not enough data in buffer");
 		throw std::invalid_argument("Not enough data to deserialize");
 	}
 	buffer.unpackBuffer(_destAddress.data(), _destAddress.size());
@@ -103,7 +103,7 @@ void AvtpduControl::deserialize(DeserializationBuffer& buffer)
 {
 	if (!AVDECC_ASSERT_WITH_RET(buffer.remaining() >= HeaderLength, "EtherLayer2::deserialize error: Not enough data in buffer"))
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Error, "AvtpduControl::deserialize error: Not enough data in buffer");
+		LOG_SERIALIZATION_ERROR(_srcAddress, "AvtpduControl::deserialize error: Not enough data in buffer");
 		throw std::invalid_argument("Not enough data to deserialize");
 	}
 

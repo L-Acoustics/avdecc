@@ -41,13 +41,13 @@
 
 int doJob()
 {
-	class ControllerDelegate : public la::avdecc::entity::ControllerEntity::Delegate, public la::avdecc::Logger::Observer
+	class ControllerDelegate : public la::avdecc::entity::ControllerEntity::Delegate, public la::avdecc::logger::Logger::Observer
 	{
 	private:
-		// la::avdecc::Logger::Observer overrides
-		virtual void onLog(la::avdecc::Logger::Layer const layer, la::avdecc::Logger::Level const level, std::string const& message) noexcept override
+		// la::avdecc::logger::Logger::Observer overrides
+		virtual void onLogItem(la::avdecc::logger::Level const level, la::avdecc::logger::LogItem const* const item) noexcept override
 		{
-			outputText("[" + la::avdecc::Logger::getInstance().layerToString(layer) + "," + la::avdecc::Logger::getInstance().levelToString(level) + "] " + message + "\n");
+			outputText("[" + la::avdecc::logger::Logger::getInstance().levelToString(level) + "] " + item->getMessage() + "\n");
 		}
 		// la::avdecc::entity::ControllerEntity::Delegate overrides
 		/* Discovery Protocol (ADP) */
@@ -355,9 +355,9 @@ int doJob()
 		ControllerDelegate controllerDelegate;
 
 		// Register log observer
-		la::avdecc::Logger::getInstance().registerObserver(&controllerDelegate);
+		la::avdecc::logger::Logger::getInstance().registerObserver(&controllerDelegate);
 		// Set default log level
-		la::avdecc::Logger::getInstance().setLevel(la::avdecc::Logger::Level::Trace);
+		la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Trace);
 
 		auto* controller = endPoint->addControllerEntity(0x0002, la::avdecc::entity::model::makeVendorEntityModel(VENDOR_ID, DEVICE_ID, MODEL_ID), &controllerDelegate);
 

@@ -24,6 +24,7 @@ set(TESTS_SOURCE
 	controllerEntity_tests.cpp
 	controllerStateMachine_tests.cpp
 	instrumentationObserver.hpp
+	logger_tests.cpp
 	protocolAvtpdu_tests.cpp
 	protocolInterface_pcap_tests.cpp
 	protocolInterface_virtual_tests.cpp

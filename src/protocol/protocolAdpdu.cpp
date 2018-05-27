@@ -23,7 +23,7 @@
 */
 
 #include "protocolAdpdu.hpp"
-#include "la/avdecc/logger.hpp"
+#include "logHelper.hpp"
 #include <cassert>
 #include <string>
 
@@ -63,7 +63,7 @@ void Adpdu::serialize(SerializationBuffer& buffer) const
 
 	if (!AVDECC_ASSERT_WITH_RET((buffer.size() - previousSize) == Length, "Adpdu::serialize error: Packed buffer length != expected header length"))
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Error, "Adpdu::serialize error: Packed buffer length != expected header length");
+		LOG_SERIALIZATION_ERROR(_srcAddress, "Adpdu::serialize error: Packed buffer length != expected header length");
 	}
 }
 
@@ -71,7 +71,7 @@ void Adpdu::deserialize(DeserializationBuffer& buffer)
 {
 	if (!AVDECC_ASSERT_WITH_RET(buffer.remaining() >= Length, "Adpdu::deserialize error: Not enough data in buffer"))
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Error, "Adpdu::deserialize error: Not enough data in buffer");
+		LOG_SERIALIZATION_ERROR(_srcAddress, "Adpdu::deserialize error: Not enough data in buffer");
 		throw std::invalid_argument("Not enough data to deserialize");
 	}
 
@@ -91,7 +91,7 @@ void Adpdu::deserialize(DeserializationBuffer& buffer)
 #ifdef DEBUG
 	// Do not log this error in release, it might happen too often if an entity is bugged
 	if (buffer.remaining() != 0)
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "Adpdu::deserialize warning: Remaining bytes in buffer for AdpMessageType " + std::string(getMessageType()) + " (" + la::avdecc::toHexString(getMessageType().getValue()) + ")");
+		LOG_SERIALIZATION_TRACE(_srcAddress, "Adpdu::deserialize warning: Remaining bytes in buffer for AdpMessageType " + std::string(getMessageType()) + " (" + la::avdecc::toHexString(getMessageType().getValue()) + ")");
 #endif // DEBUG
 }
 

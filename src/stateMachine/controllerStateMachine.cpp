@@ -28,7 +28,7 @@
 #include <stdexcept>
 #include <chrono>
 #include <algorithm>
-#include "la/avdecc/logger.hpp"
+#include "logHelper.hpp"
 
 namespace la
 {
@@ -311,7 +311,7 @@ bool ControllerStateMachine::processAecpdu(Aecpdu const& aecpdu) noexcept
 						invokeProtectedHandler(aecpQuery.resultHandler, &aecpdu, ProtocolInterface::Error::NoError);
 					}
 					else
-						Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("AECP command with sequenceID ") + std::to_string(sequenceID) + " unexpected (timed out already?)");
+						LOG_CONTROLLER_STATE_MACHINE_DEBUG(targetID, std::string("AECP command with sequenceID ") + std::to_string(sequenceID) + " unexpected (timed out already?)");
 				}
 			}
 
@@ -713,12 +713,12 @@ void ControllerStateMachine::checkInflightCommandsTimeoutExpiracy() noexcept
 						command.retried = true;
 						error = _delegate->sendMessage(static_cast<Aecpdu const&>(*command.command));
 						resetAecpCommandTimeoutValue(command);
-						Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("AECP command with sequenceID ") + std::to_string(command.sequenceID) + " timed out, trying again");
+						LOG_CONTROLLER_STATE_MACHINE_DEBUG(entityID, std::string("AECP command with sequenceID ") + std::to_string(command.sequenceID) + " timed out, trying again");
 					}
 					else
 					{
 						error = ProtocolInterface::Error::Timeout;
-						Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("AECP command with sequenceID ") + std::to_string(command.sequenceID) + " timed out 2 times");
+						LOG_CONTROLLER_STATE_MACHINE_DEBUG(entityID, std::string("AECP command with sequenceID ") + std::to_string(command.sequenceID) + " timed out 2 times");
 					}
 
 					if (!!error)

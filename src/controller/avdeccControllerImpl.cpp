@@ -26,7 +26,7 @@
 */
 
 #include "avdeccControllerImpl.hpp"
-#include "la/avdecc/logger.hpp"
+#include "avdeccControllerLogHelper.hpp"
 
 namespace la
 {
@@ -738,7 +738,7 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 		{
 			if (!isValidUniqueIdentifier(talkerStream.entityID))
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, "Listener StreamState notification advertises being connected but with no Talker Identification");
+				LOG_CONTROLLER_WARN(getNullIdentifier(), "Listener StreamState notification advertises being connected but with no Talker Identification (ListenerID={} ListenerIndex={})", listenerStream.entityID, listenerStream.streamIndex);
 				conState = model::StreamConnectionState::State::NotConnected;
 			}
 			else
