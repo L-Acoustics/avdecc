@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Fixed
 - Removed noexcept qualifier from all std::function (c++17 compatibility)
+- Ignoring incoherent 'connection count' field (Q6 Core after a reboot)
 
 ## [2.4.0] - 2018-05-15
 ### Added

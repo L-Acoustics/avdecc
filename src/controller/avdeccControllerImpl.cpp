@@ -689,8 +689,15 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 		auto talkerStreamIdentification{ entity::model::StreamIdentification{} };
 		if (conState != model::StreamConnectionState::State::NotConnected)
 		{
-			AVDECC_ASSERT(isValidUniqueIdentifier(talkerStream.entityID), "Connected or FastConnecting to an invalid TalkerID");
-			talkerStreamIdentification = talkerStream;
+			if (!isValidUniqueIdentifier(talkerStream.entityID))
+			{
+				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, "Listener StreamState notification advertises being connected but with no Talker Identification");
+				conState = model::StreamConnectionState::State::NotConnected;
+			}
+			else
+			{
+				talkerStreamIdentification = talkerStream;
+			}
 		}
 
 		// Build a StreamConnectionState
