@@ -86,6 +86,7 @@ enum class CompileOption : std::uint32_t
 	None = 0,
 	IgnoreInvalidControlDataLength = 1u << 0,
 	IgnoreInvalidNonSuccessAemResponses = 1u << 1,
+	AllowBigAemPayloads = 1u << 2,
 	EnableRedundancy = 1u << 15,
 };
 using CompileOptions = CompileOption;

@@ -87,17 +87,31 @@ void AemAecpdu::deserialize(DeserializationBuffer& buffer)
 	_commandType = static_cast<AemCommandType>(u_ct & 0x7fff);
 
 	_commandSpecificDataLength = _controlDataLength - AemAecpdu::HeaderLength - Aecpdu::HeaderLength;
+
+	// Check if there is more advertised data than actual bytes in the buffer
 	auto const remainingBytes = buffer.remaining();
 	if (_commandSpecificDataLength > remainingBytes)
 	{
 		Logger::Level logLevel{ Logger::Level::Warn };
 #if defined(IGNORE_INVALID_CONTROL_DATA_LENGTH)
-		// Allow this packet to go through, the ControlData specific unpacker will trap the error anyway
+		// Allow this packet to go through, the ControlData specific unpacker will trap any error if the message is further ill-formed
 		_commandSpecificDataLength = remainingBytes;
 		logLevel = Logger::Level::Debug;
 #endif // IGNORE_INVALID_CONTROL_DATA_LENGTH
 		Logger::getInstance().log(Logger::Layer::Protocol, logLevel, "AemAecpdu::deserialize error: ControlDataLength field advertises more bytes than remaining bytes in buffer for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + ")");
 	}
+
+	// Clamp command specific buffer in case ControlDataLength exceeds maximum protocol value, the ControlData specific unpacker will trap any error if the message is further ill-formed
+	if (_commandSpecificDataLength > MaximumPayloadLength)
+	{
+#if defined(ALLOW_BIG_AEM_PAYLOADS)
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, "AemAecpdu::deserialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumPayloadLength) + " for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + "),  but still processing it because of compilation option ALLOW_BIG_AEM_PAYLOADS");
+#else // !ALLOW_BIG_AEM_PAYLOADS
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Warn, "AemAecpdu::deserialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumPayloadLength) + " for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + "),  clamping buffer down from " + std::to_string(_commandSpecificDataLength));
+#endif // ALLOW_BIG_AEM_PAYLOADS
+		_commandSpecificDataLength = std::min(_commandSpecificDataLength, _commandSpecificData.size());
+	}
+
 	buffer.unpackBuffer(_commandSpecificData.data(), _commandSpecificDataLength);
 
 #ifdef DEBUG

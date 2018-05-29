@@ -41,6 +41,9 @@ public:
 	static constexpr size_t DefaultMaxInflightCommands = 1;
 	static constexpr size_t HeaderLength = 10; /* ControllerEID + SequenceID */
 	static constexpr size_t MaximumLength = 524; /* AECPDU maximum size - Clause 9.2.1.1.7 */
+#if defined(ALLOW_BIG_AEM_PAYLOADS)
+	static constexpr size_t MaximumBigPayloadLength = MaximumLength * 2;
+#endif // !ALLOW_BIG_AEM_PAYLOADS
 	using UniquePointer = std::unique_ptr<Aecpdu, void(*)(Aecpdu*)>;
 
 	// Setters
@@ -68,8 +71,14 @@ public:
 	{
 		auto controlDataLength = static_cast<std::uint16_t>(Aecpdu::HeaderLength + commandSpecificDataLength);
 		// Check Aecp do not exceed maximum allowed length
-		if(controlDataLength > Aecpdu::MaximumLength)
+#if defined(ALLOW_BIG_AEM_PAYLOADS)
+		if (controlDataLength > Aecpdu::MaximumBigPayloadLength)
+#else // !ALLOW_BIG_AEM_PAYLOADS
+		if (controlDataLength > Aecpdu::MaximumLength)
+#endif // ALLOW_BIG_AEM_PAYLOADS
+		{
 			throw std::invalid_argument("AECP payload too big");
+		}
 		AvtpduControl::setControlDataLength(controlDataLength);
 	}
 

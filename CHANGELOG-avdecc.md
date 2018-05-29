@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Fixed
 - Removed noexcept qualifier from all std::function (c++17 compatibility)
+- Allowing AEM payloads exceeding maximum protocol value (new compilation flag: ALLOW_BIG_AEM_PAYLOADS). Required for Q6 Core devices.
 
 ## [2.4.0] - 2018-05-15
 ### Added
