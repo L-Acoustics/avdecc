@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Advertising entities not supporting/implementing the query of dynamic information
 ### Fixed
 - Removed noexcept qualifier from all std::function (c++17 compatibility)
 - Ignoring incoherent 'connection count' field (Q6 Core after a reboot)

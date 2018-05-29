@@ -644,7 +644,7 @@ void ControllerImpl::checkAdvertiseEntity(ControlledEntityImpl* const entity) co
 	if (!entity->wasAdvertised())
 	{
 		auto const caps = entity->getEntity().getEntityCapabilities();
-		if (entity->gotAllExpectedDescriptors() && entity->gotAllExpectedDynamicInfo() && !hasFlag(caps, entity::EntityCapabilities::EntityNotReady | entity::EntityCapabilities::GeneralControllerIgnore))
+		if (!entity->gotEnumerationError() && entity->gotAllExpectedDescriptors() && entity->gotAllExpectedDynamicInfo() && !hasFlag(caps, entity::EntityCapabilities::EntityNotReady | entity::EntityCapabilities::GeneralControllerIgnore))
 		{
 			entity->setAdvertised(true);
 			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityOnline, this, entity);
@@ -658,10 +658,57 @@ bool ControllerImpl::checkRescheduleQuery(entity::ControllerEntity::AemCommandSt
 	return false;
 }
 
-bool ControllerImpl::checkRescheduleQuery(entity::ControllerEntity::AemCommandStatus const /*status*/, ControlledEntityImpl* const /*entity*/, entity::model::ConfigurationIndex const /*configurationIndex*/, ControlledEntityImpl::DynamicInfoType const /*dynamicInfoType*/, entity::model::DescriptorIndex const /*descriptorIndex*/) const noexcept
+bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const /*entity*/, entity::model::ConfigurationIndex const /*configurationIndex*/, ControlledEntityImpl::DynamicInfoType const /*dynamicInfoType*/, entity::model::DescriptorIndex const /*descriptorIndex*/) const noexcept
 {
-#pragma message("TODO: Based on status code, reschedule a query")
-	return false;
+	switch (status)
+	{
+		// Cases we want to schedule a retry
+		case entity::ControllerEntity::AemCommandStatus::LockedByOther: // Should not happen for a read operation but some devices are bugged, so retry anyway
+			[[fallthrough]];
+		case entity::ControllerEntity::AemCommandStatus::AcquiredByOther: // Should not happen for a read operation but some devices are bugged, so retry anyway
+			[[fallthrough]];
+		case entity::ControllerEntity::AemCommandStatus::NoResources:
+			[[fallthrough]];
+		case entity::ControllerEntity::AemCommandStatus::InProgress:
+			[[fallthrough]];
+		case entity::ControllerEntity::AemCommandStatus::EntityMisbehaving:
+			[[fallthrough]];
+		case entity::ControllerEntity::AemCommandStatus::StreamIsRunning:
+			[[fallthrough]];
+		case entity::ControllerEntity::AemCommandStatus::TimedOut:
+			[[fallthrough]];
+		case entity::ControllerEntity::AemCommandStatus::UnknownEntity:
+		{
+#pragma message("TODO: Reschedule the query")
+			return true;
+		}
+		// Cases we want to ignore and continue
+		case entity::ControllerEntity::AemCommandStatus::NotImplemented:
+			[[fallthrough]];
+		case entity::ControllerEntity::AemCommandStatus::NotSupported:
+		{
+			return true;
+		}
+		// Cases that are errors and we want to discard this entity
+		case entity::ControllerEntity::AemCommandStatus::NoSuchDescriptor:
+			[[fallthrough]];
+		case entity::ControllerEntity::AemCommandStatus::NotAuthenticated:
+			[[fallthrough]];
+		case entity::ControllerEntity::AemCommandStatus::AuthenticationDisabled:
+			[[fallthrough]];
+		case entity::ControllerEntity::AemCommandStatus::BadArguments:
+			[[fallthrough]];
+		case entity::ControllerEntity::AemCommandStatus::NetworkError:
+			[[fallthrough]];
+		case entity::ControllerEntity::AemCommandStatus::ProtocolError:
+			[[fallthrough]];
+		case entity::ControllerEntity::AemCommandStatus::InternalError:
+			[[fallthrough]];
+		default:
+		{
+			return false;
+		}
+	}
 }
 
 bool ControllerImpl::checkRescheduleQuery(entity::ControllerEntity::ControlStatus const /*status*/, ControlledEntityImpl* const /*entity*/, entity::model::ConfigurationIndex const /*configurationIndex*/, ControlledEntityImpl::DynamicInfoType const /*dynamicInfoType*/, entity::model::DescriptorIndex const /*descriptorIndex*/, std::uint16_t const /*connectionIndex*/) const noexcept
