@@ -594,6 +594,148 @@ StreamFormatInfo* LA_AVDECC_CALL_CONVENTION StreamFormatInfo::createRawStreamFor
 	return new StreamFormatInfoBase<>(streamFormat, Type::Unsupported); // Unsupported
 }
 
+StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_IEC_61883_6(std::uint16_t const channelsCount, bool const isUpToChannelsCount, SamplingRate const samplingRate, SampleFormat const sampleFormat, bool const useSynchronousClock) noexcept
+	{
+		StreamFormat fmt{ 0u };
+		replaceField<0, 0>(fmt, static_cast<std::uint8_t>(0)); // 'v' field must be set to zero for an AVTP defined time-sensitive stream
+		
+		replaceField<1, 7>(fmt, static_cast<std::uint8_t>(0x00)); // subtype = 61883 or IIDC
+		
+		replaceField<8, 8>(fmt, static_cast<std::uint8_t>(1)); // sf = IEC 61883
+		replaceField<9, 14>(fmt, static_cast<std::uint8_t>(0x10)); // fmt = IEC 61883-6
+		
+		std::uint8_t fdf_evt{ 0u };
+		switch (sampleFormat)
+		{
+			case SampleFormat::Int24: // IEC 61883-6 AM824
+				fdf_evt = 0x00;
+				break;
+			case SampleFormat::FixedPoint32: // IEC 61883-6 32-bit fixed point packetization
+				[[fallthrough]]; // Not supported
+			case SampleFormat::FloatingPoint32: // IEC 61883-6 32-bit floating point packetization
+				[[fallthrough]]; // Not supported
+			default:
+				return getNullStreamFormat();
+		}
+		replaceField<16, 20>(fmt, static_cast<std::uint8_t>(0x0)); // fdf_evt = sampleFormat
+		
+		std::uint8_t fdf_sfc{ 0u };
+		switch (samplingRate)
+		{
+			case SamplingRate::kHz_32:
+				fdf_sfc = 0;
+				break;
+			case SamplingRate::kHz_44_1:
+				fdf_sfc = 1;
+				break;
+			case SamplingRate::kHz_48:
+				fdf_sfc = 2;
+				break;
+			case SamplingRate::kHz_88_2:
+				fdf_sfc = 3;
+				break;
+			case SamplingRate::kHz_96:
+				fdf_sfc = 4;
+				break;
+			case SamplingRate::kHz_176_4:
+				fdf_sfc = 5;
+				break;
+			case SamplingRate::kHz_192:
+				fdf_sfc = 6;
+				break;
+			default:
+				return getNullStreamFormat();
+		}
+		replaceField<21, 23>(fmt, static_cast<std::uint8_t>(fdf_sfc)); // fdf_sfc = samplingRate
+		replaceField<24, 31>(fmt, static_cast<std::uint16_t>(channelsCount)); // dbs = channelsCount
+		replaceField<33, 33>(fmt, static_cast<std::uint8_t>(1)); // nb = 1
+		replaceField<34, 34>(fmt, static_cast<std::uint8_t>(isUpToChannelsCount)); // ut = isUpToChannelsCount
+		replaceField<35, 35>(fmt, static_cast<std::uint8_t>(useSynchronousClock)); // sc = useSynchronousClock
+		replaceField<48, 55>(fmt, static_cast<std::uint16_t>(channelsCount)); // label_mbla_cnt = channelsCount
+		
+		return fmt;
+}
+	
+StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_AAF(std::uint16_t const channelsCount, bool const isUpToChannelsCount, SamplingRate const samplingRate, SampleFormat const sampleFormat, std::uint16_t const sampleBitDepth, std::uint16_t const samplesPerFrame) noexcept
+{
+	StreamFormat fmt{ 0u };
+	replaceField<0, 0>(fmt, static_cast<std::uint8_t>(0)); // 'v' field must be set to zero for an AVTP defined time-sensitive stream
+
+	replaceField<1, 7>(fmt, static_cast<std::uint8_t>(0x02)); // subtype = AAF (AVTP Audio Format)
+
+	replaceField<11, 11>(fmt, static_cast<std::uint8_t>(isUpToChannelsCount)); // ut = isUpToChannelsCount
+	
+	std::uint8_t nsr{ 0u };
+	switch (samplingRate)
+	{
+		case SamplingRate::UserDefined:
+			nsr = 0;
+			break;
+		case SamplingRate::kHz_8:
+			nsr = 1;
+			break;
+		case SamplingRate::kHz_16:
+			nsr = 2;
+			break;
+		case SamplingRate::kHz_32:
+			nsr = 3;
+			break;
+		case SamplingRate::kHz_44_1:
+			nsr = 4;
+			break;
+		case SamplingRate::kHz_48:
+			nsr = 5;
+			break;
+		case SamplingRate::kHz_88_2:
+			nsr = 6;
+			break;
+		case SamplingRate::kHz_96:
+			nsr = 7;
+			break;
+		case SamplingRate::kHz_176_4:
+			nsr = 8;
+			break;
+		case SamplingRate::kHz_192:
+			nsr = 9;
+			break;
+		case SamplingRate::kHz_24:
+			nsr = 10;
+			break;
+		default:
+			return getNullStreamFormat();
+	}
+	replaceField<12, 15>(fmt, static_cast<std::uint8_t>(nsr)); // nsr = samplingRate
+	
+	std::uint8_t format{ 0u };
+	std::uint16_t maxDepth{ 0u };
+	switch (sampleFormat)
+	{
+		case SampleFormat::Int32:
+			maxDepth = 32;
+			format = 0x02;
+			break;
+		case SampleFormat::Int24:
+			maxDepth = 24;
+			format = 0x03;
+			break;
+		case SampleFormat::Int16:
+			maxDepth = 16;
+			format = 0x04;
+			break;
+		default:
+			return getNullStreamFormat();
+	}
+	if (sampleBitDepth > maxDepth)
+		return getNullStreamFormat();
+		
+	replaceField<16, 23>(fmt, static_cast<std::uint8_t>(format)); // format = sampleFormat
+	replaceField<24, 31>(fmt, static_cast<std::uint16_t>(sampleBitDepth)); // bit_depth = sampleBitDepth
+	replaceField<32, 41>(fmt, static_cast<std::uint16_t>(channelsCount)); // channels_per_frame = channelsCount
+	replaceField<42, 51>(fmt, static_cast<std::uint16_t>(samplesPerFrame)); // samples_per_frame = samplesPerFrame
+	
+	return fmt;
+}
+
 bool LA_AVDECC_CALL_CONVENTION StreamFormatInfo::isListenerFormatCompatibleWithTalkerFormat(StreamFormat const& listenerStreamFormat, StreamFormat const& talkerStreamFormat) noexcept
 {
 	auto lFormatInfo = StreamFormatInfo::create(listenerStreamFormat);
@@ -616,6 +758,49 @@ bool LA_AVDECC_CALL_CONVENTION StreamFormatInfo::isListenerFormatCompatibleWithT
 	}
 
 	return false;
+}
+
+std::pair<StreamFormat, StreamFormat> LA_AVDECC_CALL_CONVENTION StreamFormatInfo::getAdaptedCompatibleFormats(StreamFormat const& listenerStreamFormat, StreamFormat const& talkerStreamFormat) noexcept
+{
+	auto lFormatInfo = StreamFormatInfo::create(listenerStreamFormat);
+	auto tFormatInfo = StreamFormatInfo::create(talkerStreamFormat);
+
+	// First perform basic checks
+	if (lFormatInfo->getType() == tFormatInfo->getType() // Same type
+			&& lFormatInfo->getSamplingRate() == tFormatInfo->getSamplingRate() // Same sampling rate
+			&& lFormatInfo->getSampleFormat() == tFormatInfo->getSampleFormat() // Same sample format
+			// Ignore SampleBitDepth, because it only affects quality, not compatibility
+			&& (tFormatInfo->useSynchronousClock() || !lFormatInfo->useSynchronousClock()) // All accepted except if Talker is Async and Listener is Sync
+			)
+	{
+		auto lChanCount = lFormatInfo->getChannelsCount();
+		auto tChanCount = tFormatInfo->getChannelsCount();
+
+		// If listener is an up-to format, get the min between 'max listener up-to' and 'talker count' (which might be an up-to as well)
+		if (lFormatInfo->isUpToChannelsCount())
+		{
+			lChanCount = std::min(lChanCount, tChanCount);
+		}
+		// Same for talker
+		if (tFormatInfo->isUpToChannelsCount())
+		{
+			tChanCount = std::min(tChanCount, lChanCount);
+		}
+
+		// Now we can compare the channel count
+		if (lChanCount == tChanCount)
+		{
+			// Ok, return adapted formats for both talker and listener
+			auto const lAdapted = lFormatInfo->getAdaptedStreamFormat(lChanCount);
+			auto const tAdapted = tFormatInfo->getAdaptedStreamFormat(tChanCount);
+			if (AVDECC_ASSERT_WITH_RET(lAdapted != getNullStreamFormat() && tAdapted != getNullStreamFormat(), "Failed to get AdaptedFormat for either Listener or Talker"))
+			{
+				return std::make_pair(lAdapted, tAdapted);
+			}
+		}
+	}
+	
+	return std::make_pair(getNullStreamFormat(), getNullStreamFormat());
 }
 
 } // namespace model

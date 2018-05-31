@@ -5,8 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-
-## [2.5.1] - 2018-06-03
+### Added
+- New static method to get adapted compatible formats from listener and talker available ones
+- New static methods to build StreamFormat from attributes
 
 ## [2.5.0] - 2018-06-01
 ### Fixed

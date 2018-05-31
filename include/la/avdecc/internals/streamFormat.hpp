@@ -82,9 +82,6 @@ public:
 
 	using UniquePointer = std::unique_ptr<StreamFormatInfo, void(*)(StreamFormatInfo*)>;
 
-	static LA_AVDECC_API StreamFormatInfo* LA_AVDECC_CALL_CONVENTION createRawStreamFormatInfo(StreamFormat const& streamFormat) noexcept;
-	static LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION isListenerFormatCompatibleWithTalkerFormat(StreamFormat const& listenerStreamFormat, StreamFormat const& talkerStreamFormat) noexcept;
-
 	/**
 	* @brief Factory method to create a new StreamFormatInfo.
 	* @details Creates a new StreamFormatInfo as a unique pointer.
@@ -105,7 +102,6 @@ public:
 
 	/**
 	* @brief Returns the StreamFormat adapted to the specified channelsCount value.
-	* @details Creates a new StreamFormatInfo as a unique pointer.
 	* @param[in] channelsCount Channels count to adapt the StreamFormat to.
 	* @return If isUpToChannelsCount() is false and channelCount does not match getChannelsCount(), getNullStreamFormat() is returned.
 	*         If channelCount is greater than isUpToChannelsCount(), getNullStreamFormat() is returned.
@@ -137,20 +133,48 @@ public:
 	/** Returns the depth of each sample (in bits). Only valid for integer type SampleFormat (0 otherwise). This is the number of actual valid bits in each sample (value cannot exceed the value returned by getSampleSize). */
 	virtual std::uint16_t getSampleBitDepth() const noexcept = 0;
 
-	/** Constructor */
-	StreamFormatInfo() noexcept = default;
+	/**
+	* @brief Checks if the current stream format of a listener is compatible with the current stream format of a talker.
+	* @param[in] listenerStreamFormat The listener's current stream format.
+	* @param[in] talkerStreamFormat The talker's current stream format.
+	* @return True if the passed formats are compatible, meaning that audio will be played correctly.
+	* @warning None of the passed format must come from the list of supported format by the entity (the StreamInput/Output static model), or they have to be adapted ones.
+	*/
+	static LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION isListenerFormatCompatibleWithTalkerFormat(StreamFormat const& listenerStreamFormat, StreamFormat const& talkerStreamFormat) noexcept;
 
-	/** Destructor */
-	virtual ~StreamFormatInfo() noexcept = default;
+	/**
+	* @brief Returns the adapted StreamFormats that matches both passed listener and talker formats.
+	* @details Returns a pair of StreamFormat that can be passed to the setStreamFormat commands on either a Talker or a Listener.
+	*          The method will check both formats for basic compatibility (Type, SamplingRate, SampleSize).
+	*          Then if any of the 2 formats have the up-to bit it will compute the lowest common denominator if it exists.
+	* @param[in] listenerStreamFormat The listener's stream format.
+	* @param[in] talkerStreamFormat The talker's stream format.
+	* @return The adapted StreamFormats (listener, talker) matching both formats, or invalid StreamFormats if no match exists between them.
+	*/
+	static LA_AVDECC_API std::pair<StreamFormat, StreamFormat> LA_AVDECC_CALL_CONVENTION getAdaptedCompatibleFormats(StreamFormat const& listenerStreamFormat, StreamFormat const& talkerStreamFormat) noexcept;
 
-	/** Destroy method for COM-like interface */
-	virtual void destroy() noexcept = 0;
+	static LA_AVDECC_API StreamFormat LA_AVDECC_CALL_CONVENTION buildFormat_IEC_61883_6(std::uint16_t const channelsCount, bool const isUpToChannelsCount, SamplingRate const samplingRate, SampleFormat const sampleFormat, bool const useSynchronousClock) noexcept;
+	static LA_AVDECC_API StreamFormat LA_AVDECC_CALL_CONVENTION buildFormat_AAF(std::uint16_t const channelsCount, bool const isUpToChannelsCount, SamplingRate const samplingRate, SampleFormat const sampleFormat, std::uint16_t const sampleBitDepth, std::uint16_t const samplesPerFrame) noexcept;
 
 	// Defaulted compiler auto-generated methods
 	StreamFormatInfo(StreamFormatInfo&&) = default;
 	StreamFormatInfo(StreamFormatInfo const&) = default;
 	StreamFormatInfo& operator=(StreamFormatInfo const&) = default;
 	StreamFormatInfo& operator=(StreamFormatInfo&&) = default;
+
+protected:
+	/** Constructor */
+	StreamFormatInfo() noexcept = default;
+
+	/** Destructor */
+	virtual ~StreamFormatInfo() noexcept = default;
+
+private:
+	/** Entry point */
+	static LA_AVDECC_API StreamFormatInfo* LA_AVDECC_CALL_CONVENTION createRawStreamFormatInfo(StreamFormat const& streamFormat) noexcept;
+
+	/** Destroy method for COM-like interface */
+	virtual void destroy() noexcept = 0;
 };
 
 class StreamFormatInfoCRF : public StreamFormatInfo
