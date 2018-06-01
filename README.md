@@ -6,7 +6,7 @@ Copyright (C) 2016-2018, L-Acoustics and its contributors
 ## What is LA_avdecc
 LA_avdecc is a set of open source libraries for controlling and monitoring AVB entities using the AVDECC protocol (IEEE 1722.1).
 
-These libraries are written in pure C++14 and do not depend on any other library. They can be compiled on Windows, Linux and macOS, using standard development tools (procedure below). Unit tests and sample programs are also provided.
+These libraries are written in pure C++17. They can be compiled on Windows, Linux and macOS, using standard development tools (procedure below). Unit tests and sample programs are also provided.
 
 These libraries have already been used indirectly in many musical events throughout the world to control all kinds of AVB entities ([list below](#compatibleEntities)). L-Acoustics' Network Manager 2.5 (and up) now relies on them for all its AVDECC functionalities.
 
@@ -24,6 +24,7 @@ We use GitHub issues for tracking requests and bugs.
 * Avid: S6L
 * MOTU: 112D, 828, Traveller, StageBox16
 * MeyerSound: Galileo GALAXY
+* QSC: Q-SYS Cores
 * Apple: macOS Talker, Listener and Controller (El Capitan and later)
 
 ## la_avdecc Library
@@ -49,13 +50,13 @@ The controller API has 2 interfaces:
 
 ### Windows
 - Windows 8.1
-- Visual Studio 2017, platform toolset v141 (or v141_clang_c2)
+- Visual Studio 2017 v15.7 or greater (using platform toolset v141)
 - WinPcap 4.1.2 Developer's Pack (see [this file](externals/3rdparty/winpcap/README.md) for more details)
 - GitBash or cygwin
 
 ### macOS
 - macOS 10.12
-- Xcode 8.2.1
+- Xcode 9.2
 
 ### Linux
 - C++17 compliant compiler
@@ -110,7 +111,6 @@ The controller API has 2 interfaces:
 
 - Better unit testing using a virtual protocol interface and virtual entities
 - Ability to preload AEMXML files, and not enumerate AEM for devices with identical vendorEntityModelId
-- Support AEM for controller library
 - Talker and Listener state machines (low level library)
 - Creation of a DiscoveryStateMachine so it can be used by Talker/Listener entities (moving code out of ControllerStateMachine)
 - Wrapper libraries:
