@@ -64,6 +64,12 @@ void Aecpdu::deserialize(DeserializationBuffer& buffer)
 		throw std::invalid_argument("Not enough data to deserialize");
 	}
 
+	// ControlDataLength exceeds maximum protocol value
+	if (_controlDataLength > Aecpdu::MaximumLength)
+	{
+		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Warn, "Aecpdu::deserialize warning: ControlDataLength field exceeds maximum protocol value of " + std::to_string(Aecpdu::MaximumLength) + ": " + std::to_string(_controlDataLength));
+	}
+
 	buffer >> _controllerEntityID >> _sequenceID;
 }
 

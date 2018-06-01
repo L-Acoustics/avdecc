@@ -57,7 +57,7 @@ private:
 private:
 	struct AnswerCallback
 	{
-		using Callback = std::function<void() noexcept>;
+		using Callback = std::function<void()>;
 		Callback onAnswer{ nullptr };
 		// Constructors
 		AnswerCallback() = default;
@@ -84,9 +84,8 @@ private:
 	};
 
 	using DiscoveredEntities = std::unordered_map<UniqueIdentifier, DiscoveredEntity>;
-	using OnAECPErrorCallback = std::function<void(ControllerEntity::AemCommandStatus const error) noexcept>;
-	using OnACMPErrorCallback = std::function<void(ControllerEntity::ControlStatus const error) noexcept>;
-	using OnErrorCallback = std::function<void() noexcept>;
+	using OnAECPErrorCallback = std::function<void(ControllerEntity::AemCommandStatus const error)>;
+	using OnACMPErrorCallback = std::function<void(ControllerEntity::ControlStatus const error)>;
 
 	/* ************************************************************************** */
 	/* ControllerEntityImpl internal methods                                      */

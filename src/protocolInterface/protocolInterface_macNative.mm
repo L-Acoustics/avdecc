@@ -737,11 +737,11 @@ namespace la
 						 {
 							 AVDECC_ASSERT([message messageType] == AVB17221AECPMessageTypeAEMResponse, "AECP Response to our AEM Command is NOT an AEM Response!");
 							 auto aem = [BridgeInterface makeAemResponse:static_cast<AVB17221AECPAEMMessage*>(message)];
-							 resultHandler(aem.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
+							 la::avdecc::invokeProtectedHandler(resultHandler, aem.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
 						 }
 						 else
 						 {
-							 resultHandler(nullptr, [BridgeInterface getProtocolError:error]);
+							 la::avdecc::invokeProtectedHandler(resultHandler, nullptr, [BridgeInterface getProtocolError:error]);
 						 }
 						 [self stopAsyncOperation];
 						 // Signal the semaphore so we can process another command
@@ -751,7 +751,7 @@ namespace la
 				// Failed to send the message
 				NSLog(@"Failed to send AECP message");
 				[self stopAsyncOperation];
-				resultHandler(nullptr, la::avdecc::protocol::ProtocolInterface::Error::TransportError);
+				la::avdecc::invokeProtectedHandler(resultHandler, nullptr, la::avdecc::protocol::ProtocolInterface::Error::TransportError);
 				// Signal the semaphore now, the aecp sendCommand handler won't fire
 				dispatch_semaphore_signal(limiter);
 			}
@@ -795,11 +795,11 @@ namespace la
 			if (kIOReturnSuccess == (IOReturn)error.code)
 			{
 				auto acmp = [BridgeInterface makeAcmpMessage:message];
-				resultHandler(acmp.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
+				la::avdecc::invokeProtectedHandler(resultHandler, acmp.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
 			}
 			else
 			{
-				resultHandler(nullptr, [BridgeInterface getProtocolError:error]);
+				la::avdecc::invokeProtectedHandler(resultHandler, nullptr, [BridgeInterface getProtocolError:error]);
 			}
 			[self stopAsyncOperation];
 		}] == NO)

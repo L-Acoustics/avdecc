@@ -56,7 +56,7 @@ namespace avdecc
 * (either added, removed or signature modification).
 * Any other change (including templates, inline methods, defines, typedefs, ...) are considered a modification of the interface.
 */
-constexpr std::uint32_t InterfaceVersion = 204;
+constexpr std::uint32_t InterfaceVersion = 205;
 
 /**
 * @brief Checks if the library is compatible with specified interface version.
@@ -86,6 +86,7 @@ enum class CompileOption : std::uint32_t
 	None = 0,
 	IgnoreInvalidControlDataLength = 1u << 0,
 	IgnoreInvalidNonSuccessAemResponses = 1u << 1,
+	AllowBigAemPayloads = 1u << 2,
 	EnableRedundancy = 1u << 15,
 };
 using CompileOptions = CompileOption;

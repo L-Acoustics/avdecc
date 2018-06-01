@@ -830,7 +830,6 @@ void ControllerImpl::onGetStreamInputInfoResult(entity::ControllerEntity const* 
 				try
 				{
 					controlledEntity->setInputStreamInfo(configurationIndex, streamIndex, info);
-					checkAdvertiseEntity(controlledEntity.get());
 				}
 				catch (ControlledEntity::Exception const&)
 				{
@@ -840,12 +839,13 @@ void ControllerImpl::onGetStreamInputInfoResult(entity::ControllerEntity const* 
 			}
 			else
 			{
-				if (!checkRescheduleQuery(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamInfo, streamIndex))
+				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamInfo, streamIndex))
 				{
 					controlledEntity->setEnumerationError(true);
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ListenerStreamInfo);
 				}
 			}
+			checkAdvertiseEntity(controlledEntity.get());
 		}
 	}
 }
@@ -866,7 +866,6 @@ void ControllerImpl::onGetStreamOutputInfoResult(entity::ControllerEntity const*
 				try
 				{
 					controlledEntity->setOutputStreamInfo(configurationIndex, streamIndex, info);
-					checkAdvertiseEntity(controlledEntity.get());
 				}
 				catch (ControlledEntity::Exception const&)
 				{
@@ -876,12 +875,13 @@ void ControllerImpl::onGetStreamOutputInfoResult(entity::ControllerEntity const*
 			}
 			else
 			{
-				if (!checkRescheduleQuery(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamInfo, streamIndex))
+				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamInfo, streamIndex))
 				{
 					controlledEntity->setEnumerationError(true);
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::TalkerStreamInfo);
 				}
 			}
+			checkAdvertiseEntity(controlledEntity.get());
 		}
 	}
 }
@@ -910,10 +910,7 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::ControllerEntity
 						controlledEntity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, streamPortIndex);
 						Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("getStreamPortInputAudioMap(") + toHexString(entityID, true) + "," + std::to_string(streamPortIndex) + ")");
 						controller->getStreamPortInputAudioMap(entityID, streamPortIndex, entity::model::MapIndex(mapIndex + 1), std::bind(&ControllerImpl::onGetStreamPortInputAudioMapResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7, configurationIndex));
-					}
-					else
-					{
-						checkAdvertiseEntity(controlledEntity.get());
+						return;
 					}
 				}
 				catch (ControlledEntity::Exception const&)
@@ -924,19 +921,21 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::ControllerEntity
 			}
 			else
 			{
-#if IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS
-				if (status == entity::ControllerEntity::AemCommandStatus::NotImplemented || status == entity::ControllerEntity::AemCommandStatus::NotSupported)
-				{
-					checkAdvertiseEntity(controlledEntity.get());
-					return;
-				}
-#endif
-				if (!checkRescheduleQuery(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, streamPortIndex))
+				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, streamPortIndex))
 				{
 					controlledEntity->setEnumerationError(true);
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamInputAudioMap);
 				}
+#if !defined(IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS)
+				// If we are requesting the dynamic mappings it's because no audio map was defined. This command should never return NotImplement nor NotSupported
+				if (status == entity::ControllerEntity::AemCommandStatus::NotImplemented || status == entity::ControllerEntity::AemCommandStatus::NotSupported)
+				{
+					controlledEntity->setEnumerationError(true);
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamInputAudioMap);
+				}
+#endif // !IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS
 			}
+			checkAdvertiseEntity(controlledEntity.get());
 		}
 	}
 }
@@ -965,10 +964,7 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::ControllerEntit
 						controlledEntity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, streamPortIndex);
 						Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("getStreamPortOutputAudioMap(") + toHexString(entityID, true) + "," + std::to_string(streamPortIndex) + ")");
 						controller->getStreamPortOutputAudioMap(entityID, streamPortIndex, entity::model::MapIndex(mapIndex + 1), std::bind(&ControllerImpl::onGetStreamPortOutputAudioMapResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7, configurationIndex));
-					}
-					else
-					{
-						checkAdvertiseEntity(controlledEntity.get());
+						return;
 					}
 				}
 				catch (ControlledEntity::Exception const&)
@@ -979,19 +975,21 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::ControllerEntit
 			}
 			else
 			{
-#if IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS
-				if (status == entity::ControllerEntity::AemCommandStatus::NotImplemented || status == entity::ControllerEntity::AemCommandStatus::NotSupported)
-				{
-					checkAdvertiseEntity(controlledEntity.get());
-					return;
-				}
-#endif
-				if (!checkRescheduleQuery(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, streamPortIndex))
+				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, streamPortIndex))
 				{
 					controlledEntity->setEnumerationError(true);
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamOutputAudioMap);
 				}
+#if !defined(IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS)
+				// If we are requesting the dynamic mappings it's because no audio map was defined. This command should never return NotImplement nor NotSupported
+				if (status == entity::ControllerEntity::AemCommandStatus::NotImplemented || status == entity::ControllerEntity::AemCommandStatus::NotSupported)
+				{
+					controlledEntity->setEnumerationError(true);
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamOutputAudioMap);
+				}
+#endif // !IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS
 			}
+			checkAdvertiseEntity(controlledEntity.get());
 		}
 	}
 }
@@ -1012,7 +1010,6 @@ void ControllerImpl::onGetAvbInfoResult(entity::ControllerEntity const* const /*
 				try
 				{
 					controlledEntity->setAvbInfo(configurationIndex, avbInterfaceIndex, info);
-					checkAdvertiseEntity(controlledEntity.get());
 				}
 				catch (ControlledEntity::Exception const&)
 				{
@@ -1022,12 +1019,13 @@ void ControllerImpl::onGetAvbInfoResult(entity::ControllerEntity const* const /*
 			}
 			else
 			{
-				if (!checkRescheduleQuery(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInfo, avbInterfaceIndex))
+				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInfo, avbInterfaceIndex))
 				{
 					controlledEntity->setEnumerationError(true);
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AvbInfo);
 				}
 			}
+			checkAdvertiseEntity(controlledEntity.get());
 		}
 	}
 }

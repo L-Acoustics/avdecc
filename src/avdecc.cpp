@@ -80,6 +80,10 @@ std::vector<CompileOptionInfo> LA_AVDECC_CALL_CONVENTION getCompileOptionsInfo()
 	options.emplace_back(CompileOptionInfo{ CompileOptions::IgnoreInvalidNonSuccessAemResponses, "IINSAR", "Ignore Invalid Non Success AEM Responses" });
 #endif // IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES
 
+#ifdef ALLOW_BIG_AEM_PAYLOADS
+	options.emplace_back(CompileOptionInfo{ CompileOptions::AllowBigAemPayloads, "ABAP", "Allow big AEM payloads" });
+#endif // ALLOW_BIG_AEM_PAYLOADS
+
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	options.emplace_back(CompileOptionInfo{ CompileOptions::EnableRedundancy, "RDNCY", "Redundancy" });
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY

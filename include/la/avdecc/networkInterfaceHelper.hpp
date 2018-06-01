@@ -41,6 +41,7 @@ namespace networkInterface
 {
 
 using MacAddress = std::array<std::uint8_t, 6>;
+
 struct Interface
 {
 	enum class Type
@@ -72,10 +73,12 @@ struct MacAddressHash
 	}
 };
 
+using EnumerateInterfacesHandler = std::function<void(la::avdecc::networkInterface::Interface const&)>;
+
 /** Refresh the list of network interfaces (automatically done at startup) */
 LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION refreshInterfaces() noexcept;
 /** Enumerates network interfaces. The specified handler is called for each found interface */
-LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION enumerateInterfaces(std::function<void(la::avdecc::networkInterface::Interface const& intfc) noexcept> const& onInterface) noexcept;
+LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION enumerateInterfaces(EnumerateInterfacesHandler const& onInterface) noexcept;
 /** Retrieve a copy of an interface from it's name. Throws Exception if no interface exists with that name. */
 LA_AVDECC_API Interface LA_AVDECC_CALL_CONVENTION getInterfaceByName(std::string const& name);
 /** Converts the specified MAC address to string (in the form: xx:xx:xx:xx:xx:xx) */
