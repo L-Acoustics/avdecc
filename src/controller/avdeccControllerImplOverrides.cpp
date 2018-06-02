@@ -112,6 +112,11 @@ void ControllerImpl::destroy() noexcept
 	delete this;
 }
 
+UniqueIdentifier ControllerImpl::getControllerEID() const noexcept
+{
+	return _controller->getEntityID();
+}
+
 /* Controller configuration */
 void ControllerImpl::enableEntityAdvertising(std::uint32_t const availableDuration)
 {

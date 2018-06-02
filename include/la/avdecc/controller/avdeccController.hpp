@@ -254,6 +254,9 @@ public:
 		return UniquePointer(createRawController(protocolInterfaceType, interfaceName, progID, vendorEntityModelID, preferedLocale), deleter);
 	}
 
+	/** Returns the UniqueIdentifier this instance of the controller is using to identify itself on the network */
+	virtual UniqueIdentifier getControllerEID() const noexcept = 0;
+
 	/* Controller configuration methods */
 	/** Enables controller advertising with available duration included between 2-62 seconds. Might throw an Exception. */
 	virtual void enableEntityAdvertising(std::uint32_t const availableDuration) = 0;
