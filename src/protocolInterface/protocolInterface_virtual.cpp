@@ -120,7 +120,7 @@ public:
 		if (interfaceIt == _interfaces.end())
 		{
 			auto intfc = std::make_unique<Interface>();
-			intfc->dispatchThread = std::thread([this, networkInterfaceName, intfc = intfc.get()]()
+			intfc->dispatchThread = std::thread([networkInterfaceName, intfc = intfc.get()]()
 			{
 				la::avdecc::setCurrentThreadName("avdecc::VirtualInterface." + networkInterfaceName + "::Capture");
 				while (!intfc->shouldTerminate)
@@ -132,7 +132,7 @@ public:
 						std::unique_lock<decltype(intfc->mutex)> lock(intfc->mutex);
 						
 						// Wait for message in the queue
-						intfc->cond.wait(lock, [this, intfc]
+						intfc->cond.wait(lock, [intfc]
 						{
 							return intfc->messages.size() > 0 || intfc->shouldTerminate;
 						});
