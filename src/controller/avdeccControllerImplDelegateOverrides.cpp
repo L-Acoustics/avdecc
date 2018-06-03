@@ -23,7 +23,7 @@
 */
 
 #include "avdeccControllerImpl.hpp"
-#include "la/avdecc/logger.hpp"
+#include "avdeccControllerLogHelper.hpp"
 
 namespace la
 {
@@ -44,7 +44,7 @@ void ControllerImpl::onTransportError(entity::ControllerEntity const* const /*co
 /* Discovery Protocol (ADP) delegate */
 void ControllerImpl::onEntityOnline(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::Entity const& entity) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onEntityOnline: ") + toHexString(entityID, true));
+	LOG_CONTROLLER_TRACE(entityID, "onEntityOnline");
 
 	OnlineControlledEntity controlledEntity{};
 
@@ -71,24 +71,23 @@ void ControllerImpl::onEntityOnline(entity::ControllerEntity const* const contro
 		if (hasFlag(entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
 		{
 			// Register for unsolicited notifications
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("Registering for unsolicited notifications"));
+			LOG_CONTROLLER_TRACE(entityID, "Registering for unsolicited notifications");
 			controller->registerUnsolicitedNotifications(entityID, {});
 
 			// Request its entity descriptor
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("Requesting entity's descriptor"));
+			LOG_CONTROLLER_TRACE(entityID, "Requesting entity's descriptor");
 			controlledEntity->setDescriptorExpected(0, entity::model::DescriptorType::Entity, 0);
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("readEntityDescriptor(") + toHexString(entityID, true) + ")");
 			controller->readEntityDescriptor(entityID, std::bind(&ControllerImpl::onEntityDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 		}
 		else
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("Entity does not support AEM, simply advertise it"));
+			LOG_CONTROLLER_TRACE(entityID, "Entity does not support AEM, simply advertise it");
 			checkAdvertiseEntity(controlledEntity.get());
 		}
 	}
 	else
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Debug, std::string("onEntityOnline: Entity already registered, updating it"));
+		LOG_CONTROLLER_DEBUG(entityID, "onEntityOnline: Entity already registered, updating it");
 		// This should not happen, but just in case... update it
 		onEntityUpdate(controller, entityID, entity);
 	}
@@ -97,7 +96,7 @@ void ControllerImpl::onEntityOnline(entity::ControllerEntity const* const contro
 
 void ControllerImpl::onEntityUpdate(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::Entity const& entity) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onEntityUpdate: ") + toHexString(entityID, true));
+	LOG_CONTROLLER_TRACE(entityID, "onEntityUpdate");
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
@@ -113,7 +112,7 @@ void ControllerImpl::onEntityUpdate(entity::ControllerEntity const* const /*cont
 
 void ControllerImpl::onEntityOffline(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("onEntityOffline: ") + toHexString(entityID, true));
+	LOG_CONTROLLER_TRACE(entityID, "onEntityOffline");
 
 	OnlineControlledEntity controlledEntity{};
 
@@ -214,12 +213,12 @@ void ControllerImpl::onEntityAcquired(entity::ControllerEntity const* const /*co
 		{
 			updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
 		}
-		catch (controller::ControlledEntity::Exception const& e)
+		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 		{
 			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onEntityAcquired succeeded on the entity, but failed to update local model"))
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onEntityAcquired(" + toHexString(entityID, true) + "," + toHexString(owningEntity, true) + "," + std::to_string(to_integral(descriptorType)) + "," + std::to_string(descriptorIndex) + ") failed: " + e.what()));
+				LOG_CONTROLLER_WARN(entityID, "onEntityAcquired failed (Owner={} DescriptorType={} DescriptorIndex={}): {}", toHexString(owningEntity, true), to_integral(descriptorType), descriptorIndex, e.what());
 			}
 		}
 	}
@@ -237,12 +236,12 @@ void ControllerImpl::onEntityReleased(entity::ControllerEntity const* const /*co
 		{
 			updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
 		}
-		catch (controller::ControlledEntity::Exception const& e)
+		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 		{
 			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onEntityReleased succeeded on the entity, but failed to update local model"))
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onEntityReleased(" + toHexString(entityID, true) + "," + toHexString(owningEntity, true) + "," + std::to_string(to_integral(descriptorType)) + "," + std::to_string(descriptorIndex) + ") failed: " + e.what()));
+				LOG_CONTROLLER_WARN(entityID, "onEntityReleased failed (Owner={} DescriptorType={} DescriptorIndex={}): {}", toHexString(owningEntity, true), to_integral(descriptorType), descriptorIndex, e.what());
 			}
 		}
 	}
@@ -260,12 +259,12 @@ void ControllerImpl::onConfigurationChanged(entity::ControllerEntity const* cons
 		{
 			updateConfiguration(controller, *entity, configurationIndex);
 		}
-		catch (controller::ControlledEntity::Exception const& e)
+		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 		{
 			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onConfigurationChanged succeeded on the entity, but failed to update local model"))
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onConfigurationChanged(" + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + ") failed: " + e.what()));
+				LOG_CONTROLLER_WARN(entityID, "onConfigurationChanged failed (ConfigurationIndex={}): {}", configurationIndex, e.what());
 			}
 		}
 	}
@@ -283,12 +282,12 @@ void ControllerImpl::onStreamInputFormatChanged(entity::ControllerEntity const* 
 		{
 			updateStreamInputFormat(*entity, streamIndex, streamFormat);
 		}
-		catch (controller::ControlledEntity::Exception const& e)
+		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 		{
 			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamInputFormatChanged succeeded on the entity, but failed to update local model"))
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onStreamInputFormatChanged(" + toHexString(entityID, true) + "," + std::to_string(streamIndex) + "," + toHexString(streamFormat, true) + ") failed: " + e.what()));
+				LOG_CONTROLLER_WARN(entityID, "onStreamInputFormatChanged failed (StreamIndex={} StreamFormat={}): {}", streamIndex, toHexString(streamFormat, true), e.what());
 			}
 		}
 	}
@@ -306,12 +305,12 @@ void ControllerImpl::onStreamOutputFormatChanged(entity::ControllerEntity const*
 		{
 			updateStreamOutputFormat(*entity, streamIndex, streamFormat);
 		}
-		catch (controller::ControlledEntity::Exception const& e)
+		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 		{
 			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamOutputFormatChanged succeeded on the entity, but failed to update local model"))
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onStreamOutputFormatChanged(" + toHexString(entityID, true) + "," + std::to_string(streamIndex) + "," + toHexString(streamFormat, true) + ") failed: " + e.what()));
+				LOG_CONTROLLER_WARN(entityID, "onStreamOutputFormatChanged failed (StreamIndex={} StreamFormat={}): {}", streamIndex, toHexString(streamFormat, true), e.what());
 			}
 		}
 	}
@@ -335,12 +334,12 @@ void ControllerImpl::onStreamPortInputAudioMappingsChanged(entity::ControllerEnt
 			controlledEntity->clearPortInputStreamAudioMappings(entityDescriptor.dynamicModel.currentConfiguration, streamPortIndex);
 			updateStreamPortInputAudioMappingsAdded(*entity, streamPortIndex, mappings);
 		}
-		catch (controller::ControlledEntity::Exception const& e)
+		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 		{
 			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamInputAudioMappingsChanged succeeded on the entity, but failed to update local model"))
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onStreamPortInputAudioMappingsChanged(" + toHexString(entityID, true) + "," + std::to_string(streamPortIndex) + "," + std::to_string(numberOfMaps) + "," + std::to_string(mapIndex) + ") failed: " + e.what()));
+				LOG_CONTROLLER_WARN(entityID, "onStreamPortInputAudioMappingsChanged failed (StreamPortIndex={} NumberMaps={} MapIndex={}): {}", streamPortIndex, numberOfMaps, mapIndex, e.what());
 			}
 		}
 	}
@@ -364,12 +363,12 @@ void ControllerImpl::onStreamPortOutputAudioMappingsChanged(entity::ControllerEn
 			controlledEntity->clearPortOutputStreamAudioMappings(entityDescriptor.dynamicModel.currentConfiguration, streamPortIndex);
 			updateStreamPortOutputAudioMappingsAdded(*entity, streamPortIndex, mappings);
 		}
-		catch (controller::ControlledEntity::Exception const& e)
+		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 		{
 			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamOutputAudioMappingsChanged succeeded on the entity, but failed to update local model"))
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onStreamPortOutputAudioMappingsChanged(" + toHexString(entityID, true) + "," + std::to_string(streamPortIndex) + "," + std::to_string(numberOfMaps) + "," + std::to_string(mapIndex) + ") failed: " + e.what()));
+				LOG_CONTROLLER_WARN(entityID, "onStreamPortOutputAudioMappingsChanged failed (StreamPortIndex={} NumberMaps={} MapIndex={}): {}", streamPortIndex, numberOfMaps, mapIndex, e.what());
 			}
 		}
 	}
@@ -387,12 +386,12 @@ void ControllerImpl::onStreamInputInfoChanged(entity::ControllerEntity const* co
 		{
 			updateStreamInputInfo(*entity, streamIndex, info);
 		}
-		catch (controller::ControlledEntity::Exception const& e)
+		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 		{
 			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamInputInfoChanged succeeded on the entity, but failed to update local model"))
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onStreamInputInfoChanged(" + toHexString(entityID, true) + "," + std::to_string(streamIndex) + ") failed: " + e.what()));
+				LOG_CONTROLLER_WARN(entityID, "onStreamInputInfoChanged failed (StreamIndex={}): {}", streamIndex, e.what());
 			}
 		}
 	}
@@ -410,12 +409,12 @@ void ControllerImpl::onStreamOutputInfoChanged(entity::ControllerEntity const* c
 		{
 			updateStreamOutputInfo(*entity, streamIndex, info);
 		}
-		catch (controller::ControlledEntity::Exception const& e)
+		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 		{
 			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamOutputInfoChanged succeeded on the entity, but failed to update local model"))
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onStreamOutputInfoChanged(" + toHexString(entityID, true) + "," + std::to_string(streamIndex) + ") failed: " + e.what()));
+				LOG_CONTROLLER_WARN(entityID, "onStreamOutputInfoChanged failed (StreamIndex={}): {}", streamIndex, e.what());
 			}
 		}
 	}
@@ -433,12 +432,12 @@ void ControllerImpl::onEntityNameChanged(entity::ControllerEntity const* const /
 		{
 			updateEntityName(*entity, entityName);
 		}
-		catch (controller::ControlledEntity::Exception const& e)
+		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 		{
 			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onEntityNameChanged succeeded on the entity, but failed to update local model"))
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onEntityNameChanged(" + toHexString(entityID, true) + "," + std::string(entityName) + ") failed: " + e.what()));
+				LOG_CONTROLLER_WARN(entityID, "onEntityNameChanged failed (Name={}): {}", entityName.str(), e.what());
 			}
 		}
 	}
@@ -456,12 +455,12 @@ void ControllerImpl::onEntityGroupNameChanged(entity::ControllerEntity const* co
 		{
 			updateEntityGroupName(*entity, entityGroupName);
 		}
-		catch (controller::ControlledEntity::Exception const& e)
+		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 		{
 			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onEntityGroupNameChanged succeeded on the entity, but failed to update local model"))
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onEntityGroupNameChanged(" + toHexString(entityID, true) + "," + std::string(entityGroupName) + ") failed: " + e.what()));
+				LOG_CONTROLLER_WARN(entityID, "onEntityGroupNameChanged failed (GroupName={}): {}", entityGroupName.str(), e.what());
 			}
 		}
 	}
@@ -479,12 +478,12 @@ void ControllerImpl::onConfigurationNameChanged(entity::ControllerEntity const* 
 		{
 			updateConfigurationName(*entity, configurationIndex, configurationName);
 		}
-		catch (controller::ControlledEntity::Exception const& e)
+		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 		{
 			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onConfigurationNameChanged succeeded on the entity, but failed to update local model"))
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onConfigurationNameChanged(" + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::string(configurationName) + ") failed: " + e.what()));
+				LOG_CONTROLLER_WARN(entityID, "onConfigurationNameChanged failed (ConfigurationIndex={} Name={}): {}", configurationIndex, configurationName.str(), e.what());
 			}
 		}
 	}
@@ -502,12 +501,12 @@ void ControllerImpl::onStreamInputNameChanged(entity::ControllerEntity const* co
 		{
 			updateStreamInputName(*entity, configurationIndex, streamIndex, streamName);
 		}
-		catch (controller::ControlledEntity::Exception const& e)
+		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 		{
 			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamInputNameChanged succeeded on the entity, but failed to update local model"))
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onStreamInputNameChanged(" + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(streamIndex) + "," + std::string(streamName) + ") failed: " + e.what()));
+				LOG_CONTROLLER_WARN(entityID, "onStreamInputNameChanged failed (ConfigurationIndex={} StreamIndex={} Name={}): {}", configurationIndex, streamIndex, streamName.str(), e.what());
 			}
 		}
 	}
@@ -525,12 +524,12 @@ void ControllerImpl::onStreamOutputNameChanged(entity::ControllerEntity const* c
 		{
 			updateStreamOutputName(*entity, configurationIndex, streamIndex, streamName);
 		}
-		catch (controller::ControlledEntity::Exception const& e)
+		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 		{
 			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamOutputNameChanged succeeded on the entity, but failed to update local model"))
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onStreamOutputNameChanged(" + toHexString(entityID, true) + "," + std::to_string(configurationIndex) + "," + std::to_string(streamIndex) + "," + std::string(streamName) + ") failed: " + e.what()));
+				LOG_CONTROLLER_WARN(entityID, "onStreamOutputNameChanged failed (ConfigurationIndex={} StreamIndex={} Name={}): {}", configurationIndex, streamIndex, streamName.str(), e.what());
 			}
 		}
 	}
@@ -548,12 +547,12 @@ void ControllerImpl::onAudioUnitSamplingRateChanged(entity::ControllerEntity con
 		{
 			updateAudioUnitSamplingRate(*entity, audioUnitIndex, samplingRate);
 		}
-		catch (controller::ControlledEntity::Exception const& e)
+		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 		{
 			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onAudioUnitSamplingRateChanged succeeded on the entity, but failed to update local model"))
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onAudioUnitSamplingRateChanged(" + toHexString(entityID, true) + "," + std::to_string(audioUnitIndex) + "," + std::to_string(samplingRate) + ") failed: " + e.what()));
+				LOG_CONTROLLER_WARN(entityID, "onAudioUnitSamplingRateChanged failed (AudioUnitIndex={} SamplingRate={}): {}", audioUnitIndex, samplingRate, e.what());
 			}
 		}
 	}
@@ -571,12 +570,12 @@ void ControllerImpl::onClockSourceChanged(entity::ControllerEntity const* const 
 		{
 			updateClockSource(*entity, clockDomainIndex, clockSourceIndex);
 		}
-		catch (controller::ControlledEntity::Exception const& e)
+		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 		{
 			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onClockSourceChanged succeeded on the entity, but failed to update local model"))
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onClockSourceChanged(" + toHexString(entityID, true) + "," + std::to_string(clockDomainIndex) + "," + std::to_string(clockSourceIndex) + ") failed: " + e.what()));
+				LOG_CONTROLLER_WARN(entityID, "onClockSourceChanged failed (ClockDomainIndex={} ClockSourceIndex={}): {}", clockDomainIndex, clockSourceIndex, e.what());
 			}
 		}
 	}
@@ -594,12 +593,12 @@ void ControllerImpl::onStreamInputStarted(entity::ControllerEntity const* const 
 		{
 			updateStreamInputRunningStatus(*entity, streamIndex, true);
 		}
-		catch (controller::ControlledEntity::Exception const& e)
+		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 		{
 			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamInputStarted succeeded on the entity, but failed to update local model"))
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onStreamInputStarted(" + toHexString(entityID, true) + "," + std::to_string(streamIndex) + ") failed: " + e.what()));
+				LOG_CONTROLLER_WARN(entityID, "onStreamInputStarted failed (StreamIndex={}): {}", streamIndex, e.what());
 			}
 		}
 	}
@@ -617,12 +616,12 @@ void ControllerImpl::onStreamOutputStarted(entity::ControllerEntity const* const
 		{
 			updateStreamOutputRunningStatus(*entity, streamIndex, true);
 		}
-		catch (controller::ControlledEntity::Exception const& e)
+		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 		{
 			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamOutputStarted succeeded on the entity, but failed to update local model"))
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onStreamOutputStarted(" + toHexString(entityID, true) + "," + std::to_string(streamIndex) + ") failed: " + e.what()));
+				LOG_CONTROLLER_WARN(entityID, "onStreamOutputStarted failed (StreamIndex={}): {}", streamIndex, e.what());
 			}
 		}
 	}
@@ -640,12 +639,12 @@ void ControllerImpl::onStreamInputStopped(entity::ControllerEntity const* const 
 		{
 			updateStreamInputRunningStatus(*entity, streamIndex, false);
 		}
-		catch (controller::ControlledEntity::Exception const& e)
+		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 		{
 			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamInputStarted succeeded on the entity, but failed to update local model"))
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onStreamInputStarted(" + toHexString(entityID, true) + "," + std::to_string(streamIndex) + ") failed: " + e.what()));
+				LOG_CONTROLLER_WARN(entityID, "onStreamInputStarted failed (StreamIndex={}): {}", streamIndex, e.what());
 			}
 		}
 	}
@@ -663,12 +662,12 @@ void ControllerImpl::onStreamOutputStopped(entity::ControllerEntity const* const
 		{
 			updateStreamOutputRunningStatus(*entity, streamIndex, false);
 		}
-		catch (controller::ControlledEntity::Exception const& e)
+		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 		{
 			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamOutputStarted succeeded on the entity, but failed to update local model"))
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onStreamOutputStarted(" + toHexString(entityID, true) + "," + std::to_string(streamIndex) + ") failed: " + e.what()));
+				LOG_CONTROLLER_WARN(entityID, "onStreamOutputStarted failed (StreamIndex={}): {}", streamIndex, e.what());
 			}
 		}
 	}
@@ -686,12 +685,12 @@ void ControllerImpl::onAvbInfoChanged(entity::ControllerEntity const* const /*co
 		{
 			updateAvbInfo(*entity, avbInterfaceIndex, info);
 		}
-		catch (controller::ControlledEntity::Exception const& e)
+		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 		{
 			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onAvbInfoChanged succeeded on the entity, but failed to update local model"))
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("onAvbInfoChanged(" + toHexString(entityID, true) + "," + std::to_string(avbInterfaceIndex) + ") failed: " + e.what()));
+				LOG_CONTROLLER_WARN(entityID, "onAvbInfoChanged failed (AvbInterfaceIndex={}): {}", avbInterfaceIndex, e.what());
 			}
 		}
 	}

@@ -40,6 +40,7 @@ class Acmpdu final : public AvtpduControl
 public:
 	static constexpr size_t Length = 44; /* ACMPDU size - Clause 8.2.1.7 */
 	using UniquePointer = std::unique_ptr<Acmpdu, void(*)(Acmpdu*)>;
+	static la::avdecc::networkInterface::MacAddress Multicast_Mac_Address;
 
 	/**
 	* @brief Factory method to create a new Acmpdu.

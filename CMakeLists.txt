@@ -8,8 +8,8 @@ cmake_minimum_required(VERSION 3.9)
 # Using Semantic Versioning (http://semver.org/spec/v2.0.0.html)
 # Project version number x.y.z on main branch, x.y.z.w on dev and task branches
 # Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task)
-set(LA_AVDECC_VERSION 2.5.0)
-set(LA_AVDECC_CONTROLLER_VERSION 2.5.0)
+set(LA_AVDECC_VERSION 2.5.1)
+set(LA_AVDECC_CONTROLLER_VERSION 2.5.1)
 
 ############ Override from command line "CMake -D<OPTION>=TRUE/FALSE/0/1/ON/OFF"
 
@@ -37,6 +37,7 @@ option(ENABLE_AVDECC_SIGNING "Enable binaries signing." FALSE)
 # Enable features
 option(ENABLE_AVDECC_FEATURE_REDUNDANCY "Enable 'Network Redundancy' feature as defined by AVnu Alliance." TRUE)
 # Compatibility options
+option(ENABLE_AVDECC_USE_FMTLIB "Use fmtlib" TRUE)
 option(ENABLE_AVDECC_CUSTOM_ANY "Use custom std::any instead of c++17 one (for compilers not supporting std::any yet)" TRUE)
 option(ENABLE_AVDECC_STRICT_2018_REDUNDANCY "Be strict about 'Network Redundancy' feature, using AVnu 2018 specifications." TRUE)
 option(IGNORE_INVALID_CONTROL_DATA_LENGTH "Allow messages with an invalid advertised 'Control Data Length' field (not matching data in buffer)." TRUE) # Required for Motu devices sending invalid response messages
@@ -68,6 +69,11 @@ include(${CMAKE_CURRENT_LIST_DIR}/cmake/internals.cmake)
 
 # Include common properties overrides
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/CommonProjectProperties.cmake)
+
+# Include fmtlib
+if(ENABLE_AVDECC_USE_FMTLIB)
+	add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/externals/3rdparty/fmtlib)
+endif()
 
 ############ Define some variables
 

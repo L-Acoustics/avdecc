@@ -23,7 +23,7 @@
 */
 
 #include "protocolAemAecpdu.hpp"
-#include "la/avdecc/logger.hpp"
+#include "logHelper.hpp"
 #include <cassert>
 #include <string>
 
@@ -64,7 +64,7 @@ void AemAecpdu::serialize(SerializationBuffer& buffer) const
 
 	if (!AVDECC_ASSERT_WITH_RET((buffer.size() - previousSize) == (HeaderLength + _commandSpecificDataLength), "AemAecpdu::serialize error: Packed buffer length != expected header length"))
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Error, "AemAecpdu::serialize error: Packed buffer length != expected header length");
+		LOG_SERIALIZATION_ERROR(_srcAddress, "AemAecpdu::serialize error: Packed buffer length != expected header length");
 	}
 }
 
@@ -75,7 +75,7 @@ void AemAecpdu::deserialize(DeserializationBuffer& buffer)
 
 	if (!AVDECC_ASSERT_WITH_RET(buffer.remaining() >= HeaderLength, "AemAecpdu::deserialize error: Not enough data in buffer"))
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Error, "AemAecpdu::deserialize error: Not enough data in buffer");
+		LOG_SERIALIZATION_ERROR(_srcAddress, "AemAecpdu::deserialize error: Not enough data in buffer");
 		throw std::invalid_argument("Not enough data to deserialize");
 	}
 
@@ -92,22 +92,22 @@ void AemAecpdu::deserialize(DeserializationBuffer& buffer)
 	auto const remainingBytes = buffer.remaining();
 	if (_commandSpecificDataLength > remainingBytes)
 	{
-		Logger::Level logLevel{ Logger::Level::Warn };
 #if defined(IGNORE_INVALID_CONTROL_DATA_LENGTH)
 		// Allow this packet to go through, the ControlData specific unpacker will trap any error if the message is further ill-formed
 		_commandSpecificDataLength = remainingBytes;
-		logLevel = Logger::Level::Debug;
+		LOG_SERIALIZATION_DEBUG(_srcAddress, "AemAecpdu::deserialize error: ControlDataLength field advertises more bytes than remaining bytes in buffer for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + ")");
+#else // !IGNORE_INVALID_CONTROL_DATA_LENGTH
+		LOG_SERIALIZATION_WARN(_srcAddress, "AemAecpdu::deserialize error: ControlDataLength field advertises more bytes than remaining bytes in buffer for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + ")");
 #endif // IGNORE_INVALID_CONTROL_DATA_LENGTH
-		Logger::getInstance().log(Logger::Layer::Protocol, logLevel, "AemAecpdu::deserialize error: ControlDataLength field advertises more bytes than remaining bytes in buffer for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + ")");
 	}
 
 	// Clamp command specific buffer in case ControlDataLength exceeds maximum protocol value, the ControlData specific unpacker will trap any error if the message is further ill-formed
 	if (_commandSpecificDataLength > MaximumPayloadLength)
 	{
 #if defined(ALLOW_BIG_AEM_PAYLOADS)
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, "AemAecpdu::deserialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumPayloadLength) + " for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + "),  but still processing it because of compilation option ALLOW_BIG_AEM_PAYLOADS");
+		LOG_SERIALIZATION_INFO(_srcAddress, "AemAecpdu::deserialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumPayloadLength) + " for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + "),  but still processing it because of compilation option ALLOW_BIG_AEM_PAYLOADS");
 #else // !ALLOW_BIG_AEM_PAYLOADS
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Warn, "AemAecpdu::deserialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumPayloadLength) + " for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + "),  clamping buffer down from " + std::to_string(_commandSpecificDataLength));
+		LOG_SERIALIZATION_WARN(_srcAddress, "AemAecpdu::deserialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumPayloadLength) + " for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + "),  clamping buffer down from " + std::to_string(_commandSpecificDataLength));
 #endif // ALLOW_BIG_AEM_PAYLOADS
 		_commandSpecificDataLength = std::min(_commandSpecificDataLength, _commandSpecificData.size());
 	}
@@ -117,7 +117,7 @@ void AemAecpdu::deserialize(DeserializationBuffer& buffer)
 #ifdef DEBUG
 	// Do not log this error in release, it might happen too often if an entity is bugged
 	if (buffer.remaining() != 0 && buffer.usedBytes() >= EthernetPayloadMinimumSize)
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Trace, "AemAecpdu::deserialize warning: Remaining bytes in buffer for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + ")");
+		LOG_SERIALIZATION_TRACE(_srcAddress, "AemAecpdu::deserialize warning: Remaining bytes in buffer for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + ")");
 #endif // DEBUG
 }
 

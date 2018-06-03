@@ -34,7 +34,7 @@
 #include <unordered_map>
 #include <functional>
 #include <memory>
-#include "la/avdecc/logger.hpp"
+#include "logHelper.hpp"
 
 namespace la
 {
@@ -361,9 +361,9 @@ private:
 			// Send the message
 			return sendPacket(buffer);
 		}
-		catch (std::exception const& e)
+		catch ([[maybe_unused]] std::exception const& e)
 		{
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize ADPDU: ") + e.what());
+			LOG_PROTOCOL_INTERFACE_DEBUG(adpdu.getSrcAddress(), adpdu.getDestAddress(), std::string("Failed to serialize ADPDU: ") + e.what());
 			return ProtocolInterface::Error::InternalError;
 		}
 	}
@@ -385,9 +385,9 @@ private:
 			// Send the message
 			return sendPacket(buffer);
 		}
-		catch (std::exception const& e)
+		catch ([[maybe_unused]] std::exception const& e)
 		{
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize AECPDU: ") + e.what());
+			LOG_PROTOCOL_INTERFACE_DEBUG(aecpdu.getSrcAddress(), aecpdu.getDestAddress(), std::string("Failed to serialize AECPDU: ") + e.what());
 			return ProtocolInterface::Error::InternalError;
 		}
 	}
@@ -409,9 +409,9 @@ private:
 			// Send the message
 			return sendPacket(buffer);
 		}
-		catch (std::exception const& e)
+		catch ([[maybe_unused]] std::exception const& e)
 		{
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize ACMPDU: ") + e.what());
+			LOG_PROTOCOL_INTERFACE_DEBUG(acmpdu.getSrcAddress(), Acmpdu::Multicast_Mac_Address, "Failed to serialize ACMPDU: {}", e.what());
 			return ProtocolInterface::Error::InternalError;
 		}
 	}
@@ -525,14 +525,14 @@ private:
 					return;
 			}
 		}
-		catch (std::invalid_argument const& e)
+		catch ([[maybe_unused]] std::invalid_argument const& e)
 		{
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Warn, std::string("ProtocolInterfacePCap: Packet dropped: ") + e.what());
+			LOG_PROTOCOL_INTERFACE_WARN(la::avdecc::networkInterface::MacAddress{}, la::avdecc::networkInterface::MacAddress{}, std::string("ProtocolInterfacePCap: Packet dropped: ") + e.what());
 		}
 		catch (...)
 		{
 			AVDECC_ASSERT(false, "Unknown exception");
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Warn, "ProtocolInterfacePCap: Packet dropped due to unknown exception");
+			LOG_PROTOCOL_INTERFACE_WARN(la::avdecc::networkInterface::MacAddress{}, la::avdecc::networkInterface::MacAddress{}, "ProtocolInterfacePCap: Packet dropped due to unknown exception");
 		}
 	}
 

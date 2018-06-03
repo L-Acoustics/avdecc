@@ -55,6 +55,8 @@ private:
 	/* ************************************************************ */
 	virtual void destroy() noexcept override;
 
+	virtual UniqueIdentifier getControllerEID() const noexcept override;
+
 	/* Controller configuration */
 	virtual void enableEntityAdvertising(std::uint32_t const availableDuration) override;
 	virtual void disableEntityAdvertising() noexcept override;

@@ -23,7 +23,7 @@
 */
 
 #include "avdeccControlledEntityImpl.hpp"
-#include "la/avdecc/logger.hpp"
+#include "avdeccControllerLogHelper.hpp"
 #include <algorithm>
 #include <cassert>
 #include <typeindex>
@@ -477,9 +477,9 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 				// Loop over AvbInterfaceNode
 				for (auto const& interfaceKV : configuration.avbInterfaces)
 				{
-					auto const& interface = interfaceKV.second;
+					auto const& intfc = interfaceKV.second;
 					// Visit AvbInterfaceNode (ConfigurationNode is parent)
-					visitor->visit(this, &configuration, interface);
+					visitor->visit(this, &configuration, intfc);
 				}
 
 				// Loop over ClockSourceNode
@@ -1260,7 +1260,7 @@ void ControlledEntityImpl::addPortInputStreamAudioMappings(entity::model::Config
 		else // Otherwise, replace the previous mapping
 		{
 #ifndef ENABLE_AVDECC_FEATURE_REDUNDANCY
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("Duplicate StreamPortInput AudioMappings found for entity ") + toHexString(_entity.getEntityID(), true) + " (" + std::to_string(foundIt->streamIndex) + ":" + std::to_string(foundIt->streamChannel) + ":" + std::to_string(foundIt->clusterOffset) + ":" + std::to_string(foundIt->clusterChannel) + " replaced by " + std::to_string(map.streamIndex) + ":" + std::to_string(map.streamChannel) + ":" + std::to_string(map.clusterOffset) + ":" + std::to_string(map.clusterChannel) + ")");
+			LOG_CONTROLLER_WARN(_entity.getEntityID(), std::string("Duplicate StreamPortInput AudioMappings found: ") + std::to_string(foundIt->streamIndex) + ":" + std::to_string(foundIt->streamChannel) + ":" + std::to_string(foundIt->clusterOffset) + ":" + std::to_string(foundIt->clusterChannel) + " replaced by " + std::to_string(map.streamIndex) + ":" + std::to_string(map.streamChannel) + ":" + std::to_string(map.clusterOffset) + ":" + std::to_string(map.clusterChannel));
 #endif // !ENABLE_AVDECC_FEATURE_REDUNDANCY
 			foundIt->streamIndex = map.streamIndex;
 			foundIt->streamChannel = map.streamChannel;
@@ -1289,7 +1289,7 @@ void ControlledEntityImpl::addPortOutputStreamAudioMappings(entity::model::Confi
 		else // Otherwise, replace the previous mapping
 		{
 #ifndef ENABLE_AVDECC_FEATURE_REDUNDANCY
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("Duplicate StreamPortOutput AudioMappings found for entity ") + toHexString(_entity.getEntityID(), true) + " (" + std::to_string(foundIt->clusterOffset) + ":" + std::to_string(foundIt->clusterChannel) + ":" + std::to_string(foundIt->streamIndex) + ":" + std::to_string(foundIt->streamChannel) + " replaced by " + std::to_string(map.clusterOffset) + ":" + std::to_string(map.clusterChannel) + ":" + std::to_string(map.streamIndex) + ":" + std::to_string(map.streamChannel) + ")");
+			LOG_CONTROLLER_WARN(_entity.getEntityID(), std::string("Duplicate StreamPortOutput AudioMappings found: ") + std::to_string(foundIt->clusterOffset) + ":" + std::to_string(foundIt->clusterChannel) + ":" + std::to_string(foundIt->streamIndex) + ":" + std::to_string(foundIt->streamChannel) + " replaced by " + std::to_string(map.clusterOffset) + ":" + std::to_string(map.clusterChannel) + ":" + std::to_string(map.streamIndex) + ":" + std::to_string(map.streamChannel));
 #endif // !ENABLE_AVDECC_FEATURE_REDUNDANCY
 			foundIt->streamIndex = map.streamIndex;
 			foundIt->streamChannel = map.streamChannel;
@@ -1472,7 +1472,7 @@ void ControlledEntityImpl::clearExpectedDynamicInfo(entity::model::Configuration
 
 void ControlledEntityImpl::setEnumerationError(bool const gotEnumerationError) noexcept
 {
-	Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Error, std::string("Enumeration Error for entity ") + toHexString(_entity.getEntityID(), true));
+	LOG_CONTROLLER_ERROR(_entity.getEntityID(), "Enumeration Error");
 	_enumerateError = gotEnumerationError;
 }
 
@@ -1674,7 +1674,7 @@ class RedundantHelper : ControlledEntityImpl
 {
 public:
 	template<typename StreamNodeType>
-	static void buildRedundancyNodesByType(std::map<entity::model::StreamIndex, StreamNodeType>& streams, std::map<model::VirtualIndex, model::RedundantStreamNode>& redundantStreams)
+	static void buildRedundancyNodesByType(la::avdecc::UniqueIdentifier entityID, std::map<entity::model::StreamIndex, StreamNodeType>& streams, std::map<model::VirtualIndex, model::RedundantStreamNode>& redundantStreams)
 	{
 		for (auto& streamNodeKV : streams)
 		{
@@ -1690,7 +1690,7 @@ public:
 			// 2018 Redundancy specification only defines stream pairs
 			if (staticModel->redundantStreams.size() != 1)
 			{
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("More than one StreamIndex in RedundantStreamAssociation"));
+				LOG_CONTROLLER_WARN(entityID, std::string("More than one StreamIndex in RedundantStreamAssociation"));
 				continue;
 			}
 #endif // ENABLE_AVDECC_STRICT_2018_REDUNDANCY
@@ -1707,7 +1707,7 @@ public:
 				if (redundantIndex == streamIndex)
 				{
 					isAssociationValid = false;
-					Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Error, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": Referencing itself in RedundantAssociation set");
+					LOG_CONTROLLER_ERROR(entityID, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": Referencing itself in RedundantAssociation set");
 					break;
 				}
 
@@ -1715,7 +1715,7 @@ public:
 				if (redundantStreamIt == streams.end())
 				{
 					isAssociationValid = false;
-					Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Error, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": StreamIndex " + std::to_string(redundantIndex) + " does not exist");
+					LOG_CONTROLLER_ERROR(entityID, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": StreamIndex " + std::to_string(redundantIndex) + " does not exist");
 					break;
 				}
 
@@ -1724,7 +1724,7 @@ public:
 				if (redundantStream.staticModel->redundantStreams.find(streamIndex) == redundantStream.staticModel->redundantStreams.end())
 				{
 					isAssociationValid = false;
-					Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Error, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": StreamIndex " + std::to_string(redundantIndex) + " doesn't reference back to the stream");
+					LOG_CONTROLLER_ERROR(entityID, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": StreamIndex " + std::to_string(redundantIndex) + " doesn't reference back to the stream");
 					break;
 				}
 
@@ -1733,7 +1733,7 @@ public:
 				if (redundantStreamNodes.find(redundantInterfaceIndex) != redundantStreamNodes.end())
 				{
 					isAssociationValid = false;
-					Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Error, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": StreamIndex " + std::to_string(redundantIndex) + " uses the same AVB_INTERFACE than another stream of the association");
+					LOG_CONTROLLER_ERROR(entityID, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": StreamIndex " + std::to_string(redundantIndex) + " uses the same AVB_INTERFACE than another stream of the association");
 					break;
 				}
 				redundantStreamNodes.emplace(std::make_pair(redundantInterfaceIndex, &redundantStream));
@@ -1744,7 +1744,7 @@ public:
 			if (redundantStreamNodes.find(0u) == redundantStreamNodes.end() || redundantStreamNodes.find(1) == redundantStreamNodes.end())
 			{
 				isAssociationValid = false;
-				Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Error, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": Redundant streams do not use AVB_INTERFACE 0 and 1");
+				LOG_CONTROLLER_ERROR(entityID, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": Redundant streams do not use AVB_INTERFACE 0 and 1");
 			}
 #endif // ENABLE_AVDECC_STRICT_2018_REDUNDANCY
 
@@ -1764,7 +1764,7 @@ public:
 					if (redundantNodeCreated)
 					{
 						isAssociationValid = false;
-						Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Error, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": Stream has been found in multiple RedundantAssociation sets");
+						LOG_CONTROLLER_ERROR(entityID, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": Stream has been found in multiple RedundantAssociation sets");
 						break;
 					}
 					redundantNodeCreated = true;
@@ -1798,8 +1798,8 @@ public:
 
 void ControlledEntityImpl::buildRedundancyNodes(model::ConfigurationNode& configNode) const noexcept
 {
-	RedundantHelper::buildRedundancyNodesByType(configNode.streamInputs, configNode.redundantStreamInputs);
-	RedundantHelper::buildRedundancyNodesByType(configNode.streamOutputs, configNode.redundantStreamOutputs);
+	RedundantHelper::buildRedundancyNodesByType(_entity.getEntityID(), configNode.streamInputs, configNode.redundantStreamInputs);
+	RedundantHelper::buildRedundancyNodesByType(_entity.getEntityID(), configNode.streamOutputs, configNode.redundantStreamOutputs);
 }
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 

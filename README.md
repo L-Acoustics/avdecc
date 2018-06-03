@@ -17,6 +17,7 @@ We use GitHub issues for tracking requests and bugs.
 ### Optional dependencies:
 * [Google's C++ test framework](https://github.com/google/googletest) to build unit tests
 * [WinPcap Developer's Pack](externals/3rdparty/winpcap/README.md) to build on Windows platform
+* [libfmt](https://github.com/fmtlib/fmt) to format log messages
 
 ### <a name="compatibleEntities"></a>Tested AVB entities:
 * L-Acoustics: LA4X, LA12X, P1

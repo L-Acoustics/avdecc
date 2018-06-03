@@ -21,12 +21,13 @@ set(ADD_PUBLIC_COMPILE_OPTIONS "")
 
 set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/controller/avdeccController.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/exports.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntity.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntityModel.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntityCommonModel.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntityDynamicModel.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntityModel.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntityStaticModel.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/exports.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/logItems.hpp
 )
 source_group("Header Files\\Public\\Controller" FILES ${PUBLIC_HEADER_FILES})
 
@@ -35,6 +36,7 @@ set (HEADER_FILES_COMMON
 	avdeccControllerImpl.hpp
 	avdeccControlledEntityImpl.hpp
 	avdeccControlledEntityModelTree.hpp
+	avdeccControllerLogHelper.hpp
 )
 
 set (SOURCE_FILES_COMMON
@@ -87,6 +89,12 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 
 	# Link with avdecc using shared library
 	target_link_libraries(la_avdecc_controller_cxx PUBLIC la_avdecc_cxx)
+
+	# Setup libfmt
+	if(ENABLE_AVDECC_USE_FMTLIB)
+		target_compile_options(la_avdecc_controller_cxx PRIVATE -DHAVE_FMT)
+		target_link_libraries(la_avdecc_controller_cxx PRIVATE fmt-header-only)
+	endif()
 
 	# Set installation rule
 	if(INSTALL_AVDECC_LIB_SHARED_CXX)

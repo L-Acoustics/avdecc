@@ -23,7 +23,7 @@
 */
 
 #include "la/avdecc/utils.hpp"
-#include "la/avdecc/logger.hpp"
+#include "logHelper.hpp"
 #include "controllerEntityImpl.hpp"
 #include "protocol/protocolAemPayloads.hpp"
 #include <exception>
@@ -671,11 +671,11 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					{
 						if (descriptorIndex != 0)
 						{
-							Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Invalid descriptorIndex in SET_NAME response for Entity Descriptor: ") + std::to_string(descriptorIndex));
+							LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Invalid descriptorIndex in SET_NAME response for Entity Descriptor: {}", descriptorIndex);
 						}
 						if (configurationIndex != 0)
 						{
-							Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Invalid configurationIndex in SET_NAME response for Entity Descriptor: ") + std::to_string(configurationIndex));
+							LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Invalid configurationIndex in SET_NAME response for Entity Descriptor: {}", configurationIndex);
 						}
 						switch (nameIndex)
 						{
@@ -694,7 +694,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 								}
 								break;
 							default:
-								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in SET_NAME response for Entity Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in SET_NAME response for Entity Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
 								break;
 						}
 						break;
@@ -703,7 +703,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					{
 						if (configurationIndex != 0)
 						{
-							Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Invalid configurationIndex in SET_NAME response for Configuration Descriptor: ") + std::to_string(configurationIndex));
+							LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Invalid configurationIndex in SET_NAME response for Configuration Descriptor: ConfigurationIndex={}", configurationIndex);
 						}
 						switch (nameIndex)
 						{
@@ -715,7 +715,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 								}
 								break;
 							default:
-								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in SET_NAME response for Configuration Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in SET_NAME response for Configuration Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
 								break;
 						}
 						break;
@@ -732,7 +732,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 								}
 								break;
 							default:
-								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in SET_NAME response for StreamInput Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in SET_NAME response for StreamInput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
 								break;
 						}
 						break;
@@ -749,13 +749,13 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 								}
 								break;
 							default:
-								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in SET_NAME response for StreamOutput Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in SET_NAME response for StreamOutput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
 								break;
 						}
 						break;
 					}
 					default:
-						Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled descriptorType in SET_NAME response: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+						LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled descriptorType in SET_NAME response: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
 						break;
 				}
 			}
@@ -784,11 +784,11 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					{
 						if (descriptorIndex != 0)
 						{
-							Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Invalid descriptorIndex in GET_NAME response for Entity Descriptor: ") + std::to_string(descriptorIndex));
+							LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Invalid descriptorIndex in GET_NAME response for Entity Descriptor: DescriptorIndex={}", descriptorIndex);
 						}
 						if (configurationIndex != 0)
 						{
-							Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Invalid configurationIndex in GET_NAME response for Entity Descriptor: ") + std::to_string(configurationIndex));
+							LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Invalid configurationIndex in GET_NAME response for Entity Descriptor: ConfigurationIndex={}", configurationIndex);
 						}
 						switch (nameIndex)
 						{
@@ -799,7 +799,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 								answerCallback.invoke<GetEntityGroupNameHandler>(controller, targetID, status, name);
 								break;
 							default:
-								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in GET_NAME response for Entity Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for Entity Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
 								break;
 						}
 						break;
@@ -808,7 +808,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					{
 						if (configurationIndex != 0)
 						{
-							Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Invalid configurationIndex in GET_NAME response for Configuration Descriptor: ") + std::to_string(configurationIndex));
+							LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Invalid configurationIndex in GET_NAME response for Configuration Descriptor: ConfigurationIndex={}", configurationIndex);
 						}
 						switch (nameIndex)
 						{
@@ -816,7 +816,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 								answerCallback.invoke<GetConfigurationNameHandler>(controller, targetID, status, descriptorIndex, name);
 								break;
 							default:
-								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in GET_NAME response for Configuration Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for Configuration Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
 								break;
 						}
 						break;
@@ -829,7 +829,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 								answerCallback.invoke<GetStreamInputNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex, name);
 								break;
 							default:
-								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in GET_NAME response for StreamInput Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for StreamInput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
 								break;
 						}
 						break;
@@ -842,13 +842,13 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 								answerCallback.invoke<GetStreamOutputNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex, name);
 								break;
 							default:
-								Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled nameIndex in GET_NAME response for StreamOutput Descriptor: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for StreamOutput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
 								break;
 						}
 						break;
 					}
 					default:
-						Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unhandled descriptorType in GET_NAME response: ") + std::to_string(to_integral(descriptorType)) + ", " + std::to_string(descriptorIndex) + ", " + std::to_string(nameIndex) + ", " + std::to_string(configurationIndex) + ", " + name.str());
+						LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled descriptorType in GET_NAME response: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
 						break;
 				}
 			}
@@ -1142,12 +1142,12 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 		// If this is an unsolicited notification, simply log we do not handle the message
 		if (aem.getUnsolicited())
 		{
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Unsolicited AEM response ") + std::string(aem.getCommandType()) + " not handled (" + toHexString(aem.getCommandType().getValue()) + ")");
+			LOG_CONTROLLER_ENTITY_DEBUG(aem.getTargetEntityID(), "Unsolicited AEM response {} not handled ({})", std::string(aem.getCommandType()), toHexString(aem.getCommandType().getValue()));
 		}
 		// But if it's an expected response, this is an internal error since we sent a command and didn't implement the code to handle the response
 		else
 		{
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Error, std::string("Failed to process AEM response: Unhandled command type ") + std::string(aem.getCommandType()) + " (" + toHexString(aem.getCommandType().getValue()) + ")");
+			LOG_CONTROLLER_ENTITY_ERROR(aem.getTargetEntityID(), "Failed to process AEM response: Unhandled command type {} ({})", std::string(aem.getCommandType()), toHexString(aem.getCommandType().getValue()));
 			invokeProtectedHandler(onErrorCallback, AemCommandStatus::InternalError);
 		}
 	}
@@ -1161,12 +1161,13 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 			{
 				// Allow this packet to go through as a non-success response, but some fields might have the default initial value which might not be valid (the spec says even in a response message, some fields have a meaningful value)
 				st = status;
-				Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Received an invalid non-success ") + std::string(aem.getCommandType()) + " AEM response (" + what + ") from " + toHexString(aem.getTargetEntityID(), true) + " but still processing it because of compilation option IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES");
+				LOG_CONTROLLER_ENTITY_INFO(aem.getTargetEntityID(), "Received an invalid non-success {} AEM response ({}) from {} but still processing it because of compilation option IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES", std::string(aem.getCommandType()), what, toHexString(aem.getTargetEntityID(), true));
 			}
 #endif // IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES
 			if (st == AemCommandStatus::ProtocolError)
 			{
-				Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Failed to process ") + std::string(aem.getCommandType()) + " AEM response: " + what);
+				(void)what;
+				LOG_CONTROLLER_ENTITY_INFO(aem.getTargetEntityID(), "Failed to process {} AEM response: {}", std::string(aem.getCommandType()), what);
 			}
 			invokeProtectedHandler(onErrorCallback, st);
 		};
@@ -1185,9 +1186,9 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 			checkProcessInvalidNonSuccessResponse(e.what());
 			return;
 		}
-		catch (std::exception const& e) // Mainly unpacking errors
+		catch ([[maybe_unused]] std::exception const& e) // Mainly unpacking errors
 		{
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Failed to process ") + std::string(aem.getCommandType()) + " AEM response: " + e.what());
+			LOG_CONTROLLER_ENTITY_INFO(aem.getTargetEntityID(), "Failed to process {} AEM response: {}", std::string(aem.getCommandType()), e.what());
 			invokeProtectedHandler(onErrorCallback, AemCommandStatus::ProtocolError);
 			return;
 		}
@@ -1207,7 +1208,9 @@ void ControllerEntityImpl::sendAemResponse(protocol::AemAecpdu const& commandAem
 
 		// Set Ether2 fields
 		if (commandAem.getDestAddress() != pi->getMacAddress())
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Warn, std::string("Sending AEM response using own MacAddress as source, instead of the incorrect one from the AEM command"));
+		{
+			LOG_CONTROLLER_ENTITY_WARN(commandAem.getTargetEntityID(), "Sending AEM response using own MacAddress as source, instead of the incorrect one from the AEM command");
+		}
 		aem->setSrcAddress(pi->getMacAddress()); // Using our MacAddress instead of the one from the Command, some devices incorrectly send some AEM messages to the multicast Ether2 MacAddress instead of targeting an entity
 		aem->setDestAddress(commandAem.getSrcAddress());
 		// Set AECP fields
@@ -1411,12 +1414,12 @@ void ControllerEntityImpl::processAcmpResponse(protocol::Acmpdu const* const res
 		// If this is a sniffed message, simply log we do not handle the message
 		if (sniffed)
 		{
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("ACMP response ") + std::string(acmp.getMessageType()) + " not handled (" + toHexString(acmp.getMessageType().getValue()) + ")");
+			LOG_CONTROLLER_ENTITY_DEBUG(acmp.getTalkerEntityID(), "ACMP response {} not handled ({})", std::string(acmp.getMessageType()), toHexString(acmp.getMessageType().getValue()));
 		}
 		// But if it's an expected response, this is an internal error since we sent a command and didn't implement the code to handle the response
 		else
 		{
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Error, std::string("Failed to process ACMP response: Unhandled message type ") + std::string(acmp.getMessageType()) + " (" + toHexString(acmp.getMessageType().getValue()) + ")");
+			LOG_CONTROLLER_ENTITY_ERROR(acmp.getTalkerEntityID(), "Failed to process ACMP response: Unhandled message type {} ({})", std::string(acmp.getMessageType()), toHexString(acmp.getMessageType().getValue()));
 			invokeProtectedHandler(onErrorCallback, ControlStatus::InternalError);
 		}
 	}
@@ -1429,13 +1432,13 @@ void ControllerEntityImpl::processAcmpResponse(protocol::Acmpdu const* const res
 		catch (ControlException const& e)
 		{
 			auto st = e.getStatus();
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Failed to process ACMP response: ") + e.what());
+			LOG_CONTROLLER_ENTITY_INFO(acmp.getTalkerEntityID(), "Failed to process ACMP response: {}", e.what());
 			invokeProtectedHandler(onErrorCallback, st);
 			return;
 		}
-		catch (std::exception const& e) // Mainly unpacking errors
+		catch ([[maybe_unused]] std::exception const& e) // Mainly unpacking errors
 		{
-			Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Info, std::string("Failed to process ACMP response: ") + e.what());
+			LOG_CONTROLLER_ENTITY_INFO(acmp.getTalkerEntityID(), "Failed to process ACMP response: {}", e.what());
 			invokeProtectedHandler(onErrorCallback, ControlStatus::ProtocolError);
 			return;
 		}
@@ -1457,9 +1460,9 @@ void ControllerEntityImpl::acquireEntity(UniqueIdentifier const targetEntityID, 
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize acquireEntity: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize acquireEntity: {}", e.what());
 	}
 }
 
@@ -1472,9 +1475,9 @@ void ControllerEntityImpl::releaseEntity(UniqueIdentifier const targetEntityID, 
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize releaseEntity: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize releaseEntity: {}", e.what());
 	}
 }
 
@@ -1488,9 +1491,9 @@ void ControllerEntityImpl::lockEntity(UniqueIdentifier const targetEntityID, Loc
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::LockEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize lockEntity: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize lockEntity: {}", e.what());
 	}
 }
 
@@ -1504,9 +1507,9 @@ void ControllerEntityImpl::unlockEntity(UniqueIdentifier const targetEntityID, U
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::LockEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize unlockEntity: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize unlockEntity: {}", e.what());
 	}
 }
 
@@ -1547,9 +1550,9 @@ void ControllerEntityImpl::readEntityDescriptor(UniqueIdentifier const targetEnt
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readEntityDescriptor: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readEntityDescriptor: {}", e.what());
 	}
 }
 
@@ -1562,9 +1565,9 @@ void ControllerEntityImpl::readConfigurationDescriptor(UniqueIdentifier const ta
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readConfigurationDescriptor: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readConfigurationDescriptor: {}", e.what());
 	}
 }
 
@@ -1577,9 +1580,9 @@ void ControllerEntityImpl::readAudioUnitDescriptor(UniqueIdentifier const target
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readAudioUnitDescriptor: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readAudioUnitDescriptor: {}", e.what());
 	}
 }
 
@@ -1592,9 +1595,9 @@ void ControllerEntityImpl::readStreamInputDescriptor(UniqueIdentifier const targ
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readStreamInputDescriptor: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readStreamInputDescriptor: {}", e.what());
 	}
 }
 
@@ -1607,9 +1610,9 @@ void ControllerEntityImpl::readStreamOutputDescriptor(UniqueIdentifier const tar
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readStreamOutputDescriptor: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readStreamOutputDescriptor: {}", e.what());
 	}
 }
 
@@ -1622,9 +1625,9 @@ void ControllerEntityImpl::readJackInputDescriptor(UniqueIdentifier const target
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readJackInputDescriptor: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readJackInputDescriptor: {}", e.what());
 	}
 }
 
@@ -1637,9 +1640,9 @@ void ControllerEntityImpl::readJackOutputDescriptor(UniqueIdentifier const targe
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readJackOutputDescriptor: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readJackOutputDescriptor: {}", e.what());
 	}
 }
 
@@ -1652,9 +1655,9 @@ void ControllerEntityImpl::readAvbInterfaceDescriptor(UniqueIdentifier const tar
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readAvbInterfaceDescriptor: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readAvbInterfaceDescriptor: {}", e.what());
 	}
 }
 
@@ -1667,9 +1670,9 @@ void ControllerEntityImpl::readClockSourceDescriptor(UniqueIdentifier const targ
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readClockSourceDescriptor: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readClockSourceDescriptor: '}", e.what());
 	}
 }
 
@@ -1682,9 +1685,9 @@ void ControllerEntityImpl::readMemoryObjectDescriptor(UniqueIdentifier const tar
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readMemoryObjectDescriptor: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readMemoryObjectDescriptor: {}", e.what());
 	}
 }
 
@@ -1697,9 +1700,9 @@ void ControllerEntityImpl::readLocaleDescriptor(UniqueIdentifier const targetEnt
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readLocaleDescriptor: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readLocaleDescriptor: {}", e.what());
 	}
 }
 
@@ -1712,9 +1715,9 @@ void ControllerEntityImpl::readStringsDescriptor(UniqueIdentifier const targetEn
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readStringsDescriptor: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readStringsDescriptor: {}", e.what());
 	}
 }
 
@@ -1727,9 +1730,9 @@ void ControllerEntityImpl::readStreamPortInputDescriptor(UniqueIdentifier const 
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readStreamPortInputDescriptor: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readStreamPortInputDescriptor: {}", e.what());
 	}
 }
 
@@ -1742,9 +1745,9 @@ void ControllerEntityImpl::readStreamPortOutputDescriptor(UniqueIdentifier const
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readStreamPortOutputDescriptor: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readStreamPortOutputDescriptor: {}", e.what());
 	}
 }
 
@@ -1757,9 +1760,9 @@ void ControllerEntityImpl::readExternalPortInputDescriptor(UniqueIdentifier cons
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readExternalPortInputDescriptor: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readExternalPortInputDescriptor: {}", e.what());
 	}
 }
 
@@ -1772,9 +1775,9 @@ void ControllerEntityImpl::readExternalPortOutputDescriptor(UniqueIdentifier con
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readExternalPortInputDescriptor: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readExternalPortInputDescriptor: {}", e.what());
 	}
 }
 
@@ -1787,9 +1790,9 @@ void ControllerEntityImpl::readInternalPortInputDescriptor(UniqueIdentifier cons
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readInternalPortInputDescriptor: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readInternalPortInputDescriptor: {}", e.what());
 	}
 }
 
@@ -1802,9 +1805,9 @@ void ControllerEntityImpl::readInternalPortOutputDescriptor(UniqueIdentifier con
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readInternalPortOutputDescriptor: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readInternalPortOutputDescriptor: {}", e.what());
 	}
 }
 
@@ -1817,9 +1820,9 @@ void ControllerEntityImpl::readAudioClusterDescriptor(UniqueIdentifier const tar
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readAudioClusterDescriptor: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readAudioClusterDescriptor: {}", e.what());
 	}
 }
 
@@ -1832,9 +1835,9 @@ void ControllerEntityImpl::readAudioMapDescriptor(UniqueIdentifier const targetE
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readAudioMapDescriptor: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readAudioMapDescriptor: {}", e.what());
 	}
 }
 
@@ -1847,9 +1850,9 @@ void ControllerEntityImpl::readClockDomainDescriptor(UniqueIdentifier const targ
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize readClockDomainDescriptor: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize readClockDomainDescriptor: {}", e.what());
 	}
 }
 
@@ -1862,9 +1865,9 @@ void ControllerEntityImpl::setConfiguration(UniqueIdentifier const targetEntityI
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::SetConfiguration, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setConfiguration: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setConfiguration: {}", e.what());
 	}
 }
 
@@ -1877,9 +1880,9 @@ void ControllerEntityImpl::setStreamInputFormat(UniqueIdentifier const targetEnt
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::SetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setStreamInputFormat: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setStreamInputFormat: {}", e.what());
 	}
 }
 
@@ -1892,9 +1895,9 @@ void ControllerEntityImpl::setStreamOutputFormat(UniqueIdentifier const targetEn
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::SetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setStreamOutputFormat: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setStreamOutputFormat: {}", e.what());
 	}
 }
 
@@ -1907,9 +1910,9 @@ void ControllerEntityImpl::getStreamPortInputAudioMap(UniqueIdentifier const tar
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::GetAudioMap, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize getStreamInputAudioMap: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getStreamInputAudioMap: {}", e.what());
 	}
 }
 
@@ -1922,9 +1925,9 @@ void ControllerEntityImpl::getStreamPortOutputAudioMap(UniqueIdentifier const ta
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::GetAudioMap, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize getStreamOutputAudioMap: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getStreamOutputAudioMap: {}", e.what());
 	}
 }
 
@@ -1937,9 +1940,9 @@ void ControllerEntityImpl::addStreamPortInputAudioMappings(UniqueIdentifier cons
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::AddAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize addStreamInputAudioMappings: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize addStreamInputAudioMappings: {}", e.what());
 	}
 }
 
@@ -1952,9 +1955,9 @@ void ControllerEntityImpl::addStreamPortOutputAudioMappings(UniqueIdentifier con
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::AddAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize addStreamOutputAudioMappings: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize addStreamOutputAudioMappings: {}", e.what());
 	}
 }
 
@@ -1967,9 +1970,9 @@ void ControllerEntityImpl::removeStreamPortInputAudioMappings(UniqueIdentifier c
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::RemoveAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize removeStreamInputAudioMappings: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize removeStreamInputAudioMappings: {}", e.what());
 	}
 }
 
@@ -1982,9 +1985,9 @@ void ControllerEntityImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier 
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::RemoveAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize removeStreamOutputAudioMappings: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize removeStreamOutputAudioMappings: {}", e.what());
 	}
 }
 
@@ -1997,9 +2000,9 @@ void ControllerEntityImpl::getStreamInputInfo(UniqueIdentifier const targetEntit
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::GetStreamInfo, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize getStreamInputInfo: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getStreamInputInfo: {}", e.what());
 	}
 }
 
@@ -2012,9 +2015,9 @@ void ControllerEntityImpl::getStreamOutputInfo(UniqueIdentifier const targetEnti
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::GetStreamInfo, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize getStreamOutputInfo: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getStreamOutputInfo: {}", e.what());
 	}
 }
 
@@ -2027,9 +2030,9 @@ void ControllerEntityImpl::setEntityName(UniqueIdentifier const targetEntityID, 
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setName: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setName: {}", e.what());
 	}
 }
 
@@ -2042,9 +2045,9 @@ void ControllerEntityImpl::getEntityName(UniqueIdentifier const targetEntityID, 
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize getName: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getName: {}", e.what());
 	}
 }
 
@@ -2057,9 +2060,9 @@ void ControllerEntityImpl::setEntityGroupName(UniqueIdentifier const targetEntit
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setName: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setName: {}", e.what());
 	}
 }
 
@@ -2072,9 +2075,9 @@ void ControllerEntityImpl::getEntityGroupName(UniqueIdentifier const targetEntit
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize getName: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getName: {}", e.what());
 	}
 }
 
@@ -2087,9 +2090,9 @@ void ControllerEntityImpl::setConfigurationName(UniqueIdentifier const targetEnt
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setName: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setName: {}", e.what());
 	}
 }
 
@@ -2102,9 +2105,9 @@ void ControllerEntityImpl::getConfigurationName(UniqueIdentifier const targetEnt
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize getName: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getName: {}", e.what());
 	}
 }
 
@@ -2117,9 +2120,9 @@ void ControllerEntityImpl::setStreamInputName(UniqueIdentifier const targetEntit
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setName: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setName: {}", e.what());
 	}
 }
 
@@ -2132,9 +2135,9 @@ void ControllerEntityImpl::getStreamInputName(UniqueIdentifier const targetEntit
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize getName: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getName: {}", e.what());
 	}
 }
 
@@ -2147,9 +2150,9 @@ void ControllerEntityImpl::setStreamOutputName(UniqueIdentifier const targetEnti
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setName: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setName: {}", e.what());
 	}
 }
 
@@ -2162,9 +2165,9 @@ void ControllerEntityImpl::getStreamOutputName(UniqueIdentifier const targetEnti
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize getName: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getName: {}", e.what());
 	}
 }
 
@@ -2177,9 +2180,9 @@ void ControllerEntityImpl::setAudioUnitSamplingRate(UniqueIdentifier const targe
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::SetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setAudioUnitSamplingRate: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setAudioUnitSamplingRate: {}", e.what());
 	}
 }
 
@@ -2192,9 +2195,9 @@ void ControllerEntityImpl::setVideoClusterSamplingRate(UniqueIdentifier const ta
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::SetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setVideoClusterSamplingRate: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setVideoClusterSamplingRate: {}", e.what());
 	}
 }
 
@@ -2207,12 +2210,11 @@ void ControllerEntityImpl::setSensorClusterSamplingRate(UniqueIdentifier const t
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::SetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setSensorClusterSamplingRate: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setSensorClusterSamplingRate: {}", e.what());
 	}
 }
-
 
 void ControllerEntityImpl::setClockSource(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, model::ClockSourceIndex const clockSourceIndex, SetClockSourceHandler const& handler) const noexcept
 {
@@ -2223,9 +2225,9 @@ void ControllerEntityImpl::setClockSource(UniqueIdentifier const targetEntityID,
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::SetClockSource, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize setClockSource: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setClockSource: {}", e.what());
 	}
 }
 
@@ -2238,9 +2240,9 @@ void ControllerEntityImpl::startStreamInput(UniqueIdentifier const targetEntityI
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::StartStreaming, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize startStreamInput: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize startStreamInput: {}", e.what());
 	}
 }
 
@@ -2253,9 +2255,9 @@ void ControllerEntityImpl::startStreamOutput(UniqueIdentifier const targetEntity
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::StartStreaming, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize startStreamOutput: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize startStreamOutput: {}", e.what());
 	}
 }
 
@@ -2268,9 +2270,9 @@ void ControllerEntityImpl::stopStreamInput(UniqueIdentifier const targetEntityID
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::StopStreaming, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize stopStreamInput: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize stopStreamInput: {}", e.what());
 	}
 }
 
@@ -2283,9 +2285,9 @@ void ControllerEntityImpl::stopStreamOutput(UniqueIdentifier const targetEntityI
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::StopStreaming, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize stopStreamOutput: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize stopStreamOutput: {}", e.what());
 	}
 }
 
@@ -2298,9 +2300,9 @@ void ControllerEntityImpl::getAvbInfo(UniqueIdentifier const targetEntityID, mod
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::GetAvbInfo, ser.data(), ser.size(), errorCallback, handler);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize getAvbInfo: ") + e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getAvbInfo: {}", e.what());
 	}
 }
 

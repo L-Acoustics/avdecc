@@ -50,6 +50,7 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/internals/exception.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/exports.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/instrumentationNotifier.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/logItems.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolDefines.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/streamFormat.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityEnums.hpp
@@ -108,6 +109,7 @@ set (SOURCE_FILES_ENTITY
 # Common files
 set (HEADER_FILES_COMMON
 	${CMAKE_CURRENT_BINARY_DIR}/config.h
+	logHelper.hpp
 	serialization.hpp
 )
 
@@ -243,6 +245,12 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 
 	# Additional private include directory
 	target_include_directories(la_avdecc_cxx PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}) # Include root source directory for access to private headers
+	
+	# Setup libfmt
+	if(ENABLE_AVDECC_USE_FMTLIB)
+		target_compile_options(la_avdecc_cxx PRIVATE -DHAVE_FMT)
+		target_link_libraries(la_avdecc_cxx PRIVATE fmt-header-only)
+	endif()
 
 	# Set installation rule
 	if(INSTALL_AVDECC_LIB_SHARED_CXX)
@@ -272,7 +280,7 @@ if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 
 	# Additional include directory (only for build interface)
 	target_include_directories(la_avdecc_static PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>) # Include root source directory for access to private headers
-
+	
 	# Set installation rule
 	if(INSTALL_AVDECC_LIB_STATIC)
 		setup_library_install_rules(la_avdecc_static)

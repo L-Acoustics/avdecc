@@ -32,31 +32,64 @@ namespace la
 {
 namespace avdecc
 {
+namespace logger
+{
 
+/** Log layers */
+enum class Layer
+{
+	Generic = 0,
+	Serialization = 1,
+	ProtocolInterface = 2,
+	AemPayload = 3,
+	ControllerEntity = 4,
+	ControllerStateMachine = 5,
+	Controller = 6,
+	FirstUserLayer = 100,
+};
+
+/** Log levels */
+enum class Level
+{
+	Trace = 0, /**< Very verbose level (always disabled in Release) */
+	Debug = 1, /**< Verbose level (always disabled in Release) */
+	Info = 2, /**< Information level */
+	Warn = 3, /**< Warning level */
+	Error = 4, /**< Error level */
+	None = 99, /**< No logging level */
+};
+
+/** Base class for a LogItem to be logged */
+class LogItem
+{
+public:
+	LogItem(Layer const layer) noexcept : _layer(layer) {}
+	virtual ~LogItem() noexcept {}
+
+	Layer getLayer() const noexcept
+	{
+		return _layer;
+	}
+	virtual std::string getMessage() const noexcept = 0;
+
+	// Defaulted compiler auto-generated methods
+	LogItem(LogItem&&) = default;
+	LogItem(LogItem const&) = default;
+	LogItem& operator=(LogItem const&) = default;
+	LogItem& operator=(LogItem&&) = default;
+private:
+	Layer const _layer{ Layer::Generic };
+};
+
+/** Simple logger class declaration */
 class Logger
 {
 public:
-	enum class Layer
-	{
-		Protocol = 0,
-		Controller = 1,
-		Talker = 2,
-		Listener = 3,
-		FirstUserLayer = 100,
-	};
-	enum class Level
-	{
-		Trace = 0, /**< Very verbose level (always disabled in Release) */
-		Debug = 1, /**< Verbose level (always disabled in Release) */
-		Info = 2, /**< Information level */
-		Warn = 3, /**< Warning level */
-		Error = 4, /**< Error level */
-		None = 99, /**< No logging level */
-	};
+	/** Observer interface for the Logger */
 	class Observer
 	{
 	public:
-		virtual void onLog(la::avdecc::Logger::Layer const layer, la::avdecc::Logger::Level const level, std::string const& message) noexcept = 0;
+		virtual void onLogItem(la::avdecc::logger::Level const /*level*/, la::avdecc::logger::LogItem const* const /*item*/) noexcept {}
 	};
 
 	static LA_AVDECC_API Logger& LA_AVDECC_CALL_CONVENTION getInstance() noexcept;
@@ -64,7 +97,7 @@ public:
 	virtual void registerObserver(Observer* const observer) noexcept = 0;
 	virtual void unregisterObserver(Observer* const observer) noexcept = 0;
 
-	virtual void log(Layer const layer, Level const level, std::string const& message) noexcept = 0;
+	virtual void logItem(Level const level, LogItem const* const item) noexcept = 0;
 	virtual void setLevel(Level const level) noexcept = 0;
 	virtual Level getLevel() const noexcept = 0;
 
@@ -82,5 +115,6 @@ protected:
 	virtual ~Logger() noexcept = default;
 };
 
+} // namespace logger
 } // namespace avdecc
 } // namespace la

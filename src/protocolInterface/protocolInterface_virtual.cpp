@@ -35,7 +35,7 @@
 #include <memory>
 #include <functional>
 #include <atomic>
-#include "la/avdecc/logger.hpp"
+#include "logHelper.hpp"
 
 // Only enable instrumentation in static library and in debug (for unit testing mainly)
 #if defined(DEBUG) && defined(la_avdecc_cxx_STATICS)
@@ -119,53 +119,53 @@ public:
 		// Virtual interface not created yet
 		if (interfaceIt == _interfaces.end())
 		{
-			auto interface = std::make_unique<Interface>();
-			interface->dispatchThread = std::thread([this, networkInterfaceName, interface = interface.get()]()
+			auto intfc = std::make_unique<Interface>();
+			intfc->dispatchThread = std::thread([networkInterfaceName, intfc = intfc.get()]()
 			{
 				la::avdecc::setCurrentThreadName("avdecc::VirtualInterface." + networkInterfaceName + "::Capture");
-				while (!interface->shouldTerminate)
+				while (!intfc->shouldTerminate)
 				{
 					MessagesList messagesToSend{};
 
 					// Wait for one (or more) message to be available (while under the lock), or for shouldTerminate to be set
 					{
-						std::unique_lock<decltype(interface->mutex)> lock(interface->mutex);
+						std::unique_lock<decltype(intfc->mutex)> lock(intfc->mutex);
 						
 						// Wait for message in the queue
-						interface->cond.wait(lock, [this, interface]
+						intfc->cond.wait(lock, [intfc]
 						{
-							return interface->messages.size() > 0 || interface->shouldTerminate;
+							return intfc->messages.size() > 0 || intfc->shouldTerminate;
 						});
 						
 						// Empty the queue
-						while (!interface->shouldTerminate && interface->messages.size() > 0)
+						while (!intfc->shouldTerminate && intfc->messages.size() > 0)
 						{
 							// Pop a message from the queue
-							messagesToSend.push_back(std::move(interface->messages.front()));
-							interface->messages.pop_front();
+							messagesToSend.push_back(std::move(intfc->messages.front()));
+							intfc->messages.pop_front();
 							
 							SEND_INSTRUMENTATION_NOTIFICATION("ProtocolInterfaceVirtual::onMessage::PostLock");
 						}
 					}
 					
 					// Now we can send messages without locking
-					while (!interface->shouldTerminate && messagesToSend.size() > 0)
+					while (!intfc->shouldTerminate && messagesToSend.size() > 0)
 					{
 						auto const& message = messagesToSend.front();
 
 						// Transport error
 						if (message.size() == 0)
 						{
-							interface->observers.notifyObservers<Observer>([](auto* obs)
+							intfc->observers.notifyObservers<Observer>([](auto* obs)
 							{
 								obs->onTransportError();
 							});
-							interface->shouldTerminate = true;
+							intfc->shouldTerminate = true;
 							break;
 						}
 
 						// Notify registered observers
-						interface->observers.notifyObservers<Observer>([&message](auto* obs)
+						intfc->observers.notifyObservers<Observer>([&message](auto* obs)
 						{
 							obs->onMessage(message);
 						});
@@ -173,7 +173,7 @@ public:
 					}
 				}
 			});
-			auto result = _interfaces.emplace(std::make_pair(networkInterfaceName, std::move(interface)));
+			auto result = _interfaces.emplace(std::make_pair(networkInterfaceName, std::move(intfc)));
 			// Insertion failed
 			if (!result.second)
 				return;
@@ -181,10 +181,10 @@ public:
 		}
 
 		// Register observer
-		auto& interface = *interfaceIt->second;
+		auto& intfc = *interfaceIt->second;
 		try
 		{
-			interface.observers.registerObserver(observer);
+			intfc.observers.registerObserver(observer);
 		}
 		catch (std::invalid_argument const&)
 		{
@@ -202,17 +202,17 @@ public:
 			return;
 
 		// Unregister observer
-		auto& interface = *interfaceIt->second;
+		auto& intfc = *interfaceIt->second;
 		try
 		{
-			interface.observers.unregisterObserver(observer);
+			intfc.observers.unregisterObserver(observer);
 		}
 		catch (std::invalid_argument const&)
 		{
 		}
 
 		// If last observer for this interface, remove the interface (effectively waiting for the dispatch thread to shutdown)
-		if (interface.observers.countObservers() == 0)
+		if (intfc.observers.countObservers() == 0)
 		{
 			_interfaces.erase(interfaceIt);
 		}
@@ -229,14 +229,14 @@ public:
 			return;
 
 		// Add message to the queue
-		auto& interface = *interfaceIt->second;
+		auto& intfc = *interfaceIt->second;
 
-		UNIQUE_LOCK(interface.mutex, std::chrono::milliseconds(10), 100);
+		UNIQUE_LOCK(intfc.mutex, std::chrono::milliseconds(10), 100);
 
-		interface.messages.push_back(std::move(message));
+		intfc.messages.push_back(std::move(message));
 
 		// Notify the dispatch thread
-		interface.cond.notify_all();
+		intfc.cond.notify_all();
 	}
 
 	// Deleted compiler auto-generated methods
@@ -454,12 +454,12 @@ void ProtocolInterfaceVirtualImpl::dispatchAvdeccMessage(std::uint8_t const* con
 	}
 	catch (std::invalid_argument const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Warn, std::string("ProtocolInterfaceVirtual: Packet dropped: ") + e.what());
+		LOG_GENERIC_WARN(std::string("ProtocolInterfaceVirtual: Packet dropped: ") + e.what());
 	}
 	catch (...)
 	{
 		AVDECC_ASSERT(false, "Unknown exception");
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Warn, "ProtocolInterfaceVirtual: Packet dropped due to unknown exception");
+		LOG_GENERIC_WARN("ProtocolInterfaceVirtual: Packet dropped due to unknown exception");
 	}
 }
 
@@ -681,9 +681,9 @@ ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendMessage(Adpdu const& 
 		// Send the message
 		return sendPacket(buffer);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize ADPDU: ") + e.what());
+		LOG_GENERIC_DEBUG(std::string("Failed to serialize ADPDU: ") + e.what());
 		return ProtocolInterface::Error::InternalError;
 	}
 }
@@ -705,9 +705,9 @@ ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendMessage(Aecpdu const&
 		// Send the message
 		return sendPacket(buffer);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize AECPDU: ") + e.what());
+		LOG_GENERIC_DEBUG(std::string("Failed to serialize AECPDU: ") + e.what());
 		return ProtocolInterface::Error::InternalError;
 	}
 }
@@ -729,9 +729,9 @@ ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendMessage(Acmpdu const&
 		// Send the message
 		return sendPacket(buffer);
 	}
-	catch (std::exception const& e)
+	catch ([[maybe_unused]] std::exception const& e)
 	{
-		Logger::getInstance().log(Logger::Layer::Protocol, Logger::Level::Debug, std::string("Failed to serialize ACMPDU: ") + e.what());
+		LOG_GENERIC_DEBUG(std::string("Failed to serialize ACMPDU: ") + e.what());
 		return ProtocolInterface::Error::InternalError;
 	}
 }

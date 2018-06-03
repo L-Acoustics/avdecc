@@ -23,7 +23,7 @@
 */
 
 #include "avdeccControllerImpl.hpp"
-#include "la/avdecc/logger.hpp"
+#include "avdeccControllerLogHelper.hpp"
 
 namespace la
 {
@@ -112,6 +112,11 @@ void ControllerImpl::destroy() noexcept
 	delete this;
 }
 
+UniqueIdentifier ControllerImpl::getControllerEID() const noexcept
+{
+	return _controller->getEntityID();
+}
+
 /* Controller configuration */
 void ControllerImpl::enableEntityAdvertising(std::uint32_t const availableDuration)
 {
@@ -127,23 +132,26 @@ void ControllerImpl::disableEntityAdvertising() noexcept
 /* Enumeration and Control Protocol (AECP) */
 void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, AcquireEntityHandler const& handler) const noexcept
 {
+	auto const descriptorType{ entity::model::DescriptorType::Entity };
+	auto const descriptorIndex{ entity::model::DescriptorIndex{0u} };
+
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("acquireEntity requested for ") + toHexString(targetEntityID, true));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User acquireEntity (isPersistent={} DescriptorType={} DescriptorIndex={})", isPersistent, to_integral(descriptorType), descriptorIndex);
 
 		// Already acquired or acquiring, don't do anything (we want to try to acquire if it's flagged as acquired by another controller, in case it went offline without notice)
 		if (controlledEntity->isAcquired() || controlledEntity->isAcquiring())
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("acquireEntity not sent, ") + toHexString(targetEntityID, true) + "is " + (controlledEntity->isAcquired() ? "already acquired" : "being acquired"));
+			LOG_CONTROLLER_TRACE(targetEntityID, "User acquireEntity not sent because entity is {}", (controlledEntity->isAcquired() ? "already acquired" : "being acquired"));
 			return;
 		}
 		controlledEntity->setAcquireState(model::AcquireState::TryAcquire);
-		_controller->acquireEntity(targetEntityID, isPersistent, entity::model::DescriptorType::Entity, 0u, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+		_controller->acquireEntity(targetEntityID, isPersistent, descriptorType, descriptorIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("acquireEntity result for ") + toHexString(entityID, true) + ": " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(entityID, "User acquireEntityResult (OwningController={} DescriptorType={} DescriptorIndex={}): {}", toHexString(owningEntity, true), to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto controlledEntity = getControlledEntityImpl(entityID);
@@ -171,12 +179,12 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 							break;
 					}
 				}
-				catch (controller::ControlledEntity::Exception const& e)
+				catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 				{
 					// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 					if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "acquireEntity succeeded on the entity, but failed to update local model"))
 					{
-						Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("acquireEntity succeeded on the entity, but failed to update local model: ") + e.what());
+						LOG_CONTROLLER_WARN(entityID, "User acquireEntity succeeded on the entity, but failed to update local model: {}", e.what());
 					}
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, owningEntity);
@@ -195,15 +203,18 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 
 void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, ReleaseEntityHandler const& handler) const noexcept
 {
+	auto const descriptorType{ entity::model::DescriptorType::Entity };
+	auto const descriptorIndex{ entity::model::DescriptorIndex{ 0u } };
+
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("releaseEntity requested for ") + toHexString(targetEntityID, true));
-		_controller->releaseEntity(targetEntityID, entity::model::DescriptorType::Entity, 0u, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+		LOG_CONTROLLER_TRACE(targetEntityID, "User releaseEntity (DescriptorType={} DescriptorIndex={})", to_integral(descriptorType), descriptorIndex);
+		_controller->releaseEntity(targetEntityID, descriptorType, descriptorIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("releaseEntity result for ") + toHexString(entityID, true) + ": " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(entityID, "User releaseEntity (OwningController={} DescriptorType={} DescriptorIndex={}): {}", toHexString(owningEntity, true), to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto controlledEntity = getControlledEntityImpl(entityID);
@@ -218,12 +229,12 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 						updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
 					}
 				}
-				catch (controller::ControlledEntity::Exception const& e)
+				catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 				{
 					// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 					if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "releaseEntity succeeded on the entity, but failed to update local model"))
 					{
-						Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("releaseEntity succeeded on the entity, but failed to update local model: ") + e.what());
+						LOG_CONTROLLER_WARN(entityID, "User releaseEntity succeeded on the entity, but failed to update local model: {}", e.what());
 					}
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, owningEntity);
@@ -247,10 +258,10 @@ void ControllerImpl::setConfiguration(UniqueIdentifier const targetEntityID, ent
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setConfiguration requested for ") + toHexString(targetEntityID, true));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setConfiguration (ConfigurationIndex={})", configurationIndex);
 		_controller->setConfiguration(targetEntityID, configurationIndex, [this, handler](entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setConfiguration result for ") + toHexString(entityID, true) + " -> " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(entityID, "User setConfiguration (ConfigurationIndex={}): {}", configurationIndex, entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto controlledEntity = getControlledEntityImpl(entityID);
@@ -264,12 +275,12 @@ void ControllerImpl::setConfiguration(UniqueIdentifier const targetEntityID, ent
 					{
 						updateConfiguration(controller, *entity, configurationIndex);
 					}
-					catch (controller::ControlledEntity::Exception const& e)
+					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 					{
 						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "setConfiguration succeeded on the entity, but failed to update local model"))
 						{
-							Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("setConfiguration succeeded on the entity, but failed to update local model: ") + e.what());
+							LOG_CONTROLLER_WARN(entityID, "User setConfiguration succeeded on the entity, but failed to update local model: {}", e.what());
 						}
 					}
 				}
@@ -294,10 +305,10 @@ void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID,
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setStreamInputFormat requested for ") + toHexString(targetEntityID, true));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamInputFormat (StreamIndex={} streamFormat={})", streamIndex, streamFormat);
 		_controller->setStreamInputFormat(targetEntityID, streamIndex, streamFormat, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setStreamInputFormat result for ") + toHexString(entityID, true) + ": " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(entityID, "User setStreamInputFormat (StreamIndex={} streamFormat={}): {}", streamIndex, streamFormat, entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto controlledEntity = getControlledEntityImpl(entityID);
@@ -311,12 +322,12 @@ void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID,
 					{
 						updateStreamInputFormat(*entity, streamIndex, streamFormat);
 					}
-					catch (controller::ControlledEntity::Exception const& e)
+					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 					{
 						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "setStreamInputFormat succeeded on the entity, but failed to update local model"))
 						{
-							Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("setStreamInputFormat succeeded on the entity, but failed to update local model: ") + e.what());
+							LOG_CONTROLLER_WARN(entityID, "User setStreamInputFormat succeeded on the entity, but failed to update local model: {}", e.what());
 						}
 					}
 				}
@@ -341,10 +352,10 @@ void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setStreamOutputFormat requested for ") + toHexString(targetEntityID, true));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamOutputFormat (StreamIndex={} streamFormat={})", streamIndex, streamFormat);
 		_controller->setStreamOutputFormat(targetEntityID, streamIndex, streamFormat, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setStreamOutputFormat result for ") + toHexString(entityID, true) + ": " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(entityID, "User setStreamOutputFormat (StreamIndex={} streamFormat={}): {}", streamIndex, streamFormat, entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto controlledEntity = getControlledEntityImpl(entityID);
@@ -358,12 +369,12 @@ void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID
 					{
 						updateStreamOutputFormat(*entity, streamIndex, streamFormat);
 					}
-					catch (controller::ControlledEntity::Exception const& e)
+					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 					{
 						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "setStreamOutputFormat succeeded on the entity, but failed to update local model"))
 						{
-							Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("setStreamOutputFormat succeeded on the entity, but failed to update local model: ") + e.what());
+							LOG_CONTROLLER_WARN(entityID, "User setStreamOutputFormat succeeded on the entity, but failed to update local model: {}", e.what());
 						}
 					}
 				}
@@ -388,10 +399,10 @@ void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setEntityName requested for ") + toHexString(targetEntityID, true));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setEntityName (Name={})", name.str());
 		_controller->setEntityName(targetEntityID, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setEntityName result for ") + toHexString(entityID, true) + " -> " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(entityID, "User setEntityName (): {}", entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto controlledEntity = getControlledEntityImpl(entityID);
@@ -405,12 +416,12 @@ void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity
 					{
 						updateEntityName(*entity, name);
 					}
-					catch (controller::ControlledEntity::Exception const& e)
+					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 					{
 						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "setEntityName succeeded on the entity, but failed to update local model"))
 						{
-							Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("setEntityName succeeded on the entity, but failed to update local model: ") + e.what());
+							LOG_CONTROLLER_WARN(entityID, "User setEntityName succeeded on the entity, but failed to update local model: {}", e.what());
 						}
 					}
 				}
@@ -435,10 +446,10 @@ void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, e
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setEntityGroupName requested for ") + toHexString(targetEntityID, true));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setEntityGroupName (Name={})", name.str());
 		_controller->setEntityGroupName(targetEntityID, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setEntityGroupName result for ") + toHexString(entityID, true) + " -> " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(entityID, "User setEntityGroupName (): {}", entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto controlledEntity = getControlledEntityImpl(entityID);
@@ -452,12 +463,12 @@ void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, e
 					{
 						updateEntityGroupName(*entity, name);
 					}
-					catch (controller::ControlledEntity::Exception const& e)
+					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 					{
 						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "setEntityGroupName succeeded on the entity, but failed to update local model"))
 						{
-							Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("setEntityGroupName succeeded on the entity, but failed to update local model: ") + e.what());
+							LOG_CONTROLLER_WARN(entityID, "User setEntityGroupName succeeded on the entity, but failed to update local model: {}", e.what());
 						}
 					}
 				}
@@ -482,10 +493,10 @@ void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID,
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setConfigurationName requested for ") + toHexString(targetEntityID, true));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setConfigurationName (ConfigurationIndex={} Name={})", configurationIndex, name.str());
 		_controller->setConfigurationName(targetEntityID, configurationIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setConfigurationName result for ") + toHexString(entityID, true) + " -> " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(entityID, "User setConfigurationName (ConfigurationIndex={}): {}", configurationIndex, entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto controlledEntity = getControlledEntityImpl(entityID);
@@ -499,12 +510,12 @@ void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID,
 					{
 						updateConfigurationName(*entity, configurationIndex, name);
 					}
-					catch (controller::ControlledEntity::Exception const& e)
+					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 					{
 						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "setConfigurationName succeeded on the entity, but failed to update local model"))
 						{
-							Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("setConfigurationName succeeded on the entity, but failed to update local model: ") + e.what());
+							LOG_CONTROLLER_WARN(entityID, "User setConfigurationName succeeded on the entity, but failed to update local model: {}", e.what());
 						}
 					}
 				}
@@ -529,10 +540,10 @@ void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, e
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setStreamInputName requested for ") + toHexString(targetEntityID, true));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamInputName (ConfigurationIndex={} StreamIndex={} Name={})", configurationIndex, streamIndex, name.str());
 		_controller->setStreamInputName(targetEntityID, configurationIndex, streamIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setStreamInputName result for ") + toHexString(entityID, true) + " -> " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(entityID, "User setStreamInputName (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto controlledEntity = getControlledEntityImpl(entityID);
@@ -546,12 +557,12 @@ void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, e
 					{
 						updateStreamInputName(*entity, configurationIndex, streamIndex, name);
 					}
-					catch (controller::ControlledEntity::Exception const& e)
+					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 					{
 						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "setStreamInputName succeeded on the entity, but failed to update local model"))
 						{
-							Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("setStreamInputName succeeded on the entity, but failed to update local model: ") + e.what());
+							LOG_CONTROLLER_WARN(entityID, "User setStreamInputName succeeded on the entity, but failed to update local model: {}", e.what());
 						}
 					}
 				}
@@ -576,10 +587,10 @@ void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, 
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setStreamOutputName requested for ") + toHexString(targetEntityID, true));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamOutputName (ConfigurationIndex={} StreamIndex={} Name={})", configurationIndex, streamIndex, name.str());
 		_controller->setStreamOutputName(targetEntityID, configurationIndex, streamIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setStreamOutputName result for ") + toHexString(entityID, true) + " -> " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(entityID, "User setStreamOutputName (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto controlledEntity = getControlledEntityImpl(entityID);
@@ -593,12 +604,12 @@ void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, 
 					{
 						updateStreamOutputName(*entity, configurationIndex, streamIndex, name);
 					}
-					catch (controller::ControlledEntity::Exception const& e)
+					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 					{
 						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "setStreamOutputName succeeded on the entity, but failed to update local model"))
 						{
-							Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("setStreamOutputName succeeded on the entity, but failed to update local model: ") + e.what());
+							LOG_CONTROLLER_WARN(entityID, "User setStreamOutputName succeeded on the entity, but failed to update local model: {}", e.what());
 						}
 					}
 				}
@@ -623,10 +634,10 @@ void ControllerImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntit
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setAudioUnitSamplingRate requested for ") + toHexString(targetEntityID, true) + ":" + std::to_string(audioUnitIndex));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioUnitSamplingRate (AudioUnitIndex={} SamplingRate={})", audioUnitIndex, samplingRate);
 		_controller->setAudioUnitSamplingRate(targetEntityID, audioUnitIndex, samplingRate, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setAudioUnitSamplingRate result for ") + toHexString(entityID, true) + ":" + std::to_string(audioUnitIndex) + " -> " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(entityID, "User setAudioUnitSamplingRate (AudioUnitIndex={} SamplingRate={}): {}", audioUnitIndex, samplingRate, entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto controlledEntity = getControlledEntityImpl(entityID);
@@ -640,12 +651,12 @@ void ControllerImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntit
 					{
 						updateAudioUnitSamplingRate(*entity, audioUnitIndex, samplingRate);
 					}
-					catch (controller::ControlledEntity::Exception const& e)
+					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 					{
 						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "setAudioUnitSamplingRate succeeded on the entity, but failed to update local model"))
 						{
-							Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("setAudioUnitSamplingRate succeeded on the entity, but failed to update local model: ") + e.what());
+							LOG_CONTROLLER_WARN(entityID, "User setAudioUnitSamplingRate succeeded on the entity, but failed to update local model: {}", e.what());
 						}
 					}
 				}
@@ -670,10 +681,10 @@ void ControllerImpl::setClockSource(UniqueIdentifier const targetEntityID, entit
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setClockSource requested for ") + toHexString(targetEntityID, true) + ":" + std::to_string(clockDomainIndex));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setClockSource (ClockDomainIndex={} ClockSourceIndex={})", clockDomainIndex, clockSourceIndex);
 		_controller->setClockSource(targetEntityID, clockDomainIndex, clockSourceIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("setClockSource result for ") + toHexString(entityID, true) + ":" + std::to_string(clockDomainIndex) + " -> " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(entityID, "User setClockSource (ClockDomainIndex={} ClockSourceIndex={}): {}", clockDomainIndex, clockSourceIndex, entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto controlledEntity = getControlledEntityImpl(entityID);
@@ -687,12 +698,12 @@ void ControllerImpl::setClockSource(UniqueIdentifier const targetEntityID, entit
 					{
 						updateClockSource(*entity, clockDomainIndex, clockSourceIndex);
 					}
-					catch (controller::ControlledEntity::Exception const& e)
+					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 					{
 						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "setClockSource succeeded on the entity, but failed to update local model"))
 						{
-							Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("setClockSource succeeded on the entity, but failed to update local model: ") + e.what());
+							LOG_CONTROLLER_WARN(entityID, "User setClockSource succeeded on the entity, but failed to update local model: {}", e.what());
 						}
 					}
 				}
@@ -717,10 +728,10 @@ void ControllerImpl::startStreamInput(UniqueIdentifier const targetEntityID, ent
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("startStreamInput requested for ") + toHexString(targetEntityID, true) + ":" + std::to_string(streamIndex));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User startStreamInput (StreamIndex={})", streamIndex);
 		_controller->startStreamInput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("startStreamInput result for ") + toHexString(entityID, true) + ":" + std::to_string(streamIndex) + " -> " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(entityID, "User startStreamInput (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto controlledEntity = getControlledEntityImpl(entityID);
@@ -734,12 +745,12 @@ void ControllerImpl::startStreamInput(UniqueIdentifier const targetEntityID, ent
 					{
 						updateStreamInputRunningStatus(*entity, streamIndex, true);
 					}
-					catch (controller::ControlledEntity::Exception const& e)
+					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 					{
 						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "startStreamInput succeeded on the entity, but failed to update local model"))
 						{
-							Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("startStreamInput succeeded on the entity, but failed to update local model: ") + e.what());
+							LOG_CONTROLLER_WARN(entityID, "User startStreamInput succeeded on the entity, but failed to update local model: {}", e.what());
 						}
 					}
 				}
@@ -764,10 +775,10 @@ void ControllerImpl::stopStreamInput(UniqueIdentifier const targetEntityID, enti
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("stopStreamInput requested for ") + toHexString(targetEntityID, true) + ":" + std::to_string(streamIndex));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User stopStreamInput (StreamIndex={})", streamIndex);
 		_controller->stopStreamInput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("stopStreamInput result for ") + toHexString(entityID, true) + ":" + std::to_string(streamIndex) + " -> " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(entityID, "User stopStreamInput (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto controlledEntity = getControlledEntityImpl(entityID);
@@ -781,12 +792,12 @@ void ControllerImpl::stopStreamInput(UniqueIdentifier const targetEntityID, enti
 					{
 						updateStreamInputRunningStatus(*entity, streamIndex, false);
 					}
-					catch (controller::ControlledEntity::Exception const& e)
+					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 					{
 						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "stopStreamInput succeeded on the entity, but failed to update local model"))
 						{
-							Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("stopStreamInput succeeded on the entity, but failed to update local model: ") + e.what());
+							LOG_CONTROLLER_WARN(entityID, "User stopStreamInput succeeded on the entity, but failed to update local model: {}", e.what());
 						}
 					}
 				}
@@ -811,10 +822,10 @@ void ControllerImpl::startStreamOutput(UniqueIdentifier const targetEntityID, en
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("startStreamOutput requested for ") + toHexString(targetEntityID, true) + ":" + std::to_string(streamIndex));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User startStreamOutput (StreamIndex={})", streamIndex);
 		_controller->startStreamOutput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("startStreamOutput result for ") + toHexString(entityID, true) + ":" + std::to_string(streamIndex) + " -> " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(entityID, "User startStreamOutput (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto controlledEntity = getControlledEntityImpl(entityID);
@@ -828,12 +839,12 @@ void ControllerImpl::startStreamOutput(UniqueIdentifier const targetEntityID, en
 					{
 						updateStreamOutputRunningStatus(*entity, streamIndex, true);
 					}
-					catch (controller::ControlledEntity::Exception const& e)
+					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 					{
 						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "startStreamOutput succeeded on the entity, but failed to update local model"))
 						{
-							Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("startStreamOutput succeeded on the entity, but failed to update local model: ") + e.what());
+							LOG_CONTROLLER_WARN(entityID, "User startStreamOutput succeeded on the entity, but failed to update local model: {}", e.what());
 						}
 					}
 				}
@@ -858,10 +869,10 @@ void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, ent
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("stopStreamOutput requested for ") + toHexString(targetEntityID, true) + ":" + std::to_string(streamIndex));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User stopStreamOutput (StreamIndex={})", streamIndex);
 		_controller->stopStreamOutput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("stopStreamOutput result for ") + toHexString(entityID, true) + ":" + std::to_string(streamIndex) + " -> " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(entityID, "User stopStreamOutput (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto controlledEntity = getControlledEntityImpl(entityID);
@@ -875,12 +886,12 @@ void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, ent
 					{
 						updateStreamOutputRunningStatus(*entity, streamIndex, false);
 					}
-					catch (controller::ControlledEntity::Exception const& e)
+					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 					{
 						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "stopStreamOutput succeeded on the entity, but failed to update local model"))
 						{
-							Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("stopStreamOutput succeeded on the entity, but failed to update local model: ") + e.what());
+							LOG_CONTROLLER_WARN(entityID, "User stopStreamOutput succeeded on the entity, but failed to update local model: {}", e.what());
 						}
 					}
 				}
@@ -905,10 +916,10 @@ void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targ
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("addStreamInputAudioMappings requested for ") + toHexString(targetEntityID, true));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User addStreamInputAudioMappings (StreamPortIndex={})", streamPortIndex); // TODO: Convert mappings to string and add to log
 		_controller->addStreamPortInputAudioMappings(targetEntityID, streamPortIndex, mappings, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("addStreamInputAudioMappings result for ") + toHexString(entityID, true) + ": " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(entityID, "User addStreamInputAudioMappings (StreamPortIndex={}): {}", streamPortIndex, entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto controlledEntity = getControlledEntityImpl(entityID);
@@ -922,12 +933,12 @@ void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targ
 					{
 						updateStreamPortInputAudioMappingsAdded(*entity, streamPortIndex, mappings);
 					}
-					catch (controller::ControlledEntity::Exception const& e)
+					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 					{
 						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "addStreamInputAudioMappings succeeded on the entity, but failed to update local model"))
 						{
-							Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("addStreamInputAudioMappings succeeded on the entity, but failed to update local model: ") + e.what());
+							LOG_CONTROLLER_WARN(entityID, "User addStreamInputAudioMappings succeeded on the entity, but failed to update local model: {}", e.what());
 						}
 					}
 				}
@@ -952,10 +963,10 @@ void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const tar
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("addStreamOutputAudioMappings requested for ") + toHexString(targetEntityID, true));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User addStreamOutputAudioMappings (StreamPortIndex={})", streamPortIndex);
 		_controller->addStreamPortOutputAudioMappings(targetEntityID, streamPortIndex, mappings, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("addStreamOutputAudioMappings result for ") + toHexString(entityID, true) + ": " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(entityID, "User addStreamOutputAudioMappings (StreamPortIndex={}): {}", streamPortIndex, entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto controlledEntity = getControlledEntityImpl(entityID);
@@ -969,12 +980,12 @@ void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const tar
 					{
 						updateStreamPortOutputAudioMappingsAdded(*entity, streamPortIndex, mappings);
 					}
-					catch (controller::ControlledEntity::Exception const& e)
+					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 					{
 						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "addStreamOutputAudioMappings succeeded on the entity, but failed to update local model"))
 						{
-							Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("addStreamOutputAudioMappings succeeded on the entity, but failed to update local model: ") + e.what());
+							LOG_CONTROLLER_WARN(entityID, "User addStreamOutputAudioMappings succeeded on the entity, but failed to update local model: {}", e.what());
 						}
 					}
 				}
@@ -999,10 +1010,10 @@ void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const t
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("removeStreamInputAudioMappings requested for ") + toHexString(targetEntityID, true));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User removeStreamInputAudioMappings (StreamPortIndex={})", streamPortIndex);
 		_controller->removeStreamPortInputAudioMappings(targetEntityID, streamPortIndex, mappings, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("removeStreamInputAudioMappings result for ") + toHexString(entityID, true) + ": " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(entityID, "User removeStreamInputAudioMappings (StreamPortIndex={}): {}", streamPortIndex, entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto controlledEntity = getControlledEntityImpl(entityID);
@@ -1016,12 +1027,12 @@ void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const t
 					{
 						updateStreamPortInputAudioMappingsRemoved(*entity, streamPortIndex, mappings);
 					}
-					catch (controller::ControlledEntity::Exception const& e)
+					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 					{
 						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "removeStreamInputAudioMappings succeeded on the entity, but failed to update local model"))
 						{
-							Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("removeStreamInputAudioMappings succeeded on the entity, but failed to update local model: ") + e.what());
+							LOG_CONTROLLER_WARN(entityID, "User removeStreamInputAudioMappings succeeded on the entity, but failed to update local model: {}", e.what());
 						}
 					}
 				}
@@ -1046,10 +1057,10 @@ void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const 
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("removeStreamOutputAudioMappings requested for ") + toHexString(targetEntityID, true));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User removeStreamOutputAudioMappings (StreamPortIndex={})", streamPortIndex);
 		_controller->removeStreamPortOutputAudioMappings(targetEntityID, streamPortIndex, mappings, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("removeStreamOutputAudioMappings result for ") + toHexString(entityID, true) + ": " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(entityID, "User removeStreamOutputAudioMappings (StreamPortIndex={}): {}", streamPortIndex, entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto controlledEntity = getControlledEntityImpl(entityID);
@@ -1063,12 +1074,12 @@ void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const 
 					{
 						updateStreamPortOutputAudioMappingsRemoved(*entity, streamPortIndex, mappings);
 					}
-					catch (controller::ControlledEntity::Exception const& e)
+					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
 					{
 						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
 						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "removeStreamOutputAudioMappings succeeded on the entity, but failed to update local model"))
 						{
-							Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Warn, std::string("removeStreamOutputAudioMappings succeeded on the entity, but failed to update local model: ") + e.what());
+							LOG_CONTROLLER_WARN(entityID, "User removeStreamOutputAudioMappings succeeded on the entity, but failed to update local model: {}", e.what());
 						}
 					}
 				}
@@ -1093,10 +1104,10 @@ void ControllerImpl::connectStream(entity::model::StreamIdentification const& ta
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("connectStream requested for ") + toHexString(listenerStream.entityID, true));
+		LOG_CONTROLLER_TRACE(getNullIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", talkerStream.entityID, talkerStream.streamIndex, listenerStream.entityID, listenerStream.streamIndex);
 		_controller->connectStream(talkerStream, listenerStream, [this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("connectStream result for ") + toHexString(listenerStream.entityID, true) + ": " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(getNullIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", talkerStream.entityID, talkerStream.streamIndex, listenerStream.entityID, listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
 			if (!!status)
 			{
@@ -1123,10 +1134,10 @@ void ControllerImpl::disconnectStream(entity::model::StreamIdentification const&
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("disconnectStream requested for ") + toHexString(listenerStream.entityID, true));
+		LOG_CONTROLLER_TRACE(getNullIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", talkerStream.entityID, talkerStream.streamIndex, listenerStream.entityID, listenerStream.streamIndex);
 		_controller->disconnectStream(talkerStream, listenerStream, [this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("disconnectStream result for ") + toHexString(listenerStream.entityID, true) + ": " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(getNullIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", talkerStream.entityID, talkerStream.streamIndex, listenerStream.entityID, listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
 			bool shouldNotifyHandler{ true }; // Shall we notify the handler right now, or do we have to send another message before
 
@@ -1183,10 +1194,10 @@ void ControllerImpl::disconnectTalkerStream(entity::model::StreamIdentification 
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("disconnectTalkerStream requested for ") + toHexString(listenerStream.entityID, true));
+		LOG_CONTROLLER_TRACE(getNullIdentifier(), "User disconnectTalkerStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", talkerStream.entityID, talkerStream.streamIndex, listenerStream.entityID, listenerStream.streamIndex);
 		_controller->disconnectTalkerStream(talkerStream, listenerStream, [this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("disconnectTalkerStream result for ") + toHexString(listenerStream.entityID, true) + ": " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(getNullIdentifier(), "User disconnectTalkerStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", talkerStream.entityID, talkerStream.streamIndex, listenerStream.entityID, listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
 			auto st = status;
 			if (st == entity::ControllerEntity::ControlStatus::NotConnected)
@@ -1215,10 +1226,10 @@ void ControllerImpl::getListenerStreamState(entity::model::StreamIdentification 
 
 	if (controlledEntity)
 	{
-		Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("disconnectStream requested for ") + toHexString(listenerStream.entityID, true));
+		LOG_CONTROLLER_TRACE(getNullIdentifier(), "User getListenerStreamState (ListenerID={} ListenerIndex={})", listenerStream.entityID, listenerStream.streamIndex);
 		_controller->getListenerStreamState(listenerStream, [this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 		{
-			Logger::getInstance().log(Logger::Layer::Controller, Logger::Level::Trace, std::string("disconnectStream result for ") + toHexString(listenerStream.entityID, true) + ": " + entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(getNullIdentifier(), "User getListenerStreamState (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", talkerStream.entityID, talkerStream.streamIndex, listenerStream.entityID, listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto listener = getControlledEntityImpl(listenerStream.entityID);
