@@ -902,8 +902,18 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::ControllerEntity
 				try
 				{
 					if (mapIndex == 0)
+					{
 						controlledEntity->clearPortInputStreamAudioMappings(configurationIndex, streamPortIndex);
-					bool isComplete = mapIndex == (numberOfMaps - 1);
+					}
+					bool isComplete{ true };
+					if (numberOfMaps != 0)
+					{
+						isComplete = mapIndex == (numberOfMaps - 1);
+					}
+					else if (!mappings.empty())
+					{
+						LOG_CONTROLLER_WARN(entityID, "onGetStreamPortInputAudioMapResult returned 0 as numberOfMaps but mappings array is not empty");
+					}
 					controlledEntity->addPortInputStreamAudioMappings(configurationIndex, streamPortIndex, mappings);
 					if (!isComplete)
 					{
@@ -956,8 +966,18 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::ControllerEntit
 				try
 				{
 					if (mapIndex == 0)
+					{
 						controlledEntity->clearPortOutputStreamAudioMappings(configurationIndex, streamPortIndex);
-					bool isComplete = mapIndex == (numberOfMaps - 1);
+					}
+					bool isComplete{ true };
+					if (numberOfMaps != 0)
+					{
+						isComplete = mapIndex == (numberOfMaps - 1);
+					}
+					else if (!mappings.empty())
+					{
+						LOG_CONTROLLER_WARN(entityID, "onGetStreamPortOutputAudioMapResult returned 0 as numberOfMaps but mappings array is not empty");
+					}
 					controlledEntity->addPortOutputStreamAudioMappings(configurationIndex, streamPortIndex, mappings);
 					if (!isComplete)
 					{
