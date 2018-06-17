@@ -85,8 +85,8 @@ struct EntityDescriptor
 	std::uint32_t availableIndex{ 0u };
 	UniqueIdentifier associationID{ getNullIdentifier() };
 	AvdeccFixedString entityName{};
-	LocalizedStringReference vendorNameString{ 0u };
-	LocalizedStringReference modelNameString{ 0u };
+	LocalizedStringReference vendorNameString{ getNullLocalizedStringReference() };
+	LocalizedStringReference modelNameString{ getNullLocalizedStringReference() };
 	AvdeccFixedString firmwareVersion{};
 	AvdeccFixedString groupName{};
 	AvdeccFixedString serialNumber{};
@@ -98,7 +98,7 @@ struct EntityDescriptor
 struct ConfigurationDescriptor
 {
 	AvdeccFixedString objectName{};
-	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
+	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
 	std::unordered_map<DescriptorType, std::uint16_t, la::avdecc::EnumClassHash> descriptorCounts{};
 };
 
@@ -106,7 +106,7 @@ struct ConfigurationDescriptor
 struct AudioUnitDescriptor
 {
 	AvdeccFixedString objectName{};
-	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
+	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
 	ClockDomainIndex clockDomainIndex{ 0u };
 	std::uint16_t numberOfStreamInputPorts{ 0u };
 	StreamPortIndex baseStreamInputPort{ StreamPortIndex(0u) };
@@ -152,7 +152,7 @@ struct AudioUnitDescriptor
 struct StreamDescriptor
 {
 	AvdeccFixedString objectName{};
-	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
+	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
 	ClockDomainIndex clockDomainIndex{ ClockDomainIndex(0u) };
 	StreamFlags streamFlags{ StreamFlags::None };
 	StreamFormat currentFormat{ getNullStreamFormat() };
@@ -176,7 +176,7 @@ struct StreamDescriptor
 struct JackDescriptor
 {
 	AvdeccFixedString objectName{};
-	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
+	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
 	JackFlags jackFlags{ JackFlags::None };
 	JackType jackType{ JackType::Speaker };
 	std::uint16_t numberOfControls{ 0u };
@@ -187,7 +187,7 @@ struct JackDescriptor
 struct AvbInterfaceDescriptor
 {
 	AvdeccFixedString objectName{};
-	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
+	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
 	networkInterface::MacAddress macAddress{};
 	AvbInterfaceFlags interfaceFlags{ AvbInterfaceFlags::None };
 	UniqueIdentifier clockIdentify{ 0u };
@@ -207,7 +207,7 @@ struct AvbInterfaceDescriptor
 struct ClockSourceDescriptor
 {
 	AvdeccFixedString objectName{};
-	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
+	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
 	ClockSourceFlags clockSourceFlags{ ClockSourceFlags::None };
 	ClockSourceType clockSourceType{ ClockSourceType::Internal };
 	UniqueIdentifier clockSourceIdentifier{ getNullIdentifier() };
@@ -219,7 +219,7 @@ struct ClockSourceDescriptor
 struct MemoryObjectDescriptor
 {
 	AvdeccFixedString objectName{};
-	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
+	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
 	MemoryObjectType memoryObjectType{ MemoryObjectType::FirmwareImage };
 	DescriptorType targetDescriptorType{ DescriptorType::Invalid };
 	DescriptorIndex targetDescriptorIndex{ DescriptorIndex(0u) };
@@ -287,7 +287,7 @@ struct InternalPortDescriptor
 struct AudioClusterDescriptor
 {
 	AvdeccFixedString objectName{};
-	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
+	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
 	DescriptorType signalType{ DescriptorType::Invalid };
 	DescriptorIndex signalIndex{ DescriptorIndex(0u) };
 	std::uint16_t signalOutput{ 0u };
@@ -335,7 +335,7 @@ struct AudioMapDescriptor
 struct ClockDomainDescriptor
 {
 	AvdeccFixedString objectName{};
-	LocalizedStringReference localizedDescription{ LocalizedStringReference(0u) };
+	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
 	ClockSourceIndex clockSourceIndex{ ClockSourceIndex(0u) };
 	std::vector<ClockSourceIndex> clockSources{};
 };
