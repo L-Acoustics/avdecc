@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [2.5.0] - 2018-06-01
 ### Changed
 - Advertising entities not supporting/implementing the query of dynamic information
+
 ### Fixed
 - Removed noexcept qualifier from all std::function (c++17 compatibility)
 - Ignoring incoherent 'connection count' field (Q6 Core after a reboot)
@@ -24,6 +25,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [2.4.0] - 2018-05-15
 ### Added
 - Global API to retrieve the compilation options of the library
+
 ### Fixed
 - Some devices not properly enumerated if an OutputStream is connected
 - Re-enabled AVnu Alliance Network Redundancy support
@@ -38,11 +40,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support for GetStreamInfo and GetAvbInfo unsolicited notifications
 - Support for gptp information changed notification
 - Helper API to get StreamRunning state
+
 ### Changed
 - Full rework of entity model enumeration
 - All completion and observer handlers are now triggered without keeping controller's mutex
 - Full rework of ACMP notifications
 - ACMP stream identification refactoring (new type describing the couple EntityID/StreamIndex)
+
 ### Fixed
 - [Invalid descriptor type used to get dynamic audio mappings](https://github.com/L-Acoustics/avdecc/issues/4)
 
@@ -57,9 +61,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - setConfigurationName method, to change a configuration's name (Configuration Descriptor) and associated observer event
 - setStream[Input/Output]Name method, to change a stream's name (Stream Descriptor) and associated observer event
 - Support for output stream dynamic audio mapping
+
 ### Changed
 - la::avdecc::controller::Controller::Observer AECP notifications are now also triggered when the controller changes a value itself
 - Removed onEntityAcquired and onEntityReleased events but added a more generic onAcquireStateChanged one
+
 ### Fixed
 - [Entities declaring 0 stream input or stream output descriptors not properly detected](https://github.com/L-Acoustics/avdecc/issues/2)
 - Not registering for unsolicited notifications on entities that do not support AEM

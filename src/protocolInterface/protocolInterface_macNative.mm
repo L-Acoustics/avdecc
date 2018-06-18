@@ -27,6 +27,7 @@
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
+#include "logHelper.hpp"
 
 #import <AudioVideoBridging/AudioVideoBridging.h>
 
@@ -678,7 +679,7 @@ namespace la
 -(la::avdecc::protocol::ProtocolInterface::Error)sendAecpCommand:(la::avdecc::protocol::Aecpdu::UniquePointer&&)aecpdu macAddress:(la::avdecc::networkInterface::MacAddress const&)macAddress handler:(la::avdecc::protocol::ProtocolInterface::AecpCommandResultHandler const&)onResult
 {
 	auto const macAddr = macAddress; // Make a copy of the macAddress so it can safely be used inside the objC block
-	auto const resultHandler = onResult; // Make a copy of the handler so it can safely be used inside the objC block
+	__block auto resultHandler = onResult; // Make a copy of the handler so it can safely be used inside the objC block. Declare it as __block so we can modify it from the block (to fix a bug that macOS sometimes call the completionHandler twice)
 
 	auto const messageType = aecpdu->getMessageType();
 	if(messageType == la::avdecc::protocol::AecpMessageType::AemCommand)
@@ -733,6 +734,11 @@ namespace la
 			[self startAsyncOperation];
 			if ([self.interface.aecp sendCommand:message toMACAddress:[BridgeInterface makeAVBMacAddress:macAddr] completionHandler:^(NSError* error, AVB17221AECPMessage* message)
 					 {
+						 if (!resultHandler)
+						 {
+							 LOG_PROTOCOL_INTERFACE_DEBUG(la::avdecc::networkInterface::MacAddress{}, la::avdecc::networkInterface::MacAddress{}, "AECP completionHandler called again with same result message, ignoring this call.");
+							 return;
+						 }
 						 if (kIOReturnSuccess == (IOReturn)error.code)
 						 {
 							 AVDECC_ASSERT([message messageType] == AVB17221AECPMessageTypeAEMResponse, "AECP Response to our AEM Command is NOT an AEM Response!");
@@ -743,6 +749,7 @@ namespace la
 						 {
 							 la::avdecc::invokeProtectedHandler(resultHandler, nullptr, [BridgeInterface getProtocolError:error]);
 						 }
+						 resultHandler = {}; // Clear resultHandler in case this completionHandler is called twice (bug in macOS)
 						 [self stopAsyncOperation];
 						 // Signal the semaphore so we can process another command
 						 dispatch_semaphore_signal(limiter);
@@ -767,7 +774,7 @@ namespace la
 
 -(la::avdecc::protocol::ProtocolInterface::Error)sendAcmpCommand:(la::avdecc::protocol::Acmpdu::UniquePointer&&)acmpdu handler:(la::avdecc::protocol::ProtocolInterface::AcmpCommandResultHandler const&)onResult
 {
-	auto const resultHandler = onResult; // Make a copy of the handler so it can safely be used inside the objC block
+	__block auto resultHandler = onResult; // Make a copy of the handler so it can safely be used inside the objC block. Declare it as __block so we can modify it from the block (to fix a bug that macOS sometimes call the completionHandler twice)
 
 	auto const& acmp = static_cast<la::avdecc::protocol::Acmpdu const&>(*acmpdu);
 	auto const message = [[AVB17221ACMPMessage alloc] init];
@@ -792,6 +799,11 @@ namespace la
 	[self startAsyncOperation];
 	if ([self.interface.acmp sendACMPCommandMessage:message completionHandler:^(NSError* error, AVB17221ACMPMessage* message)
 		{
+			if (!resultHandler)
+			{
+				LOG_PROTOCOL_INTERFACE_DEBUG(la::avdecc::networkInterface::MacAddress{}, la::avdecc::networkInterface::MacAddress{}, "ACMP completionHandler called again with same result message, ignoring this call.");
+				return;
+			}
 			if (kIOReturnSuccess == (IOReturn)error.code)
 			{
 				auto acmp = [BridgeInterface makeAcmpMessage:message];
@@ -801,6 +813,7 @@ namespace la
 			{
 				la::avdecc::invokeProtectedHandler(resultHandler, nullptr, [BridgeInterface getProtocolError:error]);
 			}
+			resultHandler = {}; // Clear resultHandler in case this completionHandler is called twice (bug in macOS)
 			[self stopAsyncOperation];
 		}] == NO)
 	{

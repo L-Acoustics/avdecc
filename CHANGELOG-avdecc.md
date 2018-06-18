@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Fixed
 - Descriptors value initialization for LocalizedStringReference type
+- [Possible crash using "macOS native interface"](https://github.com/L-Acoustics/avdecc/issues/7)
 
 ## [2.5.2] - 2018-06-15
 ### Added
@@ -22,6 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Global API to retrieve the compilation options of the library
 - CMake compilation option to use custom std::any
+
 ### Fixed
 - Properly handling AvailableIndex going backwards in ADP messages (fast entity powercycle)
 - Possible deadlock when using macOS native protocol interface
@@ -35,8 +37,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Method to forcefully remove a connection from a talker's StreamOutput (DisconnectTX spoofing)
 - Support for GetAvbInfo command and unsolicited notifications
 - getSampleSize and getSampleBitDepth to StreamFormatInfo
+
 ### Changed
 - ACMP stream identification refactoring (new type describing the couple EntityID/StreamIndex)
+
 ### Fixed
 - 50 msec delay before sending a new AECP message using pcap protocol interface
 - Logger observer not removed during unregisterObserver
@@ -46,6 +50,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support for setConfiguration command
 - [Partial support for SET_CONFIGURATION unsolicited notification](https://github.com/L-Acoustics/avdecc/issues/3)
 - Virtual ProtocolInterface, allowing better unit testing
+
 ### Fixed
 - Possible crash during shutdown
 - IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES flag not properly working for Motu devices
