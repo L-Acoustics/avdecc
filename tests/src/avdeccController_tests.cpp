@@ -101,6 +101,11 @@ private:
 		serializeNode(parent);
 		serializeNode(node);
 	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::MemoryObjectNode const& node) noexcept override
+	{
+		serializeNode(parent);
+		serializeNode(node);
+	}
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::LocaleNode const& node) noexcept override
 	{
 		serializeNode(parent);
