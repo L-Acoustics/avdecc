@@ -516,6 +516,14 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 						visitor->visit(this, &domain, *source);
 					}
 				}
+
+				// Loop over MemoryObjectNode
+				for (auto const& memoryObjectKV : configuration.memoryObjects)
+				{
+					auto const& memoryObject = memoryObjectKV.second;
+					// Visit MemoryObjectNode (ConfigurationNode is parent)
+					visitor->visit(this, &configuration, memoryObject);
+				}
 			}
 		}
 	}
@@ -868,6 +876,7 @@ void ControlledEntityImpl::setConfigurationDescriptor(entity::model::Configurati
 	allocateDescriptors<entity::model::AudioClusterDescriptor, model::AudioClusterDescriptor, entity::model::ClusterIndex, &ControlledEntityImpl::setAudioClusterDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::AudioCluster);
 	allocateDescriptors<entity::model::AudioMapDescriptor, model::AudioMapDescriptor, entity::model::MapIndex, &ControlledEntityImpl::setAudioMapDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::AudioMap);
 	allocateDescriptors<entity::model::ClockDomainDescriptor, model::ClockDomainDescriptor, entity::model::ClockDomainIndex, &ControlledEntityImpl::setClockDomainDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::ClockDomain);
+	allocateDescriptors<entity::model::MemoryObjectDescriptor, model::MemoryObjectDescriptor, entity::model::MemoryObjectIndex, &ControlledEntityImpl::setMemoryObjectDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::MemoryObject);
 }
 
 void ControlledEntityImpl::setAudioUnitDescriptor(entity::model::AudioUnitDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex)
@@ -1209,6 +1218,32 @@ void ControlledEntityImpl::setClockDomainDescriptor(entity::model::ClockDomainDe
 		auto& m = clockDomainDescriptor.dynamicModel;
 		m.objectName = descriptor.objectName;
 		m.clockSourceIndex = descriptor.clockSourceIndex;
+	}
+}
+
+void ControlledEntityImpl::setMemoryObjectDescriptor(entity::model::MemoryObjectDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex)
+{
+	auto& configDescriptor = getConfigurationDescriptor(configurationIndex);
+
+	// Get or create a new model::MemoryObjectDescriptor
+	auto& memoryObjectDescriptor = configDescriptor.memoryObjectDescriptors[memoryObjectIndex];
+
+	// Copy static model
+	{
+		auto& m = memoryObjectDescriptor.staticModel;
+		m.localizedDescription = descriptor.localizedDescription;
+		m.memoryObjectType = descriptor.memoryObjectType;
+		m.targetDescriptorType = descriptor.targetDescriptorType;
+		m.targetDescriptorIndex = descriptor.targetDescriptorIndex;
+		m.startAddress = descriptor.startAddress;
+		m.maximumLength = descriptor.maximumLength;
+		m.length = descriptor.length;
+	}
+
+	// Copy dynamic model
+	{
+		auto& m = memoryObjectDescriptor.dynamicModel;
+		m.objectName = descriptor.objectName;
 	}
 }
 
@@ -1655,6 +1690,19 @@ void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
 						}
 					}
 				}
+
+				// Build memory objects (MemoryObjectNode)
+				for (auto& memoryObjectKV : configDescriptor.memoryObjectDescriptors)
+				{
+					auto const memoryObjectIndex = memoryObjectKV.first;
+					auto& memoryObjectDescriptor = memoryObjectKV.second;
+
+					auto& memoryObjectNode = configNode.memoryObjects[memoryObjectIndex];
+					initNode(memoryObjectNode, entity::model::DescriptorType::MemoryObject, memoryObjectIndex, model::AcquireState::Undefined);
+					memoryObjectNode.staticModel = &memoryObjectDescriptor.staticModel;
+					memoryObjectNode.dynamicModel = &memoryObjectDescriptor.dynamicModel;
+				}
+
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 				// Build redundancy nodes
 				buildRedundancyNodes(configNode);

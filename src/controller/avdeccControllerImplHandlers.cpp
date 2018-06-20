@@ -224,6 +224,21 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 								}
 							}
 						}
+						// Get memory objects
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::MemoryObject);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::MemoryObjectIndex(0); index < count; ++index)
+								{
+									// Get Memory Object Descriptor
+									controlledEntity->setDescriptorExpected(configurationIndex, entity::model::DescriptorType::MemoryObject, index);
+									LOG_CONTROLLER_TRACE(entityID, "readMemoryObjectDescriptor (ConfigurationIndex={}, MemoryIbjectIndex={})", configurationIndex, index);
+									controller->readMemoryObjectDescriptor(entityID, configurationIndex, index, std::bind(&ControllerImpl::onMemoryObjectDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+								}
+							}
+						}
 					}
 					// For non-active configurations, just get locales (and strings)
 					else
@@ -808,6 +823,42 @@ void ControllerImpl::onClockDomainDescriptorResult(entity::ControllerEntity cons
 				{
 					controlledEntity->setEnumerationError(true);
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockDomainDescriptor);
+				}
+			}
+		}
+	}
+}
+
+void ControllerImpl::onMemoryObjectDescriptorResult(entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MemoryObjectIndex const memoryObjectIndex, la::avdecc::entity::model::MemoryObjectDescriptor const& descriptor) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onMemoryObjectDescriptorResult (ConfigurationIndex={} ClockDomainIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDescriptor(configurationIndex, entity::model::DescriptorType::MemoryObject, memoryObjectIndex) && !controlledEntity->gotEnumerationError())
+		{
+			if (!!status)
+			{
+				try
+				{
+					controlledEntity->setMemoryObjectDescriptor(descriptor, configurationIndex, memoryObjectIndex);
+					checkAdvertiseEntity(controlledEntity.get());
+				}
+				catch (ControlledEntity::Exception const&)
+				{
+					controlledEntity->setEnumerationError(true);
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::MemoryObjectDescriptor);
+				}
+			}
+			else
+			{
+				if (!checkRescheduleQuery(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::MemoryObject, memoryObjectIndex))
+				{
+					controlledEntity->setEnumerationError(true);
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::MemoryObjectDescriptor);
 				}
 			}
 		}

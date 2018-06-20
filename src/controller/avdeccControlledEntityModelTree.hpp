@@ -136,6 +136,15 @@ struct ClockDomainDescriptor
 	ClockDomainNodeDynamicModel dynamicModel;
 };
 
+struct MemoryObjectDescriptor
+{
+	// AEM Static info
+	MemoryObjectNodeStaticModel staticModel;
+
+	// AEM Dynamic info
+	MemoryObjectNodeDynamicModel dynamicModel;
+};
+
 struct ConfigurationDescriptor
 {
 	// Children
@@ -146,7 +155,7 @@ struct ConfigurationDescriptor
 	//std::map<entity::model::JackIndex, JackDescriptor> jackOutputDescriptors{};
 	std::map<entity::model::AvbInterfaceIndex, AvbInterfaceDescriptor> avbInterfaceDescriptors{};
 	std::map<entity::model::ClockSourceIndex, ClockSourceDescriptor> clockSourceDescriptors{};
-	//std::map<entity::model::MemoryObjectIndex, MemoryObjectDescriptor> memoryObjectDescriptors{};
+	std::map<entity::model::MemoryObjectIndex, MemoryObjectDescriptor> memoryObjectDescriptors{};
 	std::map<entity::model::LocaleIndex, LocaleDescriptor> localeDescriptors{};
 	std::map<entity::model::StringsIndex, StringsDescriptor> stringsDescriptors{};
 	std::map<entity::model::StreamPortIndex, StreamPortDescriptor> streamPortInputDescriptors{};

@@ -136,6 +136,11 @@ struct EntityNodeDynamicModel
 	std::uint16_t currentConfiguration{ 0u };
 };
 
+struct MemoryObjectNodeDynamicModel
+{
+	entity::model::AvdeccFixedString objectName{};
+};
+
 
 } // namespace model
 } // namespace controller

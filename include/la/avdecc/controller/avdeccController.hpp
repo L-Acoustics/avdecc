@@ -151,6 +151,7 @@ public:
 		AudioClusterDescriptor,
 		AudioMapDescriptor,
 		ClockDomainDescriptor,
+		MemoryObjectDescriptor,
 		StreamInputAudioMap,
 		StreamOutputAudioMap,
 		TalkerStreamState,

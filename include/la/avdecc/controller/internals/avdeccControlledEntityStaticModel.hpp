@@ -132,6 +132,17 @@ struct LocaleNodeStaticModel
 	entity::model::StringsIndex baseStringDescriptorIndex{ entity::model::StringsIndex(0u) };
 };
 
+struct MemoryObjectNodeStaticModel
+{
+	entity::model::LocalizedStringReference localizedDescription{ entity::model::getNullLocalizedStringReference() };
+	entity::model::MemoryObjectType memoryObjectType{ entity::model::MemoryObjectType::FirmwareImage };
+	entity::model::DescriptorType targetDescriptorType{ entity::model::DescriptorType::Invalid };
+	entity::model::DescriptorIndex targetDescriptorIndex{ entity::model::DescriptorIndex(0u) };
+	std::uint64_t startAddress{ 0u };
+	std::uint64_t maximumLength{ 0u };
+	std::uint64_t length{ 0u };
+};
+
 struct StringsNodeStaticModel
 {
 	AvdeccFixedStrings strings{};
