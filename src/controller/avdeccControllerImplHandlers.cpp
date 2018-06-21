@@ -143,7 +143,7 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 									controlledEntity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamInfo, index);
 									LOG_CONTROLLER_TRACE(entityID, "getStreamInputInfo (StreamIndex={})", index);
 									controller->getStreamInputInfo(entityID, index, std::bind(&ControllerImpl::onGetStreamInputInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
-									
+
 									// Get Stream Descriptor
 									controlledEntity->setDescriptorExpected(configurationIndex, entity::model::DescriptorType::StreamInput, index);
 									LOG_CONTROLLER_TRACE(entityID, "readStreamInputDescriptor (ConfigurationIndex={} StreamIndex={})", configurationIndex, index);
@@ -207,6 +207,21 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 									controlledEntity->setDescriptorExpected(configurationIndex, entity::model::DescriptorType::ClockSource, index);
 									LOG_CONTROLLER_TRACE(entityID, "readClockSourceDescriptor (ConfigurationIndex={} ClockSourceIndex={})", configurationIndex, index);
 									controller->readClockSourceDescriptor(entityID, configurationIndex, index, std::bind(&ControllerImpl::onClockSourceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+								}
+							}
+						}
+						// Get memory objects
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::MemoryObject);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::MemoryObjectIndex(0); index < count; ++index)
+								{
+									// Get Memory Object Descriptor
+									controlledEntity->setDescriptorExpected(configurationIndex, entity::model::DescriptorType::MemoryObject, index);
+									LOG_CONTROLLER_TRACE(entityID, "readMemoryObjectDescriptor (ConfigurationIndex={}, MemoryObjectIndex={})", configurationIndex, index);
+									controller->readMemoryObjectDescriptor(entityID, configurationIndex, index, std::bind(&ControllerImpl::onMemoryObjectDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 								}
 							}
 						}
@@ -461,6 +476,42 @@ void ControllerImpl::onClockSourceDescriptorResult(entity::ControllerEntity cons
 				{
 					controlledEntity->setEnumerationError(true);
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockSourceDescriptor);
+				}
+			}
+		}
+	}
+}
+
+void ControllerImpl::onMemoryObjectDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, entity::model::MemoryObjectDescriptor const& descriptor) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onMemoryObjectDescriptorResult (ConfigurationIndex={} ClockDomainIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDescriptor(configurationIndex, entity::model::DescriptorType::MemoryObject, memoryObjectIndex) && !controlledEntity->gotEnumerationError())
+		{
+			if (!!status)
+			{
+				try
+				{
+					controlledEntity->setMemoryObjectDescriptor(descriptor, configurationIndex, memoryObjectIndex);
+					checkAdvertiseEntity(controlledEntity.get());
+				}
+				catch (ControlledEntity::Exception const&)
+				{
+					controlledEntity->setEnumerationError(true);
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::MemoryObjectDescriptor);
+				}
+			}
+			else
+			{
+				if (!checkRescheduleQuery(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::MemoryObject, memoryObjectIndex))
+				{
+					controlledEntity->setEnumerationError(true);
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::MemoryObjectDescriptor);
 				}
 			}
 		}
