@@ -94,7 +94,7 @@ struct ClockSourceNodeDynamicModel
 struct MemoryObjectNodeDynamicModel
 {
 	entity::model::AvdeccFixedString objectName{};
-	entity::model::MemoryObjectLength objectMemoryLength{};
+	std::uint64_t length{ 0u };
 };
 
 //struct LocaleNodeDynamicModel

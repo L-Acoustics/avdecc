@@ -1089,7 +1089,7 @@ void ControlledEntityImpl::setMemoryObjectDescriptor(entity::model::MemoryObject
 	{
 		auto& m = memoryObjectDescriptor.dynamicModel;
 		m.objectName = descriptor.objectName;
-		m.objectMemoryLength.length = descriptor.length;
+		m.length = descriptor.length;
 	}
 }
 
