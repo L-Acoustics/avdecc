@@ -490,6 +490,14 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 					visitor->visit(this, &configuration, source);
 				}
 
+				// Loop over MemoryObjectNode
+				for (auto const& memoryObjectKV : configuration.memoryObjects)
+				{
+					auto const& memoryObject = memoryObjectKV.second;
+					// Visit MemoryObjectNode (ConfigurationNode is parent)
+					visitor->visit(this, &configuration, memoryObject);
+				}
+
 				// Loop over LocaleNode
 				for (auto const& localeKV : configuration.locales)
 				{
@@ -861,6 +869,7 @@ void ControlledEntityImpl::setConfigurationDescriptor(entity::model::Configurati
 	allocateDescriptors<entity::model::StreamDescriptor, model::StreamInputDescriptor, entity::model::StreamIndex, &ControlledEntityImpl::setStreamOutputDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::StreamOutput);
 	allocateDescriptors<entity::model::AvbInterfaceDescriptor, model::AvbInterfaceDescriptor, entity::model::AvbInterfaceIndex, &ControlledEntityImpl::setAvbInterfaceDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::AvbInterface);
 	allocateDescriptors<entity::model::ClockSourceDescriptor, model::ClockSourceDescriptor, entity::model::ClockSourceIndex, &ControlledEntityImpl::setClockSourceDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::ClockSource);
+	allocateDescriptors<entity::model::MemoryObjectDescriptor, model::MemoryObjectDescriptor, entity::model::MemoryObjectIndex, &ControlledEntityImpl::setMemoryObjectDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::MemoryObject);
 	allocateDescriptors<entity::model::LocaleDescriptor, model::LocaleDescriptor, entity::model::LocaleIndex, &ControlledEntityImpl::setLocaleDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::Locale);
 	allocateDescriptors<entity::model::StringsDescriptor, model::StringsDescriptor, entity::model::StringsIndex, &ControlledEntityImpl::setStringsDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::Strings);
 	allocateDescriptors<entity::model::StreamPortDescriptor, model::StreamPortDescriptor, entity::model::StreamPortIndex, &ControlledEntityImpl::setStreamPortInputDescriptor>(this, configurationIndex, descriptor, entity::model::DescriptorType::StreamPortInput);
@@ -1055,6 +1064,32 @@ void ControlledEntityImpl::setClockSourceDescriptor(entity::model::ClockSourceDe
 		m.objectName = descriptor.objectName;
 		m.clockSourceFlags = descriptor.clockSourceFlags;
 		m.clockSourceIdentifier = descriptor.clockSourceIdentifier;
+	}
+}
+
+void ControlledEntityImpl::setMemoryObjectDescriptor(entity::model::MemoryObjectDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex)
+{
+	auto& configDescriptor = getConfigurationDescriptor(configurationIndex);
+
+	// Get or create a new model::MemoryObjectDescriptor
+	auto& memoryObjectDescriptor = configDescriptor.memoryObjectDescriptors[memoryObjectIndex];
+
+	// Copy static model
+	{
+		auto& m = memoryObjectDescriptor.staticModel;
+		m.localizedDescription = descriptor.localizedDescription;
+		m.memoryObjectType = descriptor.memoryObjectType;
+		m.targetDescriptorType = descriptor.targetDescriptorType;
+		m.targetDescriptorIndex = descriptor.targetDescriptorIndex;
+		m.startAddress = descriptor.startAddress;
+		m.maximumLength = descriptor.maximumLength;
+	}
+
+	// Copy dynamic model
+	{
+		auto& m = memoryObjectDescriptor.dynamicModel;
+		m.objectName = descriptor.objectName;
+		m.length = descriptor.length;
 	}
 }
 
@@ -1619,6 +1654,18 @@ void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
 					sourceNode.dynamicModel = &sourceDescriptor.dynamicModel;
 				}
 
+				// Build memory objects (MemoryObjectNode)
+				for (auto& memoryObjectKV : configDescriptor.memoryObjectDescriptors)
+				{
+					auto const memoryObjectIndex = memoryObjectKV.first;
+					auto& memoryObjectDescriptor = memoryObjectKV.second;
+
+					auto& memoryObjectNode = configNode.memoryObjects[memoryObjectIndex];
+					initNode(memoryObjectNode, entity::model::DescriptorType::MemoryObject, memoryObjectIndex, model::AcquireState::Undefined);
+					memoryObjectNode.staticModel = &memoryObjectDescriptor.staticModel;
+					memoryObjectNode.dynamicModel = &memoryObjectDescriptor.dynamicModel;
+				}
+
 				// Build locales (LocaleNode)
 				for (auto const& localeKV : configDescriptor.localeDescriptors)
 				{
@@ -1655,6 +1702,7 @@ void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
 						}
 					}
 				}
+
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 				// Build redundancy nodes
 				buildRedundancyNodes(configNode);

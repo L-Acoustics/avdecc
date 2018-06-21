@@ -390,6 +390,22 @@ constexpr bool operator!=(AvbInfo const& lhs, AvbInfo const& rhs) noexcept
 	return !(lhs == rhs);
 }
 
+/** SET_MEMORY_OBJECT_LENGTH & GET_MEMORY_OBJECT_LENGTH Dynamic Information - Clause  7.4.72.1 & 7.4.73.2 */
+struct MemoryObjectLength
+{
+	std::uint64_t length{ 0u };
+};
+
+constexpr bool operator==(MemoryObjectLength const& lhs, MemoryObjectLength const& rhs) noexcept
+{
+	return (lhs.length == rhs.length);
+}
+
+constexpr bool operator!=(MemoryObjectLength const& lhs, MemoryObjectLength const& rhs) noexcept
+{
+	return !(lhs == rhs);
+}
+
 /**
 * @brief Make a VendorEntityModel from vendorID, deviceID and modelID.
 * @details Make a VendorEntityModel from vendorID, deviceID and modelID.

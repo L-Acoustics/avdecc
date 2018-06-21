@@ -144,6 +144,7 @@ public:
 		StreamOutputDescriptor,
 		AvbInterfaceDescriptor,
 		ClockSourceDescriptor,
+		MemoryObjectDescriptor,
 		LocaleDescriptor,
 		StringsDescriptor,
 		StreamPortInputDescriptor,

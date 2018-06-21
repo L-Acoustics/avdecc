@@ -91,6 +91,12 @@ struct ClockSourceNodeDynamicModel
 	UniqueIdentifier clockSourceIdentifier{ getNullIdentifier() };
 };
 
+struct MemoryObjectNodeDynamicModel
+{
+	entity::model::AvdeccFixedString objectName{};
+	std::uint64_t length{ 0u };
+};
+
 //struct LocaleNodeDynamicModel
 //{
 //};
@@ -135,7 +141,6 @@ struct EntityNodeDynamicModel
 	entity::model::AvdeccFixedString serialNumber{};
 	std::uint16_t currentConfiguration{ 0u };
 };
-
 
 } // namespace model
 } // namespace controller
