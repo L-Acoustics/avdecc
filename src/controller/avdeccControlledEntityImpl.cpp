@@ -1083,13 +1083,13 @@ void ControlledEntityImpl::setMemoryObjectDescriptor(entity::model::MemoryObject
 		m.targetDescriptorIndex = descriptor.targetDescriptorIndex;
 		m.startAddress = descriptor.startAddress;
 		m.maximumLength = descriptor.maximumLength;
-		m.length = descriptor.length;
 	}
 
 	// Copy dynamic model
 	{
 		auto& m = memoryObjectDescriptor.dynamicModel;
 		m.objectName = descriptor.objectName;
+		m.length = descriptor.length;
 	}
 }
 

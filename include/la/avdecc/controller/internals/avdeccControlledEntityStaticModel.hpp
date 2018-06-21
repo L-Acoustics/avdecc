@@ -133,7 +133,6 @@ struct MemoryObjectNodeStaticModel
 	entity::model::DescriptorIndex targetDescriptorIndex{ entity::model::DescriptorIndex(0u) };
 	std::uint64_t startAddress{ 0u };
 	std::uint64_t maximumLength{ 0u };
-	std::uint64_t length{ 0u };
 };
 
 struct LocaleNodeStaticModel
