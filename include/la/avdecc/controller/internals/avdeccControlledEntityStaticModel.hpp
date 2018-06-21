@@ -125,13 +125,6 @@ struct ClockSourceNodeStaticModel
 	entity::model::DescriptorIndex clockSourceLocationIndex{ entity::model::DescriptorIndex(0u) };
 };
 
-struct LocaleNodeStaticModel
-{
-	entity::model::AvdeccFixedString localeID{};
-	std::uint16_t numberOfStringDescriptors{ 0u };
-	entity::model::StringsIndex baseStringDescriptorIndex{ entity::model::StringsIndex(0u) };
-};
-
 struct MemoryObjectNodeStaticModel
 {
 	entity::model::LocalizedStringReference localizedDescription{ entity::model::getNullLocalizedStringReference() };
@@ -141,6 +134,13 @@ struct MemoryObjectNodeStaticModel
 	std::uint64_t startAddress{ 0u };
 	std::uint64_t maximumLength{ 0u };
 	std::uint64_t length{ 0u };
+};
+
+struct LocaleNodeStaticModel
+{
+	entity::model::AvdeccFixedString localeID{};
+	std::uint16_t numberOfStringDescriptors{ 0u };
+	entity::model::StringsIndex baseStringDescriptorIndex{ entity::model::StringsIndex(0u) };
 };
 
 struct StringsNodeStaticModel

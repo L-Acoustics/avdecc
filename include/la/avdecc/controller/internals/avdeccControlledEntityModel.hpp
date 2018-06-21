@@ -178,6 +178,16 @@ struct ClockSourceNode : public EntityModelNode
 	ClockSourceNodeDynamicModel* dynamicModel{ nullptr };
 };
 
+
+struct MemoryObjectNode : public EntityModelNode
+{
+	// AEM Static info
+	MemoryObjectNodeStaticModel const* staticModel{ nullptr };
+
+	// AEM Dynamic info
+	MemoryObjectNodeDynamicModel * dynamicModel{ nullptr };
+};
+
 struct StringsNode : public EntityModelNode
 {
 	// AEM Static info
@@ -197,15 +207,6 @@ struct LocaleNode : public EntityModelNode
 
 	// AEM Dynamic info
 	//LocaleNodeDynamicModel* dynamicModel{ nullptr };
-};
-
-struct MemoryObjectNode : public EntityModelNode
-{
-	// AEM Static info
-	MemoryObjectNodeStaticModel const* staticModel{ nullptr };
-
-	// AEM Dynamic info
-	MemoryObjectNodeDynamicModel * dynamicModel{ nullptr };
 };
 
 struct ClockDomainNode : public EntityModelNode
@@ -268,6 +269,7 @@ public:
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::StreamOutputNode const& node) noexcept = 0;
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::AvbInterfaceNode const& node) noexcept = 0;
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::ClockSourceNode const& node) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::MemoryObjectNode const& node) noexcept = 0;
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::LocaleNode const& node) noexcept = 0;
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::StringsNode const& node) noexcept = 0;
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::StreamPortNode const& node) noexcept = 0;
@@ -277,7 +279,6 @@ public:
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::RedundantStreamNode const& node) noexcept = 0;
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::model::Node const* const parent, la::avdecc::controller::model::MemoryObjectNode const& node) noexcept = 0;
 
 	// Defaulted compiler auto-generated methods
 	EntityModelVisitor() noexcept = default;
