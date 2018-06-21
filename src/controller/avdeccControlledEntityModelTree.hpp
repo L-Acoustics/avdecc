@@ -82,6 +82,15 @@ struct ClockSourceDescriptor
 	ClockSourceNodeDynamicModel dynamicModel;
 };
 
+struct MemoryObjectDescriptor
+{
+	// AEM Static info
+	MemoryObjectNodeStaticModel staticModel;
+
+	// AEM Dynamic info
+	MemoryObjectNodeDynamicModel dynamicModel;
+};
+
 struct LocaleDescriptor
 {
 	// AEM Static info
@@ -134,15 +143,6 @@ struct ClockDomainDescriptor
 
 	// AEM Dynamic info
 	ClockDomainNodeDynamicModel dynamicModel;
-};
-
-struct MemoryObjectDescriptor
-{
-	// AEM Static info
-	MemoryObjectNodeStaticModel staticModel;
-
-	// AEM Dynamic info
-	MemoryObjectNodeDynamicModel dynamicModel;
 };
 
 struct ConfigurationDescriptor
