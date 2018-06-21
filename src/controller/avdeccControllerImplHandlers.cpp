@@ -98,6 +98,20 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 					// Only get full descriptors for active configuration
 					if (isCurrentConfiguration)
 					{
+						// Get Locales
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::Locale);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::LocaleIndex(0); index < count; ++index)
+								{
+									controlledEntity->setDescriptorExpected(configurationIndex, entity::model::DescriptorType::Locale, index);
+									LOG_CONTROLLER_TRACE(entityID, "readLocaleDescriptor (ConfigurationIndex={} LocaleIndex={})", configurationIndex, index);
+									controller->readLocaleDescriptor(entityID, configurationIndex, index, std::bind(&ControllerImpl::onLocaleDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+								}
+							}
+						}
 						// Get audio units
 						{
 							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::AudioUnit);
@@ -208,20 +222,6 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 									controlledEntity->setDescriptorExpected(configurationIndex, entity::model::DescriptorType::MemoryObject, index);
 									LOG_CONTROLLER_TRACE(entityID, "readMemoryObjectDescriptor (ConfigurationIndex={}, MemoryObjectIndex={})", configurationIndex, index);
 									controller->readMemoryObjectDescriptor(entityID, configurationIndex, index, std::bind(&ControllerImpl::onMemoryObjectDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
-								}
-							}
-						}
-						// Get Locales
-						{
-							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::Locale);
-							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
-							{
-								auto count = countIt->second;
-								for (auto index = entity::model::LocaleIndex(0); index < count; ++index)
-								{
-									controlledEntity->setDescriptorExpected(configurationIndex, entity::model::DescriptorType::Locale, index);
-									LOG_CONTROLLER_TRACE(entityID, "readLocaleDescriptor (ConfigurationIndex={} LocaleIndex={})", configurationIndex, index);
-									controller->readLocaleDescriptor(entityID, configurationIndex, index, std::bind(&ControllerImpl::onLocaleDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 								}
 							}
 						}
