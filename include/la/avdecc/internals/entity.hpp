@@ -213,10 +213,10 @@ protected:
 	}
 
 private:
-	UniqueIdentifier _entityID{ getNullIdentifier() };
+	UniqueIdentifier _entityID{};
 	networkInterface::MacAddress _macAddress{};
 	std::uint8_t _validTime{ 31 }; // Default protocol value is 31 (meaning 62 seconds)
-	UniqueIdentifier _entityModelID{ getNullIdentifier() };
+	UniqueIdentifier _entityModelID{};
 	EntityCapabilities _entityCapabilities{ EntityCapabilities::None };
 	std::uint16_t _talkerStreamSources{ 0u };
 	TalkerCapabilities _talkerCapabilities{ TalkerCapabilities::None };
@@ -224,11 +224,11 @@ private:
 	ListenerCapabilities _listenerCapabilities{ ListenerCapabilities::None };
 	ControllerCapabilities _controllerCapabilities{ ControllerCapabilities::None };
 	std::uint32_t _availableIndex{ 0 };
-	UniqueIdentifier _gptpGrandmasterID{ getNullIdentifier() };
+	UniqueIdentifier _gptpGrandmasterID{};
 	std::uint8_t _gptpDomainNumber{ 0 };
 	std::uint16_t _identifyControlIndex{ 0 };
 	std::uint16_t _interfaceIndex{ 0 };
-	UniqueIdentifier _associationID{ getNullIdentifier() };
+	UniqueIdentifier _associationID{};
 };
 
 /** Virtual interface for a local entity (on the same computer) */

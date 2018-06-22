@@ -69,8 +69,8 @@ constexpr LocalizedStringReference getNullLocalizedStringReference() noexcept
 /** ENTITY Descriptor - Clause 7.2.1 */
 struct EntityDescriptor
 {
-	UniqueIdentifier entityID{ getNullIdentifier() };
-	UniqueIdentifier entityModelID{ getNullIdentifier() };
+	UniqueIdentifier entityID{};
+	UniqueIdentifier entityModelID{};
 	EntityCapabilities entityCapabilities{ EntityCapabilities::None };
 	std::uint16_t talkerStreamSources{ 0u };
 	TalkerCapabilities talkerCapabilities{ TalkerCapabilities::None };
@@ -78,7 +78,7 @@ struct EntityDescriptor
 	ListenerCapabilities listenerCapabilities{ ListenerCapabilities::None };
 	ControllerCapabilities controllerCapabilities{ ControllerCapabilities::None };
 	std::uint32_t availableIndex{ 0u };
-	UniqueIdentifier associationID{ getNullIdentifier() };
+	UniqueIdentifier associationID{};
 	AvdeccFixedString entityName{};
 	LocalizedStringReference vendorNameString{ getNullLocalizedStringReference() };
 	LocalizedStringReference modelNameString{ getNullLocalizedStringReference() };
@@ -151,13 +151,13 @@ struct StreamDescriptor
 	ClockDomainIndex clockDomainIndex{ ClockDomainIndex(0u) };
 	StreamFlags streamFlags{ StreamFlags::None };
 	StreamFormat currentFormat{ getNullStreamFormat() };
-	UniqueIdentifier backupTalkerEntityID_0{ getNullIdentifier() };
+	UniqueIdentifier backupTalkerEntityID_0{};
 	std::uint16_t backupTalkerUniqueID_0{ 0u };
-	UniqueIdentifier backupTalkerEntityID_1{ getNullIdentifier() };
+	UniqueIdentifier backupTalkerEntityID_1{};
 	std::uint16_t backupTalkerUniqueID_1{ 0u };
-	UniqueIdentifier backupTalkerEntityID_2{ getNullIdentifier() };
+	UniqueIdentifier backupTalkerEntityID_2{};
 	std::uint16_t backupTalkerUniqueID_2{ 0u };
-	UniqueIdentifier backedupTalkerEntityID{ getNullIdentifier() };
+	UniqueIdentifier backedupTalkerEntityID{};
 	std::uint16_t backedupTalkerUnique{ 0u };
 	AvbInterfaceIndex avbInterfaceIndex{ AvbInterfaceIndex(0u) };
 	std::uint32_t bufferLength{ 0u };
@@ -205,7 +205,7 @@ struct ClockSourceDescriptor
 	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
 	ClockSourceFlags clockSourceFlags{ ClockSourceFlags::None };
 	ClockSourceType clockSourceType{ ClockSourceType::Internal };
-	UniqueIdentifier clockSourceIdentifier{ getNullIdentifier() };
+	UniqueIdentifier clockSourceIdentifier{};
 	DescriptorType clockSourceLocationType{ DescriptorType::Invalid };
 	DescriptorIndex clockSourceLocationIndex{ DescriptorIndex(0u) };
 };
@@ -342,11 +342,11 @@ struct StreamInfo
 {
 	StreamInfoFlags streamInfoFlags{ StreamInfoFlags::None };
 	StreamFormat streamFormat{ getNullStreamFormat() };
-	UniqueIdentifier streamID{ getNullIdentifier() };
+	std::uint64_t streamID{ 0u };
 	std::uint32_t msrpAccumulatedLatency{ 0u };
 	la::avdecc::networkInterface::MacAddress streamDestMac{};
 	std::uint8_t msrpFailureCode{ 0u };
-	UniqueIdentifier msrpFailureBridgeID{ getNullIdentifier() };
+	std::uint64_t msrpFailureBridgeID{ 0u };
 	std::uint16_t streamVlanID{ 0u };
 };
 
@@ -366,7 +366,7 @@ constexpr bool operator!=(StreamInfo const& lhs, StreamInfo const& rhs) noexcept
 /** GET_AVB_INFO Dynamic Information - Clause 7.4.40.2 */
 struct AvbInfo
 {
-	UniqueIdentifier gptpGrandmasterID{ getNullIdentifier() };
+	UniqueIdentifier gptpGrandmasterID{};
 	std::uint32_t propagationDelay{ 0u };
 	std::uint8_t gptpDomainNumber{ 0u };
 	AvbInfoFlags flags{ AvbInfoFlags::None };
@@ -395,9 +395,9 @@ constexpr bool operator!=(AvbInfo const& lhs, AvbInfo const& rhs) noexcept
 * @note This method is provided as a helper. Packing an EntityModelID that way is NOT mandatory (except for the vendorID).
 * @warning This method is intended to be used for an OUI-24, not an OUI-36.
 */
-constexpr UniqueIdentifier makeEntityModelID(std::uint32_t const vendorID, std::uint8_t const deviceID, std::uint32_t const modelID) noexcept
+inline UniqueIdentifier makeEntityModelID(std::uint32_t const vendorID, std::uint8_t const deviceID, std::uint32_t const modelID) noexcept
 {
-	return (static_cast<UniqueIdentifier>(vendorID) << 40) + (static_cast<UniqueIdentifier>(deviceID) << 32) + static_cast<UniqueIdentifier>(modelID);
+	return UniqueIdentifier{ (static_cast<UniqueIdentifier::value_type>(vendorID) << 40) + (static_cast<UniqueIdentifier::value_type>(deviceID) << 32) + static_cast<UniqueIdentifier::value_type>(modelID) };
 }
 
 /**
@@ -408,12 +408,13 @@ constexpr UniqueIdentifier makeEntityModelID(std::uint32_t const vendorID, std::
 * @note This method is provided as a helper. Packing an EntityModelID that way is NOT mandatory (except for the vendorID).
 * @warning This method is intended to be used for an OUI-24, not an OUI-36.
 */
-constexpr std::tuple<std::uint32_t, std::uint8_t, std::uint32_t> splitEntityModelID(UniqueIdentifier const entityModelID) noexcept
+inline std::tuple<std::uint32_t, std::uint8_t, std::uint32_t> splitEntityModelID(UniqueIdentifier const entityModelID) noexcept
 {
+	auto const value = entityModelID.getValue();
 	return std::make_tuple(
-		static_cast<std::uint32_t>((entityModelID >> 40) & 0x0000000000FFFFFF),
-		static_cast<std::uint8_t>((entityModelID >> 32) & 0x00000000000000FF),
-		static_cast<std::uint32_t>(entityModelID & 0x00000000FFFFFFFF)
+		static_cast<std::uint32_t>((value >> 40) & 0x0000000000FFFFFF),
+		static_cast<std::uint8_t>((value >> 32) & 0x00000000000000FF),
+		static_cast<std::uint32_t>(value & 0x00000000FFFFFFFF)
 	);
 }
 

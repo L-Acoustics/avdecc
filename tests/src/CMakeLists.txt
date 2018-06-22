@@ -29,6 +29,7 @@ set(TESTS_SOURCE
 	protocolInterface_pcap_tests.cpp
 	protocolInterface_virtual_tests.cpp
 	streamFormat_tests.cpp
+	uniqueIdentifier_tests.cpp
 )
 list(APPEND ADD_LINK_LIBRARIES la_avdecc_static)
 

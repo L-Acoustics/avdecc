@@ -35,8 +35,8 @@ TEST(Aem, SerializeFrame)
 	// Set AECP fields
 	aem.setMessageType(la::avdecc::protocol::AecpMessageType::AemCommand);
 	aem.setStatus(la::avdecc::protocol::AecpStatus::NotImplemented);
-	aem.setTargetEntityID(la::avdecc::getUninitializedIdentifier());
-	aem.setControllerEntityID(la::avdecc::getUninitializedIdentifier());
+	aem.setTargetEntityID(la::avdecc::UniqueIdentifier::getUninitializedUniqueIdentifier());
+	aem.setControllerEntityID(la::avdecc::UniqueIdentifier::getUninitializedUniqueIdentifier());
 	aem.setSequenceID(0x15);
 	// Set AEM fields
 	aem.setUnsolicited(true);

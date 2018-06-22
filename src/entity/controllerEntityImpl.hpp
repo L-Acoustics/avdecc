@@ -83,7 +83,7 @@ private:
 		}
 	};
 
-	using DiscoveredEntities = std::unordered_map<UniqueIdentifier, DiscoveredEntity>;
+	using DiscoveredEntities = std::unordered_map<UniqueIdentifier, DiscoveredEntity, UniqueIdentifier::hash>;
 	using OnAECPErrorCallback = std::function<void(ControllerEntity::AemCommandStatus const error)>;
 	using OnACMPErrorCallback = std::function<void(ControllerEntity::ControlStatus const error)>;
 

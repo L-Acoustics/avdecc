@@ -90,23 +90,28 @@ void ControllerImpl::updateAcquiredState(ControlledEntityImpl& controlledEntity,
 #pragma message("TODO: Handle acquire state tree")
 	if (descriptorType == entity::model::DescriptorType::Entity)
 	{
-		auto owningController{ getUninitializedIdentifier() };
+		auto owningController{ UniqueIdentifier{} };
 		auto acquireState{ model::AcquireState::Undefined };
 		if (undefined)
 		{
-			owningController = getUninitializedIdentifier();
 			acquireState = model::AcquireState::Undefined;
 		}
 		else
 		{
 			owningController = owningEntity;
 
-			if (!isValidUniqueIdentifier(owningEntity)) // No more controller
+			if (!owningEntity) // No more controller
+			{
 				acquireState = model::AcquireState::NotAcquired;
+			}
 			else if (owningEntity == _controller->getEntityID()) // Controlled by myself
+			{
 				acquireState = model::AcquireState::Acquired;
+			}
 			else // Or acquired by another controller
+			{
 				acquireState = model::AcquireState::AcquiredByOther;
+			}
 		}
 
 		controlledEntity.setAcquireState(acquireState);
@@ -736,9 +741,9 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 		auto talkerStreamIdentification{ entity::model::StreamIdentification{} };
 		if (conState != model::StreamConnectionState::State::NotConnected)
 		{
-			if (!isValidUniqueIdentifier(talkerStream.entityID))
+			if (!talkerStream.entityID)
 			{
-				LOG_CONTROLLER_WARN(getNullIdentifier(), "Listener StreamState notification advertises being connected but with no Talker Identification (ListenerID={} ListenerIndex={})", listenerStream.entityID, listenerStream.streamIndex);
+				LOG_CONTROLLER_WARN(UniqueIdentifier::getNullUniqueIdentifier(), "Listener StreamState notification advertises being connected but with no Talker Identification (ListenerID={} ListenerIndex={})", listenerStream.entityID.getValue(), listenerStream.streamIndex);
 				conState = model::StreamConnectionState::State::NotConnected;
 			}
 			else
@@ -794,7 +799,7 @@ void ControllerImpl::handleTalkerStreamStateNotification(entity::model::StreamId
 		auto talkerStreamIdentification{ entity::model::StreamIdentification{} };
 		if (isConnected || isFastConnect)
 		{
-			AVDECC_ASSERT(isValidUniqueIdentifier(talkerStream.entityID), "Connected or FastConnecting to an invalid TalkerID");
+			AVDECC_ASSERT(talkerStream.entityID, "Connected or FastConnecting to an invalid TalkerID");
 			talkerStreamIdentification = talkerStream;
 		}
 
@@ -804,7 +809,7 @@ void ControllerImpl::handleTalkerStreamStateNotification(entity::model::StreamId
 		}
 
 		// Check if Talker is valid and online so we can update the StreamConnections
-		if (isValidUniqueIdentifier(talkerStream.entityID))
+		if (talkerStream.entityID)
 		{
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto talkerEntity = getControlledEntityImpl(talkerStream.entityID);

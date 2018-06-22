@@ -59,7 +59,7 @@ std::tuple<AemAcquireEntityFlags, UniqueIdentifier, entity::model::DescriptorTyp
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
 	AemAcquireEntityFlags flags{ AemAcquireEntityFlags::None };
-	UniqueIdentifier ownerID{ getUninitializedIdentifier() };
+	UniqueIdentifier ownerID{};
 	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 
@@ -112,7 +112,7 @@ std::tuple<AemLockEntityFlags, UniqueIdentifier, entity::model::DescriptorType, 
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
 	AemLockEntityFlags flags{ AemLockEntityFlags::None };
-	UniqueIdentifier lockedID{ getUninitializedIdentifier() };
+	UniqueIdentifier lockedID{};
 	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 

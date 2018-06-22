@@ -220,7 +220,7 @@ private:
 	/* ************************************************************ */
 	/* Private members                                              */
 	/* ************************************************************ */
-	std::unordered_map<UniqueIdentifier, OnlineControlledEntity> _controlledEntities;
+	std::unordered_map<UniqueIdentifier, OnlineControlledEntity, UniqueIdentifier::hash> _controlledEntities;
 	mutable std::mutex _lock{}; // A mutex to protect _controlledEntities
 	EndStation::UniquePointer _endStation{ nullptr, nullptr };
 	entity::ControllerEntity* _controller{ nullptr };

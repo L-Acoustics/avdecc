@@ -36,6 +36,7 @@
 #include <set>
 #include <mutex>
 #include "internals/exports.hpp"
+#include "internals/uniqueIdentifier.hpp"
 
 namespace la
 {
@@ -106,7 +107,7 @@ constexpr auto forceNumeric(T const t) noexcept
 
 /** Useful template to convert any integer value to it's hex representation. Can be filled with zeros (ex: int16(0x123) = 0x0123) and printed in uppercase. */
 template<typename T>
-std::string toHexString(T const v, bool const zeroFilled = false, bool const upper = false) noexcept
+constexpr std::string toHexString(T const v, bool const zeroFilled = false, bool const upper = false) noexcept
 {
 	static_assert(std::numeric_limits<T>::is_integer, "toHexString requires an integer value");
 
@@ -125,6 +126,13 @@ std::string toHexString(T const v, bool const zeroFilled = false, bool const upp
 	{
 		return "[Invalid Conversion]";
 	}
+}
+
+/** UniqueIdentifier overload */
+template<>
+inline std::string toHexString<UniqueIdentifier>(UniqueIdentifier const v, bool const zeroFilled, bool const upper) noexcept
+{
+	return toHexString(v.getValue(), zeroFilled, upper);
 }
 
 /**

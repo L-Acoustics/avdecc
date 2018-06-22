@@ -118,7 +118,6 @@ set (SOURCE_FILES_COMMON
 	endStation.cpp
 	logger.cpp
 	streamFormat.cpp
-	uniqueIdentifier.cpp
 	utils.cpp
 )
 

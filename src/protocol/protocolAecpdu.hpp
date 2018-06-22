@@ -57,7 +57,7 @@ public:
 	}
 	void setTargetEntityID(UniqueIdentifier const targetEntityID) noexcept
 	{
-		AvtpduControl::setStreamID(targetEntityID);
+		AvtpduControl::setStreamID(targetEntityID.getValue());
 	}
 	void setControllerEntityID(UniqueIdentifier const controllerEntityID) noexcept
 	{
@@ -93,7 +93,7 @@ public:
 	}
 	UniqueIdentifier getTargetEntityID() const noexcept
 	{
-		return AvtpduControl::getStreamID();
+		return UniqueIdentifier{ AvtpduControl::getStreamID() };
 	}
 	UniqueIdentifier getControllerEntityID() const noexcept
 	{
@@ -127,7 +127,7 @@ protected:
 	virtual ~Aecpdu() noexcept override = default;
 
 	// Aecpdu header data
-	UniqueIdentifier _controllerEntityID{ getNullIdentifier() };
+	UniqueIdentifier _controllerEntityID{};
 	AecpSequenceID _sequenceID{ 0 };
 
 private:

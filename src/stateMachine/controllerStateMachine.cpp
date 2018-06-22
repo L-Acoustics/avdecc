@@ -479,7 +479,7 @@ ProtocolInterface::Error ControllerStateMachine::disableEntityAdvertising(entity
 
 ProtocolInterface::Error ControllerStateMachine::discoverRemoteEntities() noexcept
 {
-	return discoverRemoteEntity(getNullIdentifier());
+	return discoverRemoteEntity(UniqueIdentifier::getNullUniqueIdentifier());
 }
 
 ProtocolInterface::Error ControllerStateMachine::discoverRemoteEntity(UniqueIdentifier const entityID) noexcept
@@ -509,7 +509,7 @@ Adpdu ControllerStateMachine::makeDiscoveryMessage(UniqueIdentifier const entity
 	frame.setMessageType(AdpMessageType::EntityDiscover);
 	frame.setValidTime(0);
 	frame.setEntityID(entityID);
-	frame.setEntityModelID(getNullIdentifier());
+	frame.setEntityModelID(UniqueIdentifier::getNullUniqueIdentifier());
 	frame.setEntityCapabilities(entity::EntityCapabilities::None);
 	frame.setTalkerStreamSources(0);
 	frame.setTalkerCapabilities(entity::TalkerCapabilities::None);
@@ -517,11 +517,11 @@ Adpdu ControllerStateMachine::makeDiscoveryMessage(UniqueIdentifier const entity
 	frame.setListenerCapabilities(entity::ListenerCapabilities::None);
 	frame.setControllerCapabilities(entity::ControllerCapabilities::None);
 	frame.setAvailableIndex(0);
-	frame.setGptpGrandmasterID(getNullIdentifier());
+	frame.setGptpGrandmasterID(UniqueIdentifier::getNullUniqueIdentifier());
 	frame.setGptpDomainNumber(0);
 	frame.setIdentifyControlIndex(0);
 	frame.setInterfaceIndex(0);
-	frame.setAssociationID(getNullIdentifier());
+	frame.setAssociationID(UniqueIdentifier::getNullUniqueIdentifier());
 
 	return frame;
 }
@@ -565,7 +565,7 @@ Adpdu ControllerStateMachine::makeEntityDepartingMessage(entity::Entity& entity)
 	frame.setMessageType(AdpMessageType::EntityDeparting);
 	frame.setValidTime(0);
 	frame.setEntityID(entity.getEntityID());
-	frame.setEntityModelID(getNullIdentifier());
+	frame.setEntityModelID(UniqueIdentifier::getNullUniqueIdentifier());
 	frame.setEntityCapabilities(entity::EntityCapabilities::None);
 	frame.setTalkerStreamSources(0);
 	frame.setTalkerCapabilities(entity::TalkerCapabilities::None);
@@ -573,11 +573,11 @@ Adpdu ControllerStateMachine::makeEntityDepartingMessage(entity::Entity& entity)
 	frame.setListenerCapabilities(entity::ListenerCapabilities::None);
 	frame.setControllerCapabilities(entity::ControllerCapabilities::None);
 	frame.setAvailableIndex(0);
-	frame.setGptpGrandmasterID(getNullIdentifier());
+	frame.setGptpGrandmasterID(UniqueIdentifier::getNullUniqueIdentifier());
 	frame.setGptpDomainNumber(0);
 	frame.setIdentifyControlIndex(0);
 	frame.setInterfaceIndex(0);
-	frame.setAssociationID(getNullIdentifier());
+	frame.setAssociationID(UniqueIdentifier::getNullUniqueIdentifier());
 
 	return frame;
 }
@@ -870,7 +870,7 @@ void ControllerStateMachine::handleAdpEntityDiscover(Adpdu const& adpdu) noexcep
 		auto& entityInfo = entityKV.second;
 		auto& entity = entityInfo.entity;
 		// Only reply to global (entityID == 0) discovery messages (only if advertising is active) and to targeted ones
-		if ((!isValidUniqueIdentifier(entityID) && entityInfo.isAdvertising) || entityID == entity.getEntityID())
+		if ((!entityID && entityInfo.isAdvertising) || entityID == entity.getEntityID())
 		{
 			// Build the EntityAvailable message
 			auto frame = makeEntityAvailableMessage(entity);

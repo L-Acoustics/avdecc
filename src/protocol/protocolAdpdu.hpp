@@ -73,7 +73,7 @@ public:
 	}
 	void setEntityID(UniqueIdentifier const entityID) noexcept
 	{
-		AvtpduControl::setStreamID(entityID);
+		AvtpduControl::setStreamID(entityID.getValue());
 	}
 	void setEntityModelID(UniqueIdentifier const entityModelID) noexcept
 	{
@@ -139,7 +139,7 @@ public:
 	}
 	UniqueIdentifier getEntityID() const noexcept
 	{
-		return AvtpduControl::getStreamID();
+		return UniqueIdentifier{ AvtpduControl::getStreamID() };
 	}
 	UniqueIdentifier getEntityModelID() const noexcept
 	{
@@ -217,7 +217,7 @@ private:
 	void destroy() noexcept;
 
 	// Adpdu header data
-	UniqueIdentifier _entityModelID{ getNullIdentifier() };
+	UniqueIdentifier _entityModelID{};
 	entity::EntityCapabilities _entityCapabilities{ entity::EntityCapabilities::None };
 	std::uint16_t _talkerStreamSources{};
 	entity::TalkerCapabilities _talkerCapabilities{ entity::TalkerCapabilities::None };
@@ -225,12 +225,12 @@ private:
 	entity::ListenerCapabilities _listenerCapabilities{ entity::ListenerCapabilities::None };
 	entity::ControllerCapabilities _controllerCapabilities{ entity::ControllerCapabilities::None };
 	std::uint32_t _availableIndex{};
-	UniqueIdentifier _gptpGrandmasterID{ getNullIdentifier() };
+	UniqueIdentifier _gptpGrandmasterID{};
 	std::uint8_t _gptpDomainNumber{0};
 	// Reserved 24bits
 	std::uint16_t _identifyControlIndex{ 0 };
 	std::uint16_t _interfaceIndex{ 0 };
-	UniqueIdentifier _associationID{ getNullIdentifier() };
+	UniqueIdentifier _associationID{};
 	// Reserved 32bits
 
 private:

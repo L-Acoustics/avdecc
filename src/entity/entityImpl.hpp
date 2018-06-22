@@ -164,7 +164,7 @@ private:
 	UniqueIdentifier generateEID(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID) const
 	{
 		// Generate eid
-		UniqueIdentifier eid{ 0 };
+		UniqueIdentifier::value_type eid{ 0u };
 		auto macAddress = protocolInterface->getMacAddress();
 		if (macAddress.size() != 6)
 			throw Exception("Invalid MAC address size");
@@ -178,7 +178,7 @@ private:
 		eid <<= 8; eid += macAddress[4];
 		eid <<= 8; eid += macAddress[5];
 
-		return eid;
+		return UniqueIdentifier{ eid };
 	}
 
 	// Internal variables

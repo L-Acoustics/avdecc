@@ -269,7 +269,7 @@ private:
 	bool _enumerateError{ false }; // Have we got an error during entity enumeration
 	bool _advertised{ false }; // Has the entity been advertised to the observers
 	model::AcquireState _acquireState{ model::AcquireState::Undefined }; // TODO: Should be a graph of descriptors
-	UniqueIdentifier _owningControllerID{ getUninitializedIdentifier() }; // EID of the controller currently owning (who acquired) this entity
+	UniqueIdentifier _owningControllerID{}; // EID of the controller currently owning (who acquired) this entity
 	// Entity variables
 	ModifiableEntity _entity; // No NSMI, Entity has no default constructor but it has to be passed to the only constructor of this class anyway
 	// Entity Model

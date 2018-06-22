@@ -171,11 +171,11 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 							break;
 						case entity::ControllerEntity::AemCommandStatus::NotImplemented:
 						case entity::ControllerEntity::AemCommandStatus::NotSupported:
-							updateAcquiredState(*entity, getNullIdentifier(), descriptorType, descriptorIndex);
+							updateAcquiredState(*entity, UniqueIdentifier{}, descriptorType, descriptorIndex);
 							break;
 						default:
 							// In case of error, set the state to undefined
-							updateAcquiredState(*entity, getUninitializedIdentifier(), descriptorType, descriptorIndex, true);
+							updateAcquiredState(*entity, UniqueIdentifier{}, descriptorType, descriptorIndex, true);
 							break;
 					}
 				}
@@ -197,7 +197,7 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, getNullIdentifier());
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, UniqueIdentifier::getNullUniqueIdentifier());
 	}
 }
 
@@ -247,7 +247,7 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, getNullIdentifier());
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, UniqueIdentifier::getNullUniqueIdentifier());
 	}
 }
 
@@ -1104,10 +1104,10 @@ void ControllerImpl::connectStream(entity::model::StreamIdentification const& ta
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(getNullIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", talkerStream.entityID, talkerStream.streamIndex, listenerStream.entityID, listenerStream.streamIndex);
+		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex);
 		_controller->connectStream(talkerStream, listenerStream, [this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 		{
-			LOG_CONTROLLER_TRACE(getNullIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", talkerStream.entityID, talkerStream.streamIndex, listenerStream.entityID, listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
 			if (!!status)
 			{
@@ -1134,10 +1134,10 @@ void ControllerImpl::disconnectStream(entity::model::StreamIdentification const&
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(getNullIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", talkerStream.entityID, talkerStream.streamIndex, listenerStream.entityID, listenerStream.streamIndex);
+		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex);
 		_controller->disconnectStream(talkerStream, listenerStream, [this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 		{
-			LOG_CONTROLLER_TRACE(getNullIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", talkerStream.entityID, talkerStream.streamIndex, listenerStream.entityID, listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
 			bool shouldNotifyHandler{ true }; // Shall we notify the handler right now, or do we have to send another message before
 
@@ -1194,10 +1194,10 @@ void ControllerImpl::disconnectTalkerStream(entity::model::StreamIdentification 
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(getNullIdentifier(), "User disconnectTalkerStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", talkerStream.entityID, talkerStream.streamIndex, listenerStream.entityID, listenerStream.streamIndex);
+		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectTalkerStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex);
 		_controller->disconnectTalkerStream(talkerStream, listenerStream, [this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 		{
-			LOG_CONTROLLER_TRACE(getNullIdentifier(), "User disconnectTalkerStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", talkerStream.entityID, talkerStream.streamIndex, listenerStream.entityID, listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectTalkerStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
 			auto st = status;
 			if (st == entity::ControllerEntity::ControlStatus::NotConnected)
@@ -1226,10 +1226,10 @@ void ControllerImpl::getListenerStreamState(entity::model::StreamIdentification 
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(getNullIdentifier(), "User getListenerStreamState (ListenerID={} ListenerIndex={})", listenerStream.entityID, listenerStream.streamIndex);
+		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User getListenerStreamState (ListenerID={} ListenerIndex={})", listenerStream.entityID.getValue(), listenerStream.streamIndex);
 		_controller->getListenerStreamState(listenerStream, [this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 		{
-			LOG_CONTROLLER_TRACE(getNullIdentifier(), "User getListenerStreamState (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", talkerStream.entityID, talkerStream.streamIndex, listenerStream.entityID, listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User getListenerStreamState (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto listener = getControlledEntityImpl(listenerStream.entityID);
