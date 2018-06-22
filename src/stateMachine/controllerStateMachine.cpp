@@ -537,7 +537,7 @@ Adpdu ControllerStateMachine::makeEntityAvailableMessage(entity::Entity& entity)
 	frame.setMessageType(AdpMessageType::EntityAvailable);
 	frame.setValidTime(entity.getValidTime());
 	frame.setEntityID(entity.getEntityID());
-	frame.setEntityModelID(entity.getVendorEntityModelID());
+	frame.setEntityModelID(entity.getEntityModelID());
 	frame.setEntityCapabilities(entity.getEntityCapabilities());
 	frame.setTalkerStreamSources(entity.getTalkerStreamSources());
 	frame.setTalkerCapabilities(entity.getTalkerCapabilities());

@@ -42,7 +42,6 @@ namespace entity
 namespace model
 {
 
-using VendorEntityModel = std::uint64_t;
 using ConfigurationIndex = std::uint16_t;
 using DescriptorIndex = std::uint16_t;
 using AudioUnitIndex = DescriptorIndex;

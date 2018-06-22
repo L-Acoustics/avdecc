@@ -21,6 +21,7 @@
 * @file uniqueIdentifier.hpp
 * @author Christophe Calmejane
 * @brief UniqueIdentifier definition and helper methods.
+* @note http://standards.ieee.org/develop/regauth/tut/eui.pdf
 */
 
 #pragma once

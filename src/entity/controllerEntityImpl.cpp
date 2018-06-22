@@ -79,8 +79,8 @@ private:
 /* ************************************************************************** */
 /* ControllerEntityImpl life cycle                                            */
 /* ************************************************************************** */
-ControllerEntityImpl::ControllerEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, model::VendorEntityModel const vendorEntityModelID, ControllerEntity::Delegate* const delegate)
-	: LocalEntityImpl(protocolInterface, progID, vendorEntityModelID, EntityCapabilities::None, 0, TalkerCapabilities::None, 0, ListenerCapabilities::None, ControllerCapabilities::Implemented, 0, protocolInterface->getInterfaceIndex(), getNullIdentifier())
+ControllerEntityImpl::ControllerEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, UniqueIdentifier const entityModelID, ControllerEntity::Delegate* const delegate)
+	: LocalEntityImpl(protocolInterface, progID, entityModelID, EntityCapabilities::None, 0, TalkerCapabilities::None, 0, ListenerCapabilities::None, ControllerCapabilities::Implemented, 0, protocolInterface->getInterfaceIndex(), getNullIdentifier())
 	, _delegate(delegate)
 {
 	// Register observer
@@ -2623,12 +2623,12 @@ std::string LA_AVDECC_CALL_CONVENTION ControllerEntity::statusToString(Controlle
 	}
 }
 
-ControllerEntity::ControllerEntity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, model::VendorEntityModel const vendorEntityModelID, EntityCapabilities const entityCapabilities,
+ControllerEntity::ControllerEntity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities,
 																	 std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities,
 																	 std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities,
 																	 ControllerCapabilities const controllerCapabilities,
 																	 std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID) noexcept
-	: LocalEntity(entityID, macAddress, vendorEntityModelID, entityCapabilities,
+	: LocalEntity(entityID, macAddress, entityModelID, entityCapabilities,
 								talkerStreamSources, talkerCapabilities,
 								listenerStreamSinks, listenerCapabilities,
 								controllerCapabilities,

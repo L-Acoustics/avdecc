@@ -223,7 +223,7 @@ entity::model::EntityDescriptor deserializeReadEntityDescriptorResponse(AemAecpd
 		// Check entity descriptor payload - Clause 7.2.1
 		Deserializer des(commandPayload, commandPayloadLength);
 		des.setPosition(commonSize); // Skip already unpacked common header
-		des >> entityDescriptor.entityID >> entityDescriptor.vendorEntityModelID >> entityDescriptor.entityCapabilities;
+		des >> entityDescriptor.entityID >> entityDescriptor.entityModelID >> entityDescriptor.entityCapabilities;
 		des >> entityDescriptor.talkerStreamSources >> entityDescriptor.talkerCapabilities;
 		des >> entityDescriptor.listenerStreamSinks >> entityDescriptor.listenerCapabilities;
 		des >> entityDescriptor.controllerCapabilities;

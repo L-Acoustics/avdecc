@@ -50,11 +50,6 @@ namespace entity
 namespace model
 {
 
-constexpr VendorEntityModel getNullVendorEntityModel() noexcept
-{
-	return VendorEntityModel(0u);
-}
-
 constexpr StreamFormat getNullStreamFormat() noexcept
 {
 	return StreamFormat(0u);
@@ -75,7 +70,7 @@ constexpr LocalizedStringReference getNullLocalizedStringReference() noexcept
 struct EntityDescriptor
 {
 	UniqueIdentifier entityID{ getNullIdentifier() };
-	VendorEntityModel vendorEntityModelID{ getNullVendorEntityModel() };
+	UniqueIdentifier entityModelID{ getNullIdentifier() };
 	EntityCapabilities entityCapabilities{ EntityCapabilities::None };
 	std::uint16_t talkerStreamSources{ 0u };
 	TalkerCapabilities talkerCapabilities{ TalkerCapabilities::None };
@@ -391,31 +386,34 @@ constexpr bool operator!=(AvbInfo const& lhs, AvbInfo const& rhs) noexcept
 }
 
 /**
-* @brief Make a VendorEntityModel from vendorID, deviceID and modelID.
-* @details Make a VendorEntityModel from vendorID, deviceID and modelID.
+* @brief Make a UniqueIdentifier from vendorID, deviceID and modelID.
+* @details Helper method to construct a UniqueIdentifier from vendorID, deviceID and modelID to be used as EntityModelID.
 * @param[in] vendorID OUI-24 of the vendor (8 MSBs should be 0, ignored regardless).
 * @param[in] deviceID ID of the device (vendor specific).
 * @param[in] modelID ID of the model (vendor specific).
-* @return Packed vendorEntityModel to be used in ADP messages and EntityDescriptor.
+* @return Valid UniqueIdentifier that can be used as EntityModelID in ADP messages and EntityDescriptor.
+* @note This method is provided as a helper. Packing an EntityModelID that way is NOT mandatory (except for the vendorID).
+* @warning This method is intended to be used for an OUI-24, not an OUI-36.
 */
-constexpr VendorEntityModel makeVendorEntityModel(std::uint32_t const vendorID, std::uint8_t const deviceID, std::uint32_t const modelID) noexcept
+constexpr UniqueIdentifier makeEntityModelID(std::uint32_t const vendorID, std::uint8_t const deviceID, std::uint32_t const modelID) noexcept
 {
 	return (static_cast<UniqueIdentifier>(vendorID) << 40) + (static_cast<UniqueIdentifier>(deviceID) << 32) + static_cast<UniqueIdentifier>(modelID);
 }
 
 /**
-* @brief Split a VendorEntityModel into vendorID, deviceID and modelID.
-* @details Split a VendorEntityModel into vendorID, deviceID and modelID.
-* @param[in] vendorEntityModelID The VendorEntityModel value.
+* @brief Split a UniqueIdentifier representing an EntityModelID into vendorID, deviceID and modelID.
+* @details Helper method to split a UniqueIdentifier representing an EntityModelID into vendorID, deviceID and modelID.
+* @param[in] entityModelID The UniqueIdentifier representing an EntityModelID.
 * @return Tuple of vendorID (OUI-24), deviceID and modelID.
+* @note This method is provided as a helper. Packing an EntityModelID that way is NOT mandatory (except for the vendorID).
+* @warning This method is intended to be used for an OUI-24, not an OUI-36.
 */
-constexpr std::tuple<std::uint32_t, std::uint8_t, std::uint32_t> splitVendorEntityModel(VendorEntityModel const vendorEntityModelID) noexcept
+constexpr std::tuple<std::uint32_t, std::uint8_t, std::uint32_t> splitEntityModelID(UniqueIdentifier const entityModelID) noexcept
 {
-	//std::uint32_t vendorID = (entityDescriptor.vendorEntityModelID >> 40) & 0x00FFFFFF; // Mask the OUI-24 vendor value (24 most significant bits)
 	return std::make_tuple(
-		static_cast<std::uint32_t>((vendorEntityModelID >> 40) & 0x0000000000FFFFFF),
-		static_cast<std::uint8_t>((vendorEntityModelID >> 32) & 0x00000000000000FF),
-		static_cast<std::uint32_t>(vendorEntityModelID & 0x00000000FFFFFFFF)
+		static_cast<std::uint32_t>((entityModelID >> 40) & 0x0000000000FFFFFF),
+		static_cast<std::uint8_t>((entityModelID >> 32) & 0x00000000000000FF),
+		static_cast<std::uint32_t>(entityModelID & 0x00000000FFFFFFFF)
 	);
 }
 

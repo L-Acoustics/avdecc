@@ -62,10 +62,10 @@ public:
 		return _validTime;
 	}
 
-	/** Gets the vendor entity model ID */
-	model::VendorEntityModel getVendorEntityModelID() const noexcept
+	/** Gets the entity model ID */
+	UniqueIdentifier getEntityModelID() const noexcept
 	{
-		return _vendorEntityModelID;
+		return _entityModelID;
 	}
 
 	/** Gets the entity capabilities */
@@ -147,12 +147,12 @@ public:
 	}
 
 	/** Constructor using fields that are not allowed to change after creation */
-	Entity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, model::VendorEntityModel const vendorEntityModelID, EntityCapabilities const entityCapabilities,
+	Entity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities,
 				 std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities,
 				 std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities,
 				 ControllerCapabilities const controllerCapabilities,
 				 std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID) noexcept
-		: _entityID(entityID), _macAddress(macAddress), _vendorEntityModelID(vendorEntityModelID), _entityCapabilities(entityCapabilities)
+		: _entityID(entityID), _macAddress(macAddress), _entityModelID(entityModelID), _entityCapabilities(entityCapabilities)
 		, _talkerStreamSources(talkerStreamSources), _talkerCapabilities(talkerCapabilities)
 		, _listenerStreamSinks(listenerStreamSinks), _listenerCapabilities(listenerCapabilities)
 		, _controllerCapabilities(controllerCapabilities)
@@ -169,13 +169,13 @@ public:
 
 protected:
 	/** Constructor using all fields */
-	Entity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, std::uint8_t const validTime, model::VendorEntityModel const vendorEntityModelID, EntityCapabilities const entityCapabilities,
+	Entity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, std::uint8_t const validTime, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities,
 				 std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities,
 				 std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities,
 				 ControllerCapabilities const controllerCapabilities,
 				 std::uint32_t const availableIndex, UniqueIdentifier const gptpGrandmasterID, std::uint8_t const gptpDomainNumber,
 				 std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID) noexcept
-		: _entityID(entityID), _macAddress(macAddress), _validTime(validTime), _vendorEntityModelID(vendorEntityModelID), _entityCapabilities(entityCapabilities)
+		: _entityID(entityID), _macAddress(macAddress), _validTime(validTime), _entityModelID(entityModelID), _entityCapabilities(entityCapabilities)
 		, _talkerStreamSources(talkerStreamSources), _talkerCapabilities(talkerCapabilities)
 		, _listenerStreamSinks(listenerStreamSinks), _listenerCapabilities(listenerCapabilities)
 		, _controllerCapabilities(controllerCapabilities)
@@ -216,7 +216,7 @@ private:
 	UniqueIdentifier _entityID{ getNullIdentifier() };
 	networkInterface::MacAddress _macAddress{};
 	std::uint8_t _validTime{ 31 }; // Default protocol value is 31 (meaning 62 seconds)
-	model::VendorEntityModel _vendorEntityModelID{ model::getNullVendorEntityModel() };
+	UniqueIdentifier _entityModelID{ getNullIdentifier() };
 	EntityCapabilities _entityCapabilities{ EntityCapabilities::None };
 	std::uint16_t _talkerStreamSources{ 0u };
 	TalkerCapabilities _talkerCapabilities{ TalkerCapabilities::None };
@@ -251,12 +251,12 @@ public:
 	virtual void unlock() noexcept = 0;
 
 protected:
-	LocalEntity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, model::VendorEntityModel const vendorEntityModelID, EntityCapabilities const entityCapabilities,
+	LocalEntity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities,
 													 std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities,
 													 std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities,
 													 ControllerCapabilities const controllerCapabilities,
 													 std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID) noexcept
-		: Entity(entityID, macAddress, vendorEntityModelID, entityCapabilities,
+		: Entity(entityID, macAddress, entityModelID, entityCapabilities,
 						 talkerStreamSources, talkerCapabilities,
 						 listenerStreamSinks, listenerCapabilities,
 						 controllerCapabilities,
@@ -270,13 +270,13 @@ class DiscoveredEntity : public Entity
 {
 public:
 	/** Constructor using all Entity fields */
-	DiscoveredEntity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, std::uint8_t const validTime, model::VendorEntityModel const vendorEntityModelID, EntityCapabilities const entityCapabilities,
+	DiscoveredEntity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, std::uint8_t const validTime, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities,
 									 std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities,
 									 std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities,
 									 ControllerCapabilities const controllerCapabilities,
 									 std::uint32_t const availableIndex, UniqueIdentifier const gptpGrandmasterID, std::uint8_t const gptpDomainNumber,
 									 std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID) noexcept
-		: Entity(entityID, macAddress, validTime, vendorEntityModelID, entityCapabilities,
+		: Entity(entityID, macAddress, validTime, entityModelID, entityCapabilities,
 						 talkerStreamSources, talkerCapabilities,
 						 listenerStreamSinks, listenerCapabilities,
 						 controllerCapabilities,
@@ -287,7 +287,7 @@ public:
 
 	/** Constructor to make a DiscoveredEntity from a LocalEntity */
 	DiscoveredEntity(LocalEntity const& entity) noexcept
-		: Entity(entity.getEntityID(), entity.getMacAddress(), entity.getVendorEntityModelID(), entity.getEntityCapabilities(),
+		: Entity(entity.getEntityID(), entity.getMacAddress(), entity.getEntityModelID(), entity.getEntityCapabilities(),
 						 entity.getTalkerStreamSources(), entity.getTalkerCapabilities(),
 						 entity.getListenerStreamSinks(), entity.getListenerCapabilities(),
 						 entity.getControllerCapabilities(),

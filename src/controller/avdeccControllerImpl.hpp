@@ -43,7 +43,7 @@ namespace controller
 class ControllerImpl final : public Controller, private entity::ControllerEntity::Delegate
 {
 public:
-	ControllerImpl(EndStation::ProtocolInterfaceType const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, entity::model::VendorEntityModel const vendorEntityModelID, std::string const& preferedLocale);
+	ControllerImpl(EndStation::ProtocolInterfaceType const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale);
 
 private:
 	using OnlineControlledEntity = std::shared_ptr<ControlledEntityImpl>;
