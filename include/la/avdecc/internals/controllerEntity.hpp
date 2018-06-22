@@ -342,7 +342,7 @@ public:
 
 protected:
 	/** Constructor */
-	ControllerEntity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, model::VendorEntityModel const vendorEntityModelID, EntityCapabilities const entityCapabilities,
+	ControllerEntity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities,
 									 std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities,
 									 std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities,
 									 ControllerCapabilities const controllerCapabilities,

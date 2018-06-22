@@ -59,7 +59,7 @@ std::tuple<AemAcquireEntityFlags, UniqueIdentifier, entity::model::DescriptorTyp
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
 	AemAcquireEntityFlags flags{ AemAcquireEntityFlags::None };
-	UniqueIdentifier ownerID{ getUninitializedIdentifier() };
+	UniqueIdentifier ownerID{};
 	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 
@@ -112,7 +112,7 @@ std::tuple<AemLockEntityFlags, UniqueIdentifier, entity::model::DescriptorType, 
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
 	AemLockEntityFlags flags{ AemLockEntityFlags::None };
-	UniqueIdentifier lockedID{ getUninitializedIdentifier() };
+	UniqueIdentifier lockedID{};
 	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 
@@ -223,7 +223,7 @@ entity::model::EntityDescriptor deserializeReadEntityDescriptorResponse(AemAecpd
 		// Check entity descriptor payload - Clause 7.2.1
 		Deserializer des(commandPayload, commandPayloadLength);
 		des.setPosition(commonSize); // Skip already unpacked common header
-		des >> entityDescriptor.entityID >> entityDescriptor.vendorEntityModelID >> entityDescriptor.entityCapabilities;
+		des >> entityDescriptor.entityID >> entityDescriptor.entityModelID >> entityDescriptor.entityCapabilities;
 		des >> entityDescriptor.talkerStreamSources >> entityDescriptor.talkerCapabilities;
 		des >> entityDescriptor.listenerStreamSinks >> entityDescriptor.listenerCapabilities;
 		des >> entityDescriptor.controllerCapabilities;

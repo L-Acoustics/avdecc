@@ -99,8 +99,8 @@ TEST(ProtocolInterfaceVirtual, SendMessage)
 	// Set ADP fields
 	adpdu->setMessageType(la::avdecc::protocol::AdpMessageType::EntityAvailable);
 	adpdu->setValidTime(2);
-	adpdu->setEntityID(0x0001020304050607);
-	adpdu->setEntityModelID(0);
+	adpdu->setEntityID(la::avdecc::UniqueIdentifier{ 0x0001020304050607 });
+	adpdu->setEntityModelID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
 	adpdu->setEntityCapabilities(la::avdecc::entity::EntityCapabilities::None);
 	adpdu->setTalkerStreamSources(0);
 	adpdu->setTalkerCapabilities(la::avdecc::entity::TalkerCapabilities::None);
@@ -108,11 +108,11 @@ TEST(ProtocolInterfaceVirtual, SendMessage)
 	adpdu->setListenerCapabilities(la::avdecc::entity::ListenerCapabilities::None);
 	adpdu->setControllerCapabilities(la::avdecc::entity::ControllerCapabilities::Implemented);
 	adpdu->setAvailableIndex(1);
-	adpdu->setGptpGrandmasterID(0);
+	adpdu->setGptpGrandmasterID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
 	adpdu->setGptpDomainNumber(0);
 	adpdu->setIdentifyControlIndex(0);
 	adpdu->setInterfaceIndex(intfc1->getInterfaceIndex());
-	adpdu->setAssociationID(0);
+	adpdu->setAssociationID(la::avdecc::UniqueIdentifier{});
 
 	// Send the adp message
 	intfc1->sendAdpMessage(std::move(adpdu));
@@ -190,8 +190,8 @@ TEST(ProtocolInterfaceVirtual, TransportError)
 	// Set ADP fields
 	adpdu->setMessageType(la::avdecc::protocol::AdpMessageType::EntityAvailable);
 	adpdu->setValidTime(0);
-	adpdu->setEntityID(0x0001020304050607);
-	adpdu->setEntityModelID(0);
+	adpdu->setEntityID(la::avdecc::UniqueIdentifier{ 0x0001020304050607 });
+	adpdu->setEntityModelID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
 	adpdu->setEntityCapabilities(la::avdecc::entity::EntityCapabilities::None);
 	adpdu->setTalkerStreamSources(0);
 	adpdu->setTalkerCapabilities(la::avdecc::entity::TalkerCapabilities::None);
@@ -199,11 +199,11 @@ TEST(ProtocolInterfaceVirtual, TransportError)
 	adpdu->setListenerCapabilities(la::avdecc::entity::ListenerCapabilities::None);
 	adpdu->setControllerCapabilities(la::avdecc::entity::ControllerCapabilities::Implemented);
 	adpdu->setAvailableIndex(0);
-	adpdu->setGptpGrandmasterID(0);
+	adpdu->setGptpGrandmasterID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
 	adpdu->setGptpDomainNumber(0);
 	adpdu->setIdentifyControlIndex(0);
 	adpdu->setInterfaceIndex(intfc->getInterfaceIndex());
-	adpdu->setAssociationID(0);
+	adpdu->setAssociationID(la::avdecc::UniqueIdentifier{});
 
 	// Send the adp message
 	intfc->sendAdpMessage(std::move(adpdu));

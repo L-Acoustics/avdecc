@@ -46,12 +46,12 @@ class LocalEntityImpl : public SuperClass
 {
 public:
 	LocalEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID,
-									model::VendorEntityModel const vendorEntityModelID, EntityCapabilities const entityCapabilities,
+									UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities,
 									std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities,
 									std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities,
 									ControllerCapabilities const controllerCapabilities,
 									std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID)
-		: SuperClass(generateEID(protocolInterface, progID), protocolInterface->getMacAddress(), vendorEntityModelID, entityCapabilities,
+		: SuperClass(generateEID(protocolInterface, progID), protocolInterface->getMacAddress(), entityModelID, entityCapabilities,
 								 talkerStreamSources, talkerCapabilities,
 								 listenerStreamSinks, listenerCapabilities,
 								 controllerCapabilities,
@@ -164,7 +164,7 @@ private:
 	UniqueIdentifier generateEID(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID) const
 	{
 		// Generate eid
-		UniqueIdentifier eid{ 0 };
+		UniqueIdentifier::value_type eid{ 0u };
 		auto macAddress = protocolInterface->getMacAddress();
 		if (macAddress.size() != 6)
 			throw Exception("Invalid MAC address size");
@@ -178,7 +178,7 @@ private:
 		eid <<= 8; eid += macAddress[4];
 		eid <<= 8; eid += macAddress[5];
 
-		return eid;
+		return UniqueIdentifier{ eid };
 	}
 
 	// Internal variables
@@ -192,8 +192,8 @@ template<class SuperClass>
 class LocalEntityGuard final : public SuperClass
 {
 public:
-	LocalEntityGuard(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, entity::model::VendorEntityModel const vendorEntityModelID, ControllerEntity::Delegate* const delegate)
-		: SuperClass(protocolInterface, progID, vendorEntityModelID, delegate)
+	LocalEntityGuard(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, UniqueIdentifier const entityModelID, ControllerEntity::Delegate* const delegate)
+		: SuperClass(protocolInterface, progID, entityModelID, delegate)
 	{
 	}
 	~LocalEntityGuard() noexcept

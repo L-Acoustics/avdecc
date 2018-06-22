@@ -51,7 +51,7 @@ private:
 	/* ************************************************************************** */
 	/* ControllerEntityImpl life cycle                                            */
 	/* ************************************************************************** */
-	ControllerEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, model::VendorEntityModel const vendorEntityModelID, ControllerEntity::Delegate* const delegate);
+	ControllerEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, UniqueIdentifier const entityModelID, ControllerEntity::Delegate* const delegate);
 	~ControllerEntityImpl() noexcept;
 
 private:
@@ -83,7 +83,7 @@ private:
 		}
 	};
 
-	using DiscoveredEntities = std::unordered_map<UniqueIdentifier, DiscoveredEntity>;
+	using DiscoveredEntities = std::unordered_map<UniqueIdentifier, DiscoveredEntity, UniqueIdentifier::hash>;
 	using OnAECPErrorCallback = std::function<void(ControllerEntity::AemCommandStatus const error)>;
 	using OnACMPErrorCallback = std::function<void(ControllerEntity::ControlStatus const error)>;
 

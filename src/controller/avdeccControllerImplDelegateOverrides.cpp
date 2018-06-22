@@ -131,7 +131,7 @@ void ControllerImpl::onEntityOffline(entity::ControllerEntity const* const /*con
 
 	if (controlledEntity)
 	{
-		updateAcquiredState(*controlledEntity, getUninitializedIdentifier(), entity::model::DescriptorType::Entity, 0u, true);
+		updateAcquiredState(*controlledEntity, UniqueIdentifier{}, entity::model::DescriptorType::Entity, 0u, true);
 
 		// Entity was advertised to the user, notify observers
 		if (controlledEntity->wasAdvertised())

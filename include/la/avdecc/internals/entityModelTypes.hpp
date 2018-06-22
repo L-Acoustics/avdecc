@@ -42,7 +42,6 @@ namespace entity
 namespace model
 {
 
-using VendorEntityModel = std::uint64_t;
 using ConfigurationIndex = std::uint16_t;
 using DescriptorIndex = std::uint16_t;
 using AudioUnitIndex = DescriptorIndex;
@@ -408,7 +407,7 @@ private:
 /** Stream Identification (EntityID/StreamIndex couple) */
 struct StreamIdentification
 {
-	UniqueIdentifier entityID{ getNullIdentifier() };
+	UniqueIdentifier entityID{};
 	entity::model::StreamIndex streamIndex{ entity::model::StreamIndex(0u) };
 };
 
@@ -424,7 +423,7 @@ constexpr bool operator!=(StreamIdentification const& lhs, StreamIdentification 
 
 constexpr bool operator<(StreamIdentification const& lhs, StreamIdentification const& rhs) noexcept
 {
-	return (lhs.entityID < rhs.entityID) || (lhs.entityID == rhs.entityID && lhs.streamIndex < rhs.streamIndex);
+	return (lhs.entityID.getValue() < rhs.entityID.getValue()) || (lhs.entityID == rhs.entityID && lhs.streamIndex < rhs.streamIndex);
 }
 
 

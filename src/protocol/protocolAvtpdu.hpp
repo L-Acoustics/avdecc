@@ -203,7 +203,7 @@ public:
 	{
 		_controlDataLength = controlDataLength;
 	}
-	void setStreamID(UniqueIdentifier const streamID) noexcept
+	void setStreamID(std::uint64_t const streamID) noexcept
 	{
 		_streamID = streamID;
 	}
@@ -225,7 +225,7 @@ public:
 	{
 		return _controlDataLength;
 	}
-	UniqueIdentifier getStreamID() const noexcept
+	std::uint64_t getStreamID() const noexcept
 	{
 		return _streamID;
 	}
@@ -247,7 +247,7 @@ protected:
 	std::uint8_t _controlData{ 0 };
 	std::uint8_t _status{ 0 };
 	std::uint16_t _controlDataLength{ 0 };
-	UniqueIdentifier _streamID{ getNullIdentifier() };
+	std::uint64_t _streamID{};
 
 private:
 	// Hide renamed Avtpdu data

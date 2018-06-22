@@ -53,26 +53,26 @@ void checkPayload(SerializeMethod&& serializeMethod, DeserializeMethod&& deseria
 
 TEST(AemPayloads, AcquireEntityCommand)
 {
-	CHECK_PAYLOAD(AcquireEntityCommand, la::avdecc::protocol::AemAcquireEntityFlags::None, la::avdecc::getUninitializedIdentifier(), la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0));
-	CHECK_PAYLOAD(AcquireEntityCommand, la::avdecc::protocol::AemAcquireEntityFlags::Persistent | la::avdecc::protocol::AemAcquireEntityFlags::Release, la::avdecc::getNullIdentifier(), la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
+	CHECK_PAYLOAD(AcquireEntityCommand, la::avdecc::protocol::AemAcquireEntityFlags::None, la::avdecc::UniqueIdentifier::getUninitializedUniqueIdentifier(), la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0));
+	CHECK_PAYLOAD(AcquireEntityCommand, la::avdecc::protocol::AemAcquireEntityFlags::Persistent | la::avdecc::protocol::AemAcquireEntityFlags::Release, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
 }
 
 TEST(AemPayloads, AcquireEntityResponse)
 {
-	CHECK_PAYLOAD(AcquireEntityResponse, la::avdecc::protocol::AemAcquireEntityFlags::None, la::avdecc::getUninitializedIdentifier(), la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0));
-	CHECK_PAYLOAD(AcquireEntityResponse, la::avdecc::protocol::AemAcquireEntityFlags::Persistent | la::avdecc::protocol::AemAcquireEntityFlags::Release, la::avdecc::getNullIdentifier(), la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
+	CHECK_PAYLOAD(AcquireEntityResponse, la::avdecc::protocol::AemAcquireEntityFlags::None, la::avdecc::UniqueIdentifier::getUninitializedUniqueIdentifier(), la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0));
+	CHECK_PAYLOAD(AcquireEntityResponse, la::avdecc::protocol::AemAcquireEntityFlags::Persistent | la::avdecc::protocol::AemAcquireEntityFlags::Release, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
 }
 
 TEST(AemPayloads, LockEntityCommand)
 {
-	CHECK_PAYLOAD(LockEntityCommand, la::avdecc::protocol::AemLockEntityFlags::None, la::avdecc::getUninitializedIdentifier(), la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0));
-	CHECK_PAYLOAD(LockEntityCommand, la::avdecc::protocol::AemLockEntityFlags::Unlock, la::avdecc::getNullIdentifier(), la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
+	CHECK_PAYLOAD(LockEntityCommand, la::avdecc::protocol::AemLockEntityFlags::None, la::avdecc::UniqueIdentifier::getUninitializedUniqueIdentifier(), la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0));
+	CHECK_PAYLOAD(LockEntityCommand, la::avdecc::protocol::AemLockEntityFlags::Unlock, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
 }
 
 TEST(AemPayloads, LockEntityResponse)
 {
-	CHECK_PAYLOAD(LockEntityResponse, la::avdecc::protocol::AemLockEntityFlags::None, la::avdecc::getUninitializedIdentifier(), la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0));
-	CHECK_PAYLOAD(LockEntityResponse, la::avdecc::protocol::AemLockEntityFlags::Unlock, la::avdecc::getNullIdentifier(), la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
+	CHECK_PAYLOAD(LockEntityResponse, la::avdecc::protocol::AemLockEntityFlags::None, la::avdecc::UniqueIdentifier::getUninitializedUniqueIdentifier(), la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0));
+	CHECK_PAYLOAD(LockEntityResponse, la::avdecc::protocol::AemLockEntityFlags::Unlock, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), la::avdecc::entity::model::DescriptorType::Configuration, la::avdecc::entity::model::DescriptorIndex(5));
 }
 
 TEST(AemPayloads, SetConfigurationCommand)
@@ -256,7 +256,7 @@ TEST(AemPayloads, GetAvbInfoCommand)
 
 TEST(AemPayloads, GetAvbInfoResponse)
 {
-	la::avdecc::entity::model::AvbInfo avbInfo{ la::avdecc::getUninitializedIdentifier(), std::uint32_t(5), std::uint8_t(2), la::avdecc::entity::AvbInfoFlags::AsCapable, la::avdecc::entity::model::MsrpMappings{} };
+	la::avdecc::entity::model::AvbInfo avbInfo{ la::avdecc::UniqueIdentifier::getUninitializedUniqueIdentifier(), std::uint32_t(5), std::uint8_t(2), la::avdecc::entity::AvbInfoFlags::AsCapable, la::avdecc::entity::model::MsrpMappings{} };
 	EXPECT_NO_THROW(
 		auto const ser = la::avdecc::protocol::aemPayload::serializeGetAvbInfoResponse(la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), avbInfo);
 		EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemGetAvbInfoResponsePayloadMinSize, ser.size());

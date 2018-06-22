@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- la::avdecc::Entity::getVendorEntityModelID() renamed getEntityModelID()
+- la::avdecc::entity::model::makeVendorEntityModel() renamed makeEntityModelID()
+- la::avdecc::entity::model::splitVendorEntityModel() renamed splitEntityModelID()
+- Every occurrence of vendorEntityModelID renamed entityModelID
+- la::avdecc::UniqueIdentifier is now a complex type with member helper methods
+
+### Removed
+- la::avdecc::entity::model::VendorEntityModel (should be la::avdecc::UniqueIdentifier)
 
 ## [2.5.3] - 2018-06-18
 ### Fixed

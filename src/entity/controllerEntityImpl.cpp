@@ -79,8 +79,8 @@ private:
 /* ************************************************************************** */
 /* ControllerEntityImpl life cycle                                            */
 /* ************************************************************************** */
-ControllerEntityImpl::ControllerEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, model::VendorEntityModel const vendorEntityModelID, ControllerEntity::Delegate* const delegate)
-	: LocalEntityImpl(protocolInterface, progID, vendorEntityModelID, EntityCapabilities::None, 0, TalkerCapabilities::None, 0, ListenerCapabilities::None, ControllerCapabilities::Implemented, 0, protocolInterface->getInterfaceIndex(), getNullIdentifier())
+ControllerEntityImpl::ControllerEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, UniqueIdentifier const entityModelID, ControllerEntity::Delegate* const delegate)
+	: LocalEntityImpl(protocolInterface, progID, entityModelID, EntityCapabilities::None, 0, TalkerCapabilities::None, 0, ListenerCapabilities::None, ControllerCapabilities::Implemented, 0, protocolInterface->getInterfaceIndex(), UniqueIdentifier{})
 	, _delegate(delegate)
 {
 	// Register observer
@@ -1246,7 +1246,7 @@ void ControllerEntityImpl::sendAcmpCommand(protocol::AcmpMessageType const messa
 		acmp->setSrcAddress(pi->getMacAddress());
 		// No need to set DestAddress, it's always the MultiCast address
 		// Set AVTP fields
-		acmp->setStreamID(getNullIdentifier());
+		acmp->setStreamID(0u);
 		// Set ACMP fields
 		acmp->setMessageType(messageType);
 		acmp->setStatus(protocol::AcmpStatus::Success);
@@ -1455,8 +1455,8 @@ void ControllerEntityImpl::acquireEntity(UniqueIdentifier const targetEntityID, 
 {
 	try
 	{
-		auto const ser = protocol::aemPayload::serializeAcquireEntityCommand(isPersistent ? protocol::AemAcquireEntityFlags::Persistent : protocol::AemAcquireEntityFlags::None, getNullIdentifier(), descriptorType, descriptorIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier(), descriptorType, descriptorIndex);
+		auto const ser = protocol::aemPayload::serializeAcquireEntityCommand(isPersistent ? protocol::AemAcquireEntityFlags::Persistent : protocol::AemAcquireEntityFlags::None, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1470,8 +1470,8 @@ void ControllerEntityImpl::releaseEntity(UniqueIdentifier const targetEntityID, 
 {
 	try
 	{
-		auto const ser = protocol::aemPayload::serializeAcquireEntityCommand(protocol::AemAcquireEntityFlags::Release, getNullIdentifier(), descriptorType, descriptorIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier(), descriptorType, descriptorIndex);
+		auto const ser = protocol::aemPayload::serializeAcquireEntityCommand(protocol::AemAcquireEntityFlags::Release, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1486,8 +1486,8 @@ void ControllerEntityImpl::lockEntity(UniqueIdentifier const targetEntityID, Loc
 #pragma message("TODO: Change the API to allow partial EM lock")
 	try
 	{
-		auto const ser = protocol::aemPayload::serializeLockEntityCommand(protocol::AemLockEntityFlags::None, getNullIdentifier(), model::DescriptorType::Entity, 0);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, getNullIdentifier());
+		auto const ser = protocol::aemPayload::serializeLockEntityCommand(protocol::AemLockEntityFlags::None, UniqueIdentifier::getNullUniqueIdentifier(), model::DescriptorType::Entity, 0);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, UniqueIdentifier::getNullUniqueIdentifier());
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::LockEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1502,7 +1502,7 @@ void ControllerEntityImpl::unlockEntity(UniqueIdentifier const targetEntityID, U
 #pragma message("TODO: Change the API to allow partial EM unlock")
 	try
 	{
-		auto const ser = protocol::aemPayload::serializeLockEntityCommand(protocol::AemLockEntityFlags::Unlock, getNullIdentifier(), model::DescriptorType::Entity, 0);
+		auto const ser = protocol::aemPayload::serializeLockEntityCommand(protocol::AemLockEntityFlags::Unlock, UniqueIdentifier::getNullUniqueIdentifier(), model::DescriptorType::Entity, 0);
 		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
 
 		sendAemCommand(targetEntityID, protocol::AemCommandType::LockEntity, ser.data(), ser.size(), errorCallback, handler);
@@ -2328,18 +2328,18 @@ void ControllerEntityImpl::disconnectTalkerStream(model::StreamIdentification co
 void ControllerEntityImpl::getTalkerStreamState(model::StreamIdentification const& talkerStream, GetTalkerStreamStateHandler const& handler) const noexcept
 {
 	auto errorCallback = ControllerEntityImpl::makeACMPErrorHandler(handler, this, talkerStream, model::StreamIdentification{}, std::uint16_t(0), entity::ConnectionFlags::None, std::placeholders::_1);
-	sendAcmpCommand(protocol::AcmpMessageType::GetTxStateCommand, talkerStream.entityID, talkerStream.streamIndex, getNullIdentifier(), model::StreamIndex(0), std::uint16_t(0), errorCallback, handler);
+	sendAcmpCommand(protocol::AcmpMessageType::GetTxStateCommand, talkerStream.entityID, talkerStream.streamIndex, UniqueIdentifier::getNullUniqueIdentifier(), model::StreamIndex(0), std::uint16_t(0), errorCallback, handler);
 }
 
 void ControllerEntityImpl::getListenerStreamState(model::StreamIdentification const& listenerStream, GetListenerStreamStateHandler const& handler) const noexcept
 {
 	auto errorCallback = ControllerEntityImpl::makeACMPErrorHandler(handler, this, model::StreamIdentification{}, listenerStream, std::uint16_t(0), entity::ConnectionFlags::None, std::placeholders::_1);
-	sendAcmpCommand(protocol::AcmpMessageType::GetRxStateCommand, getNullIdentifier(), model::StreamIndex(0), listenerStream.entityID, listenerStream.streamIndex, std::uint16_t(0), errorCallback, handler);
+	sendAcmpCommand(protocol::AcmpMessageType::GetRxStateCommand, UniqueIdentifier::getNullUniqueIdentifier(), model::StreamIndex(0), listenerStream.entityID, listenerStream.streamIndex, std::uint16_t(0), errorCallback, handler);
 }
 void ControllerEntityImpl::getTalkerStreamConnection(model::StreamIdentification const& talkerStream, uint16_t const connectionIndex, GetTalkerStreamConnectionHandler const& handler) const noexcept
 {
 	auto errorCallback = ControllerEntityImpl::makeACMPErrorHandler(handler, this, talkerStream, model::StreamIdentification{}, connectionIndex, entity::ConnectionFlags::None, std::placeholders::_1);
-	sendAcmpCommand(protocol::AcmpMessageType::GetTxConnectionCommand, talkerStream.entityID, talkerStream.streamIndex, getNullIdentifier(), model::StreamIndex(0), connectionIndex, errorCallback, handler);
+	sendAcmpCommand(protocol::AcmpMessageType::GetTxConnectionCommand, talkerStream.entityID, talkerStream.streamIndex, UniqueIdentifier::getNullUniqueIdentifier(), model::StreamIndex(0), connectionIndex, errorCallback, handler);
 }
 
 /* Other methods */
@@ -2623,12 +2623,12 @@ std::string LA_AVDECC_CALL_CONVENTION ControllerEntity::statusToString(Controlle
 	}
 }
 
-ControllerEntity::ControllerEntity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, model::VendorEntityModel const vendorEntityModelID, EntityCapabilities const entityCapabilities,
+ControllerEntity::ControllerEntity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities,
 																	 std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities,
 																	 std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities,
 																	 ControllerCapabilities const controllerCapabilities,
 																	 std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID) noexcept
-	: LocalEntity(entityID, macAddress, vendorEntityModelID, entityCapabilities,
+	: LocalEntity(entityID, macAddress, entityModelID, entityCapabilities,
 								talkerStreamSources, talkerCapabilities,
 								listenerStreamSinks, listenerCapabilities,
 								controllerCapabilities,

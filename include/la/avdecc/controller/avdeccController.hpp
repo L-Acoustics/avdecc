@@ -240,19 +240,19 @@ public:
 	*            interfaces, and pass the 'name' field of a #la::avdecc::networkInterface::Interface
 	*            to this method.
 	* @param[in] progID ID that will be used to generate the #UniqueIdentifier for this controller.
-	* @param[in] vendorEntityModelID VendorEntityModelID to publish for this controller. You can use entity::model::makeVendorEntityModel to create this value.
+	* @param[in] entityModelID EntityModelID to publish for this controller. You can use entity::model::makeEntityModelID to create this value.
 	* @param[in] preferedLocale ISO 639-1 locale code of the prefered locale to use when querying entity information.
 	*                           If the specified locale is not found on the entity, then english is used.
 	* @return A new Controller as a Controller::UniquePointer.
 	* @note Throws Exception if interfaceName is invalid or inaccessible, or if progID is already used on the local computer.
 	*/
-	static UniquePointer create(EndStation::ProtocolInterfaceType const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, entity::model::VendorEntityModel const vendorEntityModelID, std::string const& preferedLocale)
+	static UniquePointer create(EndStation::ProtocolInterfaceType const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale)
 	{
 		auto deleter = [](Controller* controller)
 		{
 			controller->destroy();
 		};
-		return UniquePointer(createRawController(protocolInterfaceType, interfaceName, progID, vendorEntityModelID, preferedLocale), deleter);
+		return UniquePointer(createRawController(protocolInterfaceType, interfaceName, progID, entityModelID, preferedLocale), deleter);
 	}
 
 	/** Returns the UniqueIdentifier this instance of the controller is using to identify itself on the network */
@@ -317,7 +317,7 @@ protected:
 
 private:
 	/** Create method for COM-like interface */
-	static LA_AVDECC_CONTROLLER_API Controller* LA_AVDECC_CONTROLLER_CALL_CONVENTION createRawController(EndStation::ProtocolInterfaceType const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, entity::model::VendorEntityModel const vendorEntityModelID, std::string const& preferedLocale);
+	static LA_AVDECC_CONTROLLER_API Controller* LA_AVDECC_CONTROLLER_CALL_CONVENTION createRawController(EndStation::ProtocolInterfaceType const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale);
 
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept = 0;
