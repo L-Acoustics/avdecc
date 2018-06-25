@@ -73,31 +73,31 @@ public:
 	{
 		// AVDECC Protocol Error Codes
 		Success = 0,
-		ListenerUnknownID = 1,
-		TalkerUnknownID = 2,
-		TalkerDestMacFail = 3,
-		TalkerNoStreamIndex = 4,
-		TalkerNoBandwidth = 5,
-		TalkerExclusive = 6,
-		ListenerTalkerTimeout = 7,
-		ListenerExclusive = 8,
-		StateUnavailable = 9,
-		NotConnected = 10,
-		NoSuchConnection = 11,
-		CouldNotSendMessage = 12,
-		TalkerMisbehaving = 13,
-		ListenerMisbehaving = 14,
+		ListenerUnknownID = 1, /**< Listener does not have the specified unique identifier. */
+		TalkerUnknownID = 2, /**< Talker does not have the specified unique identifier. */
+		TalkerDestMacFail = 3, /**< Talker could not allocate a destination MAC for the Stream. */
+		TalkerNoStreamIndex = 4, /**< Talker does not have an available Stream index for the Stream. */
+		TalkerNoBandwidth = 5, /**< Talker could not allocate bandwidth for the Stream. */
+		TalkerExclusive = 6, /**< Talker already has an established Stream and only supports one Listener. */
+		ListenerTalkerTimeout = 7, /**< Listener had timeout for all retries when trying to send command to Talker. */
+		ListenerExclusive = 8, /**< The AVDECC Listener already has an established connection to a Stream. */
+		StateUnavailable = 9, /**< Could not get the state from the AVDECC Entity. */
+		NotConnected = 10, /**< Trying to disconnect when not connected or not connected to the AVDECC Talker specified. */
+		NoSuchConnection = 11, /**< Trying to obtain connection info for an AVDECC Talker connection which does not exist. */
+		CouldNotSendMessage = 12, /**< The AVDECC Listener failed to send the message to the AVDECC Talker. */
+		TalkerMisbehaving = 13, /**< Talker was unable to complete the command because an internal error occurred. */
+		ListenerMisbehaving = 14, /**< Listener was unable to complete the command because an internal error occurred. */
 		// Reserved
-		ControllerNotAuthorized = 16,
-		IncompatibleRequest = 17,
+		ControllerNotAuthorized = 16, /**< The AVDECC Controller with the specified Entity ID is not authorized to change Stream connections. */
+		IncompatibleRequest = 17, /**< The AVDECC Listener is trying to connect to an AVDECC Talker that is already streaming with a different traffic class, etc. or does not support the requested traffic class. */
 		// Reserved
-		NotSupported = 31,
+		NotSupported = 31, /**< The command is not supported. */
 		// Library Error Codes
-		NetworkError = 995,
-		ProtocolError = 996,
-		TimedOut = 997,
-		UnknownEntity = 998,
-		InternalError = 999,
+		NetworkError = 995, /**< A network error occured. */
+		ProtocolError = 996, /**< A protocol error occured. */
+		TimedOut = 997, /**< Command timed out. */
+		UnknownEntity = 998, /**< Entity is unknown. */
+		InternalError = 999, /**< Internal library error. */
 	};
 
 	/** Delegate for all controller related notifications. */

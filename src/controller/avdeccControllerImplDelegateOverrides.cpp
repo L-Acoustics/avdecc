@@ -46,6 +46,18 @@ void ControllerImpl::onEntityOnline(entity::ControllerEntity const* const contro
 {
 	LOG_CONTROLLER_TRACE(entityID, "onEntityOnline");
 
+	auto const caps = entity.getEntityCapabilities();
+	if (hasFlag(caps, entity::EntityCapabilities::EntityNotReady))
+	{
+		LOG_CONTROLLER_TRACE(entityID, "Entity is declared as 'Not Ready', ignoring it right now");
+		return;
+	}
+	if (hasFlag(caps, entity::EntityCapabilities::GeneralControllerIgnore))
+	{
+		LOG_CONTROLLER_TRACE(entityID, "Entity is declared as 'General Controller Ignore', ignoring it");
+		return;
+	}
+
 	OnlineControlledEntity controlledEntity{};
 
 	// Create and add the entity
@@ -67,23 +79,23 @@ void ControllerImpl::onEntityOnline(entity::ControllerEntity const* const contro
 
 	if (controlledEntity)
 	{
-		// Check if AEM is supported by this entity
-		if (hasFlag(entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
-		{
-			// Register for unsolicited notifications
-			LOG_CONTROLLER_TRACE(entityID, "Registering for unsolicited notifications");
-			controller->registerUnsolicitedNotifications(entityID, {});
+		// New entity get everything we can from it
+		auto steps{ ControlledEntityImpl::EnumerationSteps::None };
 
-			// Request its entity descriptor
-			LOG_CONTROLLER_TRACE(entityID, "Requesting entity's descriptor");
-			controlledEntity->setDescriptorExpected(0, entity::model::DescriptorType::Entity, 0);
-			controller->readEntityDescriptor(entityID, std::bind(&ControllerImpl::onEntityDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
-		}
-		else
+		// The entity supports AEM, also get information related to AEM
+		if (hasFlag(caps, entity::EntityCapabilities::AemSupported))
 		{
-			LOG_CONTROLLER_TRACE(entityID, "Entity does not support AEM, simply advertise it");
-			checkAdvertiseEntity(controlledEntity.get());
+			// Only get MilanVersion if the Entity supports AEM (Milan requires AEM anyway)
+			steps |= ControlledEntityImpl::EnumerationSteps::GetMilanVersion | ControlledEntityImpl::EnumerationSteps::RegisterUnsol | ControlledEntityImpl::EnumerationSteps::GetStaticModel | ControlledEntityImpl::EnumerationSteps::GetDynamicInfo;
 		}
+
+		// Currently, we have nothing more to get if the entity does not support AEM
+
+		// Set Steps
+		controlledEntity->addEnumerationSteps(steps);
+
+		// Check first enumeration step
+		checkEnumerationSteps(controlledEntity.get());
 	}
 	else
 	{
@@ -94,19 +106,21 @@ void ControllerImpl::onEntityOnline(entity::ControllerEntity const* const contro
 
 }
 
-void ControllerImpl::onEntityUpdate(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::Entity const& entity) noexcept
+void ControllerImpl::onEntityUpdate(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::Entity const& entity) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onEntityUpdate");
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
 
-#ifdef DEBUG
-	AVDECC_ASSERT(controlledEntity, "Unknown entity");
-#endif
 	if (controlledEntity)
 	{
 		updateEntity(*controlledEntity, entity);
+	}
+	else
+	{
+		// In case the entity was not ready when it was first discovered, maybe now is the time
+		onEntityOnline(controller, entityID, entity);
 	}
 }
 
@@ -189,13 +203,6 @@ void ControllerImpl::onGetListenerStreamStateResponseSniffed(entity::ControllerE
 	{
 		// In a GET_RX_STATE_RESPONSE message, the connectionCount is set to 1 if the stream is connected and 0 if not connected (See Marc Illouz clarification document, and hopefully someday as a corrigendum)
 		handleListenerStreamStateNotification(talkerStream, listenerStream, connectionCount != 0, flags, true);
-
-		// Take a copy of the ControlledEntity so we don't have to keep the lock
-		auto controlledEntity = getControlledEntityImpl(listenerStream.entityID);
-		if (controlledEntity)
-		{
-			checkAdvertiseEntity(controlledEntity.get());
-		}
 	}
 	// We don't care about sniffed errors
 }
@@ -209,18 +216,7 @@ void ControllerImpl::onEntityAcquired(entity::ControllerEntity const* const /*co
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		try
-		{
-			updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
-		}
-		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-		{
-			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onEntityAcquired succeeded on the entity, but failed to update local model"))
-			{
-				LOG_CONTROLLER_WARN(entityID, "onEntityAcquired failed (Owner={} DescriptorType={} DescriptorIndex={}): {}", toHexString(owningEntity, true), to_integral(descriptorType), descriptorIndex, e.what());
-			}
-		}
+		updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
 	}
 }
 
@@ -232,18 +228,7 @@ void ControllerImpl::onEntityReleased(entity::ControllerEntity const* const /*co
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		try
-		{
-			updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
-		}
-		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-		{
-			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onEntityReleased succeeded on the entity, but failed to update local model"))
-			{
-				LOG_CONTROLLER_WARN(entityID, "onEntityReleased failed (Owner={} DescriptorType={} DescriptorIndex={}): {}", toHexString(owningEntity, true), to_integral(descriptorType), descriptorIndex, e.what());
-			}
-		}
+		updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
 	}
 }
 
@@ -255,18 +240,7 @@ void ControllerImpl::onConfigurationChanged(entity::ControllerEntity const* cons
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		try
-		{
-			updateConfiguration(controller, *entity, configurationIndex);
-		}
-		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-		{
-			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onConfigurationChanged succeeded on the entity, but failed to update local model"))
-			{
-				LOG_CONTROLLER_WARN(entityID, "onConfigurationChanged failed (ConfigurationIndex={}): {}", configurationIndex, e.what());
-			}
-		}
+		updateConfiguration(controller, *entity, configurationIndex);
 	}
 }
 
@@ -278,18 +252,7 @@ void ControllerImpl::onStreamInputFormatChanged(entity::ControllerEntity const* 
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		try
-		{
-			updateStreamInputFormat(*entity, streamIndex, streamFormat);
-		}
-		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-		{
-			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamInputFormatChanged succeeded on the entity, but failed to update local model"))
-			{
-				LOG_CONTROLLER_WARN(entityID, "onStreamInputFormatChanged failed (StreamIndex={} StreamFormat={}): {}", streamIndex, toHexString(streamFormat, true), e.what());
-			}
-		}
+		updateStreamInputFormat(*entity, streamIndex, streamFormat);
 	}
 }
 
@@ -301,18 +264,7 @@ void ControllerImpl::onStreamOutputFormatChanged(entity::ControllerEntity const*
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		try
-		{
-			updateStreamOutputFormat(*entity, streamIndex, streamFormat);
-		}
-		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-		{
-			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamOutputFormatChanged succeeded on the entity, but failed to update local model"))
-			{
-				LOG_CONTROLLER_WARN(entityID, "onStreamOutputFormatChanged failed (StreamIndex={} StreamFormat={}): {}", streamIndex, toHexString(streamFormat, true), e.what());
-			}
-		}
+		updateStreamOutputFormat(*entity, streamIndex, streamFormat);
 	}
 }
 
@@ -324,24 +276,12 @@ void ControllerImpl::onStreamPortInputAudioMappingsChanged(entity::ControllerEnt
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		try
-		{
-			// Only support the case where numberOfMaps == 1
-			if (numberOfMaps != 1 || mapIndex != 0)
-				return;
+		// Only support the case where numberOfMaps == 1
+		if (numberOfMaps != 1 || mapIndex != 0)
+			return;
 
-			auto const& entityDescriptor = controlledEntity->getEntityDescriptor();
-			controlledEntity->clearPortInputStreamAudioMappings(entityDescriptor.dynamicModel.currentConfiguration, streamPortIndex);
-			updateStreamPortInputAudioMappingsAdded(*entity, streamPortIndex, mappings);
-		}
-		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-		{
-			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamInputAudioMappingsChanged succeeded on the entity, but failed to update local model"))
-			{
-				LOG_CONTROLLER_WARN(entityID, "onStreamPortInputAudioMappingsChanged failed (StreamPortIndex={} NumberMaps={} MapIndex={}): {}", streamPortIndex, numberOfMaps, mapIndex, e.what());
-			}
-		}
+		controlledEntity->clearStreamPortInputAudioMappings(streamPortIndex);
+		updateStreamPortInputAudioMappingsAdded(*entity, streamPortIndex, mappings);
 	}
 }
 
@@ -353,24 +293,12 @@ void ControllerImpl::onStreamPortOutputAudioMappingsChanged(entity::ControllerEn
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		try
-		{
-			// Only support the case where numberOfMaps == 1
-			if (numberOfMaps != 1 || mapIndex != 0)
-				return;
+		// Only support the case where numberOfMaps == 1
+		if (numberOfMaps != 1 || mapIndex != 0)
+			return;
 
-			auto const& entityDescriptor = controlledEntity->getEntityDescriptor();
-			controlledEntity->clearPortOutputStreamAudioMappings(entityDescriptor.dynamicModel.currentConfiguration, streamPortIndex);
-			updateStreamPortOutputAudioMappingsAdded(*entity, streamPortIndex, mappings);
-		}
-		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-		{
-			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamOutputAudioMappingsChanged succeeded on the entity, but failed to update local model"))
-			{
-				LOG_CONTROLLER_WARN(entityID, "onStreamPortOutputAudioMappingsChanged failed (StreamPortIndex={} NumberMaps={} MapIndex={}): {}", streamPortIndex, numberOfMaps, mapIndex, e.what());
-			}
-		}
+		controlledEntity->clearStreamPortOutputAudioMappings(streamPortIndex);
+		updateStreamPortOutputAudioMappingsAdded(*entity, streamPortIndex, mappings);
 	}
 }
 
@@ -382,18 +310,7 @@ void ControllerImpl::onStreamInputInfoChanged(entity::ControllerEntity const* co
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		try
-		{
-			updateStreamInputInfo(*entity, streamIndex, info);
-		}
-		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-		{
-			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamInputInfoChanged succeeded on the entity, but failed to update local model"))
-			{
-				LOG_CONTROLLER_WARN(entityID, "onStreamInputInfoChanged failed (StreamIndex={}): {}", streamIndex, e.what());
-			}
-		}
+		updateStreamInputInfo(*entity, streamIndex, info);
 	}
 }
 
@@ -405,18 +322,7 @@ void ControllerImpl::onStreamOutputInfoChanged(entity::ControllerEntity const* c
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		try
-		{
-			updateStreamOutputInfo(*entity, streamIndex, info);
-		}
-		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-		{
-			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamOutputInfoChanged succeeded on the entity, but failed to update local model"))
-			{
-				LOG_CONTROLLER_WARN(entityID, "onStreamOutputInfoChanged failed (StreamIndex={}): {}", streamIndex, e.what());
-			}
-		}
+		updateStreamOutputInfo(*entity, streamIndex, info);
 	}
 }
 
@@ -428,18 +334,7 @@ void ControllerImpl::onEntityNameChanged(entity::ControllerEntity const* const /
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		try
-		{
-			updateEntityName(*entity, entityName);
-		}
-		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-		{
-			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onEntityNameChanged succeeded on the entity, but failed to update local model"))
-			{
-				LOG_CONTROLLER_WARN(entityID, "onEntityNameChanged failed (Name={}): {}", entityName.str(), e.what());
-			}
-		}
+		updateEntityName(*entity, entityName);
 	}
 }
 
@@ -451,18 +346,7 @@ void ControllerImpl::onEntityGroupNameChanged(entity::ControllerEntity const* co
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		try
-		{
-			updateEntityGroupName(*entity, entityGroupName);
-		}
-		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-		{
-			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onEntityGroupNameChanged succeeded on the entity, but failed to update local model"))
-			{
-				LOG_CONTROLLER_WARN(entityID, "onEntityGroupNameChanged failed (GroupName={}): {}", entityGroupName.str(), e.what());
-			}
-		}
+		updateEntityGroupName(*entity, entityGroupName);
 	}
 }
 
@@ -474,18 +358,7 @@ void ControllerImpl::onConfigurationNameChanged(entity::ControllerEntity const* 
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		try
-		{
-			updateConfigurationName(*entity, configurationIndex, configurationName);
-		}
-		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-		{
-			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onConfigurationNameChanged succeeded on the entity, but failed to update local model"))
-			{
-				LOG_CONTROLLER_WARN(entityID, "onConfigurationNameChanged failed (ConfigurationIndex={} Name={}): {}", configurationIndex, configurationName.str(), e.what());
-			}
-		}
+		updateConfigurationName(*entity, configurationIndex, configurationName);
 	}
 }
 
@@ -497,18 +370,7 @@ void ControllerImpl::onStreamInputNameChanged(entity::ControllerEntity const* co
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		try
-		{
-			updateStreamInputName(*entity, configurationIndex, streamIndex, streamName);
-		}
-		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-		{
-			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamInputNameChanged succeeded on the entity, but failed to update local model"))
-			{
-				LOG_CONTROLLER_WARN(entityID, "onStreamInputNameChanged failed (ConfigurationIndex={} StreamIndex={} Name={}): {}", configurationIndex, streamIndex, streamName.str(), e.what());
-			}
-		}
+		updateStreamInputName(*entity, configurationIndex, streamIndex, streamName);
 	}
 }
 
@@ -520,18 +382,7 @@ void ControllerImpl::onStreamOutputNameChanged(entity::ControllerEntity const* c
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		try
-		{
-			updateStreamOutputName(*entity, configurationIndex, streamIndex, streamName);
-		}
-		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-		{
-			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamOutputNameChanged succeeded on the entity, but failed to update local model"))
-			{
-				LOG_CONTROLLER_WARN(entityID, "onStreamOutputNameChanged failed (ConfigurationIndex={} StreamIndex={} Name={}): {}", configurationIndex, streamIndex, streamName.str(), e.what());
-			}
-		}
+		updateStreamOutputName(*entity, configurationIndex, streamIndex, streamName);
 	}
 }
 
@@ -543,18 +394,7 @@ void ControllerImpl::onAudioUnitSamplingRateChanged(entity::ControllerEntity con
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		try
-		{
-			updateAudioUnitSamplingRate(*entity, audioUnitIndex, samplingRate);
-		}
-		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-		{
-			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onAudioUnitSamplingRateChanged succeeded on the entity, but failed to update local model"))
-			{
-				LOG_CONTROLLER_WARN(entityID, "onAudioUnitSamplingRateChanged failed (AudioUnitIndex={} SamplingRate={}): {}", audioUnitIndex, samplingRate, e.what());
-			}
-		}
+		updateAudioUnitSamplingRate(*entity, audioUnitIndex, samplingRate);
 	}
 }
 
@@ -566,18 +406,7 @@ void ControllerImpl::onClockSourceChanged(entity::ControllerEntity const* const 
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		try
-		{
-			updateClockSource(*entity, clockDomainIndex, clockSourceIndex);
-		}
-		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-		{
-			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onClockSourceChanged succeeded on the entity, but failed to update local model"))
-			{
-				LOG_CONTROLLER_WARN(entityID, "onClockSourceChanged failed (ClockDomainIndex={} ClockSourceIndex={}): {}", clockDomainIndex, clockSourceIndex, e.what());
-			}
-		}
+		updateClockSource(*entity, clockDomainIndex, clockSourceIndex);
 	}
 }
 
@@ -589,18 +418,7 @@ void ControllerImpl::onStreamInputStarted(entity::ControllerEntity const* const 
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		try
-		{
-			updateStreamInputRunningStatus(*entity, streamIndex, true);
-		}
-		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-		{
-			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamInputStarted succeeded on the entity, but failed to update local model"))
-			{
-				LOG_CONTROLLER_WARN(entityID, "onStreamInputStarted failed (StreamIndex={}): {}", streamIndex, e.what());
-			}
-		}
+		updateStreamInputRunningStatus(*entity, streamIndex, true);
 	}
 }
 
@@ -612,18 +430,7 @@ void ControllerImpl::onStreamOutputStarted(entity::ControllerEntity const* const
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		try
-		{
-			updateStreamOutputRunningStatus(*entity, streamIndex, true);
-		}
-		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-		{
-			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamOutputStarted succeeded on the entity, but failed to update local model"))
-			{
-				LOG_CONTROLLER_WARN(entityID, "onStreamOutputStarted failed (StreamIndex={}): {}", streamIndex, e.what());
-			}
-		}
+		updateStreamOutputRunningStatus(*entity, streamIndex, true);
 	}
 }
 
@@ -635,18 +442,7 @@ void ControllerImpl::onStreamInputStopped(entity::ControllerEntity const* const 
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		try
-		{
-			updateStreamInputRunningStatus(*entity, streamIndex, false);
-		}
-		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-		{
-			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamInputStarted succeeded on the entity, but failed to update local model"))
-			{
-				LOG_CONTROLLER_WARN(entityID, "onStreamInputStarted failed (StreamIndex={}): {}", streamIndex, e.what());
-			}
-		}
+		updateStreamInputRunningStatus(*entity, streamIndex, false);
 	}
 }
 
@@ -658,18 +454,7 @@ void ControllerImpl::onStreamOutputStopped(entity::ControllerEntity const* const
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		try
-		{
-			updateStreamOutputRunningStatus(*entity, streamIndex, false);
-		}
-		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-		{
-			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onStreamOutputStarted succeeded on the entity, but failed to update local model"))
-			{
-				LOG_CONTROLLER_WARN(entityID, "onStreamOutputStarted failed (StreamIndex={}): {}", streamIndex, e.what());
-			}
-		}
+		updateStreamOutputRunningStatus(*entity, streamIndex, false);
 	}
 }
 
@@ -681,18 +466,7 @@ void ControllerImpl::onAvbInfoChanged(entity::ControllerEntity const* const /*co
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		try
-		{
-			updateAvbInfo(*entity, avbInterfaceIndex, info);
-		}
-		catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-		{
-			// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-			if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "onAvbInfoChanged succeeded on the entity, but failed to update local model"))
-			{
-				LOG_CONTROLLER_WARN(entityID, "onAvbInfoChanged failed (AvbInterfaceIndex={}): {}", avbInterfaceIndex, e.what());
-			}
-		}
+		updateAvbInfo(*entity, avbInterfaceIndex, info);
 	}
 }
 

@@ -1,6 +1,3 @@
-#pragma message("TODO: In (almost) each onXXXResult, check if configurationIndex is still the currentConfiguration. If not then stop the query. Maybe find a way to stop processing inflight queries too.")
-#pragma message("TODO: For descriptor queries, do not store and remove in a std::set. Instead store a tuple<DescriptorKey, bool completed, resultHandlers>, so that we keep track of already completed queries. When a query is requested, first check if the descriptor has been retrieved")
-
 /*
 * Copyright (C) 2016-2018, L-Acoustics and its contributors
 
@@ -38,13 +35,12 @@ namespace controller
 /* ************************************************************ */
 /* Private methods used to update AEM and notify observers      */
 /* ************************************************************ */
-void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity::Entity const& entity, bool const alsoUpdateAvbInfo) const
+void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity::Entity const& entity, bool const alsoUpdateAvbInfo) const noexcept
 {
 	// Get previous entity info, so we can check what changed
 	auto oldEntity = controlledEntity.getEntity();
 
 	// Update entity info
-	//auto const infoChanged = oldEntity != entity;
 	controlledEntity.setEntity(entity);
 
 	// Check for specific changes
@@ -52,7 +48,7 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 	{
 		auto const oldCaps = oldEntity.getEntityCapabilities();
 		auto const caps = entity.getEntityCapabilities();
-		// GPTP info change (if it's both previously and now supported)
+		// gPTP info change (if it's both previously and now supported)
 		if (hasFlag(oldCaps, entity::EntityCapabilities::GptpSupported) && hasFlag(caps, entity::EntityCapabilities::GptpSupported) && hasFlag(caps, entity::EntityCapabilities::AemInterfaceIndexValid))
 		{
 			auto const oldGptpGrandmasterID = oldEntity.getGptpGrandmasterID();
@@ -62,30 +58,19 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 
 			if (oldGptpGrandmasterID != newGptpGrandmasterID || oldGptpDomainNumber != newGptpDomainNumber)
 			{
-				try
-				{
-					auto const avbInterfaceIndex = entity.getInterfaceIndex();
-					auto const& entityDescriptor = controlledEntity.getEntityDescriptor();
-					auto& avbInterfaceDescriptor = controlledEntity.getAvbInterfaceDescriptor(entityDescriptor.dynamicModel.currentConfiguration, avbInterfaceIndex);
+				auto const avbInterfaceIndex = entity.getInterfaceIndex();
+				auto& avbInterfaceDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), avbInterfaceIndex, &model::ConfigurationDynamicTree::avbInterfaceDynamicModels);
 
-					auto info = avbInterfaceDescriptor.dynamicModel.avbInfo; // Copy the AvbInfo so we can alter values
-					info.gptpGrandmasterID = newGptpGrandmasterID;
-					info.gptpDomainNumber = newGptpDomainNumber;
-					updateAvbInfo(controlledEntity, entity.getInterfaceIndex(), info, false);
-				}
-				catch (ControlledEntity::Exception const&)
-				{
-					// Ignore exceptions, in case we got an update of this entity before the AvbInterfaceDescriptor has been retrieved
-				}
+				auto info = avbInterfaceDynamicModel.avbInfo; // Copy the AvbInfo so we can alter values
+				info.gptpGrandmasterID = newGptpGrandmasterID;
+				info.gptpDomainNumber = newGptpDomainNumber;
+				updateAvbInfo(controlledEntity, entity.getInterfaceIndex(), info, false);
 			}
 		}
 	}
-
-	// Check for Advertise, in case the entity switched from a NotReady to Ready state
-	checkAdvertiseEntity(&controlledEntity);
 }
 
-void ControllerImpl::updateAcquiredState(ControlledEntityImpl& controlledEntity, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const /*descriptorIndex*/, bool const undefined) const
+void ControllerImpl::updateAcquiredState(ControlledEntityImpl& controlledEntity, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const /*descriptorIndex*/, bool const undefined) const noexcept
 {
 #pragma message("TODO: Handle acquire state tree")
 	if (descriptorType == entity::model::DescriptorType::Entity)
@@ -125,364 +110,56 @@ void ControllerImpl::updateAcquiredState(ControlledEntityImpl& controlledEntity,
 	}
 }
 
-void ControllerImpl::updateConfiguration(entity::ControllerEntity const* const controller, ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex) const
+void ControllerImpl::updateConfiguration(entity::ControllerEntity const* const controller, ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex) const noexcept
 {
-	try
-	{
-		auto& entityDescriptor = controlledEntity.getEntityDescriptor();
+	controlledEntity.setCurrentConfiguration(configurationIndex);
 
-		entityDescriptor.dynamicModel.currentConfiguration = configurationIndex;
+	// Right now, simulate the entity going offline then online again - TODO: Handle multiple configurations, see https://github.com/L-Acoustics/avdecc/issues/3
+	auto const e = controlledEntity.getEntity(); // Make a copy of the Entity object since it will be destroyed during onEntityOffline
+	auto const entityID = e.getEntityID();
+	auto* self = const_cast<ControllerImpl*>(this);
+	self->onEntityOffline(controller, entityID);
+	self->onEntityOnline(controller, entityID, e);
+}
 
-		// Right now, simulate the entity going offline then online again - TODO: Handle multiple configurations, see https://github.com/L-Acoustics/avdecc/issues/3
-		auto const e = controlledEntity.getEntity(); // Make a copy of the Entity object since it will be destroyed during onEntityOffline
-		auto const entityID = e.getEntityID();
-		auto* self = const_cast<ControllerImpl*>(this);
-		self->onEntityOffline(controller, entityID);
-		self->onEntityOnline(controller, entityID, e);
-	}
-	catch (Exception const&)
+void ControllerImpl::updateStreamInputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) const noexcept
+{
+	controlledEntity.setStreamInputFormat(streamIndex, streamFormat);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
 	{
-		// Ignore Controller::Exception
-	}
-	catch (ControlledEntity::Exception const&)
-	{
-		// But rethrow ControlledEntity::Exception
-		throw;
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputFormatChanged, this, &controlledEntity, streamIndex, streamFormat);
 	}
 }
 
-void ControllerImpl::updateStreamInputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) const
+void ControllerImpl::updateStreamOutputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) const noexcept
 {
-	try
-	{
-		auto const& entityDescriptor = controlledEntity.getEntityDescriptor();
-		auto& streamDescriptor = controlledEntity.getStreamInputDescriptor(entityDescriptor.dynamicModel.currentConfiguration, streamIndex);
+	controlledEntity.setStreamOutputFormat(streamIndex, streamFormat);
 
-		streamDescriptor.dynamicModel.currentFormat = streamFormat;
-
-		// Entity was advertised to the user, notify observers
-		if (controlledEntity.wasAdvertised())
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputFormatChanged, this, &controlledEntity, streamIndex, streamFormat);
-		}
-	}
-	catch (Exception const&)
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
 	{
-		// Ignore Controller::Exception
-	}
-	catch (ControlledEntity::Exception const&)
-	{
-		// But rethrow ControlledEntity::Exception
-		throw;
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputFormatChanged, this, &controlledEntity, streamIndex, streamFormat);
 	}
 }
 
-void ControllerImpl::updateStreamOutputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) const
+void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) const noexcept
 {
-	try
+	// Update StreamInfo
+	auto const previousInfo = controlledEntity.setStreamInputInfo(streamIndex, info);
+
+	// Entity was advertised to the user, notify observers (check if info actually changed, in case it's a change in StreamingWait and the entity sent both Unsol)
+	if (controlledEntity.wasAdvertised() && previousInfo != info)
 	{
-		auto const& entityDescriptor = controlledEntity.getEntityDescriptor();
-		auto& streamDescriptor = controlledEntity.getStreamOutputDescriptor(entityDescriptor.dynamicModel.currentConfiguration, streamIndex);
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputInfoChanged, this, &controlledEntity, streamIndex, info);
 
-		streamDescriptor.dynamicModel.currentFormat = streamFormat;
+		// Check if Running Status changed (since it's a separate Controller event)
+		auto const previousRunning = ControlledEntityImpl::isStreamRunningFlag(previousInfo.streamInfoFlags);
+		auto const isRunning = ControlledEntityImpl::isStreamRunningFlag(info.streamInfoFlags);
 
-		// Entity was advertised to the user, notify observers
-		if (controlledEntity.wasAdvertised())
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputFormatChanged, this, &controlledEntity, streamIndex, streamFormat);
-		}
-	}
-	catch (Exception const&)
-	{
-		// Ignore Controller::Exception
-	}
-	catch (ControlledEntity::Exception const&)
-	{
-		// But rethrow ControlledEntity::Exception
-		throw;
-	}
-}
-
-void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const alsoUpdateIsRunning) const
-{
-	try
-	{
-		auto const& entityDescriptor = controlledEntity.getEntityDescriptor();
-		auto& streamDescriptor = controlledEntity.getStreamInputDescriptor(entityDescriptor.dynamicModel.currentConfiguration, streamIndex);
-
-		auto const infoChanged = streamDescriptor.dynamicModel.streamInfo != info;
-		streamDescriptor.dynamicModel.streamInfo = info;
-
-		// Update stream running status
-		if (alsoUpdateIsRunning)
-		{
-			updateStreamInputRunningStatus(controlledEntity, streamIndex, !hasFlag(info.streamInfoFlags, entity::StreamInfoFlags::StreamingWait), false);
-		}
-
-		// Entity was advertised to the user, notify observers (if info changed)
-		if (controlledEntity.wasAdvertised() && infoChanged)
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputInfoChanged, this, &controlledEntity, streamIndex, info);
-		}
-	}
-	catch (Exception const&)
-	{
-		// Ignore Controller::Exception
-	}
-	catch (ControlledEntity::Exception const&)
-	{
-		// But rethrow ControlledEntity::Exception
-		throw;
-	}
-}
-
-void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const alsoUpdateIsRunning) const
-{
-	try
-	{
-		auto const& entityDescriptor = controlledEntity.getEntityDescriptor();
-		auto& streamDescriptor = controlledEntity.getStreamOutputDescriptor(entityDescriptor.dynamicModel.currentConfiguration, streamIndex);
-
-		auto const infoChanged = streamDescriptor.dynamicModel.streamInfo != info;
-		streamDescriptor.dynamicModel.streamInfo = info;
-
-		// Update stream running status
-		if (alsoUpdateIsRunning)
-		{
-			updateStreamOutputRunningStatus(controlledEntity, streamIndex, !hasFlag(info.streamInfoFlags, entity::StreamInfoFlags::StreamingWait), false);
-		}
-
-		// Entity was advertised to the user, notify observers (if info changed)
-		if (controlledEntity.wasAdvertised() && infoChanged)
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputInfoChanged, this, &controlledEntity, streamIndex, info);
-		}
-	}
-	catch (Exception const&)
-	{
-		// Ignore Controller::Exception
-	}
-	catch (ControlledEntity::Exception const&)
-	{
-		// But rethrow ControlledEntity::Exception
-		throw;
-	}
-}
-
-void ControllerImpl::updateEntityName(ControlledEntityImpl& controlledEntity, entity::model::AvdeccFixedString const& entityName) const
-{
-	try
-	{
-		auto& entityDescriptor = controlledEntity.getEntityDescriptor();
-
-		entityDescriptor.dynamicModel.entityName = entityName;
-
-		// Entity was advertised to the user, notify observers
-		if (controlledEntity.wasAdvertised())
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityNameChanged, this, &controlledEntity, entityName);
-		}
-	}
-	catch (Exception const&)
-	{
-		// Ignore Controller::Exception
-	}
-	catch (ControlledEntity::Exception const&)
-	{
-		// But rethrow ControlledEntity::Exception
-		throw;
-	}
-}
-
-void ControllerImpl::updateEntityGroupName(ControlledEntityImpl& controlledEntity, entity::model::AvdeccFixedString const& entityGroupName) const
-{
-	try
-	{
-		auto& entityDescriptor = controlledEntity.getEntityDescriptor();
-
-		entityDescriptor.dynamicModel.groupName = entityGroupName;
-
-		// Entity was advertised to the user, notify observers
-		if (controlledEntity.wasAdvertised())
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityGroupNameChanged, this, &controlledEntity, entityGroupName);
-		}
-	}
-	catch (Exception const&)
-	{
-		// Ignore Controller::Exception
-	}
-	catch (ControlledEntity::Exception const&)
-	{
-		// But rethrow ControlledEntity::Exception
-		throw;
-	}
-}
-
-void ControllerImpl::updateConfigurationName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& configurationName) const
-{
-	try
-	{
-		auto& configurationDescriptor = controlledEntity.getConfigurationDescriptor(configurationIndex);
-
-		configurationDescriptor.dynamicModel.objectName = configurationName;
-
-		// Entity was advertised to the user, notify observers
-		if (controlledEntity.wasAdvertised())
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onConfigurationNameChanged, this, &controlledEntity, configurationIndex, configurationName);
-		}
-	}
-	catch (Exception const&)
-	{
-		// Ignore Controller::Exception
-	}
-	catch (ControlledEntity::Exception const&)
-	{
-		// But rethrow ControlledEntity::Exception
-		throw;
-	}
-}
-
-void ControllerImpl::updateStreamInputName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamInputName) const
-{
-	try
-	{
-		auto& entityDescriptor = controlledEntity.getEntityDescriptor();
-
-#pragma message("TODO: Handle multiple configurations, not just the active one (no need to use getConfigurationNode, getStreamInputNode shall be used directly)")
-		if (configurationIndex == entityDescriptor.dynamicModel.currentConfiguration)
-		{
-			auto& streamDescriptor = controlledEntity.getStreamInputDescriptor(configurationIndex, streamIndex);
-			streamDescriptor.dynamicModel.objectName = streamInputName;
-		}
-
-		// Entity was advertised to the user, notify observers
-		if (controlledEntity.wasAdvertised())
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputNameChanged, this, &controlledEntity, configurationIndex, streamIndex, streamInputName);
-		}
-	}
-	catch (Exception const&)
-	{
-		// Ignore Controller::Exception
-	}
-	catch (ControlledEntity::Exception const&)
-	{
-		// But rethrow ControlledEntity::Exception
-		throw;
-	}
-}
-
-void ControllerImpl::updateStreamOutputName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamOutputName) const
-{
-	try
-	{
-		auto& entityDescriptor = controlledEntity.getEntityDescriptor();
-
-#pragma message("TODO: Handle multiple configurations, not just the active one (no need to use getConfigurationNode, getStreamOutputNode shall be used directly)")
-		if (configurationIndex == entityDescriptor.dynamicModel.currentConfiguration)
-		{
-			auto& streamDescriptor = controlledEntity.getStreamOutputDescriptor(configurationIndex, streamIndex);
-			streamDescriptor.dynamicModel.objectName = streamOutputName;
-		}
-
-		// Entity was advertised to the user, notify observers
-		if (controlledEntity.wasAdvertised())
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputNameChanged, this, &controlledEntity, configurationIndex, streamIndex, streamOutputName);
-		}
-	}
-	catch (Exception const&)
-	{
-		// Ignore Controller::Exception
-	}
-	catch (ControlledEntity::Exception const&)
-	{
-		// But rethrow ControlledEntity::Exception
-		throw;
-	}
-}
-
-void ControllerImpl::updateAudioUnitSamplingRate(ControlledEntityImpl& controlledEntity, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate) const
-{
-	try
-	{
-		auto const& entityDescriptor = controlledEntity.getEntityDescriptor();
-		auto& audioUnitDescriptor = controlledEntity.getAudioUnitDescriptor(entityDescriptor.dynamicModel.currentConfiguration, audioUnitIndex);
-
-		audioUnitDescriptor.dynamicModel.currentSamplingRate = samplingRate;
-
-		// Entity was advertised to the user, notify observers
-		if (controlledEntity.wasAdvertised())
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAudioUnitSamplingRateChanged, this, &controlledEntity, audioUnitIndex, samplingRate);
-		}
-	}
-	catch (Exception const&)
-	{
-		// Ignore Controller::Exception
-	}
-	catch (ControlledEntity::Exception const&)
-	{
-		// But rethrow ControlledEntity::Exception
-		throw;
-	}
-}
-
-void ControllerImpl::updateClockSource(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex) const
-{
-	try
-	{
-		auto const& entityDescriptor = controlledEntity.getEntityDescriptor();
-		auto& domainDescriptor = controlledEntity.getClockDomainDescriptor(entityDescriptor.dynamicModel.currentConfiguration, clockDomainIndex);
-
-		domainDescriptor.dynamicModel.clockSourceIndex = clockSourceIndex;
-
-		// Entity was advertised to the user, notify observers
-		if (controlledEntity.wasAdvertised())
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onClockSourceChanged, this, &controlledEntity, clockDomainIndex, clockSourceIndex);
-		}
-	}
-	catch (Exception const&)
-	{
-		// Ignore Controller::Exception
-	}
-	catch (ControlledEntity::Exception const&)
-	{
-		// But rethrow ControlledEntity::Exception
-		throw;
-	}
-}
-
-void ControllerImpl::updateStreamInputRunningStatus(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, bool const isRunning, bool const alsoUpdateStreamInfo) const
-{
-	try
-	{
-		auto const& entityDescriptor = controlledEntity.getEntityDescriptor();
-		auto& streamDescriptor = controlledEntity.getStreamInputDescriptor(entityDescriptor.dynamicModel.currentConfiguration, streamIndex);
-
-		auto const infoChanged = streamDescriptor.dynamicModel.isRunning != isRunning;
-		streamDescriptor.dynamicModel.isRunning = isRunning;
-
-		// Also update the flags in StreamInfo since some entities do not send an unsolicited when StreamInfo flags change due to Start/Stop Streaming
-		if (alsoUpdateStreamInfo)
-		{
-			auto info = streamDescriptor.dynamicModel.streamInfo; // Copy the StreamInfo so we can alter the flags
-			if (isRunning)
-			{
-				la::avdecc::clearFlag(info.streamInfoFlags, entity::StreamInfoFlags::StreamingWait);
-			}
-			else
-			{
-				la::avdecc::addFlag(info.streamInfoFlags, entity::StreamInfoFlags::StreamingWait);
-			}
-			updateStreamInputInfo(controlledEntity, streamIndex, info, false);
-		}
-
-		// Entity was advertised to the user, notify observers (if info changed)
-		if (controlledEntity.wasAdvertised() && infoChanged)
+		// Running status changed, notify observers
+		if (previousRunning != isRunning)
 		{
 			if (isRunning)
 				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputStarted, this, &controlledEntity, streamIndex);
@@ -490,44 +167,24 @@ void ControllerImpl::updateStreamInputRunningStatus(ControlledEntityImpl& contro
 				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputStopped, this, &controlledEntity, streamIndex);
 		}
 	}
-	catch (Exception const&)
-	{
-		// Ignore Controller::Exception
-	}
-	catch (ControlledEntity::Exception const&)
-	{
-		// But rethrow ControlledEntity::Exception
-		throw;
-	}
 }
 
-void ControllerImpl::updateStreamOutputRunningStatus(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, bool const isRunning, bool const alsoUpdateStreamInfo) const
+void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) const noexcept
 {
-	try
+	// Update StreamInfo
+	auto const previousInfo = controlledEntity.setStreamOutputInfo(streamIndex, info);
+
+	// Entity was advertised to the user, notify observers (check if info actually changed, in case it's a change in StreamingWait and the entity sent both Unsol)
+	if (controlledEntity.wasAdvertised() && previousInfo != info)
 	{
-		auto const& entityDescriptor = controlledEntity.getEntityDescriptor();
-		auto& streamDescriptor = controlledEntity.getStreamOutputDescriptor(entityDescriptor.dynamicModel.currentConfiguration, streamIndex);
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputInfoChanged, this, &controlledEntity, streamIndex, info);
 
-		auto const infoChanged = streamDescriptor.dynamicModel.isRunning != isRunning;
-		streamDescriptor.dynamicModel.isRunning = isRunning;
+		// Check if Running Status changed (since it's a separate Controller event)
+		auto const previousRunning = ControlledEntityImpl::isStreamRunningFlag(previousInfo.streamInfoFlags);
+		auto const isRunning = ControlledEntityImpl::isStreamRunningFlag(info.streamInfoFlags);
 
-		// Also update the flags in StreamInfo since some entities do not send an unsolicited when StreamInfo flags change due to Start/Stop Streaming
-		if (alsoUpdateStreamInfo)
-		{
-			auto info = streamDescriptor.dynamicModel.streamInfo; // Copy the StreamInfo so we can alter the flags
-			if (isRunning)
-			{
-				la::avdecc::clearFlag(info.streamInfoFlags, entity::StreamInfoFlags::StreamingWait);
-			}
-			else
-			{
-				la::avdecc::addFlag(info.streamInfoFlags, entity::StreamInfoFlags::StreamingWait);
-			}
-			updateStreamOutputInfo(controlledEntity, streamIndex, info, false);
-		}
-
-		// Entity was advertised to the user, notify observers (if info changed)
-		if (controlledEntity.wasAdvertised() && infoChanged)
+		// Running status changed, notify observers
+		if (previousRunning != isRunning)
 		{
 			if (isRunning)
 				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputStarted, this, &controlledEntity, streamIndex);
@@ -535,68 +192,144 @@ void ControllerImpl::updateStreamOutputRunningStatus(ControlledEntityImpl& contr
 				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputStopped, this, &controlledEntity, streamIndex);
 		}
 	}
-	catch (Exception const&)
+}
+
+void ControllerImpl::updateEntityName(ControlledEntityImpl& controlledEntity, entity::model::AvdeccFixedString const& entityName) const noexcept
+{
+	controlledEntity.setEntityName(entityName);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
 	{
-		// Ignore Controller::Exception
-	}
-	catch (ControlledEntity::Exception const&)
-	{
-		// But rethrow ControlledEntity::Exception
-		throw;
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityNameChanged, this, &controlledEntity, entityName);
 	}
 }
 
-void ControllerImpl::updateAvbInfo(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info, bool const alsoUpdateEntity) const
+void ControllerImpl::updateEntityGroupName(ControlledEntityImpl& controlledEntity, entity::model::AvdeccFixedString const& entityGroupName) const noexcept
 {
-	try
+	controlledEntity.setEntityGroupName(entityGroupName);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
 	{
-		auto const& entityDescriptor = controlledEntity.getEntityDescriptor();
-		auto& avbInterfaceDescriptor = controlledEntity.getAvbInterfaceDescriptor(entityDescriptor.dynamicModel.currentConfiguration, avbInterfaceIndex);
-
-		auto const infoChanged = avbInterfaceDescriptor.dynamicModel.avbInfo != info;
-		auto const gptpChanged = avbInterfaceDescriptor.dynamicModel.avbInfo.gptpGrandmasterID != info.gptpGrandmasterID || avbInterfaceDescriptor.dynamicModel.avbInfo.gptpDomainNumber != info.gptpDomainNumber;
-		avbInterfaceDescriptor.dynamicModel.avbInfo = info;
-
-		// Also update the Gpgp values in ADP entity info
-		if (alsoUpdateEntity)
-		{
-			auto entity{ ModifiableEntity(controlledEntity.getEntity()) }; // Copy the Entity so we can alter values
-			auto const caps = entity.getEntityCapabilities();
-			if (hasFlag(caps, entity::EntityCapabilities::GptpSupported) &&
-				(!hasFlag(caps, entity::EntityCapabilities::AemInterfaceIndexValid) || entity.getInterfaceIndex() == avbInterfaceIndex))
-			{
-				entity.setGptpGrandmasterID(info.gptpGrandmasterID);
-				entity.setGptpDomainNumber(info.gptpDomainNumber);
-				updateEntity(controlledEntity, entity, false);
-			}
-		}
-
-		// Entity was advertised to the user, notify observers (if info changed)
-		if (controlledEntity.wasAdvertised() && infoChanged)
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAvbInfoChanged, this, &controlledEntity, avbInterfaceIndex, info);
-
-			if (gptpChanged)
-			{
-				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onGptpChanged, this, &controlledEntity, avbInterfaceIndex, info.gptpGrandmasterID, info.gptpDomainNumber);
-			}
-		}
-	}
-	catch (Exception const&)
-	{
-		// Ignore Controller::Exception
-	}
-	catch (ControlledEntity::Exception const&)
-	{
-		// But rethrow ControlledEntity::Exception
-		throw;
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityGroupNameChanged, this, &controlledEntity, entityGroupName);
 	}
 }
 
-void ControllerImpl::updateStreamPortInputAudioMappingsAdded(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) const
+void ControllerImpl::updateConfigurationName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& configurationName) const noexcept
 {
-	auto const& entityDescriptor = controlledEntity.getEntityDescriptor();
-	controlledEntity.addPortInputStreamAudioMappings(entityDescriptor.dynamicModel.currentConfiguration, streamPortIndex, mappings);
+	controlledEntity.setConfigurationName(configurationIndex, configurationName);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onConfigurationNameChanged, this, &controlledEntity, configurationIndex, configurationName);
+	}
+}
+
+void ControllerImpl::updateStreamInputName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamInputName) const noexcept
+{
+	controlledEntity.setObjectName(configurationIndex, streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels, streamInputName);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputNameChanged, this, &controlledEntity, configurationIndex, streamIndex, streamInputName);
+	}
+}
+
+void ControllerImpl::updateStreamOutputName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamOutputName) const noexcept
+{
+	controlledEntity.setObjectName(configurationIndex, streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels, streamOutputName);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputNameChanged, this, &controlledEntity, configurationIndex, streamIndex, streamOutputName);
+	}
+}
+
+void ControllerImpl::updateAudioUnitSamplingRate(ControlledEntityImpl& controlledEntity, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate) const noexcept
+{
+	controlledEntity.setSamplingRate(audioUnitIndex, samplingRate);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAudioUnitSamplingRateChanged, this, &controlledEntity, audioUnitIndex, samplingRate);
+	}
+}
+
+void ControllerImpl::updateClockSource(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex) const noexcept
+{
+	controlledEntity.setClockSource(clockDomainIndex, clockSourceIndex);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onClockSourceChanged, this, &controlledEntity, clockDomainIndex, clockSourceIndex);
+	}
+}
+
+void ControllerImpl::updateStreamInputRunningStatus(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, bool const isRunning) const noexcept
+{
+	// Some entities do not send an Unsolicited when they start/stop streaming, so we have to manually update the StreamInfo flags
+
+	auto const& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels);
+
+	// Make a copy of current StreamInfo and simulate a change in it
+	auto newInfo = streamDynamicModel.streamInfo;
+	ControlledEntityImpl::setStreamRunningFlag(newInfo.streamInfoFlags, isRunning);
+	updateStreamInputInfo(controlledEntity, streamIndex, newInfo);
+}
+
+void ControllerImpl::updateStreamOutputRunningStatus(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, bool const isRunning) const noexcept
+{
+	// Some entities do not send an Unsolicited when they start/stop streaming, so we have to manually update the StreamInfo flags
+
+	auto const& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels);
+
+	// Make a copy of current StreamInfo and simulate a change in it
+	auto newInfo = streamDynamicModel.streamInfo;
+	ControlledEntityImpl::setStreamRunningFlag(newInfo.streamInfoFlags, isRunning);
+	updateStreamOutputInfo(controlledEntity, streamIndex, newInfo);
+}
+
+void ControllerImpl::updateAvbInfo(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info, bool const alsoUpdateEntity) const noexcept
+{
+	// Update AvbInfo
+	auto const previousInfo = controlledEntity.setAvbInfo(avbInterfaceIndex, info);
+
+	// Also update the gPTP values in ADP entity info
+	if (alsoUpdateEntity)
+	{
+		auto entity{ ModifiableEntity(controlledEntity.getEntity()) }; // Copy the Entity so we can alter values
+		auto const caps = entity.getEntityCapabilities();
+		if (hasFlag(caps, entity::EntityCapabilities::GptpSupported) &&
+			(!hasFlag(caps, entity::EntityCapabilities::AemInterfaceIndexValid) || entity.getInterfaceIndex() == avbInterfaceIndex))
+		{
+			entity.setGptpGrandmasterID(info.gptpGrandmasterID);
+			entity.setGptpDomainNumber(info.gptpDomainNumber);
+			updateEntity(controlledEntity, entity, false);
+		}
+	}
+
+	// Entity was advertised to the user, notify observers (check if info actually changed)
+	if (controlledEntity.wasAdvertised() && previousInfo != info)
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAvbInfoChanged, this, &controlledEntity, avbInterfaceIndex, info);
+
+		// Check if gPTP changed (since it's a separate Controller event)
+		if (previousInfo.gptpGrandmasterID != info.gptpGrandmasterID || previousInfo.gptpDomainNumber != info.gptpDomainNumber)
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onGptpChanged, this, &controlledEntity, avbInterfaceIndex, info.gptpGrandmasterID, info.gptpDomainNumber);
+		}
+	}
+}
+
+void ControllerImpl::updateStreamPortInputAudioMappingsAdded(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) const noexcept
+{
+	controlledEntity.addStreamPortInputAudioMappings(streamPortIndex, mappings);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -605,10 +338,9 @@ void ControllerImpl::updateStreamPortInputAudioMappingsAdded(ControlledEntityImp
 	}
 }
 
-void ControllerImpl::updateStreamPortInputAudioMappingsRemoved(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) const
+void ControllerImpl::updateStreamPortInputAudioMappingsRemoved(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) const noexcept
 {
-	auto const& entityDescriptor = controlledEntity.getEntityDescriptor();
-	controlledEntity.removePortInputStreamAudioMappings(entityDescriptor.dynamicModel.currentConfiguration, streamPortIndex, mappings);
+	controlledEntity.removeStreamPortInputAudioMappings(streamPortIndex, mappings);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -617,10 +349,9 @@ void ControllerImpl::updateStreamPortInputAudioMappingsRemoved(ControlledEntityI
 	}
 }
 
-void ControllerImpl::updateStreamPortOutputAudioMappingsAdded(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) const
+void ControllerImpl::updateStreamPortOutputAudioMappingsAdded(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) const noexcept
 {
-	auto const& entityDescriptor = controlledEntity.getEntityDescriptor();
-	controlledEntity.addPortOutputStreamAudioMappings(entityDescriptor.dynamicModel.currentConfiguration, streamPortIndex, mappings);
+	controlledEntity.addStreamPortOutputAudioMappings(streamPortIndex, mappings);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -629,10 +360,9 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsAdded(ControlledEntityIm
 	}
 }
 
-void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) const
+void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) const noexcept
 {
-	auto const& entityDescriptor = controlledEntity.getEntityDescriptor();
-	controlledEntity.removePortOutputStreamAudioMappings(entityDescriptor.dynamicModel.currentConfiguration, streamPortIndex, mappings);
+	controlledEntity.removeStreamPortOutputAudioMappings(streamPortIndex, mappings);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -644,12 +374,186 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntity
 /* ************************************************************ */
 /* Private methods                                              */
 /* ************************************************************ */
-void ControllerImpl::checkAdvertiseEntity(ControlledEntityImpl* const entity) const noexcept
+void ControllerImpl::getMilanVersion(ControlledEntityImpl* const entity) noexcept
 {
+	auto const entityID = entity->getEntity().getEntityID();
+
+	// TODO: Properly get Milan version, right now, let's assume all entities are Milan compatible
+	LOG_CONTROLLER_TRACE(entityID, "Getting MILAN version");
+	auto const tempFunc = std::bind(&ControllerImpl::onGetMilanVersionResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+	tempFunc(_controller, entityID, entity::ControllerEntity::AemCommandStatus::Success);
+}
+
+void ControllerImpl::registerUnsol(ControlledEntityImpl* const entity) noexcept
+{
+	auto const entityID = entity->getEntity().getEntityID();
+
+	// Register for unsolicited notifications
+	LOG_CONTROLLER_TRACE(entityID, "registerUnsolicitedNotifications ()");
+	_controller->registerUnsolicitedNotifications(entityID, std::bind(&ControllerImpl::onRegisterUnsolicitedNotificationsResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+}
+
+void ControllerImpl::getStaticModel(ControlledEntityImpl* const entity) noexcept
+{
+	auto const entityID = entity->getEntity().getEntityID();
+
+	// Always start with Entity Descriptor, the response from it will schedule subsequent descriptors queries
+	LOG_CONTROLLER_TRACE(entityID, "readEntityDescriptor ()");
+	entity->setDescriptorExpected(0, entity::model::DescriptorType::Entity, 0);
+	_controller->readEntityDescriptor(entityID, std::bind(&ControllerImpl::onEntityDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+}
+
+void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
+{
+	auto const entityID = entity->getEntity().getEntityID();
+
+	auto const caps = entity->getEntity().getEntityCapabilities();
+	// Check if AEM is supported by this entity
+	if (hasFlag(caps, entity::EntityCapabilities::AemSupported))
+	{
+		auto const configurationIndex = entity->getCurrentConfigurationIndex();
+		auto const& configStaticTree = entity->getConfigurationStaticTree(configurationIndex);
+
+		// Get StreamInfo and RX_STATE for each StreamInput descriptors
+		{
+			auto const count = configStaticTree.streamInputStaticModels.size();
+			for (auto index = entity::model::StreamIndex(0); index < count; ++index)
+			{
+				// StreamInfo
+				entity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamInfo, index);
+				LOG_CONTROLLER_TRACE(entityID, "getStreamInputInfo (StreamIndex={})", index);
+				_controller->getStreamInputInfo(entityID, index, std::bind(&ControllerImpl::onGetStreamInputInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
+
+				// RX_STATE
+				entity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamState, index);
+				LOG_CONTROLLER_TRACE(entityID, "getListenerStreamState (StreamIndex={})", index);
+				_controller->getListenerStreamState({ entityID, index }, std::bind(&ControllerImpl::onGetListenerStreamStateResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
+
+			}
+		}
+		// Get StreamInfo and TX_STATE for each StreamOutput descriptors
+		{
+			auto const count = configStaticTree.streamOutputStaticModels.size();
+			for (auto index = entity::model::StreamIndex(0); index < count; ++index)
+			{
+				// StreamInfo
+				entity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamInfo, index);
+				LOG_CONTROLLER_TRACE(entityID, "getStreamOutputInfo (StreamIndex={})", index);
+				_controller->getStreamOutputInfo(entityID, index, std::bind(&ControllerImpl::onGetStreamOutputInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
+
+				// TX_STATE
+				entity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, index);
+				LOG_CONTROLLER_TRACE(entityID, "getTalkerStreamState (StreamIndex={})", index);
+				_controller->getTalkerStreamState({ entityID, index }, std::bind(&ControllerImpl::onGetTalkerStreamStateResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
+			}
+		}
+		// Get AvbInfo for each AvbInterface descriptors
+		{
+			auto const count = configStaticTree.avbInterfaceStaticModels.size();
+			for (auto index = entity::model::AvbInterfaceIndex(0); index < count; ++index)
+			{
+				// AvbInfo
+				entity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInfo, index);
+				LOG_CONTROLLER_TRACE(entityID, "getAvbInfo (AvbInterfaceIndex={})", index);
+				_controller->getAvbInfo(entityID, index, std::bind(&ControllerImpl::onGetAvbInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
+			}
+		}
+
+		// Get AudioMappings for each StreamPortInput descriptors
+		{
+			auto const count = configStaticTree.streamPortInputStaticModels.size();
+			for (auto index = entity::model::StreamPortIndex(0); index < count; ++index)
+			{
+				auto const& staticModel = entity->getNodeStaticModel(configurationIndex, index, &model::ConfigurationStaticTree::streamPortInputStaticModels);
+				if (staticModel.numberOfMaps == 0)
+				{
+					// TODO: Clause 7.4.44.3 recommands to Lock or Acquire the entity before getting the dynamic audio map
+					entity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, index);
+					LOG_CONTROLLER_TRACE(entityID, "getStreamPortInputAudioMap (StreamPortIndex={})", index);
+					_controller->getStreamPortInputAudioMap(entityID, index, entity::model::MapIndex(0u), std::bind(&ControllerImpl::onGetStreamPortInputAudioMapResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7, configurationIndex));
+				}
+			}
+		}
+		// Get AudioMappings for each StreamPortOutput descriptors
+		{
+			auto const count = configStaticTree.streamPortOutputStaticModels.size();
+			for (auto index = entity::model::StreamPortIndex(0); index < count; ++index)
+			{
+				auto const& staticModel = entity->getNodeStaticModel(configurationIndex, index, &model::ConfigurationStaticTree::streamPortOutputStaticModels);
+				if (staticModel.numberOfMaps == 0)
+				{
+					// TODO: Clause 7.4.44.3 recommands to Lock or Acquire the entity before getting the dynamic audio map
+					entity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, index);
+					LOG_CONTROLLER_TRACE(entityID, "getStreamPortOutputAudioMap (StreamPortIndex={})", index);
+					_controller->getStreamPortOutputAudioMap(entityID, index, entity::model::MapIndex(0u), std::bind(&ControllerImpl::onGetStreamPortOutputAudioMapResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7, configurationIndex));
+				}
+			}
+		}
+	}
+
+	// Got all expected dynamic information
+	if (entity->gotAllExpectedDynamicInfo())
+	{
+		// Clear this enumeration step and check for next one
+		entity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+		checkEnumerationSteps(entity);
+	}
+}
+
+void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity) noexcept
+{
+	auto const entityID = entity->getEntity().getEntityID();
+
+	auto const caps = entity->getEntity().getEntityCapabilities();
+	// Check if AEM is supported by this entity
+	if (hasFlag(caps, entity::EntityCapabilities::AemSupported))
+	{
+		assert(false && "TODO: Get all information from DescriptorDynamicInfoType");
+	}
+
+	// Get all expected descriptor dynamic information
+	if (entity->gotAllExpectedDescriptorDynamicInfo())
+	{
+		// Clear this enumeration step and check for next one
+		entity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+		checkEnumerationSteps(entity);
+	}
+}
+
+void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const entity) noexcept
+{
+	auto const steps = entity->getEnumerationSteps();
+
+	if (hasFlag(steps, ControlledEntityImpl::EnumerationSteps::GetMilanVersion))
+	{
+		getMilanVersion(entity);
+		return;
+	}
+	if (hasFlag(steps, ControlledEntityImpl::EnumerationSteps::RegisterUnsol))
+	{
+		registerUnsol(entity);
+		return;
+	}
+	if (hasFlag(steps, ControlledEntityImpl::EnumerationSteps::GetStaticModel))
+	{
+		getStaticModel(entity);
+		return;
+	}
+	if (hasFlag(steps, ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo))
+	{
+		getDescriptorDynamicInfo(entity);
+		return;
+	}
+	if (hasFlag(steps, ControlledEntityImpl::EnumerationSteps::GetDynamicInfo))
+	{
+		getDynamicInfo(entity);
+		return;
+	}
+
+	// Ready to advertise the entity
 	if (!entity->wasAdvertised())
 	{
-		auto const caps = entity->getEntity().getEntityCapabilities();
-		if (!entity->gotEnumerationError() && entity->gotAllExpectedDescriptors() && entity->gotAllExpectedDynamicInfo() && !hasFlag(caps, entity::EntityCapabilities::EntityNotReady | entity::EntityCapabilities::GeneralControllerIgnore))
+		if (!entity->gotFatalEnumerationError())
 		{
 			entity->setAdvertised(true);
 			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityOnline, this, entity);
@@ -657,13 +561,8 @@ void ControllerImpl::checkAdvertiseEntity(ControlledEntityImpl* const entity) co
 	}
 }
 
-bool ControllerImpl::checkRescheduleQuery(entity::ControllerEntity::AemCommandStatus const /*status*/, ControlledEntityImpl* const /*entity*/, entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::DescriptorType const /*descriptorType*/, entity::model::DescriptorIndex const /*descriptorIndex*/) const noexcept
-{
-#pragma message("TODO: Based on status code, reschedule a query") // We might want to have a map or micro-methods to run the query based on the parameters (and first-time queries shall use them too)
-	return false;
-}
 
-bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const /*entity*/, entity::model::ConfigurationIndex const /*configurationIndex*/, ControlledEntityImpl::DynamicInfoType const /*dynamicInfoType*/, entity::model::DescriptorIndex const /*descriptorIndex*/) const noexcept
+ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::ControllerEntity::AemCommandStatus const status) const noexcept
 {
 	switch (status)
 	{
@@ -676,25 +575,14 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::InProgress:
 			[[fallthrough]];
-		case entity::ControllerEntity::AemCommandStatus::EntityMisbehaving:
-			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::StreamIsRunning:
 			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::TimedOut:
-			[[fallthrough]];
-		case entity::ControllerEntity::AemCommandStatus::UnknownEntity:
 		{
-#pragma message("TODO: Reschedule the query")
-			return true;
+			return FailureAction::Retry;
 		}
-		// Cases we want to ignore and continue
-		case entity::ControllerEntity::AemCommandStatus::NotImplemented:
-			[[fallthrough]];
-		case entity::ControllerEntity::AemCommandStatus::NotSupported:
-		{
-			return true;
-		}
-		// Cases that are errors and we want to discard this entity
+
+		// Cases we want to ignore and continue enumeration
 		case entity::ControllerEntity::AemCommandStatus::NoSuchDescriptor:
 			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::NotAuthenticated:
@@ -702,6 +590,18 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 		case entity::ControllerEntity::AemCommandStatus::AuthenticationDisabled:
 			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::BadArguments:
+			[[fallthrough]];
+		case entity::ControllerEntity::AemCommandStatus::NotImplemented:
+			[[fallthrough]];
+		case entity::ControllerEntity::AemCommandStatus::NotSupported:
+		{
+			return FailureAction::Ignore;
+		}
+
+		// Cases that are errors and we want to discard this entity
+		case entity::ControllerEntity::AemCommandStatus::UnknownEntity:
+			[[fallthrough]];
+		case entity::ControllerEntity::AemCommandStatus::EntityMisbehaving:
 			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::NetworkError:
 			[[fallthrough]];
@@ -711,191 +611,313 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 			[[fallthrough]];
 		default:
 		{
-			return false;
+			return FailureAction::Fatal;
 		}
 	}
 }
 
-bool ControllerImpl::checkRescheduleQuery(entity::ControllerEntity::ControlStatus const /*status*/, ControlledEntityImpl* const /*entity*/, entity::model::ConfigurationIndex const /*configurationIndex*/, ControlledEntityImpl::DynamicInfoType const /*dynamicInfoType*/, entity::model::DescriptorIndex const /*descriptorIndex*/, std::uint16_t const /*connectionIndex*/) const noexcept
+ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::ControllerEntity::ControlStatus const status) const noexcept
 {
 #pragma message("TODO: Based on status code, reschedule a query")
-	return false;
+	switch (status)
+	{
+		// Cases we want to schedule a retry
+		case entity::ControllerEntity::ControlStatus::TalkerDestMacFail:
+			[[fallthrough]];
+		case entity::ControllerEntity::ControlStatus::TalkerNoBandwidth:
+			[[fallthrough]];
+		case entity::ControllerEntity::ControlStatus::TalkerExclusive:
+			[[fallthrough]];
+		case entity::ControllerEntity::ControlStatus::ListenerTalkerTimeout:
+			[[fallthrough]];
+		case entity::ControllerEntity::ControlStatus::ListenerExclusive:
+			[[fallthrough]];
+		case entity::ControllerEntity::ControlStatus::StateUnavailable:
+			[[fallthrough]];
+		case entity::ControllerEntity::ControlStatus::CouldNotSendMessage:
+			[[fallthrough]];
+		case entity::ControllerEntity::ControlStatus::TimedOut:
+		{
+			return FailureAction::Retry;
+		}
+
+		// Cases we want to ignore and continue enumeration
+		case entity::ControllerEntity::ControlStatus::TalkerNoStreamIndex:
+			[[fallthrough]];
+		case entity::ControllerEntity::ControlStatus::NotConnected:
+			[[fallthrough]];
+		case entity::ControllerEntity::ControlStatus::NoSuchConnection:
+			[[fallthrough]];
+		case entity::ControllerEntity::ControlStatus::ControllerNotAuthorized:
+			[[fallthrough]];
+		case entity::ControllerEntity::ControlStatus::IncompatibleRequest:
+			[[fallthrough]];
+		case entity::ControllerEntity::ControlStatus::NotSupported:
+		{
+			return FailureAction::Ignore;
+		}
+
+		// Cases that are errors and we want to discard this entity
+		case entity::ControllerEntity::ControlStatus::UnknownEntity:
+			[[fallthrough]];
+		case entity::ControllerEntity::ControlStatus::ListenerUnknownID:
+			[[fallthrough]];
+		case entity::ControllerEntity::ControlStatus::TalkerUnknownID:
+			[[fallthrough]];
+		case entity::ControllerEntity::ControlStatus::TalkerMisbehaving:
+			[[fallthrough]];
+		case entity::ControllerEntity::ControlStatus::ListenerMisbehaving:
+			[[fallthrough]];
+		case entity::ControllerEntity::ControlStatus::NetworkError:
+			[[fallthrough]];
+		case entity::ControllerEntity::ControlStatus::ProtocolError:
+			[[fallthrough]];
+		case entity::ControllerEntity::ControlStatus::InternalError:
+			[[fallthrough]];
+		default:
+		{
+			return FailureAction::Fatal;
+		}
+	}
+}
+
+void ControllerImpl::rescheduleQuery(ControlledEntityImpl* const /*entity*/, entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::DescriptorType const /*descriptorType*/, entity::model::DescriptorIndex const /*descriptorIndex*/) const noexcept
+{
+#pragma message("TODO: Reschedule the query")
+	// For easy reschedule, instead of calling single commands everywhere in the code, have a single method that gets passed entityID, descriptorType and descriptorIndex
+	// The method will switch-case on that, print the log message, set the expectedDescriptor, make the call
+	// So here we can just schedule a call to that method
+}
+
+void ControllerImpl::rescheduleQuery(ControlledEntityImpl* const /*entity*/, entity::model::ConfigurationIndex const /*configurationIndex*/, ControlledEntityImpl::DynamicInfoType const /*dynamicInfoType*/, entity::model::DescriptorIndex const /*descriptorIndex*/) const noexcept
+{
+#pragma message("TODO: Reschedule the query")
+	// For easy reschedule, instead of calling single commands everywhere in the code, have a single method that gets passed entityID, descriptorType and descriptorIndex
+	// The method will switch-case on that, print the log message, set the expectedDescriptor, make the call
+	// So here we can just schedule a call to that method
+}
+
+void ControllerImpl::rescheduleQuery(ControlledEntityImpl* const /*entity*/, entity::model::ConfigurationIndex const /*configurationIndex*/, ControlledEntityImpl::DynamicInfoType const /*dynamicInfoType*/, entity::model::DescriptorIndex const /*descriptorIndex*/, std::uint16_t const /*connectionIndex*/) const noexcept
+{
+#pragma message("TODO: Reschedule the query")
+	// For easy reschedule, instead of calling single commands everywhere in the code, have a single method that gets passed entityID, descriptorType and descriptorIndex
+	// The method will switch-case on that, print the log message, set the expectedDescriptor, make the call
+	// So here we can just schedule a call to that method
+}
+
+void ControllerImpl::rescheduleQuery(ControlledEntityImpl* const /*entity*/, entity::model::ConfigurationIndex const /*configurationIndex*/, ControlledEntityImpl::DescriptorDynamicInfoType const /*descriptorDynamicInfoType*/, entity::model::DescriptorIndex const /*descriptorIndex*/) const noexcept
+{
+#pragma message("TODO: Reschedule the query")
+	// For easy reschedule, instead of calling single commands everywhere in the code, have a single method that gets passed entityID, descriptorType and descriptorIndex
+	// The method will switch-case on that, print the log message, set the expectedDescriptor, make the call
+	// So here we can just schedule a call to that method
+}
+
+/* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetStaticModel (AEM) */
+bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) const noexcept
+{
+	switch (getFailureAction(status))
+	{
+		case FailureAction::Ignore:
+			// Try to get the Descriptor Dynamic Information, because we might be missing some crucial info we can get with direct commands
+			entity->addEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			return true;
+		case FailureAction::Retry:
+			// TODO: Handle max retry mechanism before removing this #if 0 (store a retryCount in the entity, declare a MAX_RETRY_COUNT, maybe have an algorithm that waits more and more after each try)
+#if 0
+			if (retryCount < MAX_RETRY_COUNT)
+			{
+				rescheduleQuery(entity, configurationIndex, descriptorType, descriptorIndex);
+			}
+			else
+#else
+			(void)configurationIndex;
+			(void)descriptorType;
+			(void)descriptorIndex;
+#endif
+			{
+				// Try to get the Descriptor Dynamic Information, because we might be missing some crucial info we can get with direct commands
+				entity->addEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			}
+			return true;
+		case FailureAction::Fatal:
+			return false;
+		default:
+			return false;
+	}
+}
+
+/* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetDynamicInfo for AECP commands */
+bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) const noexcept
+{
+	switch (getFailureAction(status))
+	{
+		case FailureAction::Ignore:
+			return true;
+		case FailureAction::Retry:
+			// TODO: Have a max retry count as well
+			rescheduleQuery(entity, configurationIndex, dynamicInfoType, descriptorIndex);
+			return true;
+		case FailureAction::Fatal:
+			return false;
+		default:
+			return false;
+	}
+}
+
+/* This method handles non-success ControlStatus returned while getting EnumerationSteps::GetDynamicInfo for ACMP commands */
+bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const connectionIndex) const noexcept
+{
+	switch (getFailureAction(status))
+	{
+		case FailureAction::Ignore:
+			return true;
+		case FailureAction::Retry:
+			// TODO: Have a max retry count as well
+			rescheduleQuery(entity, configurationIndex, dynamicInfoType, descriptorIndex, connectionIndex);
+			return true;
+		case FailureAction::Fatal:
+			return false;
+		default:
+			return false;
+	}
+}
+/* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetDescriptorDynamicInfo (AEM) */
+bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) const noexcept
+{
+	switch (getFailureAction(status))
+	{
+		case FailureAction::Ignore:
+			return true;
+		case FailureAction::Retry:
+			// TODO: Handle max retry mechanism before removing this #if 0 (store a retryCount in the entity, declare a MAX_RETRY_COUNT, maybe have an algorithm that waits more and more after each try)
+#if 0
+			if (retryCount < MAX_RETRY_COUNT)
+			{
+				rescheduleQuery(entity, configurationIndex, descriptorDynamicInfoType, descriptorIndex);
+			}
+			else
+#else
+			(void)entity;
+			(void)configurationIndex;
+			(void)descriptorDynamicInfoType;
+			(void)descriptorIndex;
+#endif
+			return true;
+		case FailureAction::Fatal:
+			return false;
+		default:
+			return false;
+	}
 }
 
 void ControllerImpl::handleListenerStreamStateNotification(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, bool const isConnected, entity::ConnectionFlags const flags, bool const changedByOther) const noexcept
 {
-	try
+	// Build StreamConnectionState::State
+	auto conState{ model::StreamConnectionState::State::NotConnected };
+	if (isConnected)
 	{
-		// Build StreamConnectionState::State
-		auto conState{ model::StreamConnectionState::State::NotConnected };
-		if (isConnected)
+		conState = model::StreamConnectionState::State::Connected;
+	}
+	else if (avdecc::hasFlag(flags, entity::ConnectionFlags::FastConnect))
+	{
+		conState = model::StreamConnectionState::State::FastConnecting;
+	}
+
+	// Build Talker StreamIdentification
+	auto talkerStreamIdentification{ entity::model::StreamIdentification{} };
+	if (conState != model::StreamConnectionState::State::NotConnected)
+	{
+		if (!talkerStream.entityID)
 		{
-			conState = model::StreamConnectionState::State::Connected;
+			LOG_CONTROLLER_WARN(UniqueIdentifier::getNullUniqueIdentifier(), "Listener StreamState notification advertises being connected but with no Talker Identification (ListenerID={} ListenerIndex={})", listenerStream.entityID.getValue(), listenerStream.streamIndex);
+			conState = model::StreamConnectionState::State::NotConnected;
 		}
-		else if (avdecc::hasFlag(flags, entity::ConnectionFlags::FastConnect))
+		else
 		{
-			conState = model::StreamConnectionState::State::FastConnecting;
-		}
-
-		// Build Talker StreamIdentification
-		auto talkerStreamIdentification{ entity::model::StreamIdentification{} };
-		if (conState != model::StreamConnectionState::State::NotConnected)
-		{
-			if (!talkerStream.entityID)
-			{
-				LOG_CONTROLLER_WARN(UniqueIdentifier::getNullUniqueIdentifier(), "Listener StreamState notification advertises being connected but with no Talker Identification (ListenerID={} ListenerIndex={})", listenerStream.entityID.getValue(), listenerStream.streamIndex);
-				conState = model::StreamConnectionState::State::NotConnected;
-			}
-			else
-			{
-				talkerStreamIdentification = talkerStream;
-			}
-		}
-
-		// Build a StreamConnectionState
-		auto const state = model::StreamConnectionState{ listenerStream, talkerStreamIdentification, conState };
-
-		// Check if Listener is online so we can update the StreamState
-		{
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto listenerEntity = getControlledEntityImpl(listenerStream.entityID);
-
-			if (listenerEntity)
-			{
-				auto const cachedState = listenerEntity->getConnectedSinkState(listenerStream.streamIndex);
-
-				// Check the previous state, and detect if it changed
-				if (state != cachedState)
-				{
-					// Update our internal cache
-					auto const& entityDescriptor = listenerEntity->getEntityDescriptor();
-					listenerEntity->setInputStreamState(state, entityDescriptor.dynamicModel.currentConfiguration, listenerStream.streamIndex);
-
-					// Entity was advertised to the user, notify observers
-					if (listenerEntity->wasAdvertised())
-					{
-						notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamConnectionChanged, this, state, changedByOther);
-					}
-				}
-			}
+			talkerStreamIdentification = talkerStream;
 		}
 	}
-	catch (ControlledEntity::Exception const&)
+
+	// Build a StreamConnectionState
+	auto const state = model::StreamConnectionState{ listenerStream, talkerStreamIdentification, conState };
+
+	// Check if Listener is online so we can update the StreamState
 	{
-		// We don't care about exceptions from getConnectedSinkState
-	}
-	catch (...)
-	{
-		AVDECC_ASSERT(false, "Unknown exception");
+		// Take a copy of the ControlledEntity so we don't have to keep the lock
+		auto listenerEntity = getControlledEntityImpl(listenerStream.entityID);
+
+		if (listenerEntity)
+		{
+			auto const previousState = listenerEntity->setStreamInputConnectionState(listenerStream.streamIndex, state);
+
+			// Entity was advertised to the user, notify observers
+			if (listenerEntity->wasAdvertised() && previousState != state)
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamConnectionChanged, this, state, changedByOther);
+			}
+		}
 	}
 }
 
 void ControllerImpl::handleTalkerStreamStateNotification(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, bool const isConnected, entity::ConnectionFlags const flags, bool const changedByOther) const noexcept
 {
-	try
+	// Build Talker StreamIdentification
+	auto const isFastConnect = avdecc::hasFlag(flags, entity::ConnectionFlags::FastConnect);
+	auto talkerStreamIdentification{ entity::model::StreamIdentification{} };
+	if (isConnected || isFastConnect)
 	{
-		// Build Talker StreamIdentification
-		auto const isFastConnect = avdecc::hasFlag(flags, entity::ConnectionFlags::FastConnect);
-		auto talkerStreamIdentification{ entity::model::StreamIdentification{} };
-		if (isConnected || isFastConnect)
-		{
-			AVDECC_ASSERT(talkerStream.entityID, "Connected or FastConnecting to an invalid TalkerID");
-			talkerStreamIdentification = talkerStream;
-		}
+		AVDECC_ASSERT(talkerStream.entityID, "Connected or FastConnecting to an invalid TalkerID");
+		talkerStreamIdentification = talkerStream;
+	}
 
-		if (isFastConnect)
-		{
-			handleListenerStreamStateNotification(talkerStream, listenerStream, isConnected, flags, changedByOther);
-		}
+	if (isFastConnect)
+	{
+		handleListenerStreamStateNotification(talkerStream, listenerStream, isConnected, flags, changedByOther);
+	}
 
-		// Check if Talker is valid and online so we can update the StreamConnections
-		if (talkerStream.entityID)
-		{
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto talkerEntity = getControlledEntityImpl(talkerStream.entityID);
+	// Check if Talker is valid and online so we can update the StreamConnections
+	if (talkerStream.entityID)
+	{
+		// Take a copy of the ControlledEntity so we don't have to keep the lock
+		auto talkerEntity = getControlledEntityImpl(talkerStream.entityID);
 
-			if (talkerEntity)
+		if (talkerEntity)
+		{
+			// Update our internal cache
+			auto shouldNotify{ false }; // Only notify if we actually changed the connections list
+			if (isConnected)
 			{
-				// Update our internal cache
-				auto const& entityDescriptor = talkerEntity->getEntityDescriptor();
-				auto shouldNotify{ false }; // Only notify if we actually changed the connections list
-				if (isConnected)
-				{
-					shouldNotify = talkerEntity->addStreamOutputConnection(entityDescriptor.dynamicModel.currentConfiguration, talkerStream.streamIndex, listenerStream);
-				}
-				else
-				{
-					shouldNotify = talkerEntity->delStreamOutputConnection(entityDescriptor.dynamicModel.currentConfiguration, talkerStream.streamIndex, listenerStream);
-				}
-				// Entity was advertised to the user, notify observers
-				if (shouldNotify && talkerEntity->wasAdvertised())
-				{
-					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamConnectionsChanged, this, talkerEntity.get(), talkerStream.streamIndex, talkerEntity->getStreamOutputConnections(talkerStream.streamIndex));
-				}
+				shouldNotify = talkerEntity->addStreamOutputConnection(talkerStream.streamIndex, listenerStream);
+			}
+			else
+			{
+				shouldNotify = talkerEntity->delStreamOutputConnection(talkerStream.streamIndex, listenerStream);
+			}
+			// Entity was advertised to the user, notify observers
+			if (shouldNotify && talkerEntity->wasAdvertised())
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamConnectionsChanged, this, talkerEntity.get(), talkerStream.streamIndex, talkerEntity->getStreamOutputConnections(talkerStream.streamIndex));
 			}
 		}
-	}
-	catch (ControlledEntity::Exception const&)
-	{
-		// We don't care about exceptions from getConnectedSinkState
-	}
-	catch (...)
-	{
-		AVDECC_ASSERT(false, "Unknown exception");
 	}
 }
 
 void ControllerImpl::clearTalkerStreamConnections(ControlledEntityImpl* const talkerEntity, entity::model::StreamIndex const talkerStreamIndex) const noexcept
 {
-	try
-	{
-		auto const& entityDescriptor = talkerEntity->getEntityDescriptor();
-		talkerEntity->clearStreamOutputConnections(entityDescriptor.dynamicModel.currentConfiguration, talkerStreamIndex);
-	}
-	catch (ControlledEntity::Exception const&)
-	{
-		// We don't care about exceptions
-	}
-	catch (...)
-	{
-		AVDECC_ASSERT(false, "Unknown exception");
-	}
+	talkerEntity->clearStreamOutputConnections(talkerStreamIndex);
 }
 
 void ControllerImpl::addTalkerStreamConnection(ControlledEntityImpl* const talkerEntity, entity::model::StreamIndex const talkerStreamIndex, entity::model::StreamIdentification const& listenerStream) const noexcept
 {
-	try
-	{
-		// Update our internal cache
-		auto const& entityDescriptor = talkerEntity->getEntityDescriptor();
-		talkerEntity->addStreamOutputConnection(entityDescriptor.dynamicModel.currentConfiguration, talkerStreamIndex, listenerStream);
-	}
-	catch (ControlledEntity::Exception const&)
-	{
-		// We don't care about exceptions
-	}
-	catch (...)
-	{
-		AVDECC_ASSERT(false, "Unknown exception");
-	}
+	// Update our internal cache
+	talkerEntity->addStreamOutputConnection(talkerStreamIndex, listenerStream);
 }
 
 void ControllerImpl::delTalkerStreamConnection(ControlledEntityImpl* const talkerEntity, entity::model::StreamIndex const talkerStreamIndex, entity::model::StreamIdentification const& listenerStream) const noexcept
 {
-	try
-	{
-		// Update our internal cache
-		auto const& entityDescriptor = talkerEntity->getEntityDescriptor();
-		talkerEntity->delStreamOutputConnection(entityDescriptor.dynamicModel.currentConfiguration, talkerStreamIndex, listenerStream);
-	}
-	catch (ControlledEntity::Exception const&)
-	{
-		// We don't care about exceptions
-	}
-	catch (...)
-	{
-		AVDECC_ASSERT(false, "Unknown exception");
-	}
+	// Update our internal cache
+	talkerEntity->delStreamOutputConnection(talkerStreamIndex, listenerStream);
 }
 
 } // namespace controller
