@@ -165,7 +165,7 @@ public:
 	}
 
 	/** Returns true if the entity is online (meaning a valid ControlledEntity can be retrieved using an operator overload) */
-	operator bool() const noexcept
+	explicit operator bool() const noexcept
 	{
 		return _controlledEntity != nullptr;
 	}

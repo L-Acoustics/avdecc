@@ -161,6 +161,20 @@ public:
 		ListenerStreamInfo,
 		AvbInfo,
 		AsPath,
+		ConfigurationName,
+		AudioUnitName,
+		AudioUnitSamplingRate,
+		InputStreamName,
+		InputStreamFormat,
+		OutputStreamName,
+		OutputStreamFormat,
+		AvbInterfaceName,
+		ClockSourceName,
+		MemoryObjectName,
+		MemoryObjectLength,
+		AudioClusterName,
+		ClockDomainName,
+		ClockDomainSourceIndex,
 	};
 
 	/**

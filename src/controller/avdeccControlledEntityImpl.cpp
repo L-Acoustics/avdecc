@@ -36,6 +36,11 @@ namespace avdecc
 namespace controller
 {
 
+static constexpr std::uint16_t MaxQueryDescriptorRetryCount = 5;
+static constexpr std::uint16_t MaxQueryDynamicInfoRetryCount = 5;
+static constexpr std::uint16_t MaxQueryDescriptorDynamicInfoRetryCount = 5;
+static constexpr std::uint16_t QueryRetryMillisecondDelay = 500;
+
 /* ************************************************************************** */
 /* ControlledEntityImpl                                                       */
 /* ************************************************************************** */
@@ -1216,12 +1221,18 @@ void ControlledEntityImpl::setStringsDescriptor(entity::model::StringsDescriptor
 		m.strings = descriptor.strings;
 	}
 
+	// Copy the strings to the ConfigurationDynamicModel for a quick access
+	setLocalizedStrings(configurationIndex, stringsIndex, descriptor.strings);
+}
+
+void ControlledEntityImpl::setLocalizedStrings(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const stringsIndex, model::AvdeccFixedStrings const& strings) noexcept
+{
 	auto& configDynamicModel = getConfigurationNodeDynamicModel(configurationIndex);
 	// Copy the strings to the ConfigurationDynamicModel for a quick access
-	for (auto strIndex = 0u; strIndex < descriptor.strings.size(); ++strIndex)
+	for (auto strIndex = 0u; strIndex < strings.size(); ++strIndex)
 	{
-		auto localizedStringIndex = entity::model::StringsIndex(stringsIndex * descriptor.strings.size() + strIndex);
-		configDynamicModel.localizedStrings[localizedStringIndex] = descriptor.strings.at(strIndex);
+		auto localizedStringIndex = entity::model::StringsIndex(stringsIndex * strings.size() + strIndex);
+		configDynamicModel.localizedStrings[localizedStringIndex] = strings.at(strIndex);
 	}
 }
 
@@ -1356,9 +1367,14 @@ bool ControlledEntityImpl::gotAllExpectedDescriptors() const noexcept
 	return true;
 }
 
-void ControlledEntityImpl::clearExpectedDescriptors(entity::model::ConfigurationIndex const configurationIndex) noexcept
+std::pair<bool, std::chrono::milliseconds> ControlledEntityImpl::getQueryDescriptorRetryTimer() noexcept
 {
-	_expectedDescriptors.erase(configurationIndex);
+	++_queryDescriptorRetryCount;
+	if (_queryDescriptorRetryCount >= MaxQueryDescriptorRetryCount)
+	{
+		return std::make_pair(false, std::chrono::milliseconds{ 0 });
+	}
+	return std::make_pair(true, std::chrono::milliseconds{ QueryRetryMillisecondDelay });
 }
 
 // Expected dynamic info query methods
@@ -1397,15 +1413,20 @@ bool ControlledEntityImpl::gotAllExpectedDynamicInfo() const noexcept
 	return true;
 }
 
-void ControlledEntityImpl::clearExpectedDynamicInfo(entity::model::ConfigurationIndex const configurationIndex) noexcept
+std::pair<bool, std::chrono::milliseconds> ControlledEntityImpl::getQueryDynamicInfoRetryTimer() noexcept
 {
-	_expectedDynamicInfo.erase(configurationIndex);
+	++_queryDynamicInfoRetryCount;
+	if (_queryDynamicInfoRetryCount >= MaxQueryDynamicInfoRetryCount)
+	{
+		return std::make_pair(false, std::chrono::milliseconds{ 0 });
+	}
+	return std::make_pair(true, std::chrono::milliseconds{ QueryRetryMillisecondDelay });
 }
 
 // Expected descriptor dynamic info query methods
 static inline ControlledEntityImpl::DescriptorDynamicInfoKey makeDescriptorDynamicInfoKey(ControlledEntityImpl::DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex descriptorIndex)
 {
-	return (static_cast<ControlledEntityImpl::DescriptorDynamicInfoKey>(la::avdecc::to_integral(descriptorDynamicInfoType)) << (sizeof(descriptorIndex) * 8));
+	return (static_cast<ControlledEntityImpl::DescriptorDynamicInfoKey>(la::avdecc::to_integral(descriptorDynamicInfoType)) << (sizeof(descriptorIndex) * 8)) + descriptorIndex;
 }
 
 bool ControlledEntityImpl::checkAndClearExpectedDescriptorDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept
@@ -1438,9 +1459,24 @@ bool ControlledEntityImpl::gotAllExpectedDescriptorDynamicInfo() const noexcept
 	return true;
 }
 
-void ControlledEntityImpl::clearExpectedDescriptorDynamicInfo(entity::model::ConfigurationIndex const configurationIndex) noexcept
+std::pair<bool, std::chrono::milliseconds> ControlledEntityImpl::getQueryDescriptorDynamicInfoRetryTimer() noexcept
 {
-	_expectedDescriptorDynamicInfo.erase(configurationIndex);
+	++_queryDescriptorDynamicInfoRetryCount;
+	if (_queryDescriptorDynamicInfoRetryCount >= MaxQueryDescriptorDynamicInfoRetryCount)
+	{
+		return std::make_pair(false, std::chrono::milliseconds{ 0 });
+	}
+	return std::make_pair(true, std::chrono::milliseconds{ QueryRetryMillisecondDelay });
+}
+
+bool ControlledEntityImpl::shouldIgnoreCachedEntityModel() const noexcept
+{
+	return _ignoreCachedEntityModel;
+}
+
+void ControlledEntityImpl::setIgnoreCachedEntityModel() noexcept
+{
+	_ignoreCachedEntityModel = true;
 }
 
 ControlledEntityImpl::EnumerationSteps ControlledEntityImpl::getEnumerationSteps() const noexcept

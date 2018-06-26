@@ -23,6 +23,8 @@
 * @brief Avdecc entity model tree as represented by the protocol
 */
 
+#pragma once
+
 #include "la/avdecc/controller/internals/avdeccControlledEntityStaticModel.hpp"
 #include "la/avdecc/controller/internals/avdeccControlledEntityDynamicModel.hpp"
 #include <map>

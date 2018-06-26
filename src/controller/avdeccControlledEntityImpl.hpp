@@ -22,6 +22,8 @@
 * @author Christophe Calmejane
 */
 
+#pragma once
+
 #include "la/avdecc/controller/internals/avdeccControlledEntity.hpp"
 #include "avdeccControlledEntityModelTree.hpp"
 #include <string>
@@ -29,6 +31,8 @@
 #include <unordered_set>
 #include <bitset>
 #include <functional>
+#include <chrono>
+#include <utility>
 
 namespace la
 {
@@ -264,6 +268,7 @@ public:
 	void setMemoryObjectDescriptor(entity::model::MemoryObjectDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex) noexcept;
 	void setLocaleDescriptor(entity::model::LocaleDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::LocaleIndex const localeIndex) noexcept;
 	void setStringsDescriptor(entity::model::StringsDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const stringsIndex) noexcept;
+	void setLocalizedStrings(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const stringsIndex, model::AvdeccFixedStrings const& strings) noexcept;
 	void setStreamPortInputDescriptor(entity::model::StreamPortDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) noexcept;
 	void setStreamPortOutputDescriptor(entity::model::StreamPortDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) noexcept;
 	void setAudioClusterDescriptor(entity::model::AudioClusterDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex) noexcept;
@@ -274,21 +279,23 @@ public:
 	bool checkAndClearExpectedDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept;
 	void setDescriptorExpected(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept;
 	bool gotAllExpectedDescriptors() const noexcept;
-	void clearExpectedDescriptors(entity::model::ConfigurationIndex const configurationIndex) noexcept;
+	std::pair<bool, std::chrono::milliseconds> getQueryDescriptorRetryTimer() noexcept;
 
 	// Expected dynamic info query methods
 	bool checkAndClearExpectedDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const connectionIndex = 0u) noexcept;
 	void setDynamicInfoExpected(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const connectionIndex = 0u) noexcept;
 	bool gotAllExpectedDynamicInfo() const noexcept;
-	void clearExpectedDynamicInfo(entity::model::ConfigurationIndex const configurationIndex) noexcept;
+	std::pair<bool, std::chrono::milliseconds> getQueryDynamicInfoRetryTimer() noexcept;
 
 	// Expected descriptor dynamic info query methods
 	bool checkAndClearExpectedDescriptorDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept;
 	void setDescriptorDynamicInfoExpected(entity::model::ConfigurationIndex const configurationIndex, DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept;
 	bool gotAllExpectedDescriptorDynamicInfo() const noexcept;
-	void clearExpectedDescriptorDynamicInfo(entity::model::ConfigurationIndex const configurationIndex) noexcept;
+	std::pair<bool, std::chrono::milliseconds> getQueryDescriptorDynamicInfoRetryTimer() noexcept;
 
 	// Other getters/setters
+	bool shouldIgnoreCachedEntityModel() const noexcept;
+	void setIgnoreCachedEntityModel() noexcept;
 	EnumerationSteps getEnumerationSteps() const noexcept;
 	void addEnumerationSteps(EnumerationSteps const steps) noexcept;
 	void clearEnumerationSteps(EnumerationSteps const steps) noexcept;
@@ -360,6 +367,10 @@ private:
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 	// Private variables
+	bool _ignoreCachedEntityModel{ false };
+	std::uint16_t _queryDescriptorRetryCount{ 0u };
+	std::uint16_t _queryDynamicInfoRetryCount{ 0u };
+	std::uint16_t _queryDescriptorDynamicInfoRetryCount{ 0u };
 	EnumerationSteps _enumerationSteps{ EnumerationSteps::None };
 	Compatibility _compatibility{ Compatibility::IEEE17221 }; // Entity compatibility type
 	bool _gotFatalEnumerateError{ false }; // Have we got a fatal error during entity enumeration

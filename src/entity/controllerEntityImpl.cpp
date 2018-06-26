@@ -268,6 +268,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
+
 				auto* delegate = controller->getDelegate();
 				if ((flags & protocol::AemAcquireEntityFlags::Release) == protocol::AemAcquireEntityFlags::Release)
 				{
@@ -302,6 +303,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
+
 				//auto* delegate = controller->getDelegate();
 				if ((flags & protocol::AemLockEntityFlags::Unlock) == protocol::AemLockEntityFlags::Unlock)
 				{
@@ -352,6 +354,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 
 				auto const targetID = aem.getTargetEntityID();
 				auto const aemStatus = protocol::AemAecpStatus(static_cast<protocol::AemAecpStatus::value_type>(status));
+
 				switch (descriptorType)
 				{
 					case model::DescriptorType::Entity:
@@ -563,6 +566,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
+
 				// Notify handlers
 				answerCallback.invoke<SetConfigurationHandler>(controller, targetID, status, configurationIndex);
 				if (aem.getUnsolicited() && delegate && !!status)
@@ -587,6 +591,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
+
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::StreamInput)
 				{
@@ -609,6 +614,33 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 			}
 		},
 		// Get Stream Format
+		{ protocol::AemCommandType::GetStreamFormat.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
+			{
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex, streamFormat] = protocol::aemPayload::deserializeGetStreamFormatResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeGetStreamFormatResponse(aem.getPayload());
+				model::DescriptorType const descriptorType = std::get<0>(result);
+				model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				entity::model::StreamFormat const streamFormat = std::get<2>(result);
+#endif // __cpp_structured_bindings
+
+				auto const targetID = aem.getTargetEntityID();
+
+				// Notify handlers
+				if (descriptorType == model::DescriptorType::StreamInput)
+				{
+					answerCallback.invoke<GetStreamInputFormatHandler>(controller, targetID, status, descriptorIndex, streamFormat);
+				}
+				else if (descriptorType == model::DescriptorType::StreamOutput)
+				{
+					answerCallback.invoke<GetStreamOutputFormatHandler>(controller, targetID, status, descriptorIndex, streamFormat);
+				}
+				else
+					throw InvalidDescriptorTypeException();
+			}
+		},
 		// Set Stream Info
 		// Get Stream Info
 		{ protocol::AemCommandType::GetStreamInfo.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
@@ -625,6 +657,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
+
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::StreamInput)
 				{
@@ -707,7 +740,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 						}
 						switch (nameIndex)
 						{
-							case 0: // configuration_name
+							case 0: // object_name
 								answerCallback.invoke<SetConfigurationNameHandler>(controller, targetID, status, descriptorIndex);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
@@ -716,6 +749,23 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 								break;
 							default:
 								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in SET_NAME response for Configuration Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::AudioUnit:
+					{
+						switch (nameIndex)
+						{
+							case 0: // object_name
+								answerCallback.invoke<SetAudioUnitNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex);
+								if (aem.getUnsolicited() && delegate && !!status)
+								{
+									invokeProtectedMethod(&ControllerEntity::Delegate::onAudioUnitNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
+								}
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in SET_NAME response for AudioUnit Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
 								break;
 						}
 						break;
@@ -750,6 +800,91 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 								break;
 							default:
 								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in SET_NAME response for StreamOutput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::AvbInterface:
+					{
+						switch (nameIndex)
+						{
+							case 0: // object_name
+								answerCallback.invoke<SetAvbInterfaceNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex);
+								if (aem.getUnsolicited() && delegate && !!status)
+								{
+									invokeProtectedMethod(&ControllerEntity::Delegate::onAvbInterfaceNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
+								}
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in SET_NAME response for AvbInterface Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::ClockSource:
+					{
+						switch (nameIndex)
+						{
+							case 0: // object_name
+								answerCallback.invoke<SetClockSourceNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex);
+								if (aem.getUnsolicited() && delegate && !!status)
+								{
+									invokeProtectedMethod(&ControllerEntity::Delegate::onClockSourceNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
+								}
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in SET_NAME response for ClockSource Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::MemoryObject:
+					{
+						switch (nameIndex)
+						{
+							case 0: // object_name
+								answerCallback.invoke<SetMemoryObjectNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex);
+								if (aem.getUnsolicited() && delegate && !!status)
+								{
+									invokeProtectedMethod(&ControllerEntity::Delegate::onMemoryObjectNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
+								}
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in SET_NAME response for MemoryObject Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::AudioCluster:
+					{
+						switch (nameIndex)
+						{
+							case 0: // object_name
+								answerCallback.invoke<SetAudioClusterNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex);
+								if (aem.getUnsolicited() && delegate && !!status)
+								{
+									invokeProtectedMethod(&ControllerEntity::Delegate::onAudioClusterNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
+								}
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in SET_NAME response for AudioCluster Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::ClockDomain:
+					{
+						switch (nameIndex)
+						{
+							case 0: // object_name
+								answerCallback.invoke<SetClockDomainNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex);
+								if (aem.getUnsolicited() && delegate && !!status)
+								{
+									invokeProtectedMethod(&ControllerEntity::Delegate::onClockDomainNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
+								}
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in SET_NAME response for ClockDomain Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
 								break;
 						}
 						break;
@@ -812,7 +947,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 						}
 						switch (nameIndex)
 						{
-							case 0: // configuration_name
+							case 0: // object_name
 								answerCallback.invoke<GetConfigurationNameHandler>(controller, targetID, status, descriptorIndex, name);
 								break;
 							default:
@@ -821,11 +956,24 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 						}
 						break;
 					}
+					case model::DescriptorType::AudioUnit:
+					{
+						switch (nameIndex)
+						{
+							case 0: // object_name
+								answerCallback.invoke<GetAudioUnitNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex, name);
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for AudioUnit Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
 					case model::DescriptorType::StreamInput:
 					{
 						switch (nameIndex)
 						{
-							case 0: // stream_name
+							case 0: // object_name
 								answerCallback.invoke<GetStreamInputNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex, name);
 								break;
 							default:
@@ -838,11 +986,76 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					{
 						switch (nameIndex)
 						{
-							case 0: // stream_name
+							case 0: // object_name
 								answerCallback.invoke<GetStreamOutputNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex, name);
 								break;
 							default:
 								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for StreamOutput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::AvbInterface:
+					{
+						switch (nameIndex)
+						{
+							case 0: // object_name
+								answerCallback.invoke<GetAvbInterfaceNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex, name);
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for AvbInterface Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::ClockSource:
+					{
+						switch (nameIndex)
+						{
+							case 0: // object_name
+								answerCallback.invoke<GetClockSourceNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex, name);
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for ClockSource Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::MemoryObject:
+					{
+						switch (nameIndex)
+						{
+							case 0: // object_name
+								answerCallback.invoke<GetMemoryObjectNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex, name);
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for MemoryObject Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::AudioCluster:
+					{
+						switch (nameIndex)
+						{
+							case 0: // object_name
+								answerCallback.invoke<GetAudioClusterNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex, name);
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for AudioCluster Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::ClockDomain:
+					{
+						switch (nameIndex)
+						{
+							case 0: // object_name
+								answerCallback.invoke<GetClockDomainNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex, name);
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for ClockDomain Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
 								break;
 						}
 						break;
@@ -868,6 +1081,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
+
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::AudioUnit)
 				{
@@ -897,6 +1111,38 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 					throw InvalidDescriptorTypeException();
 			}
 		},
+		// Get Sampling Rate
+		{ protocol::AemCommandType::GetSamplingRate.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
+			{
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex, samplingRate] = protocol::aemPayload::deserializeGetSamplingRateResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeGetSamplingRateResponse(aem.getPayload());
+				entity::model::DescriptorType const descriptorType = std::get<0>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				entity::model::SamplingRate const samplingRate = std::get<2>(result);
+#endif // __cpp_structured_bindings
+
+				auto const targetID = aem.getTargetEntityID();
+
+				// Notify handlers
+				if (descriptorType == model::DescriptorType::AudioUnit)
+				{
+					answerCallback.invoke<GetAudioUnitSamplingRateHandler>(controller, targetID, status, descriptorIndex, samplingRate);
+				}
+				else if (descriptorType == model::DescriptorType::VideoCluster)
+				{
+					answerCallback.invoke<GetVideoClusterSamplingRateHandler>(controller, targetID, status, descriptorIndex, samplingRate);
+				}
+				else if (descriptorType == model::DescriptorType::SensorCluster)
+				{
+					answerCallback.invoke<GetSensorClusterSamplingRateHandler>(controller, targetID, status, descriptorIndex, samplingRate);
+				}
+				else
+					throw InvalidDescriptorTypeException();
+			}
+		},
 		// Set Clock Source
 		{ protocol::AemCommandType::SetClockSource.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
@@ -912,6 +1158,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
+
 				// Notify handlers
 				answerCallback.invoke<SetClockSourceHandler>(controller, targetID, status, descriptorIndex, clockSourceIndex);
 				if (aem.getUnsolicited() && delegate && !!status)
@@ -934,6 +1181,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
+
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::StreamInput)
 				{
@@ -969,6 +1217,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
+
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::StreamInput)
 				{
@@ -1021,6 +1270,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
+
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::AvbInterface)
 				{
@@ -1053,6 +1303,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 
 				auto const targetID = aem.getTargetEntityID();
 				auto* delegate = controller->getDelegate();
+
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::StreamPortInput)
 				{
@@ -1088,6 +1339,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
+
 				// Notify handlers
 #pragma message("TODO: Handle unsolicited notification (add handler, and handle it in controller code)")
 				if (descriptorType == model::DescriptorType::StreamPortInput)
@@ -1116,6 +1368,7 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
+
 				// Notify handlers
 #pragma message("TODO: Handle unsolicited notification (add handler, and handle it in controller code)")
 				if (descriptorType == model::DescriptorType::StreamPortInput)
@@ -1886,6 +2139,21 @@ void ControllerEntityImpl::setStreamInputFormat(UniqueIdentifier const targetEnt
 	}
 }
 
+void ControllerEntityImpl::getStreamInputFormat(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, GetStreamInputFormatHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetStreamFormatCommand(model::DescriptorType::StreamInput, streamIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::GetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getStreamInputFormat: {}", e.what());
+	}
+}
+
 void ControllerEntityImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamFormat const streamFormat, SetStreamOutputFormatHandler const& handler) const noexcept
 {
 	try
@@ -1898,6 +2166,21 @@ void ControllerEntityImpl::setStreamOutputFormat(UniqueIdentifier const targetEn
 	catch ([[maybe_unused]] std::exception const& e)
 	{
 		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setStreamOutputFormat: {}", e.what());
+	}
+}
+
+void ControllerEntityImpl::getStreamOutputFormat(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, GetStreamOutputFormatHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetStreamFormatCommand(model::DescriptorType::StreamOutput, streamIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::GetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getStreamOutputFormat: {}", e.what());
 	}
 }
 
@@ -2111,6 +2394,36 @@ void ControllerEntityImpl::getConfigurationName(UniqueIdentifier const targetEnt
 	}
 }
 
+void ControllerEntityImpl::setAudioUnitName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AudioUnitIndex const audioUnitIndex, model::AvdeccFixedString const& audioUnitName, SetAudioUnitNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::AudioUnit, audioUnitIndex, 0, configurationIndex, audioUnitName);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, audioUnitIndex);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setName: {}", e.what());
+	}
+}
+
+void ControllerEntityImpl::getAudioUnitName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const audioUnitIndex, GetAudioUnitNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::AudioUnit, audioUnitIndex, 0, configurationIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, audioUnitIndex, s_emptyAvdeccFixedString);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getName: {}", e.what());
+	}
+}
+
 void ControllerEntityImpl::setStreamInputName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const streamIndex, model::AvdeccFixedString const& streamInputName, SetStreamInputNameHandler const& handler) const noexcept
 {
 	try
@@ -2171,6 +2484,156 @@ void ControllerEntityImpl::getStreamOutputName(UniqueIdentifier const targetEnti
 	}
 }
 
+void ControllerEntityImpl::setAvbInterfaceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AvbInterfaceIndex const avbInterfaceIndex, model::AvdeccFixedString const& avbInterfaceName, SetAvbInterfaceNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::AvbInterface, avbInterfaceIndex, 0, configurationIndex, avbInterfaceName);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, avbInterfaceIndex);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setName: {}", e.what());
+	}
+}
+
+void ControllerEntityImpl::getAvbInterfaceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const avbInterfaceIndex, GetAvbInterfaceNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::AvbInterface, avbInterfaceIndex, 0, configurationIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, avbInterfaceIndex, s_emptyAvdeccFixedString);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getName: {}", e.what());
+	}
+}
+
+void ControllerEntityImpl::setClockSourceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClockSourceIndex const clockSourceIndex, model::AvdeccFixedString const& clockSourceName, SetClockSourceNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::ClockSource, clockSourceIndex, 0, configurationIndex, clockSourceName);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, clockSourceIndex);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setName: {}", e.what());
+	}
+}
+
+void ControllerEntityImpl::getClockSourceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const clockSourceIndex, GetClockSourceNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::ClockSource, clockSourceIndex, 0, configurationIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, clockSourceIndex, s_emptyAvdeccFixedString);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getName: {}", e.what());
+	}
+}
+
+void ControllerEntityImpl::setMemoryObjectName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::MemoryObjectIndex const memoryObjectIndex, model::AvdeccFixedString const& memoryObjectName, SetMemoryObjectNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::MemoryObject, memoryObjectIndex, 0, configurationIndex, memoryObjectName);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setName: {}", e.what());
+	}
+}
+
+void ControllerEntityImpl::getMemoryObjectName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const memoryObjectIndex, GetMemoryObjectNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::MemoryObject, memoryObjectIndex, 0, configurationIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex, s_emptyAvdeccFixedString);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getName: {}", e.what());
+	}
+}
+
+void ControllerEntityImpl::setAudioClusterName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClusterIndex const audioClusterIndex, model::AvdeccFixedString const& audioClusterName, SetAudioClusterNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::AudioCluster, audioClusterIndex, 0, configurationIndex, audioClusterName);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, audioClusterIndex);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setName: {}", e.what());
+	}
+}
+
+void ControllerEntityImpl::getAudioClusterName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const audioClusterIndex, GetAudioClusterNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::AudioCluster, audioClusterIndex, 0, configurationIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, audioClusterIndex, s_emptyAvdeccFixedString);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getName: {}", e.what());
+	}
+}
+
+void ControllerEntityImpl::setClockDomainName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClockDomainIndex const clockDomainIndex, model::AvdeccFixedString const& clockDomainName, SetClockDomainNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::ClockDomain, clockDomainIndex, 0, configurationIndex, clockDomainName);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, clockDomainIndex);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setName: {}", e.what());
+	}
+}
+
+void ControllerEntityImpl::getClockDomainName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const clockDomainIndex, GetClockDomainNameHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::ClockDomain, clockDomainIndex, 0, configurationIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, clockDomainIndex, s_emptyAvdeccFixedString);
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getName: {}", e.what());
+	}
+}
+
 void ControllerEntityImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntityID, model::AudioUnitIndex const audioUnitIndex, model::SamplingRate const samplingRate, SetAudioUnitSamplingRateHandler const& handler) const noexcept
 {
 	try
@@ -2183,6 +2646,21 @@ void ControllerEntityImpl::setAudioUnitSamplingRate(UniqueIdentifier const targe
 	catch ([[maybe_unused]] std::exception const& e)
 	{
 		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setAudioUnitSamplingRate: {}", e.what());
+	}
+}
+
+void ControllerEntityImpl::getAudioUnitSamplingRate(UniqueIdentifier const targetEntityID, model::AudioUnitIndex const audioUnitIndex, GetAudioUnitSamplingRateHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetSamplingRateCommand(model::DescriptorType::AudioUnit, audioUnitIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, audioUnitIndex, model::getNullSamplingRate());
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::GetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getAudioUnitSamplingRate: {}", e.what());
 	}
 }
 
@@ -2201,6 +2679,21 @@ void ControllerEntityImpl::setVideoClusterSamplingRate(UniqueIdentifier const ta
 	}
 }
 
+void ControllerEntityImpl::getVideoClusterSamplingRate(UniqueIdentifier const targetEntityID, model::ClusterIndex const videoClusterIndex, GetVideoClusterSamplingRateHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetSamplingRateCommand(model::DescriptorType::VideoCluster, videoClusterIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, videoClusterIndex, model::getNullSamplingRate());
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::GetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getVideoClusterSamplingRate: {}", e.what());
+	}
+}
+
 void ControllerEntityImpl::setSensorClusterSamplingRate(UniqueIdentifier const targetEntityID, model::ClusterIndex const sensorClusterIndex, model::SamplingRate const samplingRate, SetSensorClusterSamplingRateHandler const& handler) const noexcept
 {
 	try
@@ -2213,6 +2706,21 @@ void ControllerEntityImpl::setSensorClusterSamplingRate(UniqueIdentifier const t
 	catch ([[maybe_unused]] std::exception const& e)
 	{
 		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setSensorClusterSamplingRate: {}", e.what());
+	}
+}
+
+void ControllerEntityImpl::getSensorClusterSamplingRate(UniqueIdentifier const targetEntityID, model::ClusterIndex const sensorClusterIndex, GetSensorClusterSamplingRateHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetSamplingRateCommand(model::DescriptorType::SensorCluster, sensorClusterIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, sensorClusterIndex, model::getNullSamplingRate());
+
+		sendAemCommand(targetEntityID, protocol::AemCommandType::GetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getSensorClusterSamplingRate: {}", e.what());
 	}
 }
 

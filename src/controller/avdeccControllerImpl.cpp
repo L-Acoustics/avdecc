@@ -24,6 +24,7 @@
 
 #include "avdeccControllerImpl.hpp"
 #include "avdeccControllerLogHelper.hpp"
+#include "avdeccEntityModelCache.hpp"
 
 namespace la
 {
@@ -374,6 +375,320 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntity
 /* ************************************************************ */
 /* Private methods                                              */
 /* ************************************************************ */
+void ControllerImpl::chooseLocale(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex) noexcept
+{
+	model::LocaleNodeStaticModel const* localeNode{ nullptr };
+	localeNode = entity->findLocaleNode(configurationIndex, _preferedLocale);
+	if (localeNode == nullptr)
+	{
+#pragma message("TODO: Split _preferedLocale into language/country, then if findLocaleDescriptor fails and language is not 'en', try to find a locale for 'en'")
+		localeNode = entity->findLocaleNode(configurationIndex, "en");
+	}
+	if (localeNode != nullptr)
+	{
+		auto const& configStaticTree = entity->getConfigurationStaticTree(configurationIndex);
+
+		entity->setSelectedLocaleBaseIndex(configurationIndex, localeNode->baseStringDescriptorIndex);
+		for (auto index = entity::model::StringsIndex(0); index < localeNode->numberOfStringDescriptors; ++index)
+		{
+			// Check if we already have the Strings descriptor
+			auto const stringsIndex = static_cast<decltype(index)>(localeNode->baseStringDescriptorIndex + index);
+			auto const stringsStaticModelIt = configStaticTree.stringsStaticModels.find(stringsIndex);
+			if (stringsStaticModelIt != configStaticTree.stringsStaticModels.end())
+			{
+				// Already in cache, no need to query (just have to copy strings to Configuration for quick access)
+				auto const& stringsStaticModel = stringsStaticModelIt->second;
+				entity->setLocalizedStrings(configurationIndex, stringsIndex, stringsStaticModel.strings);
+			}
+			else
+			{
+				queryInformation(entity, configurationIndex, entity::model::DescriptorType::Strings, stringsIndex);
+			}
+		}
+	}
+}
+
+void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::chrono::milliseconds const delayQuery) noexcept
+{
+	// Immediately set as expected
+	entity->setDescriptorExpected(configurationIndex, descriptorType, descriptorIndex);
+
+	auto const entityID = entity->getEntity().getEntityID();
+	std::function<void(entity::ControllerEntity*)> queryFunc{};
+
+	switch (descriptorType)
+	{
+		case entity::model::DescriptorType::Entity:
+			queryFunc = [this, entityID](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readEntityDescriptor ()");
+				controller->readEntityDescriptor(entityID, std::bind(&ControllerImpl::onEntityDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+			};
+			break;
+		case entity::model::DescriptorType::Configuration:
+			queryFunc = [this, entityID, configurationIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readConfigurationDescriptor (ConfigurationIndex={})", configurationIndex);
+				controller->readConfigurationDescriptor(entityID, configurationIndex, std::bind(&ControllerImpl::onConfigurationDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
+			};
+			break;
+		case entity::model::DescriptorType::AudioUnit:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readAudioUnitDescriptor (ConfigurationIndex={} AudioUnitIndex={})", configurationIndex, descriptorIndex);
+				controller->readAudioUnitDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAudioUnitDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case entity::model::DescriptorType::StreamInput:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readStreamInputDescriptor (ConfigurationIndex={} StreamIndex={})", configurationIndex, descriptorIndex);
+				controller->readStreamInputDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onStreamInputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case entity::model::DescriptorType::StreamOutput:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readStreamOutputDescriptor (ConfigurationIndex={} StreamIndex={})", configurationIndex, descriptorIndex);
+				controller->readStreamOutputDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onStreamOutputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case entity::model::DescriptorType::AvbInterface:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readAvbInterfaceDescriptor (ConfigurationIndex={}, AvbInterfaceIndex={})", configurationIndex, descriptorIndex);
+				controller->readAvbInterfaceDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAvbInterfaceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case entity::model::DescriptorType::ClockSource:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readClockSourceDescriptor (ConfigurationIndex={} ClockSourceIndex={})", configurationIndex, descriptorIndex);
+				controller->readClockSourceDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onClockSourceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case entity::model::DescriptorType::MemoryObject:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readMemoryObjectDescriptor (ConfigurationIndex={}, MemoryObjectIndex={})", configurationIndex, descriptorIndex);
+				controller->readMemoryObjectDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onMemoryObjectDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case entity::model::DescriptorType::Locale:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readLocaleDescriptor (ConfigurationIndex={} LocaleIndex={})", configurationIndex, descriptorIndex);
+				controller->readLocaleDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onLocaleDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case entity::model::DescriptorType::Strings:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readStringsDescriptor (ConfigurationIndex={} StringsIndex={})", configurationIndex, descriptorIndex);
+				controller->readStringsDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onStringsDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case entity::model::DescriptorType::StreamPortInput:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readStreamPortInputDescriptor (ConfigurationIndex={}, StreamPortIndex={})", configurationIndex, descriptorIndex);
+				controller->readStreamPortInputDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onStreamPortInputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case entity::model::DescriptorType::StreamPortOutput:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readStreamPortOutputDescriptor (ConfigurationIndex={} StreamPortIndex={})", configurationIndex, descriptorIndex);
+				controller->readStreamPortOutputDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onStreamPortOutputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case entity::model::DescriptorType::AudioCluster:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readAudioClusterDescriptor (ConfigurationIndex={} ClusterIndex={})", configurationIndex, descriptorIndex);
+				controller->readAudioClusterDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAudioClusterDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case entity::model::DescriptorType::AudioMap:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readAudioMapDescriptor (ConfigurationIndex={} MapIndex={})", configurationIndex, descriptorIndex);
+				controller->readAudioMapDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAudioMapDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case entity::model::DescriptorType::ClockDomain:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readClockDomainDescriptor (ConfigurationIndex={}, ClockDomainIndex={})", configurationIndex, descriptorIndex);
+				controller->readClockDomainDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onClockDomainDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		default:
+			AVDECC_ASSERT(false, "Unhandled DescriptorType");
+	}
+
+	// Not delayed, call now
+	if (delayQuery == std::chrono::milliseconds{ 0 })
+	{
+		if (queryFunc)
+		{
+			queryFunc(_controller);
+		}
+	}
+	else
+	{
+#pragma message("TODO: Use a single thread for ALL query retries (all types as well), that is destroyed when the controller is destroyed (we don't want to crash, do we?)")
+		std::thread([this, delayQuery, queryFunc, entityID]
+		{
+			std::this_thread::sleep_for(delayQuery);
+			if (_controller)
+			{
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				// Entity still online
+				if (controlledEntity)
+				{
+					queryFunc(_controller);
+				}
+			}
+		}).detach();
+	}
+}
+
+void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::chrono::milliseconds const delayQuery) noexcept
+{
+	// Immediately set as expected
+	entity->setDescriptorDynamicInfoExpected(configurationIndex, descriptorDynamicInfoType, descriptorIndex);
+
+	auto const entityID = entity->getEntity().getEntityID();
+	std::function<void(entity::ControllerEntity*)> queryFunc{};
+
+	switch (descriptorDynamicInfoType)
+	{
+		case ControlledEntityImpl::DescriptorDynamicInfoType::ConfigurationName:
+			queryFunc = [this, entityID, configurationIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getConfigurationName (ConfigurationIndex={})", configurationIndex);
+				controller->getConfigurationName(entityID, configurationIndex, std::bind(&ControllerImpl::onConfigurationNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
+			};
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getAudioUnitName (ConfigurationIndex={} AudioUnitIndex={})", configurationIndex, descriptorIndex);
+				controller->getAudioUnitName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAudioUnitNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getAudioUnitSamplingRate (ConfigurationIndex={} AudioUnitIndex={})", configurationIndex, descriptorIndex);
+				controller->getAudioUnitSamplingRate(entityID, descriptorIndex, std::bind(&ControllerImpl::onAudioUnitSamplingRateResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
+			};
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getStreamInputName (ConfigurationIndex={} StreamIndex={})", configurationIndex, descriptorIndex);
+				controller->getStreamInputName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onInputStreamNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getStreamInputFormat (ConfigurationIndex={} StreamIndex={})", configurationIndex, descriptorIndex);
+				controller->getStreamInputFormat(entityID, descriptorIndex, std::bind(&ControllerImpl::onInputStreamFormatResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
+			};
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getStreamOutputName (ConfigurationIndex={} StreamIndex={})", configurationIndex, descriptorIndex);
+				controller->getStreamOutputName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onOutputStreamNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getStreamOutputFormat (ConfigurationIndex={} StreamIndex={})", configurationIndex, descriptorIndex);
+				controller->getStreamOutputFormat(entityID, descriptorIndex, std::bind(&ControllerImpl::onOutputStreamFormatResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
+			};
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getAvbInterfaceName (ConfigurationIndex={} AvbInterfaceIndex={})", configurationIndex, descriptorIndex);
+				controller->getAvbInterfaceName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAvbInterfaceNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getClockSourceName (ConfigurationIndex={} ClockSourceIndex={})", configurationIndex, descriptorIndex);
+				controller->getClockSourceName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onClockSourceNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getMemoryObjectName (ConfigurationIndex={} MemoryObjectIndex={})", configurationIndex, descriptorIndex);
+				controller->getMemoryObjectName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onMemoryObjectNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength:
+			assert(false && "TODO");
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getAudioClusterName (ConfigurationIndex={} AudioClusterIndex={})", configurationIndex, descriptorIndex);
+				controller->getAudioClusterName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAudioClusterNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getClockDomainName (ConfigurationIndex={} ClockDomainIndex={})", configurationIndex, descriptorIndex);
+				controller->getClockDomainName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onClockDomainNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex:
+			assert(false && "TODO");
+			break;
+		default:
+			AVDECC_ASSERT(false, "Unhandled DescriptorDynamicInfoType");
+	}
+
+	// Not delayed, call now
+	if (delayQuery == std::chrono::milliseconds{ 0 })
+	{
+		if (queryFunc)
+		{
+			queryFunc(_controller);
+		}
+	}
+	else
+	{
+#pragma message("TODO: Use a single thread for ALL query retries (all types as well), that is destroyed when the controller is destroyed (we don't want to crash, do we?)")
+		std::thread([this, delayQuery, queryFunc, entityID]
+		{
+			std::this_thread::sleep_for(delayQuery);
+			if (_controller)
+			{
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				// Entity still online
+				if (controlledEntity)
+				{
+					queryFunc(_controller);
+				}
+			}
+		}).detach();
+	}
+}
+
 void ControllerImpl::getMilanVersion(ControlledEntityImpl* const entity) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
@@ -395,12 +710,8 @@ void ControllerImpl::registerUnsol(ControlledEntityImpl* const entity) noexcept
 
 void ControllerImpl::getStaticModel(ControlledEntityImpl* const entity) noexcept
 {
-	auto const entityID = entity->getEntity().getEntityID();
-
 	// Always start with Entity Descriptor, the response from it will schedule subsequent descriptors queries
-	LOG_CONTROLLER_TRACE(entityID, "readEntityDescriptor ()");
-	entity->setDescriptorExpected(0, entity::model::DescriptorType::Entity, 0);
-	_controller->readEntityDescriptor(entityID, std::bind(&ControllerImpl::onEntityDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+	queryInformation(entity, 0, entity::model::DescriptorType::Entity, 0);
 }
 
 void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
@@ -502,13 +813,115 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 
 void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity) noexcept
 {
-	auto const entityID = entity->getEntity().getEntityID();
-
 	auto const caps = entity->getEntity().getEntityCapabilities();
 	// Check if AEM is supported by this entity
 	if (hasFlag(caps, entity::EntityCapabilities::AemSupported))
 	{
-		assert(false && "TODO: Get all information from DescriptorDynamicInfoType");
+		auto const& entityStaticTree = entity->getEntityStaticTree();
+		auto const currentConfigurationIndex = entity->getCurrentConfigurationIndex();
+
+		// Get DynamicModel for each Configuration descriptors
+		for (auto configurationIndex = entity::model::ConfigurationIndex(0u); configurationIndex < entityStaticTree.configurationStaticTrees.size(); ++configurationIndex)
+		{
+			auto const& configStaticTree = entity->getConfigurationStaticTree(configurationIndex);
+			auto& configDynamicModel = entity->getConfigurationNodeDynamicModel(configurationIndex);
+
+			// We can set the currentConfiguration value right now, we know it
+			configDynamicModel.isActiveConfiguration = configurationIndex == currentConfigurationIndex;
+
+			// Get ConfigurationName
+			queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ConfigurationName, 0u);
+
+			// And only for the current configuration, get DynamicModel for sub-descriptors
+			if (configDynamicModel.isActiveConfiguration)
+			{
+				// Choose a locale
+				chooseLocale(entity, configurationIndex);
+
+				// Get DynamicModel for each AudioUnit descriptors
+				{
+					{
+						auto const count = configStaticTree.audioUnitStaticModels.size();
+						for (auto index = entity::model::AudioUnitIndex(0); index < count; ++index)
+						{
+							// Get AudioUnitName
+							queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName, index);
+							// Get AudioUnitSamplingRate
+							queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate, index);
+						}
+					}
+				}
+				// Get DynamicModel for each StreamInput descriptors
+				{
+					auto const count = configStaticTree.streamInputStaticModels.size();
+					for (auto index = entity::model::StreamIndex(0); index < count; ++index)
+					{
+						// Get InputStreamName
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName, index);
+						// Get InputStreamFormat
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat, index);
+					}
+				}
+				// Get DynamicModel for each StreamOutput descriptors
+				{
+					auto const count = configStaticTree.streamOutputStaticModels.size();
+					for (auto index = entity::model::StreamIndex(0); index < count; ++index)
+					{
+						// Get OutputStreamName
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName, index);
+						// Get OutputStreamFormat
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat, index);
+					}
+				}
+				// Get DynamicModel for each AvbInterface descriptors
+				{
+					auto const count = configStaticTree.avbInterfaceStaticModels.size();
+					for (auto index = entity::model::AvbInterfaceIndex(0); index < count; ++index)
+					{
+						// Get AvbInterfaceName
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName, index);
+					}
+				}
+				// Get DynamicModel for each ClockSource descriptors
+				{
+					auto const count = configStaticTree.clockSourceStaticModels.size();
+					for (auto index = entity::model::ClockSourceIndex(0); index < count; ++index)
+					{
+						// Get ClockSourceName
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName, index);
+					}
+				}
+				// Get DynamicModel for each MemoryObject descriptors
+				{
+					auto const count = configStaticTree.memoryObjectStaticModels.size();
+					for (auto index = entity::model::MemoryObjectIndex(0); index < count; ++index)
+					{
+						// Get MemoryObjectName
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName, index);
+						// Get MemoryObjectLength
+					}
+				}
+				// Get DynamicModel for each AudioCluster descriptors
+				{
+					auto const count = configStaticTree.audioClusterStaticModels.size();
+					for (auto index = entity::model::ClusterIndex(0); index < count; ++index)
+					{
+						// Get AudioClusterName
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, index);
+					}
+				}
+				// Get DynamicModel for each ClockDomain descriptors
+				{
+					auto const count = configStaticTree.clockDomainStaticModels.size();
+					for (auto index = entity::model::ClockDomainIndex(0); index < count; ++index)
+					{
+						// Get ClockDomainName
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName, index);
+						// Get ClockDomainSourceIndex
+					}
+				}
+			}
+		}
 	}
 
 	// Get all expected descriptor dynamic information
@@ -555,6 +968,10 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const entity) n
 	{
 		if (!entity->gotFatalEnumerationError())
 		{
+			// Store EntityModel in the cache for later use
+			EntityModelCache::getInstance().cacheEntityStaticTree(entity->getEntity().getEntityID(), entity->getCurrentConfigurationIndex(), entity->getEntityStaticTree());
+
+			// Advertise the entity
 			entity->setAdvertised(true);
 			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityOnline, this, entity);
 		}
@@ -681,7 +1098,7 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 	}
 }
 
-void ControllerImpl::rescheduleQuery(ControlledEntityImpl* const /*entity*/, entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::DescriptorType const /*descriptorType*/, entity::model::DescriptorIndex const /*descriptorIndex*/) const noexcept
+void ControllerImpl::rescheduleQuery(ControlledEntityImpl* const /*entity*/, std::chrono::milliseconds /*retryTimer*/, entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::DescriptorType const /*descriptorType*/, entity::model::DescriptorIndex const /*descriptorIndex*/) noexcept
 {
 #pragma message("TODO: Reschedule the query")
 	// For easy reschedule, instead of calling single commands everywhere in the code, have a single method that gets passed entityID, descriptorType and descriptorIndex
@@ -689,7 +1106,7 @@ void ControllerImpl::rescheduleQuery(ControlledEntityImpl* const /*entity*/, ent
 	// So here we can just schedule a call to that method
 }
 
-void ControllerImpl::rescheduleQuery(ControlledEntityImpl* const /*entity*/, entity::model::ConfigurationIndex const /*configurationIndex*/, ControlledEntityImpl::DynamicInfoType const /*dynamicInfoType*/, entity::model::DescriptorIndex const /*descriptorIndex*/) const noexcept
+void ControllerImpl::rescheduleQuery(ControlledEntityImpl* const /*entity*/, std::chrono::milliseconds /*retryTimer*/, entity::model::ConfigurationIndex const /*configurationIndex*/, ControlledEntityImpl::DynamicInfoType const /*dynamicInfoType*/, entity::model::DescriptorIndex const /*descriptorIndex*/) noexcept
 {
 #pragma message("TODO: Reschedule the query")
 	// For easy reschedule, instead of calling single commands everywhere in the code, have a single method that gets passed entityID, descriptorType and descriptorIndex
@@ -697,15 +1114,7 @@ void ControllerImpl::rescheduleQuery(ControlledEntityImpl* const /*entity*/, ent
 	// So here we can just schedule a call to that method
 }
 
-void ControllerImpl::rescheduleQuery(ControlledEntityImpl* const /*entity*/, entity::model::ConfigurationIndex const /*configurationIndex*/, ControlledEntityImpl::DynamicInfoType const /*dynamicInfoType*/, entity::model::DescriptorIndex const /*descriptorIndex*/, std::uint16_t const /*connectionIndex*/) const noexcept
-{
-#pragma message("TODO: Reschedule the query")
-	// For easy reschedule, instead of calling single commands everywhere in the code, have a single method that gets passed entityID, descriptorType and descriptorIndex
-	// The method will switch-case on that, print the log message, set the expectedDescriptor, make the call
-	// So here we can just schedule a call to that method
-}
-
-void ControllerImpl::rescheduleQuery(ControlledEntityImpl* const /*entity*/, entity::model::ConfigurationIndex const /*configurationIndex*/, ControlledEntityImpl::DescriptorDynamicInfoType const /*descriptorDynamicInfoType*/, entity::model::DescriptorIndex const /*descriptorIndex*/) const noexcept
+void ControllerImpl::rescheduleQuery(ControlledEntityImpl* const /*entity*/, std::chrono::milliseconds /*retryTimer*/, entity::model::ConfigurationIndex const /*configurationIndex*/, ControlledEntityImpl::DynamicInfoType const /*dynamicInfoType*/, entity::model::DescriptorIndex const /*descriptorIndex*/, std::uint16_t const /*connectionIndex*/) noexcept
 {
 #pragma message("TODO: Reschedule the query")
 	// For easy reschedule, instead of calling single commands everywhere in the code, have a single method that gets passed entityID, descriptorType and descriptorIndex
@@ -714,32 +1123,27 @@ void ControllerImpl::rescheduleQuery(ControlledEntityImpl* const /*entity*/, ent
 }
 
 /* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetStaticModel (AEM) */
-bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) const noexcept
+bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
 	switch (getFailureAction(status))
 	{
 		case FailureAction::Ignore:
-			// Try to get the Descriptor Dynamic Information, because we might be missing some crucial info we can get with direct commands
-			entity->addEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
 			return true;
 		case FailureAction::Retry:
-			// TODO: Handle max retry mechanism before removing this #if 0 (store a retryCount in the entity, declare a MAX_RETRY_COUNT, maybe have an algorithm that waits more and more after each try)
-#if 0
-			if (retryCount < MAX_RETRY_COUNT)
+		{
+#ifdef __cpp_structured_bindings
+			auto const [shouldRetry, retryTimer] = entity->getQueryDescriptorRetryTimer();
+#else // !__cpp_structured_bindings
+			auto const result = entity->getQueryDescriptorRetryTimer();
+			auto const shouldRetry = std::get<0>(result);
+			auto const retryTimer = std::get<1>(result);
+#endif // __cpp_structured_bindings
+			if (shouldRetry)
 			{
-				rescheduleQuery(entity, configurationIndex, descriptorType, descriptorIndex);
-			}
-			else
-#else
-			(void)configurationIndex;
-			(void)descriptorType;
-			(void)descriptorIndex;
-#endif
-			{
-				// Try to get the Descriptor Dynamic Information, because we might be missing some crucial info we can get with direct commands
-				entity->addEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+				rescheduleQuery(entity, retryTimer, configurationIndex, descriptorType, descriptorIndex);
 			}
 			return true;
+		}
 		case FailureAction::Fatal:
 			return false;
 		default:
@@ -748,16 +1152,27 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 }
 
 /* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetDynamicInfo for AECP commands */
-bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) const noexcept
+bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
 	switch (getFailureAction(status))
 	{
 		case FailureAction::Ignore:
 			return true;
 		case FailureAction::Retry:
-			// TODO: Have a max retry count as well
-			rescheduleQuery(entity, configurationIndex, dynamicInfoType, descriptorIndex);
+		{
+#ifdef __cpp_structured_bindings
+			auto const[shouldRetry, retryTimer] = entity->getQueryDynamicInfoRetryTimer();
+#else // !__cpp_structured_bindings
+			auto const result = entity->getQueryDynamicInfoRetryTimer();
+			auto const shouldRetry = std::get<0>(result);
+			auto const retryTimer = std::get<1>(result);
+#endif // __cpp_structured_bindings
+			if (shouldRetry)
+			{
+				rescheduleQuery(entity, retryTimer, configurationIndex, dynamicInfoType, descriptorIndex);
+			}
 			return true;
+		}
 		case FailureAction::Fatal:
 			return false;
 		default:
@@ -766,16 +1181,27 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 }
 
 /* This method handles non-success ControlStatus returned while getting EnumerationSteps::GetDynamicInfo for ACMP commands */
-bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const connectionIndex) const noexcept
+bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const connectionIndex) noexcept
 {
 	switch (getFailureAction(status))
 	{
 		case FailureAction::Ignore:
 			return true;
 		case FailureAction::Retry:
-			// TODO: Have a max retry count as well
-			rescheduleQuery(entity, configurationIndex, dynamicInfoType, descriptorIndex, connectionIndex);
+		{
+#ifdef __cpp_structured_bindings
+			auto const[shouldRetry, retryTimer] = entity->getQueryDynamicInfoRetryTimer();
+#else // !__cpp_structured_bindings
+			auto const result = entity->getQueryDynamicInfoRetryTimer();
+			auto const shouldRetry = std::get<0>(result);
+			auto const retryTimer = std::get<1>(result);
+#endif // __cpp_structured_bindings
+			if (shouldRetry)
+			{
+				rescheduleQuery(entity, retryTimer, configurationIndex, dynamicInfoType, descriptorIndex, connectionIndex);
+			}
 			return true;
+		}
 		case FailureAction::Fatal:
 			return false;
 		default:
@@ -783,27 +1209,34 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 	}
 }
 /* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetDescriptorDynamicInfo (AEM) */
-bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) const noexcept
+bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
 	switch (getFailureAction(status))
 	{
 		case FailureAction::Ignore:
 			return true;
 		case FailureAction::Retry:
-			// TODO: Handle max retry mechanism before removing this #if 0 (store a retryCount in the entity, declare a MAX_RETRY_COUNT, maybe have an algorithm that waits more and more after each try)
-#if 0
-			if (retryCount < MAX_RETRY_COUNT)
+		{
+#ifdef __cpp_structured_bindings
+			auto const[shouldRetry, retryTimer] = entity->getQueryDescriptorDynamicInfoRetryTimer();
+#else // !__cpp_structured_bindings
+			auto const result = entity->getQueryDescriptorDynamicInfoRetryTimer();
+			auto const shouldRetry = std::get<0>(result);
+			auto const retryTimer = std::get<1>(result);
+#endif // __cpp_structured_bindings
+			if (shouldRetry)
 			{
-				rescheduleQuery(entity, configurationIndex, descriptorDynamicInfoType, descriptorIndex);
+				queryInformation(entity, configurationIndex, descriptorDynamicInfoType, descriptorIndex, retryTimer);
 			}
 			else
-#else
-			(void)entity;
-			(void)configurationIndex;
-			(void)descriptorDynamicInfoType;
-			(void)descriptorIndex;
-#endif
+			{
+				// Fallback to full StaticModel enumeration
+				entity->setIgnoreCachedEntityModel();
+				entity->addEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+				LOG_CONTROLLER_ERROR(entity->getEntity().getEntityID(), "Failed to use cached EntityModel (too many DescriptorDynamic query retries), falling back to full StaticModel enumeration");
+			}
 			return true;
+		}
 		case FailureAction::Fatal:
 			return false;
 		default:
