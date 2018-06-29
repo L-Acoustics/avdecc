@@ -43,36 +43,58 @@ public:
 		return s_instance;
 	}
 
+	void enableCache() noexcept
+	{
+		_isEnabled = true;
+	}
+
+	void disableCache() noexcept
+	{
+		_isEnabled = false;
+	}
+
+	// TODO: If we want to add a clearCache method, we'll have to add locking to this class
+	// because clearCache would probably not be called from the same thread than getCachedEntityStaticTree and cacheEntityStaticTree.
+	// Also we should return a copy of the data (pair<bool, Tree> or std::optional) so the lock is release with valid data
+
 	model::EntityStaticTree const* getCachedEntityStaticTree(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex) const noexcept
 	{
-		auto const entityModelIt = _modelCache.find(entityID);
-		if (entityModelIt != _modelCache.end())
+		if (_isEnabled)
 		{
-			auto const& entityModel = entityModelIt->second;
-			auto const modelIt = entityModel.find(configurationIndex);
-			if (modelIt != entityModel.end())
+			auto const entityModelIt = _modelCache.find(entityID);
+			if (entityModelIt != _modelCache.end())
 			{
-				return &modelIt->second;
+				auto const& entityModel = entityModelIt->second;
+				auto const modelIt = entityModel.find(configurationIndex);
+				if (modelIt != entityModel.end())
+				{
+					return &modelIt->second;
+				}
 			}
 		}
+
 		return nullptr;
 	}
 
 	void cacheEntityStaticTree(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, model::EntityStaticTree const& staticTree) noexcept
 	{
-		auto& entityModel = _modelCache[entityID];
-
-		// Cache the EntityModel but only if not already in cache
-		auto modelIt = entityModel.find(configurationIndex);
-		if (modelIt == entityModel.end())
+		if (_isEnabled)
 		{
-			entityModel.insert(std::make_pair(configurationIndex, staticTree));
+			auto& entityModel = _modelCache[entityID];
+
+			// Cache the EntityModel but only if not already in cache
+			auto modelIt = entityModel.find(configurationIndex);
+			if (modelIt == entityModel.end())
+			{
+				entityModel.insert(std::make_pair(configurationIndex, staticTree));
+			}
 		}
 	}
 
 private:
 	using StaticEntityModel = std::unordered_map<entity::model::ConfigurationIndex, model::EntityStaticTree>;
 	std::unordered_map<UniqueIdentifier, StaticEntityModel, la::avdecc::UniqueIdentifier::hash> _modelCache{};
+	bool _isEnabled{ false };
 };
 
 } // namespace controller
