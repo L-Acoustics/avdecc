@@ -24,6 +24,7 @@
 
 #include "avdeccControllerImpl.hpp"
 #include "avdeccControllerLogHelper.hpp"
+#include "avdeccEntityModelCache.hpp"
 
 namespace la
 {
@@ -127,6 +128,16 @@ void ControllerImpl::enableEntityAdvertising(std::uint32_t const availableDurati
 void ControllerImpl::disableEntityAdvertising() noexcept
 {
 	_controller->disableEntityAdvertising();
+}
+
+void ControllerImpl::enableEntityModelCache() noexcept
+{
+	EntityModelCache::getInstance().enableCache();
+}
+
+void ControllerImpl::disableEntityModelCache() noexcept
+{
+	EntityModelCache::getInstance().disableCache();
 }
 
 /* Enumeration and Control Protocol (AECP) */
@@ -445,6 +456,42 @@ void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID,
 	}
 }
 
+void ControllerImpl::setAudioUnitName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::AvdeccFixedString const& name, SetAudioUnitNameHandler const& handler) const noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioUnitName (ConfigurationIndex={} AudioUnitIndex={} Name={})", configurationIndex, audioUnitIndex, name.str());
+		_controller->setAudioUnitName(targetEntityID, configurationIndex, audioUnitIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex)
+		{
+			LOG_CONTROLLER_TRACE(entityID, "User setAudioUnitName (ConfigurationIndex={} AudioUnitIndex={}): {}", configurationIndex, audioUnitIndex, entity::ControllerEntity::statusToString(status));
+
+			// Take a copy of the ControlledEntity so we don't have to keep the lock
+			auto controlledEntity = getControlledEntityImpl(entityID);
+
+			if (controlledEntity)
+			{
+				auto* const entity = controlledEntity.get();
+				if (!!status) // Only change the name in case of success
+				{
+					updateAudioUnitName(*entity, configurationIndex, audioUnitIndex, name);
+				}
+				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status);
+			}
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
 void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& name, SetStreamInputNameHandler const& handler) const noexcept
 {
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
@@ -502,6 +549,186 @@ void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, 
 				if (!!status) // Only change the name in case of success
 				{
 					updateStreamOutputName(*entity, configurationIndex, streamIndex, name);
+				}
+				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status);
+			}
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setAvbInterfaceName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvdeccFixedString const& name, SetAvbInterfaceNameHandler const& handler) const noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setAvbInterfaceName (ConfigurationIndex={} AvbInterfaceIndex={} Name={})", configurationIndex, avbInterfaceIndex, name.str());
+		_controller->setAvbInterfaceName(targetEntityID, configurationIndex, avbInterfaceIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex)
+		{
+			LOG_CONTROLLER_TRACE(entityID, "User setAvbInterfaceName (ConfigurationIndex={} AvbInterfaceIndex={}): {}", configurationIndex, avbInterfaceIndex, entity::ControllerEntity::statusToString(status));
+
+			// Take a copy of the ControlledEntity so we don't have to keep the lock
+			auto controlledEntity = getControlledEntityImpl(entityID);
+
+			if (controlledEntity)
+			{
+				auto* const entity = controlledEntity.get();
+				if (!!status) // Only change the name in case of success
+				{
+					updateAvbInterfaceName(*entity, configurationIndex, avbInterfaceIndex, name);
+				}
+				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status);
+			}
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setClockSourceName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex, entity::model::AvdeccFixedString const& name, SetClockSourceNameHandler const& handler) const noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setClockSourceName (ConfigurationIndex={} ClockSourceIndex={} Name={})", configurationIndex, clockSourceIndex, name.str());
+		_controller->setClockSourceName(targetEntityID, configurationIndex, clockSourceIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex)
+		{
+			LOG_CONTROLLER_TRACE(entityID, "User setClockSourceName (ConfigurationIndex={} ClockSourceIndex={}): {}", configurationIndex, clockSourceIndex, entity::ControllerEntity::statusToString(status));
+
+			// Take a copy of the ControlledEntity so we don't have to keep the lock
+			auto controlledEntity = getControlledEntityImpl(entityID);
+
+			if (controlledEntity)
+			{
+				auto* const entity = controlledEntity.get();
+				if (!!status) // Only change the name in case of success
+				{
+					updateClockSourceName(*entity, configurationIndex, clockSourceIndex, name);
+				}
+				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status);
+			}
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setMemoryObjectName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, entity::model::AvdeccFixedString const& name, SetMemoryObjectNameHandler const& handler) const noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setMemoryObjectName (ConfigurationIndex={} MemoryObjectIndex={} Name={})", configurationIndex, memoryObjectIndex, name.str());
+		_controller->setMemoryObjectName(targetEntityID, configurationIndex, memoryObjectIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex)
+		{
+			LOG_CONTROLLER_TRACE(entityID, "User setMemoryObjectName (ConfigurationIndex={} MemoryObjectIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
+
+			// Take a copy of the ControlledEntity so we don't have to keep the lock
+			auto controlledEntity = getControlledEntityImpl(entityID);
+
+			if (controlledEntity)
+			{
+				auto* const entity = controlledEntity.get();
+				if (!!status) // Only change the name in case of success
+				{
+					updateMemoryObjectName(*entity, configurationIndex, memoryObjectIndex, name);
+				}
+				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status);
+			}
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setAudioClusterName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex, entity::model::AvdeccFixedString const& name, SetAudioClusterNameHandler const& handler) const noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioClusterName (ConfigurationIndex={} AudioClusterIndex={} Name={})", configurationIndex, audioClusterIndex, name.str());
+		_controller->setAudioClusterName(targetEntityID, configurationIndex, audioClusterIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex)
+		{
+			LOG_CONTROLLER_TRACE(entityID, "User setAudioClusterName (ConfigurationIndex={} AudioClusterIndex={}): {}", configurationIndex, audioClusterIndex, entity::ControllerEntity::statusToString(status));
+
+			// Take a copy of the ControlledEntity so we don't have to keep the lock
+			auto controlledEntity = getControlledEntityImpl(entityID);
+
+			if (controlledEntity)
+			{
+				auto* const entity = controlledEntity.get();
+				if (!!status) // Only change the name in case of success
+				{
+					updateAudioClusterName(*entity, configurationIndex, audioClusterIndex, name);
+				}
+				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status);
+			}
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::AvdeccFixedString const& name, SetClockDomainNameHandler const& handler) const noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setClockDomainName (ConfigurationIndex={} ClockDomainIndex={} Name={})", configurationIndex, clockDomainIndex, name.str());
+		_controller->setClockDomainName(targetEntityID, configurationIndex, clockDomainIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex)
+		{
+			LOG_CONTROLLER_TRACE(entityID, "User setClockDomainName (ConfigurationIndex={} ClockDomainIndex={}): {}", configurationIndex, clockDomainIndex, entity::ControllerEntity::statusToString(status));
+
+			// Take a copy of the ControlledEntity so we don't have to keep the lock
+			auto controlledEntity = getControlledEntityImpl(entityID);
+
+			if (controlledEntity)
+			{
+				auto* const entity = controlledEntity.get();
+				if (!!status) // Only change the name in case of success
+				{
+					updateClockDomainName(*entity, configurationIndex, clockDomainIndex, name);
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 			}
@@ -862,6 +1089,42 @@ void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const 
 				if (!!status)
 				{
 					updateStreamPortOutputAudioMappingsRemoved(*entity, streamPortIndex, mappings);
+				}
+				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status);
+			}
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setMemoryObjectLength(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length, SetMemoryObjectLengthHandler const& handler) const noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setMemoryObjectLength (ConfigurationIndex={} MemoryObjectIndex={} Length={})", configurationIndex, memoryObjectIndex, length);
+		_controller->setMemoryObjectLength(targetEntityID, configurationIndex, memoryObjectIndex, length, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length)
+		{
+			LOG_CONTROLLER_TRACE(entityID, "User setMemoryObjectLength (ConfigurationIndex={} MemoryObjectIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
+
+			// Take a copy of the ControlledEntity so we don't have to keep the lock
+			auto controlledEntity = getControlledEntityImpl(entityID);
+
+			if (controlledEntity)
+			{
+				auto* const entity = controlledEntity.get();
+				if (!!status)
+				{
+					updateMemoryObjectLength(*entity, configurationIndex, memoryObjectIndex, length);
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 			}
