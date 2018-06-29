@@ -196,6 +196,18 @@ constexpr size_t AecpAemRemoveAudioMappingsCommandPayloadMinSize = 8u;
 /** REMOVE_AUDIO_MAPPINGS Response - Clause 7.4.46.1 */
 constexpr size_t AecpAemRemoveAudioMappingsResponsePayloadMinSize = 8u;
 
+/** SET_MEMORY_OBJECT_LENGTH Command - Clause 7.4.72.1 */
+constexpr size_t AecpAemSetMemoryObjectLengthCommandPayloadSize = 12u;
+
+/** SET_MEMORY_OBJECT_LENGTH Response - Clause 7.4.72.1 */
+constexpr size_t AecpAemSetMemoryObjectLengthResponsePayloadSize = 12u;
+
+/** GET_MEMORY_OBJECT_LENGTH Command - Clause 7.4.73.1 */
+constexpr size_t AecpAemGetMemoryObjectLengthCommandPayloadSize = 4u;
+
+/** GET_MEMORY_OBJECT_LENGTH Response - Clause 7.4.73.2 */
+constexpr size_t AecpAemGetMemoryObjectLengthResponsePayloadSize = 12u;
+
 } // namespace aemPayload
 } // namespace protocol
 } // namespace avdecc

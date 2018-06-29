@@ -6,7 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Added
-- getStreamInputFormat, getStreamOutputFormat, setAudioUnitName, getAudioUnitName, setAvbInterfaceName, getAvbInterfaceName, setClockSourceName, getClockSourceName, setMemoryObjectName, getMemoryObjectName, setAudioClusterName, getAudioClusterName, setClockDomainName, getClockDomainName, getAudioUnitSamplingRate, getVideoClusterSamplingRate, getSensorClusterSamplingRate
+- getStreamInputFormat, getStreamOutputFormat, setAudioUnitName, getAudioUnitName, setAvbInterfaceName, getAvbInterfaceName, setClockSourceName, getClockSourceName, getClockSource, setMemoryObjectName, getMemoryObjectName, setAudioClusterName, getAudioClusterName, setClockDomainName, getClockDomainName, getAudioUnitSamplingRate, getVideoClusterSamplingRate, getSensorClusterSamplingRate, setMemoryObjectLength, getMemoryObjectLength
+- Notification callbacks for onAudioUnitNameChanged, onAvbInterfaceNameChanged, onClockSourceNameChanged, onMemoryObjectNameChanged, onAudioClusterNameChanged, onClockDomainNameChanged, onMemoryObjectLengthChanged
 
 ### Changed
 - la::avdecc::Entity::getVendorEntityModelID() renamed getEntityModelID()

@@ -1437,9 +1437,40 @@ void ControllerImpl::onMemoryObjectNameResult(entity::ControllerEntity const* co
 	}
 }
 
-void ControllerImpl::onMemoryObjectLengthResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const /*entityID*/, entity::ControllerEntity::AemCommandStatus const /*status*/) noexcept
+void ControllerImpl::onMemoryObjectLengthResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) noexcept
 {
-	assert(false && "TODO");
+	LOG_CONTROLLER_TRACE(entityID, "onMemoryObjectLengthResult (ConfigurationIndex={} MemoryObjectIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength, memoryObjectIndex))
+		{
+			if (!!status)
+			{
+				controlledEntity->setMemoryObjectLength(configurationIndex, memoryObjectIndex, length);
+			}
+			else
+			{
+				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength, memoryObjectIndex))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::MemoryObjectLength);
+					return;
+				}
+			}
+		}
+
+		// Got all expected descriptor dynamic information
+		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+		{
+			// Clear this enumeration step and check for next one
+			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			checkEnumerationSteps(controlledEntity.get());
+		}
+	}
 }
 
 void ControllerImpl::onAudioClusterNameResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex, entity::model::AvdeccFixedString const& audioClusterName) noexcept
@@ -1514,9 +1545,40 @@ void ControllerImpl::onClockDomainNameResult(entity::ControllerEntity const* con
 	}
 }
 
-void ControllerImpl::onClockDomainSourceIndexResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const /*entityID*/, entity::ControllerEntity::AemCommandStatus const /*status*/) noexcept
+void ControllerImpl::onClockDomainSourceIndexResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
-	assert(false && "TODO");
+	LOG_CONTROLLER_TRACE(entityID, "onClockDomainSourceIndexResult (ConfigurationIndex={} ClockDomainIndex={}): {}", configurationIndex, clockDomainIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex, clockDomainIndex))
+		{
+			if (!!status)
+			{
+				controlledEntity->setClockSource(clockDomainIndex, clockSourceIndex);
+			}
+			else
+			{
+				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex, clockDomainIndex))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockDomainSourceIndex);
+					return;
+				}
+			}
+		}
+
+		// Got all expected descriptor dynamic information
+		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+		{
+			// Clear this enumeration step and check for next one
+			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			checkEnumerationSteps(controlledEntity.get());
+		}
+	}
 }
 
 /* Connection Management Protocol (ACMP) handlers */

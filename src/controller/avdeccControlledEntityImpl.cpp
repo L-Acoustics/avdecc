@@ -904,6 +904,12 @@ void ControlledEntityImpl::setClockSource(entity::model::ClockDomainIndex const 
 	dynamicModel.clockSourceIndex = clockSourceIndex;
 }
 
+void ControlledEntityImpl::setMemoryObjectLength(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) noexcept
+{
+	auto& dynamicModel = getNodeDynamicModel(configurationIndex, memoryObjectIndex, &model::ConfigurationDynamicTree::memoryObjectDynamicModels);
+	dynamicModel.length = length;
+}
+
 // Setters (of the model, not the physical entity)
 void ControlledEntityImpl::setEntity(entity::Entity const& entity) noexcept
 {
@@ -1447,6 +1453,11 @@ void ControlledEntityImpl::setDescriptorDynamicInfoExpected(entity::model::Confi
 
 	auto const key = makeDescriptorDynamicInfoKey(descriptorDynamicInfoType, descriptorIndex);
 	conf.insert(key);
+}
+
+void ControlledEntityImpl::clearAllExpectedDescriptorDynamicInfo() noexcept
+{
+	_expectedDescriptorDynamicInfo.clear();
 }
 
 bool ControlledEntityImpl::gotAllExpectedDescriptorDynamicInfo() const noexcept

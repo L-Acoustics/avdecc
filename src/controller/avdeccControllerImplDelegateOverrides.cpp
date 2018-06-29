@@ -362,6 +362,18 @@ void ControllerImpl::onConfigurationNameChanged(entity::ControllerEntity const* 
 	}
 }
 
+void ControllerImpl::onAudioUnitNameChanged(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::AvdeccFixedString const& audioUnitName) noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		auto* const entity = controlledEntity.get();
+		updateAudioUnitName(*entity, configurationIndex, audioUnitIndex, audioUnitName);
+	}
+}
+
 void ControllerImpl::onStreamInputNameChanged(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamName) noexcept
 {
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
@@ -383,6 +395,66 @@ void ControllerImpl::onStreamOutputNameChanged(entity::ControllerEntity const* c
 	{
 		auto* const entity = controlledEntity.get();
 		updateStreamOutputName(*entity, configurationIndex, streamIndex, streamName);
+	}
+}
+
+void ControllerImpl::onAvbInterfaceNameChanged(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvdeccFixedString const& avbInterfaceName) noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		auto* const entity = controlledEntity.get();
+		updateAvbInterfaceName(*entity, configurationIndex, avbInterfaceIndex, avbInterfaceName);
+	}
+}
+
+void ControllerImpl::onClockSourceNameChanged(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex, entity::model::AvdeccFixedString const& clockSourceName) noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		auto* const entity = controlledEntity.get();
+		updateClockSourceName(*entity, configurationIndex, clockSourceIndex, clockSourceName);
+	}
+}
+
+void ControllerImpl::onMemoryObjectNameChanged(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, entity::model::AvdeccFixedString const& memoryObjectName) noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		auto* const entity = controlledEntity.get();
+		updateMemoryObjectName(*entity, configurationIndex, memoryObjectIndex, memoryObjectName);
+	}
+}
+
+void ControllerImpl::onAudioClusterNameChanged(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex, entity::model::AvdeccFixedString const& audioClusterName) noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		auto* const entity = controlledEntity.get();
+		updateAudioClusterName(*entity, configurationIndex, audioClusterIndex, audioClusterName);
+	}
+}
+
+void ControllerImpl::onClockDomainNameChanged(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::AvdeccFixedString const& clockDomainName) noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		auto* const entity = controlledEntity.get();
+		updateClockDomainName(*entity, configurationIndex, clockDomainIndex, clockDomainName);
 	}
 }
 
@@ -467,6 +539,18 @@ void ControllerImpl::onAvbInfoChanged(entity::ControllerEntity const* const /*co
 	{
 		auto* const entity = controlledEntity.get();
 		updateAvbInfo(*entity, avbInterfaceIndex, info);
+	}
+}
+
+void ControllerImpl::onMemoryObjectLengthChanged(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		auto* const entity = controlledEntity.get();
+		updateMemoryObjectLength(*entity, configurationIndex, memoryObjectIndex, length);
 	}
 }
 
