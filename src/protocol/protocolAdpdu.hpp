@@ -79,51 +79,51 @@ public:
 	{
 		_entityModelID = entityModelID;
 	}
-	void setEntityCapabilities(entity::EntityCapabilities const entityCapabilities)
+	void setEntityCapabilities(entity::EntityCapabilities const entityCapabilities) noexcept
 	{
 		_entityCapabilities = entityCapabilities;
 	}
-	void setTalkerStreamSources(std::uint16_t const talkerStreamSources)
+	void setTalkerStreamSources(std::uint16_t const talkerStreamSources) noexcept
 	{
 		_talkerStreamSources = talkerStreamSources;
 	}
-	void setTalkerCapabilities(entity::TalkerCapabilities const talkerCapabilities)
+	void setTalkerCapabilities(entity::TalkerCapabilities const talkerCapabilities) noexcept
 	{
 		_talkerCapabilities = talkerCapabilities;
 	}
-	void setListenerStreamSinks(std::uint16_t const listenerStreamSinks)
+	void setListenerStreamSinks(std::uint16_t const listenerStreamSinks) noexcept
 	{
 		_listenerStreamSinks = listenerStreamSinks;
 	}
-	void setListenerCapabilities(entity::ListenerCapabilities const listenerCapabilities)
+	void setListenerCapabilities(entity::ListenerCapabilities const listenerCapabilities) noexcept
 	{
 		_listenerCapabilities = listenerCapabilities;
 	}
-	void setControllerCapabilities(entity::ControllerCapabilities const controllerCapabilities)
+	void setControllerCapabilities(entity::ControllerCapabilities const controllerCapabilities) noexcept
 	{
 		_controllerCapabilities = controllerCapabilities;
 	}
-	void setAvailableIndex(std::uint32_t const availableIndex)
+	void setAvailableIndex(std::uint32_t const availableIndex) noexcept
 	{
 		_availableIndex = availableIndex;
 	}
-	void setGptpGrandmasterID(UniqueIdentifier const gptpGrandmasterID)
+	void setGptpGrandmasterID(UniqueIdentifier const gptpGrandmasterID) noexcept
 	{
 		_gptpGrandmasterID = gptpGrandmasterID;
 	}
-	void setGptpDomainNumber(std::uint8_t const gptpDomainNumber)
+	void setGptpDomainNumber(std::uint8_t const gptpDomainNumber) noexcept
 	{
 		_gptpDomainNumber = gptpDomainNumber;
 	}
-	void setIdentifyControlIndex(std::uint16_t const identifyControlIndex)
+	void setIdentifyControlIndex(std::uint16_t const identifyControlIndex) noexcept
 	{
 		_identifyControlIndex = identifyControlIndex;
 	}
-	void setInterfaceIndex(std::uint16_t const interfaceIndex)
+	void setInterfaceIndex(std::uint16_t const interfaceIndex) noexcept
 	{
 		_interfaceIndex = interfaceIndex;
 	}
-	void setAssociationID(UniqueIdentifier const associationID)
+	void setAssociationID(UniqueIdentifier const associationID) noexcept
 	{
 		_associationID = associationID;
 	}

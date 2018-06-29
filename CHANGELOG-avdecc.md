@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - la::avdecc::entity::model::splitVendorEntityModel() renamed splitEntityModelID()
 - Every occurrence of vendorEntityModelID renamed entityModelID
 - la::avdecc::UniqueIdentifier is now a complex type with member helper methods
+- some methods of la::avdecc::protocol::Adpdu were not declared noexcept
 
 ### Removed
 - la::avdecc::entity::model::VendorEntityModel (should be la::avdecc::UniqueIdentifier)
