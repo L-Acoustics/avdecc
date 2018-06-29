@@ -37,6 +37,7 @@ set (HEADER_FILES_COMMON
 	avdeccControlledEntityImpl.hpp
 	avdeccControlledEntityModelTree.hpp
 	avdeccControllerLogHelper.hpp
+	avdeccEntityModelCache.hpp
 )
 
 set (SOURCE_FILES_COMMON

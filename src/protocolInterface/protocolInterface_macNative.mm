@@ -57,12 +57,12 @@ struct EntityQueues
 	la::avdecc::protocol::ProtocolInterfaceMacNativeImpl* _protocolInterface;
 	
 	std::recursive_mutex _lockEntities; /** Lock to protect _localProcessEntities and _registeredAcmpHandlers fields */
-	std::unordered_map<la::avdecc::UniqueIdentifier, std::uint32_t> _lastAvailableIndex; /** Last received AvailableIndex for each entity */
-	std::unordered_map<la::avdecc::UniqueIdentifier, la::avdecc::entity::LocalEntity&> _localProcessEntities; /** Local entities declared by the running process */
-	std::unordered_set<la::avdecc::UniqueIdentifier> _registeredAcmpHandlers; /** List of ACMP handlers that have been registered (that must be removed upon destruction, since there is no removeAllHandlers method) */
+	std::unordered_map<la::avdecc::UniqueIdentifier, std::uint32_t, la::avdecc::UniqueIdentifier::hash> _lastAvailableIndex; /** Last received AvailableIndex for each entity */
+	std::unordered_map<la::avdecc::UniqueIdentifier, la::avdecc::entity::LocalEntity&, la::avdecc::UniqueIdentifier::hash> _localProcessEntities; /** Local entities declared by the running process */
+	std::unordered_set<la::avdecc::UniqueIdentifier, la::avdecc::UniqueIdentifier::hash> _registeredAcmpHandlers; /** List of ACMP handlers that have been registered (that must be removed upon destruction, since there is no removeAllHandlers method) */
 	
 	std::mutex _lockQueues; /** Lock to protect _entityQueues */
-	std::unordered_map<la::avdecc::UniqueIdentifier, EntityQueues> _entityQueues;
+	std::unordered_map<la::avdecc::UniqueIdentifier, EntityQueues, la::avdecc::UniqueIdentifier::hash> _entityQueues;
 	
 	std::mutex _lockPending; /** Lock to protect _pendingCommands and _pendingCondVar */
 	std::uint32_t _pendingCommands; /** Count of pending (inflight) commands, since there is no way to cancel a command upon destruction (and result block might be called while we already destroyed our objects) */
@@ -338,7 +338,7 @@ namespace la
 	auto e = [[AVB17221Entity alloc] init];
 
 	e.entityID = entity.getEntityID();
-	e.entityModelID = entity.getVendorEntityModelID();
+	e.entityModelID = entity.getEntityModelID();
 	e.entityCapabilities = static_cast<AVB17221ADPEntityCapabilities>(entity.getEntityCapabilities());
 	e.talkerStreamSources = entity.getTalkerStreamSources();
 	e.talkerCapabilities = static_cast<AVB17221ADPTalkerCapabilities>(entity.getTalkerCapabilities());
@@ -850,7 +850,7 @@ namespace la
 	{
 		std::lock_guard<decltype(_lockQueues)> const lg(_lockQueues);
 		EntityQueues eq;
-		eq.aecpQueue = dispatch_queue_create([[NSString stringWithFormat:@"%@.0x%016llx.aecp", [self className], entityID] UTF8String], 0);
+		eq.aecpQueue = dispatch_queue_create([[NSString stringWithFormat:@"%@.0x%016llx.aecp", [self className], entityID.getValue()] UTF8String], 0);
 		eq.aecpLimiter = dispatch_semaphore_create(la::avdecc::protocol::Aecpdu::DefaultMaxInflightCommands);
 		_entityQueues[entityID] = std::move(eq);
 	}

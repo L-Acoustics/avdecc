@@ -66,8 +66,15 @@ public:
 		Type const _type{ Type::None };
 	};
 
+	enum class Compatibility
+	{
+		IEEE17221, /** Classic IEEE1722.1 entity */
+		Milan, /** MILAN compatible entity */
+	};
+
 	// Getters
-	virtual bool gotEnumerationError() const noexcept = 0; // True if the controller had an error during entity model enumeration (leading to Exception::Type::EnumerationError if any throwing method is called).
+	virtual Compatibility getCompatibility() const noexcept = 0;
+	virtual bool gotFatalEnumerationError() const noexcept = 0; // True if the controller had a fatal error during entity information retrieval (leading to Exception::Type::EnumerationError if any throwing method is called).
 	virtual bool isAcquired() const noexcept = 0; // Is entity acquired by the controller it's attached to // TODO: This API and all 'acquire' related ones should take a descriptor and index (the acquired state is per branch of the EM)
 	virtual bool isAcquiring() const noexcept = 0; // Is the attached controller trying to acquire the entity // TODO: This API and all 'acquire' related ones should take a descriptor and index (the acquired state is per branch of the EM)
 	virtual bool isAcquiredByOther() const noexcept = 0; // Is entity acquired by another controller // TODO: This API and all 'acquire' related ones should take a descriptor and index (the acquired state is per branch of the EM)
@@ -158,7 +165,7 @@ public:
 	}
 
 	/** Returns true if the entity is online (meaning a valid ControlledEntity can be retrieved using an operator overload) */
-	operator bool() const noexcept
+	explicit operator bool() const noexcept
 	{
 		return _controlledEntity != nullptr;
 	}

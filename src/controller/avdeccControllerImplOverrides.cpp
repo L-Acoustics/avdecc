@@ -24,6 +24,7 @@
 
 #include "avdeccControllerImpl.hpp"
 #include "avdeccControllerLogHelper.hpp"
+#include "avdeccEntityModelCache.hpp"
 
 namespace la
 {
@@ -129,6 +130,16 @@ void ControllerImpl::disableEntityAdvertising() noexcept
 	_controller->disableEntityAdvertising();
 }
 
+void ControllerImpl::enableEntityModelCache() noexcept
+{
+	EntityModelCache::getInstance().enableCache();
+}
+
+void ControllerImpl::disableEntityModelCache() noexcept
+{
+	EntityModelCache::getInstance().disableCache();
+}
+
 /* Enumeration and Control Protocol (AECP) */
 void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, AcquireEntityHandler const& handler) const noexcept
 {
@@ -159,33 +170,22 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 			if (controlledEntity)
 			{
 				auto* const entity = controlledEntity.get();
-				try
+				switch (status)
 				{
-					switch (status)
-					{
-						case entity::ControllerEntity::AemCommandStatus::Success:
-							updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
-							break;
-						case entity::ControllerEntity::AemCommandStatus::AcquiredByOther:
-							updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
-							break;
-						case entity::ControllerEntity::AemCommandStatus::NotImplemented:
-						case entity::ControllerEntity::AemCommandStatus::NotSupported:
-							updateAcquiredState(*entity, UniqueIdentifier{}, descriptorType, descriptorIndex);
-							break;
-						default:
-							// In case of error, set the state to undefined
-							updateAcquiredState(*entity, UniqueIdentifier{}, descriptorType, descriptorIndex, true);
-							break;
-					}
-				}
-				catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-				{
-					// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-					if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "acquireEntity succeeded on the entity, but failed to update local model"))
-					{
-						LOG_CONTROLLER_WARN(entityID, "User acquireEntity succeeded on the entity, but failed to update local model: {}", e.what());
-					}
+					case entity::ControllerEntity::AemCommandStatus::Success:
+						updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
+						break;
+					case entity::ControllerEntity::AemCommandStatus::AcquiredByOther:
+						updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
+						break;
+					case entity::ControllerEntity::AemCommandStatus::NotImplemented:
+					case entity::ControllerEntity::AemCommandStatus::NotSupported:
+						updateAcquiredState(*entity, UniqueIdentifier{}, descriptorType, descriptorIndex);
+						break;
+					default:
+						// In case of error, set the state to undefined
+						updateAcquiredState(*entity, UniqueIdentifier{}, descriptorType, descriptorIndex, true);
+						break;
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, owningEntity);
 			}
@@ -222,20 +222,9 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 			if (controlledEntity)
 			{
 				auto* const entity = controlledEntity.get();
-				try
+				if (!!status) // Only change the acquire state in case of success
 				{
-					if (!!status) // Only change the acquire state in case of success
-					{
-						updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
-					}
-				}
-				catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-				{
-					// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-					if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "releaseEntity succeeded on the entity, but failed to update local model"))
-					{
-						LOG_CONTROLLER_WARN(entityID, "User releaseEntity succeeded on the entity, but failed to update local model: {}", e.what());
-					}
+					updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, owningEntity);
 			}
@@ -271,18 +260,7 @@ void ControllerImpl::setConfiguration(UniqueIdentifier const targetEntityID, ent
 				auto* const entity = controlledEntity.get();
 				if (!!status)
 				{
-					try
-					{
-						updateConfiguration(controller, *entity, configurationIndex);
-					}
-					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-					{
-						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "setConfiguration succeeded on the entity, but failed to update local model"))
-						{
-							LOG_CONTROLLER_WARN(entityID, "User setConfiguration succeeded on the entity, but failed to update local model: {}", e.what());
-						}
-					}
+					updateConfiguration(controller, *entity, configurationIndex);
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 			}
@@ -318,18 +296,7 @@ void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID,
 				auto* const entity = controlledEntity.get();
 				if (!!status)
 				{
-					try
-					{
-						updateStreamInputFormat(*entity, streamIndex, streamFormat);
-					}
-					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-					{
-						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "setStreamInputFormat succeeded on the entity, but failed to update local model"))
-						{
-							LOG_CONTROLLER_WARN(entityID, "User setStreamInputFormat succeeded on the entity, but failed to update local model: {}", e.what());
-						}
-					}
+					updateStreamInputFormat(*entity, streamIndex, streamFormat);
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 			}
@@ -365,18 +332,7 @@ void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID
 				auto* const entity = controlledEntity.get();
 				if (!!status)
 				{
-					try
-					{
-						updateStreamOutputFormat(*entity, streamIndex, streamFormat);
-					}
-					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-					{
-						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "setStreamOutputFormat succeeded on the entity, but failed to update local model"))
-						{
-							LOG_CONTROLLER_WARN(entityID, "User setStreamOutputFormat succeeded on the entity, but failed to update local model: {}", e.what());
-						}
-					}
+					updateStreamOutputFormat(*entity, streamIndex, streamFormat);
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 			}
@@ -412,18 +368,7 @@ void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity
 				auto* const entity = controlledEntity.get();
 				if (!!status) // Only change the name in case of success
 				{
-					try
-					{
-						updateEntityName(*entity, name);
-					}
-					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-					{
-						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "setEntityName succeeded on the entity, but failed to update local model"))
-						{
-							LOG_CONTROLLER_WARN(entityID, "User setEntityName succeeded on the entity, but failed to update local model: {}", e.what());
-						}
-					}
+					updateEntityName(*entity, name);
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 			}
@@ -459,18 +404,7 @@ void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, e
 				auto* const entity = controlledEntity.get();
 				if (!!status) // Only change the name in case of success
 				{
-					try
-					{
-						updateEntityGroupName(*entity, name);
-					}
-					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-					{
-						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "setEntityGroupName succeeded on the entity, but failed to update local model"))
-						{
-							LOG_CONTROLLER_WARN(entityID, "User setEntityGroupName succeeded on the entity, but failed to update local model: {}", e.what());
-						}
-					}
+					updateEntityGroupName(*entity, name);
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 			}
@@ -506,18 +440,43 @@ void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID,
 				auto* const entity = controlledEntity.get();
 				if (!!status) // Only change the name in case of success
 				{
-					try
-					{
-						updateConfigurationName(*entity, configurationIndex, name);
-					}
-					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-					{
-						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "setConfigurationName succeeded on the entity, but failed to update local model"))
-						{
-							LOG_CONTROLLER_WARN(entityID, "User setConfigurationName succeeded on the entity, but failed to update local model: {}", e.what());
-						}
-					}
+					updateConfigurationName(*entity, configurationIndex, name);
+				}
+				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status);
+			}
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setAudioUnitName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::AvdeccFixedString const& name, SetAudioUnitNameHandler const& handler) const noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioUnitName (ConfigurationIndex={} AudioUnitIndex={} Name={})", configurationIndex, audioUnitIndex, name.str());
+		_controller->setAudioUnitName(targetEntityID, configurationIndex, audioUnitIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex)
+		{
+			LOG_CONTROLLER_TRACE(entityID, "User setAudioUnitName (ConfigurationIndex={} AudioUnitIndex={}): {}", configurationIndex, audioUnitIndex, entity::ControllerEntity::statusToString(status));
+
+			// Take a copy of the ControlledEntity so we don't have to keep the lock
+			auto controlledEntity = getControlledEntityImpl(entityID);
+
+			if (controlledEntity)
+			{
+				auto* const entity = controlledEntity.get();
+				if (!!status) // Only change the name in case of success
+				{
+					updateAudioUnitName(*entity, configurationIndex, audioUnitIndex, name);
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 			}
@@ -553,18 +512,7 @@ void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, e
 				auto* const entity = controlledEntity.get();
 				if (!!status) // Only change the name in case of success
 				{
-					try
-					{
-						updateStreamInputName(*entity, configurationIndex, streamIndex, name);
-					}
-					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-					{
-						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "setStreamInputName succeeded on the entity, but failed to update local model"))
-						{
-							LOG_CONTROLLER_WARN(entityID, "User setStreamInputName succeeded on the entity, but failed to update local model: {}", e.what());
-						}
-					}
+					updateStreamInputName(*entity, configurationIndex, streamIndex, name);
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 			}
@@ -600,18 +548,187 @@ void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, 
 				auto* const entity = controlledEntity.get();
 				if (!!status) // Only change the name in case of success
 				{
-					try
-					{
-						updateStreamOutputName(*entity, configurationIndex, streamIndex, name);
-					}
-					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-					{
-						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "setStreamOutputName succeeded on the entity, but failed to update local model"))
-						{
-							LOG_CONTROLLER_WARN(entityID, "User setStreamOutputName succeeded on the entity, but failed to update local model: {}", e.what());
-						}
-					}
+					updateStreamOutputName(*entity, configurationIndex, streamIndex, name);
+				}
+				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status);
+			}
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setAvbInterfaceName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvdeccFixedString const& name, SetAvbInterfaceNameHandler const& handler) const noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setAvbInterfaceName (ConfigurationIndex={} AvbInterfaceIndex={} Name={})", configurationIndex, avbInterfaceIndex, name.str());
+		_controller->setAvbInterfaceName(targetEntityID, configurationIndex, avbInterfaceIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex)
+		{
+			LOG_CONTROLLER_TRACE(entityID, "User setAvbInterfaceName (ConfigurationIndex={} AvbInterfaceIndex={}): {}", configurationIndex, avbInterfaceIndex, entity::ControllerEntity::statusToString(status));
+
+			// Take a copy of the ControlledEntity so we don't have to keep the lock
+			auto controlledEntity = getControlledEntityImpl(entityID);
+
+			if (controlledEntity)
+			{
+				auto* const entity = controlledEntity.get();
+				if (!!status) // Only change the name in case of success
+				{
+					updateAvbInterfaceName(*entity, configurationIndex, avbInterfaceIndex, name);
+				}
+				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status);
+			}
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setClockSourceName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex, entity::model::AvdeccFixedString const& name, SetClockSourceNameHandler const& handler) const noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setClockSourceName (ConfigurationIndex={} ClockSourceIndex={} Name={})", configurationIndex, clockSourceIndex, name.str());
+		_controller->setClockSourceName(targetEntityID, configurationIndex, clockSourceIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex)
+		{
+			LOG_CONTROLLER_TRACE(entityID, "User setClockSourceName (ConfigurationIndex={} ClockSourceIndex={}): {}", configurationIndex, clockSourceIndex, entity::ControllerEntity::statusToString(status));
+
+			// Take a copy of the ControlledEntity so we don't have to keep the lock
+			auto controlledEntity = getControlledEntityImpl(entityID);
+
+			if (controlledEntity)
+			{
+				auto* const entity = controlledEntity.get();
+				if (!!status) // Only change the name in case of success
+				{
+					updateClockSourceName(*entity, configurationIndex, clockSourceIndex, name);
+				}
+				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status);
+			}
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setMemoryObjectName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, entity::model::AvdeccFixedString const& name, SetMemoryObjectNameHandler const& handler) const noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setMemoryObjectName (ConfigurationIndex={} MemoryObjectIndex={} Name={})", configurationIndex, memoryObjectIndex, name.str());
+		_controller->setMemoryObjectName(targetEntityID, configurationIndex, memoryObjectIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex)
+		{
+			LOG_CONTROLLER_TRACE(entityID, "User setMemoryObjectName (ConfigurationIndex={} MemoryObjectIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
+
+			// Take a copy of the ControlledEntity so we don't have to keep the lock
+			auto controlledEntity = getControlledEntityImpl(entityID);
+
+			if (controlledEntity)
+			{
+				auto* const entity = controlledEntity.get();
+				if (!!status) // Only change the name in case of success
+				{
+					updateMemoryObjectName(*entity, configurationIndex, memoryObjectIndex, name);
+				}
+				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status);
+			}
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setAudioClusterName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex, entity::model::AvdeccFixedString const& name, SetAudioClusterNameHandler const& handler) const noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioClusterName (ConfigurationIndex={} AudioClusterIndex={} Name={})", configurationIndex, audioClusterIndex, name.str());
+		_controller->setAudioClusterName(targetEntityID, configurationIndex, audioClusterIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex)
+		{
+			LOG_CONTROLLER_TRACE(entityID, "User setAudioClusterName (ConfigurationIndex={} AudioClusterIndex={}): {}", configurationIndex, audioClusterIndex, entity::ControllerEntity::statusToString(status));
+
+			// Take a copy of the ControlledEntity so we don't have to keep the lock
+			auto controlledEntity = getControlledEntityImpl(entityID);
+
+			if (controlledEntity)
+			{
+				auto* const entity = controlledEntity.get();
+				if (!!status) // Only change the name in case of success
+				{
+					updateAudioClusterName(*entity, configurationIndex, audioClusterIndex, name);
+				}
+				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status);
+			}
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::AvdeccFixedString const& name, SetClockDomainNameHandler const& handler) const noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setClockDomainName (ConfigurationIndex={} ClockDomainIndex={} Name={})", configurationIndex, clockDomainIndex, name.str());
+		_controller->setClockDomainName(targetEntityID, configurationIndex, clockDomainIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex)
+		{
+			LOG_CONTROLLER_TRACE(entityID, "User setClockDomainName (ConfigurationIndex={} ClockDomainIndex={}): {}", configurationIndex, clockDomainIndex, entity::ControllerEntity::statusToString(status));
+
+			// Take a copy of the ControlledEntity so we don't have to keep the lock
+			auto controlledEntity = getControlledEntityImpl(entityID);
+
+			if (controlledEntity)
+			{
+				auto* const entity = controlledEntity.get();
+				if (!!status) // Only change the name in case of success
+				{
+					updateClockDomainName(*entity, configurationIndex, clockDomainIndex, name);
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 			}
@@ -647,18 +764,7 @@ void ControllerImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntit
 				auto* const entity = controlledEntity.get();
 				if (!!status) // Only change the sampling rate in case of success
 				{
-					try
-					{
-						updateAudioUnitSamplingRate(*entity, audioUnitIndex, samplingRate);
-					}
-					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-					{
-						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "setAudioUnitSamplingRate succeeded on the entity, but failed to update local model"))
-						{
-							LOG_CONTROLLER_WARN(entityID, "User setAudioUnitSamplingRate succeeded on the entity, but failed to update local model: {}", e.what());
-						}
-					}
+					updateAudioUnitSamplingRate(*entity, audioUnitIndex, samplingRate);
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 			}
@@ -694,18 +800,7 @@ void ControllerImpl::setClockSource(UniqueIdentifier const targetEntityID, entit
 				auto* const entity = controlledEntity.get();
 				if (!!status) // Only change the clock source in case of success
 				{
-					try
-					{
-						updateClockSource(*entity, clockDomainIndex, clockSourceIndex);
-					}
-					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-					{
-						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "setClockSource succeeded on the entity, but failed to update local model"))
-						{
-							LOG_CONTROLLER_WARN(entityID, "User setClockSource succeeded on the entity, but failed to update local model: {}", e.what());
-						}
-					}
+					updateClockSource(*entity, clockDomainIndex, clockSourceIndex);
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 			}
@@ -741,18 +836,7 @@ void ControllerImpl::startStreamInput(UniqueIdentifier const targetEntityID, ent
 				auto* const entity = controlledEntity.get();
 				if (!!status) // Only change the running status in case of success
 				{
-					try
-					{
-						updateStreamInputRunningStatus(*entity, streamIndex, true);
-					}
-					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-					{
-						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "startStreamInput succeeded on the entity, but failed to update local model"))
-						{
-							LOG_CONTROLLER_WARN(entityID, "User startStreamInput succeeded on the entity, but failed to update local model: {}", e.what());
-						}
-					}
+					updateStreamInputRunningStatus(*entity, streamIndex, true);
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 			}
@@ -788,18 +872,7 @@ void ControllerImpl::stopStreamInput(UniqueIdentifier const targetEntityID, enti
 				auto* const entity = controlledEntity.get();
 				if (!!status) // Only change the running status in case of success
 				{
-					try
-					{
-						updateStreamInputRunningStatus(*entity, streamIndex, false);
-					}
-					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-					{
-						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "stopStreamInput succeeded on the entity, but failed to update local model"))
-						{
-							LOG_CONTROLLER_WARN(entityID, "User stopStreamInput succeeded on the entity, but failed to update local model: {}", e.what());
-						}
-					}
+					updateStreamInputRunningStatus(*entity, streamIndex, false);
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 			}
@@ -835,18 +908,7 @@ void ControllerImpl::startStreamOutput(UniqueIdentifier const targetEntityID, en
 				auto* const entity = controlledEntity.get();
 				if (!!status) // Only change the running status in case of success
 				{
-					try
-					{
-						updateStreamOutputRunningStatus(*entity, streamIndex, true);
-					}
-					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-					{
-						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "startStreamOutput succeeded on the entity, but failed to update local model"))
-						{
-							LOG_CONTROLLER_WARN(entityID, "User startStreamOutput succeeded on the entity, but failed to update local model: {}", e.what());
-						}
-					}
+					updateStreamOutputRunningStatus(*entity, streamIndex, true);
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 			}
@@ -882,18 +944,7 @@ void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, ent
 				auto* const entity = controlledEntity.get();
 				if (!!status) // Only change the running status in case of success
 				{
-					try
-					{
-						updateStreamOutputRunningStatus(*entity, streamIndex, false);
-					}
-					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-					{
-						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "stopStreamOutput succeeded on the entity, but failed to update local model"))
-						{
-							LOG_CONTROLLER_WARN(entityID, "User stopStreamOutput succeeded on the entity, but failed to update local model: {}", e.what());
-						}
-					}
+					updateStreamOutputRunningStatus(*entity, streamIndex, false);
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 			}
@@ -929,18 +980,7 @@ void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targ
 				auto* const entity = controlledEntity.get();
 				if (!!status)
 				{
-					try
-					{
-						updateStreamPortInputAudioMappingsAdded(*entity, streamPortIndex, mappings);
-					}
-					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-					{
-						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "addStreamInputAudioMappings succeeded on the entity, but failed to update local model"))
-						{
-							LOG_CONTROLLER_WARN(entityID, "User addStreamInputAudioMappings succeeded on the entity, but failed to update local model: {}", e.what());
-						}
-					}
+					updateStreamPortInputAudioMappingsAdded(*entity, streamPortIndex, mappings);
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 			}
@@ -976,18 +1016,7 @@ void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const tar
 				auto* const entity = controlledEntity.get();
 				if (!!status)
 				{
-					try
-					{
-						updateStreamPortOutputAudioMappingsAdded(*entity, streamPortIndex, mappings);
-					}
-					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-					{
-						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "addStreamOutputAudioMappings succeeded on the entity, but failed to update local model"))
-						{
-							LOG_CONTROLLER_WARN(entityID, "User addStreamOutputAudioMappings succeeded on the entity, but failed to update local model: {}", e.what());
-						}
-					}
+					updateStreamPortOutputAudioMappingsAdded(*entity, streamPortIndex, mappings);
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 			}
@@ -1023,18 +1052,7 @@ void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const t
 				auto* const entity = controlledEntity.get();
 				if (!!status)
 				{
-					try
-					{
-						updateStreamPortInputAudioMappingsRemoved(*entity, streamPortIndex, mappings);
-					}
-					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-					{
-						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "removeStreamInputAudioMappings succeeded on the entity, but failed to update local model"))
-						{
-							LOG_CONTROLLER_WARN(entityID, "User removeStreamInputAudioMappings succeeded on the entity, but failed to update local model: {}", e.what());
-						}
-					}
+					updateStreamPortInputAudioMappingsRemoved(*entity, streamPortIndex, mappings);
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 			}
@@ -1070,18 +1088,43 @@ void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const 
 				auto* const entity = controlledEntity.get();
 				if (!!status)
 				{
-					try
-					{
-						updateStreamPortOutputAudioMappingsRemoved(*entity, streamPortIndex, mappings);
-					}
-					catch ([[maybe_unused]] controller::ControlledEntity::Exception const& e)
-					{
-						// Check if the entity went offline and online again or got an enumeration error (in which case this exception might be normal)
-						if (!AVDECC_ASSERT_WITH_RET(!entity->wasAdvertised() || entity->gotEnumerationError(), "removeStreamOutputAudioMappings succeeded on the entity, but failed to update local model"))
-						{
-							LOG_CONTROLLER_WARN(entityID, "User removeStreamOutputAudioMappings succeeded on the entity, but failed to update local model: {}", e.what());
-						}
-					}
+					updateStreamPortOutputAudioMappingsRemoved(*entity, streamPortIndex, mappings);
+				}
+				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status);
+			}
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setMemoryObjectLength(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length, SetMemoryObjectLengthHandler const& handler) const noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setMemoryObjectLength (ConfigurationIndex={} MemoryObjectIndex={} Length={})", configurationIndex, memoryObjectIndex, length);
+		_controller->setMemoryObjectLength(targetEntityID, configurationIndex, memoryObjectIndex, length, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length)
+		{
+			LOG_CONTROLLER_TRACE(entityID, "User setMemoryObjectLength (ConfigurationIndex={} MemoryObjectIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
+
+			// Take a copy of the ControlledEntity so we don't have to keep the lock
+			auto controlledEntity = getControlledEntityImpl(entityID);
+
+			if (controlledEntity)
+			{
+				auto* const entity = controlledEntity.get();
+				if (!!status)
+				{
+					updateMemoryObjectLength(*entity, configurationIndex, memoryObjectIndex, length);
 				}
 				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 			}
@@ -1239,7 +1282,6 @@ void ControllerImpl::getListenerStreamState(entity::model::StreamIdentification 
 			{
 				// In a GET_RX_STATE_RESPONSE message, the connectionCount is set to 1 if the stream is connected and 0 if not connected (See Marc Illouz clarification document, and hopefully someday as a corrigendum)
 				handleListenerStreamStateNotification(talkerStream, listenerStream, connectionCount != 0, flags, false);
-				checkAdvertiseEntity(listener.get());
 			}
 
 			invokeProtectedHandler(handler, talker.get(), listener.get(), talkerStream.streamIndex, listenerStream.streamIndex, connectionCount, flags, status);

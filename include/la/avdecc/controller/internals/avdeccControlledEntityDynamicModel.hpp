@@ -51,20 +51,7 @@ struct StreamNodeDynamicModel
 	entity::model::AvdeccFixedString objectName{};
 	entity::model::StreamFormat currentFormat{ entity::model::getNullStreamFormat() };
 
-	entity::model::StreamInfo streamInfo{}; // TODO: Replace with the direct fields (like below) and remove ControlledEntityImpl::setInputStreamInfo / ControlledEntityImpl::setOutputStreamInfo (directly update from avdeccController.cpp)
-	// std::uint64_t streamID{ 0u };
-	// std::uint32_t msrpAccumulatedLatency{ 0u };
-	// la::avdecc::networkInterface::MacAddress streamDestMac{};
-	// std::uint8_t msrpFailureCode{ 0u };
-	// std::uint64_t msrpFailureBridgeID{ 0u };
-	// std::uint16_t streamVlanID{ 0u };
-	// bool isClassB{ false };
-	// //bool isFastConnect{ false };
-	// //bool isSavedState{ false };
-	bool isRunning{ false };
-	// bool isEncrypted{ false };
-	// bool isTalkerFailed{ false };
-	// //bool isConnected{ false };
+	entity::model::StreamInfo streamInfo{};
 };
 
 struct StreamInputNodeDynamicModel : public StreamNodeDynamicModel

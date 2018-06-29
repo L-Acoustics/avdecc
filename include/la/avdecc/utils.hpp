@@ -107,7 +107,7 @@ constexpr auto forceNumeric(T const t) noexcept
 
 /** Useful template to convert any integer value to it's hex representation. Can be filled with zeros (ex: int16(0x123) = 0x0123) and printed in uppercase. */
 template<typename T>
-constexpr std::string toHexString(T const v, bool const zeroFilled = false, bool const upper = false) noexcept
+inline std::string toHexString(T const v, bool const zeroFilled = false, bool const upper = false) noexcept
 {
 	static_assert(std::numeric_limits<T>::is_integer, "toHexString requires an integer value");
 

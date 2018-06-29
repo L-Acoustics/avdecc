@@ -48,7 +48,7 @@ public:
 	}
 
 	/** Explicit constructor to create a UniqueIdentifier from the underlying value. */
-	explicit UniqueIdentifier(value_type const eui) noexcept
+	UniqueIdentifier(value_type const eui) noexcept
 		: _eui(eui)
 	{
 	}
@@ -92,7 +92,7 @@ public:
 	}
 
 	/** Underlying value validity bool operator (equivalent to isValid()). */
-	constexpr operator bool() const noexcept
+	explicit constexpr operator bool() const noexcept
 	{
 		return isValid();
 	}

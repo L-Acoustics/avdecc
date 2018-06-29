@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - Support for Memory Object descriptors (Contributed by Florian Harmuth)
+- [Support for EntityModel cache](https://github.com/L-Acoustics/avdecc/issues/6)
+- Notification callbacks for onAudioUnitNameChanged, onAvbInterfaceNameChanged, onClockSourceNameChanged, onMemoryObjectNameChanged, onAudioClusterNameChanged, onClockDomainNameChanged, onMemoryObjectLengthChanged
 
 ### Changed
 - Every occurrence of vendorEntityModelID renamed entityModelID

@@ -22,6 +22,8 @@
 * @author Christophe Calmejane
 */
 
+#pragma once
+
 #include <string>
 #include <functional>
 #include <list>
