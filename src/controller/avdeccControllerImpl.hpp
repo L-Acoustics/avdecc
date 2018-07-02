@@ -234,10 +234,10 @@ private:
 	/* ************************************************************ */
 	enum class FailureAction
 	{
-		Ignore,
-		Retry,
-		Fallback,
-		Fatal,
+		Ignore, /**< Ignore this query and continue to next one. */
+		Retry, /**< Should retry this query. */
+		NotSupported, /**< This query is not supported by the entity. Caller should decide whether to continue or not. */
+		Fatal, /**< This query returned a fatal error, enumeration should be stopped immediately. */
 	};
 
 	/* ************************************************************ */
@@ -252,15 +252,15 @@ private:
 	void getDynamicInfo(ControlledEntityImpl* const entity) noexcept;
 	void getDescriptorDynamicInfo(ControlledEntityImpl* const entity) noexcept;
 	void checkEnumerationSteps(ControlledEntityImpl* const entity) noexcept;
-	FailureAction getFailureAction(entity::ControllerEntity::AemCommandStatus const status, bool const checkFallback = false) const noexcept;
+	FailureAction getFailureAction(entity::ControllerEntity::AemCommandStatus const status) const noexcept;
 	FailureAction getFailureAction(entity::ControllerEntity::ControlStatus const status) const noexcept;
-	void rescheduleQuery(ControlledEntityImpl* const entity, std::chrono::milliseconds retryTimer, entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept;
 	void rescheduleQuery(ControlledEntityImpl* const entity, std::chrono::milliseconds retryTimer, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept;
 	void rescheduleQuery(ControlledEntityImpl* const entity, std::chrono::milliseconds retryTimer, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const connectionIndex) noexcept;
 	bool processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept;
 	bool processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept;
 	bool processFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const connectionIndex = 0u) noexcept;
 	bool processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept;
+	bool fetchCorrespondingDescriptor(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept;
 	void handleListenerStreamStateNotification(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, bool const isConnected, entity::ConnectionFlags const flags, bool const changedByOther) const noexcept;
 	void handleTalkerStreamStateNotification(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, bool const isConnected, entity::ConnectionFlags const flags, bool const changedByOther) const noexcept;
 	void clearTalkerStreamConnections(ControlledEntityImpl* const talkerEntity, entity::model::StreamIndex const talkerStreamIndex) const noexcept;

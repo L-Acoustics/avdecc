@@ -1066,7 +1066,7 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const entity) n
 }
 
 
-ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::ControllerEntity::AemCommandStatus const status, bool const checkFallback) const noexcept
+ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::ControllerEntity::AemCommandStatus const status) const noexcept
 {
 	switch (status)
 	{
@@ -1097,11 +1097,13 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 		{
 			return FailureAction::Ignore;
 		}
+
+		// Cases the caller should decide whether to continue enumeration or not
 		case entity::ControllerEntity::AemCommandStatus::NotImplemented:
 			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::NotSupported:
 		{
-			return checkFallback ? FailureAction::Fallback : FailureAction::Ignore;
+			return FailureAction::NotSupported;
 		}
 
 		// Cases that are errors and we want to discard this entity
@@ -1124,7 +1126,6 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 
 ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::ControllerEntity::ControlStatus const status) const noexcept
 {
-#pragma message("TODO: Based on status code, reschedule a query")
 	switch (status)
 	{
 		// Cases we want to schedule a retry
@@ -1157,10 +1158,14 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 		case entity::ControllerEntity::ControlStatus::ControllerNotAuthorized:
 			[[fallthrough]];
 		case entity::ControllerEntity::ControlStatus::IncompatibleRequest:
-			[[fallthrough]];
-		case entity::ControllerEntity::ControlStatus::NotSupported:
 		{
 			return FailureAction::Ignore;
+		}
+
+		// Cases the caller should decide whether to continue enumeration or not
+		case entity::ControllerEntity::ControlStatus::NotSupported:
+		{
+			return FailureAction::NotSupported;
 		}
 
 		// Cases that are errors and we want to discard this entity
@@ -1187,14 +1192,6 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 	}
 }
 
-void ControllerImpl::rescheduleQuery(ControlledEntityImpl* const /*entity*/, std::chrono::milliseconds /*retryTimer*/, entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::DescriptorType const /*descriptorType*/, entity::model::DescriptorIndex const /*descriptorIndex*/) noexcept
-{
-#pragma message("TODO: Reschedule the query")
-	// For easy reschedule, instead of calling single commands everywhere in the code, have a single method that gets passed entityID, descriptorType and descriptorIndex
-	// The method will switch-case on that, print the log message, set the expectedDescriptor, make the call
-	// So here we can just schedule a call to that method
-}
-
 void ControllerImpl::rescheduleQuery(ControlledEntityImpl* const /*entity*/, std::chrono::milliseconds /*retryTimer*/, entity::model::ConfigurationIndex const /*configurationIndex*/, ControlledEntityImpl::DynamicInfoType const /*dynamicInfoType*/, entity::model::DescriptorIndex const /*descriptorIndex*/) noexcept
 {
 #pragma message("TODO: Reschedule the query")
@@ -1217,6 +1214,8 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 	switch (getFailureAction(status))
 	{
 		case FailureAction::Ignore:
+			[[fallthrough]];
+		case FailureAction::NotSupported:
 			return true;
 		case FailureAction::Retry:
 		{
@@ -1229,7 +1228,7 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 #endif // __cpp_structured_bindings
 			if (shouldRetry)
 			{
-				rescheduleQuery(entity, retryTimer, configurationIndex, descriptorType, descriptorIndex);
+				queryInformation(entity, configurationIndex, descriptorType, descriptorIndex, retryTimer);
 			}
 			return true;
 		}
@@ -1246,6 +1245,8 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 	switch (getFailureAction(status))
 	{
 		case FailureAction::Ignore:
+			[[fallthrough]];
+		case FailureAction::NotSupported:
 			return true;
 		case FailureAction::Retry:
 		{
@@ -1275,6 +1276,8 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 	switch (getFailureAction(status))
 	{
 		case FailureAction::Ignore:
+			[[fallthrough]];
+		case FailureAction::NotSupported:
 			return true;
 		case FailureAction::Retry:
 		{
@@ -1300,7 +1303,7 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 /* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetDescriptorDynamicInfo (AEM) */
 bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
-	switch (getFailureAction(status, true))
+	switch (getFailureAction(status))
 	{
 		case FailureAction::Ignore:
 			return true;
@@ -1320,13 +1323,19 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 			}
 			[[fallthrough]];
 		}
-		case FailureAction::Fallback:
+		case FailureAction::NotSupported:
 		{
+			// Failed to retrieve single DescriptorDynamicInformation, retrieve the corresponding descriptor instead if possible, otherwise switch back to full StaticModel enumeration
+			auto const success = fetchCorrespondingDescriptor(entity, configurationIndex, descriptorDynamicInfoType, descriptorIndex);
+
 			// Fallback to full StaticModel enumeration
-			entity->setIgnoreCachedEntityModel();
-			entity->clearAllExpectedDescriptorDynamicInfo();
-			entity->addEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
-			LOG_CONTROLLER_ERROR(entity->getEntity().getEntityID(), "Failed to use cached EntityModel (too many DescriptorDynamic query retries), falling back to full StaticModel enumeration");
+			if (!success)
+			{
+				entity->setIgnoreCachedEntityModel();
+				entity->clearAllExpectedDescriptorDynamicInfo();
+				entity->addEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+				LOG_CONTROLLER_ERROR(entity->getEntity().getEntityID(), "Failed to use cached EntityModel (too many DescriptorDynamic query retries), falling back to full StaticModel enumeration");
+			}
 			return true;
 		}
 		case FailureAction::Fatal:
@@ -1334,6 +1343,93 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 		default:
 			return false;
 	}
+}
+
+bool ControllerImpl::fetchCorrespondingDescriptor(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept
+{
+	auto descriptorType{ entity::model::DescriptorType::Invalid };
+
+	switch (descriptorDynamicInfoType)
+	{
+			case ControlledEntityImpl::DescriptorDynamicInfoType::ConfigurationName:
+				descriptorType = entity::model::DescriptorType::Configuration;
+				break;
+			case ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName:
+				descriptorType = entity::model::DescriptorType::AudioUnit;
+				// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
+				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate, descriptorIndex);
+				// Clear other DescriptorDynamicInfo that will be retrieved by subtree calls
+				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, descriptorIndex);
+				break;
+			case ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate:
+				descriptorType = entity::model::DescriptorType::AudioUnit;
+				// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
+				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName, descriptorIndex);
+				// Clear other DescriptorDynamicInfo that will be retrieved by subtree calls
+				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, descriptorIndex);
+				break;
+			case ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName:
+				descriptorType = entity::model::DescriptorType::StreamInput;
+				// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
+				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat, descriptorIndex);
+				break;
+			case ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat:
+				descriptorType = entity::model::DescriptorType::StreamInput;
+				// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
+				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName, descriptorIndex);
+				break;
+			case ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName:
+				descriptorType = entity::model::DescriptorType::StreamOutput;
+				// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
+				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat, descriptorIndex);
+				break;
+			case ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat:
+				descriptorType = entity::model::DescriptorType::StreamOutput;
+				// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
+				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName, descriptorIndex);
+				break;
+			case ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName:
+				descriptorType = entity::model::DescriptorType::AvbInterface;
+				break;
+			case ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName:
+				descriptorType = entity::model::DescriptorType::ClockSource;
+				break;
+			case ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName:
+				descriptorType = entity::model::DescriptorType::MemoryObject;
+				// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
+				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength, descriptorIndex);
+				break;
+			case ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength:
+				descriptorType = entity::model::DescriptorType::MemoryObject;
+				// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
+				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName, descriptorIndex);
+				break;
+			case ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName:
+				descriptorType = entity::model::DescriptorType::AudioCluster;
+				break;
+			case ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName:
+				descriptorType = entity::model::DescriptorType::ClockDomain;
+				// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
+				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex, descriptorIndex);
+				break;
+			case ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex:
+				descriptorType = entity::model::DescriptorType::ClockDomain;
+				// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
+				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName, descriptorIndex);
+				break;
+			default:
+				AVDECC_ASSERT(false, "Unhandled DescriptorDynamicInfoType");
+				break;
+	}
+
+	if (!!descriptorType)
+	{
+		LOG_CONTROLLER_DEBUG(entity->getEntity().getEntityID(), "Failed to get DescriptorDynamicInfo, trying to get the corresponding Descriptor");
+		queryInformation(entity, configurationIndex, descriptorType, descriptorIndex);
+		return true;
+	}
+
+	return false;
 }
 
 void ControllerImpl::handleListenerStreamStateNotification(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, bool const isConnected, entity::ConnectionFlags const flags, bool const changedByOther) const noexcept

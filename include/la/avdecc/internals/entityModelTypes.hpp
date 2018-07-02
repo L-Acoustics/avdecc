@@ -116,6 +116,11 @@ enum class DescriptorType : std::uint16_t
 	/* 0026 to fffe reserved for future use */
 	Invalid = 0xffff
 };
+constexpr bool operator!(DescriptorType const lhs)
+{
+	return lhs == DescriptorType::Invalid;
+}
+
 constexpr bool operator==(DescriptorType const lhs, DescriptorType const rhs)
 {
 	return static_cast<std::underlying_type_t<DescriptorType>>(lhs) == static_cast<std::underlying_type_t<DescriptorType>>(rhs);
