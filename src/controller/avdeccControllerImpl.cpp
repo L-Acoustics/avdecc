@@ -602,7 +602,158 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 			break;
 		default:
 			AVDECC_ASSERT(false, "Unhandled DescriptorType");
+			break;
 	}
+
+	// Not delayed, call now
+	if (delayQuery == std::chrono::milliseconds{ 0 })
+	{
+		if (queryFunc)
+		{
+			queryFunc(_controller);
+		}
+	}
+	else
+	{
+#pragma message("TODO: Use a single thread for ALL query retries (all types as well), that is destroyed when the controller is destroyed (we don't want to crash, do we?)")
+		std::thread([this, delayQuery, queryFunc, entityID]
+		{
+			std::this_thread::sleep_for(delayQuery);
+			if (_controller)
+			{
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				// Entity still online
+				if (controlledEntity)
+				{
+					queryFunc(_controller);
+				}
+			}
+		}).detach();
+	}
+}
+
+void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::chrono::milliseconds const delayQuery) noexcept
+{
+	// Immediately set as expected
+	entity->setDynamicInfoExpected(configurationIndex, dynamicInfoType, descriptorIndex);
+
+	auto const entityID = entity->getEntity().getEntityID();
+	std::function<void(entity::ControllerEntity*)> queryFunc{};
+
+	switch (dynamicInfoType)
+	{
+		case ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getStreamPortInputAudioMap (StreamPortIndex={})", descriptorIndex);
+				controller->getStreamPortInputAudioMap(entityID, descriptorIndex, entity::model::MapIndex(0u), std::bind(&ControllerImpl::onGetStreamPortInputAudioMapResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7, configurationIndex));
+			};
+			break;
+		case ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getStreamPortOutputAudioMap (StreamPortIndex={})", descriptorIndex);
+				controller->getStreamPortOutputAudioMap(entityID, descriptorIndex, entity::model::MapIndex(0u), std::bind(&ControllerImpl::onGetStreamPortOutputAudioMapResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7, configurationIndex));
+			};
+			break;
+		case ControlledEntityImpl::DynamicInfoType::InputStreamState:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getListenerStreamState (StreamIndex={})", descriptorIndex);
+				controller->getListenerStreamState({ entityID, descriptorIndex }, std::bind(&ControllerImpl::onGetListenerStreamStateResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
+			};
+			break;
+		case ControlledEntityImpl::DynamicInfoType::OutputStreamState:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getTalkerStreamState (StreamIndex={})", descriptorIndex);
+				controller->getTalkerStreamState({ entityID, descriptorIndex }, std::bind(&ControllerImpl::onGetTalkerStreamStateResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
+			};
+			break;
+		case ControlledEntityImpl::DynamicInfoType::OutputStreamConnection:
+			AVDECC_ASSERT(false, "Another overload of this method should be called for this DynamicInfoType");
+			break;
+		case ControlledEntityImpl::DynamicInfoType::InputStreamInfo:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getStreamInputInfo (StreamIndex={})", descriptorIndex);
+				controller->getStreamInputInfo(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetStreamInputInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
+			};
+			break;
+		case ControlledEntityImpl::DynamicInfoType::OutputStreamInfo:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getStreamOutputInfo (StreamIndex={})", descriptorIndex);
+				controller->getStreamOutputInfo(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetStreamOutputInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
+			};
+			break;
+		case ControlledEntityImpl::DynamicInfoType::GetAvbInfo:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getAvbInfo (AvbInterfaceIndex={})", descriptorIndex);
+				controller->getAvbInfo(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetAvbInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
+			};
+			break;
+		case ControlledEntityImpl::DynamicInfoType::GetAsPath:
+			//queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			//{
+			//};
+			assert(false && "Todo");
+			break;
+		default:
+			AVDECC_ASSERT(false, "Unhandled DynamicInfoType");
+			break;
+	}
+
+	// Not delayed, call now
+	if (delayQuery == std::chrono::milliseconds{ 0 })
+	{
+		if (queryFunc)
+		{
+			queryFunc(_controller);
+		}
+	}
+	else
+	{
+#pragma message("TODO: Use a single thread for ALL query retries (all types as well), that is destroyed when the controller is destroyed (we don't want to crash, do we?)")
+		std::thread([this, delayQuery, queryFunc, entityID]
+		{
+			std::this_thread::sleep_for(delayQuery);
+			if (_controller)
+			{
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				// Entity still online
+				if (controlledEntity)
+				{
+					queryFunc(_controller);
+				}
+			}
+		}).detach();
+	}
+}
+
+void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamIdentification const& talkerStream, std::uint16_t const connectionIndex, std::chrono::milliseconds const delayQuery) noexcept
+{
+	if (!AVDECC_ASSERT_WITH_RET(dynamicInfoType == ControlledEntityImpl::DynamicInfoType::OutputStreamConnection, "Another overload of this method should be called for DynamicInfoType different than OutputStreamConnection"))
+	{
+		return;
+	}
+
+	// Immediately set as expected
+	entity->setDynamicInfoExpected(configurationIndex, dynamicInfoType, descriptorIndex, connectionIndex);
+
+	auto const entityID = entity->getEntity().getEntityID();
+	std::function<void(entity::ControllerEntity*)> queryFunc{};
+
+	queryFunc = [this, entityID, configurationIndex, descriptorIndex, talkerStream, connectionIndex](entity::ControllerEntity* const controller) noexcept
+	{
+		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "getTalkerStreamConnection (TalkerID={} TalkerIndex={} ConnectionIndex={})", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, connectionIndex);
+		controller->getTalkerStreamConnection(talkerStream, connectionIndex, std::bind(&ControllerImpl::onGetTalkerStreamConnectionResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex, connectionIndex));
+	};
 
 	// Not delayed, call now
 	if (delayQuery == std::chrono::milliseconds{ 0 })
@@ -743,6 +894,7 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 			break;
 		default:
 			AVDECC_ASSERT(false, "Unhandled DescriptorDynamicInfoType");
+			break;
 	}
 
 	// Not delayed, call now
@@ -816,15 +968,10 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			for (auto index = entity::model::StreamIndex(0); index < count; ++index)
 			{
 				// StreamInfo
-				entity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamInfo, index);
-				LOG_CONTROLLER_TRACE(entityID, "getStreamInputInfo (StreamIndex={})", index);
-				_controller->getStreamInputInfo(entityID, index, std::bind(&ControllerImpl::onGetStreamInputInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamInfo, index);
 
 				// RX_STATE
-				entity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamState, index);
-				LOG_CONTROLLER_TRACE(entityID, "getListenerStreamState (StreamIndex={})", index);
-				_controller->getListenerStreamState({ entityID, index }, std::bind(&ControllerImpl::onGetListenerStreamStateResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
-
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamState, index);
 			}
 		}
 		// Get StreamInfo and TX_STATE for each StreamOutput descriptors
@@ -833,14 +980,10 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			for (auto index = entity::model::StreamIndex(0); index < count; ++index)
 			{
 				// StreamInfo
-				entity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamInfo, index);
-				LOG_CONTROLLER_TRACE(entityID, "getStreamOutputInfo (StreamIndex={})", index);
-				_controller->getStreamOutputInfo(entityID, index, std::bind(&ControllerImpl::onGetStreamOutputInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamInfo, index);
 
 				// TX_STATE
-				entity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, index);
-				LOG_CONTROLLER_TRACE(entityID, "getTalkerStreamState (StreamIndex={})", index);
-				_controller->getTalkerStreamState({ entityID, index }, std::bind(&ControllerImpl::onGetTalkerStreamStateResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, index);
 			}
 		}
 		// Get AvbInfo for each AvbInterface descriptors
@@ -849,9 +992,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			for (auto index = entity::model::AvbInterfaceIndex(0); index < count; ++index)
 			{
 				// AvbInfo
-				entity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInfo, index);
-				LOG_CONTROLLER_TRACE(entityID, "getAvbInfo (AvbInterfaceIndex={})", index);
-				_controller->getAvbInfo(entityID, index, std::bind(&ControllerImpl::onGetAvbInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInfo, index);
 			}
 		}
 
@@ -864,9 +1005,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 				if (staticModel.numberOfMaps == 0)
 				{
 					// TODO: Clause 7.4.44.3 recommands to Lock or Acquire the entity before getting the dynamic audio map
-					entity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, index);
-					LOG_CONTROLLER_TRACE(entityID, "getStreamPortInputAudioMap (StreamPortIndex={})", index);
-					_controller->getStreamPortInputAudioMap(entityID, index, entity::model::MapIndex(0u), std::bind(&ControllerImpl::onGetStreamPortInputAudioMapResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7, configurationIndex));
+					queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, index);
 				}
 			}
 		}
@@ -879,9 +1018,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 				if (staticModel.numberOfMaps == 0)
 				{
 					// TODO: Clause 7.4.44.3 recommands to Lock or Acquire the entity before getting the dynamic audio map
-					entity->setDynamicInfoExpected(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, index);
-					LOG_CONTROLLER_TRACE(entityID, "getStreamPortOutputAudioMap (StreamPortIndex={})", index);
-					_controller->getStreamPortOutputAudioMap(entityID, index, entity::model::MapIndex(0u), std::bind(&ControllerImpl::onGetStreamPortOutputAudioMapResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7, configurationIndex));
+					queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, index);
 				}
 			}
 		}
@@ -1192,22 +1329,6 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 	}
 }
 
-void ControllerImpl::rescheduleQuery(ControlledEntityImpl* const /*entity*/, std::chrono::milliseconds /*retryTimer*/, entity::model::ConfigurationIndex const /*configurationIndex*/, ControlledEntityImpl::DynamicInfoType const /*dynamicInfoType*/, entity::model::DescriptorIndex const /*descriptorIndex*/) noexcept
-{
-#pragma message("TODO: Reschedule the query")
-	// For easy reschedule, instead of calling single commands everywhere in the code, have a single method that gets passed entityID, descriptorType and descriptorIndex
-	// The method will switch-case on that, print the log message, set the expectedDescriptor, make the call
-	// So here we can just schedule a call to that method
-}
-
-void ControllerImpl::rescheduleQuery(ControlledEntityImpl* const /*entity*/, std::chrono::milliseconds /*retryTimer*/, entity::model::ConfigurationIndex const /*configurationIndex*/, ControlledEntityImpl::DynamicInfoType const /*dynamicInfoType*/, entity::model::DescriptorIndex const /*descriptorIndex*/, std::uint16_t const /*connectionIndex*/) noexcept
-{
-#pragma message("TODO: Reschedule the query")
-	// For easy reschedule, instead of calling single commands everywhere in the code, have a single method that gets passed entityID, descriptorType and descriptorIndex
-	// The method will switch-case on that, print the log message, set the expectedDescriptor, make the call
-	// So here we can just schedule a call to that method
-}
-
 /* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetStaticModel (AEM) */
 bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
@@ -1259,7 +1380,7 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 #endif // __cpp_structured_bindings
 			if (shouldRetry)
 			{
-				rescheduleQuery(entity, retryTimer, configurationIndex, dynamicInfoType, descriptorIndex);
+				queryInformation(entity, configurationIndex, dynamicInfoType, descriptorIndex, retryTimer);
 			}
 			return true;
 		}
@@ -1271,7 +1392,7 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 }
 
 /* This method handles non-success ControlStatus returned while getting EnumerationSteps::GetDynamicInfo for ACMP commands */
-bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const connectionIndex) noexcept
+bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
 	switch (getFailureAction(status))
 	{
@@ -1290,7 +1411,7 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 #endif // __cpp_structured_bindings
 			if (shouldRetry)
 			{
-				rescheduleQuery(entity, retryTimer, configurationIndex, dynamicInfoType, descriptorIndex, connectionIndex);
+				queryInformation(entity, configurationIndex, dynamicInfoType, descriptorIndex, retryTimer);
 			}
 			return true;
 		}
@@ -1300,6 +1421,38 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 			return false;
 	}
 }
+
+/* This method handles non-success ControlStatus returned while getting EnumerationSteps::GetDynamicInfo for ACMP commands with a connection index */
+bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamIdentification const& talkerStream, std::uint16_t const connectionIndex) noexcept
+{
+	switch (getFailureAction(status))
+	{
+		case FailureAction::Ignore:
+			[[fallthrough]];
+		case FailureAction::NotSupported:
+			return true;
+		case FailureAction::Retry:
+		{
+#ifdef __cpp_structured_bindings
+			auto const[shouldRetry, retryTimer] = entity->getQueryDynamicInfoRetryTimer();
+#else // !__cpp_structured_bindings
+			auto const result = entity->getQueryDynamicInfoRetryTimer();
+			auto const shouldRetry = std::get<0>(result);
+			auto const retryTimer = std::get<1>(result);
+#endif // __cpp_structured_bindings
+			if (shouldRetry)
+			{
+				queryInformation(entity, configurationIndex, dynamicInfoType, descriptorIndex, talkerStream, connectionIndex, retryTimer);
+			}
+			return true;
+		}
+		case FailureAction::Fatal:
+			return false;
+		default:
+			return false;
+	}
+}
+
 /* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetDescriptorDynamicInfo (AEM) */
 bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
