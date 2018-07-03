@@ -185,7 +185,7 @@ struct AvbInterfaceDescriptor
 	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
 	networkInterface::MacAddress macAddress{};
 	AvbInterfaceFlags interfaceFlags{ AvbInterfaceFlags::None };
-	UniqueIdentifier clockIdentify{ 0u };
+	UniqueIdentifier clockIdentity{ 0u };
 	std::uint8_t priority1{ 0xff };
 	std::uint8_t clockClass{ 0xff };
 	std::uint16_t offsetScaledLogVariance{ 0x0000 };

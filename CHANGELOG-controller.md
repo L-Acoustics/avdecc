@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 - Every occurrence of vendorEntityModelID renamed entityModelID
+- la::avdecc::controller::model::AvbInterfaceNodeStaticModel::clockIdentify renamed clockIdentity
 
 ## [2.5.3] - 2018-06-18
 

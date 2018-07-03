@@ -1136,7 +1136,7 @@ void ControlledEntityImpl::setAvbInterfaceDescriptor(entity::model::AvbInterface
 		m.localizedDescription = descriptor.localizedDescription;
 		m.macAddress = descriptor.macAddress;
 		m.interfaceFlags = descriptor.interfaceFlags;
-		m.clockIdentify = descriptor.clockIdentify;
+		m.clockIdentity = descriptor.clockIdentity;
 		m.priority1 = descriptor.priority1;
 		m.clockClass = descriptor.clockClass;
 		m.offsetScaledLogVariance = descriptor.offsetScaledLogVariance;

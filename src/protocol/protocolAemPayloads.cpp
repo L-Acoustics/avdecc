@@ -508,7 +508,7 @@ entity::model::AvbInterfaceDescriptor deserializeReadAvbInterfaceDescriptorRespo
 		des >> avbInterfaceDescriptor.localizedDescription;
 		des >> avbInterfaceDescriptor.macAddress;
 		des >> avbInterfaceDescriptor.interfaceFlags;
-		des >> avbInterfaceDescriptor.clockIdentify;
+		des >> avbInterfaceDescriptor.clockIdentity;
 		des >> avbInterfaceDescriptor.priority1 >> avbInterfaceDescriptor.clockClass;
 		des >> avbInterfaceDescriptor.offsetScaledLogVariance >> avbInterfaceDescriptor.clockAccuracy;
 		des >> avbInterfaceDescriptor.priority2 >> avbInterfaceDescriptor.domainNumber;
