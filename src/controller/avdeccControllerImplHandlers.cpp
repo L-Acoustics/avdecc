@@ -1605,7 +1605,7 @@ void ControllerImpl::onGetTalkerStreamStateResult(entity::ControllerEntity const
 
 				for (auto index = std::uint16_t(0); index < connectionCount; ++index)
 				{
-					queryInformation(talker.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamConnection, talkerStream.streamIndex, talkerStream, index);
+					queryInformation(talker.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamConnection, talkerStream, index);
 				}
 			}
 			else
@@ -1688,7 +1688,7 @@ void ControllerImpl::onGetTalkerStreamConnectionResult(entity::ControllerEntity 
 			}
 			else
 			{
-				if (!processFailureStatus(status, talker.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamConnection, talkerStream.streamIndex, talkerStream, connectionIndex))
+				if (!processFailureStatus(status, talker.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamConnection, talkerStream, connectionIndex))
 				{
 					talker->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, talker.get(), QueryCommandError::TalkerStreamConnection);

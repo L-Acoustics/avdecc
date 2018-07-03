@@ -736,7 +736,7 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 	}
 }
 
-void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamIdentification const& talkerStream, std::uint16_t const connectionIndex, std::chrono::milliseconds const delayQuery) noexcept
+void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::StreamIdentification const& talkerStream, std::uint16_t const connectionIndex, std::chrono::milliseconds const delayQuery) noexcept
 {
 	if (!AVDECC_ASSERT_WITH_RET(dynamicInfoType == ControlledEntityImpl::DynamicInfoType::OutputStreamConnection, "Another overload of this method should be called for DynamicInfoType different than OutputStreamConnection"))
 	{
@@ -744,12 +744,12 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 	}
 
 	// Immediately set as expected
-	entity->setDynamicInfoExpected(configurationIndex, dynamicInfoType, descriptorIndex, connectionIndex);
+	entity->setDynamicInfoExpected(configurationIndex, dynamicInfoType, talkerStream.streamIndex, connectionIndex);
 
 	auto const entityID = entity->getEntity().getEntityID();
 	std::function<void(entity::ControllerEntity*)> queryFunc{};
 
-	queryFunc = [this, entityID, configurationIndex, descriptorIndex, talkerStream, connectionIndex](entity::ControllerEntity* const controller) noexcept
+	queryFunc = [this, configurationIndex, talkerStream, connectionIndex](entity::ControllerEntity* const controller) noexcept
 	{
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "getTalkerStreamConnection (TalkerID={} TalkerIndex={} ConnectionIndex={})", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, connectionIndex);
 		controller->getTalkerStreamConnection(talkerStream, connectionIndex, std::bind(&ControllerImpl::onGetTalkerStreamConnectionResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex, connectionIndex));
@@ -953,8 +953,6 @@ void ControllerImpl::getStaticModel(ControlledEntityImpl* const entity) noexcept
 
 void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 {
-	auto const entityID = entity->getEntity().getEntityID();
-
 	auto const caps = entity->getEntity().getEntityCapabilities();
 	// Check if AEM is supported by this entity
 	if (hasFlag(caps, entity::EntityCapabilities::AemSupported))
@@ -1423,7 +1421,7 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 }
 
 /* This method handles non-success ControlStatus returned while getting EnumerationSteps::GetDynamicInfo for ACMP commands with a connection index */
-bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamIdentification const& talkerStream, std::uint16_t const connectionIndex) noexcept
+bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::StreamIdentification const& talkerStream, std::uint16_t const connectionIndex) noexcept
 {
 	switch (getFailureAction(status))
 	{
@@ -1442,7 +1440,7 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 #endif // __cpp_structured_bindings
 			if (shouldRetry)
 			{
-				queryInformation(entity, configurationIndex, dynamicInfoType, descriptorIndex, talkerStream, connectionIndex, retryTimer);
+				queryInformation(entity, configurationIndex, dynamicInfoType, talkerStream, connectionIndex, retryTimer);
 			}
 			return true;
 		}

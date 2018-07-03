@@ -1882,7 +1882,6 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 Serializer<AecpAemSetMemoryObjectLengthCommandPayloadSize> serializeSetMemoryObjectLengthCommand(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length)
 {
 	Serializer<AecpAemSetMemoryObjectLengthCommandPayloadSize> ser;
-	std::uint16_t const reserved{ 0u };
 
 	ser << memoryObjectIndex << configurationIndex;
 	ser << length;
