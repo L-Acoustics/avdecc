@@ -47,7 +47,7 @@ public:
 	{
 	}
 
-	/** Explicit constructor to create a UniqueIdentifier from the underlying value. */
+	/** Constructor to create a UniqueIdentifier from the underlying value. */
 	UniqueIdentifier(value_type const eui) noexcept
 		: _eui(eui)
 	{
@@ -147,15 +147,6 @@ private:
 	static constexpr value_type UninitializedIdentifierValue = 0xFFFFFFFFFFFFFFFF;
 	value_type _eui{ UninitializedIdentifierValue };
 };
-
-//struct EnumClassHash
-//{
-//	template <typename T>
-//	std::size_t operator()(T t) const
-//	{
-//		return static_cast<std::size_t>(t);
-//	}
-//};
 
 } // namespace avdecc
 } // namespace la

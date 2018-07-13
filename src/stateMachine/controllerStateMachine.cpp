@@ -664,10 +664,11 @@ void ControllerStateMachine::checkLocalEntitiesAnnouncement() noexcept
 
 void ControllerStateMachine::checkEntitiesTimeoutExpiracy() noexcept
 {
-	std::chrono::time_point<std::chrono::system_clock> currentTime = std::chrono::system_clock::now();
-
 	// Lock self
 	std::lock_guard<ControllerStateMachine> const lg(getSelf());
+
+	// Get current time
+	std::chrono::time_point<std::chrono::system_clock> currentTime = std::chrono::system_clock::now();
 
 	for (auto it = _discoveredEntities.begin(); it != _discoveredEntities.end(); /* Iterate inside the loop */)
 	{
@@ -686,10 +687,11 @@ void ControllerStateMachine::checkEntitiesTimeoutExpiracy() noexcept
 
 void ControllerStateMachine::checkInflightCommandsTimeoutExpiracy() noexcept
 {
-	std::chrono::time_point<std::chrono::system_clock> currentTime = std::chrono::system_clock::now();
-
 	// Lock self
 	std::lock_guard<ControllerStateMachine> const lg(getSelf());
+
+	// Get current time
+	std::chrono::time_point<std::chrono::system_clock> currentTime = std::chrono::system_clock::now();
 
 	for (auto& localEntityKV : _localEntities)
 	{

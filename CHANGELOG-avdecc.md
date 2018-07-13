@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Removed
 - la::avdecc::entity::model::VendorEntityModel (should be la::avdecc::UniqueIdentifier)
 
+### Fixed
+- Getting system current time after mutex has been acquired, not before
+
 ## [2.5.3] - 2018-06-18
 ### Fixed
 - Descriptors value initialization for LocalizedStringReference type
