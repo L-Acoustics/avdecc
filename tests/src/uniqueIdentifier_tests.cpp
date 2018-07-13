@@ -20,12 +20,4 @@
 #include <gtest/gtest.h>
 #include "controller/avdeccControlledEntityImpl.hpp"
 
-TEST(X, X)
-{
-	auto const e{ la::avdecc::entity::Entity{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::networkInterface::MacAddress{}, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier() } };
-	la::avdecc::controller::ControlledEntityImpl entity{ e };
-
-	entity.getEntityNodeStaticModel();
-
-	auto& res = entity.getNodeStaticModel(0, la::avdecc::entity::model::AudioUnitIndex(0), &la::avdecc::controller::model::ConfigurationStaticTree::audioUnitStaticModels);
-}
+#pragma message("TODO: UniqueIdentifier unit tests")

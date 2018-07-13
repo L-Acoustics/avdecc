@@ -1,11 +1,5 @@
 # avdecc tests
 
-# avdecc include directories
-include_directories(${PROJECT_SOURCE_DIR}/include)
-
-# avdecc source directories
-include_directories(${PROJECT_SOURCE_DIR}/src)
-
 # gtest include directories
 include_directories(${gtest_SOURCE_DIR}/include)
 
@@ -40,9 +34,18 @@ if(BUILD_AVDECC_CONTROLLER)
 	list(APPEND ADD_LINK_LIBRARIES la_avdecc_controller_static)
 endif()
 
+# Define target
 add_executable(Tests ${TESTS_SOURCE})
+
+# Setup common options
+setup_executable_options(Tests)
+
+# Set IDE folder
 set_target_properties(Tests PROPERTIES FOLDER "Tests")
+
+# Link with required libraries
 target_link_libraries(Tests PRIVATE ${LINK_LIBRARIES} ${ADD_LINK_LIBRARIES})
+
 # Set installation rule
 if(INSTALL_AVDECC_TESTS)
 	install(TARGETS Tests RUNTIME CONFIGURATIONS Release DESTINATION bin)

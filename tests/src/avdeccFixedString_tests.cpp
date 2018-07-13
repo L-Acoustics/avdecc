@@ -17,6 +17,11 @@
 * along with LA_avdecc.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/**
+* @file avdeccFixedString_tests.cpp
+* @author Christophe Calmejane
+*/
+
 #include <gtest/gtest.h>
 #include "la/avdecc/internals/entityModelTypes.hpp"
 
@@ -33,7 +38,7 @@ TEST(AvdeccFixedString, DefaultConstructor)
 	auto const* const ptr = afs.data();
 	for (auto i = 0u; i < afs.size(); ++i)
 	{
-		EXPECT_EQ(0u, ptr[i]) << "Each value should be '\0' initialized";
+		EXPECT_EQ(0, ptr[i]) << "Each value should be '\0' initialized";
 	}
 }
 
@@ -50,7 +55,7 @@ TEST(AvdeccFixedString, StdStringConstructor)
 		auto const* const ptr = afs.data();
 		for (auto i = str.size(); i < afs.size(); ++i)
 		{
-			EXPECT_EQ(0u, ptr[i]) << "Other values should be '\0' initialized";
+			EXPECT_EQ(0, ptr[i]) << "Other values should be '\0' initialized";
 		}
 	}
 	// Oversized string
@@ -80,7 +85,7 @@ TEST(AvdeccFixedString, RawBufferConstructor)
 	auto const* const ptr = afs.data();
 	for (auto i = size; i < afs.size(); ++i)
 	{
-		EXPECT_EQ(0u, ptr[i]) << "Other values should be '\0' initialized";
+		EXPECT_EQ(0, ptr[i]) << "Other values should be '\0' initialized";
 	}
 }
 
@@ -98,7 +103,7 @@ TEST(AvdeccFixedString, AssignStdString)
 		auto const* const ptr = afs.data();
 		for (auto i = str.size(); i < afs.size(); ++i)
 		{
-			EXPECT_EQ(0u, ptr[i]) << "Other values should be '\0' initialized";
+			EXPECT_EQ(0, ptr[i]) << "Other values should be '\0' initialized";
 		}
 	}
 
@@ -112,7 +117,7 @@ TEST(AvdeccFixedString, AssignStdString)
 		auto const* const ptr = afs.data();
 		for (auto i = str.size(); i < afs.size(); ++i)
 		{
-			EXPECT_EQ(0u, ptr[i]) << "Other values should be '\0' initialized";
+			EXPECT_EQ(0, ptr[i]) << "Other values should be '\0' initialized";
 		}
 	}
 }
@@ -132,7 +137,7 @@ TEST(AvdeccFixedString, AssignRawBuffer)
 		auto const* const ptr = afs.data();
 		for (auto i = size; i < afs.size(); ++i)
 		{
-			EXPECT_EQ(0u, ptr[i]) << "Other values should be '\0' initialized";
+			EXPECT_EQ(0, ptr[i]) << "Other values should be '\0' initialized";
 		}
 	}
 
@@ -147,7 +152,7 @@ TEST(AvdeccFixedString, AssignRawBuffer)
 		auto const* const ptr = afs.data();
 		for (auto i = size; i < afs.size(); ++i)
 		{
-			EXPECT_EQ(0u, ptr[i]) << "Other values should be '\0' initialized";
+			EXPECT_EQ(0, ptr[i]) << "Other values should be '\0' initialized";
 		}
 	}
 }

@@ -17,6 +17,11 @@
 * along with LA_avdecc.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/**
+* @file aemPayloads_tests.cpp
+* @author Christophe Calmejane
+*/
+
 #include <gtest/gtest.h>
 #include <array>
 #include <cstdint>
@@ -204,7 +209,7 @@ TEST(AemPayloads, SetClockSourceCommand)
 TEST(AemPayloads, SetClockSourceResponse)
 {
 	CHECK_PAYLOAD(SetClockSourceResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::ClockSourceIndex(0u));
-	CHECK_PAYLOAD(SetClockSourceResponse, la::avdecc::entity::model::DescriptorType::StreamOutput, la::avdecc::entity::model::DescriptorIndex(50), la::avdecc::entity::model::ClockSourceIndex(501369));
+	CHECK_PAYLOAD(SetClockSourceResponse, la::avdecc::entity::model::DescriptorType::StreamOutput, la::avdecc::entity::model::DescriptorIndex(50), la::avdecc::entity::model::ClockSourceIndex(50369));
 }
 
 TEST(AemPayloads, GetClockSourceCommand)
@@ -216,7 +221,7 @@ TEST(AemPayloads, GetClockSourceCommand)
 TEST(AemPayloads, GetClockSourceResponse)
 {
 	CHECK_PAYLOAD(GetClockSourceResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::ClockSourceIndex(0u));
-	CHECK_PAYLOAD(GetClockSourceResponse, la::avdecc::entity::model::DescriptorType::StreamOutput, la::avdecc::entity::model::DescriptorIndex(50), la::avdecc::entity::model::ClockSourceIndex(501369));
+	CHECK_PAYLOAD(GetClockSourceResponse, la::avdecc::entity::model::DescriptorType::StreamOutput, la::avdecc::entity::model::DescriptorIndex(50), la::avdecc::entity::model::ClockSourceIndex(50369));
 }
 
 TEST(AemPayloads, StartStreamingCommand)

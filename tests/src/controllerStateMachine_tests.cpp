@@ -17,6 +17,11 @@
 * along with LA_avdecc.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/**
+* @file controllerStateMachine_tests.cpp
+* @author Christophe Calmejane
+*/
+
 #include <gtest/gtest.h>
 #include "stateMachine/controllerStateMachine.hpp"
 

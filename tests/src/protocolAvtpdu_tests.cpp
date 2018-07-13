@@ -17,6 +17,11 @@
 * along with LA_avdecc.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/**
+* @file protocolAvtpdu_tests.cpp
+* @author Christophe Calmejane
+*/
+
 #include <gtest/gtest.h>
 #include <la/avdecc/avdecc.hpp>
 #include "protocol/protocolAvtpdu.hpp"
