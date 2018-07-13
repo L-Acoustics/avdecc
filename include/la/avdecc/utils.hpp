@@ -167,6 +167,32 @@ struct EnumClassHash
 template<typename EnumType, typename = std::enable_if_t<std::is_enum<EnumType>::value>>
 struct enum_traits {};
 
+/**
+* @brief Traits to easily handle std::function.
+* @details Available traits for std::function:
+*  - size_type: The number of function parameters.
+*  - result_type: The function result type.
+*  - args_as_tuple: All parameter types packed in a tuple.
+*  - function_type: The complete function type: std::function<Ret(Args...)>
+*  - arg_type<0..(size_type-1)>: The individual type for each parameter.
+* @tparam Ret The std::function return type.
+* @tparam Args The std::function parameter types.
+*/
+template<typename Ret, typename ...Args>
+struct function_traits;
+
+template<typename Ret, typename ...Args>
+struct function_traits<std::function<Ret(Args...)>>
+{
+	static size_t const size_type = sizeof...(Args);
+	using result_type = Ret;
+	using args_as_tuple = std::tuple<Args...>;
+	using function_type = std::function<Ret(Args...)>;
+
+	template <size_t N>
+	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+};
+
 } // namespace avdecc
 } // namespace la
 
