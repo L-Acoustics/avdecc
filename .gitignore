@@ -4,6 +4,9 @@
 # Ignore MacOS files
 .DS_Store
 
+# Ignore vscode folder
+.vscode
+
 # Ignore winpcap developer's pack
 /externals/3rdparty/winpcap/Include
 /externals/3rdparty/winpcap/Lib
