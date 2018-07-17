@@ -51,7 +51,7 @@ namespace controller
 * (either added, removed or signature modification).
 * Any other change (including templates, inline methods, defines, typedefs, ...) are considered a modification of the interface.
 */
-constexpr std::uint32_t InterfaceVersion = 205;
+constexpr std::uint32_t InterfaceVersion = 206;
 
 /**
 * @brief Checks if the library is compatible with specified interface version.
