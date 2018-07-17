@@ -28,8 +28,8 @@
 #include <cstdint>
 #include <thread>
 #include <algorithm>
-#include "entityModel.hpp"
 #include "entityEnums.hpp"
+#include "la/avdecc/networkInterfaceHelper.hpp"
 
 namespace la
 {

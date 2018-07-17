@@ -28,6 +28,7 @@
 #include "entityImpl.hpp"
 #include "protocolInterface/protocolInterface.hpp"
 #include "protocol/protocolAemAecpdu.hpp"
+#include "protocol/protocolAaAecpdu.hpp"
 #include <unordered_map>
 #include <functional>
 #include <thread>
@@ -84,19 +85,30 @@ private:
 	};
 
 	using DiscoveredEntities = std::unordered_map<UniqueIdentifier, DiscoveredEntity, UniqueIdentifier::hash>;
-	using OnAECPErrorCallback = std::function<void(ControllerEntity::AemCommandStatus const error)>;
+	using OnAemAECPErrorCallback = std::function<void(ControllerEntity::AemCommandStatus const error)>;
+	using OnAaAECPErrorCallback = std::function<void(ControllerEntity::AaCommandStatus const error)>;
 	using OnACMPErrorCallback = std::function<void(ControllerEntity::ControlStatus const error)>;
 
 	/* ************************************************************************** */
 	/* ControllerEntityImpl internal methods                                      */
 	/* ************************************************************************** */
 	template<typename T, typename... Ts>
-	static OnAECPErrorCallback makeAECPErrorHandler(T const& handler, ControllerEntity const* const controller, Ts&&... params)
+	static OnAemAECPErrorCallback makeAemAECPErrorHandler(T const& handler, ControllerEntity const* const controller, Ts&&... params)
 	{
 		if (handler)
 			return std::bind(handler, controller, std::forward<Ts>(params)...);
 		// No handler specified, return an empty handler
 		return [](ControllerEntity::AemCommandStatus const /*error*/)
+		{
+		};
+	}
+	template<typename T, typename... Ts>
+	static OnAaAECPErrorCallback makeAaAECPErrorHandler(T const& handler, ControllerEntity const* const controller, Ts&&... params)
+	{
+		if (handler)
+			return std::bind(handler, controller, std::forward<Ts>(params)...);
+		// No handler specified, return an empty handler
+		return [](ControllerEntity::AaCommandStatus const /*error*/)
 		{
 		};
 	}
@@ -112,18 +124,21 @@ private:
 	}
 
 	AemCommandStatus convertErrorToAemCommandStatus(protocol::ProtocolInterface::Error const error) const noexcept;
+	AaCommandStatus convertErrorToAaCommandStatus(protocol::ProtocolInterface::Error const error) const noexcept;
 	ControlStatus convertErrorToControlStatus(protocol::ProtocolInterface::Error const error) const noexcept;
-	void sendAemCommand(UniqueIdentifier const targetEntityID, protocol::AemCommandType const commandType, void const* const payload, size_t const payloadLength, OnAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
-	void processAemResponse(protocol::Aecpdu const* const response, OnAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
+	void sendAemAecpCommand(UniqueIdentifier const targetEntityID, protocol::AemCommandType const commandType, void const* const payload, size_t const payloadLength, OnAemAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
+	void sendAaAecpCommand(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, OnAaAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
 	void sendAemResponse(protocol::AemAecpdu const& commandAem, protocol::AecpStatus const status, void const* const payload, size_t const payloadLength) const noexcept;
 	void sendAcmpCommand(protocol::AcmpMessageType const messageType, UniqueIdentifier const talkerEntityID, model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, model::StreamIndex const listenerStreamIndex, uint16_t const connectionIndex, OnACMPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
+	void processAemAecpResponse(protocol::Aecpdu const* const response, OnAemAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
+	void processAaAecpResponse(protocol::Aecpdu const* const response, OnAaAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
 	void processAcmpResponse(protocol::Acmpdu const* const response, OnACMPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback, bool const sniffed) const noexcept;
 
 	/* ************************************************************************** */
 	/* ControllerEntity overrides                                                 */
 	/* ************************************************************************** */
 	/* Discovery Protocol (ADP) */
-	/* Enumeration and Control Protocol (AECP) */
+	/* Enumeration and Control Protocol (AECP) AEM */
 	virtual void acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, AcquireEntityHandler const& handler) const noexcept override;
 	virtual void releaseEntity(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, ReleaseEntityHandler const& handler) const noexcept override;
 	virtual void lockEntity(UniqueIdentifier const targetEntityID, LockEntityHandler const& handler) const noexcept override;
@@ -203,6 +218,8 @@ private:
 	virtual void getAvbInfo(UniqueIdentifier const targetEntityID, model::AvbInterfaceIndex const avbInterfaceIndex, GetAvbInfoHandler const& handler) const noexcept override;
 	virtual void setMemoryObjectLength(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length, SetMemoryObjectLengthHandler const& handler) const noexcept override;
 	virtual void getMemoryObjectLength(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::MemoryObjectIndex const memoryObjectIndex, GetMemoryObjectLengthHandler const& handler) const noexcept override;
+	/* Enumeration and Control Protocol (AECP) AA */
+	virtual void addressAccess(la::avdecc::UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, AddressAccessHandler const& handler) const noexcept override;
 	/* Connection Management Protocol (ACMP) */
 	virtual void connectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept override;
 	virtual void disconnectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, DisconnectStreamHandler const& handler) const noexcept override;

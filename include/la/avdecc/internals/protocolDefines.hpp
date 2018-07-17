@@ -223,6 +223,33 @@ public:
 	static AemLockEntityFlags const Unlock;
 };
 
+/** Address Access Mode - Clause 9.2.1.3.3 */
+class AaMode : public TypedDefine<std::uint8_t>
+{
+public:
+	using TypedDefine::TypedDefine;
+
+	static AaMode const Read;
+	static AaMode const Write;
+	static AaMode const Execute;
+
+	operator std::string() const noexcept;
+};
+
+/** Address Access AECP Status - Clause 9.2.1.3.4 */
+class AaAecpStatus : public AecpStatus
+{
+public:
+	using AecpStatus::AecpStatus;
+
+	static AaAecpStatus const AddressTooLow;
+	static AaAecpStatus const AddressTooHigh;
+	static AaAecpStatus const AddressInvalid;
+	static AaAecpStatus const TlvInvalid;
+	static AaAecpStatus const DataInvalid;
+	static AaAecpStatus const Unsupported;
+};
+
 /** ACMP Message Type - Clause 8.2.1.5 */
 class AcmpMessageType : public TypedDefine<std::uint8_t>
 {

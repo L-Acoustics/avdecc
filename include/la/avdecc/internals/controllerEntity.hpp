@@ -31,6 +31,8 @@
 #include <vector>
 #include <functional>
 #include "entity.hpp"
+#include "entityModel.hpp"
+#include "entityAddressAccessTypes.hpp"
 #include "exports.hpp"
 
 namespace la
@@ -60,6 +62,26 @@ public:
 		EntityMisbehaving = 10,
 		NotSupported = 11,
 		StreamIsRunning = 12,
+		// Library Error Codes
+		NetworkError = 995,
+		ProtocolError = 996,
+		TimedOut = 997,
+		UnknownEntity = 998,
+		InternalError = 999,
+	};
+
+	/** Status code returned by all AA (AECP) command methods. */
+	enum class AaCommandStatus : std::uint16_t
+	{
+		// AVDECC Protocol Error Codes
+		Success = 0,
+		NotImplemented = 1,
+		AddressTooLow = 2,
+		AddressTooHigh = 3,
+		AddressInvalid = 4,
+		TlvInvalid = 5,
+		DataInvalid = 6,
+		Unsupported = 7,
 		// Library Error Codes
 		NetworkError = 995,
 		ProtocolError = 996,
@@ -198,7 +220,7 @@ public:
 		virtual void onMemoryObjectLengthChanged(la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::model::ConfigurationIndex const /*configurationIndex*/, la::avdecc::entity::model::MemoryObjectIndex const /*memoryObjectIndex*/, std::uint64_t const /*length*/) noexcept {}
 	};
 
-	/* Enumeration and Control Protocol (AECP) handlers */
+	/* Enumeration and Control Protocol (AECP) AEM handlers */
 	using AcquireEntityHandler = std::function<void(la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const owningEntity, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex)>;
 	using ReleaseEntityHandler = std::function<void(la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const owningEntity, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex)>;
 	using LockEntityHandler = std::function<void(la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const owningEntity)>;
@@ -278,6 +300,8 @@ public:
 	using GetAvbInfoHandler = std::function<void(la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::AvbInterfaceIndex const avbInterfaceIndex, la::avdecc::entity::model::AvbInfo const& info)>;
 	using SetMemoryObjectLengthHandler = std::function<void(la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length)>;
 	using GetMemoryObjectLengthHandler = std::function<void(la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length)>;
+	/* Enumeration and Control Protocol (AECP) AA handlers */
+	using AddressAccessHandler = std::function<void(la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AaCommandStatus const status, la::avdecc::entity::addressAccess::Tlvs const& tlvs)>;
 	/* Connection Management Protocol (ACMP) handlers */
 	using ConnectStreamHandler = std::function<void(la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::ControllerEntity::ControlStatus const status)>;
 	using DisconnectStreamHandler = std::function<void(la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::ControllerEntity::ControlStatus const status)>;
@@ -292,7 +316,7 @@ public:
 	/** Disables entity advertising. */
 	using LocalEntity::disableEntityAdvertising; // From LocalEntity
 
-	/* Enumeration and Control Protocol (AECP) */
+	/* Enumeration and Control Protocol (AECP) AEM */
 	virtual void acquireEntity(la::avdecc::UniqueIdentifier const targetEntityID, bool const isPersistent, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, AcquireEntityHandler const& handler) const noexcept = 0;
 	virtual void releaseEntity(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, ReleaseEntityHandler const& handler) const noexcept = 0;
 	virtual void lockEntity(la::avdecc::UniqueIdentifier const targetEntityID, LockEntityHandler const& handler) const noexcept = 0;
@@ -373,6 +397,9 @@ public:
 	virtual void setMemoryObjectLength(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length, SetMemoryObjectLengthHandler const& handler) const noexcept = 0;
 	virtual void getMemoryObjectLength(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MemoryObjectIndex const memoryObjectIndex, GetMemoryObjectLengthHandler const& handler) const noexcept = 0;
 
+	/* Enumeration and Control Protocol (AECP) AA */
+	virtual void addressAccess(la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::addressAccess::Tlvs const& tlvs, AddressAccessHandler const& handler) const noexcept = 0;
+
 	/* Connection Management Protocol (ACMP) */
 	virtual void connectStream(la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept = 0;
 	virtual void disconnectStream(la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, DisconnectStreamHandler const& handler) const noexcept = 0;
@@ -386,6 +413,7 @@ public:
 
 	/* Utility methods */
 	static LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION statusToString(la::avdecc::entity::ControllerEntity::AemCommandStatus const status);
+	static LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION statusToString(la::avdecc::entity::ControllerEntity::AaCommandStatus const status);
 	static LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION statusToString(la::avdecc::entity::ControllerEntity::ControlStatus const status);
 
 	// Deleted compiler auto-generated methods
@@ -419,6 +447,22 @@ constexpr la::avdecc::entity::ControllerEntity::AemCommandStatus operator|(la::a
 	return lhs;
 }
 constexpr la::avdecc::entity::ControllerEntity::AemCommandStatus& operator|=(la::avdecc::entity::ControllerEntity::AemCommandStatus& lhs, la::avdecc::entity::ControllerEntity::AemCommandStatus const rhs)
+{
+	if (!!lhs)
+		lhs = rhs;
+	return lhs;
+}
+constexpr bool operator!(la::avdecc::entity::ControllerEntity::AaCommandStatus const status)
+{
+	return status != ControllerEntity::AaCommandStatus::Success;
+}
+constexpr la::avdecc::entity::ControllerEntity::AaCommandStatus operator|(la::avdecc::entity::ControllerEntity::AaCommandStatus const lhs, la::avdecc::entity::ControllerEntity::AaCommandStatus const rhs)
+{
+	if (!!lhs)
+		return rhs;
+	return lhs;
+}
+constexpr la::avdecc::entity::ControllerEntity::AaCommandStatus& operator|=(la::avdecc::entity::ControllerEntity::AaCommandStatus& lhs, la::avdecc::entity::ControllerEntity::AaCommandStatus const rhs)
 {
 	if (!!lhs)
 		lhs = rhs;

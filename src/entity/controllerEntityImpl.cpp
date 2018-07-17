@@ -136,10 +136,10 @@ ControllerEntity::AemCommandStatus ControllerEntityImpl::convertErrorToAemComman
 		case protocol::ProtocolInterface::Error::UnknownRemoteEntity:
 			return AemCommandStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::UnknownLocalEntity:
-			AVDECC_ASSERT(false, "Trying to sendAemCommand from a non-existing local entity");
+			AVDECC_ASSERT(false, "Trying to sendAemAecpCommand from a non-existing local entity");
 			return AemCommandStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::InvalidEntityType:
-			AVDECC_ASSERT(false, "Trying to sendAemCommand from a non-controller entity");
+			AVDECC_ASSERT(false, "Trying to sendAemAecpCommand from a non-controller entity");
 			return AemCommandStatus::InternalError;
 		case protocol::ProtocolInterface::Error::InternalError:
 			return AemCommandStatus::InternalError;
@@ -147,6 +147,32 @@ ControllerEntity::AemCommandStatus ControllerEntityImpl::convertErrorToAemComman
 			AVDECC_ASSERT(false, "ProtocolInterface error code not handled");
 	}
 	return AemCommandStatus::InternalError;
+}
+
+ControllerEntity::AaCommandStatus ControllerEntityImpl::convertErrorToAaCommandStatus(protocol::ProtocolInterface::Error const error) const noexcept
+{
+	switch (error)
+	{
+		case protocol::ProtocolInterface::Error::NoError:
+			return AaCommandStatus::Success;
+		case protocol::ProtocolInterface::Error::TransportError:
+			return AaCommandStatus::NetworkError;
+		case protocol::ProtocolInterface::Error::Timeout:
+			return AaCommandStatus::TimedOut;
+		case protocol::ProtocolInterface::Error::UnknownRemoteEntity:
+			return AaCommandStatus::UnknownEntity;
+		case protocol::ProtocolInterface::Error::UnknownLocalEntity:
+			AVDECC_ASSERT(false, "Trying to sendAaCommand from a non-existing local entity");
+			return AaCommandStatus::UnknownEntity;
+		case protocol::ProtocolInterface::Error::InvalidEntityType:
+			AVDECC_ASSERT(false, "Trying to sendAaCommand from a non-controller entity");
+			return AaCommandStatus::InternalError;
+		case protocol::ProtocolInterface::Error::InternalError:
+			return AaCommandStatus::InternalError;
+		default:
+			AVDECC_ASSERT(false, "ProtocolInterface error code not handled");
+	}
+	return AaCommandStatus::InternalError;
 }
 
 ControllerEntity::ControlStatus ControllerEntityImpl::convertErrorToControlStatus(protocol::ProtocolInterface::Error const error) const noexcept
@@ -174,7 +200,7 @@ ControllerEntity::ControlStatus ControllerEntityImpl::convertErrorToControlStatu
 	return ControlStatus::InternalError;
 }
 
-void ControllerEntityImpl::sendAemCommand(UniqueIdentifier const targetEntityID, protocol::AemCommandType const commandType, void const* const payload, size_t const payloadLength, OnAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept
+void ControllerEntityImpl::sendAemAecpCommand(UniqueIdentifier const targetEntityID, protocol::AemCommandType const commandType, void const* const payload, size_t const payloadLength, OnAemAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept
 {
 	try
 	{
@@ -224,7 +250,7 @@ void ControllerEntityImpl::sendAemCommand(UniqueIdentifier const targetEntityID,
 		{
 			if (!error)
 			{
-				processAemResponse(response, onErrorCallback, answerCallback); // We sent an AEM command, we know it's an AEM response (so directly call processAemResponse)
+				processAemAecpResponse(response, onErrorCallback, answerCallback); // We sent an AEM command, we know it's an AEM response (so directly call processAemAecpResponse)
 			}
 			else
 			{
@@ -246,7 +272,172 @@ void ControllerEntityImpl::sendAemCommand(UniqueIdentifier const targetEntityID,
 	}
 }
 
-void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const response, OnAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept
+void ControllerEntityImpl::sendAaAecpCommand(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, OnAaAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept
+{
+	try
+	{
+		auto* pi = const_cast<ControllerEntityImpl*>(this)->getProtocolInterface();
+		auto targetMacAddress = networkInterface::MacAddress{};
+
+		// Search target mac address based on its entityID
+		{
+			// Lock ProtocolInterface
+			std::lock_guard<decltype(*pi)> const lg(*pi);
+
+			auto const it = _discoveredEntities.find(targetEntityID);
+
+			if (it != _discoveredEntities.end())
+			{
+				// Get entity mac address
+				targetMacAddress = it->second.getMacAddress();
+			}
+		}
+
+		// Return an error if entity is not found in the list
+		if (!networkInterface::isMacAddressValid(targetMacAddress))
+		{
+			invokeProtectedHandler(onErrorCallback, AaCommandStatus::UnknownEntity);
+			return;
+		}
+
+		// Build AA-AECPDU frame
+		auto frame = protocol::AaAecpdu::create();
+		auto* aa = static_cast<protocol::AaAecpdu*>(frame.get());
+
+		// Set Ether2 fields
+		aa->setSrcAddress(pi->getMacAddress());
+		aa->setDestAddress(targetMacAddress);
+		// Set AECP fields
+		aa->setMessageType(protocol::AecpMessageType::AddressAccessCommand);
+		aa->setStatus(protocol::AecpStatus::Success);
+		aa->setTargetEntityID(targetEntityID);
+		aa->setControllerEntityID(getEntityID());
+		// No need to set the SequenceID, it's set by the ProtocolInterface layer
+		// Set Address Access fields
+		for (auto const& tlv : tlvs)
+		{
+			aa->addTlv(tlv);
+		}
+
+		auto const error = pi->sendAecpCommand(std::move(frame), targetMacAddress, [onErrorCallback, answerCallback, this](protocol::Aecpdu const* const response, protocol::ProtocolInterface::Error const error) noexcept
+		{
+			if (!error)
+			{
+				processAaAecpResponse(response, onErrorCallback, answerCallback); // We sent an Address Access command, we know it's an Address Access response (so directly call processAaAecpResponse)
+			}
+			else
+			{
+				invokeProtectedHandler(onErrorCallback, convertErrorToAaCommandStatus(error));
+			}
+		});
+		if (!!error)
+		{
+			invokeProtectedHandler(onErrorCallback, convertErrorToAaCommandStatus(error));
+		}
+	}
+	catch (std::invalid_argument const&)
+	{
+		invokeProtectedHandler(onErrorCallback, AaCommandStatus::ProtocolError);
+	}
+	catch (...)
+	{
+		invokeProtectedHandler(onErrorCallback, AaCommandStatus::InternalError);
+	}
+}
+
+void ControllerEntityImpl::sendAemResponse(protocol::AemAecpdu const& commandAem, protocol::AecpStatus const status, void const* const payload, size_t const payloadLength) const noexcept
+{
+	try
+	{
+		auto* pi = getProtocolInterface();
+		auto targetMacAddress = networkInterface::MacAddress{};
+
+		// Build AEM-AECPDU frame
+		auto frame = protocol::AemAecpdu::create();
+		auto* aem = static_cast<protocol::AemAecpdu*>(frame.get());
+
+		// Set Ether2 fields
+		if (commandAem.getDestAddress() != pi->getMacAddress())
+		{
+			LOG_CONTROLLER_ENTITY_WARN(commandAem.getTargetEntityID(), "Sending AEM response using own MacAddress as source, instead of the incorrect one from the AEM command");
+		}
+		aem->setSrcAddress(pi->getMacAddress()); // Using our MacAddress instead of the one from the Command, some devices incorrectly send some AEM messages to the multicast Ether2 MacAddress instead of targeting an entity
+		aem->setDestAddress(commandAem.getSrcAddress());
+		// Set AECP fields
+		aem->setMessageType(protocol::AecpMessageType::AemResponse);
+		aem->setStatus(status);
+		aem->setTargetEntityID(commandAem.getTargetEntityID());
+		aem->setControllerEntityID(commandAem.getControllerEntityID());
+		aem->setSequenceID(commandAem.getSequenceID());
+		// Set AEM fields
+		aem->setUnsolicited(false);
+		aem->setCommandType(commandAem.getCommandType());
+		aem->setCommandSpecificData(payload, payloadLength);
+
+		// We don't care about the send errors
+		pi->sendAecpResponse(std::move(frame), targetMacAddress);
+	}
+	catch (...)
+	{
+	}
+}
+
+void ControllerEntityImpl::sendAcmpCommand(protocol::AcmpMessageType const messageType, UniqueIdentifier const talkerEntityID, model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, model::StreamIndex const listenerStreamIndex, uint16_t const connectionIndex, OnACMPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept
+{
+	try
+	{
+		auto* pi = getProtocolInterface();
+
+		// Build ACMPDU frame
+		auto frame = protocol::Acmpdu::create();
+		auto* acmp = static_cast<protocol::Acmpdu*>(frame.get());
+
+		// Set Ether2 fields
+		acmp->setSrcAddress(pi->getMacAddress());
+		// No need to set DestAddress, it's always the MultiCast address
+		// Set AVTP fields
+		acmp->setStreamID(0u);
+		// Set ACMP fields
+		acmp->setMessageType(messageType);
+		acmp->setStatus(protocol::AcmpStatus::Success);
+		acmp->setControllerEntityID(getEntityID());
+		acmp->setTalkerEntityID(talkerEntityID);
+		acmp->setListenerEntityID(listenerEntityID);
+		acmp->setTalkerUniqueID(talkerStreamIndex);
+		acmp->setListenerUniqueID(listenerStreamIndex);
+		acmp->setStreamDestAddress({});
+		acmp->setConnectionCount(connectionIndex);
+		// No need to set the SequenceID, it's set by the ProtocolInterface layer
+		acmp->setFlags(ConnectionFlags::None);
+		acmp->setStreamVlanID(0);
+
+		auto const error = pi->sendAcmpCommand(std::move(frame), [onErrorCallback, answerCallback, this](protocol::Acmpdu const* const response, protocol::ProtocolInterface::Error const error) noexcept
+		{
+			if (!error)
+			{
+				processAcmpResponse(response, onErrorCallback, answerCallback, false);
+			}
+			else
+			{
+				invokeProtectedHandler(onErrorCallback, convertErrorToControlStatus(error));
+			}
+		});
+		if (!!error)
+		{
+			invokeProtectedHandler(onErrorCallback, convertErrorToControlStatus(error));
+		}
+	}
+	catch (std::invalid_argument const&)
+	{
+		invokeProtectedHandler(onErrorCallback, ControlStatus::ProtocolError);
+	}
+	catch (...)
+	{
+		invokeProtectedHandler(onErrorCallback, ControlStatus::InternalError);
+	}
+}
+
+void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const response, OnAemAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept
 {
 	auto const& aem = static_cast<protocol::AemAecpdu const&>(*response);
 	auto const status = static_cast<AemCommandStatus>(aem.getStatus().getValue()); // We have to convert protocol status to our extended status
@@ -1508,96 +1699,13 @@ void ControllerEntityImpl::processAemResponse(protocol::Aecpdu const* const resp
 	}
 }
 
-void ControllerEntityImpl::sendAemResponse(protocol::AemAecpdu const& commandAem, protocol::AecpStatus const status, void const* const payload, size_t const payloadLength) const noexcept
+void ControllerEntityImpl::processAaAecpResponse(protocol::Aecpdu const* const response, OnAaAECPErrorCallback const& /*onErrorCallback*/, AnswerCallback const& answerCallback) const noexcept
 {
-	try
-	{
-		auto* pi = getProtocolInterface();
-		auto targetMacAddress = networkInterface::MacAddress{};
+	auto const& aa = static_cast<protocol::AaAecpdu const&>(*response);
+	auto const status = static_cast<AaCommandStatus>(aa.getStatus().getValue()); // We have to convert protocol status to our extended status
+	auto const targetID = aa.getTargetEntityID();
 
-		// Build AEM-AECPDU frame
-		auto frame = protocol::AemAecpdu::create();
-		auto* aem = static_cast<protocol::AemAecpdu*>(frame.get());
-
-		// Set Ether2 fields
-		if (commandAem.getDestAddress() != pi->getMacAddress())
-		{
-			LOG_CONTROLLER_ENTITY_WARN(commandAem.getTargetEntityID(), "Sending AEM response using own MacAddress as source, instead of the incorrect one from the AEM command");
-		}
-		aem->setSrcAddress(pi->getMacAddress()); // Using our MacAddress instead of the one from the Command, some devices incorrectly send some AEM messages to the multicast Ether2 MacAddress instead of targeting an entity
-		aem->setDestAddress(commandAem.getSrcAddress());
-		// Set AECP fields
-		aem->setMessageType(protocol::AecpMessageType::AemResponse);
-		aem->setStatus(status);
-		aem->setTargetEntityID(commandAem.getTargetEntityID());
-		aem->setControllerEntityID(commandAem.getControllerEntityID());
-		aem->setSequenceID(commandAem.getSequenceID());
-		// Set AEM fields
-		aem->setUnsolicited(false);
-		aem->setCommandType(commandAem.getCommandType());
-		aem->setCommandSpecificData(payload, payloadLength);
-
-		// We don't care about the send errors
-		pi->sendAecpResponse(std::move(frame), targetMacAddress);
-	}
-	catch (...)
-	{
-	}
-}
-
-void ControllerEntityImpl::sendAcmpCommand(protocol::AcmpMessageType const messageType, UniqueIdentifier const talkerEntityID, model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, model::StreamIndex const listenerStreamIndex, uint16_t const connectionIndex, OnACMPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept
-{
-	try
-	{
-		auto* pi = getProtocolInterface();
-
-		// Build ACMPDU frame
-		auto frame = protocol::Acmpdu::create();
-		auto* acmp = static_cast<protocol::Acmpdu*>(frame.get());
-
-		// Set Ether2 fields
-		acmp->setSrcAddress(pi->getMacAddress());
-		// No need to set DestAddress, it's always the MultiCast address
-		// Set AVTP fields
-		acmp->setStreamID(0u);
-		// Set ACMP fields
-		acmp->setMessageType(messageType);
-		acmp->setStatus(protocol::AcmpStatus::Success);
-		acmp->setControllerEntityID(getEntityID());
-		acmp->setTalkerEntityID(talkerEntityID);
-		acmp->setListenerEntityID(listenerEntityID);
-		acmp->setTalkerUniqueID(talkerStreamIndex);
-		acmp->setListenerUniqueID(listenerStreamIndex);
-		acmp->setStreamDestAddress({});
-		acmp->setConnectionCount(connectionIndex);
-		// No need to set the SequenceID, it's set by the ProtocolInterface layer
-		acmp->setFlags(ConnectionFlags::None);
-		acmp->setStreamVlanID(0);
-
-		auto const error = pi->sendAcmpCommand(std::move(frame), [onErrorCallback, answerCallback, this](protocol::Acmpdu const* const response, protocol::ProtocolInterface::Error const error) noexcept
-		{
-			if (!error)
-			{
-				processAcmpResponse(response, onErrorCallback, answerCallback, false);
-			}
-			else
-			{
-				invokeProtectedHandler(onErrorCallback, convertErrorToControlStatus(error));
-			}
-		});
-		if (!!error)
-		{
-			invokeProtectedHandler(onErrorCallback, convertErrorToControlStatus(error));
-		}
-	}
-	catch (std::invalid_argument const&)
-	{
-		invokeProtectedHandler(onErrorCallback, ControlStatus::ProtocolError);
-	}
-	catch (...)
-	{
-		invokeProtectedHandler(onErrorCallback, ControlStatus::InternalError);
-	}
+	answerCallback.invoke<AddressAccessHandler>(this, targetID, status, aa.getTlvData());
 }
 
 void ControllerEntityImpl::processAcmpResponse(protocol::Acmpdu const* const response, OnACMPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback, bool const sniffed) const noexcept
@@ -1763,15 +1871,15 @@ void ControllerEntityImpl::processAcmpResponse(protocol::Acmpdu const* const res
 /* ************************************************************************** */
 /* Discovery Protocol (ADP) */
 
-/* Enumeration and Control Protocol (AECP) */
+/* Enumeration and Control Protocol (AECP) AEM */
 void ControllerEntityImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, AcquireEntityHandler const& handler) const noexcept
 {
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeAcquireEntityCommand(isPersistent ? protocol::AemAcquireEntityFlags::Persistent : protocol::AemAcquireEntityFlags::None, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -1784,9 +1892,9 @@ void ControllerEntityImpl::releaseEntity(UniqueIdentifier const targetEntityID, 
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeAcquireEntityCommand(protocol::AemAcquireEntityFlags::Release, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -1800,9 +1908,9 @@ void ControllerEntityImpl::lockEntity(UniqueIdentifier const targetEntityID, Loc
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeLockEntityCommand(protocol::AemLockEntityFlags::None, UniqueIdentifier::getNullUniqueIdentifier(), model::DescriptorType::Entity, 0);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, UniqueIdentifier::getNullUniqueIdentifier());
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, UniqueIdentifier::getNullUniqueIdentifier());
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::LockEntity, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::LockEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -1816,9 +1924,9 @@ void ControllerEntityImpl::unlockEntity(UniqueIdentifier const targetEntityID, U
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeLockEntityCommand(protocol::AemLockEntityFlags::Unlock, UniqueIdentifier::getNullUniqueIdentifier(), model::DescriptorType::Entity, 0);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::LockEntity, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::LockEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -1828,30 +1936,30 @@ void ControllerEntityImpl::unlockEntity(UniqueIdentifier const targetEntityID, U
 
 void ControllerEntityImpl::queryEntityAvailable(UniqueIdentifier const targetEntityID, QueryEntityAvailableHandler const& handler) const noexcept
 {
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
+	auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
 
-	sendAemCommand(targetEntityID, protocol::AemCommandType::EntityAvailable, nullptr, 0, errorCallback, handler);
+	sendAemAecpCommand(targetEntityID, protocol::AemCommandType::EntityAvailable, nullptr, 0, errorCallback, handler);
 }
 
 void ControllerEntityImpl::queryControllerAvailable(UniqueIdentifier const targetEntityID, QueryControllerAvailableHandler const& handler) const noexcept
 {
-	auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
+	auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
 
-	sendAemCommand(targetEntityID, protocol::AemCommandType::ControllerAvailable, nullptr, 0, errorCallback, handler);
+	sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ControllerAvailable, nullptr, 0, errorCallback, handler);
 }
 
 void ControllerEntityImpl::registerUnsolicitedNotifications(UniqueIdentifier const targetEntityID, RegisterUnsolicitedNotificationsHandler const& handler) const noexcept
 {
-	auto errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
+	auto errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
 
-	sendAemCommand(targetEntityID, protocol::AemCommandType::RegisterUnsolicitedNotification, nullptr, 0, errorCallback, handler);
+	sendAemAecpCommand(targetEntityID, protocol::AemCommandType::RegisterUnsolicitedNotification, nullptr, 0, errorCallback, handler);
 }
 
 void ControllerEntityImpl::unregisterUnsolicitedNotifications(UniqueIdentifier const targetEntityID, UnregisterUnsolicitedNotificationsHandler const& handler) const noexcept
 {
-	auto errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
+	auto errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
 
-	sendAemCommand(targetEntityID, protocol::AemCommandType::DeregisterUnsolicitedNotification, nullptr, 0, errorCallback, handler);
+	sendAemAecpCommand(targetEntityID, protocol::AemCommandType::DeregisterUnsolicitedNotification, nullptr, 0, errorCallback, handler);
 }
 
 void ControllerEntityImpl::readEntityDescriptor(UniqueIdentifier const targetEntityID, EntityDescriptorHandler const& handler) const noexcept
@@ -1859,9 +1967,9 @@ void ControllerEntityImpl::readEntityDescriptor(UniqueIdentifier const targetEnt
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(model::ConfigurationIndex(0u), model::DescriptorType::Entity, model::DescriptorIndex(0u));
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, model::EntityDescriptor{});
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, model::EntityDescriptor{});
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -1874,9 +1982,9 @@ void ControllerEntityImpl::readConfigurationDescriptor(UniqueIdentifier const ta
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(model::ConfigurationIndex(0u), model::DescriptorType::Configuration, static_cast<model::DescriptorIndex>(configurationIndex)); // Passing configurationIndex as a DescriptorIndex is NOT an error. See 7.4.5.1
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, model::ConfigurationDescriptor{});
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, model::ConfigurationDescriptor{});
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -1889,9 +1997,9 @@ void ControllerEntityImpl::readAudioUnitDescriptor(UniqueIdentifier const target
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::AudioUnit, audioUnitIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, audioUnitIndex, model::AudioUnitDescriptor{});
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, audioUnitIndex, model::AudioUnitDescriptor{});
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -1904,9 +2012,9 @@ void ControllerEntityImpl::readStreamInputDescriptor(UniqueIdentifier const targ
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::StreamInput, streamIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, model::StreamDescriptor{});
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, model::StreamDescriptor{});
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -1919,9 +2027,9 @@ void ControllerEntityImpl::readStreamOutputDescriptor(UniqueIdentifier const tar
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::StreamOutput, streamIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, model::StreamDescriptor{});
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, model::StreamDescriptor{});
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -1934,9 +2042,9 @@ void ControllerEntityImpl::readJackInputDescriptor(UniqueIdentifier const target
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::JackInput, jackIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, jackIndex, model::JackDescriptor{});
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, jackIndex, model::JackDescriptor{});
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -1949,9 +2057,9 @@ void ControllerEntityImpl::readJackOutputDescriptor(UniqueIdentifier const targe
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::JackOutput, jackIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, jackIndex, model::JackDescriptor{});
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, jackIndex, model::JackDescriptor{});
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -1964,9 +2072,9 @@ void ControllerEntityImpl::readAvbInterfaceDescriptor(UniqueIdentifier const tar
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::AvbInterface, avbInterfaceIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, avbInterfaceIndex, model::AvbInterfaceDescriptor{});
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, avbInterfaceIndex, model::AvbInterfaceDescriptor{});
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -1979,9 +2087,9 @@ void ControllerEntityImpl::readClockSourceDescriptor(UniqueIdentifier const targ
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::ClockSource, clockSourceIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, clockSourceIndex, model::ClockSourceDescriptor{});
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, clockSourceIndex, model::ClockSourceDescriptor{});
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -1994,9 +2102,9 @@ void ControllerEntityImpl::readMemoryObjectDescriptor(UniqueIdentifier const tar
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::MemoryObject, memoryObjectIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex, model::MemoryObjectDescriptor{});
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex, model::MemoryObjectDescriptor{});
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2009,9 +2117,9 @@ void ControllerEntityImpl::readLocaleDescriptor(UniqueIdentifier const targetEnt
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::Locale, localeIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, localeIndex, model::LocaleDescriptor{});
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, localeIndex, model::LocaleDescriptor{});
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2024,9 +2132,9 @@ void ControllerEntityImpl::readStringsDescriptor(UniqueIdentifier const targetEn
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::Strings, stringsIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, stringsIndex, model::StringsDescriptor{});
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, stringsIndex, model::StringsDescriptor{});
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2039,9 +2147,9 @@ void ControllerEntityImpl::readStreamPortInputDescriptor(UniqueIdentifier const 
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::StreamPortInput, streamPortIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamPortIndex, model::StreamPortDescriptor{});
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamPortIndex, model::StreamPortDescriptor{});
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2054,9 +2162,9 @@ void ControllerEntityImpl::readStreamPortOutputDescriptor(UniqueIdentifier const
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::StreamPortOutput, streamPortIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamPortIndex, model::StreamPortDescriptor{});
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamPortIndex, model::StreamPortDescriptor{});
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2069,9 +2177,9 @@ void ControllerEntityImpl::readExternalPortInputDescriptor(UniqueIdentifier cons
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::ExternalPortInput, externalPortIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, externalPortIndex, model::ExternalPortDescriptor{});
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, externalPortIndex, model::ExternalPortDescriptor{});
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2084,9 +2192,9 @@ void ControllerEntityImpl::readExternalPortOutputDescriptor(UniqueIdentifier con
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::ExternalPortOutput, externalPortIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, externalPortIndex, model::ExternalPortDescriptor{});
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, externalPortIndex, model::ExternalPortDescriptor{});
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2099,9 +2207,9 @@ void ControllerEntityImpl::readInternalPortInputDescriptor(UniqueIdentifier cons
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::InternalPortInput, internalPortIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, internalPortIndex, model::InternalPortDescriptor{});
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, internalPortIndex, model::InternalPortDescriptor{});
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2114,9 +2222,9 @@ void ControllerEntityImpl::readInternalPortOutputDescriptor(UniqueIdentifier con
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::InternalPortOutput, internalPortIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, internalPortIndex, model::InternalPortDescriptor{});
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, internalPortIndex, model::InternalPortDescriptor{});
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2129,9 +2237,9 @@ void ControllerEntityImpl::readAudioClusterDescriptor(UniqueIdentifier const tar
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::AudioCluster, clusterIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, clusterIndex, model::AudioClusterDescriptor{});
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, clusterIndex, model::AudioClusterDescriptor{});
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2144,9 +2252,9 @@ void ControllerEntityImpl::readAudioMapDescriptor(UniqueIdentifier const targetE
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::AudioMap, mapIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, mapIndex, model::AudioMapDescriptor{});
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, mapIndex, model::AudioMapDescriptor{});
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2159,9 +2267,9 @@ void ControllerEntityImpl::readClockDomainDescriptor(UniqueIdentifier const targ
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::ClockDomain, clockDomainIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, clockDomainIndex, model::ClockDomainDescriptor{});
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, clockDomainIndex, model::ClockDomainDescriptor{});
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2174,9 +2282,9 @@ void ControllerEntityImpl::setConfiguration(UniqueIdentifier const targetEntityI
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetConfigurationCommand(configurationIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::SetConfiguration, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetConfiguration, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2189,9 +2297,9 @@ void ControllerEntityImpl::setStreamInputFormat(UniqueIdentifier const targetEnt
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetStreamFormatCommand(model::DescriptorType::StreamInput, streamIndex, streamFormat);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::SetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2204,9 +2312,9 @@ void ControllerEntityImpl::getStreamInputFormat(UniqueIdentifier const targetEnt
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetStreamFormatCommand(model::DescriptorType::StreamInput, streamIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2219,9 +2327,9 @@ void ControllerEntityImpl::setStreamOutputFormat(UniqueIdentifier const targetEn
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetStreamFormatCommand(model::DescriptorType::StreamOutput, streamIndex, streamFormat);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::SetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2234,9 +2342,9 @@ void ControllerEntityImpl::getStreamOutputFormat(UniqueIdentifier const targetEn
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetStreamFormatCommand(model::DescriptorType::StreamOutput, streamIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2249,9 +2357,9 @@ void ControllerEntityImpl::getStreamPortInputAudioMap(UniqueIdentifier const tar
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetAudioMapCommand(model::DescriptorType::StreamPortInput, streamPortIndex, mapIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamPortIndex, model::MapIndex(0), mapIndex, s_emptyMappings);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamPortIndex, model::MapIndex(0), mapIndex, s_emptyMappings);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetAudioMap, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetAudioMap, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2264,9 +2372,9 @@ void ControllerEntityImpl::getStreamPortOutputAudioMap(UniqueIdentifier const ta
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetAudioMapCommand(model::DescriptorType::StreamPortOutput, streamPortIndex, mapIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamPortIndex, model::MapIndex(0), mapIndex, s_emptyMappings);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamPortIndex, model::MapIndex(0), mapIndex, s_emptyMappings);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetAudioMap, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetAudioMap, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2279,9 +2387,9 @@ void ControllerEntityImpl::addStreamPortInputAudioMappings(UniqueIdentifier cons
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeAddAudioMappingsCommand(model::DescriptorType::StreamPortInput, streamPortIndex, mappings);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamPortIndex, s_emptyMappings);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamPortIndex, s_emptyMappings);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::AddAudioMappings, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::AddAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2294,9 +2402,9 @@ void ControllerEntityImpl::addStreamPortOutputAudioMappings(UniqueIdentifier con
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeAddAudioMappingsCommand(model::DescriptorType::StreamPortOutput, streamPortIndex, mappings);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamPortIndex, s_emptyMappings);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamPortIndex, s_emptyMappings);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::AddAudioMappings, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::AddAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2309,9 +2417,9 @@ void ControllerEntityImpl::removeStreamPortInputAudioMappings(UniqueIdentifier c
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeRemoveAudioMappingsCommand(model::DescriptorType::StreamPortInput, streamPortIndex, mappings);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamPortIndex, s_emptyMappings);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamPortIndex, s_emptyMappings);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::RemoveAudioMappings, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::RemoveAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2324,9 +2432,9 @@ void ControllerEntityImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier 
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeRemoveAudioMappingsCommand(model::DescriptorType::StreamPortOutput, streamPortIndex, mappings);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamPortIndex, s_emptyMappings);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamPortIndex, s_emptyMappings);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::RemoveAudioMappings, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::RemoveAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2339,9 +2447,9 @@ void ControllerEntityImpl::getStreamInputInfo(UniqueIdentifier const targetEntit
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetStreamInfoCommand(model::DescriptorType::StreamInput, streamIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyStreamInfo);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyStreamInfo);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetStreamInfo, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetStreamInfo, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2354,9 +2462,9 @@ void ControllerEntityImpl::getStreamOutputInfo(UniqueIdentifier const targetEnti
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetStreamInfoCommand(model::DescriptorType::StreamOutput, streamIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyStreamInfo);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, s_emptyStreamInfo);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetStreamInfo, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetStreamInfo, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2369,9 +2477,9 @@ void ControllerEntityImpl::setEntityName(UniqueIdentifier const targetEntityID, 
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::Entity, 0, 0, 0, entityName);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2384,9 +2492,9 @@ void ControllerEntityImpl::getEntityName(UniqueIdentifier const targetEntityID, 
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::Entity, 0, 0, 0);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, s_emptyAvdeccFixedString);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, s_emptyAvdeccFixedString);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2399,9 +2507,9 @@ void ControllerEntityImpl::setEntityGroupName(UniqueIdentifier const targetEntit
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::Entity, 0, 1, 0, entityGroupName);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2414,9 +2522,9 @@ void ControllerEntityImpl::getEntityGroupName(UniqueIdentifier const targetEntit
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::Entity, 0, 1, 0);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, s_emptyAvdeccFixedString);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, s_emptyAvdeccFixedString);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2429,9 +2537,9 @@ void ControllerEntityImpl::setConfigurationName(UniqueIdentifier const targetEnt
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::Configuration, configurationIndex, 0, 0, entityGroupName);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2444,9 +2552,9 @@ void ControllerEntityImpl::getConfigurationName(UniqueIdentifier const targetEnt
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::Configuration, configurationIndex, 0, 0);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, s_emptyAvdeccFixedString);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2459,9 +2567,9 @@ void ControllerEntityImpl::setAudioUnitName(UniqueIdentifier const targetEntityI
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::AudioUnit, audioUnitIndex, 0, configurationIndex, audioUnitName);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, audioUnitIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, audioUnitIndex);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2474,9 +2582,9 @@ void ControllerEntityImpl::getAudioUnitName(UniqueIdentifier const targetEntityI
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::AudioUnit, audioUnitIndex, 0, configurationIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, audioUnitIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, audioUnitIndex, s_emptyAvdeccFixedString);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2489,9 +2597,9 @@ void ControllerEntityImpl::setStreamInputName(UniqueIdentifier const targetEntit
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::StreamInput, streamIndex, 0, configurationIndex, streamInputName);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2504,9 +2612,9 @@ void ControllerEntityImpl::getStreamInputName(UniqueIdentifier const targetEntit
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::StreamInput, streamIndex, 0, configurationIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, s_emptyAvdeccFixedString);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2519,9 +2627,9 @@ void ControllerEntityImpl::setStreamOutputName(UniqueIdentifier const targetEnti
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::StreamOutput, streamIndex, 0, configurationIndex, streamOutputName);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2534,9 +2642,9 @@ void ControllerEntityImpl::getStreamOutputName(UniqueIdentifier const targetEnti
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::StreamOutput, streamIndex, 0, configurationIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, s_emptyAvdeccFixedString);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2549,9 +2657,9 @@ void ControllerEntityImpl::setAvbInterfaceName(UniqueIdentifier const targetEnti
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::AvbInterface, avbInterfaceIndex, 0, configurationIndex, avbInterfaceName);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, avbInterfaceIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, avbInterfaceIndex);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2564,9 +2672,9 @@ void ControllerEntityImpl::getAvbInterfaceName(UniqueIdentifier const targetEnti
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::AvbInterface, avbInterfaceIndex, 0, configurationIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, avbInterfaceIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, avbInterfaceIndex, s_emptyAvdeccFixedString);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2579,9 +2687,9 @@ void ControllerEntityImpl::setClockSourceName(UniqueIdentifier const targetEntit
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::ClockSource, clockSourceIndex, 0, configurationIndex, clockSourceName);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, clockSourceIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, clockSourceIndex);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2594,9 +2702,9 @@ void ControllerEntityImpl::getClockSourceName(UniqueIdentifier const targetEntit
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::ClockSource, clockSourceIndex, 0, configurationIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, clockSourceIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, clockSourceIndex, s_emptyAvdeccFixedString);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2609,9 +2717,9 @@ void ControllerEntityImpl::setMemoryObjectName(UniqueIdentifier const targetEnti
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::MemoryObject, memoryObjectIndex, 0, configurationIndex, memoryObjectName);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2624,9 +2732,9 @@ void ControllerEntityImpl::getMemoryObjectName(UniqueIdentifier const targetEnti
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::MemoryObject, memoryObjectIndex, 0, configurationIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex, s_emptyAvdeccFixedString);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2639,9 +2747,9 @@ void ControllerEntityImpl::setAudioClusterName(UniqueIdentifier const targetEnti
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::AudioCluster, audioClusterIndex, 0, configurationIndex, audioClusterName);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, audioClusterIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, audioClusterIndex);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2654,9 +2762,9 @@ void ControllerEntityImpl::getAudioClusterName(UniqueIdentifier const targetEnti
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::AudioCluster, audioClusterIndex, 0, configurationIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, audioClusterIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, audioClusterIndex, s_emptyAvdeccFixedString);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2669,9 +2777,9 @@ void ControllerEntityImpl::setClockDomainName(UniqueIdentifier const targetEntit
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::ClockDomain, clockDomainIndex, 0, configurationIndex, clockDomainName);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, clockDomainIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, clockDomainIndex);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2684,9 +2792,9 @@ void ControllerEntityImpl::getClockDomainName(UniqueIdentifier const targetEntit
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::ClockDomain, clockDomainIndex, 0, configurationIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, clockDomainIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, clockDomainIndex, s_emptyAvdeccFixedString);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2699,9 +2807,9 @@ void ControllerEntityImpl::setAudioUnitSamplingRate(UniqueIdentifier const targe
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetSamplingRateCommand(model::DescriptorType::AudioUnit, audioUnitIndex, samplingRate);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, audioUnitIndex, model::getNullSamplingRate());
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, audioUnitIndex, model::getNullSamplingRate());
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::SetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2714,9 +2822,9 @@ void ControllerEntityImpl::getAudioUnitSamplingRate(UniqueIdentifier const targe
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetSamplingRateCommand(model::DescriptorType::AudioUnit, audioUnitIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, audioUnitIndex, model::getNullSamplingRate());
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, audioUnitIndex, model::getNullSamplingRate());
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2729,9 +2837,9 @@ void ControllerEntityImpl::setVideoClusterSamplingRate(UniqueIdentifier const ta
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetSamplingRateCommand(model::DescriptorType::VideoCluster, videoClusterIndex, samplingRate);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, videoClusterIndex, model::getNullSamplingRate());
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, videoClusterIndex, model::getNullSamplingRate());
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::SetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2744,9 +2852,9 @@ void ControllerEntityImpl::getVideoClusterSamplingRate(UniqueIdentifier const ta
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetSamplingRateCommand(model::DescriptorType::VideoCluster, videoClusterIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, videoClusterIndex, model::getNullSamplingRate());
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, videoClusterIndex, model::getNullSamplingRate());
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2759,9 +2867,9 @@ void ControllerEntityImpl::setSensorClusterSamplingRate(UniqueIdentifier const t
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetSamplingRateCommand(model::DescriptorType::SensorCluster, sensorClusterIndex, samplingRate);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, sensorClusterIndex, model::getNullSamplingRate());
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, sensorClusterIndex, model::getNullSamplingRate());
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::SetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2774,9 +2882,9 @@ void ControllerEntityImpl::getSensorClusterSamplingRate(UniqueIdentifier const t
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetSamplingRateCommand(model::DescriptorType::SensorCluster, sensorClusterIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, sensorClusterIndex, model::getNullSamplingRate());
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, sensorClusterIndex, model::getNullSamplingRate());
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2789,9 +2897,9 @@ void ControllerEntityImpl::setClockSource(UniqueIdentifier const targetEntityID,
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetClockSourceCommand(model::DescriptorType::ClockDomain, clockDomainIndex, clockSourceIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, clockDomainIndex, model::ClockSourceIndex{ 0u });
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, clockDomainIndex, model::ClockSourceIndex{ 0u });
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::SetClockSource, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetClockSource, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2804,9 +2912,9 @@ void ControllerEntityImpl::getClockSource(UniqueIdentifier const targetEntityID,
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetClockSourceCommand(model::DescriptorType::ClockDomain, clockDomainIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, clockDomainIndex, model::ClockSourceIndex{ 0u });
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, clockDomainIndex, model::ClockSourceIndex{ 0u });
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetClockSource, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetClockSource, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2819,9 +2927,9 @@ void ControllerEntityImpl::startStreamInput(UniqueIdentifier const targetEntityI
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeStartStreamingCommand(model::DescriptorType::StreamInput, streamIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::StartStreaming, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::StartStreaming, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2834,9 +2942,9 @@ void ControllerEntityImpl::startStreamOutput(UniqueIdentifier const targetEntity
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeStartStreamingCommand(model::DescriptorType::StreamOutput, streamIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::StartStreaming, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::StartStreaming, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2849,9 +2957,9 @@ void ControllerEntityImpl::stopStreamInput(UniqueIdentifier const targetEntityID
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeStopStreamingCommand(model::DescriptorType::StreamInput, streamIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::StopStreaming, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::StopStreaming, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2864,9 +2972,9 @@ void ControllerEntityImpl::stopStreamOutput(UniqueIdentifier const targetEntityI
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeStopStreamingCommand(model::DescriptorType::StreamOutput, streamIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::StopStreaming, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::StopStreaming, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2879,9 +2987,9 @@ void ControllerEntityImpl::getAvbInfo(UniqueIdentifier const targetEntityID, mod
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetAvbInfoCommand(model::DescriptorType::AvbInterface, avbInterfaceIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, avbInterfaceIndex, s_emptyAvbInfo);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, avbInterfaceIndex, s_emptyAvbInfo);
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetAvbInfo, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetAvbInfo, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2894,9 +3002,9 @@ void ControllerEntityImpl::setMemoryObjectLength(UniqueIdentifier const targetEn
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetMemoryObjectLengthCommand(configurationIndex, memoryObjectIndex, length);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex, std::uint64_t{ 0u });
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex, std::uint64_t{ 0u });
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::SetMemoryObjectLength, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetMemoryObjectLength, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
@@ -2909,13 +3017,28 @@ void ControllerEntityImpl::getMemoryObjectLength(UniqueIdentifier const targetEn
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetMemoryObjectLengthCommand(configurationIndex, memoryObjectIndex);
-		auto const errorCallback = ControllerEntityImpl::makeAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex, std::uint64_t{ 0u });
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex, std::uint64_t{ 0u });
 
-		sendAemCommand(targetEntityID, protocol::AemCommandType::GetMemoryObjectLength, ser.data(), ser.size(), errorCallback, handler);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetMemoryObjectLength, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
 		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getMemoryObjectLength: {}", e.what());
+	}
+}
+
+/* Enumeration and Control Protocol (AECP) AA */
+void ControllerEntityImpl::addressAccess(la::avdecc::UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, AddressAccessHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const errorCallback = ControllerEntityImpl::makeAaAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, addressAccess::Tlvs{});
+
+		sendAaAecpCommand(targetEntityID, tlvs, errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize addressAccess: {}", e.what());
 	}
 }
 
@@ -3112,7 +3235,7 @@ void ControllerEntityImpl::onAecpUnsolicitedResponse(protocol::ProtocolInterface
 		if (AVDECC_ASSERT_WITH_RET(aem.getUnsolicited(), "Should only be triggered for unsollicited notifications"))
 		{
 			// Process AEM message without any error or answer callbacks, it's not an expected response
-			processAemResponse(&aecpdu, nullptr, {});
+			processAemAecpResponse(&aecpdu, nullptr, {});
 		}
 	}
 }
@@ -3172,6 +3295,44 @@ std::string LA_AVDECC_CALL_CONVENTION ControllerEntity::statusToString(Controlle
 		case AemCommandStatus::UnknownEntity:
 			return "Unknown entity.";
 		case AemCommandStatus::InternalError:
+			return "Internal error.";
+		default:
+			AVDECC_ASSERT(false, "Unhandled status");
+			return "Unknown status.";
+	}
+}
+
+std::string LA_AVDECC_CALL_CONVENTION ControllerEntity::statusToString(ControllerEntity::AaCommandStatus const status)
+{
+	switch (status)
+	{
+		// AVDECC Error Codes
+		case AaCommandStatus::Success:
+			return "Success.";
+		case AaCommandStatus::NotImplemented:
+			return "The AVDECC Entity does not support the command type.";
+		case AaCommandStatus::AddressTooLow:
+			return "The value in the address field is below the start of the memory map.";
+		case AaCommandStatus::AddressTooHigh:
+			return "The value in the address field is above the end of the memory map.";
+		case AaCommandStatus::AddressInvalid:
+			return "The value in the address field is within the memory map but is part of an invalid region.";
+		case AaCommandStatus::TlvInvalid:
+			return "One or more of the TLVs were invalid. No TLVs have been processed.";
+		case AaCommandStatus::DataInvalid:
+			return "The data for writing is invalid.";
+		case AaCommandStatus::Unsupported:
+			return "A requested action was unsupported. Typically used when an unknown EXECUTE was encountered or if EXECUTE is not supported.";
+			// Library Error Codes
+		case AaCommandStatus::NetworkError:
+			return "Network error.";
+		case AaCommandStatus::ProtocolError:
+			return "Protocol error.";
+		case AaCommandStatus::TimedOut:
+			return "Command timed out.";
+		case AaCommandStatus::UnknownEntity:
+			return "Unknown entity.";
+		case AaCommandStatus::InternalError:
 			return "Internal error.";
 		default:
 			AVDECC_ASSERT(false, "Unhandled status");

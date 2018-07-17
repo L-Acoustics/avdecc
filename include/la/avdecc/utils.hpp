@@ -95,6 +95,27 @@ namespace la
 namespace avdecc
 {
 
+/**
+* @brief Constexpr to compute a pow(x,y) at compile-time.
+* @details Computes the pow of 2 types at compile-time.<BR>
+*          Example: pow(2,8) will compute 256
+* @param[in] base The base of the power-of to compute.
+* @param[in] exponent The exponent of the power-of to compute.
+* @return The computed value.
+* @note To ensure the value is always computed at compile-time, use it with std::integral_constant<BR>
+*       Example to get pow(2, 15) as a std::uint32_t at compile-time:<BR>
+*       std::integral_constant<std::uint32_t, pow(2,15)>::value
+*/
+
+template<class T>
+inline constexpr T pow(T const base, std::uint8_t const exponent)
+{
+	// Compute pow using exponentiation by squaring
+	return (exponent == 0) ? 1 :
+		(exponent % 2 == 0) ? pow(base, exponent / 2) * pow(base, exponent / 2) :
+		base * pow(base, (exponent - 1) / 2) * pow(base, (exponent - 1) / 2);
+}
+
 /** Useful template to be used with streams, it prevents a char (or uint8_t) to be printed as a char instead of the numeric value */
 template <typename T>
 constexpr auto forceNumeric(T const t) noexcept

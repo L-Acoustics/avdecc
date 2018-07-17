@@ -25,6 +25,7 @@
 #include "protocolInterface_virtual.hpp"
 #include "serialization.hpp"
 #include "protocol/protocolAemAecpdu.hpp"
+#include "protocol/protocolAaAecpdu.hpp"
 #include "stateMachine/controllerStateMachine.hpp"
 #include "la/avdecc/internals/instrumentationNotifier.hpp"
 #include <stdexcept>
@@ -393,6 +394,18 @@ void ProtocolInterfaceVirtualImpl::dispatchAvdeccMessage(std::uint8_t const* con
 						AecpMessageType::AemResponse, []()
 						{
 							return AemAecpdu::create();
+						}
+					},
+					{
+						AecpMessageType::AddressAccessCommand, []()
+						{
+							return AaAecpdu::create();
+						}
+					},
+					{
+						AecpMessageType::AddressAccessResponse, []()
+						{
+							return AaAecpdu::create();
 						}
 					},
 				};

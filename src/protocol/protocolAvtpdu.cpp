@@ -54,6 +54,7 @@ void EtherLayer2::serialize(SerializationBuffer& buffer) const
 
 void EtherLayer2::deserialize(DeserializationBuffer& buffer)
 {
+	// Check if there is enough bytes to read the header
 	if (!AVDECC_ASSERT_WITH_RET(buffer.remaining() >= HeaderLength, "EtherLayer2::deserialize error: Not enough data in buffer"))
 	{
 		LOG_SERIALIZATION_ERROR(_srcAddress, "EtherLayer2::deserialize error: Not enough data in buffer");
@@ -101,6 +102,7 @@ void AvtpduControl::serialize(SerializationBuffer& buffer) const
 
 void AvtpduControl::deserialize(DeserializationBuffer& buffer)
 {
+	// Check if there is enough bytes to read the header
 	if (!AVDECC_ASSERT_WITH_RET(buffer.remaining() >= HeaderLength, "EtherLayer2::deserialize error: Not enough data in buffer"))
 	{
 		LOG_SERIALIZATION_ERROR(_srcAddress, "AvtpduControl::deserialize error: Not enough data in buffer");
@@ -120,6 +122,8 @@ void AvtpduControl::deserialize(DeserializationBuffer& buffer)
 	_controlData = hs_vers_cd & 0x0f;
 	_status = (st_cdl & 0xf800) >> 11;
 	_controlDataLength = st_cdl & 0x7ff;
+
+	// Not checking for _controlDataLength vs buffer.remaining() here, it will be done in sub unpackers to get a better log message
 }
 
 } // namespace protocol

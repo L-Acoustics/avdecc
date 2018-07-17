@@ -39,8 +39,9 @@ namespace protocol
 namespace stateMachine
 {
 
-/* Aecp commands timeout - Clause 9.2.1.2.5 */
-static constexpr auto AecpCommandTimeoutMsec = 250u;
+/* Aecp commands timeout - Clause 9.2.1 */
+static constexpr auto AecpAemCommandTimeoutMsec = 250u;
+static constexpr auto AecpAaCommandTimeoutMsec = 250u;
 /* Acmp commands timeout - Clause 8.2.2 */
 static constexpr auto AcmpConnectTxCommandTimeoutMsec = 2000u;
 static constexpr auto AcmpDisconnectTxCommandTimeoutMsec = 200u;
@@ -584,7 +585,19 @@ Adpdu ControllerStateMachine::makeEntityDepartingMessage(entity::Entity& entity)
 
 void ControllerStateMachine::resetAecpCommandTimeoutValue(AecpCommandInfo& command) const noexcept
 {
-	command.timeout = std::chrono::system_clock::now() + std::chrono::milliseconds(AecpCommandTimeoutMsec);
+	static std::unordered_map<AecpMessageType, std::uint32_t, AecpMessageType::Hash> s_AecpCommandTimeoutMap{
+		{ AecpMessageType::AemCommand, AecpAemCommandTimeoutMsec },
+		{ AecpMessageType::AddressAccessCommand, AecpAaCommandTimeoutMsec },
+	};
+
+	std::uint32_t timeout{ 250 };
+	auto const it = s_AecpCommandTimeoutMap.find(command.command->getMessageType());
+	if (AVDECC_ASSERT_WITH_RET(it != s_AecpCommandTimeoutMap.end(), "Timeout for AECP message not defined!"))
+	{
+		timeout = it->second;
+	}
+
+	command.timeout = std::chrono::system_clock::now() + std::chrono::milliseconds(timeout);
 }
 
 void ControllerStateMachine::resetAcmpCommandTimeoutValue(AcmpCommandInfo& command) const noexcept
@@ -602,7 +615,9 @@ void ControllerStateMachine::resetAcmpCommandTimeoutValue(AcmpCommandInfo& comma
 	std::uint32_t timeout{ 250 };
 	auto const it = s_AcmpCommandTimeoutMap.find(command.command->getMessageType());
 	if (AVDECC_ASSERT_WITH_RET(it != s_AcmpCommandTimeoutMap.end(), "Timeout for ACMP message not defined!"))
+	{
 		timeout = it->second;
+	}
 
 	command.timeout = std::chrono::system_clock::now() + std::chrono::milliseconds(timeout);
 }

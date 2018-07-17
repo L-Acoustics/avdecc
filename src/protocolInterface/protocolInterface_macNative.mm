@@ -19,6 +19,7 @@
 
 #include "protocolInterface_macNative.hpp"
 #include "protocol/protocolAemAecpdu.hpp"
+#include "protocol/protocolAaAecpdu.hpp"
 #include <stdexcept>
 #include <functional>
 #include <memory>
@@ -78,6 +79,7 @@ struct EntityQueues
 +(AVB17221Entity*)makeAVB17221Entity:(la::avdecc::entity::Entity const&)entity;
 +(la::avdecc::entity::DiscoveredEntity)makeEntity:(AVB17221Entity *)entity;
 +(la::avdecc::protocol::AemAecpdu::UniquePointer)makeAemResponse:(AVB17221AECPAEMMessage*)response;
++(la::avdecc::protocol::AaAecpdu::UniquePointer)makeAaResponse:(AVB17221AECPAAMessage*)response;
 +(la::avdecc::protocol::Acmpdu::UniquePointer)makeAcmpMessage:(AVB17221ACMPMessage*)message;
 +(la::avdecc::networkInterface::MacAddress)makeMacAddress:(AVBMACAddress*)macAddress;
 +(AVBMACAddress*)makeAVBMacAddress:(la::avdecc::networkInterface::MacAddress const&)macAddress;
@@ -393,6 +395,31 @@ namespace la
 		aem.setCommandSpecificData(response.commandSpecificData.bytes, response.commandSpecificData.length);
 
 	return aemAecpdu;
+}
+
++(la::avdecc::protocol::AaAecpdu::UniquePointer)makeAaResponse:(AVB17221AECPAAMessage*)response
+{
+	auto aaAecpdu = la::avdecc::protocol::AaAecpdu::create();
+	auto& aa = static_cast<la::avdecc::protocol::AaAecpdu&>(*aaAecpdu);
+
+	// Set Ether2 fields
+#pragma message("TBD: Find a way to retrieve these information")
+	//aa.setSrcAddress();
+	//aa.setDestAddress();
+
+	// Set AECP fields
+	aa.setMessageType(la::avdecc::protocol::AecpMessageType::AddressAccessResponse);
+	aa.setStatus(la::avdecc::protocol::AecpStatus(response.status));
+	aa.setTargetEntityID(response.targetEntityID);
+	aa.setControllerEntityID(response.controllerEntityID);
+	aa.setSequenceID(response.sequenceID);
+
+	// Set Address Access fields
+	assert(false && "TODO");
+	//aa.setUnsolicited(response.isUnsolicited);
+	//aa.setCommandType(la::avdecc::protocol::AemCommandType(response.commandType));
+
+	return aaAecpdu;
 }
 
 +(la::avdecc::protocol::Acmpdu::UniquePointer)makeAcmpMessage:(AVB17221ACMPMessage*)message
