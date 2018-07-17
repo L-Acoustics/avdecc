@@ -123,25 +123,25 @@ void ControllerImpl::enableEntityAdvertising(std::uint32_t const availableDurati
 {
 	if (!_controller->enableEntityAdvertising(availableDuration))
 		throw Exception(Error::DuplicateProgID, "Specified ProgID already in use on the local computer");
-	LOG_CONTROLLER_INFO(UniqueIdentifier::getNullUniqueIdentifier(), "Controller advertising enabled");
+	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Controller advertising enabled");
 }
 
 void ControllerImpl::disableEntityAdvertising() noexcept
 {
 	_controller->disableEntityAdvertising();
-	LOG_CONTROLLER_INFO(UniqueIdentifier::getNullUniqueIdentifier(), "Controller advertising disabled");
+	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Controller advertising disabled");
 }
 
 void ControllerImpl::enableEntityModelCache() noexcept
 {
 	EntityModelCache::getInstance().enableCache();
-	LOG_CONTROLLER_INFO(UniqueIdentifier::getNullUniqueIdentifier(), "AEM Cache enabled");
+	LOG_CONTROLLER_INFO(_controller->getEntityID(), "AEM Cache enabled");
 }
 
 void ControllerImpl::disableEntityModelCache() noexcept
 {
 	EntityModelCache::getInstance().disableCache();
-	LOG_CONTROLLER_INFO(UniqueIdentifier::getNullUniqueIdentifier(), "AEM Cache disabled");
+	LOG_CONTROLLER_INFO(_controller->getEntityID(), "AEM Cache disabled");
 }
 
 /* Enumeration and Control Protocol (AECP) */
