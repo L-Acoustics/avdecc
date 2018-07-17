@@ -359,7 +359,7 @@ int doJob()
 		// Set default log level
 		la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Trace);
 
-		auto* controller = endPoint->addControllerEntity(0x0002, la::avdecc::entity::model::makeVendorEntityModel(VENDOR_ID, DEVICE_ID, MODEL_ID), &controllerDelegate);
+		auto* controller = endPoint->addControllerEntity(0x0002, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), &controllerDelegate);
 
 		// Try to start entity advertisement
 		if (!controller->enableEntityAdvertising(10))

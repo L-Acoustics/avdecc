@@ -51,20 +51,7 @@ struct StreamNodeDynamicModel
 	entity::model::AvdeccFixedString objectName{};
 	entity::model::StreamFormat currentFormat{ entity::model::getNullStreamFormat() };
 
-	entity::model::StreamInfo streamInfo{}; // TODO: Replace with the direct fields (like below) and remove ControlledEntityImpl::setInputStreamInfo / ControlledEntityImpl::setOutputStreamInfo (directly update from avdeccController.cpp)
-	// UniqueIdentifier streamID{ getNullIdentifier() };
-	// std::uint32_t msrpAccumulatedLatency{ 0u };
-	// la::avdecc::networkInterface::MacAddress streamDestMac{};
-	// std::uint8_t msrpFailureCode{ 0u };
-	// UniqueIdentifier msrpFailureBridgeID{ getNullIdentifier() };
-	// std::uint16_t streamVlanID{ 0u };
-	// bool isClassB{ false };
-	// //bool isFastConnect{ false };
-	// //bool isSavedState{ false };
-	bool isRunning{ false };
-	// bool isEncrypted{ false };
-	// bool isTalkerFailed{ false };
-	// //bool isConnected{ false };
+	entity::model::StreamInfo streamInfo{};
 };
 
 struct StreamInputNodeDynamicModel : public StreamNodeDynamicModel
@@ -88,7 +75,13 @@ struct ClockSourceNodeDynamicModel
 {
 	entity::model::AvdeccFixedString objectName{};
 	entity::ClockSourceFlags clockSourceFlags{ entity::ClockSourceFlags::None };
-	UniqueIdentifier clockSourceIdentifier{ getNullIdentifier() };
+	UniqueIdentifier clockSourceIdentifier{};
+};
+
+struct MemoryObjectNodeDynamicModel
+{
+	entity::model::AvdeccFixedString objectName{};
+	std::uint64_t length{ 0u };
 };
 
 //struct LocaleNodeDynamicModel
@@ -135,7 +128,6 @@ struct EntityNodeDynamicModel
 	entity::model::AvdeccFixedString serialNumber{};
 	std::uint16_t currentConfiguration{ 0u };
 };
-
 
 } // namespace model
 } // namespace controller

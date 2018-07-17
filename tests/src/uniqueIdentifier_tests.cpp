@@ -17,35 +17,7 @@
 * along with LA_avdecc.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/**
-* @file uniqueIdentifier.cpp
-* @author Christophe Calmejane
-*/
+#include <gtest/gtest.h>
+#include "controller/avdeccControlledEntityImpl.hpp"
 
-#include "la/avdecc/internals/uniqueIdentifier.hpp"
-
-namespace la
-{
-namespace avdecc
-{
-
-static constexpr UniqueIdentifier s_NullIdentifier = 0x0000000000000000;
-static constexpr UniqueIdentifier s_UninitializedIdentifier = 0xFFFFFFFFFFFFFFFF;
-
-UniqueIdentifier LA_AVDECC_CALL_CONVENTION getNullIdentifier() noexcept
-{
-	return s_NullIdentifier;
-}
-
-UniqueIdentifier LA_AVDECC_CALL_CONVENTION getUninitializedIdentifier() noexcept
-{
-	return s_UninitializedIdentifier;
-}
-
-bool LA_AVDECC_CALL_CONVENTION isValidUniqueIdentifier(UniqueIdentifier const eid) noexcept
-{
-	return eid != s_NullIdentifier && eid != s_UninitializedIdentifier;
-}
-
-} // namespace avdecc
-} // namespace la
+#pragma message("TODO: UniqueIdentifier unit tests")

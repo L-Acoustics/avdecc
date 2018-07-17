@@ -83,13 +83,13 @@ struct StreamNodeStaticModel
 	entity::model::LocalizedStringReference localizedDescription{ entity::model::getNullLocalizedStringReference() };
 	entity::model::ClockDomainIndex clockDomainIndex{ entity::model::ClockDomainIndex(0u) };
 	entity::StreamFlags streamFlags{ entity::StreamFlags::None };
-	UniqueIdentifier backupTalkerEntityID_0{ getNullIdentifier() };
+	UniqueIdentifier backupTalkerEntityID_0{};
 	std::uint16_t backupTalkerUniqueID_0{ 0u };
-	UniqueIdentifier backupTalkerEntityID_1{ getNullIdentifier() };
+	UniqueIdentifier backupTalkerEntityID_1{};
 	std::uint16_t backupTalkerUniqueID_1{ 0u };
-	UniqueIdentifier backupTalkerEntityID_2{ getNullIdentifier() };
+	UniqueIdentifier backupTalkerEntityID_2{};
 	std::uint16_t backupTalkerUniqueID_2{ 0u };
-	UniqueIdentifier backedupTalkerEntityID{ getNullIdentifier() };
+	UniqueIdentifier backedupTalkerEntityID{};
 	std::uint16_t backedupTalkerUnique{ 0u };
 	entity::model::AvbInterfaceIndex avbInterfaceIndex{ entity::model::AvbInterfaceIndex(0u) };
 	std::uint32_t bufferLength{ 0u };
@@ -104,7 +104,7 @@ struct AvbInterfaceNodeStaticModel
 	entity::model::LocalizedStringReference localizedDescription{ entity::model::getNullLocalizedStringReference() };
 	networkInterface::MacAddress macAddress{};
 	entity::AvbInterfaceFlags interfaceFlags{ entity::AvbInterfaceFlags::None };
-	UniqueIdentifier clockIdentify{ 0u };
+	UniqueIdentifier clockIdentity{ 0u };
 	std::uint8_t priority1{ 0xff };
 	std::uint8_t clockClass{ 0xff };
 	std::uint16_t offsetScaledLogVariance{ 0x0000 };
@@ -123,6 +123,16 @@ struct ClockSourceNodeStaticModel
 	entity::model::ClockSourceType clockSourceType{ entity::model::ClockSourceType::Internal };
 	entity::model::DescriptorType clockSourceLocationType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex clockSourceLocationIndex{ entity::model::DescriptorIndex(0u) };
+};
+
+struct MemoryObjectNodeStaticModel
+{
+	entity::model::LocalizedStringReference localizedDescription{ entity::model::getNullLocalizedStringReference() };
+	entity::model::MemoryObjectType memoryObjectType{ entity::model::MemoryObjectType::FirmwareImage };
+	entity::model::DescriptorType targetDescriptorType{ entity::model::DescriptorType::Invalid };
+	entity::model::DescriptorIndex targetDescriptorIndex{ entity::model::DescriptorIndex(0u) };
+	std::uint64_t startAddress{ 0u };
+	std::uint64_t maximumLength{ 0u };
 };
 
 struct LocaleNodeStaticModel

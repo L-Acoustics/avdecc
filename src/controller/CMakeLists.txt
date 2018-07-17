@@ -37,6 +37,7 @@ set (HEADER_FILES_COMMON
 	avdeccControlledEntityImpl.hpp
 	avdeccControlledEntityModelTree.hpp
 	avdeccControllerLogHelper.hpp
+	avdeccEntityModelCache.hpp
 )
 
 set (SOURCE_FILES_COMMON
@@ -87,7 +88,7 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 	# Setup common options
 	setup_library_options(la_avdecc_controller_cxx "la_avdecc_controller")
 
-	# Link with avdecc using shared library
+	# Link with avdecc using shared library (publicly because any executable using the controller needs low level library as well)
 	target_link_libraries(la_avdecc_controller_cxx PUBLIC la_avdecc_cxx)
 
 	# Setup libfmt

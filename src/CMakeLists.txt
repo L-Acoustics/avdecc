@@ -109,16 +109,16 @@ set (SOURCE_FILES_ENTITY
 # Common files
 set (HEADER_FILES_COMMON
 	${CMAKE_CURRENT_BINARY_DIR}/config.h
+	endStationImpl.hpp
 	logHelper.hpp
 	serialization.hpp
 )
 
 set (SOURCE_FILES_COMMON
 	avdecc.cpp
-	endStation.cpp
+	endStationImpl.cpp
 	logger.cpp
 	streamFormat.cpp
-	uniqueIdentifier.cpp
 	utils.cpp
 )
 

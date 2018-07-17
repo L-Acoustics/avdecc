@@ -102,6 +102,12 @@ public:
 		return *this;
 	}
 
+	/** Serializes a UniqueIdentifier */
+	Serializer& operator<<(UniqueIdentifier const& v)
+	{
+		return operator<<(v.getValue());
+	}
+
 	/** Serializes an AvdeccFixedString (without changing endianess) */
 	Serializer& operator<<(entity::model::AvdeccFixedString const& v)
 	{
@@ -204,6 +210,15 @@ public:
 		// Advance data pointer
 		_pos += sizeof(v);
 
+		return *this;
+	}
+
+	/** Unpacks a UniqueIdentifier */
+	Deserializer& operator>>(UniqueIdentifier& v)
+	{
+		UniqueIdentifier::value_type value;
+		operator>>(value);
+		v.setValue(value);
 		return *this;
 	}
 

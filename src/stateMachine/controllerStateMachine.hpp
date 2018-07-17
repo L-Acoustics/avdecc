@@ -96,7 +96,7 @@ private:
 		std::chrono::time_point<std::chrono::system_clock> timeout;
 		Adpdu adpdu;
 	};
-	using DiscoveredEntities = std::unordered_map<UniqueIdentifier, DiscoveredEntityInfo>;
+	using DiscoveredEntities = std::unordered_map<UniqueIdentifier, DiscoveredEntityInfo, UniqueIdentifier::hash>;
 
 	struct AecpCommandInfo
 	{
@@ -115,8 +115,8 @@ private:
 		}
 	};
 	using AecpCommands = std::list<AecpCommandInfo>;
-	using InflightAecpCommands = std::unordered_map<UniqueIdentifier, AecpCommands>;
-	using AecpCommandsQueue = std::unordered_map<UniqueIdentifier, AecpCommands>;
+	using InflightAecpCommands = std::unordered_map<UniqueIdentifier, AecpCommands, UniqueIdentifier::hash>;
+	using AecpCommandsQueue = std::unordered_map<UniqueIdentifier, AecpCommands, UniqueIdentifier::hash>;
 
 	struct AcmpCommandInfo
 	{
@@ -238,7 +238,7 @@ private:
 	size_t _maxInflightAecpMessages{ 0 };
 	bool _shouldTerminate{ false };
 	DiscoveredEntities _discoveredEntities{};
-	std::unordered_map<UniqueIdentifier, LocalEntityInfo> _localEntities{}; /** Local entities declared by the running program */
+	std::unordered_map<UniqueIdentifier, LocalEntityInfo, UniqueIdentifier::hash> _localEntities{}; /** Local entities declared by the running program */
 	std::thread _stateMachineThread{};
 };
 

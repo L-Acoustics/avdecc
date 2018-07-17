@@ -479,7 +479,7 @@ ProtocolInterface::Error ControllerStateMachine::disableEntityAdvertising(entity
 
 ProtocolInterface::Error ControllerStateMachine::discoverRemoteEntities() noexcept
 {
-	return discoverRemoteEntity(getNullIdentifier());
+	return discoverRemoteEntity(UniqueIdentifier::getNullUniqueIdentifier());
 }
 
 ProtocolInterface::Error ControllerStateMachine::discoverRemoteEntity(UniqueIdentifier const entityID) noexcept
@@ -509,7 +509,7 @@ Adpdu ControllerStateMachine::makeDiscoveryMessage(UniqueIdentifier const entity
 	frame.setMessageType(AdpMessageType::EntityDiscover);
 	frame.setValidTime(0);
 	frame.setEntityID(entityID);
-	frame.setEntityModelID(getNullIdentifier());
+	frame.setEntityModelID(UniqueIdentifier::getNullUniqueIdentifier());
 	frame.setEntityCapabilities(entity::EntityCapabilities::None);
 	frame.setTalkerStreamSources(0);
 	frame.setTalkerCapabilities(entity::TalkerCapabilities::None);
@@ -517,11 +517,11 @@ Adpdu ControllerStateMachine::makeDiscoveryMessage(UniqueIdentifier const entity
 	frame.setListenerCapabilities(entity::ListenerCapabilities::None);
 	frame.setControllerCapabilities(entity::ControllerCapabilities::None);
 	frame.setAvailableIndex(0);
-	frame.setGptpGrandmasterID(getNullIdentifier());
+	frame.setGptpGrandmasterID(UniqueIdentifier::getNullUniqueIdentifier());
 	frame.setGptpDomainNumber(0);
 	frame.setIdentifyControlIndex(0);
 	frame.setInterfaceIndex(0);
-	frame.setAssociationID(getNullIdentifier());
+	frame.setAssociationID(UniqueIdentifier::getNullUniqueIdentifier());
 
 	return frame;
 }
@@ -537,7 +537,7 @@ Adpdu ControllerStateMachine::makeEntityAvailableMessage(entity::Entity& entity)
 	frame.setMessageType(AdpMessageType::EntityAvailable);
 	frame.setValidTime(entity.getValidTime());
 	frame.setEntityID(entity.getEntityID());
-	frame.setEntityModelID(entity.getVendorEntityModelID());
+	frame.setEntityModelID(entity.getEntityModelID());
 	frame.setEntityCapabilities(entity.getEntityCapabilities());
 	frame.setTalkerStreamSources(entity.getTalkerStreamSources());
 	frame.setTalkerCapabilities(entity.getTalkerCapabilities());
@@ -565,7 +565,7 @@ Adpdu ControllerStateMachine::makeEntityDepartingMessage(entity::Entity& entity)
 	frame.setMessageType(AdpMessageType::EntityDeparting);
 	frame.setValidTime(0);
 	frame.setEntityID(entity.getEntityID());
-	frame.setEntityModelID(getNullIdentifier());
+	frame.setEntityModelID(UniqueIdentifier::getNullUniqueIdentifier());
 	frame.setEntityCapabilities(entity::EntityCapabilities::None);
 	frame.setTalkerStreamSources(0);
 	frame.setTalkerCapabilities(entity::TalkerCapabilities::None);
@@ -573,11 +573,11 @@ Adpdu ControllerStateMachine::makeEntityDepartingMessage(entity::Entity& entity)
 	frame.setListenerCapabilities(entity::ListenerCapabilities::None);
 	frame.setControllerCapabilities(entity::ControllerCapabilities::None);
 	frame.setAvailableIndex(0);
-	frame.setGptpGrandmasterID(getNullIdentifier());
+	frame.setGptpGrandmasterID(UniqueIdentifier::getNullUniqueIdentifier());
 	frame.setGptpDomainNumber(0);
 	frame.setIdentifyControlIndex(0);
 	frame.setInterfaceIndex(0);
-	frame.setAssociationID(getNullIdentifier());
+	frame.setAssociationID(UniqueIdentifier::getNullUniqueIdentifier());
 
 	return frame;
 }
@@ -664,10 +664,11 @@ void ControllerStateMachine::checkLocalEntitiesAnnouncement() noexcept
 
 void ControllerStateMachine::checkEntitiesTimeoutExpiracy() noexcept
 {
-	std::chrono::time_point<std::chrono::system_clock> currentTime = std::chrono::system_clock::now();
-
 	// Lock self
 	std::lock_guard<ControllerStateMachine> const lg(getSelf());
+
+	// Get current time
+	std::chrono::time_point<std::chrono::system_clock> currentTime = std::chrono::system_clock::now();
 
 	for (auto it = _discoveredEntities.begin(); it != _discoveredEntities.end(); /* Iterate inside the loop */)
 	{
@@ -686,10 +687,11 @@ void ControllerStateMachine::checkEntitiesTimeoutExpiracy() noexcept
 
 void ControllerStateMachine::checkInflightCommandsTimeoutExpiracy() noexcept
 {
-	std::chrono::time_point<std::chrono::system_clock> currentTime = std::chrono::system_clock::now();
-
 	// Lock self
 	std::lock_guard<ControllerStateMachine> const lg(getSelf());
+
+	// Get current time
+	std::chrono::time_point<std::chrono::system_clock> currentTime = std::chrono::system_clock::now();
 
 	for (auto& localEntityKV : _localEntities)
 	{
@@ -870,7 +872,7 @@ void ControllerStateMachine::handleAdpEntityDiscover(Adpdu const& adpdu) noexcep
 		auto& entityInfo = entityKV.second;
 		auto& entity = entityInfo.entity;
 		// Only reply to global (entityID == 0) discovery messages (only if advertising is active) and to targeted ones
-		if ((!isValidUniqueIdentifier(entityID) && entityInfo.isAdvertising) || entityID == entity.getEntityID())
+		if ((!entityID && entityInfo.isAdvertising) || entityID == entity.getEntityID())
 		{
 			// Build the EntityAvailable message
 			auto frame = makeEntityAvailableMessage(entity);

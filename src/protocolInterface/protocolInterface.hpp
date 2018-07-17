@@ -105,10 +105,10 @@ public:
 
 	virtual ~ProtocolInterface() noexcept = default;
 
-	/** Returns the Mac Address associated with the network interface name */
+	/** Returns the Mac Address associated with the network interface name. */
 	networkInterface::MacAddress const& getMacAddress() const noexcept;
 
-	/** Returns the interface index associated with the network interface name */
+	/** Returns the interface index associated with the network interface name. */
 	std::uint16_t getInterfaceIndex() const noexcept;
 
 	// Virtual interface

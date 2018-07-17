@@ -22,6 +22,8 @@
 * @author Christophe Calmejane
 */
 
+#pragma once
+
 #include "la/avdecc/controller/internals/avdeccControlledEntity.hpp"
 #include "avdeccControlledEntityModelTree.hpp"
 #include <string>
@@ -29,6 +31,8 @@
 #include <unordered_set>
 #include <bitset>
 #include <functional>
+#include <chrono>
+#include <utility>
 
 namespace la
 {
@@ -58,41 +62,63 @@ public:
 class ControlledEntityImpl : public ControlledEntity
 {
 public:
+	enum class EnumerationSteps : std::uint16_t
+	{
+		None = 0,
+		GetMilanVersion = 1u << 0,
+		RegisterUnsol = 1u << 1,
+		GetStaticModel = 1u << 2,
+		GetDescriptorDynamicInfo = 1u << 3, /** DescriptorDynamicInfoType */
+		GetDynamicInfo = 1u << 4, /** DynamicInfoType */
+	};
+
+	/** Dynamic information to retrieve from entities. This is always required, either from a first enumeration or from recover from loss of unsolicited notification. */
 	enum class DynamicInfoType : std::uint16_t
 	{
-		// Always required to query (full entity enumeration and dynamic state sync)
-		InputStreamAudioMappings,
-		OutputStreamAudioMappings,
-		InputStreamState,
-		OutputStreamState,
-		OutputStreamConnection,
-		InputStreamInfo,
-		OutputStreamInfo,
-		GetAvbInfo,
+		InputStreamAudioMappings, // getStreamPortInputAudioMap (GET_AUDIO_MAP)
+		OutputStreamAudioMappings, // getStreamPortOutputAudioMap (GET_AUDIO_MAP)
+		InputStreamState, // getListenerStreamState (GET_RX_STATE)
+		OutputStreamState, // getTalkerStreamState (GET_TX_STATE)
+		OutputStreamConnection, // getTalkerStreamConnection (GET_TX_CONNECTION)
+		InputStreamInfo, // getStreamInputInfo (GET_STREAM_INFO)
+		OutputStreamInfo, // getStreamOutputInfo (GET_STREAM_INFO)
+		GetAvbInfo, // getAvbInfo (GET_AVB_INFO)
 		GetAsPath,
-		// Required only when sync'ing dynamic state
-		InputStreamFormat,
-		OutputStreamFormat,
-		EntityName,
-		EntityGroupName,
-		ConfigurationName,
-		InputStreamName,
-		OutputStreamName,
-		AudioUnitSamplingRate,
-		ClockSource,
+	};
+
+	/** Dynamic information stored in descriptors. Only required to retrieve from entities when the static model is known (because it was in EntityModelID cache).  */
+	enum class DescriptorDynamicInfoType : std::uint16_t
+	{
+		ConfigurationName, // CONFIGURATION.object_name -> GET_NAME (7.4.18)
+		AudioUnitName, // AUDIO_UNIT.object_name -> GET_NAME (7.4.18)
+		AudioUnitSamplingRate, // AUDIO_UNIT.current_sampling_rate GET_SAMPLING_RATE (7.4.22)
+		InputStreamName, // STREAM_INPUT.object_name -> GET_NAME (7.4.18)
+		InputStreamFormat, // STREAM_INPUT.current_format -> GET_STREAM_FORMAT (7.4.10)
+		OutputStreamName, // STREAM_OUTPUT.object_name -> GET_NAME (7.4.18)
+		OutputStreamFormat, // STREAM_OUTPUT.current_format -> GET_STREAM_FORMAT (7.4.10)
+		AvbInterfaceName, // AVB_INTERFACE.object_name -> GET_NAME (7.4.18)
+		ClockSourceName, // CLOCK_SOURCE.object_name -> GET_NAME (7.4.18)
+		MemoryObjectName, // MEMORY_OBJECT.object_name -> GET_NAME (7.4.18)
+		MemoryObjectLength, // MEMORY_OBJECT.length -> GET_MEMORY_OBJECT_LENGTH (7.4.73)
+		AudioClusterName, // AUDIO_CLUSTER.object_name -> GET_NAME (7.4.18)
+		ClockDomainName, // CLOCK_DOMAIN.object_name -> GET_NAME (7.4.18)
+		ClockDomainSourceIndex, // CLOCK_DOMAIN.clock_source_index -> GET_CLOCK_SOURCE (7.4.24)
 	};
 
 	using DescriptorKey = std::uint32_t;
 	static_assert(sizeof(DescriptorKey) >= sizeof(entity::model::DescriptorType) + sizeof(entity::model::DescriptorIndex), "DescriptorKey size must be greater or equal to DescriptorType + DescriptorIndex");
 	using DynamicInfoKey = std::uint64_t;
 	static_assert(sizeof(DynamicInfoKey) >= sizeof(DynamicInfoType) + sizeof(entity::model::DescriptorIndex) + sizeof(std::uint16_t), "DynamicInfoKey size must be greater or equal to DynamicInfoType + DescriptorIndex + std::uint16_t");
+	using DescriptorDynamicInfoKey = std::uint64_t;
+	static_assert(sizeof(DescriptorDynamicInfoKey) >= sizeof(DescriptorDynamicInfoType) + sizeof(entity::model::DescriptorIndex), "DescriptorDynamicInfoKey size must be greater or equal to DescriptorDynamicInfoType + DescriptorIndex");
 
 	/** Constructor */
 	ControlledEntityImpl(la::avdecc::entity::Entity const& entity) noexcept;
 
 	// ControlledEntity overrides
 	// Getters
-	virtual bool gotEnumerationError() const noexcept override;
+	virtual Compatibility getCompatibility() const noexcept override;
+	virtual bool gotFatalEnumerationError() const noexcept override;
 	virtual bool isAcquired() const noexcept override;
 	virtual bool isAcquiring() const noexcept override;
 	virtual bool isAcquiredByOther() const noexcept override;
@@ -136,86 +162,166 @@ public:
 	/** Get connections information about a talker's stream */
 	virtual model::StreamConnections const& getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const override; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 
-	// Const getters
-	model::EntityDescriptor const& getEntityDescriptor() const; // Throws Exception::NotSupported if EM not supported by the Entity
-	model::ConfigurationDescriptor const& getConfigurationDescriptor(entity::model::ConfigurationIndex const configurationIndex) const; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
-	model::AudioUnitDescriptor const& getAudioUnitDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex) const; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if audioUnitIndex do not exist
-	model::StreamInputDescriptor const& getStreamInputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
-	model::StreamOutputDescriptor const& getStreamOutputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
-	model::AvbInterfaceDescriptor const& getAvbInterfaceDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex) const; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if avbInterfaceIndex do not exist
-	model::ClockSourceDescriptor const& getClockSourceDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex) const; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if clockSourceIndex do not exist
-	model::LocaleDescriptor const& getLocaleDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocaleIndex const localeIndex) const; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if localeIndex do not exist
-	model::StringsDescriptor const& getStringsDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const stringsIndex) const; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if stringsIndex do not exist
-	model::StreamPortDescriptor const& getStreamPortInputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) const; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
-	model::StreamPortDescriptor const& getStreamPortOutputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) const; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
-	model::AudioClusterDescriptor const& getAudioClusterDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex) const; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if clusterIndex do not exist
-	model::AudioMapDescriptor const& getAudioMapDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex) const; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if mapIndex do not exist
-	model::ClockDomainDescriptor const& getClockDomainDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) const; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if clockDomainIndex do not exist
+	// Const Tree getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist
+	model::EntityStaticTree const& getEntityStaticTree() const;
+	model::EntityDynamicTree const& getEntityDynamicTree() const;
+	model::ConfigurationStaticTree const& getConfigurationStaticTree(entity::model::ConfigurationIndex const configurationIndex) const;
+	model::ConfigurationDynamicTree const& getConfigurationDynamicTree(entity::model::ConfigurationIndex const configurationIndex) const;
+	entity::model::ConfigurationIndex getCurrentConfigurationIndex() const noexcept;
 
-	// Non-const getters
-	model::EntityDescriptor& getEntityDescriptor(); // Throws Exception::NotSupported if EM not supported by the Entity
-	model::ConfigurationDescriptor& getConfigurationDescriptor(entity::model::ConfigurationIndex const configurationIndex); // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
-	model::AudioUnitDescriptor& getAudioUnitDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex); // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if audioUnitIndex do not exist
-	model::StreamInputDescriptor& getStreamInputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex); // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
-	model::StreamOutputDescriptor& getStreamOutputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex); // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
-	model::AvbInterfaceDescriptor& getAvbInterfaceDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex); // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if avbInterfaceIndex do not exist
-	model::ClockSourceDescriptor& getClockSourceDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex); // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if clockSourceIndex do not exist
-	model::LocaleDescriptor& getLocaleDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocaleIndex const localeIndex); // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if localeIndex do not exist
-	model::StringsDescriptor& getStringsDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const stringsIndex); // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if stringsIndex do not exist
-	model::StreamPortDescriptor& getStreamPortInputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex); // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
-	model::StreamPortDescriptor& getStreamPortOutputDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex); // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
-	model::AudioClusterDescriptor& getAudioClusterDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex); // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if clusterIndex do not exist
-	model::AudioMapDescriptor& getAudioMapDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex); // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if mapIndex do not exist
-	model::ClockDomainDescriptor& getClockDomainDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex); // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if clockDomainIndex do not exist
+	// Const NodeModel getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist, Exception::InvalidDescriptorIndex if descriptorIndex is invalid
+	model::EntityNodeStaticModel const& getEntityNodeStaticModel() const;
+	model::EntityNodeDynamicModel const& getEntityNodeDynamicModel() const;
+	model::ConfigurationNodeStaticModel const& getConfigurationNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex) const;
+	model::ConfigurationNodeDynamicModel const& getConfigurationNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex) const;
+	template<typename FieldPointer, typename DescriptorIndexType>
+	typename std::remove_pointer_t<FieldPointer>::mapped_type const& getNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer model::ConfigurationStaticTree::*Field) const
+	{
+		auto const& configStaticTree = getConfigurationStaticTree(configurationIndex);
+
+		auto const it = (configStaticTree.*Field).find(index);
+		if (it == (configStaticTree.*Field).end())
+			throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid index");
+
+		return it->second;
+	}
+	template<typename FieldPointer, typename DescriptorIndexType>
+	typename std::remove_pointer_t<FieldPointer>::mapped_type const& getNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer model::ConfigurationDynamicTree::*Field) const
+	{
+		auto const& configDynamicTree = getConfigurationDynamicTree(configurationIndex);
+
+		auto const it = (configDynamicTree.*Field).find(index);
+		if (it == (configDynamicTree.*Field).end())
+			throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid index");
+
+		return it->second;
+	}
+
+	// Non-const Tree getters
+	model::EntityStaticTree& getEntityStaticTree() noexcept;
+	model::EntityDynamicTree& getEntityDynamicTree() noexcept;
+	model::ConfigurationStaticTree& getConfigurationStaticTree(entity::model::ConfigurationIndex const configurationIndex) noexcept;
+	model::ConfigurationDynamicTree& getConfigurationDynamicTree(entity::model::ConfigurationIndex const configurationIndex) noexcept;
+
+	// Non-const NodeModel getters
+	model::EntityNodeStaticModel& getEntityNodeStaticModel() noexcept;
+	model::EntityNodeDynamicModel& getEntityNodeDynamicModel() noexcept;
+	model::ConfigurationNodeStaticModel& getConfigurationNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex) noexcept;
+	model::ConfigurationNodeDynamicModel& getConfigurationNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex) noexcept;
+	template<typename FieldPointer, typename DescriptorIndexType>
+	typename std::remove_pointer_t<FieldPointer>::mapped_type& getNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer model::ConfigurationStaticTree::*Field) noexcept
+	{
+		auto& configStaticTree = getConfigurationStaticTree(configurationIndex);
+		return (configStaticTree.*Field)[index];
+	}
+	template<typename FieldPointer, typename DescriptorIndexType>
+	typename std::remove_pointer_t<FieldPointer>::mapped_type& getNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer model::ConfigurationDynamicTree::*Field) noexcept
+	{
+		auto& configDynamicTree = getConfigurationDynamicTree(configurationIndex);
+		return (configDynamicTree.*Field)[index];
+	}
+
+	// Setters of the DescriptorDynamic info, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist, Exception::InvalidDescriptorIndex if descriptorIndex is invalid
+	void setEntityName(entity::model::AvdeccFixedString const& name) noexcept;
+	void setEntityGroupName(entity::model::AvdeccFixedString const& name) noexcept;
+	void setCurrentConfiguration(entity::model::ConfigurationIndex const configurationIndex) noexcept;
+	void setConfigurationName(entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& name) noexcept;
+	template<typename FieldPointer, typename DescriptorIndexType>
+	void setObjectName(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer model::ConfigurationDynamicTree::*Field, entity::model::AvdeccFixedString const& name) noexcept
+	{
+		auto& dynamicModel = getNodeDynamicModel(configurationIndex, index, Field);
+		dynamicModel.objectName = name;
+	}
+	void setSamplingRate(entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate) noexcept;
+	void setStreamInputFormat(entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) noexcept;
+	model::StreamConnectionState setStreamInputConnectionState(entity::model::StreamIndex const streamIndex, model::StreamConnectionState const& state) noexcept;
+	entity::model::StreamInfo setStreamInputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept; // Returns previous StreamInfo
+	void setStreamOutputFormat(entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) noexcept;
+	void clearStreamOutputConnections(entity::model::StreamIndex const streamIndex) noexcept;
+	bool addStreamOutputConnection(entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream) noexcept; // Returns true if effectively added
+	bool delStreamOutputConnection(entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream) noexcept; // Returns true if effectively removed
+	entity::model::StreamInfo setStreamOutputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept; // Returns previous StreamInfo
+	entity::model::AvbInfo setAvbInfo(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) noexcept; // Returns previous AvbInfo
+	void setSelectedLocaleBaseIndex(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const baseIndex) noexcept;
+	void clearStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) noexcept;
+	void addStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept;
+	void removeStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept;
+	void clearStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) noexcept;
+	void addStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept;
+	void removeStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept;
+	void setClockSource(entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex) noexcept;
+	void setMemoryObjectLength(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) noexcept;
 
 	// Setters (of the model, not the physical entity)
 	void setEntity(entity::Entity const& entity) noexcept;
-	void setAcquireState(model::AcquireState const state) noexcept; // TODO: This API and all 'acquire' related ones should take a descriptor and index (the acquired state is per branch of the EM)
+	void setAcquireState(model::AcquireState const state) noexcept;
 	void setOwningController(UniqueIdentifier const controllerID) noexcept;
-	void setEntityDescriptor(entity::model::EntityDescriptor const& descriptor);
-	void setConfigurationDescriptor(entity::model::ConfigurationDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex);
-	void setAudioUnitDescriptor(entity::model::AudioUnitDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex);
-	void setStreamInputDescriptor(entity::model::StreamDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex);
-	void setStreamOutputDescriptor(entity::model::StreamDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex);
-	void setAvbInterfaceDescriptor(entity::model::AvbInterfaceDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const interfaceIndex);
-	void setClockSourceDescriptor(entity::model::ClockSourceDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockIndex);
-	void setSelectedLocaleBaseIndex(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const baseIndex);
-	void setLocaleDescriptor(entity::model::LocaleDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::LocaleIndex const localeIndex); /* True if all locale descriptors loaded */
-	void setStringsDescriptor(entity::model::StringsDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const stringsIndex);
-	void setStreamPortInputDescriptor(entity::model::StreamPortDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex);
-	void setStreamPortOutputDescriptor(entity::model::StreamPortDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex);
-	void setAudioClusterDescriptor(entity::model::AudioClusterDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex);
-	void setAudioMapDescriptor(entity::model::AudioMapDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex);
-	void setClockDomainDescriptor(entity::model::ClockDomainDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex);
-	void setInputStreamState(model::StreamConnectionState const& state, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex);
-	void clearPortInputStreamAudioMappings(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex);
-	void clearPortOutputStreamAudioMappings(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex);
-	void addPortInputStreamAudioMappings(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings);
-	void addPortOutputStreamAudioMappings(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings);
-	void removePortInputStreamAudioMappings(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings);
-	void removePortOutputStreamAudioMappings(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings);
-	void clearStreamOutputConnections(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex);
-	bool addStreamOutputConnection(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream);
-	bool delStreamOutputConnection(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream);
-	void setInputStreamInfo(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info);
-	void setOutputStreamInfo(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info);
-	void setAvbInfo(entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info);
+
+	// Setters of the Model from AEM Descriptors (including DescriptorDynamic info)
+	bool setCachedEntityStaticTree(model::EntityStaticTree const& cachedStaticTree, entity::model::EntityDescriptor const& descriptor) noexcept; // Returns true if the cached EntityStaticTree is accepted (and set) for this entity
+	void setEntityDescriptor(entity::model::EntityDescriptor const& descriptor) noexcept;
+	void setConfigurationDescriptor(entity::model::ConfigurationDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex) noexcept;
+	void setAudioUnitDescriptor(entity::model::AudioUnitDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex) noexcept;
+	void setStreamInputDescriptor(entity::model::StreamDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) noexcept;
+	void setStreamOutputDescriptor(entity::model::StreamDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) noexcept;
+	void setAvbInterfaceDescriptor(entity::model::AvbInterfaceDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const interfaceIndex) noexcept;
+	void setClockSourceDescriptor(entity::model::ClockSourceDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockIndex) noexcept;
+	void setMemoryObjectDescriptor(entity::model::MemoryObjectDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex) noexcept;
+	void setLocaleDescriptor(entity::model::LocaleDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::LocaleIndex const localeIndex) noexcept;
+	void setStringsDescriptor(entity::model::StringsDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const stringsIndex) noexcept;
+	void setLocalizedStrings(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const stringsIndex, model::AvdeccFixedStrings const& strings) noexcept;
+	void setStreamPortInputDescriptor(entity::model::StreamPortDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) noexcept;
+	void setStreamPortOutputDescriptor(entity::model::StreamPortDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) noexcept;
+	void setAudioClusterDescriptor(entity::model::AudioClusterDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex) noexcept;
+	void setAudioMapDescriptor(entity::model::AudioMapDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex) noexcept;
+	void setClockDomainDescriptor(entity::model::ClockDomainDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) noexcept;
 
 	// Expected descriptor query methods
 	bool checkAndClearExpectedDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept;
 	void setDescriptorExpected(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept;
 	bool gotAllExpectedDescriptors() const noexcept;
-	void clearExpectedDescriptors(entity::model::ConfigurationIndex const configurationIndex) noexcept;
+	std::pair<bool, std::chrono::milliseconds> getQueryDescriptorRetryTimer() noexcept;
 
 	// Expected dynamic info query methods
 	bool checkAndClearExpectedDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const connectionIndex = 0u) noexcept;
 	void setDynamicInfoExpected(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const connectionIndex = 0u) noexcept;
 	bool gotAllExpectedDynamicInfo() const noexcept;
-	void clearExpectedDynamicInfo(entity::model::ConfigurationIndex const configurationIndex) noexcept;
+	std::pair<bool, std::chrono::milliseconds> getQueryDynamicInfoRetryTimer() noexcept;
 
-	void setEnumerationError(bool const gotEnumerationError) noexcept;
+	// Expected descriptor dynamic info query methods
+	bool checkAndClearExpectedDescriptorDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept;
+	void setDescriptorDynamicInfoExpected(entity::model::ConfigurationIndex const configurationIndex, DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept;
+	void clearAllExpectedDescriptorDynamicInfo() noexcept;
+	bool gotAllExpectedDescriptorDynamicInfo() const noexcept;
+	std::pair<bool, std::chrono::milliseconds> getQueryDescriptorDynamicInfoRetryTimer() noexcept;
+
+	// Other getters/setters
+	bool shouldIgnoreCachedEntityModel() const noexcept;
+	void setIgnoreCachedEntityModel() noexcept;
+	EnumerationSteps getEnumerationSteps() const noexcept;
+	void addEnumerationSteps(EnumerationSteps const steps) noexcept;
+	void clearEnumerationSteps(EnumerationSteps const steps) noexcept;
+	void setCompatibility(Compatibility const compatibility) noexcept;
+	void setGetFatalEnumerationError() noexcept;
 	bool wasAdvertised() const noexcept;
 	void setAdvertised(bool const wasAdvertised) noexcept;
+
+	// Other usefull manipulation methods
+	constexpr static bool isStreamRunningFlag(entity::StreamInfoFlags const flags) noexcept
+	{
+		return !hasFlag(flags, entity::StreamInfoFlags::StreamingWait);
+	}
+	constexpr static void setStreamRunningFlag(entity::StreamInfoFlags& flags, bool const isRunning) noexcept
+	{
+		if (isRunning)
+		{
+			clearFlag(flags, entity::StreamInfoFlags::StreamingWait);
+		}
+		else
+		{
+			addFlag(flags, entity::StreamInfoFlags::StreamingWait);
+		}
+	}
 
 	// Defaulted compiler auto-generated methods
 	ControlledEntityImpl(ControlledEntityImpl&&) = default;
@@ -263,19 +369,35 @@ private:
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 	// Private variables
+	bool _ignoreCachedEntityModel{ false };
+	std::uint16_t _queryDescriptorRetryCount{ 0u };
+	std::uint16_t _queryDynamicInfoRetryCount{ 0u };
+	std::uint16_t _queryDescriptorDynamicInfoRetryCount{ 0u };
+	EnumerationSteps _enumerationSteps{ EnumerationSteps::None };
+	Compatibility _compatibility{ Compatibility::IEEE17221 }; // Entity compatibility type
+	bool _gotFatalEnumerateError{ false }; // Have we got a fatal error during entity enumeration
+	bool _advertised{ false }; // Has the entity been advertised to the observers
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DescriptorKey>> _expectedDescriptors{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DynamicInfoKey>> _expectedDynamicInfo{};
-	bool _enumerateError{ false }; // Have we got an error during entity enumeration
-	bool _advertised{ false }; // Has the entity been advertised to the observers
+	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DescriptorDynamicInfoKey>> _expectedDescriptorDynamicInfo{};
 	model::AcquireState _acquireState{ model::AcquireState::Undefined }; // TODO: Should be a graph of descriptors
-	UniqueIdentifier _owningControllerID{ getUninitializedIdentifier() }; // EID of the controller currently owning (who acquired) this entity
+	UniqueIdentifier _owningControllerID{}; // EID of the controller currently owning (who acquired) this entity
 	// Entity variables
 	ModifiableEntity _entity; // No NSMI, Entity has no default constructor but it has to be passed to the only constructor of this class anyway
 	// Entity Model
-	mutable model::EntityDescriptor _entityModel{}; // Model as represented by the AVDECC protocol
-	mutable model::EntityNode _entityNode{}; // Model as represented by the ControlledEntity
+	mutable model::EntityStaticTree _entityStaticTree{}; // Static part of the model as represented by the AVDECC protocol
+	mutable model::EntityDynamicTree _entityDynamicTree{}; // Dynamic part of the model as represented by the AVDECC protocol
+	mutable model::EntityNode _entityNode{}; // Model as represented by the ControlledEntity (tree of references to the model::EntityDescriptor and model::EntityDynamicInfo)
 };
 
 } // namespace controller
+
+// Define bitfield enum traits for controller::ControlledEntityImpl::EnumerationSteps
+template<>
+struct enum_traits<controller::ControlledEntityImpl::EnumerationSteps>
+{
+	static constexpr bool is_bitfield = true;
+};
+
 } // namespace avdecc
 } // namespace la

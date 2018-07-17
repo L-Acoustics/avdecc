@@ -105,12 +105,12 @@ public:
 	* @brief Create and attach a controller entity to the EndStation.
 	* @details Creates and attaches a controller type entity to the EndStation.
 	* @param[in] progID ID that will be used to generate the #UniqueIdentifier for the controller.
-	* @param[in] vendorEntityModelID The VendorEntityModel value for the controller. You can use entity::model::makeVendorEntityModel to create this value.
+	* @param[in] entityModelID The EntityModelID value for the controller. You can use entity::model::makeEntityModelID to create this value.
 	* @param[in] delegate The Delegate to be called whenever a controller related notification occurs.
 	* @return A weak pointer to the newly created ControllerEntity.
 	* @note Might throw an Exception.
 	*/
-	virtual entity::ControllerEntity* addControllerEntity(std::uint16_t const progID, entity::model::VendorEntityModel const vendorEntityModelID, entity::ControllerEntity::Delegate* const delegate) = 0;
+	virtual entity::ControllerEntity* addControllerEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::ControllerEntity::Delegate* const delegate) = 0;
 
 	// Deleted compiler auto-generated methods
 	EndStation(EndStation&&) = delete;

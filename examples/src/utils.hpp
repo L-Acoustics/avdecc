@@ -22,6 +22,8 @@
 * @author Christophe Calmejane
 */
 
+#pragma once
+
 /** ************************************************************************ **/
 /** UTILS METHODS TO HANDLE CURSES/NON-CURSES I/O FOR CONSOLE SAMPLES        **/
 /** ************************************************************************ **/

@@ -58,7 +58,7 @@ TEST(ControllerEntity, DispatchWhileSending)
 	la::avdecc::InstrumentationNotifier::getInstance().registerObserver(&instrumentationObserver);
 
 	auto pi = la::avdecc::protocol::ProtocolInterfaceVirtual::create("VirtualInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } });
-	auto controllerGuard = std::make_unique<la::avdecc::entity::LocalEntityGuard<la::avdecc::entity::ControllerEntityImpl>>(pi.get(), 1, 0, nullptr);
+	auto controllerGuard = std::make_unique<la::avdecc::entity::LocalEntityGuard<la::avdecc::entity::ControllerEntityImpl>>(pi.get(), std::uint16_t{ 1 }, la::avdecc::UniqueIdentifier{ 0u }, nullptr);
 	auto* const controller = static_cast<la::avdecc::entity::ControllerEntity*>(controllerGuard.get());
 
 	// Wait for ProtocolInterfaceVirtual dispatch thread to process the discovery message
@@ -66,7 +66,7 @@ TEST(ControllerEntity, DispatchWhileSending)
 	ASSERT_NE(std::future_status::timeout, status) << "Test conception failure";
 
 	// Ok we can send a message
-	controller->getListenerStreamState({ 0x000102FFFE030405, 0u }, nullptr);
+	controller->getListenerStreamState({ la::avdecc::UniqueIdentifier{ 0x000102FFFE030405 }, 0u }, nullptr);
 
 	// Wait for the test to be completed
 	status = testCompletedPromise.get_future().wait_for(std::chrono::seconds(5));

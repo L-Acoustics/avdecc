@@ -4,6 +4,26 @@ All notable changes to the Avdecc Library will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2018-07-17
+### Added
+- getStreamInputFormat, getStreamOutputFormat, setAudioUnitName, getAudioUnitName, setAvbInterfaceName, getAvbInterfaceName, setClockSourceName, getClockSourceName, getClockSource, setMemoryObjectName, getMemoryObjectName, setAudioClusterName, getAudioClusterName, setClockDomainName, getClockDomainName, getAudioUnitSamplingRate, getVideoClusterSamplingRate, getSensorClusterSamplingRate, setMemoryObjectLength, getMemoryObjectLength
+- Notification callbacks for onAudioUnitNameChanged, onAvbInterfaceNameChanged, onClockSourceNameChanged, onMemoryObjectNameChanged, onAudioClusterNameChanged, onClockDomainNameChanged, onMemoryObjectLengthChanged
+
+### Changed
+- la::avdecc::Entity::getVendorEntityModelID() renamed getEntityModelID()
+- la::avdecc::entity::model::makeVendorEntityModel() renamed makeEntityModelID()
+- la::avdecc::entity::model::splitVendorEntityModel() renamed splitEntityModelID()
+- Every occurrence of vendorEntityModelID renamed entityModelID
+- la::avdecc::UniqueIdentifier is now a complex type with member helper methods
+- some methods of la::avdecc::protocol::Adpdu were not declared noexcept
+- la::avdecc::entity::model::AvbInterfaceDescriptor::clockIdentify renamed clockIdentity
+
+### Removed
+- la::avdecc::entity::model::VendorEntityModel (should be la::avdecc::UniqueIdentifier)
+
+### Fixed
+- Getting system current time after mutex has been acquired, not before
+
 ## [2.5.3] - 2018-06-18
 ### Fixed
 - Descriptors value initialization for LocalizedStringReference type
