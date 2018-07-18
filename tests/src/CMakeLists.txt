@@ -20,6 +20,7 @@ set(TESTS_SOURCE
 	controllerStateMachine_tests.cpp
 	instrumentationObserver.hpp
 	logger_tests.cpp
+	memoryBuffer_tests.cpp
 	protocolAvtpdu_tests.cpp
 	protocolInterface_pcap_tests.cpp
 	protocolInterface_virtual_tests.cpp

@@ -3383,6 +3383,8 @@ std::string LA_AVDECC_CALL_CONVENTION ControllerEntity::statusToString(Controlle
 		case ControlStatus::NotSupported:
 			return "The command is not supported";
 		// Library Error Codes
+		case ControlStatus::NetworkError:
+			return "Network error";
 		case ControlStatus::ProtocolError:
 			return "Protocol error";
 		case ControlStatus::TimedOut:

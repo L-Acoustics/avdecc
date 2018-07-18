@@ -47,15 +47,19 @@ public:
 	using value_type = std::uint8_t;
 	using memory_data_type = std::vector<value_type>;
 
-	/** Default constructor. */
-	//Tlv() noexcept
-	//{
-	//}
+	/** Default constructor for an invalid Tlv. */
+	Tlv() noexcept
+	{
+	}
 
 	/** Constructor from a length for a Read mode. */
 	Tlv(std::uint64_t const address, size_t const length)
 		: _mode(protocol::AaMode::Read), _address(address)
 	{
+		if (length == 0u)
+		{
+			throw std::invalid_argument("Length is 0");
+		}
 		if (length > MaxLength)
 		{
 			throw std::invalid_argument("Length too big");
@@ -67,6 +71,10 @@ public:
 	Tlv(protocol::AaMode const mode, std::uint64_t const address, size_t const length)
 		: _mode(mode), _address(address)
 	{
+		if (length == 0u)
+		{
+			throw std::invalid_argument("Length is 0");
+		}
 		if (length > MaxLength)
 		{
 			throw std::invalid_argument("Length too big");
@@ -78,6 +86,10 @@ public:
 	Tlv(std::uint64_t const address, protocol::AaMode const mode, memory_data_type const& memoryData)
 		: _mode(mode), _address(address)
 	{
+		if (memoryData.size() == 0u)
+		{
+			throw std::invalid_argument("Length is 0");
+		}
 		if (memoryData.size() > MaxLength)
 		{
 			throw std::invalid_argument("Length too big");
@@ -89,6 +101,10 @@ public:
 	Tlv(std::uint64_t const address, protocol::AaMode const mode, memory_data_type&& memoryData)
 		: _mode(mode), _address(address)
 	{
+		if (memoryData.size() == 0u)
+		{
+			throw std::invalid_argument("Length is 0");
+		}
 		if (memoryData.size() > MaxLength)
 		{
 			throw std::invalid_argument("Length too big");
@@ -100,6 +116,10 @@ public:
 	Tlv(std::uint64_t const address, protocol::AaMode const mode, void const* const ptr, size_t const size)
 		: _mode(mode), _address(address)
 	{
+		if (size == 0u)
+		{
+			throw std::invalid_argument("Length is 0");
+		}
 		if (size > MaxLength)
 		{
 			throw std::invalid_argument("Length too big");
@@ -154,9 +174,9 @@ public:
 	}
 
 	/** True if the Tlv is valid. */
-	constexpr bool isValid() const noexcept
+	bool isValid() const noexcept
 	{
-		return _address != 0u && !_memoryData.empty();
+		return !_memoryData.empty();
 	}
 
 	/** operator== */
@@ -172,7 +192,7 @@ public:
 	}
 
 	/** Validity operator. */
-	explicit constexpr operator bool() const noexcept
+	explicit operator bool() const noexcept
 	{
 		return isValid();
 	}

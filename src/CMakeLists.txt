@@ -39,6 +39,7 @@ set (HEADER_FILES_CPP_NETWORK_INTERFACE_HELPER networkInterfaceHelper/networkInt
 set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/avdecc.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/logger.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/memoryBuffer.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/networkInterfaceHelper.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/utils.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/controllerEntity.hpp

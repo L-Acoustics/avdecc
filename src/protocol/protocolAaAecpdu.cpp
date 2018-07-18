@@ -115,6 +115,7 @@ void AaAecpdu::deserialize(DeserializationBuffer& buffer)
 
 		buffer.unpackBuffer(tlv.data(), length);
 
+		_tlvData.push_back(std::move(tlv));
 		_tlvDataLength += TlvHeaderLength + length;
 	}
 

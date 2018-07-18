@@ -33,6 +33,7 @@
 #include <vector>
 #include <thread>
 #include <mutex>
+#include <fstream>
 #include <chrono>
 #include <unordered_map>
 #include <stdexcept>
@@ -127,6 +128,30 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 		else
 		{
 			outputText("New unknown entity online: " + la::avdecc::toHexString(entityID, true) + "\n");
+		}
+
+		// Get PNG Manufacturer image
+		auto const& configNode = entity->getCurrentConfigurationNode();
+		for (auto const& objIt : configNode.memoryObjects)
+		{
+			auto const& obj = objIt.second;
+			if (obj.staticModel->memoryObjectType == la::avdecc::entity::model::MemoryObjectType::PngManufacturer)
+			{
+				_controller->readDeviceMemory(entity->getEntity().getEntityID(), obj.staticModel->startAddress, obj.staticModel->maximumLength, [](la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AaCommandStatus const status, la::avdecc::controller::Controller::DeviceMemoryBuffer const& memoryBuffer)
+				{
+					if (!!status && entity)
+					{
+						auto const fileName{ std::to_string(entity->getEntity().getEntityID()) + ".png" };
+						std::ofstream file(fileName, std::ios::binary);
+						if (file.is_open())
+						{
+							file.write(reinterpret_cast<char const*>(memoryBuffer.data()), memoryBuffer.size());
+							file.close();
+							outputText("Memory Object saved to file: " + fileName + "\n");
+						}
+					}
+				});
+			}
 		}
 	}
 	else

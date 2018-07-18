@@ -43,7 +43,6 @@ public:
 	static constexpr size_t HeaderLength = 2; /* TlvCount */
 	static constexpr size_t MaximumTlvDataLength = Aecpdu::MaximumLength - Aecpdu::HeaderLength - HeaderLength; /* Maximum tlv_data field length */
 	static constexpr size_t TlvHeaderLength = 10; /* Mode + Length + Address */
-	static constexpr size_t MaximumSingleTlvMemoryDataLength = Aecpdu::MaximumLength - Aecpdu::HeaderLength - HeaderLength - TlvHeaderLength; /* Maximum individual TLV memory_data length */
 
 	/**
 	* @brief Factory method to create a new AaAecpdu.

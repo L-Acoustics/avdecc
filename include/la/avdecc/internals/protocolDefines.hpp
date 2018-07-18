@@ -46,6 +46,7 @@ static constexpr std::uint8_t AvtpSubType_Aecp{ 0x7b };
 static constexpr std::uint8_t AvtpSubType_Acmp{ 0x7c };
 static constexpr std::uint8_t AvtpSubType_Maap{ 0x7e };
 static constexpr std::uint8_t AvtpSubType_Experimental{ 0x7f };
+extern LA_AVDECC_API std::uint16_t const AaAecpMaxSingleTlvMemoryDataLength; /* Maximum individual TLV memory_data length */
 
 /** ADP Message Type - Clause 6.2.1.5 */
 class AdpMessageType : public TypedDefine<std::uint8_t>
@@ -229,9 +230,9 @@ class AaMode : public TypedDefine<std::uint8_t>
 public:
 	using TypedDefine::TypedDefine;
 
-	static AaMode const Read;
-	static AaMode const Write;
-	static AaMode const Execute;
+	static LA_AVDECC_API AaMode const Read;
+	static LA_AVDECC_API AaMode const Write;
+	static LA_AVDECC_API AaMode const Execute;
 
 	operator std::string() const noexcept;
 };

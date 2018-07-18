@@ -23,6 +23,7 @@
 */
 
 #include "la/avdecc/internals/protocolDefines.hpp"
+#include "protocol/protocolAaAecpdu.hpp"
 
 #include <unordered_map>
 
@@ -32,6 +33,9 @@ namespace avdecc
 {
 namespace protocol
 {
+
+/* Global protocol defines */
+std::uint16_t const AaAecpMaxSingleTlvMemoryDataLength{ Aecpdu::MaximumLength - Aecpdu::HeaderLength - AaAecpdu::HeaderLength - AaAecpdu::TlvHeaderLength }; /* Maximum individual TLV memory_data length */
 
 /** ADP Message Type - Clause 6.2.1.5 */
 AdpMessageType const AdpMessageType::EntityAvailable{ 0 };

@@ -28,14 +28,24 @@
 TEST(AddressAccessTlv, Contructor)
 {
 	// Default constructor
-	//{
-	//	auto const tlv = la::avdecc::entity::addressAccess::Tlv{};
-	//	EXPECT_FALSE(tlv) << "Read TLV without address should not be valid";
-	//	EXPECT_FALSE(tlv.isValid()) << "Read TLV without address should not be valid";
-	//	EXPECT_TRUE(tlv.empty());
-	//	EXPECT_EQ(la::avdecc::protocol::AaMode::Read, tlv.getMode());
-	//	EXPECT_EQ(0u, tlv.getAddress());
-	//}
+	{
+		auto const tlv = la::avdecc::entity::addressAccess::Tlv{};
+		EXPECT_FALSE(tlv) << "Default TLV should not be valid";
+		EXPECT_FALSE(tlv.isValid()) << "Default TLV should not be valid";
+	}
+
+	// Constructor for a Read command with address=0
+	{
+		std::uint64_t const address{ 0u };
+		size_t const length{ 15 };
+		auto const tlv = la::avdecc::entity::addressAccess::Tlv{ address, length };
+		EXPECT_TRUE(tlv);
+		EXPECT_TRUE(tlv.isValid());
+		EXPECT_EQ(la::avdecc::protocol::AaMode::Read, tlv.getMode());
+		EXPECT_EQ(address, tlv.getAddress());
+		EXPECT_EQ(length, tlv.size());
+		EXPECT_EQ(length, tlv.getMemoryData().size());
+	}
 
 	// Constructor for a Read command
 	{
