@@ -135,7 +135,7 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 		for (auto const& objIt : configNode.memoryObjects)
 		{
 			auto const& obj = objIt.second;
-			if (obj.staticModel->memoryObjectType == la::avdecc::entity::model::MemoryObjectType::PngManufacturer)
+			if (obj.staticModel->memoryObjectType == la::avdecc::entity::model::MemoryObjectType::PngEntity)
 			{
 				_controller->readDeviceMemory(entity->getEntity().getEntityID(), obj.staticModel->startAddress, obj.staticModel->maximumLength, [](la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AaCommandStatus const status, la::avdecc::controller::Controller::DeviceMemoryBuffer const& memoryBuffer)
 				{

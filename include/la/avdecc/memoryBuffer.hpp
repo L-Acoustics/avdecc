@@ -140,7 +140,7 @@ public:
 	~MemoryBuffer() noexcept
 	{
 		clear();
-		shrink_to_fit();
+		shrink_to_fit(); // We know it can't throw
 	}
 
 	/* ************************************************************************** */
