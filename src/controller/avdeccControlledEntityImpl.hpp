@@ -283,8 +283,8 @@ public:
 	std::pair<bool, std::chrono::milliseconds> getQueryDescriptorRetryTimer() noexcept;
 
 	// Expected dynamic info query methods
-	bool checkAndClearExpectedDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const connectionIndex = 0u) noexcept;
-	void setDynamicInfoExpected(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const connectionIndex = 0u) noexcept;
+	bool checkAndClearExpectedDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex = 0u) noexcept;
+	void setDynamicInfoExpected(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex = 0u) noexcept;
 	bool gotAllExpectedDynamicInfo() const noexcept;
 	std::pair<bool, std::chrono::milliseconds> getQueryDynamicInfoRetryTimer() noexcept;
 

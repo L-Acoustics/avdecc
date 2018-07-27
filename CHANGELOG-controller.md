@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - [Support for MemoryObject upload/download](https://github.com/L-Acoustics/avdecc/issues/18)
 
+### Fixed
+- [Dynamic mapping not properly enumerated](https://github.com/L-Acoustics/avdecc/issues/24)
+
 ## [2.6.0] - 2018-07-17
 ### Added
 - Support for Memory Object descriptors (Contributed by Florian Harmuth)

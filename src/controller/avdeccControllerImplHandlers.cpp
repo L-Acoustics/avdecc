@@ -920,7 +920,7 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::ControllerEntity
 
 	if (controlledEntity)
 	{
-		if (controlledEntity->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, streamPortIndex))
+		if (controlledEntity->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, streamPortIndex, mapIndex))
 		{
 			if (!!status)
 			{
@@ -940,13 +940,13 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::ControllerEntity
 				controlledEntity->addStreamPortInputAudioMappings(streamPortIndex, mappings);
 				if (!isComplete)
 				{
-					queryInformation(controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, streamPortIndex);
+					queryInformation(controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, streamPortIndex, mapIndex + 1);
 					return;
 				}
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, streamPortIndex))
+				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, streamPortIndex, mapIndex))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamInputAudioMap);
@@ -983,7 +983,7 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::ControllerEntit
 
 	if (controlledEntity)
 	{
-		if (controlledEntity->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, streamPortIndex))
+		if (controlledEntity->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, streamPortIndex, mapIndex))
 		{
 			if (!!status)
 			{
@@ -1003,13 +1003,13 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::ControllerEntit
 				controlledEntity->addStreamPortOutputAudioMappings(streamPortIndex, mappings);
 				if (!isComplete)
 				{
-					queryInformation(controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, streamPortIndex);
+					queryInformation(controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, streamPortIndex, mapIndex + 1);
 					return;
 				}
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, streamPortIndex))
+				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, streamPortIndex, mapIndex))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamOutputAudioMap);

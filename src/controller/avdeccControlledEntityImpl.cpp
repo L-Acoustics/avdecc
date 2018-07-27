@@ -1384,28 +1384,28 @@ std::pair<bool, std::chrono::milliseconds> ControlledEntityImpl::getQueryDescrip
 }
 
 // Expected dynamic info query methods
-static inline ControlledEntityImpl::DynamicInfoKey makeDynamicInfoKey(ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex descriptorIndex, std::uint16_t const connectionIndex)
+static inline ControlledEntityImpl::DynamicInfoKey makeDynamicInfoKey(ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex descriptorIndex, std::uint16_t const subIndex)
 {
-	return (static_cast<ControlledEntityImpl::DynamicInfoKey>(la::avdecc::to_integral(dynamicInfoType)) << ((sizeof(descriptorIndex) + sizeof(connectionIndex)) * 8)) + (descriptorIndex << (sizeof(connectionIndex) * 8)) + connectionIndex;
+	return (static_cast<ControlledEntityImpl::DynamicInfoKey>(la::avdecc::to_integral(dynamicInfoType)) << ((sizeof(descriptorIndex) + sizeof(subIndex)) * 8)) + (descriptorIndex << (sizeof(subIndex) * 8)) + subIndex;
 }
 
-bool ControlledEntityImpl::checkAndClearExpectedDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const connectionIndex) noexcept
+bool ControlledEntityImpl::checkAndClearExpectedDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex) noexcept
 {
 	auto const confIt = _expectedDynamicInfo.find(configurationIndex);
 
 	if (confIt == _expectedDynamicInfo.end())
 		return false;
 
-	auto const key = makeDynamicInfoKey(dynamicInfoType, descriptorIndex, connectionIndex);
+	auto const key = makeDynamicInfoKey(dynamicInfoType, descriptorIndex, subIndex);
 
 	return confIt->second.erase(key) == 1;
 }
 
-void ControlledEntityImpl::setDynamicInfoExpected(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const connectionIndex) noexcept
+void ControlledEntityImpl::setDynamicInfoExpected(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex) noexcept
 {
 	auto& conf = _expectedDynamicInfo[configurationIndex];
 
-	auto const key = makeDynamicInfoKey(dynamicInfoType, descriptorIndex, connectionIndex);
+	auto const key = makeDynamicInfoKey(dynamicInfoType, descriptorIndex, subIndex);
 	conf.insert(key);
 }
 
