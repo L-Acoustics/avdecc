@@ -33,6 +33,7 @@
 #include <vector>
 #include <thread>
 #include <mutex>
+#include <fstream>
 #include <chrono>
 #include <unordered_map>
 #include <stdexcept>
@@ -51,7 +52,7 @@ class Discovery : public la::avdecc::controller::Controller::Observer, public la
 {
 public:
 	/** Constructor/destructor/destroy */
-	Discovery(la::avdecc::EndStation::ProtocolInterfaceType const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, la::avdecc::entity::model::VendorEntityModel const vendorEntityModelID, std::string const& preferedLocale);
+	Discovery(la::avdecc::EndStation::ProtocolInterfaceType const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, la::avdecc::UniqueIdentifier const entityModelID, std::string const& preferedLocale);
 	~Discovery() = default;
 
 	// Deleted compiler auto-generated methods
@@ -79,8 +80,8 @@ private:
 	DECLARE_AVDECC_OBSERVER_GUARD(Discovery); // Not really needed because the _controller field will be destroyed before parent class destruction
 };
 
-Discovery::Discovery(la::avdecc::EndStation::ProtocolInterfaceType const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, la::avdecc::entity::model::VendorEntityModel const vendorEntityModelID, std::string const& preferedLocale)
-	: _controller(la::avdecc::controller::Controller::create(protocolInterfaceType, interfaceName, progID, vendorEntityModelID, preferedLocale))
+Discovery::Discovery(la::avdecc::EndStation::ProtocolInterfaceType const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, la::avdecc::UniqueIdentifier const entityModelID, std::string const& preferedLocale)
+	: _controller(la::avdecc::controller::Controller::create(protocolInterfaceType, interfaceName, progID, entityModelID, preferedLocale))
 {
 	// Register observers
 	la::avdecc::logger::Logger::getInstance().registerObserver(this);
@@ -107,7 +108,7 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 	auto const entityID = entity->getEntity().getEntityID();
 	if (la::avdecc::hasFlag(entity->getEntity().getEntityCapabilities(), la::avdecc::entity::EntityCapabilities::AemSupported))
 	{
-		std::uint32_t const vendorID = std::get<0>(la::avdecc::entity::model::splitVendorEntityModel(entity->getEntity().getVendorEntityModelID()));
+		std::uint32_t const vendorID = std::get<0>(la::avdecc::entity::model::splitEntityModelID(entity->getEntity().getEntityModelID()));
 		// Filter entities from the same vendor as this controller
 		if (vendorID == VENDOR_ID)
 		{
@@ -127,6 +128,30 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 		else
 		{
 			outputText("New unknown entity online: " + la::avdecc::toHexString(entityID, true) + "\n");
+		}
+
+		// Get PNG Manufacturer image
+		auto const& configNode = entity->getCurrentConfigurationNode();
+		for (auto const& objIt : configNode.memoryObjects)
+		{
+			auto const& obj = objIt.second;
+			if (obj.staticModel->memoryObjectType == la::avdecc::entity::model::MemoryObjectType::PngEntity)
+			{
+				_controller->readDeviceMemory(entity->getEntity().getEntityID(), obj.staticModel->startAddress, obj.staticModel->maximumLength, [](la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AaCommandStatus const status, la::avdecc::controller::Controller::DeviceMemoryBuffer const& memoryBuffer)
+				{
+					if (!!status && entity)
+					{
+						auto const fileName{ std::to_string(entity->getEntity().getEntityID()) + ".png" };
+						std::ofstream file(fileName, std::ios::binary);
+						if (file.is_open())
+						{
+							file.write(reinterpret_cast<char const*>(memoryBuffer.data()), memoryBuffer.size());
+							file.close();
+							outputText("Memory Object saved to file: " + fileName + "\n");
+						}
+					}
+				});
+			}
 		}
 	}
 	else
@@ -160,7 +185,7 @@ int doJob()
 	{
 		outputText("Selected interface '" + intfc.alias + "' and protocol interface '" + la::avdecc::EndStation::typeToString(protocolInterfaceType) + "', discovery active:\n");
 
-		Discovery discovery(protocolInterfaceType, intfc.name, 0x0003, la::avdecc::entity::model::makeVendorEntityModel(VENDOR_ID, DEVICE_ID, MODEL_ID), "en");
+		Discovery discovery(protocolInterfaceType, intfc.name, 0x0003, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), "en");
 
 		std::this_thread::sleep_for(std::chrono::seconds(30));
 	}

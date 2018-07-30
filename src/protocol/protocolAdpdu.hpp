@@ -73,57 +73,57 @@ public:
 	}
 	void setEntityID(UniqueIdentifier const entityID) noexcept
 	{
-		AvtpduControl::setStreamID(entityID);
+		AvtpduControl::setStreamID(entityID.getValue());
 	}
 	void setEntityModelID(UniqueIdentifier const entityModelID) noexcept
 	{
 		_entityModelID = entityModelID;
 	}
-	void setEntityCapabilities(entity::EntityCapabilities const entityCapabilities)
+	void setEntityCapabilities(entity::EntityCapabilities const entityCapabilities) noexcept
 	{
 		_entityCapabilities = entityCapabilities;
 	}
-	void setTalkerStreamSources(std::uint16_t const talkerStreamSources)
+	void setTalkerStreamSources(std::uint16_t const talkerStreamSources) noexcept
 	{
 		_talkerStreamSources = talkerStreamSources;
 	}
-	void setTalkerCapabilities(entity::TalkerCapabilities const talkerCapabilities)
+	void setTalkerCapabilities(entity::TalkerCapabilities const talkerCapabilities) noexcept
 	{
 		_talkerCapabilities = talkerCapabilities;
 	}
-	void setListenerStreamSinks(std::uint16_t const listenerStreamSinks)
+	void setListenerStreamSinks(std::uint16_t const listenerStreamSinks) noexcept
 	{
 		_listenerStreamSinks = listenerStreamSinks;
 	}
-	void setListenerCapabilities(entity::ListenerCapabilities const listenerCapabilities)
+	void setListenerCapabilities(entity::ListenerCapabilities const listenerCapabilities) noexcept
 	{
 		_listenerCapabilities = listenerCapabilities;
 	}
-	void setControllerCapabilities(entity::ControllerCapabilities const controllerCapabilities)
+	void setControllerCapabilities(entity::ControllerCapabilities const controllerCapabilities) noexcept
 	{
 		_controllerCapabilities = controllerCapabilities;
 	}
-	void setAvailableIndex(std::uint32_t const availableIndex)
+	void setAvailableIndex(std::uint32_t const availableIndex) noexcept
 	{
 		_availableIndex = availableIndex;
 	}
-	void setGptpGrandmasterID(UniqueIdentifier const gptpGrandmasterID)
+	void setGptpGrandmasterID(UniqueIdentifier const gptpGrandmasterID) noexcept
 	{
 		_gptpGrandmasterID = gptpGrandmasterID;
 	}
-	void setGptpDomainNumber(std::uint8_t const gptpDomainNumber)
+	void setGptpDomainNumber(std::uint8_t const gptpDomainNumber) noexcept
 	{
 		_gptpDomainNumber = gptpDomainNumber;
 	}
-	void setIdentifyControlIndex(std::uint16_t const identifyControlIndex)
+	void setIdentifyControlIndex(std::uint16_t const identifyControlIndex) noexcept
 	{
 		_identifyControlIndex = identifyControlIndex;
 	}
-	void setInterfaceIndex(std::uint16_t const interfaceIndex)
+	void setInterfaceIndex(std::uint16_t const interfaceIndex) noexcept
 	{
 		_interfaceIndex = interfaceIndex;
 	}
-	void setAssociationID(UniqueIdentifier const associationID)
+	void setAssociationID(UniqueIdentifier const associationID) noexcept
 	{
 		_associationID = associationID;
 	}
@@ -139,7 +139,7 @@ public:
 	}
 	UniqueIdentifier getEntityID() const noexcept
 	{
-		return AvtpduControl::getStreamID();
+		return UniqueIdentifier{ AvtpduControl::getStreamID() };
 	}
 	UniqueIdentifier getEntityModelID() const noexcept
 	{
@@ -217,7 +217,7 @@ private:
 	void destroy() noexcept;
 
 	// Adpdu header data
-	UniqueIdentifier _entityModelID{ getNullIdentifier() };
+	UniqueIdentifier _entityModelID{};
 	entity::EntityCapabilities _entityCapabilities{ entity::EntityCapabilities::None };
 	std::uint16_t _talkerStreamSources{};
 	entity::TalkerCapabilities _talkerCapabilities{ entity::TalkerCapabilities::None };
@@ -225,12 +225,12 @@ private:
 	entity::ListenerCapabilities _listenerCapabilities{ entity::ListenerCapabilities::None };
 	entity::ControllerCapabilities _controllerCapabilities{ entity::ControllerCapabilities::None };
 	std::uint32_t _availableIndex{};
-	UniqueIdentifier _gptpGrandmasterID{ getNullIdentifier() };
+	UniqueIdentifier _gptpGrandmasterID{};
 	std::uint8_t _gptpDomainNumber{0};
 	// Reserved 24bits
 	std::uint16_t _identifyControlIndex{ 0 };
 	std::uint16_t _interfaceIndex{ 0 };
-	UniqueIdentifier _associationID{ getNullIdentifier() };
+	UniqueIdentifier _associationID{};
 	// Reserved 32bits
 
 private:

@@ -1,11 +1,5 @@
 # avdecc tests
 
-# avdecc include directories
-include_directories(${PROJECT_SOURCE_DIR}/include)
-
-# avdecc source directories
-include_directories(${PROJECT_SOURCE_DIR}/src)
-
 # gtest include directories
 include_directories(${gtest_SOURCE_DIR}/include)
 
@@ -18,6 +12,7 @@ set(ADD_LINK_LIBRARIES gtest)
 ### Unit Tests
 set(TESTS_SOURCE
 	main.cpp
+	aatlv_tests.cpp
 	aemPayloads_tests.cpp
 	any_tests.cpp
 	avdeccFixedString_tests.cpp
@@ -25,10 +20,12 @@ set(TESTS_SOURCE
 	controllerStateMachine_tests.cpp
 	instrumentationObserver.hpp
 	logger_tests.cpp
+	memoryBuffer_tests.cpp
 	protocolAvtpdu_tests.cpp
 	protocolInterface_pcap_tests.cpp
 	protocolInterface_virtual_tests.cpp
 	streamFormat_tests.cpp
+	uniqueIdentifier_tests.cpp
 )
 list(APPEND ADD_LINK_LIBRARIES la_avdecc_static)
 
@@ -39,9 +36,18 @@ if(BUILD_AVDECC_CONTROLLER)
 	list(APPEND ADD_LINK_LIBRARIES la_avdecc_controller_static)
 endif()
 
+# Define target
 add_executable(Tests ${TESTS_SOURCE})
+
+# Setup common options
+setup_executable_options(Tests)
+
+# Set IDE folder
 set_target_properties(Tests PROPERTIES FOLDER "Tests")
+
+# Link with required libraries
 target_link_libraries(Tests PRIVATE ${LINK_LIBRARIES} ${ADD_LINK_LIBRARIES})
+
 # Set installation rule
 if(INSTALL_AVDECC_TESTS)
 	install(TARGETS Tests RUNTIME CONFIGURATIONS Release DESTINATION bin)

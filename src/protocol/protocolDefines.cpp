@@ -23,6 +23,7 @@
 */
 
 #include "la/avdecc/internals/protocolDefines.hpp"
+#include "protocol/protocolAaAecpdu.hpp"
 
 #include <unordered_map>
 
@@ -32,6 +33,9 @@ namespace avdecc
 {
 namespace protocol
 {
+
+/* Global protocol defines */
+std::uint16_t const AaAecpMaxSingleTlvMemoryDataLength{ Aecpdu::MaximumLength - Aecpdu::HeaderLength - AaAecpdu::HeaderLength - AaAecpdu::TlvHeaderLength }; /* Maximum individual TLV memory_data length */
 
 /** ADP Message Type - Clause 6.2.1.5 */
 AdpMessageType const AdpMessageType::EntityAvailable{ 0 };
@@ -287,6 +291,35 @@ AemAcquireEntityFlags const AemAcquireEntityFlags::Release{ 0x80000000 };
 /** AEM Lock Entity Flags - Clause 7.4.2.1 */
 AemLockEntityFlags const AemLockEntityFlags::None{ 0x00000000 };
 AemLockEntityFlags const AemLockEntityFlags::Unlock{ 0x80000000 };
+
+/** Address Access Mode - Clause 9.2.1.3.3 */
+AaMode const AaMode::Read{ 0x0 };
+AaMode const AaMode::Write{ 0x1 };
+AaMode const AaMode::Execute{ 0x2 };
+/* 0x3-0xf reserved for future use */
+
+AaMode::operator std::string() const noexcept
+{
+	static std::unordered_map<AaMode::value_type, std::string> s_AaModeMapping = {
+		{ AaMode::Read.getValue(), "READ" },
+		{ AaMode::Write.getValue(), "WRITE" },
+		{ AaMode::Execute.getValue(), "EXECUTE" },
+	};
+
+	auto const& it = s_AaModeMapping.find(getValue());
+	if (it == s_AaModeMapping.end())
+		return "INVALID_ADDRESS_ACCESS_MODE";
+	return it->second;
+}
+
+/** Address Access AECP Status - Clause 9.2.1.3.4 */
+AaAecpStatus const AaAecpStatus::AddressTooLow{ 2 };
+AaAecpStatus const AaAecpStatus::AddressTooHigh{ 3 };
+AaAecpStatus const AaAecpStatus::AddressInvalid{ 4 };
+AaAecpStatus const AaAecpStatus::TlvInvalid{ 5 };
+AaAecpStatus const AaAecpStatus::DataInvalid{ 6 };
+AaAecpStatus const AaAecpStatus::Unsupported{ 7 };
+/* 8-31 reserved for future use */
 
 /** ACMP Message Type - Clause 8.2.1.5 */
 AcmpMessageType const AcmpMessageType::ConnectTxCommand{ 0 };

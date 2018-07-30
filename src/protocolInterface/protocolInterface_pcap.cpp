@@ -25,6 +25,7 @@
 #include "protocolInterface_pcap.hpp"
 #include "serialization.hpp"
 #include "protocol/protocolAemAecpdu.hpp"
+#include "protocol/protocolAaAecpdu.hpp"
 #include "stateMachine/controllerStateMachine.hpp"
 #include "pcapInterface.hpp"
 #include <stdexcept>
@@ -466,6 +467,18 @@ private:
 							AecpMessageType::AemResponse, []()
 							{
 								return AemAecpdu::create();
+							}
+						},
+						{
+							AecpMessageType::AddressAccessCommand, []()
+							{
+								return AaAecpdu::create();
+							}
+						},
+						{
+							AecpMessageType::AddressAccessResponse, []()
+							{
+								return AaAecpdu::create();
 							}
 						},
 					};

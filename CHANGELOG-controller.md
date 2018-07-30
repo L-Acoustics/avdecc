@@ -4,6 +4,23 @@ All notable changes to the Avdecc Controller Library will be documented in this 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.6.1] - 2018-07-30
+### Added
+- [Support for MemoryObject upload/download](https://github.com/L-Acoustics/avdecc/issues/18)
+
+### Fixed
+- [Dynamic mapping not properly enumerated](https://github.com/L-Acoustics/avdecc/issues/24)
+
+## [2.6.0] - 2018-07-17
+### Added
+- Support for Memory Object descriptors (Contributed by Florian Harmuth)
+- [Support for EntityModel cache](https://github.com/L-Acoustics/avdecc/issues/6)
+- Notification callbacks for onAudioUnitNameChanged, onAvbInterfaceNameChanged, onClockSourceNameChanged, onMemoryObjectNameChanged, onAudioClusterNameChanged, onClockDomainNameChanged, onMemoryObjectLengthChanged
+
+### Changed
+- Every occurrence of vendorEntityModelID renamed entityModelID
+- la::avdecc::controller::model::AvbInterfaceNodeStaticModel::clockIdentify renamed clockIdentity
+
 ## [2.5.3] - 2018-06-18
 
 ## [2.5.2] - 2018-06-15

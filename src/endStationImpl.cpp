@@ -18,14 +18,11 @@
 */
 
 /**
-* @file endStation.cpp
+* @file endStationImpl.cpp
 * @author Christophe Calmejane
 */
 
-#include "la/avdecc/internals/endStation.hpp"
-#include "la/avdecc/internals/controllerEntity.hpp"
-#include <memory>
-#include <vector>
+#include "endStationImpl.hpp"
 
 // Protocol Interface
 #ifdef HAVE_PROTOCOL_INTERFACE_PCAP
@@ -42,65 +39,104 @@
 #include "protocolInterface/protocolInterface_virtual.hpp"
 #endif // HAVE_PROTOCOL_INTERFACE_VIRTUAL
 
-// Entities
-#include "entity/controllerEntityImpl.hpp"
-
 namespace la
 {
 namespace avdecc
 {
 
-class EndStationImpl final : public EndStation
+EndStationImpl::EndStationImpl(protocol::ProtocolInterface::UniquePointer&& protocolInterface) noexcept
+	: _protocolInterface(std::move(protocolInterface))
 {
-public:
-	EndStationImpl(protocol::ProtocolInterface::UniquePointer&& protocolInterface) noexcept
-		: _protocolInterface(std::move(protocolInterface))
+}
+
+EndStationImpl::~EndStationImpl() noexcept
+{
+	// Remove all entities before shuting down the protocol interface (so they have a chance to send a ENTITY_DEPARTING message)
+	_entities.clear();
+	// Shutdown protocolInterface now
+	_protocolInterface->shutdown();
+}
+
+// EndStation overrides
+entity::ControllerEntity* EndStationImpl::addControllerEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::ControllerEntity::Delegate* const delegate)
+{
+	std::unique_ptr<entity::LocalEntityGuard<entity::ControllerEntityImpl>> controller{ nullptr };
+	try
 	{
+			controller = std::make_unique<entity::LocalEntityGuard<entity::ControllerEntityImpl>>(_protocolInterface.get(), progID, entityModelID, delegate);
+	}
+	catch (la::avdecc::Exception const& e) // Because entity::ControllerEntityImpl::ControllerEntityImpl might throw if an entityID cannot be generated
+	{
+		throw Exception(Error::InterfaceInvalid, e.what());
 	}
 
-	~EndStationImpl() noexcept
-	{
-		// Remove all entities before shuting down the protocol interface (so they have a chance to send a ENTITY_DEPARTING message)
-		_entities.clear();
-		// Shutdown protocolInterface now
-		_protocolInterface->shutdown();
-	}
+	// Get controller's pointer now, we'll soon move the object
+	auto* const controllerPtr = static_cast<entity::ControllerEntity*>(controller.get());
 
-	// EndStation overrides
-	virtual entity::ControllerEntity* addControllerEntity(std::uint16_t const progID, entity::model::VendorEntityModel const vendorEntityModelID, entity::ControllerEntity::Delegate* const delegate) override
-	{
-		std::unique_ptr<entity::LocalEntityGuard<entity::ControllerEntityImpl>> controller{ nullptr };
-		try
-		{
-			controller = std::make_unique<entity::LocalEntityGuard<entity::ControllerEntityImpl>>(_protocolInterface.get(), progID, vendorEntityModelID, delegate);
-		}
-		catch (la::avdecc::Exception const& e) // Because entity::ControllerEntityImpl::ControllerEntityImpl might throw if an entityID cannot be generated
-		{
-			throw Exception(Error::InterfaceInvalid, e.what());
-		}
+	// Add the entity to our list
+	_entities.push_back(std::move(controller));
 
-		// Get controller's pointer now, we'll soon move the object
-		auto* const controllerPtr = static_cast<entity::ControllerEntity*>(controller.get());
-
-		// Add the entity to our list
-		_entities.push_back(std::move(controller));
-
-		// Return the controller to the user
-		return controllerPtr;
-	}
-
-	/** Destroy method for COM-like interface */
-	virtual void destroy() noexcept override;
-
-private:
-	protocol::ProtocolInterface::UniquePointer const _protocolInterface{ nullptr };
-	std::vector<entity::Entity::UniquePointer> _entities{};
-};
+	// Return the controller to the user
+	return controllerPtr;
+}
 
 /** Destroy method for COM-like interface */
 void EndStationImpl::destroy() noexcept
 {
 	delete this;
+}
+
+/** ProtocolInterface creation helper method */
+protocol::ProtocolInterface::UniquePointer EndStationImpl::createProtocolInterface(ProtocolInterfaceType const protocolInterfaceType, std::string const& networkInterfaceName)
+{
+	if (!isSupportedProtocolInterfaceType(protocolInterfaceType))
+		throw Exception(Error::InvalidProtocolInterfaceType, "Selected protocol interface type not supported");
+
+	try
+	{
+		switch (protocolInterfaceType)
+		{
+#if defined(HAVE_PROTOCOL_INTERFACE_PCAP)
+			case ProtocolInterfaceType::PCap:
+				return protocol::ProtocolInterfacePcap::create(networkInterfaceName);
+#endif // HAVE_PROTOCOL_INTERFACE_PCAP
+#if defined(HAVE_PROTOCOL_INTERFACE_MAC)
+			case ProtocolInterfaceType::MacOSNative:
+				return protocol::ProtocolInterfaceMacNative::create(networkInterfaceName);
+#endif // HAVE_PROTOCOL_INTERFACE_MAC
+#if defined(HAVE_PROTOCOL_INTERFACE_PROXY)
+			case ProtocolInterfaceType::Proxy:
+				AVDECC_ASSERT(false, "TODO: Proxy protocol interface to create");
+				break;
+#endif // HAVE_PROTOCOL_INTERFACE_PROXY
+#if defined(HAVE_PROTOCOL_INTERFACE_VIRTUAL)
+			case ProtocolInterfaceType::Virtual:
+				return protocol::ProtocolInterfaceVirtual::create(networkInterfaceName, { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } });
+#endif // HAVE_PROTOCOL_INTERFACE_VIRTUAL
+			default:
+				break;
+		}
+	}
+	catch (protocol::ProtocolInterface::Exception const& e)
+	{
+		auto const err = e.getError();
+		switch (err)
+		{
+			case protocol::ProtocolInterface::Error::TransportError:
+				throw Exception(Error::InterfaceOpenError, e.what());
+			case protocol::ProtocolInterface::Error::InterfaceNotFound:
+				throw Exception(Error::InterfaceNotFound, e.what());
+			case protocol::ProtocolInterface::Error::InterfaceInvalid:
+				throw Exception(Error::InterfaceInvalid, e.what());
+			case protocol::ProtocolInterface::Error::InterfaceNotSupported:
+				throw Exception(Error::InvalidProtocolInterfaceType, e.what());
+			default:
+				AVDECC_ASSERT(false, "Unhandled exception");
+				throw Exception(Error::InternalError, e.what());
+		}
+	}
+
+	throw Exception(Error::InvalidProtocolInterfaceType, "Unknown protocol interface type");
 }
 
 /** EndStation static methods */
@@ -177,59 +213,7 @@ EndStation::SupportedProtocolInterfaceTypes LA_AVDECC_CALL_CONVENTION EndStation
 /** EndStation Entry point */
 EndStation* LA_AVDECC_CALL_CONVENTION EndStation::createRawEndStation(ProtocolInterfaceType const protocolInterfaceType, std::string const& networkInterfaceName)
 {
-	if (!isSupportedProtocolInterfaceType(protocolInterfaceType))
-		throw Exception(Error::InvalidProtocolInterfaceType, "Selected protocol interface type not supported");
-
-	try
-	{
-		protocol::ProtocolInterface::UniquePointer pi{ nullptr };
-
-		switch (protocolInterfaceType)
-		{
-#if defined(HAVE_PROTOCOL_INTERFACE_PCAP)
-			case ProtocolInterfaceType::PCap:
-				pi = protocol::ProtocolInterfacePcap::create(networkInterfaceName);
-				break;
-#endif // HAVE_PROTOCOL_INTERFACE_PCAP
-#if defined(HAVE_PROTOCOL_INTERFACE_MAC)
-			case ProtocolInterfaceType::MacOSNative:
-				pi = protocol::ProtocolInterfaceMacNative::create(networkInterfaceName);
-				break;
-#endif // HAVE_PROTOCOL_INTERFACE_MAC
-#if defined(HAVE_PROTOCOL_INTERFACE_PROXY)
-			case ProtocolInterfaceType::Proxy:
-				AVDECC_ASSERT(false, "TODO: Proxy protocol interface to create");
-				break;
-#endif // HAVE_PROTOCOL_INTERFACE_PROXY
-#if defined(HAVE_PROTOCOL_INTERFACE_VIRTUAL)
-			case ProtocolInterfaceType::Virtual:
-				pi = protocol::ProtocolInterfaceVirtual::create(networkInterfaceName, { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } });
-				break;
-#endif // HAVE_PROTOCOL_INTERFACE_VIRTUAL
-			default:
-				throw Exception(Error::InvalidProtocolInterfaceType, "Unknown protocol interface type");
-		}
-
-		return new EndStationImpl(std::move(pi));
-	}
-	catch (protocol::ProtocolInterface::Exception const& e)
-	{
-		auto const err = e.getError();
-		switch (err)
-		{
-			case protocol::ProtocolInterface::Error::TransportError:
-				throw Exception(Error::InterfaceOpenError, e.what());
-			case protocol::ProtocolInterface::Error::InterfaceNotFound:
-				throw Exception(Error::InterfaceNotFound, e.what());
-			case protocol::ProtocolInterface::Error::InterfaceInvalid:
-				throw Exception(Error::InterfaceInvalid, e.what());
-			case protocol::ProtocolInterface::Error::InterfaceNotSupported:
-				throw Exception(Error::InvalidProtocolInterfaceType, e.what());
-			default:
-				AVDECC_ASSERT(false, "Unhandled exception");
-				throw Exception(Error::InternalError, e.what());
-		}
-	}
+	return new EndStationImpl(EndStationImpl::createProtocolInterface(protocolInterfaceType, networkInterfaceName));
 }
 
 } // namespace avdecc

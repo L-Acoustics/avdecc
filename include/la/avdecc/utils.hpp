@@ -36,6 +36,7 @@
 #include <set>
 #include <mutex>
 #include "internals/exports.hpp"
+#include "internals/uniqueIdentifier.hpp"
 
 namespace la
 {
@@ -94,6 +95,27 @@ namespace la
 namespace avdecc
 {
 
+/**
+* @brief Constexpr to compute a pow(x,y) at compile-time.
+* @details Computes the pow of 2 types at compile-time.<BR>
+*          Example: pow(2,8) will compute 256
+* @param[in] base The base of the power-of to compute.
+* @param[in] exponent The exponent of the power-of to compute.
+* @return The computed value.
+* @note To ensure the value is always computed at compile-time, use it with std::integral_constant<BR>
+*       Example to get pow(2, 15) as a std::uint32_t at compile-time:<BR>
+*       std::integral_constant<std::uint32_t, pow(2,15)>::value
+*/
+
+template<class T>
+inline constexpr T pow(T const base, std::uint8_t const exponent)
+{
+	// Compute pow using exponentiation by squaring
+	return (exponent == 0) ? 1 :
+		(exponent % 2 == 0) ? pow(base, exponent / 2) * pow(base, exponent / 2) :
+		base * pow(base, (exponent - 1) / 2) * pow(base, (exponent - 1) / 2);
+}
+
 /** Useful template to be used with streams, it prevents a char (or uint8_t) to be printed as a char instead of the numeric value */
 template <typename T>
 constexpr auto forceNumeric(T const t) noexcept
@@ -106,7 +128,7 @@ constexpr auto forceNumeric(T const t) noexcept
 
 /** Useful template to convert any integer value to it's hex representation. Can be filled with zeros (ex: int16(0x123) = 0x0123) and printed in uppercase. */
 template<typename T>
-std::string toHexString(T const v, bool const zeroFilled = false, bool const upper = false) noexcept
+inline std::string toHexString(T const v, bool const zeroFilled = false, bool const upper = false) noexcept
 {
 	static_assert(std::numeric_limits<T>::is_integer, "toHexString requires an integer value");
 
@@ -125,6 +147,13 @@ std::string toHexString(T const v, bool const zeroFilled = false, bool const upp
 	{
 		return "[Invalid Conversion]";
 	}
+}
+
+/** UniqueIdentifier overload */
+template<>
+inline std::string toHexString<UniqueIdentifier>(UniqueIdentifier const v, bool const zeroFilled, bool const upper) noexcept
+{
+	return toHexString(v.getValue(), zeroFilled, upper);
 }
 
 /**
@@ -158,6 +187,32 @@ struct EnumClassHash
 */
 template<typename EnumType, typename = std::enable_if_t<std::is_enum<EnumType>::value>>
 struct enum_traits {};
+
+/**
+* @brief Traits to easily handle std::function.
+* @details Available traits for std::function:
+*  - size_type: The number of function parameters.
+*  - result_type: The function result type.
+*  - args_as_tuple: All parameter types packed in a tuple.
+*  - function_type: The complete function type: std::function<Ret(Args...)>
+*  - arg_type<0..(size_type-1)>: The individual type for each parameter.
+* @tparam Ret The std::function return type.
+* @tparam Args The std::function parameter types.
+*/
+template<typename Ret, typename ...Args>
+struct function_traits;
+
+template<typename Ret, typename ...Args>
+struct function_traits<std::function<Ret(Args...)>>
+{
+	static size_t const size_type = sizeof...(Args);
+	using result_type = Ret;
+	using args_as_tuple = std::tuple<Args...>;
+	using function_type = std::function<Ret(Args...)>;
+
+	template <size_t N>
+	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+};
 
 } // namespace avdecc
 } // namespace la

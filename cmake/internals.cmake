@@ -71,6 +71,7 @@ endfunction(force_symbols_file)
 ###############################################################################
 # Copy symbol files to a common location.
 function(copy_symbols TARGET_NAME)
+	set(SYMBOLS_DEST_PATH "${CMAKE_BINARY_DIR}/Symbols/$<CONFIG>/")
 	get_target_property(targetType ${TARGET_NAME} TYPE)
 	if(MSVC)
 		# No pdb files for static libraries, symbols are embedded in the lib
@@ -78,8 +79,8 @@ function(copy_symbols TARGET_NAME)
 			add_custom_command(
 				TARGET ${TARGET_NAME}
 				POST_BUILD
-				COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/Symbols/$<CONFIG>/"
-				COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_PDB_FILE:${TARGET_NAME}>" "${PROJECT_BINARY_DIR}/Symbols/$<CONFIG>/"
+				COMMAND ${CMAKE_COMMAND} -E make_directory "${SYMBOLS_DEST_PATH}"
+				COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_PDB_FILE:${TARGET_NAME}>" "${SYMBOLS_DEST_PATH}"
 				COMMENT "Copying ${TARGET_NAME} symbols"
 				VERBATIM
 			)
@@ -87,13 +88,13 @@ function(copy_symbols TARGET_NAME)
 
 	elseif(APPLE)
 		if(${targetType} STREQUAL "SHARED_LIBRARY")
-			install(FILES "$<TARGET_FILE:${TARGET_NAME}>.dSYM" DESTINATION "${PROJECT_BINARY_DIR}/Symbols/$<CONFIG>/" CONFIGURATIONS Release Debug)
+			install(FILES "$<TARGET_FILE:${TARGET_NAME}>.dSYM" DESTINATION "${SYMBOLS_DEST_PATH}" CONFIGURATIONS Release Debug)
 		elseif(${targetType} STREQUAL "EXECUTABLE")
 			get_target_property(isBundle ${TARGET_NAME} MACOSX_BUNDLE)
 			if(${isBundle})
-				install(FILES "${CMAKE_CURRENT_BINARY_DIR}/\${CMAKE_INSTALL_CONFIG_NAME}/$<TARGET_FILE_NAME:${TARGET_NAME}>.app.dSYM" DESTINATION "${PROJECT_BINARY_DIR}/Symbols/$<CONFIG>/" CONFIGURATIONS Release Debug)
+				install(FILES "${CMAKE_CURRENT_BINARY_DIR}/\${CMAKE_INSTALL_CONFIG_NAME}/$<TARGET_FILE_NAME:${TARGET_NAME}>.app.dSYM" DESTINATION "${SYMBOLS_DEST_PATH}" CONFIGURATIONS Release Debug)
 			else()
-				install(FILES "$<TARGET_FILE:${TARGET_NAME}>.dSYM" DESTINATION "${PROJECT_BINARY_DIR}/Symbols/$<CONFIG>/" CONFIGURATIONS Release Debug)
+				install(FILES "$<TARGET_FILE:${TARGET_NAME}>.dSYM" DESTINATION "${SYMBOLS_DEST_PATH}" CONFIGURATIONS Release Debug)
 			endif()
 		endif()
 	endif()

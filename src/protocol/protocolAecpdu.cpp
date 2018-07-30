@@ -58,6 +58,7 @@ void Aecpdu::serialize(SerializationBuffer& buffer) const
 
 void Aecpdu::deserialize(DeserializationBuffer& buffer)
 {
+	// Check if there is enough bytes to read the header
 	if (!AVDECC_ASSERT_WITH_RET(buffer.remaining() >= HeaderLength, "Aecpdu::deserialize error: Not enough data in buffer"))
 	{
 		LOG_SERIALIZATION_ERROR(_srcAddress, "Aecpdu::deserialize error: Not enough data in buffer");

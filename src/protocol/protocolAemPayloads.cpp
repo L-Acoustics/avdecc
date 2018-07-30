@@ -59,7 +59,7 @@ std::tuple<AemAcquireEntityFlags, UniqueIdentifier, entity::model::DescriptorTyp
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
 	AemAcquireEntityFlags flags{ AemAcquireEntityFlags::None };
-	UniqueIdentifier ownerID{ getUninitializedIdentifier() };
+	UniqueIdentifier ownerID{};
 	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 
@@ -112,7 +112,7 @@ std::tuple<AemLockEntityFlags, UniqueIdentifier, entity::model::DescriptorType, 
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
 	AemLockEntityFlags flags{ AemLockEntityFlags::None };
-	UniqueIdentifier lockedID{ getUninitializedIdentifier() };
+	UniqueIdentifier lockedID{};
 	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 
@@ -223,7 +223,7 @@ entity::model::EntityDescriptor deserializeReadEntityDescriptorResponse(AemAecpd
 		// Check entity descriptor payload - Clause 7.2.1
 		Deserializer des(commandPayload, commandPayloadLength);
 		des.setPosition(commonSize); // Skip already unpacked common header
-		des >> entityDescriptor.entityID >> entityDescriptor.vendorEntityModelID >> entityDescriptor.entityCapabilities;
+		des >> entityDescriptor.entityID >> entityDescriptor.entityModelID >> entityDescriptor.entityCapabilities;
 		des >> entityDescriptor.talkerStreamSources >> entityDescriptor.talkerCapabilities;
 		des >> entityDescriptor.listenerStreamSinks >> entityDescriptor.listenerCapabilities;
 		des >> entityDescriptor.controllerCapabilities;
@@ -508,7 +508,7 @@ entity::model::AvbInterfaceDescriptor deserializeReadAvbInterfaceDescriptorRespo
 		des >> avbInterfaceDescriptor.localizedDescription;
 		des >> avbInterfaceDescriptor.macAddress;
 		des >> avbInterfaceDescriptor.interfaceFlags;
-		des >> avbInterfaceDescriptor.clockIdentify;
+		des >> avbInterfaceDescriptor.clockIdentity;
 		des >> avbInterfaceDescriptor.priority1 >> avbInterfaceDescriptor.clockClass;
 		des >> avbInterfaceDescriptor.offsetScaledLogVariance >> avbInterfaceDescriptor.clockAccuracy;
 		des >> avbInterfaceDescriptor.priority2 >> avbInterfaceDescriptor.domainNumber;
@@ -580,6 +580,7 @@ entity::model::MemoryObjectDescriptor deserializeReadMemoryObjectDescriptorRespo
 		des >> memoryObjectDescriptor.memoryObjectType;
 		des >> memoryObjectDescriptor.targetDescriptorType >> memoryObjectDescriptor.targetDescriptorIndex;
 		des >> memoryObjectDescriptor.startAddress >> memoryObjectDescriptor.maximumLength >> memoryObjectDescriptor.length;
+#pragma message("TODO: Unpack the new field added in corrigendum document (but preserve compatibility with older devices if the field is not present!!)")
 
 		AVDECC_ASSERT(des.usedBytes() == AecpAemReadMemoryObjectDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
 
@@ -1442,15 +1443,15 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 /** SET_CLOCK_SOURCE Response - Clause 7.4.23.1 */
 Serializer<AecpAemSetClockSourceResponsePayloadSize> serializeSetClockSourceResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::ClockSourceIndex const clockSourceIndex)
 {
-	// Same as PROTONAME Command
-	static_assert(AecpAemSetClockSourceResponsePayloadSize == AecpAemSetClockSourceCommandPayloadSize, "PROTONAME Response no longer the same as PROTONAME Command");
+	// Same as SET_CLOCK_SOURCE Command
+	static_assert(AecpAemSetClockSourceResponsePayloadSize == AecpAemSetClockSourceCommandPayloadSize, "SET_CLOCK_SOURCE Response no longer the same as SET_CLOCK_SOURCE Command");
 	return serializeSetClockSourceCommand(descriptorType, descriptorIndex, clockSourceIndex);
 }
 
 std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::ClockSourceIndex> deserializeSetClockSourceResponse(AemAecpdu::Payload const& payload)
 {
-	// Same as PROTONAME Command
-	static_assert(AecpAemSetClockSourceResponsePayloadSize == AecpAemSetClockSourceCommandPayloadSize, "PROTONAME Response no longer the same as PROTONAME Command");
+	// Same as SET_CLOCK_SOURCE Command
+	static_assert(AecpAemSetClockSourceResponsePayloadSize == AecpAemSetClockSourceCommandPayloadSize, "SET_CLOCK_SOURCE Response no longer the same as SET_CLOCK_SOURCE Command");
 	return deserializeSetClockSourceCommand(payload);
 }
 
@@ -1875,6 +1876,103 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	// Same as ADD_AUDIO_MAPPINGS Command
 	static_assert(AecpAemRemoveAudioMappingsResponsePayloadMinSize == AecpAemAddAudioMappingsCommandPayloadMinSize, "REMOVE_AUDIO_MAPPINGS Response no longer the same as ADD_AUDIO_MAPPINGS Command");
 	return deserializeAddAudioMappingsCommand(payload);
+}
+
+/** SET_MEMORY_OBJECT_LENGTH Command - Clause 7.4.72.1 */
+Serializer<AecpAemSetMemoryObjectLengthCommandPayloadSize> serializeSetMemoryObjectLengthCommand(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length)
+{
+	Serializer<AecpAemSetMemoryObjectLengthCommandPayloadSize> ser;
+
+	ser << memoryObjectIndex << configurationIndex;
+	ser << length;
+
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::ConfigurationIndex, entity::model::MemoryObjectIndex, std::uint64_t> deserializeSetMemoryObjectLengthCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemSetMemoryObjectLengthCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::MemoryObjectIndex memoryObjectIndex{ 0u };
+	entity::model::ConfigurationIndex configurationIndex{ 0u };
+	std::uint64_t length{ 0u };
+
+	des >> memoryObjectIndex >> configurationIndex;
+	des >> length;
+
+	AVDECC_ASSERT(des.usedBytes() == AecpAemSetMemoryObjectLengthCommandPayloadSize, "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(configurationIndex, memoryObjectIndex, length);
+}
+
+/** SET_MEMORY_OBJECT_LENGTH Response - Clause 7.4.72.1 */
+Serializer<AecpAemSetMemoryObjectLengthResponsePayloadSize> serializeSetMemoryObjectLengthResponse(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length)
+{
+	// Same as SET_MEMORY_OBJECT_LENGTH Command
+	static_assert(AecpAemSetMemoryObjectLengthResponsePayloadSize == AecpAemSetMemoryObjectLengthCommandPayloadSize, "SET_MEMORY_OBJECT_LENGTH Response no longer the same as SET_MEMORY_OBJECT_LENGTH Command");
+	return serializeSetMemoryObjectLengthCommand(configurationIndex, memoryObjectIndex, length);
+}
+
+std::tuple<entity::model::ConfigurationIndex, entity::model::MemoryObjectIndex, std::uint64_t> deserializeSetMemoryObjectLengthResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as SET_MEMORY_OBJECT_LENGTH Command
+	static_assert(AecpAemSetMemoryObjectLengthResponsePayloadSize == AecpAemSetMemoryObjectLengthCommandPayloadSize, "SET_MEMORY_OBJECT_LENGTH Response no longer the same as SET_MEMORY_OBJECT_LENGTH Command");
+	return deserializeSetMemoryObjectLengthCommand(payload);
+}
+
+/** GET_MEMORY_OBJECT_LENGTH Command - Clause 7.4.73.1 */
+Serializer<AecpAemGetMemoryObjectLengthCommandPayloadSize> serializeGetMemoryObjectLengthCommand(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex)
+{
+	Serializer<AecpAemGetClockSourceCommandPayloadSize> ser;
+
+	ser << memoryObjectIndex << configurationIndex;
+
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::ConfigurationIndex, entity::model::MemoryObjectIndex> deserializeGetMemoryObjectLengthCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetMemoryObjectLengthCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::MemoryObjectIndex memoryObjectIndex{ 0u };
+	entity::model::ConfigurationIndex configurationIndex{ 0u };
+
+	des >> memoryObjectIndex >> configurationIndex;
+
+	AVDECC_ASSERT(des.usedBytes() == AecpAemGetMemoryObjectLengthCommandPayloadSize, "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(configurationIndex, memoryObjectIndex);
+}
+
+/** GET_MEMORY_OBJECT_LENGTH Response - Clause 7.4.73.2 */
+Serializer<AecpAemGetMemoryObjectLengthResponsePayloadSize> serializeGetMemoryObjectLengthResponse(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length)
+{
+	// Same as SET_MEMORY_OBJECT_LENGTH Command
+	static_assert(AecpAemGetMemoryObjectLengthResponsePayloadSize == AecpAemSetMemoryObjectLengthCommandPayloadSize, "GET_MEMORY_OBJECT_LENGTH Response no longer the same as SET_MEMORY_OBJECT_LENGTH Command");
+	return serializeSetMemoryObjectLengthCommand(configurationIndex, memoryObjectIndex, length);
+}
+
+std::tuple<entity::model::ConfigurationIndex, entity::model::MemoryObjectIndex, std::uint64_t> deserializeGetMemoryObjectLengthResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as SET_MEMORY_OBJECT_LENGTH Command
+	static_assert(AecpAemGetMemoryObjectLengthResponsePayloadSize == AecpAemSetMemoryObjectLengthCommandPayloadSize, "GET_MEMORY_OBJECT_LENGTH Response no longer the same as SET_MEMORY_OBJECT_LENGTH Command");
+	return deserializeSetMemoryObjectLengthCommand(payload);
 }
 
 } // namespace aemPayload

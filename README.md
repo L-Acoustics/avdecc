@@ -4,7 +4,7 @@
 Copyright (C) 2016-2018, L-Acoustics and its contributors
 
 ## What is LA_avdecc
-LA_avdecc is a set of open source libraries for controlling and monitoring AVB entities using the AVDECC protocol (IEEE 1722.1).
+LA_avdecc is a set of open source libraries for controlling and monitoring AVB entities using the AVDECC protocol (IEEE 1722.1) compliant to Avnu Milan.
 
 These libraries are written in pure C++17. They can be compiled on Windows, Linux and macOS, using standard development tools (procedure below). Unit tests and sample programs are also provided.
 
@@ -27,11 +27,13 @@ We use GitHub issues for tracking requests and bugs.
 * MeyerSound: Galileo GALAXY
 * QSC: Q-SYS Cores
 * Apple: macOS Talker, Listener and Controller (El Capitan and later)
+* Audiosience: comming soon
 
 ## la_avdecc Library
 
 Implementation of the IEEE Std 1722.1-2013 specification.  
 Also implementing non-released IEEE Std 1722.1 corrigendum 1 draft 8.
+Also implementing AVnu Alliance Milan.
 Also implementing AVnu Alliance Network Redundancy.
 
 The library exposes APIs needed to create AVDECC entities on the local computer, and to interact with other entities on the network.

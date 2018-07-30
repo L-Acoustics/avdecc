@@ -39,12 +39,14 @@ set (HEADER_FILES_CPP_NETWORK_INTERFACE_HELPER networkInterfaceHelper/networkInt
 set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/avdecc.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/logger.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/memoryBuffer.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/networkInterfaceHelper.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/utils.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/controllerEntity.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/endian.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/endStation.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entity.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/entityAddressAccessTypes.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModel.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTypes.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/exception.hpp
@@ -65,6 +67,7 @@ set (HEADER_FILES_PROTOCOL
 	protocol/protocolAemAecpdu.hpp
 	protocol/protocolAemPayloadSizes.hpp
 	protocol/protocolAemPayloads.hpp
+	protocol/protocolAaAecpdu.hpp
 	protocol/protocolAvtpdu.hpp
 )
 
@@ -74,6 +77,7 @@ set (SOURCE_FILES_PROTOCOL
 	protocol/protocolAecpdu.cpp
 	protocol/protocolAemAecpdu.cpp
 	protocol/protocolAemPayloads.cpp
+	protocol/protocolAaAecpdu.cpp
 	protocol/protocolAvtpdu.cpp
 	protocol/protocolDefines.cpp
 )
@@ -109,16 +113,16 @@ set (SOURCE_FILES_ENTITY
 # Common files
 set (HEADER_FILES_COMMON
 	${CMAKE_CURRENT_BINARY_DIR}/config.h
+	endStationImpl.hpp
 	logHelper.hpp
 	serialization.hpp
 )
 
 set (SOURCE_FILES_COMMON
 	avdecc.cpp
-	endStation.cpp
+	endStationImpl.cpp
 	logger.cpp
 	streamFormat.cpp
-	uniqueIdentifier.cpp
 	utils.cpp
 )
 

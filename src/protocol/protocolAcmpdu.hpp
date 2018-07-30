@@ -185,9 +185,9 @@ private:
 	void destroy() noexcept;
 
 	// Acmpdu header data
-	UniqueIdentifier _controllerEntityID{ getNullIdentifier() };
-	UniqueIdentifier _talkerEntityID{ getNullIdentifier() };
-	UniqueIdentifier _listenerEntityID{ getNullIdentifier() };
+	UniqueIdentifier _controllerEntityID{};
+	UniqueIdentifier _talkerEntityID{};
+	UniqueIdentifier _listenerEntityID{};
 	AcmpUniqueID _talkerUniqueID{ 0 };
 	AcmpUniqueID _listenerUniqueID{ 0 };
 	networkInterface::MacAddress _streamDestAddress{};

@@ -17,6 +17,11 @@
 * along with LA_avdecc.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/**
+* @file protocolInterface_pcap_tests.cpp
+* @author Christophe Calmejane
+*/
+
 #include <gtest/gtest.h>
 #include <future>
 #include <chrono>
@@ -54,10 +59,10 @@ TEST(ProtocolInterfacePCap, TransportError)
 			pi->lock(); // This will use CSM's lock
 			pi->unlock();
 		}
-		virtual void onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept override {}
-		virtual void onLocalEntityOffline(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::UniqueIdentifier const entityID) noexcept override {}
-		virtual void onLocalEntityUpdated(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept override {}
-		virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept override
+		virtual void onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept override {}
+		virtual void onLocalEntityOffline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const /*entityID*/) noexcept override {}
+		virtual void onLocalEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept override {}
+		virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept override
 		{
 			static auto done{ false };
 			if (!done)
@@ -67,15 +72,15 @@ TEST(ProtocolInterfacePCap, TransportError)
 				done = true;
 			}
 		}
-		virtual void onRemoteEntityOffline(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::UniqueIdentifier const entityID) noexcept override
+		virtual void onRemoteEntityOffline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const /*entityID*/) noexcept override
 		{
 			completedPromise.set_value();
 		}
-		virtual void onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::DiscoveredEntity const& entity) noexcept override {}
-		virtual void onAecpCommand(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override {}
-		virtual void onAecpUnsolicitedResponse(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override {}
-		virtual void onAcmpSniffedCommand(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Acmpdu const& acmpdu) noexcept override {}
-		virtual void onAcmpSniffedResponse(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Acmpdu const& acmpdu) noexcept override {}
+		virtual void onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept override {}
+		virtual void onAecpCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept override {}
+		virtual void onAecpUnsolicitedResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept override {}
+		virtual void onAcmpSniffedCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept override {}
+		virtual void onAcmpSniffedResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept override {}
 		DECLARE_AVDECC_OBSERVER_GUARD(Observer);
 	};
 

@@ -69,10 +69,24 @@ void Adpdu::serialize(SerializationBuffer& buffer) const
 
 void Adpdu::deserialize(DeserializationBuffer& buffer)
 {
-	if (!AVDECC_ASSERT_WITH_RET(buffer.remaining() >= Length, "Adpdu::deserialize error: Not enough data in buffer"))
+	// Check if there is enough bytes to read the header
+	auto const beginRemainingBytes = buffer.remaining();
+	if (!AVDECC_ASSERT_WITH_RET(beginRemainingBytes >= Length, "Adpdu::deserialize error: Not enough data in buffer"))
 	{
 		LOG_SERIALIZATION_ERROR(_srcAddress, "Adpdu::deserialize error: Not enough data in buffer");
 		throw std::invalid_argument("Not enough data to deserialize");
+	}
+
+	// Check if there is more advertised data than actual bytes in the buffer
+	if (_controlDataLength > beginRemainingBytes)
+	{
+#if defined(IGNORE_INVALID_CONTROL_DATA_LENGTH)
+		// Allow this packet to go through, the ControlData specific unpacker will trap any error if the message is further ill-formed
+		LOG_SERIALIZATION_DEBUG(_srcAddress, "Adpdu::deserialize error: ControlDataLength field advertises more bytes than remaining bytes in buffer, but trying to unpack the message");
+#else // !IGNORE_INVALID_CONTROL_DATA_LENGTH
+		LOG_SERIALIZATION_WARN(_srcAddress, "Adpdu::deserialize error: ControlDataLength field advertises more bytes than remaining bytes in buffer, ignoring the message");
+		throw std::invalid_argument("Not enough data to deserialize");
+#endif // IGNORE_INVALID_CONTROL_DATA_LENGTH
 	}
 
 	std::uint32_t reserved1{ 0u };
@@ -89,8 +103,8 @@ void Adpdu::deserialize(DeserializationBuffer& buffer)
 	_gptpDomainNumber = ((gdn_res & 0xff000000) >> 24) != 0;
 
 #ifdef DEBUG
-	// Do not log this error in release, it might happen too often if an entity is bugged
-	if (buffer.remaining() != 0)
+	// Do not log this error in release, it might happen too often if an entity is bugged or if the message contains data this version of the library do not unpack
+	if (buffer.remaining() != 0 && buffer.usedBytes() >= EthernetPayloadMinimumSize)
 		LOG_SERIALIZATION_TRACE(_srcAddress, "Adpdu::deserialize warning: Remaining bytes in buffer for AdpMessageType " + std::string(getMessageType()) + " (" + la::avdecc::toHexString(getMessageType().getValue()) + ")");
 #endif // DEBUG
 }

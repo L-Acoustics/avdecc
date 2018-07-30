@@ -73,6 +73,7 @@ void AemAecpdu::deserialize(DeserializationBuffer& buffer)
 	// First call parent
 	Aecpdu::deserialize(buffer);
 
+	// Check if there is enough bytes to read the header
 	if (!AVDECC_ASSERT_WITH_RET(buffer.remaining() >= HeaderLength, "AemAecpdu::deserialize error: Not enough data in buffer"))
 	{
 		LOG_SERIALIZATION_ERROR(_srcAddress, "AemAecpdu::deserialize error: Not enough data in buffer");
@@ -88,7 +89,7 @@ void AemAecpdu::deserialize(DeserializationBuffer& buffer)
 
 	_commandSpecificDataLength = _controlDataLength - AemAecpdu::HeaderLength - Aecpdu::HeaderLength;
 
-	// Check if there is more advertised data than actual bytes in the buffer
+	// Check if there is more advertised data than actual bytes in the buffer (not checking earlier since we want to get as much information as possible from the packet to display a proper log message)
 	auto const remainingBytes = buffer.remaining();
 	if (_commandSpecificDataLength > remainingBytes)
 	{
@@ -115,7 +116,7 @@ void AemAecpdu::deserialize(DeserializationBuffer& buffer)
 	buffer.unpackBuffer(_commandSpecificData.data(), _commandSpecificDataLength);
 
 #ifdef DEBUG
-	// Do not log this error in release, it might happen too often if an entity is bugged
+	// Do not log this error in release, it might happen too often if an entity is bugged or if the message contains data this version of the library do not unpack
 	if (buffer.remaining() != 0 && buffer.usedBytes() >= EthernetPayloadMinimumSize)
 		LOG_SERIALIZATION_TRACE(_srcAddress, "AemAecpdu::deserialize warning: Remaining bytes in buffer for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + ")");
 #endif // DEBUG

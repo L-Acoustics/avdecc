@@ -19,6 +19,7 @@
 
 #include "protocolInterface_macNative.hpp"
 #include "protocol/protocolAemAecpdu.hpp"
+#include "protocol/protocolAaAecpdu.hpp"
 #include <stdexcept>
 #include <functional>
 #include <memory>
@@ -57,12 +58,12 @@ struct EntityQueues
 	la::avdecc::protocol::ProtocolInterfaceMacNativeImpl* _protocolInterface;
 	
 	std::recursive_mutex _lockEntities; /** Lock to protect _localProcessEntities and _registeredAcmpHandlers fields */
-	std::unordered_map<la::avdecc::UniqueIdentifier, std::uint32_t> _lastAvailableIndex; /** Last received AvailableIndex for each entity */
-	std::unordered_map<la::avdecc::UniqueIdentifier, la::avdecc::entity::LocalEntity&> _localProcessEntities; /** Local entities declared by the running process */
-	std::unordered_set<la::avdecc::UniqueIdentifier> _registeredAcmpHandlers; /** List of ACMP handlers that have been registered (that must be removed upon destruction, since there is no removeAllHandlers method) */
+	std::unordered_map<la::avdecc::UniqueIdentifier, std::uint32_t, la::avdecc::UniqueIdentifier::hash> _lastAvailableIndex; /** Last received AvailableIndex for each entity */
+	std::unordered_map<la::avdecc::UniqueIdentifier, la::avdecc::entity::LocalEntity&, la::avdecc::UniqueIdentifier::hash> _localProcessEntities; /** Local entities declared by the running process */
+	std::unordered_set<la::avdecc::UniqueIdentifier, la::avdecc::UniqueIdentifier::hash> _registeredAcmpHandlers; /** List of ACMP handlers that have been registered (that must be removed upon destruction, since there is no removeAllHandlers method) */
 	
 	std::mutex _lockQueues; /** Lock to protect _entityQueues */
-	std::unordered_map<la::avdecc::UniqueIdentifier, EntityQueues> _entityQueues;
+	std::unordered_map<la::avdecc::UniqueIdentifier, EntityQueues, la::avdecc::UniqueIdentifier::hash> _entityQueues;
 	
 	std::mutex _lockPending; /** Lock to protect _pendingCommands and _pendingCondVar */
 	std::uint32_t _pendingCommands; /** Count of pending (inflight) commands, since there is no way to cancel a command upon destruction (and result block might be called while we already destroyed our objects) */
@@ -77,7 +78,12 @@ struct EntityQueues
 +(la::avdecc::networkInterface::MacAddress)getMacAddress:(NSArray*)array;
 +(AVB17221Entity*)makeAVB17221Entity:(la::avdecc::entity::Entity const&)entity;
 +(la::avdecc::entity::DiscoveredEntity)makeEntity:(AVB17221Entity *)entity;
++(AVB17221AECPAEMMessage*)makeAemCommand:(la::avdecc::protocol::AemAecpdu const&)command;
 +(la::avdecc::protocol::AemAecpdu::UniquePointer)makeAemResponse:(AVB17221AECPAEMMessage*)response;
++(AVB17221AECPAddressAccessMessage*)makeAaCommand:(la::avdecc::protocol::AaAecpdu const&)command;
++(la::avdecc::protocol::AaAecpdu::UniquePointer)makeAaResponse:(AVB17221AECPAddressAccessMessage*)response;
++(AVB17221AECPMessage*)makeAecpCommand:(la::avdecc::protocol::Aecpdu const&)command;
++(la::avdecc::protocol::Aecpdu::UniquePointer)makeAecpResponse:(AVB17221AECPMessage*)response;
 +(la::avdecc::protocol::Acmpdu::UniquePointer)makeAcmpMessage:(AVB17221ACMPMessage*)message;
 +(la::avdecc::networkInterface::MacAddress)makeMacAddress:(AVBMACAddress*)macAddress;
 +(AVBMACAddress*)makeAVBMacAddress:(la::avdecc::networkInterface::MacAddress const&)macAddress;
@@ -338,7 +344,7 @@ namespace la
 	auto e = [[AVB17221Entity alloc] init];
 
 	e.entityID = entity.getEntityID();
-	e.entityModelID = entity.getVendorEntityModelID();
+	e.entityModelID = entity.getEntityModelID();
 	e.entityCapabilities = static_cast<AVB17221ADPEntityCapabilities>(entity.getEntityCapabilities());
 	e.talkerStreamSources = entity.getTalkerStreamSources();
 	e.talkerCapabilities = static_cast<AVB17221ADPTalkerCapabilities>(entity.getTalkerCapabilities());
@@ -369,6 +375,30 @@ namespace la
 	};
 }
 
++(AVB17221AECPAEMMessage*)makeAemCommand:(la::avdecc::protocol::AemAecpdu const&)command
+{
+	auto const message = [AVB17221AECPAEMMessage commandMessage];
+	
+	// Set Aem specific fields
+	message.unsolicited = FALSE;
+	message.controllerRequest = FALSE;
+	message.commandType = static_cast<AVB17221AEMCommandType>(command.getCommandType().getValue());
+	auto const payloadInfo = command.getPayload();
+	auto const* const payload = payloadInfo.first;
+	if (payload != nullptr)
+	{
+		message.commandSpecificData = [NSData dataWithBytes:payload length:payloadInfo.second];
+	}
+	
+	// Set common fields
+	message.status = AVB17221AECPStatusSuccess;
+	message.targetEntityID = command.getTargetEntityID();
+	message.controllerEntityID = command.getControllerEntityID();
+	// No need to set the sequenceID field, it's handled by Apple's framework
+	
+	return message;
+}
+
 +(la::avdecc::protocol::AemAecpdu::UniquePointer)makeAemResponse:(AVB17221AECPAEMMessage*)response
 {
 	auto aemAecpdu = la::avdecc::protocol::AemAecpdu::create();
@@ -393,6 +423,88 @@ namespace la
 		aem.setCommandSpecificData(response.commandSpecificData.bytes, response.commandSpecificData.length);
 
 	return aemAecpdu;
+}
+
++(AVB17221AECPAddressAccessMessage*)makeAaCommand:(la::avdecc::protocol::AaAecpdu const&)command
+{
+	auto const message = [AVB17221AECPAddressAccessMessage commandMessage];
+	
+	// Set AA specific fields
+	//NSArray<AVB17221AECPAddressAccessTLV *>* tlvs = [[NSArray alloc] init];
+	auto* tlvs = [[NSMutableArray alloc] init];
+	for (auto const& tlv : command.getTlvData())
+	{
+		auto* t = [[AVB17221AECPAddressAccessTLV alloc] init];
+		t.mode = static_cast<AVB17221AECPAddressAccessTLVMode>(tlv.getMode().getValue());
+		t.address = tlv.getAddress();
+		t.memoryData = [NSData dataWithBytes:tlv.getMemoryData().data() length:tlv.getMemoryData().size()];
+		[tlvs addObject:t];
+	}
+	message.tlvs = tlvs;
+	
+	// Set common fields
+	message.status = AVB17221AECPStatusSuccess;
+	message.targetEntityID = command.getTargetEntityID();
+	message.controllerEntityID = command.getControllerEntityID();
+	// No need to set the sequenceID field, it's handled by Apple's framework
+	
+	return message;
+}
+
++(la::avdecc::protocol::AaAecpdu::UniquePointer)makeAaResponse:(AVB17221AECPAddressAccessMessage*)response
+{
+	auto aaAecpdu = la::avdecc::protocol::AaAecpdu::create();
+	auto& aa = static_cast<la::avdecc::protocol::AaAecpdu&>(*aaAecpdu);
+
+	// Set Ether2 fields
+#pragma message("TBD: Find a way to retrieve these information")
+	//aa.setSrcAddress();
+	//aa.setDestAddress();
+
+	// Set AECP fields
+	aa.setMessageType(la::avdecc::protocol::AecpMessageType::AddressAccessResponse);
+	aa.setStatus(la::avdecc::protocol::AecpStatus(response.status));
+	aa.setTargetEntityID(response.targetEntityID);
+	aa.setControllerEntityID(response.controllerEntityID);
+	aa.setSequenceID(response.sequenceID);
+
+	// Set Address Access fields
+	for(AVB17221AECPAddressAccessTLV* tlv in response.tlvs)
+	{
+		aa.addTlv(la::avdecc::entity::addressAccess::Tlv{ tlv.address, static_cast<la::avdecc::protocol::AaMode>(tlv.mode), tlv.memoryData.bytes, tlv.memoryData.length });
+	}
+
+	return aaAecpdu;
+}
+
++(AVB17221AECPMessage*)makeAecpCommand:(la::avdecc::protocol::Aecpdu const&)command
+{
+	switch (static_cast<AVB17221AECPMessageType>(command.getMessageType().getValue()))
+	{
+		case AVB17221AECPMessageTypeAEMCommand:
+			return [BridgeInterface makeAemCommand:static_cast<la::avdecc::protocol::AemAecpdu const&>(command)];
+		case AVB17221AECPMessageTypeAddressAccessCommand:
+			return [BridgeInterface makeAaCommand:static_cast<la::avdecc::protocol::AaAecpdu const&>(command)];
+		default:
+			AVDECC_ASSERT(false, "Unhandled AECP message type");
+			break;
+	}
+	return NULL;
+}
+
++(la::avdecc::protocol::Aecpdu::UniquePointer)makeAecpResponse:(AVB17221AECPMessage*)response
+{
+	switch ([response messageType])
+	{
+		case AVB17221AECPMessageTypeAEMResponse:
+			return [BridgeInterface makeAemResponse:static_cast<AVB17221AECPAEMMessage*>(response)];
+		case AVB17221AECPMessageTypeAddressAccessResponse:
+			return [BridgeInterface makeAaResponse:static_cast<AVB17221AECPAddressAccessMessage*>(response)];
+		default:
+			AVDECC_ASSERT(false, "Unhandled AECP message type");
+			break;
+	}
+	return {nullptr, nullptr};
 }
 
 +(la::avdecc::protocol::Acmpdu::UniquePointer)makeAcmpMessage:(AVB17221ACMPMessage*)message
@@ -466,6 +578,8 @@ namespace la
 				return la::avdecc::protocol::ProtocolInterface::Error::DuplicateLocalEntityID;
 			case kIOReturnNotFound:
 				return la::avdecc::protocol::ProtocolInterface::Error::UnknownLocalEntity;
+			case kIOReturnOffline:
+				return la::avdecc::protocol::ProtocolInterface::Error::TransportError;
 			default:
 				NSLog(@"Not handled IOReturn error code: %x\n", code);
 				AVDECC_ASSERT(false, "Not handled error code");
@@ -681,32 +795,14 @@ namespace la
 	auto const macAddr = macAddress; // Make a copy of the macAddress so it can safely be used inside the objC block
 	__block auto resultHandler = onResult; // Make a copy of the handler so it can safely be used inside the objC block. Declare it as __block so we can modify it from the block (to fix a bug that macOS sometimes call the completionHandler twice)
 
-	auto const messageType = aecpdu->getMessageType();
-	if(messageType == la::avdecc::protocol::AecpMessageType::AemCommand)
+	auto message = [BridgeInterface makeAecpCommand:*aecpdu];
+	if(message != NULL)
 	{
-		auto const& aem = static_cast<la::avdecc::protocol::AemAecpdu const&>(*aecpdu);
-		auto const message = [AVB17221AECPAEMMessage commandMessage];
-		// Set Aem specific fields
-		message.unsolicited = FALSE;
-		message.controllerRequest = FALSE;
-		message.commandType = static_cast<AVB17221AEMCommandType>(aem.getCommandType().getValue());
-		auto const payloadInfo = aem.getPayload();
-		auto const* const payload = payloadInfo.first;
-		if (payload != nullptr)
-		{
-			message.commandSpecificData = [NSData dataWithBytes:payload length:payloadInfo.second];
-		}
-		// Set common fields
-		message.status = AVB17221AECPStatusSuccess;
-		message.targetEntityID = aem.getTargetEntityID();
-		message.controllerEntityID = aem.getControllerEntityID();
-		// No need to set the sequenceID field, it's handled by Apple's framework
-
 		decltype(EntityQueues::aecpQueue) queue;
 		// Only take the lock while searching for the queue, we want to release it before invoking dispath_async to prevent a deadlock
 		{
 			std::lock_guard<decltype(_lockQueues)> const lg(_lockQueues);
-			auto eqIt = _entityQueues.find(aem.getTargetEntityID());
+			auto eqIt = _entityQueues.find(message.targetEntityID);
 			if (eqIt == _entityQueues.end())
 			{
 				AVDECC_ASSERT(false, "Should not happen");
@@ -732,7 +828,7 @@ namespace la
 			dispatch_semaphore_wait(limiter, DISPATCH_TIME_FOREVER);
 
 			[self startAsyncOperation];
-			if ([self.interface.aecp sendCommand:message toMACAddress:[BridgeInterface makeAVBMacAddress:macAddr] completionHandler:^(NSError* error, AVB17221AECPMessage* message)
+			[self.interface.aecp sendCommand:message toMACAddress:[BridgeInterface makeAVBMacAddress:macAddr] completionHandler:^(NSError* error, AVB17221AECPMessage* message)
 					 {
 						 if (!resultHandler)
 						 {
@@ -741,9 +837,8 @@ namespace la
 						 }
 						 if (kIOReturnSuccess == (IOReturn)error.code)
 						 {
-							 AVDECC_ASSERT([message messageType] == AVB17221AECPMessageTypeAEMResponse, "AECP Response to our AEM Command is NOT an AEM Response!");
-							 auto aem = [BridgeInterface makeAemResponse:static_cast<AVB17221AECPAEMMessage*>(message)];
-							 la::avdecc::invokeProtectedHandler(resultHandler, aem.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
+							 auto aecpdu = [BridgeInterface makeAecpResponse:message];
+							 la::avdecc::invokeProtectedHandler(resultHandler, aecpdu.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
 						 }
 						 else
 						 {
@@ -753,15 +848,7 @@ namespace la
 						 [self stopAsyncOperation];
 						 // Signal the semaphore so we can process another command
 						 dispatch_semaphore_signal(limiter);
-					 }] == NO)
-			{
-				// Failed to send the message
-				NSLog(@"Failed to send AECP message");
-				[self stopAsyncOperation];
-				la::avdecc::invokeProtectedHandler(resultHandler, nullptr, la::avdecc::protocol::ProtocolInterface::Error::TransportError);
-				// Signal the semaphore now, the aecp sendCommand handler won't fire
-				dispatch_semaphore_signal(limiter);
-			}
+					 }]; // We don't care about the method result, the completionHandler will always be called anyway (if for some reason, we detect it's not always the case, simply remove the resultHandler and call stopAsyncOperation and signal the semaphore if the method fails, and return TransportError. Carefull to change the resultHandler under a small lock that has to be shared with the block as well)
 		});
 	}
 	else
@@ -797,7 +884,7 @@ namespace la
 	message.vlanID = acmp.getStreamVlanID();
 
 	[self startAsyncOperation];
-	if ([self.interface.acmp sendACMPCommandMessage:message completionHandler:^(NSError* error, AVB17221ACMPMessage* message)
+	[self.interface.acmp sendACMPCommandMessage:message completionHandler:^(NSError* error, AVB17221ACMPMessage* message)
 		{
 			if (!resultHandler)
 			{
@@ -815,13 +902,7 @@ namespace la
 			}
 			resultHandler = {}; // Clear resultHandler in case this completionHandler is called twice (bug in macOS)
 			[self stopAsyncOperation];
-		}] == NO)
-	{
-		// Failed to send the message
-		NSLog(@"Failed to send ACMP message");
-		[self stopAsyncOperation];
-		return la::avdecc::protocol::ProtocolInterface::Error::TransportError;
-	}
+		}]; // We don't care about the method result, the completionHandler will always be called anyway (if for some reason, we detect it's not always the case, simply remove the resultHandler and call stopAsyncOperation if the method fails, and return TransportError. Carefull to change the resultHandler under a small lock that has to be shared with the block as well)
 	return la::avdecc::protocol::ProtocolInterface::Error::NoError;
 }
 
@@ -850,7 +931,7 @@ namespace la
 	{
 		std::lock_guard<decltype(_lockQueues)> const lg(_lockQueues);
 		EntityQueues eq;
-		eq.aecpQueue = dispatch_queue_create([[NSString stringWithFormat:@"%@.0x%016llx.aecp", [self className], entityID] UTF8String], 0);
+		eq.aecpQueue = dispatch_queue_create([[NSString stringWithFormat:@"%@.0x%016llx.aecp", [self className], entityID.getValue()] UTF8String], 0);
 		eq.aecpLimiter = dispatch_semaphore_create(la::avdecc::protocol::Aecpdu::DefaultMaxInflightCommands);
 		_entityQueues[entityID] = std::move(eq);
 	}
