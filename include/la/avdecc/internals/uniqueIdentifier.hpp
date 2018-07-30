@@ -67,7 +67,7 @@ public:
 
 	/** Returns the VendorID as a OUI-24 (by default) or OUI-64 if using std::uint64_t type. It's the caller's responsibility to know if it needs to get the OUI-24 or OUI-36. */
 	template<typename Type = std::uint32_t>
-	constexpr std::enable_if_t<std::is_same<Type, std::uint32_t>::value | std::is_same<Type, std::uint64_t>::value, Type> getVendorID() const noexcept
+	constexpr std::enable_if_t<std::is_same_v<Type, std::uint32_t> | std::is_same<Type, std::uint64_t>::value, Type> getVendorID() const noexcept
 	{
 		if constexpr (std::is_same<Type, std::uint32_t>::value)
 		{
