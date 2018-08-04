@@ -24,10 +24,10 @@ We use GitHub issues for tracking requests and bugs.
 * Biamp: Tesira Forte
 * Avid: S6L
 * MOTU: 112D, 828, Traveller, StageBox16
-* MeyerSound: Galileo GALAXY
+* MeyerSound: Galileo GALAXY, CAL
 * QSC: Q-SYS Cores
 * Apple: macOS Talker, Listener and Controller (El Capitan and later)
-* Audiosience: comming soon
+* AudioScience: Hono AVB Mini
 
 ## la_avdecc Library
 
@@ -119,3 +119,6 @@ The controller API has 2 interfaces:
 - Wrapper libraries:
   * C (public APIs only)
   * Lua (public and private APIs)
+
+## Trademark Legal Notice
+All product names, logos, brands and trademarks are property of their respective owners. All company, product and service names used in this library are for identification purposes only. Use of these names, logos, and brands does not imply endorsement.

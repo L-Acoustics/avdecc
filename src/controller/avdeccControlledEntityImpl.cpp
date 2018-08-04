@@ -545,12 +545,12 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 
 void ControlledEntityImpl::lock() noexcept
 {
-#pragma message("TODO: Add a lock to the class and use it the Lockable concept for all modifications from the controller!!")
+	_lock.lock();
 }
 
 void ControlledEntityImpl::unlock() noexcept
 {
-#pragma message("TODO: Add a lock to the class and use it the Lockable concept for all modifications from the controller!!")
+	_lock.unlock();
 }
 
 // Const Tree getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist
@@ -1345,6 +1345,9 @@ static inline ControlledEntityImpl::DescriptorKey makeDescriptorKey(entity::mode
 
 bool ControlledEntityImpl::checkAndClearExpectedDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
+	// Lock during access to the map
+	std::lock_guard<decltype(_lock)> const lg(_lock);
+
 	auto const confIt = _expectedDescriptors.find(configurationIndex);
 
 	if (confIt == _expectedDescriptors.end())
@@ -1357,6 +1360,9 @@ bool ControlledEntityImpl::checkAndClearExpectedDescriptor(entity::model::Config
 
 void ControlledEntityImpl::setDescriptorExpected(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
+	// Lock during access to the map
+	std::lock_guard<decltype(_lock)> const lg(_lock);
+	
 	auto& conf = _expectedDescriptors[configurationIndex];
 
 	auto const key = makeDescriptorKey(descriptorType, descriptorIndex);
@@ -1365,6 +1371,9 @@ void ControlledEntityImpl::setDescriptorExpected(entity::model::ConfigurationInd
 
 bool ControlledEntityImpl::gotAllExpectedDescriptors() const noexcept
 {
+	// Lock during access to the map
+	std::lock_guard<decltype(_lock)> const lg(_lock);
+	
 	for (auto const& confKV : _expectedDescriptors)
 	{
 		if (confKV.second.size() != 0)
@@ -1391,6 +1400,9 @@ static inline ControlledEntityImpl::DynamicInfoKey makeDynamicInfoKey(Controlled
 
 bool ControlledEntityImpl::checkAndClearExpectedDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex) noexcept
 {
+	// Lock during access to the map
+	std::lock_guard<decltype(_lock)> const lg(_lock);
+	
 	auto const confIt = _expectedDynamicInfo.find(configurationIndex);
 
 	if (confIt == _expectedDynamicInfo.end())
@@ -1403,6 +1415,9 @@ bool ControlledEntityImpl::checkAndClearExpectedDynamicInfo(entity::model::Confi
 
 void ControlledEntityImpl::setDynamicInfoExpected(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex) noexcept
 {
+	// Lock during access to the map
+	std::lock_guard<decltype(_lock)> const lg(_lock);
+	
 	auto& conf = _expectedDynamicInfo[configurationIndex];
 
 	auto const key = makeDynamicInfoKey(dynamicInfoType, descriptorIndex, subIndex);
@@ -1411,6 +1426,9 @@ void ControlledEntityImpl::setDynamicInfoExpected(entity::model::ConfigurationIn
 
 bool ControlledEntityImpl::gotAllExpectedDynamicInfo() const noexcept
 {
+	// Lock during access to the map
+	std::lock_guard<decltype(_lock)> const lg(_lock);
+	
 	for (auto const& confKV : _expectedDynamicInfo)
 	{
 		if (confKV.second.size() != 0)
@@ -1437,6 +1455,9 @@ static inline ControlledEntityImpl::DescriptorDynamicInfoKey makeDescriptorDynam
 
 bool ControlledEntityImpl::checkAndClearExpectedDescriptorDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
+	// Lock during access to the map
+	std::lock_guard<decltype(_lock)> const lg(_lock);
+	
 	auto const confIt = _expectedDescriptorDynamicInfo.find(configurationIndex);
 
 	if (confIt == _expectedDescriptorDynamicInfo.end())
@@ -1449,6 +1470,9 @@ bool ControlledEntityImpl::checkAndClearExpectedDescriptorDynamicInfo(entity::mo
 
 void ControlledEntityImpl::setDescriptorDynamicInfoExpected(entity::model::ConfigurationIndex const configurationIndex, DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
+	// Lock during access to the map
+	std::lock_guard<decltype(_lock)> const lg(_lock);
+	
 	auto& conf = _expectedDescriptorDynamicInfo[configurationIndex];
 
 	auto const key = makeDescriptorDynamicInfoKey(descriptorDynamicInfoType, descriptorIndex);
@@ -1457,11 +1481,17 @@ void ControlledEntityImpl::setDescriptorDynamicInfoExpected(entity::model::Confi
 
 void ControlledEntityImpl::clearAllExpectedDescriptorDynamicInfo() noexcept
 {
+	// Lock during access to the map
+	std::lock_guard<decltype(_lock)> const lg(_lock);
+	
 	_expectedDescriptorDynamicInfo.clear();
 }
 
 bool ControlledEntityImpl::gotAllExpectedDescriptorDynamicInfo() const noexcept
 {
+	// Lock during access to the map
+	std::lock_guard<decltype(_lock)> const lg(_lock);
+	
 	for (auto const& confKV : _expectedDescriptorDynamicInfo)
 	{
 		if (confKV.second.size() != 0)
