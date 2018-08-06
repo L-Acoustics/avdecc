@@ -32,6 +32,7 @@
 #include <bitset>
 #include <functional>
 #include <chrono>
+#include <mutex>
 #include <utility>
 
 namespace la
@@ -211,12 +212,18 @@ public:
 	template<typename FieldPointer, typename DescriptorIndexType>
 	typename std::remove_pointer_t<FieldPointer>::mapped_type& getNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer model::ConfigurationStaticTree::*Field) noexcept
 	{
+		// Lock during possible modification of the map
+		std::lock_guard<decltype(_lock)> const lg(_lock);
+
 		auto& configStaticTree = getConfigurationStaticTree(configurationIndex);
 		return (configStaticTree.*Field)[index];
 	}
 	template<typename FieldPointer, typename DescriptorIndexType>
 	typename std::remove_pointer_t<FieldPointer>::mapped_type& getNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer model::ConfigurationDynamicTree::*Field) noexcept
 	{
+		// Lock during possible modification of the map
+		std::lock_guard<decltype(_lock)> const lg(_lock);
+
 		auto& configDynamicTree = getConfigurationDynamicTree(configurationIndex);
 		return (configDynamicTree.*Field)[index];
 	}
@@ -369,6 +376,7 @@ private:
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 	// Private variables
+	mutable std::recursive_mutex _lock{};
 	bool _ignoreCachedEntityModel{ false };
 	std::uint16_t _queryDescriptorRetryCount{ 0u };
 	std::uint16_t _queryDynamicInfoRetryCount{ 0u };
