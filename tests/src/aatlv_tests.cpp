@@ -78,7 +78,7 @@ TEST(AddressAccessTlv, Contructor)
 	// Constructor for a Write command using MemoryData
 	{
 		std::uint64_t const address{ 0x123456789ABCDEF };
-		auto const buffer = la::avdecc::entity::addressAccess::Tlv::memory_data_type{ { 5 } };
+		auto const buffer = la::avdecc::entity::addressAccess::Tlv::memory_data_type{ 5 };
 		auto const tlv = la::avdecc::entity::addressAccess::Tlv{ address, la::avdecc::protocol::AaMode::Write, buffer };
 		EXPECT_TRUE(tlv);
 		EXPECT_TRUE(tlv.isValid());
@@ -108,7 +108,7 @@ TEST(AddressAccessTlv, Contructor)
 	// Constructor for a Execute command using MemoryData
 	{
 		std::uint64_t const address{ 0x123456789ABCDEF };
-		auto const buffer = la::avdecc::entity::addressAccess::Tlv::memory_data_type{ { 5 } };
+		auto const buffer = la::avdecc::entity::addressAccess::Tlv::memory_data_type{ 5 };
 		auto const tlv = la::avdecc::entity::addressAccess::Tlv{ address, la::avdecc::protocol::AaMode::Execute, buffer };
 		EXPECT_TRUE(tlv);
 		EXPECT_TRUE(tlv.isValid());
