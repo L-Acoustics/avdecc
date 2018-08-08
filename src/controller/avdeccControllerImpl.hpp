@@ -33,6 +33,7 @@
 #include <functional>
 #include <mutex>
 #include <chrono>
+#include <deque>
 
 namespace la
 {
@@ -243,10 +244,23 @@ private:
 		NotSupported, /**< This query is not supported by the entity. Caller should decide whether to continue or not. */
 		Fatal, /**< This query returned a fatal error, enumeration should be stopped immediately. */
 	};
+	
+	/* ************************************************************ */
+	/* Private types                                                */
+	/* ************************************************************ */
+	using DelayedQueryHandler = std::function<void(entity::ControllerEntity*)>;
+	struct DelayedQuery
+	{
+		std::chrono::time_point<std::chrono::system_clock> sendTime{};
+		la::avdecc::UniqueIdentifier entityID{ la::avdecc::UniqueIdentifier::getUninitializedUniqueIdentifier() };
+		DelayedQueryHandler queryHandler{};
+	};
+	using DelayedQueries = std::deque<DelayedQuery>;
 
 	/* ************************************************************ */
 	/* Private methods                                              */
 	/* ************************************************************ */
+	void addDelayedQuery(std::chrono::milliseconds const delay, la::avdecc::UniqueIdentifier const entityID, DelayedQueryHandler&& queryHandler) noexcept;
 	void chooseLocale(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex) noexcept;
 	void queryInformation(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::chrono::milliseconds const delayQuery = std::chrono::milliseconds{ 0 }) noexcept;
 	void queryInformation(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex = std::uint16_t{ 0u }, std::chrono::milliseconds const delayQuery = std::chrono::milliseconds{ 0 }) noexcept;
@@ -295,11 +309,15 @@ private:
 	/* ************************************************************ */
 	/* Private members                                              */
 	/* ************************************************************ */
+	mutable std::mutex _lock{}; // A mutex to protect _controlledEntities and _delayedQueries
 	std::unordered_map<UniqueIdentifier, OnlineControlledEntity, UniqueIdentifier::hash> _controlledEntities;
-	mutable std::mutex _lock{}; // A mutex to protect _controlledEntities
 	EndStation::UniquePointer _endStation{ nullptr, nullptr };
 	entity::ControllerEntity* _controller{ nullptr };
 	std::string _preferedLocale{ "en-US" };
+	// Delayed queries variables
+	bool _shouldTerminate{ false };
+	DelayedQueries _delayedQueries{};
+	std::thread _delayedQueryThread{};
 };
 
 } // namespace controller

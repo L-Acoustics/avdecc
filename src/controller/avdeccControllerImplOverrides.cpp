@@ -67,10 +67,74 @@ ControllerImpl::ControllerImpl(EndStation::ProtocolInterfaceType const protocolI
 		AVDECC_ASSERT(false, "Unhandled exception");
 		throw Exception(Error::InternalError, e.what());
 	}
+	
+	// Create the delayed query thread
+	_delayedQueryThread = std::thread([this]
+	{
+		setCurrentThreadName("avdecc::controller::DelayedQueries");
+		decltype(_delayedQueries) queriesToSend{};
+		while (!_shouldTerminate)
+		{
+			// Check all delayed queries if we need to send any of them, and copy them so we can send outside the loop
+			{
+				// Lock to protect _delayedQueries
+				std::lock_guard<decltype(_lock)> const lg(_lock);
+
+				// Get current time
+				std::chrono::time_point<std::chrono::system_clock> currentTime = std::chrono::system_clock::now();
+				
+				for (auto it = _delayedQueries.begin(); it != _delayedQueries.end(); /* Iterate inside the loop */)
+				{
+					auto const& query = *it;
+					if (currentTime > query.sendTime)
+					{
+						// Move the query to the "to process" list
+						queriesToSend.emplace_back(std::move(*it));
+						
+						// Remove the command from the list
+						it = _delayedQueries.erase(it);
+					}
+					else
+					{
+						++it;
+					}
+				}
+			}
+			
+			// Now actually send queries, outside the lock
+			while (!queriesToSend.empty() && !_shouldTerminate)
+			{
+				// Get first query from the list
+				auto const& query = queriesToSend.front();
+				
+				auto controlledEntity = getControlledEntityImpl(query.entityID);
+				
+				// Entity still online
+				if (controlledEntity)
+				{
+					// Send the query
+					la::avdecc::invokeProtectedHandler(query.queryHandler, _controller);
+				}
+				
+				// Remove the query from the list
+				queriesToSend.pop_front();
+			}
+
+			// Wait a little bit so we don't burn the CPU
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		}
+	});
 }
 
 ControllerImpl::~ControllerImpl()
 {
+	// Notify the thread we are shutting down
+	_shouldTerminate = true;
+	
+	// Wait for the thread to complete its pending tasks
+	if (_delayedQueryThread.joinable())
+		_delayedQueryThread.join();
+
 	// First, remove ourself from the controller's delegate, we don't want notifications anymore (even if one is coming before the end of the destructor, it's not a big deal, _controlledEntities will be empty)
 	_controller->setDelegate(nullptr);
 

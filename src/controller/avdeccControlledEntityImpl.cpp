@@ -862,7 +862,7 @@ void ControlledEntityImpl::addStreamPortOutputAudioMappings(entity::model::Strea
 		// Check if mapping must be replaced
 		auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(), [&map](entity::model::AudioMapping const& mapping)
 		{
-			return (map.clusterOffset == mapping.clusterOffset) && (map.clusterChannel == mapping.clusterChannel);
+			return (map.streamIndex == mapping.streamIndex) && (map.streamChannel == mapping.streamChannel);
 		});
 		// Not found, add the new mapping
 		if (foundIt == dynamicMap.end())
@@ -872,7 +872,7 @@ void ControlledEntityImpl::addStreamPortOutputAudioMappings(entity::model::Strea
 		else // Otherwise, replace the previous mapping
 		{
 #ifndef ENABLE_AVDECC_FEATURE_REDUNDANCY
-			LOG_CONTROLLER_WARN(_entity.getEntityID(), std::string("Duplicate StreamPortOutput AudioMappings found: ") + std::to_string(foundIt->clusterOffset) + ":" + std::to_string(foundIt->clusterChannel) + ":" + std::to_string(foundIt->streamIndex) + ":" + std::to_string(foundIt->streamChannel) + " replaced by " + std::to_string(map.clusterOffset) + ":" + std::to_string(map.clusterChannel) + ":" + std::to_string(map.streamIndex) + ":" + std::to_string(map.streamChannel));
+			LOG_CONTROLLER_WARN(_entity.getEntityID(), std::string("Duplicate StreamPortOutput AudioMappings found: ") + std::to_string(foundIt->streamIndex) + ":" + std::to_string(foundIt->streamChannel) + ":" + std::to_string(foundIt->clusterOffset) + ":" + std::to_string(foundIt->clusterChannel) + " replaced by " + std::to_string(map.streamIndex) + ":" + std::to_string(map.streamChannel) + ":" + std::to_string(map.clusterOffset) + ":" + std::to_string(map.clusterChannel));
 #endif // !ENABLE_AVDECC_FEATURE_REDUNDANCY
 			foundIt->streamIndex = map.streamIndex;
 			foundIt->streamChannel = map.streamChannel;
@@ -891,7 +891,7 @@ void ControlledEntityImpl::removeStreamPortOutputAudioMappings(entity::model::St
 		// Check if mapping exists
 		auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(), [&map](entity::model::AudioMapping const& mapping)
 		{
-			return (map.clusterOffset == mapping.clusterOffset) && (map.clusterChannel == mapping.clusterChannel);
+			return (map.streamIndex == mapping.streamIndex) && (map.streamChannel == mapping.streamChannel);
 		});
 		if (AVDECC_ASSERT_WITH_RET(foundIt != dynamicMap.end(), "Mapping not found"))
 			dynamicMap.erase(foundIt);

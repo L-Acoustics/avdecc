@@ -4,7 +4,12 @@ All notable changes to the Avdecc Library will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.6.3] - 2018-08-08
+
 ## [2.6.2] - 2018-08-06
+### Fixed
+- [CRF StreamFormat should be a 0 channel stream, not 1](https://github.com/L-Acoustics/avdecc/issues/28)
+- [ControllerStateMachine AECP/ACMP SequenceID starts at 0, not 1](https://github.com/L-Acoustics/avdecc/issues/21)
 
 ## [2.6.1] - 2018-07-30
 ### Added
