@@ -417,7 +417,7 @@ public:
 	StreamFormatInfoCRFImpl(StreamFormat const& streamFormat, std::uint8_t const crf_type, std::uint16_t const timestamp_interval, std::uint8_t const timestamps_per_pdu, std::uint8_t const pull, std::uint32_t const base_frequency)
 		: StreamFormatInfoBase(streamFormat, Type::ClockReference), _timestamp_interval(timestamp_interval), _timestamps_per_pdu(timestamps_per_pdu), _pull(pull)
 	{
-		_channelsCount = 1u;
+		_channelsCount = 0u;
 		_upToChannelsCount = false;
 		switch (base_frequency)
 		{
