@@ -624,18 +624,16 @@ void ControllerStateMachine::resetAcmpCommandTimeoutValue(AcmpCommandInfo& comma
 
 AecpSequenceID ControllerStateMachine::getNextAecpSequenceID(LocalEntityInfo& info) noexcept
 {
-	info.currentAecpSequenceID++;
-	if (info.currentAecpSequenceID == 0) // Don't allow 0 as a valid sequenceID value
-		info.currentAecpSequenceID++;
-	return info.currentAecpSequenceID;
+	auto const nextID = info.currentAecpSequenceID;
+	++info.currentAecpSequenceID;
+	return nextID;
 }
 
 AcmpSequenceID ControllerStateMachine::getNextAcmpSequenceID(LocalEntityInfo& info) noexcept
 {
-	info.currentAcmpSequenceID++;
-	if (info.currentAcmpSequenceID == 0) // Don't allow 0 as a valid sequenceID value
-		info.currentAcmpSequenceID++;
-	return info.currentAcmpSequenceID;
+	auto const nextID = info.currentAcmpSequenceID;
+	++info.currentAcmpSequenceID;
+	return nextID;
 }
 
 std::chrono::time_point<std::chrono::system_clock> ControllerStateMachine::computeNextAdvertiseTime(entity::Entity const& entity) const noexcept
