@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Fixed
 - [Incorrect StreamOutput channel dynamic mappings](https://github.com/L-Acoustics/avdecc/issues/30)
+- [Queries scheduler might crash](https://github.com/L-Acoustics/avdecc/issues/19)
 
 ## [2.6.2] - 2018-08-06
 ### Fixed

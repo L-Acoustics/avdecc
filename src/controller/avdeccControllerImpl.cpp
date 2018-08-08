@@ -452,6 +452,14 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntity
 /* ************************************************************ */
 /* Private methods                                              */
 /* ************************************************************ */
+void ControllerImpl::addDelayedQuery(std::chrono::milliseconds const delay, la::avdecc::UniqueIdentifier const entityID, DelayedQueryHandler&& queryHandler) noexcept
+{
+	// Lock to protect _delayedQueries
+	std::lock_guard<decltype(_lock)> const lg(_lock);
+
+	_delayedQueries.emplace_back(DelayedQuery{ std::chrono::system_clock::now() + delay, entityID, std::move(queryHandler) });
+}
+
 void ControllerImpl::chooseLocale(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
 	model::LocaleNodeStaticModel const* localeNode{ nullptr };
@@ -615,22 +623,7 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 	}
 	else
 	{
-#pragma message("TODO: Use a single thread for ALL query retries (all types as well), that is destroyed when the controller is destroyed (we don't want to crash, do we?)")
-		std::thread([this, delayQuery, queryFunc, entityID]
-		{
-			std::this_thread::sleep_for(delayQuery);
-			if (_controller)
-			{
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
-
-				// Entity still online
-				if (controlledEntity)
-				{
-					queryFunc(_controller);
-				}
-			}
-		}).detach();
+		addDelayedQuery(delayQuery, entityID, std::move(queryFunc));
 	}
 }
 
@@ -717,22 +710,7 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 	}
 	else
 	{
-#pragma message("TODO: Use a single thread for ALL query retries (all types as well), that is destroyed when the controller is destroyed (we don't want to crash, do we?)")
-		std::thread([this, delayQuery, queryFunc, entityID]
-		{
-			std::this_thread::sleep_for(delayQuery);
-			if (_controller)
-			{
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
-
-				// Entity still online
-				if (controlledEntity)
-				{
-					queryFunc(_controller);
-				}
-			}
-		}).detach();
+		addDelayedQuery(delayQuery, entityID, std::move(queryFunc));
 	}
 }
 
@@ -765,22 +743,7 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 	}
 	else
 	{
-#pragma message("TODO: Use a single thread for ALL query retries (all types as well), that is destroyed when the controller is destroyed (we don't want to crash, do we?)")
-		std::thread([this, delayQuery, queryFunc, entityID]
-		{
-			std::this_thread::sleep_for(delayQuery);
-			if (_controller)
-			{
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
-
-				// Entity still online
-				if (controlledEntity)
-				{
-					queryFunc(_controller);
-				}
-			}
-		}).detach();
+		addDelayedQuery(delayQuery, entityID, std::move(queryFunc));
 	}
 }
 
@@ -907,22 +870,7 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 	}
 	else
 	{
-#pragma message("TODO: Use a single thread for ALL query retries (all types as well), that is destroyed when the controller is destroyed (we don't want to crash, do we?)")
-		std::thread([this, delayQuery, queryFunc, entityID]
-		{
-			std::this_thread::sleep_for(delayQuery);
-			if (_controller)
-			{
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
-
-				// Entity still online
-				if (controlledEntity)
-				{
-					queryFunc(_controller);
-				}
-			}
-		}).detach();
+		addDelayedQuery(delayQuery, entityID, std::move(queryFunc));
 	}
 }
 
