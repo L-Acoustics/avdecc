@@ -25,13 +25,13 @@
 
 #pragma once
 
+#include "uniqueIdentifier.hpp"
 #include <cstdint>
 #include <string>
 #include <array>
 #include <vector>
 #include <iostream>
 #include <cstring> // std::memcpy
-#include "uniqueIdentifier.hpp"
 
 namespace la
 {
@@ -237,7 +237,7 @@ constexpr bool operator==(MemoryObjectType const lhs, std::underlying_type_t<Mem
 /** AudioCluster Format - Clause 7.2.16.1 */
 enum class AudioClusterFormat : std::uint8_t
 {
-	Iec60958 = 0x00, 
+	Iec60958 = 0x00,
 	Mbla = 0x40,
 	Midi = 0x80,
 	Smpte = 0x88,

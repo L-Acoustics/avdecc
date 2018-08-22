@@ -90,7 +90,7 @@ std::vector<CompileOptionInfo> LA_AVDECC_CONTROLLER_CALL_CONVENTION getCompileOp
 /* ************************************************************ */
 /* Controller class definition                                  */
 /* ************************************************************ */
-Controller* LA_AVDECC_CONTROLLER_CALL_CONVENTION Controller::createRawController(EndStation::ProtocolInterfaceType const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale)
+Controller* LA_AVDECC_CONTROLLER_CALL_CONVENTION Controller::createRawController(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale)
 {
 	return new ControllerImpl(protocolInterfaceType, interfaceName, progID, entityModelID, preferedLocale);
 }

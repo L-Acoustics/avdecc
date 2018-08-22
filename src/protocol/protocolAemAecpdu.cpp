@@ -22,7 +22,7 @@
 * @author Christophe Calmejane
 */
 
-#include "protocolAemAecpdu.hpp"
+#include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "logHelper.hpp"
 #include <cassert>
 #include <string>
@@ -52,7 +52,11 @@ AemAecpdu::AemAecpdu() noexcept
 	}
 }
 
-void AemAecpdu::serialize(SerializationBuffer& buffer) const
+AemAecpdu::~AemAecpdu() noexcept
+{
+}
+
+void LA_AVDECC_CALL_CONVENTION AemAecpdu::serialize(SerializationBuffer& buffer) const
 {
 	// First call parent
 	Aecpdu::serialize(buffer);
@@ -68,7 +72,7 @@ void AemAecpdu::serialize(SerializationBuffer& buffer) const
 	}
 }
 
-void AemAecpdu::deserialize(DeserializationBuffer& buffer)
+void LA_AVDECC_CALL_CONVENTION AemAecpdu::deserialize(DeserializationBuffer& buffer)
 {
 	// First call parent
 	Aecpdu::deserialize(buffer);
@@ -123,7 +127,7 @@ void AemAecpdu::deserialize(DeserializationBuffer& buffer)
 }
 
 /** Copy method */
-Aecpdu::UniquePointer AemAecpdu::copy() const
+Aecpdu::UniquePointer LA_AVDECC_CALL_CONVENTION AemAecpdu::copy() const
 {
 	auto deleter = [](Aecpdu* self)
 	{
@@ -133,13 +137,13 @@ Aecpdu::UniquePointer AemAecpdu::copy() const
 }
 
 /** Entry point */
-AemAecpdu* AemAecpdu::createRawAemAecpdu()
+AemAecpdu* LA_AVDECC_CALL_CONVENTION AemAecpdu::createRawAemAecpdu()
 {
 	return new AemAecpdu();
 }
 
 /** Destroy method for COM-like interface */
-void AemAecpdu::destroy() noexcept
+void LA_AVDECC_CALL_CONVENTION AemAecpdu::destroy() noexcept
 {
 	delete this;
 }

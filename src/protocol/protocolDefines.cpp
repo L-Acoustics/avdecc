@@ -23,8 +23,7 @@
 */
 
 #include "la/avdecc/internals/protocolDefines.hpp"
-#include "protocol/protocolAaAecpdu.hpp"
-
+#include "la/avdecc/internals/protocolAaAecpdu.hpp"
 #include <unordered_map>
 
 namespace la

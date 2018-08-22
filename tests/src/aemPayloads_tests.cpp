@@ -22,10 +22,12 @@
 * @author Christophe Calmejane
 */
 
+// Internal API
+#include "protocol/protocolAemPayloads.hpp"
+
 #include <gtest/gtest.h>
 #include <array>
 #include <cstdint>
-#include "protocol/protocolAemPayloads.hpp"
 
 // Test disable on clang/gcc because of a compilation error in the checkPayload template caused by the UniqueIdentifier class (was fine when it was a simple type). TODO: Fix this
 #ifdef _WIN32

@@ -26,7 +26,6 @@
 
 #include "la/avdecc/controller/avdeccController.hpp"
 #include "avdeccControlledEntityImpl.hpp"
-
 #include <string>
 #include <unordered_map>
 #include <memory>
@@ -45,7 +44,7 @@ namespace controller
 class ControllerImpl final : public Controller, private entity::ControllerEntity::Delegate
 {
 public:
-	ControllerImpl(EndStation::ProtocolInterfaceType const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale);
+	ControllerImpl(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale);
 
 private:
 	using OnlineControlledEntity = std::shared_ptr<ControlledEntityImpl>;
@@ -244,7 +243,7 @@ private:
 		NotSupported, /**< This query is not supported by the entity. Caller should decide whether to continue or not. */
 		Fatal, /**< This query returned a fatal error, enumeration should be stopped immediately. */
 	};
-	
+
 	/* ************************************************************ */
 	/* Private types                                                */
 	/* ************************************************************ */

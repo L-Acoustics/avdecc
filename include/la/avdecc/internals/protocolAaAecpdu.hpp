@@ -25,7 +25,7 @@
 #pragma once
 
 #include "protocolAecpdu.hpp"
-#include "la/avdecc/internals/entityAddressAccessTypes.hpp"
+#include "entityAddressAccessTypes.hpp"
 #include <utility>
 #include <array>
 
@@ -36,7 +36,7 @@ namespace avdecc
 namespace protocol
 {
 
-/** AA Aecpdu heaader */
+/** AA Aecpdu message */
 class AaAecpdu final : public Aecpdu
 {
 public:
@@ -57,6 +57,12 @@ public:
 		};
 		return UniquePointer(createRawAaAecpdu(), deleter);
 	}
+
+	/** Constructor for heap AaAecpdu */
+	LA_AVDECC_API AaAecpdu() noexcept;
+
+	/** Destructor (for some reason we have to define it in the cpp file or clang complains about missing vtable, using = default or inline not working) */
+	virtual LA_AVDECC_API ~AaAecpdu() noexcept override;
 
 	// Setters
 	template<class Tlv, typename = std::enable_if_t<std::is_same<entity::addressAccess::Tlv, std::remove_cv_t<std::remove_reference_t<Tlv>>>::value>>
@@ -88,14 +94,14 @@ public:
 	}
 
 	/** Serialization method */
-	virtual void serialize(SerializationBuffer& buffer) const override;
+	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION serialize(SerializationBuffer& buffer) const override;
 
 	/** Deserialization method */
-	virtual void deserialize(DeserializationBuffer& buffer) override;
+	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION deserialize(DeserializationBuffer& buffer) override;
 
 	/** Copy method */
-	virtual UniquePointer copy() const override;
-	
+	virtual LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION copy() const override;
+
 	// Defaulted compiler auto-generated methods
 	AaAecpdu(AaAecpdu&&) = default;
 	AaAecpdu(AaAecpdu const&) = default;
@@ -103,17 +109,11 @@ public:
 	AaAecpdu& operator=(AaAecpdu&&) = default;
 
 private:
-	/** Constructor */
-	AaAecpdu() noexcept;
-
-	/** Destructor */
-	virtual ~AaAecpdu() noexcept override = default;
-
 	/** Entry point */
-	static AaAecpdu* createRawAaAecpdu();
+	static LA_AVDECC_API AaAecpdu* LA_AVDECC_CALL_CONVENTION createRawAaAecpdu();
 
 	/** Destroy method for COM-like interface */
-	virtual void destroy() noexcept override;
+	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION destroy() noexcept override;
 
 	// Aa header data
 	entity::addressAccess::Tlvs _tlvData{};

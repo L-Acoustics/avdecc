@@ -22,22 +22,8 @@
 * @author Christophe Calmejane
 */
 
+#include "la/avdecc/internals/protocolInterface.hpp"
 #include "endStationImpl.hpp"
-
-// Protocol Interface
-#ifdef HAVE_PROTOCOL_INTERFACE_PCAP
-#include "protocolInterface/protocolInterface_pcap.hpp"
-#endif // HAVE_PROTOCOL_INTERFACE_PCAP
-#ifdef HAVE_PROTOCOL_INTERFACE_MAC
-#include "protocolInterface/protocolInterface_macNative.hpp"
-#endif // HAVE_PROTOCOL_INTERFACE_MAC
-#ifdef HAVE_PROTOCOL_INTERFACE_PROXY
-#error "Not implemented yet"
-#include "protocolInterface/protocolInterface_proxy.hpp"
-#endif // HAVE_PROTOCOL_INTERFACE_PROXY
-#ifdef HAVE_PROTOCOL_INTERFACE_VIRTUAL
-#include "protocolInterface/protocolInterface_virtual.hpp"
-#endif // HAVE_PROTOCOL_INTERFACE_VIRTUAL
 
 namespace la
 {
@@ -86,36 +72,12 @@ void EndStationImpl::destroy() noexcept
 	delete this;
 }
 
-/** ProtocolInterface creation helper method */
-protocol::ProtocolInterface::UniquePointer EndStationImpl::createProtocolInterface(ProtocolInterfaceType const protocolInterfaceType, std::string const& networkInterfaceName)
+/** EndStation Entry point */
+EndStation* LA_AVDECC_CALL_CONVENTION EndStation::createRawEndStation(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceName)
 {
-	if (!isSupportedProtocolInterfaceType(protocolInterfaceType))
-		throw Exception(Error::InvalidProtocolInterfaceType, "Selected protocol interface type not supported");
-
 	try
 	{
-		switch (protocolInterfaceType)
-		{
-#if defined(HAVE_PROTOCOL_INTERFACE_PCAP)
-			case ProtocolInterfaceType::PCap:
-				return protocol::ProtocolInterfacePcap::create(networkInterfaceName);
-#endif // HAVE_PROTOCOL_INTERFACE_PCAP
-#if defined(HAVE_PROTOCOL_INTERFACE_MAC)
-			case ProtocolInterfaceType::MacOSNative:
-				return protocol::ProtocolInterfaceMacNative::create(networkInterfaceName);
-#endif // HAVE_PROTOCOL_INTERFACE_MAC
-#if defined(HAVE_PROTOCOL_INTERFACE_PROXY)
-			case ProtocolInterfaceType::Proxy:
-				AVDECC_ASSERT(false, "TODO: Proxy protocol interface to create");
-				break;
-#endif // HAVE_PROTOCOL_INTERFACE_PROXY
-#if defined(HAVE_PROTOCOL_INTERFACE_VIRTUAL)
-			case ProtocolInterfaceType::Virtual:
-				return protocol::ProtocolInterfaceVirtual::create(networkInterfaceName, { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } });
-#endif // HAVE_PROTOCOL_INTERFACE_VIRTUAL
-			default:
-				break;
-		}
+		return new EndStationImpl(protocol::ProtocolInterface::create(protocolInterfaceType, networkInterfaceName));
 	}
 	catch (protocol::ProtocolInterface::Exception const& e)
 	{
@@ -126,7 +88,7 @@ protocol::ProtocolInterface::UniquePointer EndStationImpl::createProtocolInterfa
 				throw Exception(Error::InterfaceOpenError, e.what());
 			case protocol::ProtocolInterface::Error::InterfaceNotFound:
 				throw Exception(Error::InterfaceNotFound, e.what());
-			case protocol::ProtocolInterface::Error::InterfaceInvalid:
+			case protocol::ProtocolInterface::Error::InvalidParameters:
 				throw Exception(Error::InterfaceInvalid, e.what());
 			case protocol::ProtocolInterface::Error::InterfaceNotSupported:
 				throw Exception(Error::InvalidProtocolInterfaceType, e.what());
@@ -135,85 +97,6 @@ protocol::ProtocolInterface::UniquePointer EndStationImpl::createProtocolInterfa
 				throw Exception(Error::InternalError, e.what());
 		}
 	}
-
-	throw Exception(Error::InvalidProtocolInterfaceType, "Unknown protocol interface type");
-}
-
-/** EndStation static methods */
-bool LA_AVDECC_CALL_CONVENTION EndStation::isSupportedProtocolInterfaceType(ProtocolInterfaceType const protocolInterfaceType) noexcept
-{
-	auto const types = getSupportedProtocolInterfaceTypes();
-
-	return std::find_if(types.begin(), types.end(), [protocolInterfaceType](decltype(types)::value_type const type)
-	{
-		return type == protocolInterfaceType;
-	}) != types.end();
-}
-
-/** Returns the name of the specified protocol interface type. */
-std::string LA_AVDECC_CALL_CONVENTION EndStation::typeToString(ProtocolInterfaceType const protocolInterfaceType) noexcept
-{
-	switch (protocolInterfaceType)
-	{
-		case ProtocolInterfaceType::PCap:
-			return "Packet capture (PCap)";
-		case ProtocolInterfaceType::MacOSNative:
-			return "macOS native";
-		case ProtocolInterfaceType::Proxy:
-			return "IEEE Std 1722.1 proxy";
-		case ProtocolInterfaceType::Virtual:
-			return "Virtual interface";
-		default:
-			return "Unknown protocol interface type";
-	}
-}
-
-EndStation::SupportedProtocolInterfaceTypes LA_AVDECC_CALL_CONVENTION EndStation::getSupportedProtocolInterfaceTypes() noexcept
-{
-	static SupportedProtocolInterfaceTypes s_supportedProtocolInterfaceTypes{};
-
-	if (s_supportedProtocolInterfaceTypes.empty())
-	{
-		// PCap
-#if defined(HAVE_PROTOCOL_INTERFACE_PCAP)
-		if (protocol::ProtocolInterfacePcap::isSupported())
-		{
-			s_supportedProtocolInterfaceTypes.push_back(ProtocolInterfaceType::PCap);
-		}
-#endif // HAVE_PROTOCOL_INTERFACE_PCAP
-
-		// MacOSNative (only supported on macOS)
-#if defined(HAVE_PROTOCOL_INTERFACE_MAC)
-		if (protocol::ProtocolInterfaceMacNative::isSupported())
-		{
-			s_supportedProtocolInterfaceTypes.push_back(ProtocolInterfaceType::MacOSNative);
-		}
-#endif // HAVE_PROTOCOL_INTERFACE_MAC
-
-			// Proxy
-#if defined(HAVE_PROTOCOL_INTERFACE_PROXY)
-		if (protocol::ProtocolInterfaceProxy::isSupported())
-		{
-			s_supportedProtocolInterfaceTypes.push_back(ProtocolInterfaceType::Proxy);
-		}
-#endif // HAVE_PROTOCOL_INTERFACE_PROXY
-
-		// Virtual
-#if defined(HAVE_PROTOCOL_INTERFACE_VIRTUAL)
-		if (protocol::ProtocolInterfaceVirtual::isSupported())
-		{
-			s_supportedProtocolInterfaceTypes.push_back(ProtocolInterfaceType::Virtual);
-		}
-#endif // HAVE_PROTOCOL_INTERFACE_VIRTUAL
-	}
-
-	return s_supportedProtocolInterfaceTypes;
-}
-
-/** EndStation Entry point */
-EndStation* LA_AVDECC_CALL_CONVENTION EndStation::createRawEndStation(ProtocolInterfaceType const protocolInterfaceType, std::string const& networkInterfaceName)
-{
-	return new EndStationImpl(EndStationImpl::createProtocolInterface(protocolInterfaceType, networkInterfaceName));
 }
 
 } // namespace avdecc

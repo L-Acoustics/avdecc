@@ -25,10 +25,10 @@
 
 #pragma once
 
-#include <cstdint>
-#include <vector>
 #include "la/avdecc/utils.hpp"
 #include "protocolDefines.hpp"
+#include <cstdint>
+#include <vector>
 
 namespace la
 {

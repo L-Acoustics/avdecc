@@ -22,18 +22,20 @@
 * @author Christophe Calmejane
 */
 
+// Internal API
+#include "protocolInterface/protocolInterface_pcap.hpp"
+
 #include <gtest/gtest.h>
 #include <future>
 #include <chrono>
 #include <iostream>
-#include "protocolInterface/protocolInterface_pcap.hpp"
 
 TEST(ProtocolInterfacePCap, InvalidName)
 {
 	// Not using EXPECT_THROW, we want to check the error code inside our custom exception
 	try
 	{
-		la::avdecc::protocol::ProtocolInterfacePcap::create("");
+		std::unique_ptr<la::avdecc::protocol::ProtocolInterfacePcap>(la::avdecc::protocol::ProtocolInterfacePcap::createRawProtocolInterfacePcap(""));
 		EXPECT_FALSE(true); // We expect an exception to have been raised
 	}
 	catch (la::avdecc::protocol::ProtocolInterface::Exception const& e)
@@ -85,7 +87,7 @@ TEST(ProtocolInterfacePCap, TransportError)
 	};
 
 	Observer obs;
-	auto intfc = la::avdecc::protocol::ProtocolInterfacePcap::create("\\Device\\NPF_{1AC618CE-7A20-4B2D-BCFB-DE0DFC7C4089}");
+	auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfacePcap>(la::avdecc::protocol::ProtocolInterfacePcap::createRawProtocolInterfacePcap("\\Device\\NPF_{1AC618CE-7A20-4B2D-BCFB-DE0DFC7C4089}"));
 	intfc->registerObserver(&obs);
 
 	auto status = entityOnlinePromise.get_future().wait_for(std::chrono::seconds(5));

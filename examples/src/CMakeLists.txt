@@ -1,5 +1,21 @@
 # avdecc examples
 
+# RawMessageSend
+add_executable(RawMessageSend rawMessageSender.cpp utils.cpp utils.hpp)
+set_target_properties(RawMessageSend PROPERTIES FOLDER "Examples")
+# Using avdecc library
+target_link_libraries(RawMessageSend PRIVATE la_avdecc_cxx)
+copy_runtime(RawMessageSend la_avdecc_cxx)
+if(NOT WIN32)
+	target_link_libraries(RawMessageSend PRIVATE ncurses)
+endif()
+# Setup common options
+setup_executable_options(RawMessageSend)
+# Set installation rule
+if(INSTALL_AVDECC_EXAMPLES)
+	install(TARGETS RawMessageSend RUNTIME CONFIGURATIONS Release DESTINATION bin)
+endif()
+
 # SimpleController
 add_executable(SimpleController simpleController.cpp utils.cpp utils.hpp)
 set_target_properties(SimpleController PROPERTIES FOLDER "Examples")

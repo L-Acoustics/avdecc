@@ -25,15 +25,15 @@
 
 #pragma once
 
+#include "entity.hpp"
+#include "entityModel.hpp"
+#include "entityAddressAccessTypes.hpp"
+#include "exports.hpp"
 #include <thread>
 #include <unordered_map>
 #include <string>
 #include <vector>
 #include <functional>
-#include "entity.hpp"
-#include "entityModel.hpp"
-#include "entityAddressAccessTypes.hpp"
-#include "exports.hpp"
 
 namespace la
 {

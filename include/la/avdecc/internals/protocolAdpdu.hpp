@@ -34,13 +34,13 @@ namespace avdecc
 namespace protocol
 {
 
-/** Adpdu common header */
+/** Adpdu message */
 class Adpdu final : public AvtpduControl
 {
 public:
 	static constexpr size_t Length = 56; /* ADPDU size - Clause 6.2.1.7 */
 	using UniquePointer = std::unique_ptr<Adpdu, void(*)(Adpdu*)>;
-	static la::avdecc::networkInterface::MacAddress Multicast_Mac_Address;
+	static LA_AVDECC_API la::avdecc::networkInterface::MacAddress Multicast_Mac_Address;
 
 	/**
 	* @brief Factory method to create a new Adpdu.
@@ -56,8 +56,8 @@ public:
 		return UniquePointer(createRawAdpdu(), deleter);
 	}
 
-	/** Constructor */
-	Adpdu() noexcept;
+	/** Constructor for heap Adpdu */
+	LA_AVDECC_API Adpdu() noexcept;
 
 	/** Destructor */
 	virtual ~Adpdu() noexcept override = default;
@@ -195,13 +195,13 @@ public:
 	}
 
 	/** Serialization method */
-	void serialize(SerializationBuffer& buffer) const;
+	LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION serialize(SerializationBuffer& buffer) const;
 
 	/** Deserialization method */
-	void deserialize(DeserializationBuffer& buffer);
+	LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION deserialize(DeserializationBuffer& buffer);
 
 	/** Copy method */
-	UniquePointer copy() const;
+	LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION copy() const;
 
 	// Defaulted compiler auto-generated methods
 	Adpdu(Adpdu&&) = default;
@@ -211,10 +211,10 @@ public:
 
 private:
 	/** Entry point */
-	static Adpdu* createRawAdpdu();
+	static LA_AVDECC_API Adpdu* LA_AVDECC_CALL_CONVENTION createRawAdpdu();
 
 	/** Destroy method for COM-like interface */
-	void destroy() noexcept;
+	LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION destroy() noexcept;
 
 	// Adpdu header data
 	UniqueIdentifier _entityModelID{};

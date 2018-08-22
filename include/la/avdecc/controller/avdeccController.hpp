@@ -25,18 +25,18 @@
 
 #pragma once
 
+#include <la/avdecc/avdecc.hpp>
+#include <la/avdecc/utils.hpp>
+#include <la/avdecc/internals/exception.hpp>
+#include <la/avdecc/memoryBuffer.hpp>
+#include "internals/avdeccControlledEntity.hpp"
+#include "internals/exports.hpp"
 #include <memory>
 #include <functional>
 #include <cstdint>
 #include <string>
 #include <vector>
 #include <mutex>
-#include <la/avdecc/avdecc.hpp>
-#include <la/avdecc/utils.hpp>
-#include <la/avdecc/internals/exception.hpp>
-#include "internals/avdeccControlledEntity.hpp"
-#include "internals/exports.hpp"
-#include "la/avdecc/memoryBuffer.hpp"
 
 namespace la
 {
@@ -279,7 +279,7 @@ public:
 	* @return A new Controller as a Controller::UniquePointer.
 	* @note Throws Exception if interfaceName is invalid or inaccessible, or if progID is already used on the local computer.
 	*/
-	static UniquePointer create(EndStation::ProtocolInterfaceType const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale)
+	static UniquePointer create(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale)
 	{
 		auto deleter = [](Controller* controller)
 		{
@@ -364,7 +364,7 @@ protected:
 
 private:
 	/** Create method for COM-like interface */
-	static LA_AVDECC_CONTROLLER_API Controller* LA_AVDECC_CONTROLLER_CALL_CONVENTION createRawController(EndStation::ProtocolInterfaceType const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale);
+	static LA_AVDECC_CONTROLLER_API Controller* LA_AVDECC_CONTROLLER_CALL_CONVENTION createRawController(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale);
 
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept = 0;

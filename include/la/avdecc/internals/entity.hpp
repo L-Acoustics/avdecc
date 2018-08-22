@@ -25,11 +25,11 @@
 
 #pragma once
 
+#include "la/avdecc/networkInterfaceHelper.hpp"
+#include "entityEnums.hpp"
 #include <cstdint>
 #include <thread>
 #include <algorithm>
-#include "entityEnums.hpp"
-#include "la/avdecc/networkInterfaceHelper.hpp"
 
 namespace la
 {

@@ -22,8 +22,10 @@
 * @author Christophe Calmejane
 */
 
-#include <gtest/gtest.h>
+// Public API
 #include <la/avdecc/memoryBuffer.hpp>
+
+#include <gtest/gtest.h>
 
 TEST(MemoryBuffer, DefaultConstructor)
 {

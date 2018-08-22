@@ -22,9 +22,8 @@
 * @author Christophe Calmejane
 */
 
-#include "pcapInterface.hpp"
 #include "la/avdecc/internals/logItems.hpp"
-
+#include "pcapInterface.hpp"
 #include <cassert>
 #include <string>
 
@@ -99,7 +98,7 @@ PcapInterface::PcapInterface()
 			_pImpl->next_ex_ptr = reinterpret_cast<next_ex_t>(DL_SYM(handle, "pcap_next_ex"));
 			_pImpl->sendpacket_ptr = reinterpret_cast<sendpacket_t>(DL_SYM(handle, "pcap_sendpacket"));
 
-			foundAllFunctions = _pImpl->open_live_ptr && _pImpl->fileno_ptr && 
+			foundAllFunctions = _pImpl->open_live_ptr && _pImpl->fileno_ptr &&
 				_pImpl->close_ptr && _pImpl->compile_ptr && _pImpl->setfilter_ptr &&
 				_pImpl->freecode_ptr && _pImpl->next_ex_ptr && _pImpl->sendpacket_ptr;
 		}

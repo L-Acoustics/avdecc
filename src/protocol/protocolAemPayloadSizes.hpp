@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include "protocolAemAecpdu.hpp"
+#include "la/avdecc/internals/protocolAemAecpdu.hpp"
 
 namespace la
 {

@@ -25,15 +25,15 @@
 
 #pragma once
 
+#include "la/avdecc/utils.hpp"
+#include "la/avdecc/networkInterfaceHelper.hpp"
+#include "endian.hpp"
+#include "entityModel.hpp"
 #include <cstdint>
 #include <type_traits>
 #include <exception>
 #include <array>
 #include <cstring> // memcpy
-#include "la/avdecc/internals/endian.hpp"
-#include "la/avdecc/utils.hpp"
-#include "la/avdecc/internals/entityModel.hpp"
-#include "la/avdecc/networkInterfaceHelper.hpp"
 
 namespace la
 {

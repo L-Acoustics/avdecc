@@ -22,13 +22,13 @@
 * @author Christophe Calmejane
 */
 
+#include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "controllerStateMachine.hpp"
-#include "protocol/protocolAemAecpdu.hpp"
+#include "logHelper.hpp"
 #include <utility>
 #include <stdexcept>
 #include <chrono>
 #include <algorithm>
-#include "logHelper.hpp"
 
 namespace la
 {

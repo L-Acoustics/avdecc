@@ -25,10 +25,10 @@
 #pragma once
 
 #include "la/avdecc/internals/controllerEntity.hpp"
+#include "la/avdecc/internals/protocolInterface.hpp"
+#include "la/avdecc/internals/protocolAemAecpdu.hpp"
+#include "la/avdecc/internals/protocolAaAecpdu.hpp"
 #include "entityImpl.hpp"
-#include "protocolInterface/protocolInterface.hpp"
-#include "protocol/protocolAemAecpdu.hpp"
-#include "protocol/protocolAaAecpdu.hpp"
 #include <unordered_map>
 #include <functional>
 #include <thread>

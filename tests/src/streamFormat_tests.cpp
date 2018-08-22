@@ -22,8 +22,10 @@
 * @author Christophe Calmejane
 */
 
+// Public API
+#include <la/avdecc/internals/streamFormat.hpp>
+
 #include <gtest/gtest.h>
-#include "la/avdecc/internals/streamFormat.hpp"
 
 TEST(StreamFormat, NotAVTPFormat)
 {
@@ -321,7 +323,7 @@ TEST(StreamFormat, isListenerFormatCompatibleWithTalkerFormat)
 		EXPECT_FALSE(la::avdecc::entity::model::StreamFormatInfo::isListenerFormatCompatibleWithTalkerFormat(fmtIEC, fmtAAF));
 		EXPECT_FALSE(la::avdecc::entity::model::StreamFormatInfo::isListenerFormatCompatibleWithTalkerFormat(fmtAAF, fmtIEC));
 	}
-	
+
 	// Difference in Sampling Rate should fail
 	{
 		auto const fmtRate48 = la::avdecc::entity::model::StreamFormatInfo::buildFormat_AAF(8, false, la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int32, 24, 64);
@@ -331,7 +333,7 @@ TEST(StreamFormat, isListenerFormatCompatibleWithTalkerFormat)
 		EXPECT_FALSE(la::avdecc::entity::model::StreamFormatInfo::isListenerFormatCompatibleWithTalkerFormat(fmtRate48, fmtRate96));
 		EXPECT_FALSE(la::avdecc::entity::model::StreamFormatInfo::isListenerFormatCompatibleWithTalkerFormat(fmtRate96, fmtRate48));
 	}
-	
+
 	// Difference in Sample Format should fail (even though the bit depth is the same)
 	{
 		auto const fmt24 = la::avdecc::entity::model::StreamFormatInfo::buildFormat_AAF(8, false, la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int24, 24, 64);
@@ -341,7 +343,7 @@ TEST(StreamFormat, isListenerFormatCompatibleWithTalkerFormat)
 		EXPECT_FALSE(la::avdecc::entity::model::StreamFormatInfo::isListenerFormatCompatibleWithTalkerFormat(fmt24, fmt32));
 		EXPECT_FALSE(la::avdecc::entity::model::StreamFormatInfo::isListenerFormatCompatibleWithTalkerFormat(fmt32, fmt24));
 	}
-	
+
 	// Same (non up-to) formats should be compatible
 	{
 		auto const lFmt = la::avdecc::entity::model::StreamFormatInfo::buildFormat_AAF(8, false, la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int16, 16, 64);
@@ -393,7 +395,7 @@ TEST(StreamFormat, getAdaptedStreamFormats)
 			EXPECT_EQ(la::avdecc::entity::model::getNullStreamFormat(), fmts.second);
 		}
 	}
-	
+
 	// Difference in Sampling Rate should fail
 	{
 		auto const fmtRate48 = la::avdecc::entity::model::StreamFormatInfo::buildFormat_AAF(8, false, la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int32, 24, 64);
@@ -411,7 +413,7 @@ TEST(StreamFormat, getAdaptedStreamFormats)
 			EXPECT_EQ(la::avdecc::entity::model::getNullStreamFormat(), fmts.second);
 		}
 	}
-	
+
 	// Difference in Sample Format should fail (even though the bit depth is the same)
 	{
 		auto const fmt24 = la::avdecc::entity::model::StreamFormatInfo::buildFormat_AAF(8, false, la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int24, 24, 64);
@@ -429,7 +431,7 @@ TEST(StreamFormat, getAdaptedStreamFormats)
 			EXPECT_EQ(la::avdecc::entity::model::getNullStreamFormat(), fmts.second);
 		}
 	}
-	
+
 	// Same (non up-to) formats should be compatible
 	{
 		auto const lFmt = la::avdecc::entity::model::StreamFormatInfo::buildFormat_AAF(8, false, la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int16, 16, 64);
@@ -440,7 +442,7 @@ TEST(StreamFormat, getAdaptedStreamFormats)
 		EXPECT_EQ(fmts.first, fmts.second);
 		EXPECT_EQ(lFmt, fmts.first);
 	}
-	
+
 	// Same (non up-to) formats but with different depth should be compatible
 	{
 		auto const fmtDepth24 = la::avdecc::entity::model::StreamFormatInfo::buildFormat_AAF(8, false, la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int32, 24, 64);
@@ -458,7 +460,7 @@ TEST(StreamFormat, getAdaptedStreamFormats)
 			EXPECT_EQ(fmtDepth24, fmts.second);
 		}
 	}
-	
+
 	// Only Async Talker to Sync Listener should fail
 	{
 		auto const sync = la::avdecc::entity::model::StreamFormatInfo::buildFormat_IEC_61883_6(8, false, la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int24, true);
@@ -504,7 +506,7 @@ TEST(StreamFormat, getAdaptedStreamFormats)
 			EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::buildFormat_AAF(16, false, la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int32, 32, 64), fmts.first);
 		}
 	}
-	
+
 	// Same formats (one with up-to bit) should be compatible if non up-to is included in the up-to one, and lowest channels count should be used
 	{
 		auto const fmtUpTo12 = la::avdecc::entity::model::StreamFormatInfo::buildFormat_AAF(12, true, la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int32, 32, 64);
@@ -522,7 +524,7 @@ TEST(StreamFormat, getAdaptedStreamFormats)
 			EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::buildFormat_AAF(8, false, la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int32, 32, 64), fmts.first);
 		}
 	}
-	
+
 	// Same formats (one with up-to bit) should not be compatible if non up-to is not included in the up-to one
 	{
 		auto const fmtUpTo12 = la::avdecc::entity::model::StreamFormatInfo::buildFormat_AAF(12, true, la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int32, 32, 64);
