@@ -138,9 +138,6 @@ public:
 	/** Returns the Mac Address associated with the network interface name. */
 	virtual networkInterface::MacAddress const& getMacAddress() const noexcept;
 
-	/** Returns the interface index associated with the network interface name. */
-	virtual std::uint16_t getInterfaceIndex() const noexcept;
-
 	// Virtual interface
 	/** Shuts down the interface, stopping all active communications. This method blocks the current thread until all pending messages are processed. This is automatically called during destructor. */
 	virtual void shutdown() noexcept = 0;
@@ -221,7 +218,6 @@ private:
 	virtual void destroy() noexcept = 0;
 
 	networkInterface::MacAddress _networkInterfaceMacAddress{};
-	std::uint16_t _interfaceIndex{};
 };
 
 /* Operator overloads */

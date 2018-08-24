@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Protocol and ProtocolInterface classes exposed in the public API
+- Removed InterfaceIndex field from ProtocolInterface (not its place)
 
 ## [2.6.3] - 2018-08-08
 

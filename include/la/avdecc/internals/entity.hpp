@@ -116,7 +116,7 @@ public:
 		return _gptpGrandmasterID;
 	}
 
-	/** Gets th gptp domain number */
+	/** Gets the gptp domain number */
 	std::uint8_t getGptpDomainNumber() const noexcept
 	{
 		return _gptpDomainNumber;
@@ -206,7 +206,7 @@ protected:
 		_gptpGrandmasterID = gptpGrandmasterID;
 	}
 
-	/** Sets th gptp domain number */
+	/** Sets the gptp domain number */
 	virtual void setGptpDomainNumber(std::uint8_t const gptpDomainNumber) noexcept
 	{
 		_gptpDomainNumber = gptpDomainNumber;

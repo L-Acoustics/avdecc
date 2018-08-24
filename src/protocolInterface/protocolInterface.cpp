@@ -59,8 +59,6 @@ ProtocolInterface::ProtocolInterface(std::string const& networkInterfaceName)
 			throw Exception(Error::InvalidParameters, "Network interface has an invalid mac address");
 
 		_networkInterfaceMacAddress = interface.macAddress;
-#pragma message("TODO: Try to get interface number from 'interface' struct")
-		_interfaceIndex = 0;
 	}
 	catch (la::avdecc::Exception const&)
 	{
@@ -78,20 +76,12 @@ ProtocolInterface::ProtocolInterface(std::string const& networkInterfaceName, ne
 	// Check we have a valid mac address
 	if (!la::avdecc::networkInterface::isMacAddressValid(macAddress))
 		throw Exception(Error::InvalidParameters, "Network interface has an invalid mac address");
-
-#pragma message("TODO: Try to get interface number from 'interface' struct")
-	_interfaceIndex = 0;
 }
 
 
 la::avdecc::networkInterface::MacAddress const& ProtocolInterface::getMacAddress() const noexcept
 {
 	return _networkInterfaceMacAddress;
-}
-
-std::uint16_t ProtocolInterface::getInterfaceIndex() const noexcept
-{
-	return _interfaceIndex;
 }
 
 ProtocolInterface* LA_AVDECC_CALL_CONVENTION ProtocolInterface::createRawProtocolInterface(Type const protocolInterfaceType, std::string const& networkInterfaceName)

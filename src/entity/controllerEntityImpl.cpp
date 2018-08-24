@@ -80,7 +80,7 @@ private:
 /* ControllerEntityImpl life cycle                                            */
 /* ************************************************************************** */
 ControllerEntityImpl::ControllerEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, UniqueIdentifier const entityModelID, ControllerEntity::Delegate* const delegate)
-	: LocalEntityImpl(protocolInterface, progID, entityModelID, EntityCapabilities::None, 0, TalkerCapabilities::None, 0, ListenerCapabilities::None, ControllerCapabilities::Implemented, 0, protocolInterface->getInterfaceIndex(), UniqueIdentifier{})
+	: LocalEntityImpl(protocolInterface, progID, entityModelID, EntityCapabilities::None, 0, TalkerCapabilities::None, 0, ListenerCapabilities::None, ControllerCapabilities::Implemented, 0, 0, UniqueIdentifier{})
 	, _delegate(delegate)
 {
 	// Register observer

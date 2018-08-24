@@ -113,7 +113,7 @@ TEST(ProtocolInterfaceVirtual, SendMessage)
 	adpdu->setGptpGrandmasterID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
 	adpdu->setGptpDomainNumber(0);
 	adpdu->setIdentifyControlIndex(0);
-	adpdu->setInterfaceIndex(intfc1->getInterfaceIndex());
+	adpdu->setInterfaceIndex(0);
 	adpdu->setAssociationID(la::avdecc::UniqueIdentifier{});
 
 	// Send the adp message
@@ -204,7 +204,7 @@ TEST(ProtocolInterfaceVirtual, TransportError)
 	adpdu->setGptpGrandmasterID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
 	adpdu->setGptpDomainNumber(0);
 	adpdu->setIdentifyControlIndex(0);
-	adpdu->setInterfaceIndex(intfc->getInterfaceIndex());
+	adpdu->setInterfaceIndex(0);
 	adpdu->setAssociationID(la::avdecc::UniqueIdentifier{});
 
 	// Send the adp message
