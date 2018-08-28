@@ -1878,6 +1878,50 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return deserializeAddAudioMappingsCommand(payload);
 }
 
+/** START_OPERATION Command - Clause 7.4.53.1 */
+Serializer<AecpAemStartOperationCommandPayloadMinSize> serializeStartOperationCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const operationId, entity::model::MemoryObjectOperations const operationType)
+{
+	Serializer<AecpAemStartOperationCommandPayloadMinSize> ser;
+
+	ser << descriptorType << descriptorIndex;
+	ser << operationId << operationType;
+
+	// TODO: AECP Message Specific Data
+	LOG_AEM_PAYLOAD_WARN("serializeStartOperationCommand doesn't handle AECP Message Specific Data!!!");
+	
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t, entity::model::MemoryObjectOperations> deserializeStartOperationCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemStartOperationCommandPayloadMinSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ 0u };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+	std::uint16_t operationId{ 0u };
+	entity::model::MemoryObjectOperations operationType{ 0u };
+
+	des >> descriptorType >> descriptorIndex;
+	des >> operationId >> operationType;
+
+	// Check for AECP Message Specific Data
+	if (des.remaining() != 0)
+	{
+		// TODO: handle me
+		LOG_AEM_PAYLOAD_WARN("deserializeStartOperationCommand doesn't handle AECP Message Specific Data!!!");
+	}
+
+	return std::make_tuple(descriptorType, descriptorIndex, operationId, operationType);
+}
+
 /** SET_MEMORY_OBJECT_LENGTH Command - Clause 7.4.72.1 */
 Serializer<AecpAemSetMemoryObjectLengthCommandPayloadSize> serializeSetMemoryObjectLengthCommand(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length)
 {
