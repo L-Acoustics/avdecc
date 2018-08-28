@@ -2996,7 +2996,7 @@ void ControllerEntityImpl::getAvbInfo(UniqueIdentifier const targetEntityID, mod
 		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getAvbInfo: {}", e.what());
 	}
 }
-                           
+
 void ControllerEntityImpl::startOperation(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, std::uint16_t const operationId, model::MemoryObjectOperations const operationType, StartOperationHandler const& handler) const noexcept
 {
 	try
