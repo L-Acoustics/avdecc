@@ -1172,6 +1172,18 @@ void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const 
 	}
 }
 
+void ControllerImpl::onStartOperationResult(UniqueIdentifier const targetEntityID, entity::ControllerEntity::AaCommandStatus const status, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const operationId, entity::model::MemoryObjectOperations const operationType) const noexcept
+{
+	(void)targetEntityID;
+	(void)status;
+	(void)descriptorType;
+	(void)descriptorIndex;
+	(void)operationId;
+	(void)operationType;
+
+	AVDECC_ASSERT(false, "onStartOperationResult not implemented");
+}
+
 void ControllerImpl::setMemoryObjectLength(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length, SetMemoryObjectLengthHandler const& handler) const noexcept
 {
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
