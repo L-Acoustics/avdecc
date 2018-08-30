@@ -199,6 +199,9 @@ constexpr size_t AecpAemRemoveAudioMappingsResponsePayloadMinSize = 8u;
 /** START_OPERATION Command - Clause 7.4.53.1 */
 constexpr size_t AecpAemStartOperationCommandPayloadMinSize = 8u;
 
+/** OPERATION_STATUS Command - Clause 7.4.55.1 */
+constexpr size_t AecpAemOperationStatusResponsePayloadSize = 8u;
+
 /** SET_MEMORY_OBJECT_LENGTH Command - Clause 7.4.72.1 */
 constexpr size_t AecpAemSetMemoryObjectLengthCommandPayloadSize = 12u;
 

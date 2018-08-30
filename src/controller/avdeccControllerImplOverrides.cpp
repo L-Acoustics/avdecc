@@ -25,6 +25,8 @@
 #include "avdeccControllerImpl.hpp"
 #include "avdeccControllerLogHelper.hpp"
 #include "avdeccEntityModelCache.hpp"
+#include "la/avdecc/internals/endian.hpp"
+#include <cstdlib> // free / malloc
 
 namespace la
 {
@@ -1172,18 +1174,6 @@ void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const 
 	}
 }
 
-void ControllerImpl::onStartOperationResult(UniqueIdentifier const targetEntityID, entity::ControllerEntity::AaCommandStatus const status, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const operationId, entity::model::MemoryObjectOperations const operationType) const noexcept
-{
-	(void)targetEntityID;
-	(void)status;
-	(void)descriptorType;
-	(void)descriptorIndex;
-	(void)operationId;
-	(void)operationType;
-
-	AVDECC_ASSERT(false, "onStartOperationResult not implemented");
-}
-
 void ControllerImpl::setMemoryObjectLength(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length, SetMemoryObjectLengthHandler const& handler) const noexcept
 {
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
@@ -1358,6 +1348,41 @@ void ControllerImpl::readDeviceMemory(UniqueIdentifier const targetEntityID, std
 	{
 		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AaCommandStatus::UnknownEntity, DeviceMemoryBuffer{});
 	}
+}
+
+void ControllerImpl::startOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const operationId, entity::model::MemoryObjectOperations const operationType, StartOperationHandler const& handler, std::uint8_t const * operationSpecificData, size_t byteCount) const noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User startOperation (DescriptorType={}, DescriptorIndex={}, OperationId={}, OperationType={})", static_cast<std::uint16_t>(descriptorType), descriptorIndex, operationId, static_cast<std::uint16_t>(operationType));
+
+		_controller->startOperation(targetEntityID, descriptorType, descriptorIndex, operationId, operationType, operationSpecificData, byteCount, [this, handler](la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const /*descriptorType*/, la::avdecc::entity::model::DescriptorIndex const /*descriptorIndex*/, std::uint16_t const operationId, la::avdecc::entity::model::MemoryObjectOperations const /*operationType*/, std::uint8_t const * /*operationSpecificData*/, size_t /*byteCount*/)
+		{
+			LOG_CONTROLLER_TRACE(entityID, "User startOperation (operationId={}): {}", operationId, entity::ControllerEntity::statusToString(status));
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::startUploadOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint64_t const dataLength, StartOperationHandler const& handler) const
+{
+	auto specificDataPtr = (std::uint8_t *)std::malloc(sizeof(dataLength));
+	if (specificDataPtr == nullptr)
+	{
+		throw std::bad_alloc();
+	}
+
+	auto converted =AVDECC_PACK_QWORD(dataLength);
+	std::memcpy(specificDataPtr, &converted, sizeof(dataLength));
+	
+	startOperation(targetEntityID, descriptorType, descriptorIndex, 0, entity::model::MemoryObjectOperations::Upload, handler, specificDataPtr, sizeof(dataLength));
+	std::free(specificDataPtr);
 }
 
 void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, DeviceMemoryBuffer memoryBuffer, WriteDeviceMemoryHandler const& handler) const noexcept
