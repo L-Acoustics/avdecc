@@ -1362,6 +1362,8 @@ void ControllerImpl::startOperation(UniqueIdentifier const targetEntityID, entit
 		_controller->startOperation(targetEntityID, descriptorType, descriptorIndex, operationId, operationType, operationSpecificData, byteCount, [this, handler](la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const /*descriptorType*/, la::avdecc::entity::model::DescriptorIndex const /*descriptorIndex*/, std::uint16_t const operationId, la::avdecc::entity::model::MemoryObjectOperations const /*operationType*/, std::uint8_t const * /*operationSpecificData*/, size_t /*byteCount*/)
 		{
 			LOG_CONTROLLER_TRACE(entityID, "User startOperation (operationId={}): {}", operationId, entity::ControllerEntity::statusToString(status));
+
+			invokeProtectedHandler(handler, nullptr, status);
 		});
 	}
 	else
