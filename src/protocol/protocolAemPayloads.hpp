@@ -269,6 +269,13 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 Serializer<AemAecpdu::MaximumPayloadLength> serializeRemoveAudioMappingsResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::AudioMappings const& mappings);
 std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::AudioMappings> deserializeRemoveAudioMappingsResponse(AemAecpdu::Payload const& payload);
 
+/** START_OPERATION Command - Clause 7.4.53.1 */
+Serializer<AemAecpdu::MaximumPayloadLength> serializeStartOperationCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const operationId, entity::model::MemoryObjectOperations const operationType, std::uint8_t const * operationSpecificData, size_t byteCount);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t, entity::model::MemoryObjectOperations> deserializeStartOperationCommand(AemAecpdu::Payload const& payload);
+
+/** OPERATION_STATUS Response - Clause 7.4.55.1 */
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t, std::uint16_t> deserializeOperationStatusResponse(AemAecpdu::Payload const& payload);
+
 /** SET_MEMORY_OBJECT_LENGTH Command - Clause 7.4.72.1 */
 Serializer<AecpAemSetMemoryObjectLengthCommandPayloadSize> serializeSetMemoryObjectLengthCommand(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length);
 std::tuple<entity::model::ConfigurationIndex, entity::model::MemoryObjectIndex, std::uint64_t> deserializeSetMemoryObjectLengthCommand(AemAecpdu::Payload const& payload);
