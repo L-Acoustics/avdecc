@@ -1628,13 +1628,13 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
-
+                auto* delegate = controller->getDelegate();
+                
 				(void)status;
-				(void)controller;
 				(void)answerCallback;
 
 				// Notify handlers
-				// TODO: checkme!
+				invokeProtectedMethod(&ControllerEntity::Delegate::onOperationStatus, delegate, controller, targetID, descriptorType, descriptorIndex, operationId, percentComplete);
 			}
 		},
 		// Set Memory Object Length

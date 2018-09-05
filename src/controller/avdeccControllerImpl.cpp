@@ -449,6 +449,15 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntity
 	}
 }
 
+void ControllerImpl::operationStatus(ControlledEntityImpl& controlledEntity, la::avdecc::UniqueIdentifier const targetEntityID, la::avdecc::entity::model::DescriptorType descriptorType, la::avdecc::entity::model::DescriptorIndex descriptorIndex, std::uint16_t operationId, std::uint16_t percentComplete) const noexcept
+{
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onOperationStatus, this, &controlledEntity, targetEntityID, descriptorType, descriptorIndex, operationId, percentComplete);
+	}
+}
+
 /* ************************************************************ */
 /* Private methods                                              */
 /* ************************************************************ */
