@@ -54,10 +54,10 @@ public:
 	enum class Type
 	{
 		None = 0, /**< No protocol interface (not a valid protocol interface type, should only be used to initialize variables). */
-		PCap = 1, /**< Packet Capture protocol interface. */
-		MacOSNative = 2, /**< macOS native API protocol interface - Only usable on macOS. */
-		Proxy = 3, /**< IEEE Std 1722.1 Proxy protocol interface. */
-		Virtual = 4, /**< Virtual protocol interface. */
+		PCap = 1u << 0, /**< Packet Capture protocol interface. */
+		MacOSNative = 1u << 1, /**< macOS native API protocol interface - Only usable on macOS. */
+		Proxy = 1u << 2, /**< IEEE Std 1722.1 Proxy protocol interface. */
+		Virtual = 1u << 3, /**< Virtual protocol interface. */
 	};
 
 	/** Possible Error status returned (or thrown) by a ProtocolInterface */
@@ -89,7 +89,7 @@ public:
 	};
 
 	using UniquePointer = std::unique_ptr<ProtocolInterface, void(*)(ProtocolInterface*)>;
-	using SupportedProtocolInterfaceTypes = std::vector<Type>;
+	using SupportedProtocolInterfaceTypes = la::avdecc::EnumBitfield<Type>;
 	using AecpCommandResultHandler = std::function<void(la::avdecc::protocol::Aecpdu const* const response, la::avdecc::protocol::ProtocolInterface::Error const error)>;
 	using AcmpCommandResultHandler = std::function<void(la::avdecc::protocol::Acmpdu const* const response, la::avdecc::protocol::ProtocolInterface::Error const error)>;
 
@@ -233,5 +233,6 @@ constexpr ProtocolInterface::Error& operator|=(ProtocolInterface::Error& lhs, Pr
 }
 
 } // namespace protocol
+
 } // namespace avdecc
 } // namespace la

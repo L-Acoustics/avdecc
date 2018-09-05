@@ -119,10 +119,7 @@ bool LA_AVDECC_CALL_CONVENTION ProtocolInterface::isSupportedProtocolInterfaceTy
 {
 	auto const types = getSupportedProtocolInterfaceTypes();
 
-	return std::find_if(types.begin(), types.end(), [protocolInterfaceType](decltype(types)::value_type const type)
-	{
-		return type == protocolInterfaceType;
-	}) != types.end();
+	return types.test(protocolInterfaceType);
 }
 
 std::string LA_AVDECC_CALL_CONVENTION ProtocolInterface::typeToString(Type const protocolInterfaceType) noexcept
@@ -144,7 +141,7 @@ std::string LA_AVDECC_CALL_CONVENTION ProtocolInterface::typeToString(Type const
 
 ProtocolInterface::SupportedProtocolInterfaceTypes LA_AVDECC_CALL_CONVENTION ProtocolInterface::getSupportedProtocolInterfaceTypes() noexcept
 {
-	static SupportedProtocolInterfaceTypes s_supportedProtocolInterfaceTypes{};
+	static SupportedProtocolInterfaceTypes s_supportedProtocolInterfaceTypes{ Type::None };
 
 	if (s_supportedProtocolInterfaceTypes.empty())
 	{
@@ -152,7 +149,7 @@ ProtocolInterface::SupportedProtocolInterfaceTypes LA_AVDECC_CALL_CONVENTION Pro
 #if defined(HAVE_PROTOCOL_INTERFACE_PCAP)
 		if (protocol::ProtocolInterfacePcap::isSupported())
 		{
-			s_supportedProtocolInterfaceTypes.push_back(Type::PCap);
+			s_supportedProtocolInterfaceTypes.set(Type::PCap);
 		}
 #endif // HAVE_PROTOCOL_INTERFACE_PCAP
 
@@ -160,7 +157,7 @@ ProtocolInterface::SupportedProtocolInterfaceTypes LA_AVDECC_CALL_CONVENTION Pro
 #if defined(HAVE_PROTOCOL_INTERFACE_MAC)
 		if (protocol::ProtocolInterfaceMacNative::isSupported())
 		{
-			s_supportedProtocolInterfaceTypes.push_back(Type::MacOSNative);
+			s_supportedProtocolInterfaceTypes.set(Type::MacOSNative);
 		}
 #endif // HAVE_PROTOCOL_INTERFACE_MAC
 
@@ -168,7 +165,7 @@ ProtocolInterface::SupportedProtocolInterfaceTypes LA_AVDECC_CALL_CONVENTION Pro
 #if defined(HAVE_PROTOCOL_INTERFACE_PROXY)
 		if (protocol::ProtocolInterfaceProxy::isSupported())
 		{
-			s_supportedProtocolInterfaceTypes.push_back(Type::Proxy);
+			s_supportedProtocolInterfaceTypes.set(Type::Proxy);
 		}
 #endif // HAVE_PROTOCOL_INTERFACE_PROXY
 
@@ -176,7 +173,7 @@ ProtocolInterface::SupportedProtocolInterfaceTypes LA_AVDECC_CALL_CONVENTION Pro
 #if defined(HAVE_PROTOCOL_INTERFACE_VIRTUAL)
 		if (protocol::ProtocolInterfaceVirtual::isSupported())
 		{
-			s_supportedProtocolInterfaceTypes.push_back(Type::Virtual);
+			s_supportedProtocolInterfaceTypes.set(Type::Virtual);
 		}
 #endif // HAVE_PROTOCOL_INTERFACE_VIRTUAL
 	}

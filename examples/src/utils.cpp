@@ -98,13 +98,10 @@ la::avdecc::protocol::ProtocolInterface::Type chooseProtocolInterfaceType()
 	}
 
 	// Remove Virtual interface
-	protocolInterfaceTypes.erase(std::remove_if(protocolInterfaceTypes.begin(), protocolInterfaceTypes.end(), [](auto const type)
-	{
-		return type == la::avdecc::protocol::ProtocolInterface::Type::Virtual;
-	}), protocolInterfaceTypes.end());
+	protocolInterfaceTypes.reset(la::avdecc::protocol::ProtocolInterface::Type::Virtual);
 
-	if (protocolInterfaceTypes.size() == 1)
-		protocolInterfaceType = protocolInterfaceTypes[0];
+	if (protocolInterfaceTypes.count() == 1)
+		protocolInterfaceType = protocolInterfaceTypes.at(0);
 	else
 	{
 		outputText("Choose a protocol interface type:\n");
@@ -121,12 +118,12 @@ la::avdecc::protocol::ProtocolInterface::Type chooseProtocolInterfaceType()
 		while (index == -1)
 		{
 			int c = getch() - '0';
-			if (c >= 1 && c <= static_cast<int>(protocolInterfaceTypes.size()))
+			if (c >= 1 && c <= static_cast<int>(protocolInterfaceTypes.count()))
 			{
 				index = c - 1;
 			}
 		}
-		protocolInterfaceType = protocolInterfaceTypes[index];
+		protocolInterfaceType = protocolInterfaceTypes.at(index);
 	}
 
 	return protocolInterfaceType;

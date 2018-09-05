@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Protocol and ProtocolInterface classes exposed in the public API
 - Removed InterfaceIndex field from ProtocolInterface (not its place)
 
+### Changed
+- SupportedProtocolInterfaceTypes is now la::avdecc::EnumBitfield
+
 ## [2.6.3] - 2018-08-08
 
 ## [2.6.2] - 2018-08-06
