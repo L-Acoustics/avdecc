@@ -115,7 +115,7 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 				if (controlledEntity)
 				{
 					// Send the query
-					la::avdecc::invokeProtectedHandler(query.queryHandler, _controller);
+					invokeProtectedHandler(query.queryHandler, _controller);
 				}
 
 				// Remove the query from the list
@@ -1217,7 +1217,7 @@ entity::addressAccess::Tlv ControllerImpl::makeNextReadDeviceMemoryTlv(std::uint
 		if (currentSize < length)
 		{
 			auto const remaining = length - currentSize;
-			auto const nextQuerySize = static_cast<size_t>(remaining > la::avdecc::protocol::AaAecpMaxSingleTlvMemoryDataLength ? la::avdecc::protocol::AaAecpMaxSingleTlvMemoryDataLength : remaining);
+			auto const nextQuerySize = static_cast<size_t>(remaining > protocol::AaAecpMaxSingleTlvMemoryDataLength ? protocol::AaAecpMaxSingleTlvMemoryDataLength : remaining);
 			return entity::addressAccess::Tlv{ baseAddress + currentSize, nextQuerySize };
 		}
 	}
@@ -1235,7 +1235,7 @@ entity::addressAccess::Tlv ControllerImpl::makeNextWriteDeviceMemoryTlv(std::uin
 		if (currentSize < length)
 		{
 			auto const remaining = length - currentSize;
-			auto const nextQuerySize = static_cast<size_t>(remaining > la::avdecc::protocol::AaAecpMaxSingleTlvMemoryDataLength ? la::avdecc::protocol::AaAecpMaxSingleTlvMemoryDataLength : remaining);
+			auto const nextQuerySize = static_cast<size_t>(remaining > protocol::AaAecpMaxSingleTlvMemoryDataLength ? protocol::AaAecpMaxSingleTlvMemoryDataLength : remaining);
 			return entity::addressAccess::Tlv{ baseAddress + currentSize, protocol::AaMode::Write, memoryBuffer.data() + currentSize, nextQuerySize };
 		}
 	}
@@ -1350,19 +1350,18 @@ void ControllerImpl::readDeviceMemory(UniqueIdentifier const targetEntityID, std
 	}
 }
 
-void ControllerImpl::startOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const operationID, entity::model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer, StartOperationHandler const& handler) const noexcept
+void ControllerImpl::startOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer, StartOperationHandler const& handler) const noexcept
 {
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(targetEntityID, "User startOperation (DescriptorType={}, DescriptorIndex={}, OperationID={}, OperationType={})", static_cast<std::uint16_t>(descriptorType), descriptorIndex, operationID, static_cast<std::uint16_t>(operationType));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User startOperation (DescriptorType={}, DescriptorIndex={}, OperationType={})", static_cast<std::uint16_t>(descriptorType), descriptorIndex, static_cast<std::uint16_t>(operationType));
 
-		_controller->startOperation(targetEntityID, descriptorType, descriptorIndex, operationID, operationType, memoryBuffer, [this, handler](la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const /*descriptorType*/, la::avdecc::entity::model::DescriptorIndex const /*descriptorIndex*/, [[maybe_unused]] std::uint16_t const operationID, la::avdecc::entity::model::MemoryObjectOperationType const /*operationType*/, MemoryBuffer const& memoryBuffer)
+		_controller->startOperation(targetEntityID, descriptorType, descriptorIndex, operationType, memoryBuffer, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const /*descriptorType*/, la::avdecc::entity::model::DescriptorIndex const /*descriptorIndex*/, la::avdecc::entity::model::OperationID const operationID, la::avdecc::entity::model::MemoryObjectOperationType const /*operationType*/, la::avdecc::MemoryBuffer const& memoryBuffer)
 		{
-			(void)operationID; // Because of a bug in VS 15.7 that doesn't take into account [[maybe_unused]] for lambda parameters
-			LOG_CONTROLLER_TRACE(entityID, "User startOperation (operationID={}): {}", operationID, entity::ControllerEntity::statusToString(status));
+			LOG_CONTROLLER_TRACE(entityID, "User startOperation (OperationID={}): {}", operationID, entity::ControllerEntity::statusToString(status));
 
 			// Take a copy of the ControlledEntity so we don't have to keep the lock
 			auto controlledEntity = getControlledEntityImpl(entityID);
@@ -1370,21 +1369,82 @@ void ControllerImpl::startOperation(UniqueIdentifier const targetEntityID, entit
 			if (controlledEntity)
 			{
 				auto* const entity = controlledEntity.get();
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, memoryBuffer);
+				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, operationID, memoryBuffer);
 			}
 			else // The entity went offline right after we sent our message
 			{
-				invokeProtectedHandler(handler, nullptr, status, memoryBuffer);
+				invokeProtectedHandler(handler, nullptr, status, operationID, memoryBuffer);
 			}
 		});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, MemoryBuffer{});
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, entity::model::OperationID{ 0u }, MemoryBuffer{});
 	}
 }
 
-void ControllerImpl::startUploadOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint64_t const dataLength, StartOperationHandler const& handler) const
+void ControllerImpl::abortOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, AbortOperationHandler const& handler) const noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User abortOperation (DescriptorType={}, DescriptorIndex={}, OperationID={})", static_cast<std::uint16_t>(descriptorType), descriptorIndex, operationID);
+
+		_controller->abortOperation(targetEntityID, descriptorType, descriptorIndex, operationID, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::DescriptorType const /*descriptorType*/, entity::model::DescriptorIndex const /*descriptorIndex*/, entity::model::OperationID const /*operationID*/)
+		{
+			LOG_CONTROLLER_TRACE(entityID, "User abortOperation (): {}", entity::ControllerEntity::statusToString(status));
+
+			// Take a copy of the ControlledEntity so we don't have to keep the lock
+			auto controlledEntity = getControlledEntityImpl(entityID);
+
+			if (controlledEntity)
+			{
+				auto* const entity = controlledEntity.get();
+				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status);
+			}
+		});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::startMemoryObjectOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorIndex const descriptorIndex, entity::model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer, StartMemoryObjectOperationHandler const& handler) const noexcept
+{
+	startOperation(targetEntityID, entity::model::DescriptorType::MemoryObject, descriptorIndex, operationType, memoryBuffer, [handler](controller::ControlledEntity const* const entity, entity::ControllerEntity::AemCommandStatus const status, entity::model::OperationID const operationID, MemoryBuffer const& /*memoryBuffer*/)
+	{
+		invokeProtectedHandler(handler, entity, status, operationID);
+	});
+}
+
+void ControllerImpl::startStoreMemoryObjectOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorIndex const descriptorIndex, StartMemoryObjectOperationHandler const& handler) const noexcept
+{
+	startMemoryObjectOperation(targetEntityID, descriptorIndex, entity::model::MemoryObjectOperationType::Store, MemoryBuffer{}, handler);
+}
+
+void ControllerImpl::startStoreAndRebootMemoryObjectOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorIndex const descriptorIndex, StartMemoryObjectOperationHandler const& handler) const noexcept
+{
+	startMemoryObjectOperation(targetEntityID, descriptorIndex, entity::model::MemoryObjectOperationType::StoreAndReboot, MemoryBuffer{}, handler);
+}
+
+void ControllerImpl::startReadMemoryObjectOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorIndex const descriptorIndex, StartMemoryObjectOperationHandler const& handler) const noexcept
+{
+	startMemoryObjectOperation(targetEntityID, descriptorIndex, entity::model::MemoryObjectOperationType::Read, MemoryBuffer{}, handler);
+}
+
+void ControllerImpl::startEraseMemoryObjectOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorIndex const descriptorIndex, StartMemoryObjectOperationHandler const& handler) const noexcept
+{
+	startMemoryObjectOperation(targetEntityID, descriptorIndex, entity::model::MemoryObjectOperationType::Erase, MemoryBuffer{}, handler);
+}
+
+void ControllerImpl::startUploadMemoryObjectOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorIndex const descriptorIndex, std::uint64_t const dataLength, StartMemoryObjectOperationHandler const& handler) const noexcept
 {
 #pragma message("TODO: Modify the Serializer/Deserializer classes so they can use a provided buffer (MemoryBuffer), instead of always using a static internal buffer. Template the class so the container is that!")
 	Serializer<sizeof(dataLength)> ser{};
@@ -1392,7 +1452,7 @@ void ControllerImpl::startUploadOperation(UniqueIdentifier const targetEntityID,
 	ser << dataLength;
 
 	MemoryBuffer buffer{ ser.data(), ser.usedBytes() };
-	startOperation(targetEntityID, descriptorType, descriptorIndex, 0, entity::model::MemoryObjectOperationType::Upload, buffer, handler);
+	startMemoryObjectOperation(targetEntityID, descriptorIndex, entity::model::MemoryObjectOperationType::Upload, buffer, handler);
 }
 
 void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, DeviceMemoryBuffer memoryBuffer, WriteDeviceMemoryHandler const& handler) const noexcept

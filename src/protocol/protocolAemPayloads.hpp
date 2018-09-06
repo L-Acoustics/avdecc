@@ -271,24 +271,24 @@ Serializer<AemAecpdu::MaximumPayloadLength> serializeRemoveAudioMappingsResponse
 std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::AudioMappings> deserializeRemoveAudioMappingsResponse(AemAecpdu::Payload const& payload);
 
 /** START_OPERATION Command - Clause 7.4.53.1 */
-Serializer<AemAecpdu::MaximumPayloadLength> serializeStartOperationCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const operationID, entity::model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer);
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t, entity::model::MemoryObjectOperationType, MemoryBuffer> deserializeStartOperationCommand(AemAecpdu::Payload const& payload);
+Serializer<AemAecpdu::MaximumPayloadLength> serializeStartOperationCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, entity::model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::OperationID, entity::model::MemoryObjectOperationType, MemoryBuffer> deserializeStartOperationCommand(AemAecpdu::Payload const& payload);
 
 /** START_OPERATION Response - Clause 7.4.53.1 */
-Serializer<AemAecpdu::MaximumPayloadLength> serializeStartOperationResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const operationID, entity::model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer);
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t, entity::model::MemoryObjectOperationType, MemoryBuffer> deserializeStartOperationResponse(AemAecpdu::Payload const& payload);
+Serializer<AemAecpdu::MaximumPayloadLength> serializeStartOperationResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, entity::model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::OperationID, entity::model::MemoryObjectOperationType, MemoryBuffer> deserializeStartOperationResponse(AemAecpdu::Payload const& payload);
 
 /** ABORT_OPERATION Command - Clause 7.4.55.1 */
-Serializer<AecpAemAbortOperationCommandPayloadSize> serializeAbortOperationCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const operationID);
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t> deserializeAbortOperationCommand(AemAecpdu::Payload const& payload);
+Serializer<AecpAemAbortOperationCommandPayloadSize> serializeAbortOperationCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::OperationID> deserializeAbortOperationCommand(AemAecpdu::Payload const& payload);
 
 /** ABORT_OPERATION Response - Clause 7.4.55.1 */
-Serializer<AecpAemAbortOperationResponsePayloadSize> serializeAbortOperationResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const operationID);
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t> deserializeAbortOperationResponse(AemAecpdu::Payload const& payload);
+Serializer<AecpAemAbortOperationResponsePayloadSize> serializeAbortOperationResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::OperationID> deserializeAbortOperationResponse(AemAecpdu::Payload const& payload);
 
 /** OPERATION_STATUS Response - Clause 7.4.55.1 */
-Serializer<AecpAemOperationStatusResponsePayloadSize> serializeOperationStatusResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const operationID, std::uint16_t const percentComplete);
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t, std::uint16_t> deserializeOperationStatusResponse(AemAecpdu::Payload const& payload);
+Serializer<AecpAemOperationStatusResponsePayloadSize> serializeOperationStatusResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, std::uint16_t const percentComplete);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::OperationID, std::uint16_t> deserializeOperationStatusResponse(AemAecpdu::Payload const& payload);
 
 /** SET_MEMORY_OBJECT_LENGTH Command - Clause 7.4.72.1 */
 Serializer<AecpAemSetMemoryObjectLengthCommandPayloadSize> serializeSetMemoryObjectLengthCommand(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length);

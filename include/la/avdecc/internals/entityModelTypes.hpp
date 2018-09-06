@@ -71,6 +71,7 @@ using ControlBlockIndex = DescriptorIndex;
 using SamplingRate = std::uint32_t; /** Sampling Rate packed value - Clause 7.3.1 */
 using StreamFormat = std::uint64_t; /** Stream Format packed value - Clause 7.3.2 */
 using LocalizedStringReference = std::uint16_t; /** Localized String Reference packed value - Clause 7.3.6 */
+using OperationID = std::uint16_t; /** OperationID for OPERATIONS returned by an entity to a controller - Clause 7.4.53 */
 
 /** Descriptor Type - Clause 7.2 */
 enum class DescriptorType : std::uint16_t

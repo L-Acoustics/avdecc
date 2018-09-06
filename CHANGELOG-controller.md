@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Added
-- Support for Memory Operations (Contributed by Florian Harmuth)
+- Support for MemoryObject Operations (Contributed by Florian Harmuth)
 
 ## [2.6.3] - 2018-08-08
 ### Fixed

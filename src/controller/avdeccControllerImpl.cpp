@@ -449,7 +449,7 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntity
 	}
 }
 
-void ControllerImpl::updateOperationStatus(ControlledEntityImpl& controlledEntity, UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const operationID, std::uint16_t const percentComplete) const noexcept
+void ControllerImpl::updateOperationStatus(ControlledEntityImpl& controlledEntity, UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, std::uint16_t const percentComplete) const noexcept
 {
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
