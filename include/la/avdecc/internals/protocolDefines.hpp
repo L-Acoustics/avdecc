@@ -25,9 +25,9 @@
 
 #pragma once
 
-#include <cstdint>
 #include "la/avdecc/utils.hpp"
 #include "exports.hpp"
+#include <cstdint>
 
 namespace la
 {
@@ -54,11 +54,11 @@ class AdpMessageType : public TypedDefine<std::uint8_t>
 public:
 	using TypedDefine::TypedDefine;
 
-	static AdpMessageType const EntityAvailable;
-	static AdpMessageType const EntityDeparting;
-	static AdpMessageType const EntityDiscover;
+	static LA_AVDECC_API AdpMessageType const EntityAvailable;
+	static LA_AVDECC_API AdpMessageType const EntityDeparting;
+	static LA_AVDECC_API AdpMessageType const EntityDiscover;
 
-	operator std::string() const noexcept;
+	LA_AVDECC_API operator std::string() const noexcept;
 };
 
 /** AECP Message Type - Clause 9.2.1.1.5 */
@@ -67,20 +67,20 @@ class AecpMessageType : public TypedDefine<std::uint8_t>
 public:
 	using TypedDefine::TypedDefine;
 
-	static AecpMessageType const AemCommand;
-	static AecpMessageType const AemResponse;
-	static AecpMessageType const AddressAccessCommand;
-	static AecpMessageType const AddressAccessResponse;
-	static AecpMessageType const AvcCommand;
-	static AecpMessageType const AvcResponse;
-	static AecpMessageType const VendorUniqueCommand;
-	static AecpMessageType const VendorUniqueResponse;
-	static AecpMessageType const HdcpAemCommand;
-	static AecpMessageType const HdcpAemResponse;
-	static AecpMessageType const ExtendedCommand;
-	static AecpMessageType const ExtendedResponse;
+	static LA_AVDECC_API AecpMessageType const AemCommand;
+	static LA_AVDECC_API AecpMessageType const AemResponse;
+	static LA_AVDECC_API AecpMessageType const AddressAccessCommand;
+	static LA_AVDECC_API AecpMessageType const AddressAccessResponse;
+	static LA_AVDECC_API AecpMessageType const AvcCommand;
+	static LA_AVDECC_API AecpMessageType const AvcResponse;
+	static LA_AVDECC_API AecpMessageType const VendorUniqueCommand;
+	static LA_AVDECC_API AecpMessageType const VendorUniqueResponse;
+	static LA_AVDECC_API AecpMessageType const HdcpAemCommand;
+	static LA_AVDECC_API AecpMessageType const HdcpAemResponse;
+	static LA_AVDECC_API AecpMessageType const ExtendedCommand;
+	static LA_AVDECC_API AecpMessageType const ExtendedResponse;
 
-	operator std::string() const noexcept;
+	LA_AVDECC_API operator std::string() const noexcept;
 };
 
 /** AECP Status - Clause 9.2.1.1.6 */
@@ -89,8 +89,8 @@ class AecpStatus : public TypedDefine<std::uint8_t>
 public:
 	using TypedDefine::TypedDefine;
 
-	static AecpStatus const Success;
-	static AecpStatus const NotImplemented;
+	static LA_AVDECC_API AecpStatus const Success;
+	static LA_AVDECC_API AecpStatus const NotImplemented;
 };
 
 /** AECP SequenceID - Clause 9.2.1.1.10 */
@@ -102,17 +102,17 @@ class AemAecpStatus : public AecpStatus
 public:
 	using AecpStatus::AecpStatus;
 
-	static AemAecpStatus const NoSuchDescriptor;
-	static AemAecpStatus const EntityLocked;
-	static AemAecpStatus const EntityAcquired;
-	static AemAecpStatus const NotAuthenticated;
-	static AemAecpStatus const AuthenticationDisabled;
-	static AemAecpStatus const BadArguments;
-	static AemAecpStatus const NoResources;
-	static AemAecpStatus const InProgress;
-	static AemAecpStatus const EntityMisbehaving;
-	static AemAecpStatus const NotSupported;
-	static AemAecpStatus const StreamIsRunning;
+	static LA_AVDECC_API AemAecpStatus const NoSuchDescriptor;
+	static LA_AVDECC_API AemAecpStatus const EntityLocked;
+	static LA_AVDECC_API AemAecpStatus const EntityAcquired;
+	static LA_AVDECC_API AemAecpStatus const NotAuthenticated;
+	static LA_AVDECC_API AemAecpStatus const AuthenticationDisabled;
+	static LA_AVDECC_API AemAecpStatus const BadArguments;
+	static LA_AVDECC_API AemAecpStatus const NoResources;
+	static LA_AVDECC_API AemAecpStatus const InProgress;
+	static LA_AVDECC_API AemAecpStatus const EntityMisbehaving;
+	static LA_AVDECC_API AemAecpStatus const NotSupported;
+	static LA_AVDECC_API AemAecpStatus const StreamIsRunning;
 };
 
 /** AEM Command Type - Clause 7.4 */
@@ -121,86 +121,86 @@ class AemCommandType : public TypedDefine<std::uint16_t>
 public:
 	using TypedDefine::TypedDefine;
 
-	static AemCommandType const AcquireEntity;
-	static AemCommandType const LockEntity;
-	static AemCommandType const EntityAvailable;
-	static AemCommandType const ControllerAvailable;
-	static AemCommandType const ReadDescriptor;
-	static AemCommandType const WriteDescriptor;
-	static AemCommandType const SetConfiguration;
-	static AemCommandType const GetConfiguration;
-	static AemCommandType const SetStreamFormat;
-	static AemCommandType const GetStreamFormat;
-	static AemCommandType const SetVideoFormat;
-	static AemCommandType const GetVideoFormat;
-	static AemCommandType const SetSensorFormat;
-	static AemCommandType const GetSensorFormat;
-	static AemCommandType const SetStreamInfo;
-	static AemCommandType const GetStreamInfo;
-	static AemCommandType const SetName;
-	static AemCommandType const GetName;
-	static AemCommandType const SetAssociationID;
-	static AemCommandType const GetAssociationID;
-	static AemCommandType const SetSamplingRate;
-	static AemCommandType const GetSamplingRate;
-	static AemCommandType const SetClockSource;
-	static AemCommandType const GetClockSource;
-	static AemCommandType const SetControl;
-	static AemCommandType const GetControl;
-	static AemCommandType const IncrementControl;
-	static AemCommandType const DecrementControl;
-	static AemCommandType const SetSignalSelector;
-	static AemCommandType const GetSignalSelector;
-	static AemCommandType const SetMixer;
-	static AemCommandType const GetMixer;
-	static AemCommandType const SetMatrix;
-	static AemCommandType const GetMatrix;
-	static AemCommandType const StartStreaming;
-	static AemCommandType const StopStreaming;
-	static AemCommandType const RegisterUnsolicitedNotification;
-	static AemCommandType const DeregisterUnsolicitedNotification;
-	static AemCommandType const IdentifyNotification;
-	static AemCommandType const GetAvbInfo;
-	static AemCommandType const GetAsPath;
-	static AemCommandType const GetCounters;
-	static AemCommandType const Reboot;
-	static AemCommandType const GetAudioMap;
-	static AemCommandType const AddAudioMappings;
-	static AemCommandType const RemoveAudioMappings;
-	static AemCommandType const GetVideoMap;
-	static AemCommandType const AddVideoMappings;
-	static AemCommandType const RemoveVideoMappings;
-	static AemCommandType const GetSensorMap;
-	static AemCommandType const AddSensorMappings;
-	static AemCommandType const RemoveSensorMappings;
-	static AemCommandType const StartOperation;
-	static AemCommandType const AbortOperation;
-	static AemCommandType const OperationStatus;
-	static AemCommandType const AuthAddKey;
-	static AemCommandType const AuthDeleteKey;
-	static AemCommandType const AuthGetKeyList;
-	static AemCommandType const AuthGetKey;
-	static AemCommandType const AuthAddKeyToChain;
-	static AemCommandType const AuthDeleteKeyFromChain;
-	static AemCommandType const AuthGetKeychainList;
-	static AemCommandType const AuthGetIdentity;
-	static AemCommandType const AuthAddToken;
-	static AemCommandType const AuthDeleteToken;
-	static AemCommandType const Authenticate;
-	static AemCommandType const Deauthenticate;
-	static AemCommandType const EnableTransportSecurity;
-	static AemCommandType const DisableTransportSecurity;
-	static AemCommandType const EnableStreamEncryption;
-	static AemCommandType const DisableStreamEncryption;
-	static AemCommandType const SetMemoryObjectLength;
-	static AemCommandType const GetMemoryObjectLength;
-	static AemCommandType const SetStreamBackup;
-	static AemCommandType const GetStreamBackup;
-	static AemCommandType const Expansion;
+	static LA_AVDECC_API AemCommandType const AcquireEntity;
+	static LA_AVDECC_API AemCommandType const LockEntity;
+	static LA_AVDECC_API AemCommandType const EntityAvailable;
+	static LA_AVDECC_API AemCommandType const ControllerAvailable;
+	static LA_AVDECC_API AemCommandType const ReadDescriptor;
+	static LA_AVDECC_API AemCommandType const WriteDescriptor;
+	static LA_AVDECC_API AemCommandType const SetConfiguration;
+	static LA_AVDECC_API AemCommandType const GetConfiguration;
+	static LA_AVDECC_API AemCommandType const SetStreamFormat;
+	static LA_AVDECC_API AemCommandType const GetStreamFormat;
+	static LA_AVDECC_API AemCommandType const SetVideoFormat;
+	static LA_AVDECC_API AemCommandType const GetVideoFormat;
+	static LA_AVDECC_API AemCommandType const SetSensorFormat;
+	static LA_AVDECC_API AemCommandType const GetSensorFormat;
+	static LA_AVDECC_API AemCommandType const SetStreamInfo;
+	static LA_AVDECC_API AemCommandType const GetStreamInfo;
+	static LA_AVDECC_API AemCommandType const SetName;
+	static LA_AVDECC_API AemCommandType const GetName;
+	static LA_AVDECC_API AemCommandType const SetAssociationID;
+	static LA_AVDECC_API AemCommandType const GetAssociationID;
+	static LA_AVDECC_API AemCommandType const SetSamplingRate;
+	static LA_AVDECC_API AemCommandType const GetSamplingRate;
+	static LA_AVDECC_API AemCommandType const SetClockSource;
+	static LA_AVDECC_API AemCommandType const GetClockSource;
+	static LA_AVDECC_API AemCommandType const SetControl;
+	static LA_AVDECC_API AemCommandType const GetControl;
+	static LA_AVDECC_API AemCommandType const IncrementControl;
+	static LA_AVDECC_API AemCommandType const DecrementControl;
+	static LA_AVDECC_API AemCommandType const SetSignalSelector;
+	static LA_AVDECC_API AemCommandType const GetSignalSelector;
+	static LA_AVDECC_API AemCommandType const SetMixer;
+	static LA_AVDECC_API AemCommandType const GetMixer;
+	static LA_AVDECC_API AemCommandType const SetMatrix;
+	static LA_AVDECC_API AemCommandType const GetMatrix;
+	static LA_AVDECC_API AemCommandType const StartStreaming;
+	static LA_AVDECC_API AemCommandType const StopStreaming;
+	static LA_AVDECC_API AemCommandType const RegisterUnsolicitedNotification;
+	static LA_AVDECC_API AemCommandType const DeregisterUnsolicitedNotification;
+	static LA_AVDECC_API AemCommandType const IdentifyNotification;
+	static LA_AVDECC_API AemCommandType const GetAvbInfo;
+	static LA_AVDECC_API AemCommandType const GetAsPath;
+	static LA_AVDECC_API AemCommandType const GetCounters;
+	static LA_AVDECC_API AemCommandType const Reboot;
+	static LA_AVDECC_API AemCommandType const GetAudioMap;
+	static LA_AVDECC_API AemCommandType const AddAudioMappings;
+	static LA_AVDECC_API AemCommandType const RemoveAudioMappings;
+	static LA_AVDECC_API AemCommandType const GetVideoMap;
+	static LA_AVDECC_API AemCommandType const AddVideoMappings;
+	static LA_AVDECC_API AemCommandType const RemoveVideoMappings;
+	static LA_AVDECC_API AemCommandType const GetSensorMap;
+	static LA_AVDECC_API AemCommandType const AddSensorMappings;
+	static LA_AVDECC_API AemCommandType const RemoveSensorMappings;
+	static LA_AVDECC_API AemCommandType const StartOperation;
+	static LA_AVDECC_API AemCommandType const AbortOperation;
+	static LA_AVDECC_API AemCommandType const OperationStatus;
+	static LA_AVDECC_API AemCommandType const AuthAddKey;
+	static LA_AVDECC_API AemCommandType const AuthDeleteKey;
+	static LA_AVDECC_API AemCommandType const AuthGetKeyList;
+	static LA_AVDECC_API AemCommandType const AuthGetKey;
+	static LA_AVDECC_API AemCommandType const AuthAddKeyToChain;
+	static LA_AVDECC_API AemCommandType const AuthDeleteKeyFromChain;
+	static LA_AVDECC_API AemCommandType const AuthGetKeychainList;
+	static LA_AVDECC_API AemCommandType const AuthGetIdentity;
+	static LA_AVDECC_API AemCommandType const AuthAddToken;
+	static LA_AVDECC_API AemCommandType const AuthDeleteToken;
+	static LA_AVDECC_API AemCommandType const Authenticate;
+	static LA_AVDECC_API AemCommandType const Deauthenticate;
+	static LA_AVDECC_API AemCommandType const EnableTransportSecurity;
+	static LA_AVDECC_API AemCommandType const DisableTransportSecurity;
+	static LA_AVDECC_API AemCommandType const EnableStreamEncryption;
+	static LA_AVDECC_API AemCommandType const DisableStreamEncryption;
+	static LA_AVDECC_API AemCommandType const SetMemoryObjectLength;
+	static LA_AVDECC_API AemCommandType const GetMemoryObjectLength;
+	static LA_AVDECC_API AemCommandType const SetStreamBackup;
+	static LA_AVDECC_API AemCommandType const GetStreamBackup;
+	static LA_AVDECC_API AemCommandType const Expansion;
 
-	static AemCommandType const InvalidCommandType;
+	static LA_AVDECC_API AemCommandType const InvalidCommandType;
 
-	operator std::string() const noexcept;
+	LA_AVDECC_API operator std::string() const noexcept;
 };
 
 /** AEM Acquire Entity Flags - Clause 7.4.1.1 */
@@ -209,9 +209,9 @@ class AemAcquireEntityFlags : public TypedDefine<std::uint32_t>
 public:
 	using TypedDefine::TypedDefine;
 
-	static AemAcquireEntityFlags const None;
-	static AemAcquireEntityFlags const Persistent;
-	static AemAcquireEntityFlags const Release;
+	static LA_AVDECC_API AemAcquireEntityFlags const None;
+	static LA_AVDECC_API AemAcquireEntityFlags const Persistent;
+	static LA_AVDECC_API AemAcquireEntityFlags const Release;
 };
 
 /** AEM Lock Entity Flags - Clause 7.4.2.1 */
@@ -220,8 +220,8 @@ class AemLockEntityFlags : public TypedDefine<std::uint32_t>
 public:
 	using TypedDefine::TypedDefine;
 
-	static AemLockEntityFlags const None;
-	static AemLockEntityFlags const Unlock;
+	static LA_AVDECC_API AemLockEntityFlags const None;
+	static LA_AVDECC_API AemLockEntityFlags const Unlock;
 };
 
 /** Address Access Mode - Clause 9.2.1.3.3 */
@@ -234,7 +234,7 @@ public:
 	static LA_AVDECC_API AaMode const Write;
 	static LA_AVDECC_API AaMode const Execute;
 
-	operator std::string() const noexcept;
+	LA_AVDECC_API operator std::string() const noexcept;
 };
 
 /** Address Access AECP Status - Clause 9.2.1.3.4 */
@@ -243,12 +243,12 @@ class AaAecpStatus : public AecpStatus
 public:
 	using AecpStatus::AecpStatus;
 
-	static AaAecpStatus const AddressTooLow;
-	static AaAecpStatus const AddressTooHigh;
-	static AaAecpStatus const AddressInvalid;
-	static AaAecpStatus const TlvInvalid;
-	static AaAecpStatus const DataInvalid;
-	static AaAecpStatus const Unsupported;
+	static LA_AVDECC_API AaAecpStatus const AddressTooLow;
+	static LA_AVDECC_API AaAecpStatus const AddressTooHigh;
+	static LA_AVDECC_API AaAecpStatus const AddressInvalid;
+	static LA_AVDECC_API AaAecpStatus const TlvInvalid;
+	static LA_AVDECC_API AaAecpStatus const DataInvalid;
+	static LA_AVDECC_API AaAecpStatus const Unsupported;
 };
 
 /** ACMP Message Type - Clause 8.2.1.5 */
@@ -257,22 +257,22 @@ class AcmpMessageType : public TypedDefine<std::uint8_t>
 public:
 	using TypedDefine::TypedDefine;
 
-	static AcmpMessageType const ConnectTxCommand;
-	static AcmpMessageType const ConnectTxResponse;
-	static AcmpMessageType const DisconnectTxCommand;
-	static AcmpMessageType const DisconnectTxResponse;
-	static AcmpMessageType const GetTxStateCommand;
-	static AcmpMessageType const GetTxStateResponse;
-	static AcmpMessageType const ConnectRxCommand;
-	static AcmpMessageType const ConnectRxResponse;
-	static AcmpMessageType const DisconnectRxCommand;
-	static AcmpMessageType const DisconnectRxResponse;
-	static AcmpMessageType const GetRxStateCommand;
-	static AcmpMessageType const GetRxStateResponse;
-	static AcmpMessageType const GetTxConnectionCommand;
-	static AcmpMessageType const GetTxConnectionResponse;
+	static LA_AVDECC_API AcmpMessageType const ConnectTxCommand;
+	static LA_AVDECC_API AcmpMessageType const ConnectTxResponse;
+	static LA_AVDECC_API AcmpMessageType const DisconnectTxCommand;
+	static LA_AVDECC_API AcmpMessageType const DisconnectTxResponse;
+	static LA_AVDECC_API AcmpMessageType const GetTxStateCommand;
+	static LA_AVDECC_API AcmpMessageType const GetTxStateResponse;
+	static LA_AVDECC_API AcmpMessageType const ConnectRxCommand;
+	static LA_AVDECC_API AcmpMessageType const ConnectRxResponse;
+	static LA_AVDECC_API AcmpMessageType const DisconnectRxCommand;
+	static LA_AVDECC_API AcmpMessageType const DisconnectRxResponse;
+	static LA_AVDECC_API AcmpMessageType const GetRxStateCommand;
+	static LA_AVDECC_API AcmpMessageType const GetRxStateResponse;
+	static LA_AVDECC_API AcmpMessageType const GetTxConnectionCommand;
+	static LA_AVDECC_API AcmpMessageType const GetTxConnectionResponse;
 
-	operator std::string() const noexcept;
+	LA_AVDECC_API operator std::string() const noexcept;
 };
 
 /** ACMP Status - Clause 8.2.1.6 */
@@ -281,24 +281,24 @@ class AcmpStatus : public TypedDefine<std::uint8_t>
 public:
 	using TypedDefine::TypedDefine;
 
-	static AcmpStatus const Success;
-	static AcmpStatus const ListenerUnknownID;
-	static AcmpStatus const TalkerUnknownID;
-	static AcmpStatus const TalkerDestMacFail;
-	static AcmpStatus const TalkerNoStreamIndex;
-	static AcmpStatus const TalkerNoBandwidth;
-	static AcmpStatus const TalkerExclusive;
-	static AcmpStatus const ListenerTalkerTimeout;
-	static AcmpStatus const ListenerExclusive;
-	static AcmpStatus const StateUnavailable;
-	static AcmpStatus const NotConnected;
-	static AcmpStatus const NoSuchConnection;
-	static AcmpStatus const CouldNotSendMessage;
-	static AcmpStatus const TalkerMisbehaving;
-	static AcmpStatus const ListenerMisbehaving;
-	static AcmpStatus const ControllerNotAuthorized;
-	static AcmpStatus const IncompatibleRequest;
-	static AcmpStatus const NotSupported;
+	static LA_AVDECC_API AcmpStatus const Success;
+	static LA_AVDECC_API AcmpStatus const ListenerUnknownID;
+	static LA_AVDECC_API AcmpStatus const TalkerUnknownID;
+	static LA_AVDECC_API AcmpStatus const TalkerDestMacFail;
+	static LA_AVDECC_API AcmpStatus const TalkerNoStreamIndex;
+	static LA_AVDECC_API AcmpStatus const TalkerNoBandwidth;
+	static LA_AVDECC_API AcmpStatus const TalkerExclusive;
+	static LA_AVDECC_API AcmpStatus const ListenerTalkerTimeout;
+	static LA_AVDECC_API AcmpStatus const ListenerExclusive;
+	static LA_AVDECC_API AcmpStatus const StateUnavailable;
+	static LA_AVDECC_API AcmpStatus const NotConnected;
+	static LA_AVDECC_API AcmpStatus const NoSuchConnection;
+	static LA_AVDECC_API AcmpStatus const CouldNotSendMessage;
+	static LA_AVDECC_API AcmpStatus const TalkerMisbehaving;
+	static LA_AVDECC_API AcmpStatus const ListenerMisbehaving;
+	static LA_AVDECC_API AcmpStatus const ControllerNotAuthorized;
+	static LA_AVDECC_API AcmpStatus const IncompatibleRequest;
+	static LA_AVDECC_API AcmpStatus const NotSupported;
 };
 
 /** ACMP UniqueID - Clause 8.2.1.12 and 8.2.1.13 */

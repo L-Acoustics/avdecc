@@ -25,7 +25,7 @@
 #include "avdeccControllerImpl.hpp"
 #include "avdeccControllerLogHelper.hpp"
 #include "avdeccEntityModelCache.hpp"
-#include "la/avdecc/internals/endian.hpp"
+#include "la/avdecc/internals/serialization.hpp"
 #include <cstdlib> // free / malloc
 
 namespace la
@@ -38,7 +38,7 @@ namespace controller
 /* ************************************************************ */
 /* Controller overrides                                         */
 /* ************************************************************ */
-ControllerImpl::ControllerImpl(EndStation::ProtocolInterfaceType const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale)
+ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale)
 	: _preferedLocale(preferedLocale)
 {
 	try
@@ -69,7 +69,7 @@ ControllerImpl::ControllerImpl(EndStation::ProtocolInterfaceType const protocolI
 		AVDECC_ASSERT(false, "Unhandled exception");
 		throw Exception(Error::InternalError, e.what());
 	}
-	
+
 	// Create the delayed query thread
 	_delayedQueryThread = std::thread([this]
 	{
@@ -84,7 +84,7 @@ ControllerImpl::ControllerImpl(EndStation::ProtocolInterfaceType const protocolI
 
 				// Get current time
 				std::chrono::time_point<std::chrono::system_clock> currentTime = std::chrono::system_clock::now();
-				
+
 				for (auto it = _delayedQueries.begin(); it != _delayedQueries.end(); /* Iterate inside the loop */)
 				{
 					auto const& query = *it;
@@ -92,7 +92,7 @@ ControllerImpl::ControllerImpl(EndStation::ProtocolInterfaceType const protocolI
 					{
 						// Move the query to the "to process" list
 						queriesToSend.emplace_back(std::move(*it));
-						
+
 						// Remove the command from the list
 						it = _delayedQueries.erase(it);
 					}
@@ -102,22 +102,22 @@ ControllerImpl::ControllerImpl(EndStation::ProtocolInterfaceType const protocolI
 					}
 				}
 			}
-			
+
 			// Now actually send queries, outside the lock
 			while (!queriesToSend.empty() && !_shouldTerminate)
 			{
 				// Get first query from the list
 				auto const& query = queriesToSend.front();
-				
+
 				auto controlledEntity = getControlledEntityImpl(query.entityID);
-				
+
 				// Entity still online
 				if (controlledEntity)
 				{
 					// Send the query
 					la::avdecc::invokeProtectedHandler(query.queryHandler, _controller);
 				}
-				
+
 				// Remove the query from the list
 				queriesToSend.pop_front();
 			}
@@ -132,7 +132,7 @@ ControllerImpl::~ControllerImpl()
 {
 	// Notify the thread we are shutting down
 	_shouldTerminate = true;
-	
+
 	// Wait for the thread to complete its pending tasks
 	if (_delayedQueryThread.joinable())
 		_delayedQueryThread.join();
@@ -1350,41 +1350,49 @@ void ControllerImpl::readDeviceMemory(UniqueIdentifier const targetEntityID, std
 	}
 }
 
-void ControllerImpl::startOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const operationId, entity::model::MemoryObjectOperations const operationType, StartOperationHandler const& handler, std::uint8_t const * operationSpecificData, size_t byteCount) const noexcept
+void ControllerImpl::startOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const operationID, entity::model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer, StartOperationHandler const& handler) const noexcept
 {
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(targetEntityID, "User startOperation (DescriptorType={}, DescriptorIndex={}, OperationId={}, OperationType={})", static_cast<std::uint16_t>(descriptorType), descriptorIndex, operationId, static_cast<std::uint16_t>(operationType));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User startOperation (DescriptorType={}, DescriptorIndex={}, OperationID={}, OperationType={})", static_cast<std::uint16_t>(descriptorType), descriptorIndex, operationID, static_cast<std::uint16_t>(operationType));
 
-		_controller->startOperation(targetEntityID, descriptorType, descriptorIndex, operationId, operationType, operationSpecificData, byteCount, [this, handler](la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const /*descriptorType*/, la::avdecc::entity::model::DescriptorIndex const /*descriptorIndex*/, std::uint16_t const operationId, la::avdecc::entity::model::MemoryObjectOperations const /*operationType*/, std::uint8_t const * /*operationSpecificData*/, size_t /*byteCount*/)
+		_controller->startOperation(targetEntityID, descriptorType, descriptorIndex, operationID, operationType, memoryBuffer, [this, handler](la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const /*descriptorType*/, la::avdecc::entity::model::DescriptorIndex const /*descriptorIndex*/, [[maybe_unused]] std::uint16_t const operationID, la::avdecc::entity::model::MemoryObjectOperationType const /*operationType*/, MemoryBuffer const& memoryBuffer)
 		{
-			LOG_CONTROLLER_TRACE(entityID, "User startOperation (operationId={}): {}", operationId, entity::ControllerEntity::statusToString(status));
+			(void)operationID; // Because of a bug in VS 15.7 that doesn't take into account [[maybe_unused]] for lambda parameters
+			LOG_CONTROLLER_TRACE(entityID, "User startOperation (operationID={}): {}", operationID, entity::ControllerEntity::statusToString(status));
 
-			invokeProtectedHandler(handler, nullptr, status);
+			// Take a copy of the ControlledEntity so we don't have to keep the lock
+			auto controlledEntity = getControlledEntityImpl(entityID);
+
+			if (controlledEntity)
+			{
+				auto* const entity = controlledEntity.get();
+				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, memoryBuffer);
+			}
+			else // The entity went offline right after we sent our message
+			{
+				invokeProtectedHandler(handler, nullptr, status, memoryBuffer);
+			}
 		});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, MemoryBuffer{});
 	}
 }
 
 void ControllerImpl::startUploadOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint64_t const dataLength, StartOperationHandler const& handler) const
 {
-	auto specificDataPtr = (std::uint8_t *)std::malloc(sizeof(dataLength));
-	if (specificDataPtr == nullptr)
-	{
-		throw std::bad_alloc();
-	}
+#pragma message("TODO: Modify the Serializer/Deserializer classes so they can use a provided buffer (MemoryBuffer), instead of always using a static internal buffer. Template the class so the container is that!")
+	Serializer<sizeof(dataLength)> ser{};
 
-	auto converted =AVDECC_PACK_QWORD(dataLength);
-	std::memcpy(specificDataPtr, &converted, sizeof(dataLength));
-	
-	startOperation(targetEntityID, descriptorType, descriptorIndex, 0, entity::model::MemoryObjectOperations::Upload, handler, specificDataPtr, sizeof(dataLength));
-	std::free(specificDataPtr);
+	ser << dataLength;
+
+	MemoryBuffer buffer{ ser.data(), ser.usedBytes() };
+	startOperation(targetEntityID, descriptorType, descriptorIndex, 0, entity::model::MemoryObjectOperationType::Upload, buffer, handler);
 }
 
 void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, DeviceMemoryBuffer memoryBuffer, WriteDeviceMemoryHandler const& handler) const noexcept

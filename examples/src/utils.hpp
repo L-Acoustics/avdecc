@@ -32,6 +32,10 @@
 #define USE_CURSES
 #endif // __APPLE__
 
+#include <la/avdecc/avdecc.hpp>
+#include <la/avdecc/networkInterfaceHelper.hpp>
+#include <string>
+
 #if defined(USE_CURSES)
 #include <curses.h>
 #else // !USE_CURSES
@@ -41,10 +45,6 @@
 #endif // _WIN32
 #endif // USE_CURSES
 
-#include <la/avdecc/avdecc.hpp>
-#include <la/avdecc/networkInterfaceHelper.hpp>
-#include <string>
-
 #define VENDOR_ID 0x001B92
 #define DEVICE_ID 0x80
 #define MODEL_ID 0x00000001
@@ -52,5 +52,5 @@
 void initOutput();
 void deinitOutput();
 void outputText(std::string const& str) noexcept;
-la::avdecc::EndStation::ProtocolInterfaceType chooseProtocolInterfaceType();
+la::avdecc::protocol::ProtocolInterface::Type chooseProtocolInterfaceType();
 la::avdecc::networkInterface::Interface chooseNetworkInterface();

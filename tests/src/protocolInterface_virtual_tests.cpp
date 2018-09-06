@@ -22,23 +22,25 @@
 * @author Christophe Calmejane
 */
 
+// Internal API
+#include "protocolInterface/protocolInterface_virtual.hpp"
+#include "instrumentationObserver.hpp"
+
 #include <gtest/gtest.h>
 #include <future>
 #include <chrono>
-#include "protocolInterface/protocolInterface_virtual.hpp"
-#include "instrumentationObserver.hpp"
 
 TEST(ProtocolInterfaceVirtual, InvalidName)
 {
 	// Not using EXPECT_THROW, we want to check the error code inside our custom exception
 	try
 	{
-		la::avdecc::protocol::ProtocolInterfaceVirtual::create("", {{ 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 }});
+		std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("", {{ 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 }}));
 		EXPECT_FALSE(true); // We expect an exception to have been raised
 	}
 	catch (la::avdecc::protocol::ProtocolInterface::Exception const& e)
 	{
-		EXPECT_EQ(la::avdecc::protocol::ProtocolInterface::Error::InterfaceInvalid, e.getError());
+		EXPECT_EQ(la::avdecc::protocol::ProtocolInterface::Error::InvalidParameters, e.getError());
 	}
 }
 
@@ -47,19 +49,19 @@ TEST(ProtocolInterfaceVirtual, InvalidMac)
 	// Not using EXPECT_THROW, we want to check the error code inside our custom exception
 	try
 	{
-		la::avdecc::protocol::ProtocolInterfaceVirtual::create("InvalidMac", { });
+		std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("InvalidMac", { }));
 		EXPECT_FALSE(true); // We expect an exception to have been raised
 	}
 	catch (la::avdecc::protocol::ProtocolInterface::Exception const& e)
 	{
-		EXPECT_EQ(la::avdecc::protocol::ProtocolInterface::Error::InterfaceInvalid, e.getError());
+		EXPECT_EQ(la::avdecc::protocol::ProtocolInterface::Error::InvalidParameters, e.getError());
 	}
 }
 
 TEST(ProtocolInterfaceVirtual, ValidInterface)
 {
 	EXPECT_NO_THROW(
-									la::avdecc::protocol::ProtocolInterfaceVirtual::create("ValidInterface", {{ 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 }});
+		std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("ValidInterface", {{ 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 }}));
 	);
 }
 
@@ -87,8 +89,8 @@ TEST(ProtocolInterfaceVirtual, SendMessage)
 		DECLARE_AVDECC_OBSERVER_GUARD(Observer);
 	};
 	Observer obs;
-	auto intfc1 = la::avdecc::protocol::ProtocolInterfaceVirtual::create("VirtualInterface", {{ 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 }});
-	auto intfc2 = la::avdecc::protocol::ProtocolInterfaceVirtual::create("VirtualInterface", {{ 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b }});
+	auto intfc1 = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", {{ 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 }}));
+	auto intfc2 = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", {{ 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b }}));
 	intfc2->registerObserver(&obs);
 
 	// Build adpdu frame
@@ -111,7 +113,7 @@ TEST(ProtocolInterfaceVirtual, SendMessage)
 	adpdu->setGptpGrandmasterID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
 	adpdu->setGptpDomainNumber(0);
 	adpdu->setIdentifyControlIndex(0);
-	adpdu->setInterfaceIndex(intfc1->getInterfaceIndex());
+	adpdu->setInterfaceIndex(0);
 	adpdu->setAssociationID(la::avdecc::UniqueIdentifier{});
 
 	// Send the adp message
@@ -179,7 +181,7 @@ TEST(ProtocolInterfaceVirtual, TransportError)
 
 	Observer obs;
 	la::avdecc::InstrumentationNotifier::getInstance().registerObserver(&obs);
-	auto intfc = la::avdecc::protocol::ProtocolInterfaceVirtual::create("VirtualInterface", {{ 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 }});
+	auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", {{ 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 }}));
 	intfc->registerObserver(&obs);
 
 	// Build adpdu frame
@@ -202,7 +204,7 @@ TEST(ProtocolInterfaceVirtual, TransportError)
 	adpdu->setGptpGrandmasterID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
 	adpdu->setGptpDomainNumber(0);
 	adpdu->setIdentifyControlIndex(0);
-	adpdu->setInterfaceIndex(intfc->getInterfaceIndex());
+	adpdu->setInterfaceIndex(0);
 	adpdu->setAssociationID(la::avdecc::UniqueIdentifier{});
 
 	// Send the adp message

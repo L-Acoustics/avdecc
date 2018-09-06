@@ -25,6 +25,12 @@
 
 #pragma once
 
+#include "la/avdecc/utils.hpp"
+#include "la/avdecc/networkInterfaceHelper.hpp"
+#include "entityEnums.hpp"
+#include "uniqueIdentifier.hpp"
+#include "protocolDefines.hpp"
+#include "entityModelTypes.hpp"
 #include <cstdint>
 #include <string>
 #include <array>
@@ -34,12 +40,6 @@
 #include <set>
 #include <tuple>
 #include <vector>
-#include "entityEnums.hpp"
-#include "uniqueIdentifier.hpp"
-#include "protocolDefines.hpp"
-#include "entityModelTypes.hpp"
-#include "la/avdecc/utils.hpp"
-#include "la/avdecc/networkInterfaceHelper.hpp"
 
 namespace la
 {

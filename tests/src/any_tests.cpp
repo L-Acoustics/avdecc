@@ -22,10 +22,9 @@
 * @author Christophe Calmejane
 */
 
-#include <gtest/gtest.h>
-
 #if ENABLE_AVDECC_CUSTOM_ANY
 #include <la/avdecc/internals/any.hpp>
+#include <gtest/gtest.h>
 
 // Some tests for our std::any implementation, until it's available on all c++17 compilers
 TEST(Any, ConstructorLiteral)

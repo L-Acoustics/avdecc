@@ -31,6 +31,17 @@
 /** Entity model definition */
 #include "internals/entityModel.hpp"
 
+/** ProtocolInterface definition */
+#include "internals/protocolInterface.hpp"
+
+/** Protocols definition */
+#include "internals/protocolAvtpdu.hpp"
+#include "internals/protocolAcmpdu.hpp"
+#include "internals/protocolAdpdu.hpp"
+#include "internals/protocolAecpdu.hpp"
+#include "internals/protocolAaAecpdu.hpp"
+#include "internals/protocolAemAecpdu.hpp"
+
 /** EndStation definition */
 #include "internals/endStation.hpp"
 

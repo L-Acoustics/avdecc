@@ -25,8 +25,8 @@
 #pragma once
 
 #include "la/avdecc/networkInterfaceHelper.hpp"
-#include "la/avdecc/internals/entity.hpp"
-#include "la/avdecc/internals/protocolDefines.hpp"
+#include "entity.hpp"
+#include "protocolDefines.hpp"
 #include "serialization.hpp"
 #include <cstdint>
 #include <utility>
@@ -107,6 +107,13 @@ protected:
 	networkInterface::MacAddress _destAddress{};
 	networkInterface::MacAddress _srcAddress{};
 	std::uint16_t _etherType{};
+
+private:
+	/** Destroy method for COM-like interface */
+	//virtual void destroy() noexcept
+	//{
+	//	delete this;
+	//}
 };
 
 /** Avtpdu common header */

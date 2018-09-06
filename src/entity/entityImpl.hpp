@@ -26,7 +26,7 @@
 
 #include "la/avdecc/internals/entity.hpp"
 #include "la/avdecc/internals/entityModel.hpp"
-#include "protocolInterface/protocolInterface.hpp"
+#include "la/avdecc/internals/protocolInterface.hpp"
 #include <cstdint>
 #include <thread>
 #include <sstream>

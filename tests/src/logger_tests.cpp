@@ -17,13 +17,16 @@
 * along with LA_avdecc.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <gtest/gtest.h>
+// Public API
 #include <la/avdecc/logger.hpp>
+#include <la/avdecc/internals/logItems.hpp>
+
+// Internal API
+#include "logHelper.hpp"
+
+#include <gtest/gtest.h>
 #include <iostream>
 #include <typeinfo>
-
-#include <la/avdecc/internals/logItems.hpp>
-#include "logHelper.hpp"
 
 namespace
 {

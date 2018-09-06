@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "protocolInterface.hpp"
+#include "la/avdecc/internals/protocolInterface.hpp"
 
 namespace la
 {
@@ -33,12 +33,12 @@ class ProtocolInterfaceMacNative : public ProtocolInterface
 public:
 	/**
 	* @brief Factory to create a ProtocolInterfaceMacNative.
-	* @details Factory to create a ProtocolInterfaceMacNative.
+	* @details Factory to create a ProtocolInterfaceMacNative as a raw pointer.
 	* @param[in] networkInterfaceName The name of the network interface to use.
-	* @return A new ProtocolInterfaceMacNative as a ProtocolInterface::UniquePointer
+	* @return A new ProtocolInterfaceMacNative as a raw pointerr
 	* @note Throw #std::invalid_argument if interface is not recognized.
 	*/
-	static UniquePointer create(std::string const& networkInterfaceName);
+	static ProtocolInterfaceMacNative* createRawProtocolInterfaceMacNative(std::string const& networkInterfaceName);
 
 	/** Returns true if this ProtocolInterface is supported (runtime check) */
 	static bool isSupported() noexcept;

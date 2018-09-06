@@ -144,6 +144,25 @@ public:
 	}
 
 	/* ************************************************************************** */
+	/* Comparison operators                                                       */
+	bool operator==(MemoryBuffer const& buffer) const noexcept
+	{
+		// First check for size, so we don't have to process the whole data
+		if (_size != buffer._size)
+		{
+			return false;
+		}
+
+		// Now we can compare the data
+		return std::memcmp(_data, buffer._data, _size) == 0;
+	}
+
+	bool operator!=(MemoryBuffer const& buffer) const noexcept
+	{
+		return !operator==(buffer);
+	}
+
+	/* ************************************************************************** */
 	/* Writters                                                                   */
 
 	/** Replaces the MemoryBuffer with the content of the specified std::string */

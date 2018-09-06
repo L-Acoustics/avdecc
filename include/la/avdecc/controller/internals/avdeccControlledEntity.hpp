@@ -25,14 +25,14 @@
 
 #pragma once
 
-#include <string>
-#include <memory>
-#include <mutex>
-#include <vector>
 #include <la/avdecc/avdecc.hpp>
 #include <la/avdecc/internals/exception.hpp>
 #include "avdeccControlledEntityModel.hpp"
 #include "exports.hpp"
+#include <string>
+#include <memory>
+#include <mutex>
+#include <vector>
 
 namespace la
 {

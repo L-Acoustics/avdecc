@@ -25,10 +25,10 @@
 #pragma once
 
 #include "la/avdecc/internals/controllerEntity.hpp"
+#include "la/avdecc/internals/protocolInterface.hpp"
+#include "la/avdecc/internals/protocolAemAecpdu.hpp"
+#include "la/avdecc/internals/protocolAaAecpdu.hpp"
 #include "entityImpl.hpp"
-#include "protocolInterface/protocolInterface.hpp"
-#include "protocol/protocolAemAecpdu.hpp"
-#include "protocol/protocolAaAecpdu.hpp"
 #include <unordered_map>
 #include <functional>
 #include <thread>
@@ -216,7 +216,7 @@ private:
 	virtual void stopStreamInput(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, StopStreamInputHandler const& handler) const noexcept override;
 	virtual void stopStreamOutput(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, StopStreamOutputHandler const& handler) const noexcept override;
 	virtual void getAvbInfo(UniqueIdentifier const targetEntityID, model::AvbInterfaceIndex const avbInterfaceIndex, GetAvbInfoHandler const& handler) const noexcept override;
-	virtual void startOperation(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, std::uint16_t const operationId, model::MemoryObjectOperations const operationType, std::uint8_t const * operationSpecificData, size_t byteCount, StartOperationHandler const& handler) const noexcept override;
+	virtual void startOperation(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, std::uint16_t const operationID, model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer, StartOperationHandler const& handler) const noexcept override;
 	virtual void setMemoryObjectLength(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length, SetMemoryObjectLengthHandler const& handler) const noexcept override;
 	virtual void getMemoryObjectLength(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::MemoryObjectIndex const memoryObjectIndex, GetMemoryObjectLengthHandler const& handler) const noexcept override;
 	/* Enumeration and Control Protocol (AECP) AA */

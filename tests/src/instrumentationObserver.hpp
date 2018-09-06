@@ -24,11 +24,13 @@
 
 #pragma once
 
+// Public API
+#include <la/avdecc/internals/instrumentationNotifier.hpp>
+
 #include <string>
 #include <functional>
 #include <list>
 #include <mutex>
-#include "la/avdecc/internals/instrumentationNotifier.hpp"
 
 class InstrumentationObserver : public la::avdecc::InstrumentationNotifier::Observer
 {

@@ -17,7 +17,9 @@
 * along with LA_avdecc.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+// Public API
+// Internal API
+
 #include <gtest/gtest.h>
-#include "controller/avdeccControlledEntityImpl.hpp"
 
 #pragma message("TODO: UniqueIdentifier unit tests")

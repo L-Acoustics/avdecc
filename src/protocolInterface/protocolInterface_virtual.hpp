@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include "protocolInterface.hpp"
+#include "la/avdecc/internals/protocolInterface.hpp"
 
 namespace la
 {
@@ -38,13 +38,13 @@ class ProtocolInterfaceVirtual : public ProtocolInterface
 public:
 	/**
 	* @brief Factory method to create a ProtocolInterfaceVirtual.
-	* @details Factory method to create a ProtocolInterfaceVirtual.
+	* @details Factory method to create a ProtocolInterfaceVirtual as a raw pointer.
 	* @param[in] networkInterfaceName The name of the virtual interface to use.
 	* @param[in] macAddress The MAC address associated with the network interface. Cannot be all 0.
-	* @return A new ProtocolInterfaceVirtual as a ProtocolInterface::UniquePointer
+	* @return A new ProtocolInterfaceVirtual as a raw pointer
 	* @note Throws Exception if #interfaceName is invalid or inaccessible.
 	*/
-	static UniquePointer create(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress);
+	static ProtocolInterfaceVirtual* createRawProtocolInterfaceVirtual(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress);
 
 	/** Returns true if this ProtocolInterface is supported (runtime check) */
 	static bool isSupported() noexcept;
