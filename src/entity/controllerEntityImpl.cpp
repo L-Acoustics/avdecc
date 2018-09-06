@@ -1598,43 +1598,42 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 			{
 				// Deserialize payload
 #ifdef __cpp_structured_bindings
-				auto const[descriptorType, descriptorIndex, operationId, operationType] = protocol::aemPayload::deserializeStartOperationCommand(aem.getPayload());
+				auto const[descriptorType, descriptorIndex, operationID, operationType, memoryBuffer] = protocol::aemPayload::deserializeStartOperationResponse(aem.getPayload());
 #else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeStartOperationCommand(aem.getPayload());
+				auto const result = protocol::aemPayload::deserializeStartOperationResponse(aem.getPayload());
 				entity::model::DescriptorType const descriptorType = std::get<0>(result);
 				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-				std::uint16_t const operationId = std::get<2>(result);
-				entity::model::MemoryObjectOperations const operationType = std::get<3>(result);
+				std::uint16_t const operationID = std::get<2>(result);
+				entity::model::MemoryObjectOperationType const operationType = std::get<3>(result);
+				MemoryBuffer const memoryBuffer = std::get<4>(result);
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
-				answerCallback.invoke<StartOperationHandler>(controller, targetID, status, descriptorType, descriptorIndex, operationId, operationType, nullptr, 0);
+				answerCallback.invoke<StartOperationHandler>(controller, targetID, status, descriptorType, descriptorIndex, operationID, operationType, memoryBuffer);
 			}
 		},
 		// Operation Status
-		{ protocol::AemCommandType::OperationStatus.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::OperationStatus.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const /*status*/, protocol::AemAecpdu const& aem, AnswerCallback const& /*answerCallback*/)
 			{
 				// Deserialize payload
 #ifdef __cpp_structured_bindings
-				auto const[descriptorType, descriptorIndex, operationId, percentComplete] = protocol::aemPayload::deserializeOperationStatusResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex, operationID, percentComplete] = protocol::aemPayload::deserializeOperationStatusResponse(aem.getPayload());
 #else // !__cpp_structured_bindings
 				auto const result = protocol::aemPayload::deserializeOperationStatusResponse(aem.getPayload());
 				entity::model::DescriptorType const descriptorType = std::get<0>(result);
 				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-				std::uint16_t const operationId = std::get<2>(result);
+				std::uint16_t const operationID = std::get<2>(result);
 				std::uint16_t const percentComplete = std::get<3>(result);
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
-                auto* delegate = controller->getDelegate();
-                
-				(void)status;
-				(void)answerCallback;
+				auto* delegate = controller->getDelegate();
 
 				// Notify handlers
-				invokeProtectedMethod(&ControllerEntity::Delegate::onOperationStatus, delegate, controller, targetID, descriptorType, descriptorIndex, operationId, percentComplete);
+				AVDECC_ASSERT(aem.getUnsolicited(), "OperationStatus can only be an unsolicited response");
+				invokeProtectedMethod(&ControllerEntity::Delegate::onOperationStatus, delegate, controller, targetID, descriptorType, descriptorIndex, operationID, percentComplete);
 			}
 		},
 		// Set Memory Object Length
@@ -3041,18 +3040,18 @@ void ControllerEntityImpl::getAvbInfo(UniqueIdentifier const targetEntityID, mod
 	}
 }
 
-void ControllerEntityImpl::startOperation(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, std::uint16_t const operationId, model::MemoryObjectOperations const operationType, std::uint8_t const * operationSpecificData, size_t byteCount, StartOperationHandler const& handler) const noexcept
+void ControllerEntityImpl::startOperation(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, std::uint16_t const operationID, model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer, StartOperationHandler const& handler) const noexcept
 {
 	try
 	{
-		auto const ser = protocol::aemPayload::serializeStartOperationCommand(descriptorType, descriptorIndex, operationId, operationType, operationSpecificData, byteCount);
-		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, descriptorType, descriptorIndex, operationId, operationType, operationSpecificData, byteCount);
-		
+		auto const ser = protocol::aemPayload::serializeStartOperationCommand(descriptorType, descriptorIndex, operationID, operationType, MemoryBuffer{});
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, descriptorType, descriptorIndex, operationID, operationType, memoryBuffer);
+
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::StartOperation, ser.data(), ser.size(), errorCallback, handler);
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
-		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setMemoryObjectLength: {}", e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize startOperation: {}", e.what());
 	}
 }
 

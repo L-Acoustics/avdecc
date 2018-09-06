@@ -234,8 +234,8 @@ constexpr bool operator==(MemoryObjectType const lhs, std::underlying_type_t<Mem
 	return static_cast<std::underlying_type_t<MemoryObjectType>>(lhs) == rhs;
 }
 
-/** MemoryObject Operations - Clause 7.2.10.2 */
-enum class MemoryObjectOperations : std::uint16_t
+/** MemoryObject Operation Type - Clause 7.2.10.2 */
+enum class MemoryObjectOperationType : std::uint16_t
 {
 	Store = 0x0000,
 	StoreAndReboot = 0x0001,
@@ -244,14 +244,14 @@ enum class MemoryObjectOperations : std::uint16_t
 	Upload = 0x0004,
 	/* 0005 to ffff reserved for future use */
 };
-constexpr bool operator==(MemoryObjectOperations const lhs, MemoryObjectOperations const rhs)
+constexpr bool operator==(MemoryObjectOperationType const lhs, MemoryObjectOperationType const rhs)
 {
-	return static_cast<std::underlying_type_t<MemoryObjectOperations>>(lhs) == static_cast<std::underlying_type_t<MemoryObjectOperations>>(rhs);
+	return static_cast<std::underlying_type_t<MemoryObjectOperationType>>(lhs) == static_cast<std::underlying_type_t<MemoryObjectOperationType>>(rhs);
 }
 
-constexpr bool operator==(MemoryObjectOperations const lhs, std::underlying_type_t<MemoryObjectOperations> const rhs)
+constexpr bool operator==(MemoryObjectOperationType const lhs, std::underlying_type_t<MemoryObjectOperationType> const rhs)
 {
-	return static_cast<std::underlying_type_t<MemoryObjectOperations>>(lhs) == rhs;
+	return static_cast<std::underlying_type_t<MemoryObjectOperationType>>(lhs) == rhs;
 }
 
 /** AudioCluster Format - Clause 7.2.16.1 */

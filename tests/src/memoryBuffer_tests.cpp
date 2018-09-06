@@ -351,3 +351,29 @@ TEST(MemoryBuffer, ConsumeBytes)
 	ASSERT_STREQ("MY WORLD", (char const*)b.data());
 	ASSERT_EQ(strlen("MY WORLD") + 1, b.size());
 }
+
+TEST(MemoryBuffer, Comparison)
+{
+	auto const s = std::string("Hello");
+
+	// Buffers of same data and same capacity are equal
+	{
+		la::avdecc::MemoryBuffer a{ s };
+		la::avdecc::MemoryBuffer b;
+		b.assign(s);
+		EXPECT_TRUE(a == b);
+		EXPECT_FALSE(a != b);
+		EXPECT_EQ(b.capacity(), a.capacity());
+	}
+
+	// Buffers of same data and different capacity are still equal
+	{
+		la::avdecc::MemoryBuffer a{ s };
+		la::avdecc::MemoryBuffer b;
+		b.reserve(50);
+		b.assign(s);
+		EXPECT_TRUE(a == b);
+		EXPECT_FALSE(a != b);
+		EXPECT_NE(b.capacity(), a.capacity());
+	}
+}
