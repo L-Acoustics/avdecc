@@ -1395,6 +1395,13 @@ void ControllerImpl::startUploadOperation(UniqueIdentifier const targetEntityID,
 	startOperation(targetEntityID, descriptorType, descriptorIndex, 0, entity::model::MemoryObjectOperationType::Upload, buffer, handler);
 }
 
+void ControllerImpl::startStoreAndRebootOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const operationID, StartOperationHandler const& handler) const
+{
+    MemoryBuffer buffer{};
+    
+	startOperation(targetEntityID, descriptorType, descriptorIndex, operationID, entity::model::MemoryObjectOperationType::Upload, buffer, handler);
+}
+
 void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, DeviceMemoryBuffer memoryBuffer, WriteDeviceMemoryHandler const& handler) const noexcept
 {
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
