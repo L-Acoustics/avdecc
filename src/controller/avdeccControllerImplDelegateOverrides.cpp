@@ -554,6 +554,18 @@ void ControllerImpl::onMemoryObjectLengthChanged(entity::ControllerEntity const*
 	}
 }
 
+void ControllerImpl::onOperationStatus(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const operationID, std::uint16_t const percentComplete) noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+
+	if (controlledEntity)
+	{
+		auto* const entity = controlledEntity.get();
+		updateOperationStatus(*entity, targetEntityID, descriptorType, descriptorIndex, operationID, percentComplete);
+	}
+}
+
 } // namespace controller
 } // namespace avdecc
 } // namespace la

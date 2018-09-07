@@ -105,13 +105,13 @@ public:
 	}
 
 	/** Serialization method */
-	virtual void serialize(SerializationBuffer& buffer) const;
+	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION serialize(SerializationBuffer& buffer) const = 0;
 
 	/** Deserialization method */
-	virtual void deserialize(DeserializationBuffer& buffer) = 0;
+	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION deserialize(DeserializationBuffer& buffer) = 0;
 
 	/** Copy method */
-	virtual UniquePointer copy() const = 0;
+	virtual LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION copy() const = 0;
 
 	// Defaulted compiler auto-generated methods
 	Aecpdu(Aecpdu&&) = default;
@@ -121,7 +121,7 @@ public:
 
 protected:
 	/** Constructor */
-	Aecpdu() noexcept;
+	LA_AVDECC_API Aecpdu() noexcept;
 
 	/** Destructor */
 	virtual ~Aecpdu() noexcept override = default;
@@ -132,7 +132,7 @@ protected:
 
 private:
 	/** Destroy method for COM-like interface */
-	virtual void destroy() noexcept = 0;
+	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION destroy() noexcept = 0;
 
 	// Hide renamed AvtpduControl data
 	using AvtpduControl::setControlData;

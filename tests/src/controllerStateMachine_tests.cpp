@@ -22,8 +22,10 @@
 * @author Christophe Calmejane
 */
 
-#include <gtest/gtest.h>
+// Internal API
 #include "stateMachine/controllerStateMachine.hpp"
+
+#include <gtest/gtest.h>
 
 TEST(ControllerStateMachine, InvalidDelegate)
 {

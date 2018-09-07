@@ -26,17 +26,17 @@
 
 #pragma once
 
-#include <string>
 #include <la/avdecc/avdecc.hpp>
 #include <la/avdecc/internals/exception.hpp>
+#include "avdeccControlledEntityStaticModel.hpp"
+#include "avdeccControlledEntityDynamicModel.hpp"
 #if defined(ENABLE_AVDECC_CUSTOM_ANY)
 #include <la/avdecc/internals/any.hpp>
 #else // !ENABLE_AVDECC_CUSTOM_ANY
 #include <any>
 #endif // ENABLE_AVDECC_CUSTOM_ANY
-#include "avdeccControlledEntityStaticModel.hpp"
-#include "avdeccControlledEntityDynamicModel.hpp"
 #include "exports.hpp"
+#include <string>
 #include <vector>
 #include <map>
 #include <set>

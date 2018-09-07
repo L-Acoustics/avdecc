@@ -35,7 +35,7 @@ namespace avdecc
 namespace protocol
 {
 
-/** AEM Aecpdu heaader */
+/** AEM Aecpdu message */
 class AemAecpdu final : public Aecpdu
 {
 public:
@@ -44,7 +44,7 @@ public:
 #if defined(ALLOW_BIG_AEM_PAYLOADS)
 	static constexpr size_t MaximumBigPayloadLength = Aecpdu::MaximumBigPayloadLength - Aecpdu::HeaderLength - HeaderLength;
 #endif // !ALLOW_BIG_AEM_PAYLOADS
-	static la::avdecc::networkInterface::MacAddress Identify_Mac_Address;
+	static LA_AVDECC_API la::avdecc::networkInterface::MacAddress Identify_Mac_Address;
 	using Payload = std::pair<void const*, size_t>;
 
 	/**
@@ -60,6 +60,12 @@ public:
 		};
 		return UniquePointer(createRawAemAecpdu(), deleter);
 	}
+
+	/** Constructor for heap AemAecpdu */
+	LA_AVDECC_API AemAecpdu() noexcept;
+
+	/** Destructor (for some reason we have to define it in the cpp file or clang complains about missing vtable, using = default or inline not working) */
+	virtual LA_AVDECC_API ~AemAecpdu() noexcept override;
 
 	// Setters
 	void setUnsolicited(bool const unsolicited) noexcept
@@ -107,14 +113,14 @@ public:
 	}
 
 	/** Serialization method */
-	virtual void serialize(SerializationBuffer& buffer) const override;
+	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION serialize(SerializationBuffer& buffer) const override;
 
 	/** Deserialization method */
-	virtual void deserialize(DeserializationBuffer& buffer) override;
+	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION deserialize(DeserializationBuffer& buffer) override;
 
 	/** Copy method */
-	virtual UniquePointer copy() const override;
-	
+	virtual LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION copy() const override;
+
 	// Defaulted compiler auto-generated methods
 	AemAecpdu(AemAecpdu&&) = default;
 	AemAecpdu(AemAecpdu const&) = default;
@@ -122,17 +128,11 @@ public:
 	AemAecpdu& operator=(AemAecpdu&&) = default;
 
 private:
-	/** Constructor */
-	AemAecpdu() noexcept;
-
-	/** Destructor */
-	virtual ~AemAecpdu() noexcept override = default;
-
 	/** Entry point */
-	static AemAecpdu* createRawAemAecpdu();
+	static LA_AVDECC_API AemAecpdu* LA_AVDECC_CALL_CONVENTION createRawAemAecpdu();
 
 	/** Destroy method for COM-like interface */
-	virtual void destroy() noexcept override;
+	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION destroy() noexcept override;
 
 	// Aem header data
 	bool _unsolicited{ false };

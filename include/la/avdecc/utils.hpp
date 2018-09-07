@@ -26,6 +26,7 @@
 #pragma once
 
 #include <type_traits>
+#include <iterator>
 #include <functional>
 #include <cstdarg>
 #include <iomanip> // setprecision / setfill
@@ -33,6 +34,7 @@
 #include <string> // string
 #include <sstream> // stringstream
 #include <limits> // numeric_limits
+#include <stdexcept> // out_of_range
 #include <set>
 #include <mutex>
 #include "internals/exports.hpp"
@@ -212,6 +214,255 @@ struct function_traits<std::function<Ret(Args...)>>
 
 	template <size_t N>
 	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+};
+
+/** Class to easily manipulate an enum that represents a bitfield (strongly typed alternative to traits). */
+template<typename EnumType, typename = std::enable_if_t<std::is_enum<EnumType>::value>>
+class EnumBitfield
+{
+public:
+	using value_type = EnumType;
+	static constexpr size_t value_size = sizeof(std::underlying_type_t<value_type>) * 8;
+
+	/** Iterator allowing quick enumeration of all the bits that are set in the bitfield */
+	class iterator
+	{
+		using self_name = iterator;
+		static constexpr auto EndBit = value_size;
+	public:
+		using value_type = value_type;
+		using difference_type = size_t;
+		using iterator_category = std::forward_iterator_tag;
+		using reference = value_type & ;
+		using const_reference = value_type const&;
+		using pointer = value_type * ;
+		using const_pointer = value_type const*;
+
+		iterator(value_type const value, std::uint8_t const currentBit) noexcept
+			: _value(value), _currentBit(currentBit)
+		{
+			findNextBitSet();
+		}
+		// Pre-increment operator
+		self_name& operator++() noexcept
+		{
+			++_currentBit;
+			findNextBitSet();
+			return *this;
+		}
+		// Post-increment operator
+		self_name operator++(int) noexcept
+		{
+			auto tmp(*this);
+			operator++();
+			return tmp;
+		}
+		// Addition operator
+		self_name operator+(size_t count) const noexcept
+		{
+			auto tmp(*this);
+			tmp.operator+=(count);
+			return tmp;
+		}
+		// Addition assignment operator
+		self_name& operator+=(size_t count) noexcept
+		{
+			_currentBit += static_cast<decltype(_currentBit)>(count);
+			findNextBitSet();
+			return *this;
+		}
+		reference operator*() noexcept
+		{
+			return _currentValue;
+		}
+		const_reference operator*() const noexcept
+		{
+			return _currentValue;
+		}
+		pointer operator->() noexcept
+		{
+			return &_currentValue;
+		}
+		const_pointer operator->() const noexcept
+		{
+			return &_currentValue;
+		}
+		bool operator==(self_name const& other) const noexcept
+		{
+			return _currentBit == other._currentBit;
+		}
+		bool operator!=(self_name const& other) const noexcept
+		{
+			return !operator==(other);
+		}
+	private:
+		void updateCurrentValue() noexcept
+		{
+			// Make a mask for current bit
+			auto mask = static_cast<value_type>(pow(std::underlying_type_t<value_type>(2), _currentBit));
+
+			// Extract the current bit
+			_currentValue = EnumBitfield::operator_and(_value, mask);
+		}
+		void findNextBitSet() noexcept
+		{
+			while (_currentBit < EndBit)
+			{
+				updateCurrentValue();
+				if (_currentValue != static_cast<value_type>(0))
+				{
+					break;
+				}
+				++_currentBit;
+			}
+		}
+
+		value_type const _value{ static_cast<value_type>(0) };
+		std::uint8_t _currentBit{ 0u };
+		value_type _currentValue{ static_cast<value_type>(0) };
+	};
+
+	/** Construct a bitfield using individual bits passed as variadic parameters. If passed value is not valid (contains more than 1 bit set), this leads to undefined behavior. */
+	template<typename... Values>
+	explicit EnumBitfield(value_type const value, Values const... values) noexcept
+		: _value(value)
+	{
+		checkInvalidValue(value);
+		(checkInvalidValue(values), ...);
+		(operator_or_equal(values), ...);
+	}
+
+	/** Returns true if the specified flag is set in the bitfield */
+	constexpr bool test(value_type const flag) const noexcept
+	{
+		return operator_and(_value, flag) != static_cast<value_type>(0);
+	}
+
+	/** Sets the specified flag. If passed value is not valid (contains more than 1 bit set), this leads to undefined behavior. */
+	constexpr EnumBitfield& set(value_type const flag) noexcept
+	{
+		checkInvalidValue(flag);
+		operator_or_equal(flag);
+		return *this;
+	}
+
+	/** Clears the specified flag. If passed value is not valid (contains more than 1 bit set), this leads to undefined behavior. */
+	constexpr EnumBitfield& reset(value_type const flag) noexcept
+	{
+		checkInvalidValue(flag);
+		operator_and_equal(operator_not(flag));
+		return *this;
+	}
+
+	/** Returns true if no bit is set */
+	constexpr bool empty() const noexcept
+	{
+		return _value == static_cast<value_type>(0u);
+	}
+
+	/** Returns the size number of bits the bitfield can hold */
+	constexpr size_t size() const noexcept
+	{
+		return value_size;
+	}
+
+	/** Returns the number of bits that are set */
+	constexpr size_t count() const noexcept
+	{
+		return countBits(to_integral(_value));
+	}
+
+	/** Returns the underlying value of the bitfield */
+	constexpr auto value() const noexcept
+	{
+		return to_integral(_value);
+	}
+
+	/** Comparison operator (equality) */
+	constexpr bool operator==(EnumBitfield const other) const noexcept
+	{
+		return other._value == _value;
+	}
+
+	/** Comparison operator (difference) */
+	constexpr bool operator!=(EnumBitfield const other) const noexcept
+	{
+		return !operator==(other);
+	}
+
+	/** Returns the bit at the specified position. Specified position must be inclusively comprised btw 0 and (count() - 1) or an out_of_range exception will be thrown. */
+	inline value_type at(size_t const position) const
+	{
+		if (position >= count())
+		{
+			throw std::out_of_range("EnumBitfield::at() out of range");
+		}
+		return *(begin() + position);
+	}
+
+	/** Returns the begin iterator */
+	inline iterator begin() noexcept
+	{
+		return iterator(_value, 0);
+	}
+
+	/** Returns the begin const iterator */
+	inline iterator const begin() const noexcept
+	{
+		return iterator(_value, 0);
+	}
+
+	/** Returns the end iterator */
+	inline iterator end() noexcept
+	{
+		return iterator(_value, value_size);
+	}
+
+	/** Returns the end const iterator */
+	inline iterator const end() const noexcept
+	{
+		return iterator(_value, value_size);
+	}
+
+	// Defaulted compiler auto-generated methods
+	EnumBitfield() noexcept = default;
+	EnumBitfield(EnumBitfield&&) noexcept = default;
+	EnumBitfield(EnumBitfield const&) noexcept = default;
+	EnumBitfield& operator=(EnumBitfield const&) noexcept = default;
+	EnumBitfield& operator=(EnumBitfield&&) noexcept = default;
+
+private:
+	inline void checkInvalidValue(value_type const value) const
+	{
+		AVDECC_ASSERT(countBits(to_integral(value)) <= 1, "Invalid value: more than 1 bit set");
+	}
+	constexpr size_t countBits(std::underlying_type_t<value_type> value) const noexcept
+	{
+		return (value == 0u) ? 0u : 1u + countBits(value & (value - 1u));
+	}
+	// Have to redefine "custom" operators or the compiler might want to use global overload operators in that same file
+	static constexpr value_type operator_and(value_type const lhs, value_type const rhs) noexcept
+	{
+		return static_cast<value_type>(static_cast<std::underlying_type_t<value_type>>(lhs) & static_cast<std::underlying_type_t<value_type>>(rhs));
+	}
+	static constexpr value_type operator_or(value_type const lhs, value_type const rhs) noexcept
+	{
+		return static_cast<value_type>(static_cast<std::underlying_type_t<value_type>>(lhs) | static_cast<std::underlying_type_t<value_type>>(rhs));
+	}
+	static constexpr value_type operator_not(value_type const other) noexcept
+	{
+		return static_cast<value_type>(~static_cast<std::underlying_type_t<value_type>>(other));
+	}
+	constexpr void operator_and_equal(value_type const other) noexcept
+	{
+		_value = operator_and(_value, other);
+	}
+	constexpr void operator_or_equal(value_type const other) noexcept
+	{
+		_value = operator_or(_value, other);
+	}
+
+	value_type _value{};
 };
 
 } // namespace avdecc

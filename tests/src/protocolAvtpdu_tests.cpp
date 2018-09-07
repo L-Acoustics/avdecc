@@ -22,11 +22,13 @@
 * @author Christophe Calmejane
 */
 
-#include <gtest/gtest.h>
+// Public API
 #include <la/avdecc/avdecc.hpp>
-#include "protocol/protocolAvtpdu.hpp"
-#include "protocol/protocolAecpdu.hpp"
-#include "protocol/protocolAemAecpdu.hpp"
+#include <la/avdecc/internals/protocolAvtpdu.hpp>
+#include <la/avdecc/internals/protocolAecpdu.hpp>
+#include <la/avdecc/internals/protocolAemAecpdu.hpp>
+
+#include <gtest/gtest.h>
 
 /***********************************************************/
 /* AEM tests                                               */

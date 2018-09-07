@@ -449,10 +449,19 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntity
 	}
 }
 
+void ControllerImpl::updateOperationStatus(ControlledEntityImpl& controlledEntity, UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const operationID, std::uint16_t const percentComplete) const noexcept
+{
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onOperationStatus, this, &controlledEntity, targetEntityID, descriptorType, descriptorIndex, operationID, percentComplete);
+	}
+}
+
 /* ************************************************************ */
 /* Private methods                                              */
 /* ************************************************************ */
-void ControllerImpl::addDelayedQuery(std::chrono::milliseconds const delay, la::avdecc::UniqueIdentifier const entityID, DelayedQueryHandler&& queryHandler) noexcept
+void ControllerImpl::addDelayedQuery(std::chrono::milliseconds const delay, UniqueIdentifier const entityID, DelayedQueryHandler&& queryHandler) noexcept
 {
 	// Lock to protect _delayedQueries
 	std::lock_guard<decltype(_lock)> const lg(_lock);
@@ -1287,7 +1296,7 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 		case FailureAction::Retry:
 		{
 #ifdef __cpp_structured_bindings
-			auto const [shouldRetry, retryTimer] = entity->getQueryDescriptorRetryTimer();
+			auto const[shouldRetry, retryTimer] = entity->getQueryDescriptorRetryTimer();
 #else // !__cpp_structured_bindings
 			auto const result = entity->getQueryDescriptorRetryTimer();
 			auto const shouldRetry = std::get<0>(result);
@@ -1450,75 +1459,75 @@ bool ControllerImpl::fetchCorrespondingDescriptor(ControlledEntityImpl* const en
 
 	switch (descriptorDynamicInfoType)
 	{
-			case ControlledEntityImpl::DescriptorDynamicInfoType::ConfigurationName:
-				descriptorType = entity::model::DescriptorType::Configuration;
-				break;
-			case ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName:
-				descriptorType = entity::model::DescriptorType::AudioUnit;
-				// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
-				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate, descriptorIndex);
-				// Clear other DescriptorDynamicInfo that will be retrieved by subtree calls
-				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, descriptorIndex);
-				break;
-			case ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate:
-				descriptorType = entity::model::DescriptorType::AudioUnit;
-				// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
-				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName, descriptorIndex);
-				// Clear other DescriptorDynamicInfo that will be retrieved by subtree calls
-				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, descriptorIndex);
-				break;
-			case ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName:
-				descriptorType = entity::model::DescriptorType::StreamInput;
-				// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
-				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat, descriptorIndex);
-				break;
-			case ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat:
-				descriptorType = entity::model::DescriptorType::StreamInput;
-				// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
-				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName, descriptorIndex);
-				break;
-			case ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName:
-				descriptorType = entity::model::DescriptorType::StreamOutput;
-				// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
-				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat, descriptorIndex);
-				break;
-			case ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat:
-				descriptorType = entity::model::DescriptorType::StreamOutput;
-				// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
-				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName, descriptorIndex);
-				break;
-			case ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName:
-				descriptorType = entity::model::DescriptorType::AvbInterface;
-				break;
-			case ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName:
-				descriptorType = entity::model::DescriptorType::ClockSource;
-				break;
-			case ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName:
-				descriptorType = entity::model::DescriptorType::MemoryObject;
-				// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
-				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength, descriptorIndex);
-				break;
-			case ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength:
-				descriptorType = entity::model::DescriptorType::MemoryObject;
-				// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
-				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName, descriptorIndex);
-				break;
-			case ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName:
-				descriptorType = entity::model::DescriptorType::AudioCluster;
-				break;
-			case ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName:
-				descriptorType = entity::model::DescriptorType::ClockDomain;
-				// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
-				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex, descriptorIndex);
-				break;
-			case ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex:
-				descriptorType = entity::model::DescriptorType::ClockDomain;
-				// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
-				entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName, descriptorIndex);
-				break;
-			default:
-				AVDECC_ASSERT(false, "Unhandled DescriptorDynamicInfoType");
-				break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::ConfigurationName:
+			descriptorType = entity::model::DescriptorType::Configuration;
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName:
+			descriptorType = entity::model::DescriptorType::AudioUnit;
+			// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
+			entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate, descriptorIndex);
+			// Clear other DescriptorDynamicInfo that will be retrieved by subtree calls
+			entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, descriptorIndex);
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate:
+			descriptorType = entity::model::DescriptorType::AudioUnit;
+			// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
+			entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName, descriptorIndex);
+			// Clear other DescriptorDynamicInfo that will be retrieved by subtree calls
+			entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, descriptorIndex);
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName:
+			descriptorType = entity::model::DescriptorType::StreamInput;
+			// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
+			entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat, descriptorIndex);
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat:
+			descriptorType = entity::model::DescriptorType::StreamInput;
+			// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
+			entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName, descriptorIndex);
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName:
+			descriptorType = entity::model::DescriptorType::StreamOutput;
+			// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
+			entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat, descriptorIndex);
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat:
+			descriptorType = entity::model::DescriptorType::StreamOutput;
+			// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
+			entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName, descriptorIndex);
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName:
+			descriptorType = entity::model::DescriptorType::AvbInterface;
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName:
+			descriptorType = entity::model::DescriptorType::ClockSource;
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName:
+			descriptorType = entity::model::DescriptorType::MemoryObject;
+			// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
+			entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength, descriptorIndex);
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength:
+			descriptorType = entity::model::DescriptorType::MemoryObject;
+			// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
+			entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName, descriptorIndex);
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName:
+			descriptorType = entity::model::DescriptorType::AudioCluster;
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName:
+			descriptorType = entity::model::DescriptorType::ClockDomain;
+			// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
+			entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex, descriptorIndex);
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex:
+			descriptorType = entity::model::DescriptorType::ClockDomain;
+			// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
+			entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName, descriptorIndex);
+			break;
+		default:
+			AVDECC_ASSERT(false, "Unhandled DescriptorDynamicInfoType");
+			break;
 	}
 
 	if (!!descriptorType)

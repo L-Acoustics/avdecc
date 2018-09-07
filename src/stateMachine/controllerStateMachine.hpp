@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include "protocolInterface/protocolInterface.hpp"
+#include "la/avdecc/internals/protocolInterface.hpp"
 #include "la/avdecc/internals/entity.hpp"
 #include <thread>
 #include <mutex>

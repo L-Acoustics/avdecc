@@ -17,9 +17,10 @@
 * along with LA_avdecc.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "la/avdecc/internals/protocolAemAecpdu.hpp"
+#include "la/avdecc/internals/protocolAaAecpdu.hpp"
 #include "protocolInterface_macNative.hpp"
-#include "protocol/protocolAemAecpdu.hpp"
-#include "protocol/protocolAaAecpdu.hpp"
+#include "logHelper.hpp"
 #include <stdexcept>
 #include <functional>
 #include <memory>
@@ -28,7 +29,6 @@
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
-#include "logHelper.hpp"
 
 #import <AudioVideoBridging/AudioVideoBridging.h>
 
@@ -166,6 +166,12 @@ namespace la
 					shutdown();
 				}
 				
+				/** Destroy method for COM-like interface */
+				virtual void destroy() noexcept override
+				{
+					delete this;
+				}
+
 				// Deleted compiler auto-generated methods
 				ProtocolInterfaceMacNativeImpl(ProtocolInterfaceMacNativeImpl&&) = delete;
 				ProtocolInterfaceMacNativeImpl(ProtocolInterfaceMacNativeImpl const&) = delete;
@@ -277,14 +283,14 @@ namespace la
 			{
 			}
 			
-			ProtocolInterface::UniquePointer ProtocolInterfaceMacNative::create(std::string const& networkInterfaceName)
-			{
-				return std::make_unique<ProtocolInterfaceMacNativeImpl>(networkInterfaceName);
-			}
-			
 			bool ProtocolInterfaceMacNative::isSupported() noexcept
 			{
 				return [BridgeInterface isSupported];
+			}
+
+			ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfaceMacNative(std::string const& networkInterfaceName)
+			{
+				return new ProtocolInterfaceMacNativeImpl(networkInterfaceName);
 			}
 
 		} // namespace protocol

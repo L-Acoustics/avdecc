@@ -26,6 +26,11 @@
 /** AVDECC CONTROLLED ENTITY EXAMPLE                                         **/
 /** ************************************************************************ **/
 
+#include <la/avdecc/avdecc.hpp>
+#include <la/avdecc/utils.hpp>
+#include <la/avdecc/networkInterfaceHelper.hpp>
+#include <la/avdecc/logger.hpp>
+#include "utils.hpp"
 #include <iostream>
 #include <iomanip>
 #include <string>
@@ -33,11 +38,6 @@
 #include <vector>
 #include <thread>
 #include <chrono>
-#include <la/avdecc/avdecc.hpp>
-#include <la/avdecc/utils.hpp>
-#include <la/avdecc/networkInterfaceHelper.hpp>
-#include <la/avdecc/logger.hpp>
-#include "utils.hpp"
 
 int doJob()
 {
@@ -343,14 +343,14 @@ int doJob()
 	auto const protocolInterfaceType = chooseProtocolInterfaceType();
 	auto intfc = chooseNetworkInterface();
 
-	if (intfc.type == la::avdecc::networkInterface::Interface::Type::None || protocolInterfaceType == la::avdecc::EndStation::ProtocolInterfaceType::None)
+	if (intfc.type == la::avdecc::networkInterface::Interface::Type::None || protocolInterfaceType == la::avdecc::protocol::ProtocolInterface::Type::None)
 	{
 		return 1;
 	}
 
 	try
 	{
-		outputText("Selected interface '" + intfc.alias + "' and protocol interface '" + la::avdecc::EndStation::typeToString(protocolInterfaceType) + "':\n");
+		outputText("Selected interface '" + intfc.alias + "' and protocol interface '" + la::avdecc::protocol::ProtocolInterface::typeToString(protocolInterfaceType) + "':\n");
 		auto endPoint = la::avdecc::EndStation::create(protocolInterfaceType, intfc.name);
 		ControllerDelegate controllerDelegate;
 

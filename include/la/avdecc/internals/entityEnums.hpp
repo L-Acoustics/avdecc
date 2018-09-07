@@ -25,9 +25,9 @@
 
 #pragma once
 
+#include "la/avdecc/utils.hpp"
 #include <cstdint>
 #include <string>
-#include "la/avdecc/utils.hpp"
 
 namespace la
 {

@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include "protocolInterface.hpp"
+#include "la/avdecc/internals/protocolInterface.hpp"
 
 namespace la
 {
@@ -37,13 +37,13 @@ class ProtocolInterfacePcap : public ProtocolInterface
 {
 public:
 	/**
-	* @brief Factory method to create a ProtocolInterfacePcap.
-	* @details Factory method to create a ProtocolInterfacePcap.
+	* @brief Factory method to create a new ProtocolInterfacePcap.
+	* @details Creates a new ProtocolInterfacePcap as a raw pointer.
 	* @param[in] networkInterfaceName The name of the network interface to use.
-	* @return A new ProtocolInterfacePcap as a ProtocolInterface::UniquePointer
+	* @return A new ProtocolInterfacePcap as a raw pointer.
 	* @note Throws Exception if #interfaceName is invalid or inaccessible.
 	*/
-	static UniquePointer create(std::string const& networkInterfaceName);
+	static ProtocolInterfacePcap* createRawProtocolInterfacePcap(std::string const& networkInterfaceName);
 
 	/** Returns true if this ProtocolInterface is supported (runtime check) */
 	static bool isSupported() noexcept;

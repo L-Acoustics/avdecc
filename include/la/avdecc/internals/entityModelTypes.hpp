@@ -25,13 +25,13 @@
 
 #pragma once
 
+#include "uniqueIdentifier.hpp"
 #include <cstdint>
 #include <string>
 #include <array>
 #include <vector>
 #include <iostream>
 #include <cstring> // std::memcpy
-#include "uniqueIdentifier.hpp"
 
 namespace la
 {
@@ -234,10 +234,30 @@ constexpr bool operator==(MemoryObjectType const lhs, std::underlying_type_t<Mem
 	return static_cast<std::underlying_type_t<MemoryObjectType>>(lhs) == rhs;
 }
 
+/** MemoryObject Operation Type - Clause 7.2.10.2 */
+enum class MemoryObjectOperationType : std::uint16_t
+{
+	Store = 0x0000,
+	StoreAndReboot = 0x0001,
+	Read = 0x0002,
+	Erase = 0x0003,
+	Upload = 0x0004,
+	/* 0005 to ffff reserved for future use */
+};
+constexpr bool operator==(MemoryObjectOperationType const lhs, MemoryObjectOperationType const rhs)
+{
+	return static_cast<std::underlying_type_t<MemoryObjectOperationType>>(lhs) == static_cast<std::underlying_type_t<MemoryObjectOperationType>>(rhs);
+}
+
+constexpr bool operator==(MemoryObjectOperationType const lhs, std::underlying_type_t<MemoryObjectOperationType> const rhs)
+{
+	return static_cast<std::underlying_type_t<MemoryObjectOperationType>>(lhs) == rhs;
+}
+
 /** AudioCluster Format - Clause 7.2.16.1 */
 enum class AudioClusterFormat : std::uint8_t
 {
-	Iec60958 = 0x00, 
+	Iec60958 = 0x00,
 	Mbla = 0x40,
 	Midi = 0x80,
 	Smpte = 0x88,

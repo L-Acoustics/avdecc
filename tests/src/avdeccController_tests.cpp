@@ -22,16 +22,20 @@
 * @author Christophe Calmejane
 */
 
+// Public API
+#include <la/avdecc/controller/avdeccController.hpp>
+#include <la/avdecc/internals/protocolAemAecpdu.hpp>
+
+// Internal API
+#include "controller/avdeccControlledEntityImpl.hpp"
+#include "entity/controllerEntityImpl.hpp"
+#include "protocolInterface/protocolInterface_virtual.hpp"
+
 #include <gtest/gtest.h>
 #include <string>
 #include <thread>
 #include <chrono>
 #include <future>
-#include "controller/avdeccControlledEntityImpl.hpp"
-#include "entity/controllerEntityImpl.hpp"
-#include "protocolInterface/protocolInterface_virtual.hpp"
-#include "protocol/protocolAemAecpdu.hpp"
-#include <la/avdecc/controller/avdeccController.hpp>
 
 namespace
 {
@@ -178,7 +182,7 @@ TEST(Controller, RedundantStreams)
 	}
 #endif // ENABLE_AVDECC_STRICT_2018_REDUNDANCY
 
-	// Invalid redundant association: 
+	// Invalid redundant association:
 	//{
 	//	auto const e{ la::avdecc::entity::Entity{ 0x0102030405060708, la::avdecc::networkInterface::MacAddress{}, 0x1122334455667788, la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier() } };
 	//	la::avdecc::controller::ControlledEntityImpl entity{ e };
@@ -199,7 +203,7 @@ TEST(Controller, RedundantStreams)
 	{
 		auto const e{ la::avdecc::entity::Entity{ la::avdecc::UniqueIdentifier{ 0x0102030405060708}, la::avdecc::networkInterface::MacAddress{}, la::avdecc::UniqueIdentifier{ 0x1122334455667788}, la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier() } };
 		la::avdecc::controller::ControlledEntityImpl entity{ e };
-	
+
 		entity.setEntityDescriptor(la::avdecc::entity::model::EntityDescriptor{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier() , std::string("Test entity"), la::avdecc::entity::model::getNullLocalizedStringReference(), la::avdecc::entity::model::getNullLocalizedStringReference(), std::string("Test firmware"), std::string("Test group"), std::string("Test serial number"), 1, 0 });
 		entity.setConfigurationDescriptor(la::avdecc::entity::model::ConfigurationDescriptor{ std::string("Test configuration"), la::avdecc::entity::model::getNullLocalizedStringReference(),{ { la::avdecc::entity::model::DescriptorType::StreamInput, std::uint16_t{2} } } }, 0);
 		entity.setStreamInputDescriptor(la::avdecc::entity::model::StreamDescriptor{ std::string("Primary stream 1"), la::avdecc::entity::model::getNullLocalizedStringReference() , 0, la::avdecc::entity::StreamFlags::None, la::avdecc::entity::model::getNullStreamFormat(), la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), 0, 0, 0,{},{ 0 } }, 0, 0);
@@ -266,7 +270,7 @@ TEST(Controller, DestroyWhileSending)
 {
 	static std::promise<void> commandResultPromise{};
 	{
-		auto pi = la::avdecc::protocol::ProtocolInterfaceVirtual::create("VirtualInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } });
+		auto pi = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }));
 		auto controllerGuard = std::make_unique<la::avdecc::entity::LocalEntityGuard<la::avdecc::entity::ControllerEntityImpl>>(pi.get(), std::uint16_t{ 1 }, la::avdecc::UniqueIdentifier{ 0u }, nullptr);
 		auto* const controller = static_cast<la::avdecc::entity::ControllerEntity*>(controllerGuard.get());
 

@@ -26,6 +26,11 @@
 /** AVDECC_CONTROLLER DELEGATE EXAMPLE                                       **/
 /** ************************************************************************ **/
 
+#include <la/avdecc/controller/avdeccController.hpp>
+#include <la/avdecc/networkInterfaceHelper.hpp>
+#include <la/avdecc/utils.hpp>
+#include <la/avdecc/logger.hpp>
+#include "utils.hpp"
 #include <iostream>
 #include <iomanip>
 #include <string>
@@ -38,11 +43,6 @@
 #include <unordered_map>
 #include <stdexcept>
 #include <cassert>
-#include <la/avdecc/controller/avdeccController.hpp>
-#include <la/avdecc/networkInterfaceHelper.hpp>
-#include <la/avdecc/utils.hpp>
-#include <la/avdecc/logger.hpp>
-#include "utils.hpp"
 
 /* ************************************************************************** */
 /* Discovery class                                                            */
@@ -52,7 +52,7 @@ class Discovery : public la::avdecc::controller::Controller::Observer, public la
 {
 public:
 	/** Constructor/destructor/destroy */
-	Discovery(la::avdecc::EndStation::ProtocolInterfaceType const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, la::avdecc::UniqueIdentifier const entityModelID, std::string const& preferedLocale);
+	Discovery(la::avdecc::protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, la::avdecc::UniqueIdentifier const entityModelID, std::string const& preferedLocale);
 	~Discovery() = default;
 
 	// Deleted compiler auto-generated methods
@@ -80,7 +80,7 @@ private:
 	DECLARE_AVDECC_OBSERVER_GUARD(Discovery); // Not really needed because the _controller field will be destroyed before parent class destruction
 };
 
-Discovery::Discovery(la::avdecc::EndStation::ProtocolInterfaceType const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, la::avdecc::UniqueIdentifier const entityModelID, std::string const& preferedLocale)
+Discovery::Discovery(la::avdecc::protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, la::avdecc::UniqueIdentifier const entityModelID, std::string const& preferedLocale)
 	: _controller(la::avdecc::controller::Controller::create(protocolInterfaceType, interfaceName, progID, entityModelID, preferedLocale))
 {
 	// Register observers
@@ -176,14 +176,14 @@ int doJob()
 	auto const protocolInterfaceType = chooseProtocolInterfaceType();
 	auto intfc = chooseNetworkInterface();
 
-	if (intfc.type == la::avdecc::networkInterface::Interface::Type::None || protocolInterfaceType == la::avdecc::EndStation::ProtocolInterfaceType::None)
+	if (intfc.type == la::avdecc::networkInterface::Interface::Type::None || protocolInterfaceType == la::avdecc::protocol::ProtocolInterface::Type::None)
 	{
 		return 1;
 	}
 
 	try
 	{
-		outputText("Selected interface '" + intfc.alias + "' and protocol interface '" + la::avdecc::EndStation::typeToString(protocolInterfaceType) + "', discovery active:\n");
+		outputText("Selected interface '" + intfc.alias + "' and protocol interface '" + la::avdecc::protocol::ProtocolInterface::typeToString(protocolInterfaceType) + "', discovery active:\n");
 
 		Discovery discovery(protocolInterfaceType, intfc.name, 0x0003, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), "en");
 

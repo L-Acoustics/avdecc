@@ -22,8 +22,10 @@
 * @author Christophe Calmejane
 */
 
+// Public API
+#include <la/avdecc/internals/entityModelTypes.hpp>
+
 #include <gtest/gtest.h>
-#include "la/avdecc/internals/entityModelTypes.hpp"
 
 TEST(AvdeccFixedString, DefaultConstructor)
 {

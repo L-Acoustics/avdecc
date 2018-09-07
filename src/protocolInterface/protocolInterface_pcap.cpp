@@ -22,12 +22,13 @@
 * @author Christophe Calmejane
 */
 
-#include "protocolInterface_pcap.hpp"
-#include "serialization.hpp"
-#include "protocol/protocolAemAecpdu.hpp"
-#include "protocol/protocolAaAecpdu.hpp"
+#include "la/avdecc/internals/serialization.hpp"
+#include "la/avdecc/internals/protocolAemAecpdu.hpp"
+#include "la/avdecc/internals/protocolAaAecpdu.hpp"
 #include "stateMachine/controllerStateMachine.hpp"
+#include "protocolInterface_pcap.hpp"
 #include "pcapInterface.hpp"
+#include "logHelper.hpp"
 #include <stdexcept>
 #include <sstream>
 #include <array>
@@ -35,7 +36,6 @@
 #include <unordered_map>
 #include <functional>
 #include <memory>
-#include "logHelper.hpp"
 
 namespace la
 {
@@ -134,6 +134,12 @@ public:
 	virtual ~ProtocolInterfacePcapImpl() noexcept
 	{
 		shutdown();
+	}
+
+	/** Destroy method for COM-like interface */
+	virtual void destroy() noexcept override
+	{
+		delete this;
 	}
 
 	// Deleted compiler auto-generated methods
@@ -563,11 +569,6 @@ ProtocolInterfacePcap::ProtocolInterfacePcap(std::string const& networkInterface
 {
 }
 
-ProtocolInterface::UniquePointer ProtocolInterfacePcap::create(std::string const& networkInterfaceName)
-{
-	return std::make_unique<ProtocolInterfacePcapImpl>(networkInterfaceName);
-}
-
 bool ProtocolInterfacePcap::isSupported() noexcept
 {
 	try
@@ -580,6 +581,11 @@ bool ProtocolInterfacePcap::isSupported() noexcept
 	{
 		return false;
 	}
+}
+
+ProtocolInterfacePcap* ProtocolInterfacePcap::createRawProtocolInterfacePcap(std::string const& networkInterfaceName)
+{
+	return new ProtocolInterfacePcapImpl(networkInterfaceName);
 }
 
 } // namespace protocol

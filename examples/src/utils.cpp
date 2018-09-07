@@ -85,12 +85,12 @@ void outputText(std::string const& str) noexcept
 	}
 }
 
-la::avdecc::EndStation::ProtocolInterfaceType chooseProtocolInterfaceType()
+la::avdecc::protocol::ProtocolInterface::Type chooseProtocolInterfaceType()
 {
-	auto protocolInterfaceType{ la::avdecc::EndStation::ProtocolInterfaceType::None };
+	auto protocolInterfaceType{ la::avdecc::protocol::ProtocolInterface::Type::None };
 
 	// Get the list of supported protocol interface types, and ask the user to choose one (if many available)
-	auto protocolInterfaceTypes = la::avdecc::EndStation::getSupportedProtocolInterfaceTypes();
+	auto protocolInterfaceTypes = la::avdecc::protocol::ProtocolInterface::getSupportedProtocolInterfaceTypes();
 	if (protocolInterfaceTypes.empty())
 	{
 		outputText(std::string("No protocol interface supported on this computer\n"));
@@ -98,20 +98,17 @@ la::avdecc::EndStation::ProtocolInterfaceType chooseProtocolInterfaceType()
 	}
 
 	// Remove Virtual interface
-	protocolInterfaceTypes.erase(std::remove_if(protocolInterfaceTypes.begin(), protocolInterfaceTypes.end(), [](auto const type)
-	{
-		return type == la::avdecc::EndStation::ProtocolInterfaceType::Virtual;
-	}), protocolInterfaceTypes.end());
+	protocolInterfaceTypes.reset(la::avdecc::protocol::ProtocolInterface::Type::Virtual);
 
-	if (protocolInterfaceTypes.size() == 1)
-		protocolInterfaceType = protocolInterfaceTypes[0];
+	if (protocolInterfaceTypes.count() == 1)
+		protocolInterfaceType = protocolInterfaceTypes.at(0);
 	else
 	{
 		outputText("Choose a protocol interface type:\n");
 		unsigned int intNum = 1;
 		for (auto const type : protocolInterfaceTypes)
 		{
-			outputText(std::to_string(intNum) + ": " + la::avdecc::EndStation::typeToString(type) + "\n");
+			outputText(std::to_string(intNum) + ": " + la::avdecc::protocol::ProtocolInterface::typeToString(type) + "\n");
 			++intNum;
 		}
 		outputText("\n> ");
@@ -121,12 +118,12 @@ la::avdecc::EndStation::ProtocolInterfaceType chooseProtocolInterfaceType()
 		while (index == -1)
 		{
 			int c = getch() - '0';
-			if (c >= 1 && c <= static_cast<int>(protocolInterfaceTypes.size()))
+			if (c >= 1 && c <= static_cast<int>(protocolInterfaceTypes.count()))
 			{
 				index = c - 1;
 			}
 		}
-		protocolInterfaceType = protocolInterfaceTypes[index];
+		protocolInterfaceType = protocolInterfaceTypes.at(index);
 	}
 
 	return protocolInterfaceType;
