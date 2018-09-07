@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "la/avdecc/memoryBuffer.hpp"
 #include "la/avdecc/utils.hpp"
 #include "la/avdecc/networkInterfaceHelper.hpp"
 #include "endian.hpp"
@@ -117,6 +118,13 @@ public:
 
 	/** Serializes a MacAddress (without changing endianess) */
 	Serializer& operator<<(networkInterface::MacAddress const& v)
+	{
+		packBuffer(v.data(), v.size());
+		return *this;
+	}
+
+	/** Serializes a MemoryBuffer (without changing endianess) */
+	Serializer& operator<<(MemoryBuffer const& v)
 	{
 		packBuffer(v.data(), v.size());
 		return *this;
@@ -231,6 +239,13 @@ public:
 
 	/** Unpacks a MacAddress (without changing endianess) */
 	Deserializer& operator>>(networkInterface::MacAddress& v)
+	{
+		unpackBuffer(v.data(), v.size());
+		return *this;
+	}
+
+	/** Unpacks a MemoryBuffer (without changing endianess) */
+	Deserializer& operator>>(MemoryBuffer& v)
 	{
 		unpackBuffer(v.data(), v.size());
 		return *this;

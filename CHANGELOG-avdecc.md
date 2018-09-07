@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Added
+- Support for MemoryObject Operations (Contributed by Florian Harmuth)
 - Protocol and ProtocolInterface classes exposed in the public API
 - Removed InterfaceIndex field from ProtocolInterface (not its place)
 

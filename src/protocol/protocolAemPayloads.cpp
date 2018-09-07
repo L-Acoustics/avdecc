@@ -1226,11 +1226,11 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::u
 
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
-	entity::model::DescriptorType descriptorType;
-	entity::model::DescriptorIndex descriptorIndex;
-	std::uint16_t nameIndex;
-	entity::model::ConfigurationIndex configurationIndex;
-	entity::model::AvdeccFixedString name;
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+	std::uint16_t nameIndex{ 0u };
+	entity::model::ConfigurationIndex configurationIndex{ 0u };
+	entity::model::AvdeccFixedString name{};
 
 	des >> descriptorType >> descriptorIndex;
 	des >> nameIndex >> configurationIndex >> name;
@@ -1278,10 +1278,10 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::u
 
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
-	entity::model::DescriptorType descriptorType;
-	entity::model::DescriptorIndex descriptorIndex;
-	std::uint16_t nameIndex;
-	entity::model::ConfigurationIndex configurationIndex;
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+	std::uint16_t nameIndex{ 0u };
+	entity::model::ConfigurationIndex configurationIndex{ 0u };
 
 	des >> descriptorType >> descriptorIndex;
 	des >> nameIndex >> configurationIndex;
@@ -1876,6 +1876,158 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	// Same as ADD_AUDIO_MAPPINGS Command
 	static_assert(AecpAemRemoveAudioMappingsResponsePayloadMinSize == AecpAemAddAudioMappingsCommandPayloadMinSize, "REMOVE_AUDIO_MAPPINGS Response no longer the same as ADD_AUDIO_MAPPINGS Command");
 	return deserializeAddAudioMappingsCommand(payload);
+}
+
+/** START_OPERATION Command - Clause 7.4.53.1 */
+Serializer<AemAecpdu::MaximumPayloadLength> serializeStartOperationCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, entity::model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer)
+{
+	Serializer<AemAecpdu::MaximumPayloadLength> ser;
+
+	ser << descriptorType << descriptorIndex;
+	ser << operationID << operationType;
+
+	AVDECC_ASSERT(ser.usedBytes() == AecpAemStartOperationCommandPayloadMinSize, "Used bytes do not match the protocol constant");
+
+	// Serialize variable data
+	if (!memoryBuffer.empty())
+	{
+		ser << memoryBuffer;
+	}
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::OperationID, entity::model::MemoryObjectOperationType, MemoryBuffer> deserializeStartOperationCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemStartOperationCommandPayloadMinSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+	entity::model::OperationID operationID{ 0u };
+	entity::model::MemoryObjectOperationType operationType{ 0u };
+	MemoryBuffer memoryBuffer{};
+
+	des >> descriptorType >> descriptorIndex;
+	des >> operationID >> operationType;
+
+	// Unpack remaining data
+	auto const remaining = des.remaining();
+	if (remaining != 0)
+	{
+		memoryBuffer.set_size(remaining);
+		des >> memoryBuffer;
+	}
+
+	return std::make_tuple(descriptorType, descriptorIndex, operationID, operationType, memoryBuffer);
+}
+
+/** START_OPERATION Response - Clause 7.4.53.1 */
+Serializer<AemAecpdu::MaximumPayloadLength> serializeStartOperationResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, entity::model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer)
+{
+	// Same as START_OPERATION Command
+	static_assert(AecpAemStartOperationResponsePayloadMinSize == AecpAemStartOperationCommandPayloadMinSize, "START_OPERATION Response no longer the same as START_OPERATION Command");
+	return serializeStartOperationCommand(descriptorType, descriptorIndex, operationID, operationType, memoryBuffer);
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::OperationID, entity::model::MemoryObjectOperationType, MemoryBuffer> deserializeStartOperationResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as START_OPERATION Command
+	static_assert(AecpAemStartOperationResponsePayloadMinSize == AecpAemStartOperationCommandPayloadMinSize, "START_OPERATION Response no longer the same as START_OPERATION Command");
+	return deserializeStartOperationCommand(payload);
+}
+
+/** ABORT_OPERATION Command - Clause 7.4.55.1 */
+Serializer<AecpAemAbortOperationCommandPayloadSize> serializeAbortOperationCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID)
+{
+	Serializer<AecpAemAbortOperationCommandPayloadSize> ser;
+	std::uint16_t const reserved{ 0u };
+
+	ser << descriptorType << descriptorIndex;
+	ser << operationID << reserved;
+
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::OperationID> deserializeAbortOperationCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemAbortOperationResponsePayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+	entity::model::OperationID operationID{ 0u };
+	std::uint16_t reserved{ 0u };
+
+	des >> descriptorType >> descriptorIndex;
+	des >> operationID >> reserved;
+
+	AVDECC_ASSERT(des.usedBytes() == AecpAemAbortOperationResponsePayloadSize, "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(descriptorType, descriptorIndex, operationID);
+}
+
+/** ABORT_OPERATION Response - Clause 7.4.55.1 */
+Serializer<AecpAemAbortOperationResponsePayloadSize> serializeAbortOperationResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID)
+{
+	// Same as ABORT_OPERATION Command
+	static_assert(AecpAemAbortOperationResponsePayloadSize == AecpAemAbortOperationCommandPayloadSize, "ABORT_OPERATION Response no longer the same as ABORT_OPERATION Command");
+	return serializeAbortOperationCommand(descriptorType, descriptorIndex, operationID);
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::OperationID> deserializeAbortOperationResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as ABORT_OPERATION Command
+	static_assert(AecpAemAbortOperationResponsePayloadSize == AecpAemAbortOperationCommandPayloadSize, "ABORT_OPERATION Response no longer the same as ABORT_OPERATION Command");
+	return deserializeAbortOperationCommand(payload);
+}
+
+/** OPERATION_STATUS Unsolicited Response - Clause 7.4.55.1 */
+Serializer<AecpAemOperationStatusResponsePayloadSize> serializeOperationStatusResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, std::uint16_t const percentComplete)
+{
+	Serializer<AecpAemOperationStatusResponsePayloadSize> ser;
+
+	ser << descriptorType << descriptorIndex;
+	ser << operationID << percentComplete;
+
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::OperationID, std::uint16_t> deserializeOperationStatusResponse(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemOperationStatusResponsePayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+	entity::model::OperationID operationID{ 0u };
+	std::uint16_t percentComplete{ 0u };
+
+	des >> descriptorType >> descriptorIndex;
+	des >> operationID >> percentComplete;
+
+	AVDECC_ASSERT(des.usedBytes() == AecpAemOperationStatusResponsePayloadSize, "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(descriptorType, descriptorIndex, operationID, percentComplete);
 }
 
 /** SET_MEMORY_OBJECT_LENGTH Command - Clause 7.4.72.1 */
