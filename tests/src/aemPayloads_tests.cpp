@@ -22,6 +22,9 @@
 * @author Christophe Calmejane
 */
 
+// Public API
+#include <la/avdecc/avdecc.hpp>
+
 // Internal API
 #include "protocol/protocolAemPayloads.hpp"
 
@@ -486,5 +489,22 @@ TEST(AemPayloads, OperationStatusResponse)
 		EXPECT_FALSE(true) << "Should not have thrown";
 	}
 }
+
+#if defined(ALLOW_BIG_AEM_PAYLOADS)
+TEST(AemPayloads, BigPayload)
+{
+	la::avdecc::entity::model::AudioMappings mappings{};
+
+	// More than 62 mappings do not fit in a single non-big aem payload
+	for (auto i = 0u; i < 64; ++i)
+	{
+		mappings.push_back({});
+	}
+
+	EXPECT_NO_THROW(
+		la::avdecc::protocol::aemPayload::serializeGetAudioMapResponse(la::avdecc::entity::model::DescriptorType::StreamPortInput, 0, 0, 0, mappings);
+	);
+}
+#endif // ALLOW_BIG_AEM_PAYLOADS
 
 #endif // _WIN32

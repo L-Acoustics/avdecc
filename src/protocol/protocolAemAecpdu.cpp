@@ -107,7 +107,7 @@ void LA_AVDECC_CALL_CONVENTION AemAecpdu::deserialize(DeserializationBuffer& buf
 	}
 
 	// Clamp command specific buffer in case ControlDataLength exceeds maximum protocol value, the ControlData specific unpacker will trap any error if the message is further ill-formed
-	if (_commandSpecificDataLength > MaximumPayloadLength)
+	if (_commandSpecificDataLength > MaximumPayloadLength_17221)
 	{
 #if defined(ALLOW_BIG_AEM_PAYLOADS)
 		LOG_SERIALIZATION_INFO(_srcAddress, "AemAecpdu::deserialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumPayloadLength) + " for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + "),  but still processing it because of compilation option ALLOW_BIG_AEM_PAYLOADS");

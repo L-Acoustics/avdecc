@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - la::avdecc::protocol::ProtocolInterface::SupportedProtocolInterfaceTypes and la::avdecc::CompileOptions are now la::avdecc::EnumBitfield
 
+### Fixed
+- ALLOW_BIG_AEM_PAYLOADS option not properly used in serializer
+
 ## [2.6.3] - 2018-08-08
 
 ## [2.6.2] - 2018-08-06
