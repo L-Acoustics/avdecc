@@ -84,7 +84,7 @@ enum class CompileOption : std::uint32_t
 	EnableRedundancy = 1u << 15,
 	Strict2018Redundancy = 1u << 16,
 };
-using CompileOptions = CompileOption;
+using CompileOptions = EnumBitfield<CompileOption>;
 
 struct CompileOptionInfo
 {
@@ -386,13 +386,6 @@ constexpr bool operator!(Controller::Error const error)
 }
 
 } // namespace controller
-
-// Define bitfield enum traits for controller::CompileOptions
-template<>
-struct enum_traits<controller::CompileOptions>
-{
-	static constexpr bool is_bitfield = true;
-};
 
 } // namespace avdecc
 } // namespace la

@@ -59,11 +59,11 @@ std::uint32_t LA_AVDECC_CONTROLLER_CALL_CONVENTION getInterfaceVersion() noexcep
 
 CompileOptions LA_AVDECC_CONTROLLER_CALL_CONVENTION getCompileOptions() noexcept
 {
-	CompileOptions options{ CompileOptions::None };
+	CompileOptions options{};
 
 	for (auto const& info : getCompileOptionsInfo())
 	{
-		options |= info.option;
+		options.set(info.option);
 	}
 
 	return options;
@@ -74,13 +74,13 @@ std::vector<CompileOptionInfo> LA_AVDECC_CONTROLLER_CALL_CONVENTION getCompileOp
 	std::vector<CompileOptionInfo> options{};
 
 #ifdef IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS
-	options.emplace_back(CompileOptionInfo{ CompileOptions::IgnoreNeitherStaticNorDynamicMappings, "INSNDM", "Ignore Neither Static Nor Dynamic Mappings" });
+	options.emplace_back(CompileOptionInfo{ CompileOption::IgnoreNeitherStaticNorDynamicMappings, "INSNDM", "Ignore Neither Static Nor Dynamic Mappings" });
 #endif // IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS
 
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-	options.emplace_back(CompileOptionInfo{ CompileOptions::EnableRedundancy, "RDNCY", "Redundancy" });
+	options.emplace_back(CompileOptionInfo{ CompileOption::EnableRedundancy, "RDNCY", "Redundancy" });
 #ifdef ENABLE_AVDECC_STRICT_2018_REDUNDANCY
-	options.emplace_back(CompileOptionInfo{ CompileOptions::Strict2018Redundancy, "RDNCY2018", "Strict 2018 Redundancy" });
+	options.emplace_back(CompileOptionInfo{ CompileOption::Strict2018Redundancy, "RDNCY2018", "Strict 2018 Redundancy" });
 #endif // ENABLE_AVDECC_STRICT_2018_REDUNDANCY
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 

@@ -100,7 +100,7 @@ enum class CompileOption : std::uint32_t
 	AllowBigAemPayloads = 1u << 2,
 	EnableRedundancy = 1u << 15,
 };
-using CompileOptions = CompileOption;
+using CompileOptions = EnumBitfield<CompileOption>;
 
 struct CompileOptionInfo
 {
@@ -122,13 +122,6 @@ LA_AVDECC_API CompileOptions LA_AVDECC_CALL_CONVENTION getCompileOptions() noexc
 * @return The compile options info.
 */
 LA_AVDECC_API std::vector<CompileOptionInfo> LA_AVDECC_CALL_CONVENTION getCompileOptionsInfo() noexcept;
-
-// Define bitfield enum traits for CompileOptions
-template<>
-struct enum_traits<CompileOptions>
-{
-	static constexpr bool is_bitfield = true;
-};
 
 } // namespace avdecc
 } // namespace la

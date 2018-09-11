@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support for MemoryObject Operations (Contributed by Florian Harmuth)
 - Debug asserts when trying to call a controller API while holding a lock on the targeted entity (which might cause a deadlock)
 
+## Changed
+- la::avdecc::controller::CompileOptions is now la::avdecc::EnumBitfield
+
 ## [2.6.3] - 2018-08-08
 ### Fixed
 - [Incorrect StreamOutput channel dynamic mappings](https://github.com/L-Acoustics/avdecc/issues/30)

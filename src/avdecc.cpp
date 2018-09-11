@@ -58,11 +58,11 @@ std::uint32_t LA_AVDECC_CALL_CONVENTION getInterfaceVersion() noexcept
 
 CompileOptions LA_AVDECC_CALL_CONVENTION getCompileOptions() noexcept
 {
-	CompileOptions options{ CompileOptions::None };
+	CompileOptions options{};
 
 	for (auto const& info : getCompileOptionsInfo())
 	{
-		options |= info.option;
+		options.set(info.option);
 	}
 
 	return options;
@@ -73,19 +73,19 @@ std::vector<CompileOptionInfo> LA_AVDECC_CALL_CONVENTION getCompileOptionsInfo()
 	std::vector<CompileOptionInfo> options{};
 
 #ifdef IGNORE_INVALID_CONTROL_DATA_LENGTH
-	options.emplace_back(CompileOptionInfo{ CompileOptions::IgnoreInvalidControlDataLength, "IICDL", "Ignore Invalid Control Data Length" });
+	options.emplace_back(CompileOptionInfo{ CompileOption::IgnoreInvalidControlDataLength, "IICDL", "Ignore Invalid Control Data Length" });
 #endif // IGNORE_INVALID_CONTROL_DATA_LENGTH
 
 #ifdef IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES
-	options.emplace_back(CompileOptionInfo{ CompileOptions::IgnoreInvalidNonSuccessAemResponses, "IINSAR", "Ignore Invalid Non Success AEM Responses" });
+	options.emplace_back(CompileOptionInfo{ CompileOption::IgnoreInvalidNonSuccessAemResponses, "IINSAR", "Ignore Invalid Non Success AEM Responses" });
 #endif // IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES
 
 #ifdef ALLOW_BIG_AEM_PAYLOADS
-	options.emplace_back(CompileOptionInfo{ CompileOptions::AllowBigAemPayloads, "ABAP", "Allow Big AEM payloads" });
+	options.emplace_back(CompileOptionInfo{ CompileOption::AllowBigAemPayloads, "ABAP", "Allow Big AEM payloads" });
 #endif // ALLOW_BIG_AEM_PAYLOADS
 
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-	options.emplace_back(CompileOptionInfo{ CompileOptions::EnableRedundancy, "RDNCY", "Redundancy" });
+	options.emplace_back(CompileOptionInfo{ CompileOption::EnableRedundancy, "RDNCY", "Redundancy" });
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 	return options;
