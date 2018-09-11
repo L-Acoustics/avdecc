@@ -546,11 +546,26 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 void ControlledEntityImpl::lock() noexcept
 {
 	_lock.lock();
+	if (_lockedCount == 0)
+	{
+		_lockingThreadID = std::this_thread::get_id();
+	}
+	++_lockedCount;
 }
 
 void ControlledEntityImpl::unlock() noexcept
 {
+	--_lockedCount;
+	if (_lockedCount == 0)
+	{
+		_lockingThreadID = {};
+	}
 	_lock.unlock();
+}
+
+bool ControlledEntityImpl::isSelfLocked() const noexcept
+{
+	return _lockingThreadID == std::this_thread::get_id();
 }
 
 // Const Tree getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist

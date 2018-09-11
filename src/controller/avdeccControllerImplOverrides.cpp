@@ -221,6 +221,7 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User acquireEntity (isPersistent={} DescriptorType={} DescriptorIndex={})", isPersistent, to_integral(descriptorType), descriptorIndex);
 
 		// Already acquired or acquiring, don't do anything (we want to try to acquire if it's flagged as acquired by another controller, in case it went offline without notice)
@@ -281,6 +282,7 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User releaseEntity (DescriptorType={} DescriptorIndex={})", to_integral(descriptorType), descriptorIndex);
 		_controller->releaseEntity(targetEntityID, descriptorType, descriptorIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 		{
@@ -317,6 +319,7 @@ void ControllerImpl::setConfiguration(UniqueIdentifier const targetEntityID, ent
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setConfiguration (ConfigurationIndex={})", configurationIndex);
 		_controller->setConfiguration(targetEntityID, configurationIndex, [this, handler](entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex)
 		{
@@ -353,6 +356,7 @@ void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID,
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamInputFormat (StreamIndex={} streamFormat={})", streamIndex, streamFormat);
 		_controller->setStreamInputFormat(targetEntityID, streamIndex, streamFormat, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat)
 		{
@@ -389,6 +393,7 @@ void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamOutputFormat (StreamIndex={} streamFormat={})", streamIndex, streamFormat);
 		_controller->setStreamOutputFormat(targetEntityID, streamIndex, streamFormat, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat)
 		{
@@ -425,6 +430,7 @@ void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setEntityName (Name={})", name.str());
 		_controller->setEntityName(targetEntityID, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status)
 		{
@@ -461,6 +467,7 @@ void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, e
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setEntityGroupName (Name={})", name.str());
 		_controller->setEntityGroupName(targetEntityID, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status)
 		{
@@ -497,6 +504,7 @@ void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID,
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setConfigurationName (ConfigurationIndex={} Name={})", configurationIndex, name.str());
 		_controller->setConfigurationName(targetEntityID, configurationIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex)
 		{
@@ -533,6 +541,7 @@ void ControllerImpl::setAudioUnitName(UniqueIdentifier const targetEntityID, ent
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioUnitName (ConfigurationIndex={} AudioUnitIndex={} Name={})", configurationIndex, audioUnitIndex, name.str());
 		_controller->setAudioUnitName(targetEntityID, configurationIndex, audioUnitIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex)
 		{
@@ -569,6 +578,7 @@ void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, e
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamInputName (ConfigurationIndex={} StreamIndex={} Name={})", configurationIndex, streamIndex, name.str());
 		_controller->setStreamInputName(targetEntityID, configurationIndex, streamIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
 		{
@@ -605,6 +615,7 @@ void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, 
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamOutputName (ConfigurationIndex={} StreamIndex={} Name={})", configurationIndex, streamIndex, name.str());
 		_controller->setStreamOutputName(targetEntityID, configurationIndex, streamIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
 		{
@@ -641,6 +652,7 @@ void ControllerImpl::setAvbInterfaceName(UniqueIdentifier const targetEntityID, 
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setAvbInterfaceName (ConfigurationIndex={} AvbInterfaceIndex={} Name={})", configurationIndex, avbInterfaceIndex, name.str());
 		_controller->setAvbInterfaceName(targetEntityID, configurationIndex, avbInterfaceIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex)
 		{
@@ -677,6 +689,7 @@ void ControllerImpl::setClockSourceName(UniqueIdentifier const targetEntityID, e
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setClockSourceName (ConfigurationIndex={} ClockSourceIndex={} Name={})", configurationIndex, clockSourceIndex, name.str());
 		_controller->setClockSourceName(targetEntityID, configurationIndex, clockSourceIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex)
 		{
@@ -713,6 +726,7 @@ void ControllerImpl::setMemoryObjectName(UniqueIdentifier const targetEntityID, 
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setMemoryObjectName (ConfigurationIndex={} MemoryObjectIndex={} Name={})", configurationIndex, memoryObjectIndex, name.str());
 		_controller->setMemoryObjectName(targetEntityID, configurationIndex, memoryObjectIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex)
 		{
@@ -749,6 +763,7 @@ void ControllerImpl::setAudioClusterName(UniqueIdentifier const targetEntityID, 
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioClusterName (ConfigurationIndex={} AudioClusterIndex={} Name={})", configurationIndex, audioClusterIndex, name.str());
 		_controller->setAudioClusterName(targetEntityID, configurationIndex, audioClusterIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex)
 		{
@@ -785,6 +800,7 @@ void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, e
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setClockDomainName (ConfigurationIndex={} ClockDomainIndex={} Name={})", configurationIndex, clockDomainIndex, name.str());
 		_controller->setClockDomainName(targetEntityID, configurationIndex, clockDomainIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex)
 		{
@@ -821,6 +837,7 @@ void ControllerImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntit
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioUnitSamplingRate (AudioUnitIndex={} SamplingRate={})", audioUnitIndex, samplingRate);
 		_controller->setAudioUnitSamplingRate(targetEntityID, audioUnitIndex, samplingRate, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate)
 		{
@@ -857,6 +874,7 @@ void ControllerImpl::setClockSource(UniqueIdentifier const targetEntityID, entit
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setClockSource (ClockDomainIndex={} ClockSourceIndex={})", clockDomainIndex, clockSourceIndex);
 		_controller->setClockSource(targetEntityID, clockDomainIndex, clockSourceIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex)
 		{
@@ -893,6 +911,7 @@ void ControllerImpl::startStreamInput(UniqueIdentifier const targetEntityID, ent
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User startStreamInput (StreamIndex={})", streamIndex);
 		_controller->startStreamInput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 		{
@@ -929,6 +948,7 @@ void ControllerImpl::stopStreamInput(UniqueIdentifier const targetEntityID, enti
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User stopStreamInput (StreamIndex={})", streamIndex);
 		_controller->stopStreamInput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 		{
@@ -965,6 +985,7 @@ void ControllerImpl::startStreamOutput(UniqueIdentifier const targetEntityID, en
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User startStreamOutput (StreamIndex={})", streamIndex);
 		_controller->startStreamOutput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 		{
@@ -1001,6 +1022,7 @@ void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, ent
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User stopStreamOutput (StreamIndex={})", streamIndex);
 		_controller->stopStreamOutput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 		{
@@ -1037,6 +1059,7 @@ void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targ
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User addStreamInputAudioMappings (StreamPortIndex={})", streamPortIndex); // TODO: Convert mappings to string and add to log
 		_controller->addStreamPortInputAudioMappings(targetEntityID, streamPortIndex, mappings, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 		{
@@ -1073,6 +1096,7 @@ void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const tar
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User addStreamOutputAudioMappings (StreamPortIndex={})", streamPortIndex);
 		_controller->addStreamPortOutputAudioMappings(targetEntityID, streamPortIndex, mappings, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 		{
@@ -1109,6 +1133,7 @@ void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const t
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User removeStreamInputAudioMappings (StreamPortIndex={})", streamPortIndex);
 		_controller->removeStreamPortInputAudioMappings(targetEntityID, streamPortIndex, mappings, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 		{
@@ -1145,6 +1170,7 @@ void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const 
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User removeStreamOutputAudioMappings (StreamPortIndex={})", streamPortIndex);
 		_controller->removeStreamPortOutputAudioMappings(targetEntityID, streamPortIndex, mappings, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 		{
@@ -1181,6 +1207,7 @@ void ControllerImpl::setMemoryObjectLength(UniqueIdentifier const targetEntityID
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setMemoryObjectLength (ConfigurationIndex={} MemoryObjectIndex={} Length={})", configurationIndex, memoryObjectIndex, length);
 		_controller->setMemoryObjectLength(targetEntityID, configurationIndex, memoryObjectIndex, length, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length)
 		{
@@ -1326,6 +1353,7 @@ void ControllerImpl::readDeviceMemory(UniqueIdentifier const targetEntityID, std
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		DeviceMemoryBuffer memoryBuffer{};
 #pragma message("TODO: Find a way to have the DeviceMemoryBuffer being properly moved all the way through the lambdas and handlers. Currently some handlers are copied, so the DeviceMemoryBuffer is copied instead of being moved causing unecessary reallocations")
 		memoryBuffer.reserve(static_cast<size_t>(length));
@@ -1357,6 +1385,7 @@ void ControllerImpl::startOperation(UniqueIdentifier const targetEntityID, entit
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User startOperation (DescriptorType={}, DescriptorIndex={}, OperationType={})", static_cast<std::uint16_t>(descriptorType), descriptorIndex, static_cast<std::uint16_t>(operationType));
 
 		_controller->startOperation(targetEntityID, descriptorType, descriptorIndex, operationType, memoryBuffer, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const /*descriptorType*/, la::avdecc::entity::model::DescriptorIndex const /*descriptorIndex*/, la::avdecc::entity::model::OperationID const operationID, la::avdecc::entity::model::MemoryObjectOperationType const /*operationType*/, la::avdecc::MemoryBuffer const& memoryBuffer)
@@ -1390,6 +1419,7 @@ void ControllerImpl::abortOperation(UniqueIdentifier const targetEntityID, entit
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User abortOperation (DescriptorType={}, DescriptorIndex={}, OperationID={})", static_cast<std::uint16_t>(descriptorType), descriptorIndex, operationID);
 
 		_controller->abortOperation(targetEntityID, descriptorType, descriptorIndex, operationID, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::DescriptorType const /*descriptorType*/, entity::model::DescriptorIndex const /*descriptorIndex*/, entity::model::OperationID const /*operationID*/)
@@ -1490,6 +1520,7 @@ void ControllerImpl::connectStream(entity::model::StreamIdentification const& ta
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex);
 		_controller->connectStream(talkerStream, listenerStream, [this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 		{
@@ -1520,6 +1551,7 @@ void ControllerImpl::disconnectStream(entity::model::StreamIdentification const&
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex);
 		_controller->disconnectStream(talkerStream, listenerStream, [this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 		{
@@ -1580,6 +1612,7 @@ void ControllerImpl::disconnectTalkerStream(entity::model::StreamIdentification 
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectTalkerStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex);
 		_controller->disconnectTalkerStream(talkerStream, listenerStream, [this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 		{
@@ -1612,6 +1645,7 @@ void ControllerImpl::getListenerStreamState(entity::model::StreamIdentification 
 
 	if (controlledEntity)
 	{
+		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User getListenerStreamState (ListenerID={} ListenerIndex={})", listenerStream.entityID.getValue(), listenerStream.streamIndex);
 		_controller->getListenerStreamState(listenerStream, [this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 		{

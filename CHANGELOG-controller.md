@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - Support for MemoryObject Operations (Contributed by Florian Harmuth)
+- Debug asserts when trying to call a controller API while holding a lock on the targeted entity (which might cause a deadlock)
 
 ## [2.6.3] - 2018-08-08
 ### Fixed
