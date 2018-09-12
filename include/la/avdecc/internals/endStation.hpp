@@ -25,14 +25,14 @@
 
 #pragma once
 
-#include <cstdint>
-#include <memory>
-#include <vector>
-#include <string>
 #include "entity.hpp"
 #include "controllerEntity.hpp"
+#include "protocolInterface.hpp"
 #include "exports.hpp"
 #include "exception.hpp"
+#include <cstdint>
+#include <memory>
+#include <string>
 
 namespace la
 {
@@ -42,15 +42,6 @@ namespace avdecc
 class EndStation
 {
 public:
-	enum class ProtocolInterfaceType
-	{
-		None = 0, /**< No protocol interface (not a valid protocol interface type, should only be used to initialize variables). */
-		PCap = 1, /**< Packet Capture protocol interface. */
-		MacOSNative = 2, /**< macOS native API protocol interface - Only usable on macOS. */
-		Proxy = 3, /**< IEEE Std 1722.1 Proxy protocol interface. */
-		Virtual = 4, /**< Virtual protocol interface. */
-	};
-
 	enum class Error
 	{
 		NoError = 0,
@@ -72,7 +63,6 @@ public:
 	};
 
 	using UniquePointer = std::unique_ptr<EndStation, void(*)(EndStation*)>;
-	using SupportedProtocolInterfaceTypes = std::vector<ProtocolInterfaceType>;
 
 	/**
 	* @brief Factory method to create a new EndStation.
@@ -83,7 +73,7 @@ public:
 	* @note Might throw an Exception.
 	* @warning This class is currently NOT thread-safe.
 	*/
-	static UniquePointer create(ProtocolInterfaceType const protocolInterfaceType, std::string const& networkInterfaceName)
+	static UniquePointer create(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceName)
 	{
 		auto deleter = [](EndStation* self)
 		{
@@ -91,15 +81,6 @@ public:
 		};
 		return UniquePointer(createRawEndStation(protocolInterfaceType, networkInterfaceName), deleter);
 	}
-
-	/** Returns true if the specified protocol interface type is supported on the local computer. */
-	static LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION isSupportedProtocolInterfaceType(ProtocolInterfaceType const protocolInterfaceType) noexcept;
-
-	/** Returns the name of the specified protocol interface type. */
-	static LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION typeToString(ProtocolInterfaceType const protocolInterfaceType) noexcept;
-
-	/** Returns the list of supported protocol interface types on the local computer. */
-	static LA_AVDECC_API SupportedProtocolInterfaceTypes LA_AVDECC_CALL_CONVENTION getSupportedProtocolInterfaceTypes() noexcept;
 
 	/**
 	* @brief Create and attach a controller entity to the EndStation.
@@ -127,7 +108,7 @@ protected:
 
 private:
 	/** Entry point */
-	static LA_AVDECC_API EndStation* LA_AVDECC_CALL_CONVENTION createRawEndStation(ProtocolInterfaceType const protocolInterfaceType, std::string const& networkInterfaceName);
+	static LA_AVDECC_API EndStation* LA_AVDECC_CALL_CONVENTION createRawEndStation(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceName);
 
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept = 0;

@@ -31,6 +31,17 @@
 /** Entity model definition */
 #include "internals/entityModel.hpp"
 
+/** ProtocolInterface definition */
+#include "internals/protocolInterface.hpp"
+
+/** Protocols definition */
+#include "internals/protocolAvtpdu.hpp"
+#include "internals/protocolAcmpdu.hpp"
+#include "internals/protocolAdpdu.hpp"
+#include "internals/protocolAecpdu.hpp"
+#include "internals/protocolAaAecpdu.hpp"
+#include "internals/protocolAemAecpdu.hpp"
+
 /** EndStation definition */
 #include "internals/endStation.hpp"
 
@@ -56,7 +67,7 @@ namespace avdecc
 * (either added, removed or signature modification).
 * Any other change (including templates, inline methods, defines, typedefs, ...) are considered a modification of the interface.
 */
-constexpr std::uint32_t InterfaceVersion = 206;
+constexpr std::uint32_t InterfaceVersion = 207;
 
 /**
 * @brief Checks if the library is compatible with specified interface version.
@@ -89,7 +100,7 @@ enum class CompileOption : std::uint32_t
 	AllowBigAemPayloads = 1u << 2,
 	EnableRedundancy = 1u << 15,
 };
-using CompileOptions = CompileOption;
+using CompileOptions = EnumBitfield<CompileOption>;
 
 struct CompileOptionInfo
 {
@@ -111,13 +122,6 @@ LA_AVDECC_API CompileOptions LA_AVDECC_CALL_CONVENTION getCompileOptions() noexc
 * @return The compile options info.
 */
 LA_AVDECC_API std::vector<CompileOptionInfo> LA_AVDECC_CALL_CONVENTION getCompileOptionsInfo() noexcept;
-
-// Define bitfield enum traits for CompileOptions
-template<>
-struct enum_traits<CompileOptions>
-{
-	static constexpr bool is_bitfield = true;
-};
 
 } // namespace avdecc
 } // namespace la

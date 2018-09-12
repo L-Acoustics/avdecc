@@ -24,17 +24,14 @@
 
 #pragma once
 
-#include <memory>
-#include <vector>
-
 // End Station
 #include "la/avdecc/internals/endStation.hpp"
 
-// Protocol Interface
-#include "protocolInterface/protocolInterface.hpp"
-
 // Entities
 #include "entity/controllerEntityImpl.hpp"
+
+#include <memory>
+#include <vector>
 
 namespace la
 {
@@ -47,9 +44,6 @@ public:
 	EndStationImpl(protocol::ProtocolInterface::UniquePointer&& protocolInterface) noexcept;
 	~EndStationImpl() noexcept;
 
-	/** ProtocolInterface creation helper method. Might throw a EndStation::Exception */
-	static protocol::ProtocolInterface::UniquePointer createProtocolInterface(ProtocolInterfaceType const protocolInterfaceType, std::string const& networkInterfaceName);
-
 	// EndStation overrides
 	virtual entity::ControllerEntity* addControllerEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::ControllerEntity::Delegate* const delegate) override;
 
@@ -57,7 +51,7 @@ public:
 	virtual void destroy() noexcept override;
 
 private:
-	protocol::ProtocolInterface::UniquePointer const _protocolInterface{ nullptr };
+	protocol::ProtocolInterface::UniquePointer const _protocolInterface{ nullptr, nullptr };
 	std::vector<entity::Entity::UniquePointer> _entities{};
 };
 

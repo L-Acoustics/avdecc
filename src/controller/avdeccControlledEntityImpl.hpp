@@ -34,6 +34,7 @@
 #include <chrono>
 #include <mutex>
 #include <utility>
+#include <thread>
 
 namespace la
 {
@@ -154,6 +155,7 @@ public:
 
 	virtual void lock() noexcept override;
 	virtual void unlock() noexcept override;
+	virtual bool isSelfLocked() const noexcept override;
 
 	/** Get connected information about a listener's stream (TalkerID and StreamIndex might be filled even if isConnected is not true, in case of FastConnect) */
 	virtual model::StreamConnectionState const& getConnectedSinkState(entity::model::StreamIndex const streamIndex) const override; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
@@ -377,6 +379,8 @@ private:
 
 	// Private variables
 	mutable std::recursive_mutex _lock{};
+	std::uint32_t _lockedCount{ 0u }; // DEBUG status for _lock mutex
+	std::thread::id _lockingThreadID{}; // DEBUG status for _lock mutex
 	bool _ignoreCachedEntityModel{ false };
 	std::uint16_t _queryDescriptorRetryCount{ 0u };
 	std::uint16_t _queryDynamicInfoRetryCount{ 0u };

@@ -22,7 +22,7 @@
 * @author Christophe Calmejane
 */
 
-#include "protocolAecpdu.hpp"
+#include "la/avdecc/internals/protocolAecpdu.hpp"
 #include "logHelper.hpp"
 #include <cassert>
 #include <string>
@@ -44,7 +44,7 @@ Aecpdu::Aecpdu() noexcept
 	AvtpduControl::setStreamValid(0);
 }
 
-void Aecpdu::serialize(SerializationBuffer& buffer) const
+void LA_AVDECC_CALL_CONVENTION Aecpdu::serialize(SerializationBuffer& buffer) const
 {
 	auto const previousSize = buffer.size();
 
@@ -56,7 +56,7 @@ void Aecpdu::serialize(SerializationBuffer& buffer) const
 	}
 }
 
-void Aecpdu::deserialize(DeserializationBuffer& buffer)
+void LA_AVDECC_CALL_CONVENTION Aecpdu::deserialize(DeserializationBuffer& buffer)
 {
 	// Check if there is enough bytes to read the header
 	if (!AVDECC_ASSERT_WITH_RET(buffer.remaining() >= HeaderLength, "Aecpdu::deserialize error: Not enough data in buffer"))

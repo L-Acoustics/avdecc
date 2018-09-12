@@ -25,18 +25,18 @@
 
 #pragma once
 
+#include <la/avdecc/avdecc.hpp>
+#include <la/avdecc/utils.hpp>
+#include <la/avdecc/internals/exception.hpp>
+#include <la/avdecc/memoryBuffer.hpp>
+#include "internals/avdeccControlledEntity.hpp"
+#include "internals/exports.hpp"
 #include <memory>
 #include <functional>
 #include <cstdint>
 #include <string>
 #include <vector>
 #include <mutex>
-#include <la/avdecc/avdecc.hpp>
-#include <la/avdecc/utils.hpp>
-#include <la/avdecc/internals/exception.hpp>
-#include "internals/avdeccControlledEntity.hpp"
-#include "internals/exports.hpp"
-#include "la/avdecc/memoryBuffer.hpp"
 
 namespace la
 {
@@ -84,7 +84,7 @@ enum class CompileOption : std::uint32_t
 	EnableRedundancy = 1u << 15,
 	Strict2018Redundancy = 1u << 16,
 };
-using CompileOptions = CompileOption;
+using CompileOptions = EnumBitfield<CompileOption>;
 
 struct CompileOptionInfo
 {
@@ -225,6 +225,7 @@ public:
 		virtual void onMemoryObjectLengthChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ConfigurationIndex const /*configurationIndex*/, la::avdecc::entity::model::MemoryObjectIndex const /*memoryObjectIndex*/, std::uint64_t const /*length*/) noexcept {}
 		virtual void onStreamPortInputAudioMappingsChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamPortIndex const /*streamPortIndex*/) noexcept {}
 		virtual void onStreamPortOutputAudioMappingsChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamPortIndex const /*streamPortIndex*/) noexcept {}
+		virtual void onOperationStatus(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::UniqueIdentifier const /*targetEntityID*/, la::avdecc::entity::model::DescriptorType const /*descriptorType*/, la::avdecc::entity::model::DescriptorIndex const /*descriptorIndex*/, std::uint16_t const /*operationID*/, std::uint16_t const /*percentComplete*/) noexcept {}
 	};
 
 	/* Enumeration and Control Protocol (AECP) AEM handlers. WARNING: The 'entity' parameter might be nullptr even if 'status' is AemCommandStatus::Success, in case the unit goes offline right after processing our command. */
@@ -254,6 +255,8 @@ public:
 	using AddStreamPortOutputAudioMappingsHandler = std::function<void(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AemCommandStatus const status)>;
 	using RemoveStreamPortInputAudioMappingsHandler = std::function<void(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AemCommandStatus const status)>;
 	using RemoveStreamPortOutputAudioMappingsHandler = std::function<void(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AemCommandStatus const status)>;
+	using StartMemoryObjectOperationHandler = std::function<void(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::OperationID const operationID)>;
+	using AbortOperationHandler = std::function<void(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AemCommandStatus const status)>;
 	using SetMemoryObjectLengthHandler = std::function<void(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AemCommandStatus const status)>;
 	/* Enumeration and Control Protocol (AECP) AA handlers. WARNING: The 'entity' parameter might be nullptr even if 'status' is AemCommandStatus::Success, in case the unit goes offline right after processing our command. */
 	using ReadDeviceMemoryHandler = std::function<void(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AaCommandStatus const status, la::avdecc::controller::Controller::DeviceMemoryBuffer const& memoryBuffer)>;
@@ -279,7 +282,7 @@ public:
 	* @return A new Controller as a Controller::UniquePointer.
 	* @note Throws Exception if interfaceName is invalid or inaccessible, or if progID is already used on the local computer.
 	*/
-	static UniquePointer create(EndStation::ProtocolInterfaceType const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale)
+	static UniquePointer create(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale)
 	{
 		auto deleter = [](Controller* controller)
 		{
@@ -328,6 +331,12 @@ public:
 	virtual void addStreamPortOutputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, AddStreamPortOutputAudioMappingsHandler const& handler) const noexcept = 0;
 	virtual void removeStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, RemoveStreamPortInputAudioMappingsHandler const& handler) const noexcept = 0;
 	virtual void removeStreamPortOutputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, RemoveStreamPortOutputAudioMappingsHandler const& handler) const noexcept = 0;
+	virtual void startStoreMemoryObjectOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorIndex const descriptorIndex, StartMemoryObjectOperationHandler const& handler) const noexcept = 0;
+	virtual void startStoreAndRebootMemoryObjectOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorIndex const descriptorIndex, StartMemoryObjectOperationHandler const& handler) const noexcept = 0;
+	virtual void startReadMemoryObjectOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorIndex const descriptorIndex, StartMemoryObjectOperationHandler const& handler) const noexcept = 0;
+	virtual void startEraseMemoryObjectOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorIndex const descriptorIndex, StartMemoryObjectOperationHandler const& handler) const noexcept = 0;
+	virtual void startUploadMemoryObjectOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorIndex const descriptorIndex, std::uint64_t const dataLength, StartMemoryObjectOperationHandler const& handler) const noexcept = 0;
+	virtual void abortOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, AbortOperationHandler const& handler) const noexcept = 0;
 	virtual void setMemoryObjectLength(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length, SetMemoryObjectLengthHandler const& handler) const noexcept = 0;
 
 	/* Enumeration and Control Protocol (AECP) AA. WARNING: The completion handler will not be called if the controller is destroyed while the query is inflight. Otherwise it will always be called. */
@@ -364,7 +373,7 @@ protected:
 
 private:
 	/** Create method for COM-like interface */
-	static LA_AVDECC_CONTROLLER_API Controller* LA_AVDECC_CONTROLLER_CALL_CONVENTION createRawController(EndStation::ProtocolInterfaceType const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale);
+	static LA_AVDECC_CONTROLLER_API Controller* LA_AVDECC_CONTROLLER_CALL_CONVENTION createRawController(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale);
 
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept = 0;
@@ -377,13 +386,6 @@ constexpr bool operator!(Controller::Error const error)
 }
 
 } // namespace controller
-
-// Define bitfield enum traits for controller::CompileOptions
-template<>
-struct enum_traits<controller::CompileOptions>
-{
-	static constexpr bool is_bitfield = true;
-};
 
 } // namespace avdecc
 } // namespace la

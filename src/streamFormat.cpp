@@ -22,9 +22,9 @@
 * @author Christophe Calmejane
 */
 
+#include "la/avdecc/internals/streamFormat.hpp"
 #include <cstdint>
 #include <type_traits>
-#include "la/avdecc/internals/streamFormat.hpp"
 
 namespace la
 {
@@ -276,7 +276,7 @@ public:
 	{
 		_sampleFormat = SampleFormat::Int24;
 		_sampleDepth = 24;
-		
+
 		// Prevent compilation warning (unused private field)
 		(void)_label_iec_60958_cnt;
 		(void)_label_mbla_cnt;
@@ -462,7 +462,7 @@ public:
 			default:
 				throw std::invalid_argument("Unsupported CRF crf_type value");
 		}
-		
+
 		// Prevent compilation warning (unused private field)
 		(void)_pull;
 	}
@@ -598,12 +598,12 @@ StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_IEC_61883_6
 	{
 		StreamFormat fmt{ 0u };
 		replaceField<0, 0>(fmt, static_cast<std::uint8_t>(0)); // 'v' field must be set to zero for an AVTP defined time-sensitive stream
-		
+
 		replaceField<1, 7>(fmt, static_cast<std::uint8_t>(0x00)); // subtype = 61883 or IIDC
-		
+
 		replaceField<8, 8>(fmt, static_cast<std::uint8_t>(1)); // sf = IEC 61883
 		replaceField<9, 14>(fmt, static_cast<std::uint8_t>(0x10)); // fmt = IEC 61883-6
-		
+
 		std::uint8_t fdf_evt{ 0u };
 		switch (sampleFormat)
 		{
@@ -618,7 +618,7 @@ StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_IEC_61883_6
 				return getNullStreamFormat();
 		}
 		replaceField<16, 20>(fmt, static_cast<std::uint8_t>(0x0)); // fdf_evt = sampleFormat
-		
+
 		std::uint8_t fdf_sfc{ 0u };
 		switch (samplingRate)
 		{
@@ -652,10 +652,10 @@ StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_IEC_61883_6
 		replaceField<34, 34>(fmt, static_cast<std::uint8_t>(isUpToChannelsCount)); // ut = isUpToChannelsCount
 		replaceField<35, 35>(fmt, static_cast<std::uint8_t>(useSynchronousClock)); // sc = useSynchronousClock
 		replaceField<48, 55>(fmt, static_cast<std::uint16_t>(channelsCount)); // label_mbla_cnt = channelsCount
-		
+
 		return fmt;
 }
-	
+
 StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_AAF(std::uint16_t const channelsCount, bool const isUpToChannelsCount, SamplingRate const samplingRate, SampleFormat const sampleFormat, std::uint16_t const sampleBitDepth, std::uint16_t const samplesPerFrame) noexcept
 {
 	StreamFormat fmt{ 0u };
@@ -664,7 +664,7 @@ StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_AAF(std::ui
 	replaceField<1, 7>(fmt, static_cast<std::uint8_t>(0x02)); // subtype = AAF (AVTP Audio Format)
 
 	replaceField<11, 11>(fmt, static_cast<std::uint8_t>(isUpToChannelsCount)); // ut = isUpToChannelsCount
-	
+
 	std::uint8_t nsr{ 0u };
 	switch (samplingRate)
 	{
@@ -705,7 +705,7 @@ StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_AAF(std::ui
 			return getNullStreamFormat();
 	}
 	replaceField<12, 15>(fmt, static_cast<std::uint8_t>(nsr)); // nsr = samplingRate
-	
+
 	std::uint8_t format{ 0u };
 	std::uint16_t maxDepth{ 0u };
 	switch (sampleFormat)
@@ -727,12 +727,12 @@ StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_AAF(std::ui
 	}
 	if (sampleBitDepth > maxDepth)
 		return getNullStreamFormat();
-		
+
 	replaceField<16, 23>(fmt, static_cast<std::uint8_t>(format)); // format = sampleFormat
 	replaceField<24, 31>(fmt, static_cast<std::uint16_t>(sampleBitDepth)); // bit_depth = sampleBitDepth
 	replaceField<32, 41>(fmt, static_cast<std::uint16_t>(channelsCount)); // channels_per_frame = channelsCount
 	replaceField<42, 51>(fmt, static_cast<std::uint16_t>(samplesPerFrame)); // samples_per_frame = samplesPerFrame
-	
+
 	return fmt;
 }
 
@@ -799,7 +799,7 @@ std::pair<StreamFormat, StreamFormat> LA_AVDECC_CALL_CONVENTION StreamFormatInfo
 			}
 		}
 	}
-	
+
 	return std::make_pair(getNullStreamFormat(), getNullStreamFormat());
 }
 

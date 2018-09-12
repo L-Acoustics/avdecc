@@ -34,13 +34,13 @@ namespace avdecc
 namespace protocol
 {
 
-/** Acmpdu common header */
+/** Acmpdu message */
 class Acmpdu final : public AvtpduControl
 {
 public:
 	static constexpr size_t Length = 44; /* ACMPDU size - Clause 8.2.1.7 */
 	using UniquePointer = std::unique_ptr<Acmpdu, void(*)(Acmpdu*)>;
-	static la::avdecc::networkInterface::MacAddress Multicast_Mac_Address;
+	static LA_AVDECC_API la::avdecc::networkInterface::MacAddress Multicast_Mac_Address;
 
 	/**
 	* @brief Factory method to create a new Acmpdu.
@@ -55,6 +55,12 @@ public:
 		};
 		return UniquePointer(createRawAcmpdu(), deleter);
 	}
+
+	/** Constructor for heap Acmpdu */
+	LA_AVDECC_API Acmpdu() noexcept;
+
+	/** Destructor */
+	virtual ~Acmpdu() noexcept override = default;
 
 	// Setters
 	void setMessageType(AcmpMessageType const messageType) noexcept
@@ -157,13 +163,13 @@ public:
 	}
 
 	/** Serialization method */
-	void serialize(SerializationBuffer& buffer) const;
+	LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION serialize(SerializationBuffer& buffer) const;
 
 	/** Deserialization method */
-	void deserialize(DeserializationBuffer& buffer);
+	LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION deserialize(DeserializationBuffer& buffer);
 
 	/** Copy method */
-	UniquePointer copy() const;
+	LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION copy() const;
 
 	// Defaulted compiler auto-generated methods
 	Acmpdu(Acmpdu&&) = default;
@@ -172,17 +178,11 @@ public:
 	Acmpdu& operator=(Acmpdu&&) = default;
 
 private:
-	/** Constructor */
-	Acmpdu() noexcept;
-
-	/** Destructor */
-	virtual ~Acmpdu() noexcept override = default;
-
 	/** Entry point */
-	static Acmpdu* createRawAcmpdu();
+	static LA_AVDECC_API Acmpdu* LA_AVDECC_CALL_CONVENTION createRawAcmpdu();
 
 	/** Destroy method for COM-like interface */
-	void destroy() noexcept;
+	LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION destroy() noexcept;
 
 	// Acmpdu header data
 	UniqueIdentifier _controllerEntityID{};

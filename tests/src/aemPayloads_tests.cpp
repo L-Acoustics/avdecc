@@ -22,10 +22,15 @@
 * @author Christophe Calmejane
 */
 
+// Public API
+#include <la/avdecc/avdecc.hpp>
+
+// Internal API
+#include "protocol/protocolAemPayloads.hpp"
+
 #include <gtest/gtest.h>
 #include <array>
 #include <cstdint>
-#include "protocol/protocolAemPayloads.hpp"
 
 // Test disable on clang/gcc because of a compilation error in the checkPayload template caused by the UniqueIdentifier class (was fine when it was a simple type). TODO: Fix this
 #ifdef _WIN32
@@ -360,5 +365,146 @@ TEST(AemPayloads, GetMemoryObjectLengthResponse)
 		la::avdecc::protocol::aemPayload::deserializeGetMemoryObjectLengthResponse({ ser.data(), ser.usedBytes() });
 	) << "Serialization/deserialization should not throw anything";
 }
+
+TEST(AemPayloads, StartOperationCommand)
+{
+	try
+	{
+		auto const ser = la::avdecc::protocol::aemPayload::serializeStartOperationCommand(la::avdecc::entity::model::DescriptorType::MemoryObject, la::avdecc::entity::model::MemoryObjectIndex(55), 10u, la::avdecc::entity::model::MemoryObjectOperationType::StoreAndReboot, la::avdecc::MemoryBuffer{});
+		EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemStartOperationCommandPayloadMinSize, ser.size());
+		auto const[descriptorType, descriptorIndex, operationID, operationType, memoryBuffer] = la::avdecc::protocol::aemPayload::deserializeStartOperationCommand({ ser.data(), ser.usedBytes() });
+		EXPECT_EQ(la::avdecc::entity::model::DescriptorType::MemoryObject, descriptorType);
+		EXPECT_EQ(la::avdecc::entity::model::MemoryObjectIndex(55), descriptorIndex);
+		EXPECT_EQ(10u, operationID);
+		EXPECT_EQ(la::avdecc::entity::model::MemoryObjectOperationType::StoreAndReboot, operationType);
+		EXPECT_TRUE(memoryBuffer.empty());
+	}
+	catch (...)
+	{
+		EXPECT_FALSE(true) << "Should not have thrown";
+	}
+
+	try
+	{
+		la::avdecc::MemoryBuffer const buffer{ std::vector<std::uint8_t>{1, 2, 3, 4} };
+		auto const ser = la::avdecc::protocol::aemPayload::serializeStartOperationCommand(la::avdecc::entity::model::DescriptorType::MemoryObject, la::avdecc::entity::model::MemoryObjectIndex(8), 60u, la::avdecc::entity::model::MemoryObjectOperationType::Upload, buffer);
+		EXPECT_LT(la::avdecc::protocol::aemPayload::AecpAemStartOperationCommandPayloadMinSize, ser.size());
+		auto const[descriptorType, descriptorIndex, operationID, operationType, memoryBuffer] = la::avdecc::protocol::aemPayload::deserializeStartOperationCommand({ ser.data(), ser.usedBytes() });
+		EXPECT_EQ(la::avdecc::entity::model::DescriptorType::MemoryObject, descriptorType);
+		EXPECT_EQ(la::avdecc::entity::model::MemoryObjectIndex(8), descriptorIndex);
+		EXPECT_EQ(60u, operationID);
+		EXPECT_EQ(la::avdecc::entity::model::MemoryObjectOperationType::Upload, operationType);
+		EXPECT_EQ(buffer, memoryBuffer);
+	}
+	catch (...)
+	{
+		EXPECT_FALSE(true) << "Should not have thrown";
+	}
+}
+
+TEST(AemPayloads, StartOperationResponse)
+{
+	try
+	{
+		auto const ser = la::avdecc::protocol::aemPayload::serializeStartOperationResponse(la::avdecc::entity::model::DescriptorType::MemoryObject, la::avdecc::entity::model::MemoryObjectIndex(55), 10u, la::avdecc::entity::model::MemoryObjectOperationType::StoreAndReboot, la::avdecc::MemoryBuffer{});
+		EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemStartOperationResponsePayloadMinSize, ser.size());
+		auto const[descriptorType, descriptorIndex, operationID, operationType, memoryBuffer] = la::avdecc::protocol::aemPayload::deserializeStartOperationResponse({ ser.data(), ser.usedBytes() });
+		EXPECT_EQ(la::avdecc::entity::model::DescriptorType::MemoryObject, descriptorType);
+		EXPECT_EQ(la::avdecc::entity::model::MemoryObjectIndex(55), descriptorIndex);
+		EXPECT_EQ(10u, operationID);
+		EXPECT_EQ(la::avdecc::entity::model::MemoryObjectOperationType::StoreAndReboot, operationType);
+		EXPECT_TRUE(memoryBuffer.empty());
+	}
+	catch (...)
+	{
+		EXPECT_FALSE(true) << "Should not have thrown";
+	}
+
+	try
+	{
+		la::avdecc::MemoryBuffer const buffer{ std::vector<std::uint8_t>{1, 2, 3, 4} };
+		auto const ser = la::avdecc::protocol::aemPayload::serializeStartOperationResponse(la::avdecc::entity::model::DescriptorType::MemoryObject, la::avdecc::entity::model::MemoryObjectIndex(8), 60u, la::avdecc::entity::model::MemoryObjectOperationType::Upload, buffer);
+		EXPECT_LT(la::avdecc::protocol::aemPayload::AecpAemStartOperationResponsePayloadMinSize, ser.size());
+		auto const[descriptorType, descriptorIndex, operationID, operationType, memoryBuffer] = la::avdecc::protocol::aemPayload::deserializeStartOperationResponse({ ser.data(), ser.usedBytes() });
+		EXPECT_EQ(la::avdecc::entity::model::DescriptorType::MemoryObject, descriptorType);
+		EXPECT_EQ(la::avdecc::entity::model::MemoryObjectIndex(8), descriptorIndex);
+		EXPECT_EQ(60u, operationID);
+		EXPECT_EQ(la::avdecc::entity::model::MemoryObjectOperationType::Upload, operationType);
+		EXPECT_EQ(buffer, memoryBuffer);
+	}
+	catch (...)
+	{
+		EXPECT_FALSE(true) << "Should not have thrown";
+	}
+}
+
+TEST(AemPayloads, AbortOperationCommand)
+{
+	try
+	{
+		auto const ser = la::avdecc::protocol::aemPayload::serializeAbortOperationCommand(la::avdecc::entity::model::DescriptorType::MemoryObject, la::avdecc::entity::model::MemoryObjectIndex(8), 60u);
+		EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemAbortOperationCommandPayloadSize, ser.size());
+		auto const[descriptorType, descriptorIndex, operationID] = la::avdecc::protocol::aemPayload::deserializeAbortOperationCommand({ ser.data(), ser.usedBytes() });
+		EXPECT_EQ(la::avdecc::entity::model::DescriptorType::MemoryObject, descriptorType);
+		EXPECT_EQ(la::avdecc::entity::model::MemoryObjectIndex(8), descriptorIndex);
+		EXPECT_EQ(60u, operationID);
+	}
+	catch (...)
+	{
+		EXPECT_FALSE(true) << "Should not have thrown";
+	}
+}
+
+TEST(AemPayloads, AbortOperationResponse)
+{
+	try
+	{
+		auto const ser = la::avdecc::protocol::aemPayload::serializeAbortOperationResponse(la::avdecc::entity::model::DescriptorType::MemoryObject, la::avdecc::entity::model::MemoryObjectIndex(8), 60u);
+		EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemAbortOperationResponsePayloadSize, ser.size());
+		auto const[descriptorType, descriptorIndex, operationID] = la::avdecc::protocol::aemPayload::deserializeAbortOperationResponse({ ser.data(), ser.usedBytes() });
+		EXPECT_EQ(la::avdecc::entity::model::DescriptorType::MemoryObject, descriptorType);
+		EXPECT_EQ(la::avdecc::entity::model::MemoryObjectIndex(8), descriptorIndex);
+		EXPECT_EQ(60u, operationID);
+	}
+	catch (...)
+	{
+		EXPECT_FALSE(true) << "Should not have thrown";
+	}
+}
+
+TEST(AemPayloads, OperationStatusResponse)
+{
+	try
+	{
+		auto const ser = la::avdecc::protocol::aemPayload::serializeOperationStatusResponse(la::avdecc::entity::model::DescriptorType::MemoryObject, la::avdecc::entity::model::MemoryObjectIndex(8), 60u, 99u);
+		EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemOperationStatusResponsePayloadSize, ser.size());
+		auto const[descriptorType, descriptorIndex, operationID, percentComplete] = la::avdecc::protocol::aemPayload::deserializeOperationStatusResponse({ ser.data(), ser.usedBytes() });
+		EXPECT_EQ(la::avdecc::entity::model::DescriptorType::MemoryObject, descriptorType);
+		EXPECT_EQ(la::avdecc::entity::model::MemoryObjectIndex(8), descriptorIndex);
+		EXPECT_EQ(60u, operationID);
+		EXPECT_EQ(99u, percentComplete);
+	}
+	catch (...)
+	{
+		EXPECT_FALSE(true) << "Should not have thrown";
+	}
+}
+
+#if defined(ALLOW_BIG_AEM_PAYLOADS)
+TEST(AemPayloads, BigPayload)
+{
+	la::avdecc::entity::model::AudioMappings mappings{};
+
+	// More than 62 mappings do not fit in a single non-big aem payload
+	for (auto i = 0u; i < 64; ++i)
+	{
+		mappings.push_back({});
+	}
+
+	EXPECT_NO_THROW(
+		la::avdecc::protocol::aemPayload::serializeGetAudioMapResponse(la::avdecc::entity::model::DescriptorType::StreamPortInput, 0, 0, 0, mappings);
+	);
+}
+#endif // ALLOW_BIG_AEM_PAYLOADS
 
 #endif // _WIN32

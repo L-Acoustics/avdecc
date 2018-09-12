@@ -25,10 +25,10 @@
 
 #pragma once
 
-#include <cstdint>
-#include <memory>
 #include "entityModel.hpp"
 #include "exports.hpp"
+#include <cstdint>
+#include <memory>
 
 namespace la
 {

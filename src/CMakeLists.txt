@@ -47,28 +47,30 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/internals/endStation.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entity.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityAddressAccessTypes.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/entityEnums.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModel.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTypes.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/exception.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/exports.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/instrumentationNotifier.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/logItems.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAaAecpdu.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAcmpdu.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAdpdu.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAecpdu.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAemAecpdu.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAvtpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolDefines.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolInterface.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/serialization.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/streamFormat.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/entityEnums.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/uniqueIdentifier.hpp
 )
 
 # Low level Protocol
 set (HEADER_FILES_PROTOCOL
-	protocol/protocolAcmpdu.hpp
-	protocol/protocolAdpdu.hpp
-	protocol/protocolAecpdu.hpp
-	protocol/protocolAemAecpdu.hpp
-	protocol/protocolAemPayloadSizes.hpp
 	protocol/protocolAemPayloads.hpp
-	protocol/protocolAaAecpdu.hpp
-	protocol/protocolAvtpdu.hpp
+	protocol/protocolAemPayloadSizes.hpp
 )
 
 set (SOURCE_FILES_PROTOCOL
@@ -84,7 +86,6 @@ set (SOURCE_FILES_PROTOCOL
 
 # Protocol Interface
 set (HEADER_FILES_PROTOCOL_INTERFACE
-	protocolInterface/protocolInterface.hpp
 )
 
 set (SOURCE_FILES_PROTOCOL_INTERFACE
@@ -115,7 +116,6 @@ set (HEADER_FILES_COMMON
 	${CMAKE_CURRENT_BINARY_DIR}/config.h
 	endStationImpl.hpp
 	logHelper.hpp
-	serialization.hpp
 )
 
 set (SOURCE_FILES_COMMON
@@ -270,7 +270,7 @@ endif()
 if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 	add_library(la_avdecc_static STATIC ${LIB_HEADER_FILES} ${LIB_SOURCE_FILES})
 	if(ADD_PRIVATE_COMPILE_OPTIONS)
-		target_compile_options(la_avdecc_static PRIVATE ${ADD_PRIVATE_COMPILE_OPTIONS})
+		target_compile_options(la_avdecc_static PUBLIC ${ADD_PRIVATE_COMPILE_OPTIONS}) # For a static library, no compile option is really private (using private APIs is possible, thus we need to know the options)
 	endif()
 	if(ADD_PUBLIC_COMPILE_OPTIONS)
 		target_compile_options(la_avdecc_static PUBLIC ${ADD_PUBLIC_COMPILE_OPTIONS})

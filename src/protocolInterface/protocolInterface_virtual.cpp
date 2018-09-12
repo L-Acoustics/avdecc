@@ -22,12 +22,13 @@
 * @author Christophe Calmejane
 */
 
-#include "protocolInterface_virtual.hpp"
-#include "serialization.hpp"
-#include "protocol/protocolAemAecpdu.hpp"
-#include "protocol/protocolAaAecpdu.hpp"
-#include "stateMachine/controllerStateMachine.hpp"
+#include "la/avdecc/internals/serialization.hpp"
 #include "la/avdecc/internals/instrumentationNotifier.hpp"
+#include "la/avdecc/internals/protocolAemAecpdu.hpp"
+#include "la/avdecc/internals/protocolAaAecpdu.hpp"
+#include "stateMachine/controllerStateMachine.hpp"
+#include "protocolInterface_virtual.hpp"
+#include "logHelper.hpp"
 #include <stdexcept>
 #include <thread>
 #include <condition_variable>
@@ -36,7 +37,6 @@
 #include <memory>
 #include <functional>
 #include <atomic>
-#include "logHelper.hpp"
 
 // Only enable instrumentation in static library and in debug (for unit testing mainly)
 #if defined(DEBUG) && defined(la_avdecc_cxx_STATICS)
@@ -271,6 +271,9 @@ public:
 	/** Destructor */
 	virtual ~ProtocolInterfaceVirtualImpl() noexcept;
 
+	/** Destroy method for COM-like interface */
+	virtual void destroy() noexcept override;
+
 	void dispatchAvdeccMessage(std::uint8_t const* const pkt_data, size_t const pkt_len, EtherLayer2 const& etherLayer2) noexcept;
 
 	// Deleted compiler auto-generated methods
@@ -342,6 +345,11 @@ ProtocolInterfaceVirtualImpl::ProtocolInterfaceVirtualImpl(std::string const& ne
 ProtocolInterfaceVirtualImpl::~ProtocolInterfaceVirtualImpl() noexcept
 {
 	shutdown();
+}
+
+void ProtocolInterfaceVirtualImpl::destroy() noexcept
+{
+	delete this;
 }
 
 void ProtocolInterfaceVirtualImpl::dispatchAvdeccMessage(std::uint8_t const* const pkt_data, size_t const pkt_len, EtherLayer2 const& etherLayer2) noexcept
@@ -789,14 +797,14 @@ ProtocolInterfaceVirtual::ProtocolInterfaceVirtual(std::string const& networkInt
 {
 }
 
-ProtocolInterface::UniquePointer ProtocolInterfaceVirtual::create(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress)
-{
-	return std::make_unique<ProtocolInterfaceVirtualImpl>(networkInterfaceName, macAddress);
-}
-
 bool ProtocolInterfaceVirtual::isSupported() noexcept
 {
 	return true;
+}
+
+ProtocolInterfaceVirtual* ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress)
+{
+	return new ProtocolInterfaceVirtualImpl(networkInterfaceName, macAddress);
 }
 
 } // namespace protocol

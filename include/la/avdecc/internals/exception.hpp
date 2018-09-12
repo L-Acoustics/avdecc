@@ -25,11 +25,11 @@
 
 #pragma once
 
+#include "exports.hpp"
 #include <string.h>
 #include <string>
 #include <cstring>
 #include <stdlib.h>
-#include "exports.hpp"
 
 namespace la
 {

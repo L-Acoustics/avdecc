@@ -22,7 +22,7 @@
 * @author Christophe Calmejane
 */
 
-#include "protocolAvtpdu.hpp"
+#include "la/avdecc/internals/protocolAvtpdu.hpp"
 #include "logHelper.hpp"
 #include <cassert>
 

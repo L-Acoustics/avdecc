@@ -25,14 +25,14 @@
 
 #pragma once
 
-#include <string>
-#include <memory>
-#include <mutex>
-#include <vector>
 #include <la/avdecc/avdecc.hpp>
 #include <la/avdecc/internals/exception.hpp>
 #include "avdeccControlledEntityModel.hpp"
 #include "exports.hpp"
+#include <string>
+#include <memory>
+#include <mutex>
+#include <vector>
 
 namespace la
 {
@@ -120,6 +120,8 @@ public:
 	/** BasicLockable concept 'unlock' method for the whole ControlledEntity */
 	virtual void unlock() noexcept = 0;
 
+	virtual bool isSelfLocked() const noexcept = 0;
+
 	// Deleted compiler auto-generated methods
 	ControlledEntity(ControlledEntity&&) = delete;
 	ControlledEntity(ControlledEntity const&) = delete;
@@ -170,6 +172,12 @@ public:
 		return _controlledEntity != nullptr;
 	}
 
+	void reset() noexcept
+	{
+		unlock();
+		_controlledEntity = nullptr;
+	}
+
 	// Default constructor to allow creation of an empty Guard
 	ControlledEntityGuard() noexcept
 	{
@@ -178,8 +186,7 @@ public:
 	// Destructor visibility required
 	~ControlledEntityGuard()
 	{
-		if (_controlledEntity)
-			_controlledEntity->unlock();
+		unlock();
 	}
 
 	// Allow move semantics
@@ -194,15 +201,19 @@ private:
 	friend class ControllerImpl;
 	using SharedControlledEntity = std::shared_ptr<ControlledEntity>;
 	ControlledEntityGuard(SharedControlledEntity entity)
-		: _controlledEntity(std::move(entity))//, _lg(*_controlledEntity)
+		: _controlledEntity(std::move(entity))
 	{
-		// TODO: Use the lock_guard, when I'll understand which element is not movable or constructible (probably the ControlledEntity)
 		if (_controlledEntity)
 			_controlledEntity->lock();
 	}
 
+	void unlock() noexcept
+	{
+		if (_controlledEntity)
+			_controlledEntity->unlock();
+	}
+
 	SharedControlledEntity _controlledEntity{ nullptr };
-	//std::lock_guard<ControlledEntity> _lg;
 };
 
 } // namespace controller

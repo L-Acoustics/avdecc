@@ -22,7 +22,7 @@
 * @author Christophe Calmejane
 */
 
-#include "protocolAcmpdu.hpp"
+#include "la/avdecc/internals/protocolAcmpdu.hpp"
 #include "logHelper.hpp"
 #include <cassert>
 #include <string>
@@ -48,7 +48,7 @@ Acmpdu::Acmpdu() noexcept
 	AvtpduControl::setControlDataLength(Length);
 }
 
-void Acmpdu::serialize(SerializationBuffer& buffer) const
+void LA_AVDECC_CALL_CONVENTION Acmpdu::serialize(SerializationBuffer& buffer) const
 {
 	auto const previousSize = buffer.size();
 	std::uint16_t reserved{ 0u };
@@ -63,7 +63,7 @@ void Acmpdu::serialize(SerializationBuffer& buffer) const
 	}
 }
 
-void Acmpdu::deserialize(DeserializationBuffer& buffer)
+void LA_AVDECC_CALL_CONVENTION Acmpdu::deserialize(DeserializationBuffer& buffer)
 {
 	// Check if there is enough bytes to read the header
 	auto const beginRemainingBytes = buffer.remaining();
@@ -99,23 +99,23 @@ void Acmpdu::deserialize(DeserializationBuffer& buffer)
 }
 
 /** Copy method */
-Acmpdu::UniquePointer Acmpdu::copy() const
+Acmpdu::UniquePointer LA_AVDECC_CALL_CONVENTION Acmpdu::copy() const
 {
 	auto deleter = [](Acmpdu* self)
 	{
-		static_cast<Acmpdu*>(self)->destroy();
+		self->destroy();
 	};
 	return UniquePointer(new Acmpdu(*this), deleter);
 }
 
 /** Entry point */
-Acmpdu* Acmpdu::createRawAcmpdu()
+Acmpdu* LA_AVDECC_CALL_CONVENTION Acmpdu::createRawAcmpdu()
 {
 	return new Acmpdu();
 }
 
 /** Destroy method for COM-like interface */
-void Acmpdu::destroy() noexcept
+void LA_AVDECC_CALL_CONVENTION Acmpdu::destroy() noexcept
 {
 	delete this;
 }

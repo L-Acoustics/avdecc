@@ -35,16 +35,14 @@ namespace avdecc
 namespace protocol
 {
 
-/** AEM Aecpdu heaader */
+/** AEM Aecpdu message */
 class AemAecpdu final : public Aecpdu
 {
 public:
 	static constexpr size_t HeaderLength = 2; /* Unsolicited + CommandType */
+	static constexpr size_t MaximumPayloadLength_17221 = Aecpdu::MaximumLength_1722_1 - Aecpdu::HeaderLength - HeaderLength;
 	static constexpr size_t MaximumPayloadLength = Aecpdu::MaximumLength - Aecpdu::HeaderLength - HeaderLength;
-#if defined(ALLOW_BIG_AEM_PAYLOADS)
-	static constexpr size_t MaximumBigPayloadLength = Aecpdu::MaximumBigPayloadLength - Aecpdu::HeaderLength - HeaderLength;
-#endif // !ALLOW_BIG_AEM_PAYLOADS
-	static la::avdecc::networkInterface::MacAddress Identify_Mac_Address;
+	static LA_AVDECC_API la::avdecc::networkInterface::MacAddress Identify_Mac_Address;
 	using Payload = std::pair<void const*, size_t>;
 
 	/**
@@ -61,6 +59,12 @@ public:
 		return UniquePointer(createRawAemAecpdu(), deleter);
 	}
 
+	/** Constructor for heap AemAecpdu */
+	LA_AVDECC_API AemAecpdu() noexcept;
+
+	/** Destructor (for some reason we have to define it in the cpp file or clang complains about missing vtable, using = default or inline not working) */
+	virtual LA_AVDECC_API ~AemAecpdu() noexcept override;
+
 	// Setters
 	void setUnsolicited(bool const unsolicited) noexcept
 	{
@@ -73,11 +77,7 @@ public:
 	void setCommandSpecificData(void const* const commandSpecificData, size_t const commandSpecificDataLength)
 	{
 		// Check Aecp do not exceed maximum allowed length
-#if defined(ALLOW_BIG_AEM_PAYLOADS)
-		if (commandSpecificDataLength > MaximumBigPayloadLength)
-#else // !ALLOW_BIG_AEM_PAYLOADS
 		if (commandSpecificDataLength > MaximumPayloadLength)
-#endif // ALLOW_BIG_AEM_PAYLOADS
 		{
 			throw std::invalid_argument("AEM payload too big");
 		}
@@ -107,14 +107,14 @@ public:
 	}
 
 	/** Serialization method */
-	virtual void serialize(SerializationBuffer& buffer) const override;
+	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION serialize(SerializationBuffer& buffer) const override;
 
 	/** Deserialization method */
-	virtual void deserialize(DeserializationBuffer& buffer) override;
+	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION deserialize(DeserializationBuffer& buffer) override;
 
 	/** Copy method */
-	virtual UniquePointer copy() const override;
-	
+	virtual LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION copy() const override;
+
 	// Defaulted compiler auto-generated methods
 	AemAecpdu(AemAecpdu&&) = default;
 	AemAecpdu(AemAecpdu const&) = default;
@@ -122,26 +122,16 @@ public:
 	AemAecpdu& operator=(AemAecpdu&&) = default;
 
 private:
-	/** Constructor */
-	AemAecpdu() noexcept;
-
-	/** Destructor */
-	virtual ~AemAecpdu() noexcept override = default;
-
 	/** Entry point */
-	static AemAecpdu* createRawAemAecpdu();
+	static LA_AVDECC_API AemAecpdu* LA_AVDECC_CALL_CONVENTION createRawAemAecpdu();
 
 	/** Destroy method for COM-like interface */
-	virtual void destroy() noexcept override;
+	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION destroy() noexcept override;
 
 	// Aem header data
 	bool _unsolicited{ false };
 	AemCommandType _commandType{ AemCommandType::InvalidCommandType };
-#if defined(ALLOW_BIG_AEM_PAYLOADS)
-	std::array<std::uint8_t, MaximumBigPayloadLength> _commandSpecificData{};
-#else // !ALLOW_BIG_AEM_PAYLOADS
 	std::array<std::uint8_t, MaximumPayloadLength> _commandSpecificData{};
-#endif // ALLOW_BIG_AEM_PAYLOADS
 	size_t _commandSpecificDataLength{ 0 };
 };
 

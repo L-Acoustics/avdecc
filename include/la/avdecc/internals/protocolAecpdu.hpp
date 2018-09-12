@@ -40,9 +40,12 @@ class Aecpdu : public AvtpduControl
 public:
 	static constexpr size_t DefaultMaxInflightCommands = 1;
 	static constexpr size_t HeaderLength = 10; /* ControllerEID + SequenceID */
-	static constexpr size_t MaximumLength = 524; /* AECPDU maximum size - Clause 9.2.1.1.7 */
+	static constexpr size_t MaximumLength_1722_1 = 524; /* AECPDU maximum size - Clause 9.2.1.1.7 */
+	static constexpr size_t MaximumLength_BigPayloads = MaximumLength_1722_1 * 2; /* Extended size, up to 1048 */
 #if defined(ALLOW_BIG_AEM_PAYLOADS)
-	static constexpr size_t MaximumBigPayloadLength = MaximumLength * 2;
+	static constexpr size_t MaximumLength = MaximumLength_BigPayloads;
+#else // !ALLOW_BIG_AEM_PAYLOADS
+	static constexpr size_t MaximumLength = MaximumLength_1722_1;
 #endif // !ALLOW_BIG_AEM_PAYLOADS
 	using UniquePointer = std::unique_ptr<Aecpdu, void(*)(Aecpdu*)>;
 
@@ -71,11 +74,7 @@ public:
 	{
 		auto controlDataLength = static_cast<std::uint16_t>(Aecpdu::HeaderLength + commandSpecificDataLength);
 		// Check Aecp do not exceed maximum allowed length
-#if defined(ALLOW_BIG_AEM_PAYLOADS)
-		if (controlDataLength > Aecpdu::MaximumBigPayloadLength)
-#else // !ALLOW_BIG_AEM_PAYLOADS
 		if (controlDataLength > Aecpdu::MaximumLength)
-#endif // ALLOW_BIG_AEM_PAYLOADS
 		{
 			throw std::invalid_argument("AECP payload too big");
 		}
@@ -105,13 +104,13 @@ public:
 	}
 
 	/** Serialization method */
-	virtual void serialize(SerializationBuffer& buffer) const;
+	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION serialize(SerializationBuffer& buffer) const = 0;
 
 	/** Deserialization method */
-	virtual void deserialize(DeserializationBuffer& buffer) = 0;
+	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION deserialize(DeserializationBuffer& buffer) = 0;
 
 	/** Copy method */
-	virtual UniquePointer copy() const = 0;
+	virtual LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION copy() const = 0;
 
 	// Defaulted compiler auto-generated methods
 	Aecpdu(Aecpdu&&) = default;
@@ -121,7 +120,7 @@ public:
 
 protected:
 	/** Constructor */
-	Aecpdu() noexcept;
+	LA_AVDECC_API Aecpdu() noexcept;
 
 	/** Destructor */
 	virtual ~Aecpdu() noexcept override = default;
@@ -132,7 +131,7 @@ protected:
 
 private:
 	/** Destroy method for COM-like interface */
-	virtual void destroy() noexcept = 0;
+	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION destroy() noexcept = 0;
 
 	// Hide renamed AvtpduControl data
 	using AvtpduControl::setControlData;

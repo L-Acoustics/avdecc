@@ -24,20 +24,21 @@
 
 #pragma once
 
+#include "la/avdecc/utils.hpp"
+#include "la/avdecc/networkInterfaceHelper.hpp"
+#include "exception.hpp"
+#include "entity.hpp"
+#include "protocolAdpdu.hpp"
+#include "protocolAecpdu.hpp"
+#include "protocolAcmpdu.hpp"
 #include <memory>
 #include <string>
 #include <cstdint>
 #include <list>
 #include <mutex>
+#include <vector>
 #include <stdexcept>
 #include <functional>
-#include "la/avdecc/utils.hpp"
-#include "la/avdecc/internals/exception.hpp"
-#include "la/avdecc/internals/entity.hpp"
-#include "la/avdecc/networkInterfaceHelper.hpp"
-#include "protocol/protocolAdpdu.hpp"
-#include "protocol/protocolAecpdu.hpp"
-#include "protocol/protocolAcmpdu.hpp"
 
 namespace la
 {
@@ -49,6 +50,17 @@ namespace protocol
 class ProtocolInterface : public la::avdecc::Subject<ProtocolInterface, std::recursive_mutex>
 {
 public:
+	/** The existing types of ProtocolInterface */
+	enum class Type
+	{
+		None = 0, /**< No protocol interface (not a valid protocol interface type, should only be used to initialize variables). */
+		PCap = 1u << 0, /**< Packet Capture protocol interface. */
+		MacOSNative = 1u << 1, /**< macOS native API protocol interface - Only usable on macOS. */
+		Proxy = 1u << 2, /**< IEEE Std 1722.1 Proxy protocol interface. */
+		Virtual = 1u << 3, /**< Virtual protocol interface. */
+	};
+
+	/** Possible Error status returned (or thrown) by a ProtocolInterface */
 	enum class Error
 	{
 		NoError = 0,
@@ -58,14 +70,15 @@ public:
 		UnknownLocalEntity = 4, /**< Unknown local entity. */
 		InvalidEntityType = 5, /**< Invalid entity type for the operation. */
 		DuplicateLocalEntityID = 6, /**< The EntityID specified in a LocalEntity is already in use by another local entity. */
-		InterfaceNotFound = 7, /**< Specified interface not found. */
-		InterfaceInvalid = 8, /**< Specified interface is invalid. */
+		InterfaceNotFound = 7, /**< Specified interfaceName not found. */
+		InvalidParameters = 8, /**< Specified parameters are invalid (either interfaceName and/or macAddress). */
 		InterfaceNotSupported = 9, /**< This protocol interface is not in the list of supported protocol interfaces. */
 		MessageNotSupported = 10, /**< This type of message is not supported by this protocol interface. */
 		InternalError = 99, /**< Internal error, please report the issue. */
 	};
 
-	class Exception final : public la::avdecc::Exception
+	/** The kind of exception thrown by a ProtocolInterface */
+	class LA_AVDECC_API Exception final : public la::avdecc::Exception
 	{
 	public:
 		template<class TextType>
@@ -75,10 +88,12 @@ public:
 		Error const _error{ Error::NoError };
 	};
 
-	using UniquePointer = std::unique_ptr<ProtocolInterface>;
+	using UniquePointer = std::unique_ptr<ProtocolInterface, void(*)(ProtocolInterface*)>;
+	using SupportedProtocolInterfaceTypes = la::avdecc::EnumBitfield<Type>;
 	using AecpCommandResultHandler = std::function<void(la::avdecc::protocol::Aecpdu const* const response, la::avdecc::protocol::ProtocolInterface::Error const error)>;
 	using AcmpCommandResultHandler = std::function<void(la::avdecc::protocol::Acmpdu const* const response, la::avdecc::protocol::ProtocolInterface::Error const error)>;
 
+	/** Interface definition for ProtocolInterface events observation */
 	class Observer : public la::avdecc::Observer<ProtocolInterface>
 	{
 	public:
@@ -103,13 +118,25 @@ public:
 		virtual void onAcmpSniffedResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept {}
 	};
 
-	virtual ~ProtocolInterface() noexcept = default;
+	/**
+	* @brief Factory method to create a new ProtocolInterface.
+	* @details Creates a new ProtocolInterface as a unique pointer.
+	* @param[in] protocolInterfaceType The protocol interface type to use.
+	* @param[in] networkInterfaceName The name of the network interface to use. Use #la::avdecc::networkInterface::enumerateInterfaces to get a valid interface name.
+	* @return A new ProtocolInterface as a ProtocolInterface::UniquePointer.
+	* @note Might throw an Exception.
+	*/
+	static UniquePointer create(Type const protocolInterfaceType, std::string const& networkInterfaceName)
+	{
+		auto deleter = [](ProtocolInterface* self)
+		{
+			self->destroy();
+		};
+		return UniquePointer(createRawProtocolInterface(protocolInterfaceType, networkInterfaceName), deleter);
+	}
 
 	/** Returns the Mac Address associated with the network interface name. */
-	networkInterface::MacAddress const& getMacAddress() const noexcept;
-
-	/** Returns the interface index associated with the network interface name. */
-	std::uint16_t getInterfaceIndex() const noexcept;
+	virtual networkInterface::MacAddress const& getMacAddress() const noexcept;
 
 	// Virtual interface
 	/** Shuts down the interface, stopping all active communications. This method blocks the current thread until all pending messages are processed. This is automatically called during destructor. */
@@ -146,6 +173,15 @@ public:
 	/** BasicLockable concept 'unlock' method for the whole ProtocolInterface */
 	virtual void unlock() noexcept = 0;
 
+	/** Returns true if the specified protocol interface type is supported on the local computer. */
+	static LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION isSupportedProtocolInterfaceType(Type const protocolInterfaceType) noexcept;
+
+	/** Returns the name of the specified protocol interface type. */
+	static LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION typeToString(Type const protocolInterfaceType) noexcept;
+
+	/** Returns the list of supported protocol interface types on the local computer. */
+	static LA_AVDECC_API SupportedProtocolInterfaceTypes LA_AVDECC_CALL_CONVENTION getSupportedProtocolInterfaceTypes() noexcept;
+
 	// Deleted compiler auto-generated methods
 	ProtocolInterface(ProtocolInterface&&) = delete;
 	ProtocolInterface(ProtocolInterface const&) = delete;
@@ -170,11 +206,18 @@ protected:
 	*/
 	ProtocolInterface(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress);
 
+	virtual ~ProtocolInterface() noexcept = default;
+
 	std::string const _networkInterfaceName{};
 
 private:
+	/** Entry point */
+	static LA_AVDECC_API ProtocolInterface* LA_AVDECC_CALL_CONVENTION createRawProtocolInterface(Type const protocolInterfaceType, std::string const& networkInterfaceName);
+
+	/** Destroy method for COM-like interface */
+	virtual void destroy() noexcept = 0;
+
 	networkInterface::MacAddress _networkInterfaceMacAddress{};
-	std::uint16_t _interfaceIndex{};
 };
 
 /* Operator overloads */
@@ -190,5 +233,6 @@ constexpr ProtocolInterface::Error& operator|=(ProtocolInterface::Error& lhs, Pr
 }
 
 } // namespace protocol
+
 } // namespace avdecc
 } // namespace la

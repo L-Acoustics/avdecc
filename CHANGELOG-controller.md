@@ -4,6 +4,14 @@ All notable changes to the Avdecc Controller Library will be documented in this 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2018-09-12
+### Added
+- Support for MemoryObject Operations (Contributed by Florian Harmuth)
+- Debug asserts when trying to call a controller API while holding a lock on the targeted entity (which might cause a deadlock)
+
+## Changed
+- la::avdecc::controller::CompileOptions is now la::avdecc::EnumBitfield
+
 ## [2.6.3] - 2018-08-08
 ### Fixed
 - [Incorrect StreamOutput channel dynamic mappings](https://github.com/L-Acoustics/avdecc/issues/30)

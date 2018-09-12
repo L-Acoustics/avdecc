@@ -4,6 +4,18 @@ All notable changes to the Avdecc Library will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2018-09-12
+### Added
+- Support for MemoryObject Operations (Contributed by Florian Harmuth)
+- Protocol and ProtocolInterface classes exposed in the public API
+- Removed InterfaceIndex field from ProtocolInterface (not its place)
+
+### Changed
+- la::avdecc::protocol::ProtocolInterface::SupportedProtocolInterfaceTypes and la::avdecc::CompileOptions are now la::avdecc::EnumBitfield
+
+### Fixed
+- ALLOW_BIG_AEM_PAYLOADS option not properly used in serializer
+
 ## [2.6.3] - 2018-08-08
 
 ## [2.6.2] - 2018-08-06
