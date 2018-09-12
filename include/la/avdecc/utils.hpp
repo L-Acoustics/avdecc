@@ -432,7 +432,7 @@ public:
 	EnumBitfield& operator=(EnumBitfield&&) noexcept = default;
 
 private:
-	inline void checkInvalidValue(value_type const value) const
+	inline void checkInvalidValue([[maybe_unused]]value_type const value) const
 	{
 		AVDECC_ASSERT(countBits(to_integral(value)) <= 1, "Invalid value: more than 1 bit set");
 	}
