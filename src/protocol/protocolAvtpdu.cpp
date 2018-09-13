@@ -37,7 +37,7 @@ namespace protocol
 /* Ethernet layer 2 class definition                       */
 /***********************************************************/
 
-void EtherLayer2::serialize(SerializationBuffer& buffer) const
+void LA_AVDECC_CALL_CONVENTION EtherLayer2::serialize(SerializationBuffer& buffer) const
 {
 #ifdef DEBUG
 	auto const previousSize = buffer.size();
@@ -52,7 +52,7 @@ void EtherLayer2::serialize(SerializationBuffer& buffer) const
 #endif // DEBUG
 }
 
-void EtherLayer2::deserialize(DeserializationBuffer& buffer)
+void LA_AVDECC_CALL_CONVENTION EtherLayer2::deserialize(DeserializationBuffer& buffer)
 {
 	// Check if there is enough bytes to read the header
 	if (!AVDECC_ASSERT_WITH_RET(buffer.remaining() >= HeaderLength, "EtherLayer2::deserialize error: Not enough data in buffer"))
@@ -84,7 +84,7 @@ AvtpduControl::AvtpduControl() noexcept
 	Avtpdu::setVersion(AvtpVersion);
 }
 
-void AvtpduControl::serialize(SerializationBuffer& buffer) const
+void LA_AVDECC_CALL_CONVENTION AvtpduControl::serialize(SerializationBuffer& buffer) const
 {
 #ifdef DEBUG
 	auto const previousSize = buffer.size();
@@ -100,7 +100,7 @@ void AvtpduControl::serialize(SerializationBuffer& buffer) const
 #endif // DEBUG
 }
 
-void AvtpduControl::deserialize(DeserializationBuffer& buffer)
+void LA_AVDECC_CALL_CONVENTION AvtpduControl::deserialize(DeserializationBuffer& buffer)
 {
 	// Check if there is enough bytes to read the header
 	if (!AVDECC_ASSERT_WITH_RET(buffer.remaining() >= HeaderLength, "EtherLayer2::deserialize error: Not enough data in buffer"))

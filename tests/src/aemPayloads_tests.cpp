@@ -490,12 +490,12 @@ TEST(AemPayloads, OperationStatusResponse)
 	}
 }
 
-#if defined(ALLOW_BIG_AEM_PAYLOADS)
+#if defined(ALLOW_BIG_AECP_PAYLOADS)
 TEST(AemPayloads, BigPayload)
 {
 	la::avdecc::entity::model::AudioMappings mappings{};
 
-	// More than 62 mappings do not fit in a single non-big aem payload
+	// More than 62 mappings do not fit in a single non-big aecp payload
 	for (auto i = 0u; i < 64; ++i)
 	{
 		mappings.push_back({});
@@ -505,6 +505,6 @@ TEST(AemPayloads, BigPayload)
 		la::avdecc::protocol::aemPayload::serializeGetAudioMapResponse(la::avdecc::entity::model::DescriptorType::StreamPortInput, 0, 0, 0, mappings);
 	);
 }
-#endif // ALLOW_BIG_AEM_PAYLOADS
+#endif // ALLOW_BIG_AECP_PAYLOADS
 
 #endif // _WIN32

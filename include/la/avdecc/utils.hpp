@@ -436,7 +436,7 @@ private:
 	{
 		AVDECC_ASSERT(countBits(to_integral(value)) <= 1, "Invalid value: more than 1 bit set");
 	}
-	constexpr size_t countBits(std::underlying_type_t<value_type> value) const noexcept
+	constexpr size_t countBits(std::underlying_type_t<value_type> const value) const noexcept
 	{
 		return (value == 0u) ? 0u : 1u + countBits(value & (value - 1u));
 	}

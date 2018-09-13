@@ -63,133 +63,133 @@ public:
 	virtual ~Adpdu() noexcept override = default;
 
 	// Setters
-	void setMessageType(AdpMessageType const messageType) noexcept
+	void LA_AVDECC_CALL_CONVENTION setMessageType(AdpMessageType const messageType) noexcept
 	{
 		AvtpduControl::setControlData(messageType.getValue());
 	}
-	void setValidTime(std::uint8_t const validTime) noexcept
+	void LA_AVDECC_CALL_CONVENTION setValidTime(std::uint8_t const validTime) noexcept
 	{
 		AvtpduControl::setStatus(validTime);
 	}
-	void setEntityID(UniqueIdentifier const entityID) noexcept
+	void LA_AVDECC_CALL_CONVENTION setEntityID(UniqueIdentifier const entityID) noexcept
 	{
 		AvtpduControl::setStreamID(entityID.getValue());
 	}
-	void setEntityModelID(UniqueIdentifier const entityModelID) noexcept
+	void LA_AVDECC_CALL_CONVENTION setEntityModelID(UniqueIdentifier const entityModelID) noexcept
 	{
 		_entityModelID = entityModelID;
 	}
-	void setEntityCapabilities(entity::EntityCapabilities const entityCapabilities) noexcept
+	void LA_AVDECC_CALL_CONVENTION setEntityCapabilities(entity::EntityCapabilities const entityCapabilities) noexcept
 	{
 		_entityCapabilities = entityCapabilities;
 	}
-	void setTalkerStreamSources(std::uint16_t const talkerStreamSources) noexcept
+	void LA_AVDECC_CALL_CONVENTION setTalkerStreamSources(std::uint16_t const talkerStreamSources) noexcept
 	{
 		_talkerStreamSources = talkerStreamSources;
 	}
-	void setTalkerCapabilities(entity::TalkerCapabilities const talkerCapabilities) noexcept
+	void LA_AVDECC_CALL_CONVENTION setTalkerCapabilities(entity::TalkerCapabilities const talkerCapabilities) noexcept
 	{
 		_talkerCapabilities = talkerCapabilities;
 	}
-	void setListenerStreamSinks(std::uint16_t const listenerStreamSinks) noexcept
+	void LA_AVDECC_CALL_CONVENTION setListenerStreamSinks(std::uint16_t const listenerStreamSinks) noexcept
 	{
 		_listenerStreamSinks = listenerStreamSinks;
 	}
-	void setListenerCapabilities(entity::ListenerCapabilities const listenerCapabilities) noexcept
+	void LA_AVDECC_CALL_CONVENTION setListenerCapabilities(entity::ListenerCapabilities const listenerCapabilities) noexcept
 	{
 		_listenerCapabilities = listenerCapabilities;
 	}
-	void setControllerCapabilities(entity::ControllerCapabilities const controllerCapabilities) noexcept
+	void LA_AVDECC_CALL_CONVENTION setControllerCapabilities(entity::ControllerCapabilities const controllerCapabilities) noexcept
 	{
 		_controllerCapabilities = controllerCapabilities;
 	}
-	void setAvailableIndex(std::uint32_t const availableIndex) noexcept
+	void LA_AVDECC_CALL_CONVENTION setAvailableIndex(std::uint32_t const availableIndex) noexcept
 	{
 		_availableIndex = availableIndex;
 	}
-	void setGptpGrandmasterID(UniqueIdentifier const gptpGrandmasterID) noexcept
+	void LA_AVDECC_CALL_CONVENTION setGptpGrandmasterID(UniqueIdentifier const gptpGrandmasterID) noexcept
 	{
 		_gptpGrandmasterID = gptpGrandmasterID;
 	}
-	void setGptpDomainNumber(std::uint8_t const gptpDomainNumber) noexcept
+	void LA_AVDECC_CALL_CONVENTION setGptpDomainNumber(std::uint8_t const gptpDomainNumber) noexcept
 	{
 		_gptpDomainNumber = gptpDomainNumber;
 	}
-	void setIdentifyControlIndex(std::uint16_t const identifyControlIndex) noexcept
+	void LA_AVDECC_CALL_CONVENTION setIdentifyControlIndex(std::uint16_t const identifyControlIndex) noexcept
 	{
 		_identifyControlIndex = identifyControlIndex;
 	}
-	void setInterfaceIndex(std::uint16_t const interfaceIndex) noexcept
+	void LA_AVDECC_CALL_CONVENTION setInterfaceIndex(std::uint16_t const interfaceIndex) noexcept
 	{
 		_interfaceIndex = interfaceIndex;
 	}
-	void setAssociationID(UniqueIdentifier const associationID) noexcept
+	void LA_AVDECC_CALL_CONVENTION setAssociationID(UniqueIdentifier const associationID) noexcept
 	{
 		_associationID = associationID;
 	}
 
 	// Getters
-	AdpMessageType getMessageType() const noexcept
+	AdpMessageType LA_AVDECC_CALL_CONVENTION getMessageType() const noexcept
 	{
 		return AdpMessageType(AvtpduControl::getControlData());
 	}
-	std::uint8_t getValidTime() const noexcept
+	std::uint8_t LA_AVDECC_CALL_CONVENTION getValidTime() const noexcept
 	{
 		return AvtpduControl::getStatus();
 	}
-	UniqueIdentifier getEntityID() const noexcept
+	UniqueIdentifier LA_AVDECC_CALL_CONVENTION getEntityID() const noexcept
 	{
 		return UniqueIdentifier{ AvtpduControl::getStreamID() };
 	}
-	UniqueIdentifier getEntityModelID() const noexcept
+	UniqueIdentifier LA_AVDECC_CALL_CONVENTION getEntityModelID() const noexcept
 	{
 		return _entityModelID;
 	}
-	entity::EntityCapabilities getEntityCapabilities() const noexcept
+	entity::EntityCapabilities LA_AVDECC_CALL_CONVENTION getEntityCapabilities() const noexcept
 	{
 		return _entityCapabilities;
 	}
-	std::uint16_t getTalkerStreamSources() const noexcept
+	std::uint16_t LA_AVDECC_CALL_CONVENTION getTalkerStreamSources() const noexcept
 	{
 		return _talkerStreamSources;
 	}
-	entity::TalkerCapabilities getTalkerCapabilities() const noexcept
+	entity::TalkerCapabilities LA_AVDECC_CALL_CONVENTION getTalkerCapabilities() const noexcept
 	{
 		return _talkerCapabilities;
 	}
-	std::uint16_t getListenerStreamSinks() const noexcept
+	std::uint16_t LA_AVDECC_CALL_CONVENTION getListenerStreamSinks() const noexcept
 	{
 		return _listenerStreamSinks;
 	}
-	entity::ListenerCapabilities getListenerCapabilities() const noexcept
+	entity::ListenerCapabilities LA_AVDECC_CALL_CONVENTION getListenerCapabilities() const noexcept
 	{
 		return _listenerCapabilities;
 	}
-	entity::ControllerCapabilities getControllerCapabilities() const noexcept
+	entity::ControllerCapabilities LA_AVDECC_CALL_CONVENTION getControllerCapabilities() const noexcept
 	{
 		return _controllerCapabilities;
 	}
-	std::uint32_t getAvailableIndex() const noexcept
+	std::uint32_t LA_AVDECC_CALL_CONVENTION getAvailableIndex() const noexcept
 	{
 		return _availableIndex;
 	}
-	UniqueIdentifier getGptpGrandmasterID() const noexcept
+	UniqueIdentifier LA_AVDECC_CALL_CONVENTION getGptpGrandmasterID() const noexcept
 	{
 		return _gptpGrandmasterID;
 	}
-	std::uint8_t getGptpDomainNumber() const noexcept
+	std::uint8_t LA_AVDECC_CALL_CONVENTION getGptpDomainNumber() const noexcept
 	{
 		return _gptpDomainNumber;
 	}
-	std::uint16_t getIdentifyControlIndex() const noexcept
+	std::uint16_t LA_AVDECC_CALL_CONVENTION getIdentifyControlIndex() const noexcept
 	{
 		return _identifyControlIndex;
 	}
-	std::uint16_t getInterfaceIndex() const noexcept
+	std::uint16_t LA_AVDECC_CALL_CONVENTION getInterfaceIndex() const noexcept
 	{
 		return _interfaceIndex;
 	}
-	UniqueIdentifier getAssociationID() const noexcept
+	UniqueIdentifier LA_AVDECC_CALL_CONVENTION getAssociationID() const noexcept
 	{
 		return _associationID;
 	}
@@ -226,10 +226,10 @@ private:
 	entity::ControllerCapabilities _controllerCapabilities{ entity::ControllerCapabilities::None };
 	std::uint32_t _availableIndex{};
 	UniqueIdentifier _gptpGrandmasterID{};
-	std::uint8_t _gptpDomainNumber{0};
+	std::uint8_t _gptpDomainNumber{ 0u };
 	// Reserved 24bits
-	std::uint16_t _identifyControlIndex{ 0 };
-	std::uint16_t _interfaceIndex{ 0 };
+	std::uint16_t _identifyControlIndex{ 0u };
+	std::uint16_t _interfaceIndex{ 0u };
 	UniqueIdentifier _associationID{};
 	// Reserved 32bits
 

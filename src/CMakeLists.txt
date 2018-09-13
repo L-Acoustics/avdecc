@@ -61,6 +61,7 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAemAecpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAvtpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolDefines.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolGenericAecpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolInterface.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/serialization.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/streamFormat.hpp
@@ -82,6 +83,7 @@ set (SOURCE_FILES_PROTOCOL
 	protocol/protocolAaAecpdu.cpp
 	protocol/protocolAvtpdu.cpp
 	protocol/protocolDefines.cpp
+	protocol/protocolGenericAecpdu.cpp
 )
 
 # Protocol Interface
@@ -210,8 +212,8 @@ endif()
 if(IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES)
 	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DIGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES")
 endif()
-if(ALLOW_BIG_AEM_PAYLOADS)
-	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DALLOW_BIG_AEM_PAYLOADS")
+if(ALLOW_BIG_AECP_PAYLOADS)
+	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DALLOW_BIG_AECP_PAYLOADS")
 endif()
 
 # Group sources
