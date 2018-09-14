@@ -1272,7 +1272,7 @@ entity::addressAccess::Tlv ControllerImpl::makeNextWriteDeviceMemoryTlv(std::uin
 	return entity::addressAccess::Tlv{};
 }
 
-void ControllerImpl::onUserReadDeviceMemoryResult(UniqueIdentifier const targetEntityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs, std::uint64_t const baseAddress, std::uint64_t const length, ReadDeviceMemoryHandler&& handler, DeviceMemoryBuffer&& memoryBuffer) const noexcept
+void ControllerImpl::onUserReadDeviceMemoryResult(UniqueIdentifier const targetEntityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs, std::uint64_t const baseAddress, std::uint64_t const length, ReadDeviceMemoryProgressHandler const& progressHandler, ReadDeviceMemoryCompletionHandler const& completionHandler, DeviceMemoryBuffer&& memoryBuffer) const noexcept
 {
 	LOG_CONTROLLER_TRACE(targetEntityID, "User readDeviceMemory chunk (BaseAddress={} Length={}): {}", baseAddress, length, entity::ControllerEntity::statusToString(status));
 	if (!!status)
@@ -1289,9 +1289,9 @@ void ControllerImpl::onUserReadDeviceMemoryResult(UniqueIdentifier const targetE
 		if (tlv)
 		{
 			LOG_CONTROLLER_TRACE(targetEntityID, "User readDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", baseAddress, length, tlv.getAddress() - baseAddress, tlv.size());
-			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress, length, handler = std::move(handler), memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs) mutable
+			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress, length, progressHandler = std::move(progressHandler), completionHandler = std::move(completionHandler), memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs) mutable
 			{
-				onUserReadDeviceMemoryResult(entityID, status, tlvs, baseAddress, length, std::move(handler), std::move(memoryBuffer));
+				onUserReadDeviceMemoryResult(entityID, status, tlvs, baseAddress, length, std::move(progressHandler), std::move(completionHandler), std::move(memoryBuffer));
 			});
 			return;
 		}
@@ -1307,15 +1307,15 @@ void ControllerImpl::onUserReadDeviceMemoryResult(UniqueIdentifier const targetE
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, memoryBuffer);
+		invokeProtectedHandler(completionHandler, entity->wasAdvertised() ? entity : nullptr, status, memoryBuffer);
 	}
 	else // The entity went offline right after we sent our message
 	{
-		invokeProtectedHandler(handler, nullptr, status, memoryBuffer);
+		invokeProtectedHandler(completionHandler, nullptr, status, memoryBuffer);
 	}
 }
 
-void ControllerImpl::onUserWriteDeviceMemoryResult(UniqueIdentifier const targetEntityID, entity::ControllerEntity::AaCommandStatus const status, std::uint64_t const baseAddress, std::uint64_t const sentSize, WriteDeviceMemoryHandler&& handler, DeviceMemoryBuffer&& memoryBuffer) const noexcept
+void ControllerImpl::onUserWriteDeviceMemoryResult(UniqueIdentifier const targetEntityID, entity::ControllerEntity::AaCommandStatus const status, std::uint64_t const baseAddress, std::uint64_t const sentSize, WriteDeviceMemoryProgressHandler const& progressHandler, WriteDeviceMemoryCompletionHandler const& completionHandler, DeviceMemoryBuffer&& memoryBuffer) const noexcept
 {
 	LOG_CONTROLLER_TRACE(targetEntityID, "User writeDeviceMemory chunk (BaseAddress={} Length={}): {}", baseAddress, memoryBuffer.size(), entity::ControllerEntity::statusToString(status));
 	if (!!status)
@@ -1324,9 +1324,9 @@ void ControllerImpl::onUserWriteDeviceMemoryResult(UniqueIdentifier const target
 		auto tlv = makeNextWriteDeviceMemoryTlv(baseAddress, memoryBuffer, sentSize);
 		if (tlv)
 		{
-			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress, sentSize = sentSize + tlv.size(), handler = std::move(handler), memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& /*tlvs*/) mutable
+			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress, sentSize = sentSize + tlv.size(), progressHandler = std::move(progressHandler), completionHandler = std::move(completionHandler), memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& /*tlvs*/) mutable
 			{
-				onUserWriteDeviceMemoryResult(entityID, status, baseAddress, sentSize, std::move(handler), std::move(memoryBuffer));
+				onUserWriteDeviceMemoryResult(entityID, status, baseAddress, sentSize, std::move(progressHandler), std::move(completionHandler), std::move(memoryBuffer));
 			});
 			return;
 		}
@@ -1338,15 +1338,15 @@ void ControllerImpl::onUserWriteDeviceMemoryResult(UniqueIdentifier const target
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+		invokeProtectedHandler(completionHandler, entity->wasAdvertised() ? entity : nullptr, status);
 	}
 	else // The entity went offline right after we sent our message
 	{
-		invokeProtectedHandler(handler, nullptr, status);
+		invokeProtectedHandler(completionHandler, nullptr, status);
 	}
 }
 
-void ControllerImpl::readDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, std::uint64_t const length, ReadDeviceMemoryHandler const& handler) const noexcept
+void ControllerImpl::readDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, std::uint64_t const length, ReadDeviceMemoryProgressHandler const& progressHandler, ReadDeviceMemoryCompletionHandler const& completionHandler) const noexcept
 {
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(targetEntityID);
@@ -1362,19 +1362,19 @@ void ControllerImpl::readDeviceMemory(UniqueIdentifier const targetEntityID, std
 		if (tlv)
 		{
 			LOG_CONTROLLER_TRACE(targetEntityID, "User readDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", address, length, 0, tlv.size());
-			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress = address, length, handlerCopy = handler, memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs) mutable
+			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress = address, length, progressHandlerCopy = progressHandler, completionHandlerCopy = completionHandler, memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs) mutable
 			{
-				onUserReadDeviceMemoryResult(entityID, status, tlvs, baseAddress, length, std::move(handlerCopy), std::move(memoryBuffer));
+				onUserReadDeviceMemoryResult(entityID, status, tlvs, baseAddress, length, std::move(progressHandlerCopy), std::move(completionHandlerCopy), std::move(memoryBuffer));
 			});
 		}
 		else
 		{
-			invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AaCommandStatus::TlvInvalid, DeviceMemoryBuffer{});
+			invokeProtectedHandler(completionHandler, nullptr, entity::ControllerEntity::AaCommandStatus::TlvInvalid, DeviceMemoryBuffer{});
 		}
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AaCommandStatus::UnknownEntity, DeviceMemoryBuffer{});
+		invokeProtectedHandler(completionHandler, nullptr, entity::ControllerEntity::AaCommandStatus::UnknownEntity, DeviceMemoryBuffer{});
 	}
 }
 
@@ -1485,7 +1485,7 @@ void ControllerImpl::startUploadMemoryObjectOperation(UniqueIdentifier const tar
 	startMemoryObjectOperation(targetEntityID, descriptorIndex, entity::model::MemoryObjectOperationType::Upload, buffer, handler);
 }
 
-void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, DeviceMemoryBuffer memoryBuffer, WriteDeviceMemoryHandler const& handler) const noexcept
+void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, DeviceMemoryBuffer memoryBuffer, WriteDeviceMemoryProgressHandler const& progressHandler, WriteDeviceMemoryCompletionHandler const& completionHandler) const noexcept
 {
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(targetEntityID);
@@ -1497,19 +1497,19 @@ void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, st
 		if (tlv)
 		{
 			LOG_CONTROLLER_TRACE(targetEntityID, "User writeDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", address, memoryBuffer.size(), 0, tlv.size());
-			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress = address, sentSize = tlv.size(), handlerCopy = handler, memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& /*tlvs*/) mutable
+			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress = address, sentSize = tlv.size(), progressHandlerCopy = progressHandler, completionHandlerCopy = completionHandler, memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& /*tlvs*/) mutable
 			{
-				onUserWriteDeviceMemoryResult(entityID, status, baseAddress, sentSize, std::move(handlerCopy), std::move(memoryBuffer));
+				onUserWriteDeviceMemoryResult(entityID, status, baseAddress, sentSize, std::move(progressHandlerCopy), std::move(completionHandlerCopy), std::move(memoryBuffer));
 			});
 		}
 		else
 		{
-			invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AaCommandStatus::TlvInvalid);
+			invokeProtectedHandler(completionHandler, nullptr, entity::ControllerEntity::AaCommandStatus::TlvInvalid);
 		}
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AaCommandStatus::UnknownEntity);
+		invokeProtectedHandler(completionHandler, nullptr, entity::ControllerEntity::AaCommandStatus::UnknownEntity);
 	}
 }
 
