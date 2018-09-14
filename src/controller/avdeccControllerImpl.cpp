@@ -454,7 +454,31 @@ void ControllerImpl::updateOperationStatus(ControlledEntityImpl& controlledEntit
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
 	{
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onOperationStatus, this, &controlledEntity, descriptorType, descriptorIndex, operationID, percentComplete);
+		if (percentComplete == 0) /* Clause 7.4.55.2 */
+		{
+			// Failure
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onOperationCompleted, this, &controlledEntity, descriptorType, descriptorIndex, operationID, true);
+		}
+		else if (percentComplete == 1000)
+		{
+			// Completed successfully
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onOperationCompleted, this, &controlledEntity, descriptorType, descriptorIndex, operationID, false);
+		}
+		else if (percentComplete == 0xFFFF)
+		{
+			// Unknown progress but continuing
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onOperationProgress, this, &controlledEntity, descriptorType, descriptorIndex, operationID, -1.0f);
+		}
+		else if (percentComplete < 1000)
+		{
+			// In progress
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onOperationProgress, this, &controlledEntity, descriptorType, descriptorIndex, operationID, percentComplete / 10.0f);
+		}
+		else
+		{
+			// Invalid value
+			AVDECC_ASSERT(percentComplete > 1000, "Unknown percentComplete value");
+		}
 	}
 }
 
