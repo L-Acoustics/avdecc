@@ -554,15 +554,15 @@ void ControllerImpl::onMemoryObjectLengthChanged(entity::ControllerEntity const*
 	}
 }
 
-void ControllerImpl::onOperationStatus(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, std::uint16_t const percentComplete) noexcept
+void ControllerImpl::onOperationStatus(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, std::uint16_t const percentComplete) noexcept
 {
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	auto controlledEntity = getControlledEntityImpl(entityID);
 
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		updateOperationStatus(*entity, targetEntityID, descriptorType, descriptorIndex, operationID, percentComplete);
+		updateOperationStatus(*entity, descriptorType, descriptorIndex, operationID, percentComplete);
 	}
 }
 
