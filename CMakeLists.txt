@@ -43,7 +43,8 @@ option(ENABLE_AVDECC_STRICT_2018_REDUNDANCY "Be strict about 'Network Redundancy
 option(IGNORE_INVALID_CONTROL_DATA_LENGTH "Allow messages with an invalid advertised 'Control Data Length' field (not matching data in buffer)." TRUE) # Required for Motu devices sending invalid response messages
 option(IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES "Allow invalid AEM non-success responses messages." TRUE) # Required for Motu/Tesira devices sending invalid error response messages
 option(IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS "Allow Entities not supporting Dynamic Mapping and not adversiting AUDIO_MAP." TRUE) # Required for Tesira devices not implementing Dynamic Mappings and not advertising any static map
-option(ALLOW_BIG_AECP_PAYLOADS "Allow AECP payloads bigger than the allowed 524 bytes." TRUE) # Required for Q6 Core devices not splitting AudioMaps into smaller ones
+option(ALLOW_RECV_BIG_AECP_PAYLOADS "Allow receiving AECP payloads bigger than the allowed 524 bytes." TRUE) # Required for Q6 Core devices not splitting AudioMaps into smaller ones, and for Milan devices
+option(ALLOW_SEND_BIG_AECP_PAYLOADS "Allow sending AECP payloads bigger than the allowed 524 bytes." FALSE)
 
 ############ CMake configuration
 

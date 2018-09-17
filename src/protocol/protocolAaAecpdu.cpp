@@ -40,14 +40,7 @@ namespace protocol
 
 AaAecpdu::AaAecpdu() noexcept
 {
-	// Initialize parent's specific data length field
-	try
-	{
-		Aecpdu::setAecpSpecificDataLength(AaAecpdu::HeaderLength); // This method might throw, but it's not possible from here
-	}
-	catch (std::exception const&)
-	{
-	}
+	Aecpdu::setAecpSpecificDataLength(AaAecpdu::HeaderLength);
 }
 
 AaAecpdu::~AaAecpdu() noexcept
@@ -72,7 +65,7 @@ void LA_AVDECC_CALL_CONVENTION AaAecpdu::serialize(SerializationBuffer& buffer) 
 
 	if (!AVDECC_ASSERT_WITH_RET((buffer.size() - previousSize) == (HeaderLength + _tlvDataLength), "AaAecpdu::serialize error: Packed buffer length != expected header length"))
 	{
-		LOG_SERIALIZATION_ERROR(_srcAddress, "AaAecpdu::serialize error: Packed buffer length != expected header length");
+		LOG_SERIALIZATION_ERROR(_destAddress, "AaAecpdu::serialize error: Packed buffer length != expected header length");
 	}
 }
 

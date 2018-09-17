@@ -42,14 +42,7 @@ la::avdecc::networkInterface::MacAddress AemAecpdu::Identify_Mac_Address{ { 0x91
 
 AemAecpdu::AemAecpdu() noexcept
 {
-	// Initialize parent's specific data length field
-	try
-	{
-		Aecpdu::setAecpSpecificDataLength(AemAecpdu::HeaderLength); // This method might throw, but it's not possible from here
-	}
-	catch (std::exception const&)
-	{
-	}
+	Aecpdu::setAecpSpecificDataLength(AemAecpdu::HeaderLength);
 }
 
 AemAecpdu::~AemAecpdu() noexcept
@@ -69,7 +62,7 @@ void LA_AVDECC_CALL_CONVENTION AemAecpdu::setCommandType(AemCommandType const co
 void LA_AVDECC_CALL_CONVENTION AemAecpdu::setCommandSpecificData(void const* const commandSpecificData, size_t const commandSpecificDataLength)
 {
 	// Check Aecp do not exceed maximum allowed length
-	if (commandSpecificDataLength > MaximumPayloadLength)
+	if (commandSpecificDataLength > MaximumPayloadBufferLength)
 	{
 		throw std::invalid_argument("AEM payload too big");
 	}
@@ -107,11 +100,20 @@ void LA_AVDECC_CALL_CONVENTION AemAecpdu::serialize(SerializationBuffer& buffer)
 	auto const previousSize = buffer.size();
 
 	buffer << static_cast<std::uint16_t>(((_unsolicited << 15) & 0x8000) | (_commandType.getValue() & 0x7fff));
-	buffer.packBuffer(_commandSpecificData.data(), _commandSpecificDataLength);
 
-	if (!AVDECC_ASSERT_WITH_RET((buffer.size() - previousSize) == (HeaderLength + _commandSpecificDataLength), "AemAecpdu::serialize error: Packed buffer length != expected header length"))
+	auto payloadLength = _commandSpecificDataLength;
+	// Clamp command specific buffer in case ControlDataLength exceeds maximum allowed value
+	if (payloadLength > MaximumSendPayloadBufferLength)
 	{
-		LOG_SERIALIZATION_ERROR(_srcAddress, "AemAecpdu::serialize error: Packed buffer length != expected header length");
+		LOG_SERIALIZATION_WARN(_destAddress, "AemAecpdu::serialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumSendPayloadBufferLength) + " for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + "),  clamping buffer down from " + std::to_string(payloadLength));
+		payloadLength = std::min(payloadLength, MaximumSendPayloadBufferLength); // Clamping
+	}
+
+	buffer.packBuffer(_commandSpecificData.data(), payloadLength);
+
+	if (!AVDECC_ASSERT_WITH_RET((buffer.size() - previousSize) == (HeaderLength + payloadLength), "AemAecpdu::serialize error: Packed buffer length != expected header length"))
+	{
+		LOG_SERIALIZATION_ERROR(_destAddress, "AemAecpdu::serialize error: Packed buffer length != expected header length");
 	}
 }
 
@@ -149,15 +151,11 @@ void LA_AVDECC_CALL_CONVENTION AemAecpdu::deserialize(DeserializationBuffer& buf
 #endif // IGNORE_INVALID_CONTROL_DATA_LENGTH
 	}
 
-	// Clamp command specific buffer in case ControlDataLength exceeds maximum protocol value, the ControlData specific unpacker will trap any error if the message is further ill-formed
-	if (_commandSpecificDataLength > MaximumPayloadLength_17221)
+	// Clamp command specific buffer in case ControlDataLength exceeds maximum allowed value, the ControlData specific unpacker will trap any error if the message is further ill-formed
+	if (_commandSpecificDataLength > MaximumRecvPayloadBufferLength)
 	{
-#if defined(ALLOW_BIG_AECP_PAYLOADS)
-		LOG_SERIALIZATION_INFO(_srcAddress, "AemAecpdu::deserialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumPayloadLength) + " for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + "),  but still processing it because of compilation option ALLOW_BIG_AECP_PAYLOADS");
-#else // !ALLOW_BIG_AECP_PAYLOADS
-		LOG_SERIALIZATION_WARN(_srcAddress, "AemAecpdu::deserialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumPayloadLength) + " for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + "),  clamping buffer down from " + std::to_string(_commandSpecificDataLength));
-#endif // ALLOW_BIG_AECP_PAYLOADS
-		_commandSpecificDataLength = std::min(_commandSpecificDataLength, _commandSpecificData.size());
+		LOG_SERIALIZATION_WARN(_srcAddress, "AemAecpdu::deserialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumRecvPayloadBufferLength) + " for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + "),  clamping buffer down from " + std::to_string(_commandSpecificDataLength));
+		_commandSpecificDataLength = std::min(_commandSpecificDataLength, MaximumRecvPayloadBufferLength); // Clamping
 	}
 
 	buffer.unpackBuffer(_commandSpecificData.data(), _commandSpecificDataLength);

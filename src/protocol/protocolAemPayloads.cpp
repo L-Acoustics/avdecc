@@ -178,7 +178,7 @@ std::tuple<entity::model::ConfigurationIndex, entity::model::DescriptorType, ent
 }
 
 /** READ_DESCRIPTOR Response - Clause 7.4.5.2 */
-//Serializer<AemAecpdu::MaximumPayloadLength> serializeReadDescriptorResponse(entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::DescriptorType const /*descriptorType*/, entity::model::DescriptorIndex const /*descriptorIndex*/)
+//Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeReadDescriptorResponse(entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::DescriptorType const /*descriptorType*/, entity::model::DescriptorIndex const /*descriptorIndex*/)
 //{
 //	return {};
 //}
@@ -1612,9 +1612,9 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 }
 
 /** GET_AVB_INFO Response - Clause 7.4.40.2 */
-Serializer<AemAecpdu::MaximumPayloadLength> serializeGetAvbInfoResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::AvbInfo const& avbInfo)
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeGetAvbInfoResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::AvbInfo const& avbInfo)
 {
-	Serializer<AemAecpdu::MaximumPayloadLength> ser;
+	Serializer<AemAecpdu::MaximumSendPayloadBufferLength> ser;
 
 	ser << descriptorType << descriptorIndex;
 	ser << avbInfo.gptpGrandmasterID << avbInfo.propagationDelay << avbInfo.gptpDomainNumber << avbInfo.flags << static_cast<std::uint16_t>(avbInfo.mappings.size());
@@ -1713,9 +1713,9 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 }
 
 /** GET_AUDIO_MAP Response - Clause 7.4.44.2 */
-Serializer<AemAecpdu::MaximumPayloadLength> serializeGetAudioMapResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::MapIndex const mapIndex, entity::model::MapIndex const numberOfMaps, entity::model::AudioMappings const& mappings)
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeGetAudioMapResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::MapIndex const mapIndex, entity::model::MapIndex const numberOfMaps, entity::model::AudioMappings const& mappings)
 {
-	Serializer<AemAecpdu::MaximumPayloadLength> ser;
+	Serializer<AemAecpdu::MaximumSendPayloadBufferLength> ser;
 	std::uint16_t const reserved{ 0u };
 
 	ser << descriptorType << descriptorIndex;
@@ -1774,9 +1774,9 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 }
 
 /** ADD_AUDIO_MAPPINGS Command - Clause 7.4.45.1 */
-Serializer<AemAecpdu::MaximumPayloadLength> serializeAddAudioMappingsCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::AudioMappings const& mappings)
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeAddAudioMappingsCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::AudioMappings const& mappings)
 {
-	Serializer<AemAecpdu::MaximumPayloadLength> ser;
+	Serializer<AemAecpdu::MaximumSendPayloadBufferLength> ser;
 	std::uint16_t const reserved{ 0u };
 
 	ser << descriptorType << descriptorIndex;
@@ -1834,7 +1834,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 }
 
 /** ADD_AUDIO_MAPPINGS Response - Clause 7.4.45.2 */
-Serializer<AemAecpdu::MaximumPayloadLength> serializeAddAudioMappingsResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::AudioMappings const& mappings)
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeAddAudioMappingsResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::AudioMappings const& mappings)
 {
 	// Same as ADD_AUDIO_MAPPINGS Command
 	static_assert(AecpAemAddAudioMappingsResponsePayloadMinSize == AecpAemAddAudioMappingsCommandPayloadMinSize, "ADD_AUDIO_MAPPINGS Response no longer the same as ADD_AUDIO_MAPPINGS Command");
@@ -1849,7 +1849,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 }
 
 /** REMOVE_AUDIO_MAPPINGS Command - Clause 7.4.46.1 */
-Serializer<AemAecpdu::MaximumPayloadLength> serializeRemoveAudioMappingsCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::AudioMappings const& mappings)
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeRemoveAudioMappingsCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::AudioMappings const& mappings)
 {
 	// Same as ADD_AUDIO_MAPPINGS Command
 	static_assert(AecpAemRemoveAudioMappingsCommandPayloadMinSize == AecpAemAddAudioMappingsCommandPayloadMinSize, "REMOVE_AUDIO_MAPPINGS Command no longer the same as ADD_AUDIO_MAPPINGS Command");
@@ -1864,7 +1864,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 }
 
 /** REMOVE_AUDIO_MAPPINGS Response - Clause 7.4.46.2 */
-Serializer<AemAecpdu::MaximumPayloadLength> serializeRemoveAudioMappingsResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::AudioMappings const& mappings)
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeRemoveAudioMappingsResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::AudioMappings const& mappings)
 {
 	// Same as ADD_AUDIO_MAPPINGS Command
 	static_assert(AecpAemRemoveAudioMappingsResponsePayloadMinSize == AecpAemAddAudioMappingsCommandPayloadMinSize, "REMOVE_AUDIO_MAPPINGS Response no longer the same as ADD_AUDIO_MAPPINGS Command");
@@ -1879,9 +1879,9 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 }
 
 /** START_OPERATION Command - Clause 7.4.53.1 */
-Serializer<AemAecpdu::MaximumPayloadLength> serializeStartOperationCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, entity::model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer)
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeStartOperationCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, entity::model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer)
 {
-	Serializer<AemAecpdu::MaximumPayloadLength> ser;
+	Serializer<AemAecpdu::MaximumSendPayloadBufferLength> ser;
 
 	ser << descriptorType << descriptorIndex;
 	ser << operationID << operationType;
@@ -1928,7 +1928,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 }
 
 /** START_OPERATION Response - Clause 7.4.53.1 */
-Serializer<AemAecpdu::MaximumPayloadLength> serializeStartOperationResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, entity::model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer)
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeStartOperationResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, entity::model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer)
 {
 	// Same as START_OPERATION Command
 	static_assert(AecpAemStartOperationResponsePayloadMinSize == AecpAemStartOperationCommandPayloadMinSize, "START_OPERATION Response no longer the same as START_OPERATION Command");

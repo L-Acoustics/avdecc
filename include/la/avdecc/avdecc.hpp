@@ -98,7 +98,8 @@ enum class CompileOption : std::uint32_t
 	None = 0,
 	IgnoreInvalidControlDataLength = 1u << 0,
 	IgnoreInvalidNonSuccessAemResponses = 1u << 1,
-	AllowBigAemPayloads = 1u << 2,
+	AllowSendBigAecpPayloads = 1u << 2,
+	AllowRecvBigAecpPayloads = 1u << 3,
 	EnableRedundancy = 1u << 15,
 };
 using CompileOptions = EnumBitfield<CompileOption>;
