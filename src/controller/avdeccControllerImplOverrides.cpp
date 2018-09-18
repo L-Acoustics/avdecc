@@ -1288,6 +1288,23 @@ void ControllerImpl::onUserReadDeviceMemoryResult(UniqueIdentifier const targetE
 		auto tlv = makeNextReadDeviceMemoryTlv(baseAddress, length, memoryBuffer.size());
 		if (tlv)
 		{
+			// Notify progress update
+			{
+				auto const progress = memoryBuffer.size() / static_cast<float>(length) * 100.0f;
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(targetEntityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+					invokeProtectedHandler(progressHandler, entity->wasAdvertised() ? entity : nullptr, progress);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(progressHandler, nullptr, progress);
+				}
+			}
+			// Read next TLV
 			LOG_CONTROLLER_TRACE(targetEntityID, "User readDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", baseAddress, length, tlv.getAddress() - baseAddress, tlv.size());
 			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress, length, progressHandler = std::move(progressHandler), completionHandler = std::move(completionHandler), memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs) mutable
 			{
@@ -1324,6 +1341,24 @@ void ControllerImpl::onUserWriteDeviceMemoryResult(UniqueIdentifier const target
 		auto tlv = makeNextWriteDeviceMemoryTlv(baseAddress, memoryBuffer, sentSize);
 		if (tlv)
 		{
+			// Notify progress update
+			{
+				auto const progress = sentSize / static_cast<float>(memoryBuffer.size()) * 100.0f;
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(targetEntityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+					invokeProtectedHandler(progressHandler, entity->wasAdvertised() ? entity : nullptr, progress);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(progressHandler, nullptr, progress);
+				}
+			}
+			// Read next TLV
+			LOG_CONTROLLER_TRACE(targetEntityID, "User writeDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", baseAddress, memoryBuffer.size(), tlv.getAddress() - baseAddress, tlv.size());
 			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress, sentSize = sentSize + tlv.size(), progressHandler = std::move(progressHandler), completionHandler = std::move(completionHandler), memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& /*tlvs*/) mutable
 			{
 				onUserWriteDeviceMemoryResult(entityID, status, baseAddress, sentSize, std::move(progressHandler), std::move(completionHandler), std::move(memoryBuffer));
