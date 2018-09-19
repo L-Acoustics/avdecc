@@ -84,6 +84,7 @@ public:
 		DataInvalid = 6,
 		Unsupported = 7,
 		// Library Error Codes
+		Aborted = 994,
 		NetworkError = 995,
 		ProtocolError = 996,
 		TimedOut = 997,

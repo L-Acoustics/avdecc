@@ -9,10 +9,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [2.7.0] - 2018-09-12
 ### Added
 - Support for MemoryObject Operations (Contributed by Florian Harmuth)
-- Debug asserts when trying to call a controller API while holding a lock on the targeted entity (which might cause a deadlock)
 
 ## Changed
 - la::avdecc::controller::CompileOptions is now la::avdecc::EnumBitfield
+
+## Fixed
+- Prevented possible deadlocks if the caller has a lock on a ControlledEntity
 
 ## [2.6.3] - 2018-08-08
 ### Fixed

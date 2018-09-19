@@ -41,12 +41,21 @@ public:
 	static constexpr size_t DefaultMaxInflightCommands = 1;
 	static constexpr size_t HeaderLength = 10; /* ControllerEID + SequenceID */
 	static constexpr size_t MaximumLength_1722_1 = 524; /* AECPDU maximum size - Clause 9.2.1.1.7 */
+#if defined(ALLOW_SEND_BIG_AECP_PAYLOADS) || defined(ALLOW_RECV_BIG_AECP_PAYLOADS) // Memory optimization, only set MaximumLength_BigPayloads to a greater value if either option is enabled
 	static constexpr size_t MaximumLength_BigPayloads = MaximumLength_1722_1 * 2; /* Extended size, up to 1048 */
-#if defined(ALLOW_BIG_AECP_PAYLOADS)
-	static constexpr size_t MaximumLength = MaximumLength_BigPayloads;
-#else // !ALLOW_BIG_AECP_PAYLOADS
-	static constexpr size_t MaximumLength = MaximumLength_1722_1;
-#endif // !ALLOW_BIG_AECP_PAYLOADS
+#else
+	static constexpr size_t MaximumLength_BigPayloads = MaximumLength_1722_1; /* Use same value as 1722.1 to optimize memory footprint */
+#endif
+#if defined(ALLOW_SEND_BIG_AECP_PAYLOADS)
+	static constexpr size_t MaximumSendLength = MaximumLength_BigPayloads;
+#else // !ALLOW_SEND_BIG_AECP_PAYLOADS
+	static constexpr size_t MaximumSendLength = MaximumLength_1722_1;
+#endif // ALLOW_SEND_BIG_AECP_PAYLOADS
+#if defined(ALLOW_RECV_BIG_AECP_PAYLOADS)
+	static constexpr size_t MaximumRecvLength = MaximumLength_BigPayloads;
+#else // !ALLOW_RECV_BIG_AECP_PAYLOADS
+	static constexpr size_t MaximumRecvLength = MaximumLength_1722_1;
+#endif // ALLOW_RECV_BIG_AECP_PAYLOADS
 	using UniquePointer = std::unique_ptr<Aecpdu, void(*)(Aecpdu*)>;
 
 	// Setters
@@ -70,14 +79,9 @@ public:
 	{
 		_sequenceID = sequenceID;
 	}
-	void LA_AVDECC_CALL_CONVENTION setAecpSpecificDataLength(size_t const commandSpecificDataLength)
+	void LA_AVDECC_CALL_CONVENTION setAecpSpecificDataLength(size_t const commandSpecificDataLength) noexcept
 	{
 		auto controlDataLength = static_cast<std::uint16_t>(Aecpdu::HeaderLength + commandSpecificDataLength);
-		// Check Aecp do not exceed maximum allowed length
-		if (controlDataLength > Aecpdu::MaximumLength)
-		{
-			throw std::invalid_argument("AECP payload too big");
-		}
 		AvtpduControl::setControlDataLength(controlDataLength);
 	}
 

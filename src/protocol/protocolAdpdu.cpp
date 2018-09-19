@@ -63,7 +63,7 @@ void LA_AVDECC_CALL_CONVENTION Adpdu::serialize(SerializationBuffer& buffer) con
 
 	if (!AVDECC_ASSERT_WITH_RET((buffer.size() - previousSize) == Length, "Adpdu::serialize error: Packed buffer length != expected header length"))
 	{
-		LOG_SERIALIZATION_ERROR(_srcAddress, "Adpdu::serialize error: Packed buffer length != expected header length");
+		LOG_SERIALIZATION_ERROR(_destAddress, "Adpdu::serialize error: Packed buffer length != expected header length");
 	}
 }
 

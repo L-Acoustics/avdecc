@@ -42,7 +42,10 @@ class AemAecpdu final : public Aecpdu
 public:
 	static constexpr size_t HeaderLength = 2; /* Unsolicited + CommandType */
 	static constexpr size_t MaximumPayloadLength_17221 = Aecpdu::MaximumLength_1722_1 - Aecpdu::HeaderLength - HeaderLength;
-	static constexpr size_t MaximumPayloadLength = Aecpdu::MaximumLength - Aecpdu::HeaderLength - HeaderLength;
+	static constexpr size_t MaximumPayloadBufferLength = Aecpdu::MaximumLength_BigPayloads - Aecpdu::HeaderLength - HeaderLength;
+	static constexpr size_t MaximumSendPayloadBufferLength = Aecpdu::MaximumSendLength - Aecpdu::HeaderLength - HeaderLength;
+	static constexpr size_t MaximumRecvPayloadBufferLength = Aecpdu::MaximumRecvLength - Aecpdu::HeaderLength - HeaderLength;
+	static_assert(MaximumPayloadBufferLength >= MaximumSendPayloadBufferLength && MaximumPayloadBufferLength >= MaximumRecvPayloadBufferLength, "Incoherent constexpr values");
 	static LA_AVDECC_API la::avdecc::networkInterface::MacAddress Identify_Mac_Address;
 	using Payload = std::pair<void const*, size_t>;
 
@@ -101,7 +104,7 @@ private:
 	// Aem header data
 	bool _unsolicited{ false };
 	AemCommandType _commandType{ AemCommandType::InvalidCommandType };
-	std::array<std::uint8_t, MaximumPayloadLength> _commandSpecificData{};
+	std::array<std::uint8_t, MaximumPayloadBufferLength> _commandSpecificData{};
 	size_t _commandSpecificDataLength{ 0u };
 };
 

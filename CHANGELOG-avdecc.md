@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Changed
-- Renamed ALLOW_BIG_AEM_PAYLOADS to ALLOW_BIG_AECP_PAYLOADS
+- Split ALLOW_BIG_AEM_PAYLOADS to ALLOW_SEND_BIG_AECP_PAYLOADS and ALLOW_RECV_BIG_AECP_PAYLOADS
 
 ## [2.7.0] - 2018-09-12
 ### Added

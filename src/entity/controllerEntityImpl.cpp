@@ -3416,6 +3416,8 @@ std::string LA_AVDECC_CALL_CONVENTION ControllerEntity::statusToString(Controlle
 		case AaCommandStatus::Unsupported:
 			return "A requested action was unsupported. Typically used when an unknown EXECUTE was encountered or if EXECUTE is not supported.";
 			// Library Error Codes
+		case AaCommandStatus::Aborted:
+			return "Operation aborted.";
 		case AaCommandStatus::NetworkError:
 			return "Network error.";
 		case AaCommandStatus::ProtocolError:

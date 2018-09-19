@@ -216,12 +216,11 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 	auto const descriptorType{ entity::model::DescriptorType::Entity };
 	auto const descriptorIndex{ entity::model::DescriptorIndex{0u} };
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User acquireEntity (isPersistent={} DescriptorType={} DescriptorIndex={})", isPersistent, to_integral(descriptorType), descriptorIndex);
 
 		// Already acquired or acquiring, don't do anything (we want to try to acquire if it's flagged as acquired by another controller, in case it went offline without notice)
@@ -277,12 +276,11 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 	auto const descriptorType{ entity::model::DescriptorType::Entity };
 	auto const descriptorIndex{ entity::model::DescriptorIndex{ 0u } };
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User releaseEntity (DescriptorType={} DescriptorIndex={})", to_integral(descriptorType), descriptorIndex);
 		_controller->releaseEntity(targetEntityID, descriptorType, descriptorIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 		{
@@ -314,12 +312,11 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 
 void ControllerImpl::setConfiguration(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, SetConfigurationHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setConfiguration (ConfigurationIndex={})", configurationIndex);
 		_controller->setConfiguration(targetEntityID, configurationIndex, [this, handler](entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex)
 		{
@@ -351,12 +348,11 @@ void ControllerImpl::setConfiguration(UniqueIdentifier const targetEntityID, ent
 
 void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat, SetStreamInputFormatHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamInputFormat (StreamIndex={} streamFormat={})", streamIndex, streamFormat);
 		_controller->setStreamInputFormat(targetEntityID, streamIndex, streamFormat, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat)
 		{
@@ -388,12 +384,11 @@ void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID,
 
 void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat, SetStreamOutputFormatHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamOutputFormat (StreamIndex={} streamFormat={})", streamIndex, streamFormat);
 		_controller->setStreamOutputFormat(targetEntityID, streamIndex, streamFormat, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat)
 		{
@@ -425,12 +420,11 @@ void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID
 
 void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity::model::AvdeccFixedString const& name, SetEntityNameHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setEntityName (Name={})", name.str());
 		_controller->setEntityName(targetEntityID, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status)
 		{
@@ -462,12 +456,11 @@ void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity
 
 void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, entity::model::AvdeccFixedString const& name, SetEntityGroupNameHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setEntityGroupName (Name={})", name.str());
 		_controller->setEntityGroupName(targetEntityID, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status)
 		{
@@ -499,12 +492,11 @@ void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, e
 
 void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& name, SetConfigurationNameHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setConfigurationName (ConfigurationIndex={} Name={})", configurationIndex, name.str());
 		_controller->setConfigurationName(targetEntityID, configurationIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex)
 		{
@@ -536,12 +528,11 @@ void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID,
 
 void ControllerImpl::setAudioUnitName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::AvdeccFixedString const& name, SetAudioUnitNameHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioUnitName (ConfigurationIndex={} AudioUnitIndex={} Name={})", configurationIndex, audioUnitIndex, name.str());
 		_controller->setAudioUnitName(targetEntityID, configurationIndex, audioUnitIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex)
 		{
@@ -573,12 +564,11 @@ void ControllerImpl::setAudioUnitName(UniqueIdentifier const targetEntityID, ent
 
 void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& name, SetStreamInputNameHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamInputName (ConfigurationIndex={} StreamIndex={} Name={})", configurationIndex, streamIndex, name.str());
 		_controller->setStreamInputName(targetEntityID, configurationIndex, streamIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
 		{
@@ -610,12 +600,11 @@ void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, e
 
 void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& name, SetStreamOutputNameHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamOutputName (ConfigurationIndex={} StreamIndex={} Name={})", configurationIndex, streamIndex, name.str());
 		_controller->setStreamOutputName(targetEntityID, configurationIndex, streamIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
 		{
@@ -647,12 +636,11 @@ void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, 
 
 void ControllerImpl::setAvbInterfaceName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvdeccFixedString const& name, SetAvbInterfaceNameHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setAvbInterfaceName (ConfigurationIndex={} AvbInterfaceIndex={} Name={})", configurationIndex, avbInterfaceIndex, name.str());
 		_controller->setAvbInterfaceName(targetEntityID, configurationIndex, avbInterfaceIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex)
 		{
@@ -684,12 +672,11 @@ void ControllerImpl::setAvbInterfaceName(UniqueIdentifier const targetEntityID, 
 
 void ControllerImpl::setClockSourceName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex, entity::model::AvdeccFixedString const& name, SetClockSourceNameHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setClockSourceName (ConfigurationIndex={} ClockSourceIndex={} Name={})", configurationIndex, clockSourceIndex, name.str());
 		_controller->setClockSourceName(targetEntityID, configurationIndex, clockSourceIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex)
 		{
@@ -721,12 +708,11 @@ void ControllerImpl::setClockSourceName(UniqueIdentifier const targetEntityID, e
 
 void ControllerImpl::setMemoryObjectName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, entity::model::AvdeccFixedString const& name, SetMemoryObjectNameHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setMemoryObjectName (ConfigurationIndex={} MemoryObjectIndex={} Name={})", configurationIndex, memoryObjectIndex, name.str());
 		_controller->setMemoryObjectName(targetEntityID, configurationIndex, memoryObjectIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex)
 		{
@@ -758,12 +744,11 @@ void ControllerImpl::setMemoryObjectName(UniqueIdentifier const targetEntityID, 
 
 void ControllerImpl::setAudioClusterName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex, entity::model::AvdeccFixedString const& name, SetAudioClusterNameHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioClusterName (ConfigurationIndex={} AudioClusterIndex={} Name={})", configurationIndex, audioClusterIndex, name.str());
 		_controller->setAudioClusterName(targetEntityID, configurationIndex, audioClusterIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex)
 		{
@@ -795,12 +780,11 @@ void ControllerImpl::setAudioClusterName(UniqueIdentifier const targetEntityID, 
 
 void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::AvdeccFixedString const& name, SetClockDomainNameHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setClockDomainName (ConfigurationIndex={} ClockDomainIndex={} Name={})", configurationIndex, clockDomainIndex, name.str());
 		_controller->setClockDomainName(targetEntityID, configurationIndex, clockDomainIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex)
 		{
@@ -832,12 +816,11 @@ void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, e
 
 void ControllerImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntityID, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate, SetAudioUnitSamplingRateHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioUnitSamplingRate (AudioUnitIndex={} SamplingRate={})", audioUnitIndex, samplingRate);
 		_controller->setAudioUnitSamplingRate(targetEntityID, audioUnitIndex, samplingRate, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate)
 		{
@@ -869,12 +852,11 @@ void ControllerImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntit
 
 void ControllerImpl::setClockSource(UniqueIdentifier const targetEntityID, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex, SetClockSourceHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setClockSource (ClockDomainIndex={} ClockSourceIndex={})", clockDomainIndex, clockSourceIndex);
 		_controller->setClockSource(targetEntityID, clockDomainIndex, clockSourceIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex)
 		{
@@ -906,12 +888,11 @@ void ControllerImpl::setClockSource(UniqueIdentifier const targetEntityID, entit
 
 void ControllerImpl::startStreamInput(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, StartStreamInputHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User startStreamInput (StreamIndex={})", streamIndex);
 		_controller->startStreamInput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 		{
@@ -943,12 +924,11 @@ void ControllerImpl::startStreamInput(UniqueIdentifier const targetEntityID, ent
 
 void ControllerImpl::stopStreamInput(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, StopStreamInputHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User stopStreamInput (StreamIndex={})", streamIndex);
 		_controller->stopStreamInput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 		{
@@ -980,12 +960,11 @@ void ControllerImpl::stopStreamInput(UniqueIdentifier const targetEntityID, enti
 
 void ControllerImpl::startStreamOutput(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, StartStreamOutputHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User startStreamOutput (StreamIndex={})", streamIndex);
 		_controller->startStreamOutput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 		{
@@ -1017,12 +996,11 @@ void ControllerImpl::startStreamOutput(UniqueIdentifier const targetEntityID, en
 
 void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, StopStreamOutputHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User stopStreamOutput (StreamIndex={})", streamIndex);
 		_controller->stopStreamOutput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 		{
@@ -1054,12 +1032,11 @@ void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, ent
 
 void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, AddStreamPortInputAudioMappingsHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User addStreamInputAudioMappings (StreamPortIndex={})", streamPortIndex); // TODO: Convert mappings to string and add to log
 		_controller->addStreamPortInputAudioMappings(targetEntityID, streamPortIndex, mappings, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 		{
@@ -1091,12 +1068,11 @@ void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targ
 
 void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, AddStreamPortOutputAudioMappingsHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User addStreamOutputAudioMappings (StreamPortIndex={})", streamPortIndex);
 		_controller->addStreamPortOutputAudioMappings(targetEntityID, streamPortIndex, mappings, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 		{
@@ -1128,12 +1104,11 @@ void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const tar
 
 void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, RemoveStreamPortInputAudioMappingsHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User removeStreamInputAudioMappings (StreamPortIndex={})", streamPortIndex);
 		_controller->removeStreamPortInputAudioMappings(targetEntityID, streamPortIndex, mappings, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 		{
@@ -1165,12 +1140,11 @@ void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const t
 
 void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, RemoveStreamPortOutputAudioMappingsHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User removeStreamOutputAudioMappings (StreamPortIndex={})", streamPortIndex);
 		_controller->removeStreamPortOutputAudioMappings(targetEntityID, streamPortIndex, mappings, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 		{
@@ -1202,12 +1176,11 @@ void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const 
 
 void ControllerImpl::setMemoryObjectLength(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length, SetMemoryObjectLengthHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setMemoryObjectLength (ConfigurationIndex={} MemoryObjectIndex={} Length={})", configurationIndex, memoryObjectIndex, length);
 		_controller->setMemoryObjectLength(targetEntityID, configurationIndex, memoryObjectIndex, length, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length)
 		{
@@ -1272,8 +1245,12 @@ entity::addressAccess::Tlv ControllerImpl::makeNextWriteDeviceMemoryTlv(std::uin
 	return entity::addressAccess::Tlv{};
 }
 
-void ControllerImpl::onUserReadDeviceMemoryResult(UniqueIdentifier const targetEntityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs, std::uint64_t const baseAddress, std::uint64_t const length, ReadDeviceMemoryHandler&& handler, DeviceMemoryBuffer&& memoryBuffer) const noexcept
+void ControllerImpl::onUserReadDeviceMemoryResult(UniqueIdentifier const targetEntityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs, std::uint64_t const baseAddress, std::uint64_t const length, ReadDeviceMemoryProgressHandler const& progressHandler, ReadDeviceMemoryCompletionHandler const& completionHandler, DeviceMemoryBuffer&& memoryBuffer) const noexcept
 {
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	auto* const entity = controlledEntity ? (controlledEntity->wasAdvertised() ? controlledEntity.get() : nullptr) : nullptr;
+
 	LOG_CONTROLLER_TRACE(targetEntityID, "User readDeviceMemory chunk (BaseAddress={} Length={}): {}", baseAddress, length, entity::ControllerEntity::statusToString(status));
 	if (!!status)
 	{
@@ -1288,10 +1265,25 @@ void ControllerImpl::onUserReadDeviceMemoryResult(UniqueIdentifier const targetE
 		auto tlv = makeNextReadDeviceMemoryTlv(baseAddress, length, memoryBuffer.size());
 		if (tlv)
 		{
-			LOG_CONTROLLER_TRACE(targetEntityID, "User readDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", baseAddress, length, tlv.getAddress() - baseAddress, tlv.size());
-			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress, length, handler = std::move(handler), memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs) mutable
+			// Notify progress update
+			try
 			{
-				onUserReadDeviceMemoryResult(entityID, status, tlvs, baseAddress, length, std::move(handler), std::move(memoryBuffer));
+				auto const progress = memoryBuffer.size() / static_cast<float>(length) * 100.0f;
+				if (progressHandler && progressHandler(entity, progress))
+				{
+					invokeProtectedHandler(completionHandler, entity, entity::ControllerEntity::AaCommandStatus::Aborted, memoryBuffer);
+					return;
+				}
+			}
+			catch (...)
+			{
+				// Ignore exceptions in user handler
+			}
+			// Read next TLV
+			LOG_CONTROLLER_TRACE(targetEntityID, "User readDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", baseAddress, length, tlv.getAddress() - baseAddress, tlv.size());
+			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress, length, progressHandler = std::move(progressHandler), completionHandler = std::move(completionHandler), memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs) mutable
+			{
+				onUserReadDeviceMemoryResult(entityID, status, tlvs, baseAddress, length, std::move(progressHandler), std::move(completionHandler), std::move(memoryBuffer));
 			});
 			return;
 		}
@@ -1301,22 +1293,16 @@ void ControllerImpl::onUserReadDeviceMemoryResult(UniqueIdentifier const targetE
 		memoryBuffer.clear();
 	}
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
-
-	if (controlledEntity)
-	{
-		auto* const entity = controlledEntity.get();
-		invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, memoryBuffer);
-	}
-	else // The entity went offline right after we sent our message
-	{
-		invokeProtectedHandler(handler, nullptr, status, memoryBuffer);
-	}
+	// Notify of completion (either error or all TLVs processed)
+	invokeProtectedHandler(completionHandler, entity, status, memoryBuffer);
 }
 
-void ControllerImpl::onUserWriteDeviceMemoryResult(UniqueIdentifier const targetEntityID, entity::ControllerEntity::AaCommandStatus const status, std::uint64_t const baseAddress, std::uint64_t const sentSize, WriteDeviceMemoryHandler&& handler, DeviceMemoryBuffer&& memoryBuffer) const noexcept
+void ControllerImpl::onUserWriteDeviceMemoryResult(UniqueIdentifier const targetEntityID, entity::ControllerEntity::AaCommandStatus const status, std::uint64_t const baseAddress, std::uint64_t const sentSize, WriteDeviceMemoryProgressHandler const& progressHandler, WriteDeviceMemoryCompletionHandler const& completionHandler, DeviceMemoryBuffer&& memoryBuffer) const noexcept
 {
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	auto* const entity = controlledEntity ? (controlledEntity->wasAdvertised() ? controlledEntity.get() : nullptr) : nullptr;
+
 	LOG_CONTROLLER_TRACE(targetEntityID, "User writeDeviceMemory chunk (BaseAddress={} Length={}): {}", baseAddress, memoryBuffer.size(), entity::ControllerEntity::statusToString(status));
 	if (!!status)
 	{
@@ -1324,36 +1310,41 @@ void ControllerImpl::onUserWriteDeviceMemoryResult(UniqueIdentifier const target
 		auto tlv = makeNextWriteDeviceMemoryTlv(baseAddress, memoryBuffer, sentSize);
 		if (tlv)
 		{
-			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress, sentSize = sentSize + tlv.size(), handler = std::move(handler), memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& /*tlvs*/) mutable
+			// Notify progress update
+			try
 			{
-				onUserWriteDeviceMemoryResult(entityID, status, baseAddress, sentSize, std::move(handler), std::move(memoryBuffer));
+				auto const progress = sentSize / static_cast<float>(memoryBuffer.size()) * 100.0f;
+				if (progressHandler && progressHandler(entity, progress))
+				{
+					invokeProtectedHandler(completionHandler, entity, entity::ControllerEntity::AaCommandStatus::Aborted);
+					return;
+				}
+			}
+			catch (...)
+			{
+				// Ignore exceptions in user handler
+			}
+			// Read next TLV
+			LOG_CONTROLLER_TRACE(targetEntityID, "User writeDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", baseAddress, memoryBuffer.size(), tlv.getAddress() - baseAddress, tlv.size());
+			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress, sentSize = sentSize + tlv.size(), progressHandler = std::move(progressHandler), completionHandler = std::move(completionHandler), memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& /*tlvs*/) mutable
+			{
+				onUserWriteDeviceMemoryResult(entityID, status, baseAddress, sentSize, std::move(progressHandler), std::move(completionHandler), std::move(memoryBuffer));
 			});
 			return;
 		}
 	}
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
-
-	if (controlledEntity)
-	{
-		auto* const entity = controlledEntity.get();
-		invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-	}
-	else // The entity went offline right after we sent our message
-	{
-		invokeProtectedHandler(handler, nullptr, status);
-	}
+	// Notify of completion (either error or all TLVs processed)
+	invokeProtectedHandler(completionHandler, entity, status);
 }
 
-void ControllerImpl::readDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, std::uint64_t const length, ReadDeviceMemoryHandler const& handler) const noexcept
+void ControllerImpl::readDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, std::uint64_t const length, ReadDeviceMemoryProgressHandler const& progressHandler, ReadDeviceMemoryCompletionHandler const& completionHandler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		DeviceMemoryBuffer memoryBuffer{};
 #pragma message("TODO: Find a way to have the DeviceMemoryBuffer being properly moved all the way through the lambdas and handlers. Currently some handlers are copied, so the DeviceMemoryBuffer is copied instead of being moved causing unecessary reallocations")
 		memoryBuffer.reserve(static_cast<size_t>(length));
@@ -1362,30 +1353,29 @@ void ControllerImpl::readDeviceMemory(UniqueIdentifier const targetEntityID, std
 		if (tlv)
 		{
 			LOG_CONTROLLER_TRACE(targetEntityID, "User readDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", address, length, 0, tlv.size());
-			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress = address, length, handlerCopy = handler, memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs) mutable
+			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress = address, length, progressHandlerCopy = progressHandler, completionHandlerCopy = completionHandler, memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs) mutable
 			{
-				onUserReadDeviceMemoryResult(entityID, status, tlvs, baseAddress, length, std::move(handlerCopy), std::move(memoryBuffer));
+				onUserReadDeviceMemoryResult(entityID, status, tlvs, baseAddress, length, std::move(progressHandlerCopy), std::move(completionHandlerCopy), std::move(memoryBuffer));
 			});
 		}
 		else
 		{
-			invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AaCommandStatus::TlvInvalid, DeviceMemoryBuffer{});
+			invokeProtectedHandler(completionHandler, nullptr, entity::ControllerEntity::AaCommandStatus::TlvInvalid, DeviceMemoryBuffer{});
 		}
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AaCommandStatus::UnknownEntity, DeviceMemoryBuffer{});
+		invokeProtectedHandler(completionHandler, nullptr, entity::ControllerEntity::AaCommandStatus::UnknownEntity, DeviceMemoryBuffer{});
 	}
 }
 
 void ControllerImpl::startOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer, StartOperationHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User startOperation (DescriptorType={}, DescriptorIndex={}, OperationType={})", static_cast<std::uint16_t>(descriptorType), descriptorIndex, static_cast<std::uint16_t>(operationType));
 
 		_controller->startOperation(targetEntityID, descriptorType, descriptorIndex, operationType, memoryBuffer, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const /*descriptorType*/, la::avdecc::entity::model::DescriptorIndex const /*descriptorIndex*/, la::avdecc::entity::model::OperationID const operationID, la::avdecc::entity::model::MemoryObjectOperationType const /*operationType*/, la::avdecc::MemoryBuffer const& memoryBuffer)
@@ -1414,12 +1404,11 @@ void ControllerImpl::startOperation(UniqueIdentifier const targetEntityID, entit
 
 void ControllerImpl::abortOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, AbortOperationHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(targetEntityID, "User abortOperation (DescriptorType={}, DescriptorIndex={}, OperationID={})", static_cast<std::uint16_t>(descriptorType), descriptorIndex, operationID);
 
 		_controller->abortOperation(targetEntityID, descriptorType, descriptorIndex, operationID, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::DescriptorType const /*descriptorType*/, entity::model::DescriptorIndex const /*descriptorIndex*/, entity::model::OperationID const /*operationID*/)
@@ -1485,7 +1474,7 @@ void ControllerImpl::startUploadMemoryObjectOperation(UniqueIdentifier const tar
 	startMemoryObjectOperation(targetEntityID, descriptorIndex, entity::model::MemoryObjectOperationType::Upload, buffer, handler);
 }
 
-void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, DeviceMemoryBuffer memoryBuffer, WriteDeviceMemoryHandler const& handler) const noexcept
+void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, DeviceMemoryBuffer memoryBuffer, WriteDeviceMemoryProgressHandler const& progressHandler, WriteDeviceMemoryCompletionHandler const& completionHandler) const noexcept
 {
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(targetEntityID);
@@ -1497,30 +1486,29 @@ void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, st
 		if (tlv)
 		{
 			LOG_CONTROLLER_TRACE(targetEntityID, "User writeDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", address, memoryBuffer.size(), 0, tlv.size());
-			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress = address, sentSize = tlv.size(), handlerCopy = handler, memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& /*tlvs*/) mutable
+			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress = address, sentSize = tlv.size(), progressHandlerCopy = progressHandler, completionHandlerCopy = completionHandler, memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& /*tlvs*/) mutable
 			{
-				onUserWriteDeviceMemoryResult(entityID, status, baseAddress, sentSize, std::move(handlerCopy), std::move(memoryBuffer));
+				onUserWriteDeviceMemoryResult(entityID, status, baseAddress, sentSize, std::move(progressHandlerCopy), std::move(completionHandlerCopy), std::move(memoryBuffer));
 			});
 		}
 		else
 		{
-			invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AaCommandStatus::TlvInvalid);
+			invokeProtectedHandler(completionHandler, nullptr, entity::ControllerEntity::AaCommandStatus::TlvInvalid);
 		}
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AaCommandStatus::UnknownEntity);
+		invokeProtectedHandler(completionHandler, nullptr, entity::ControllerEntity::AaCommandStatus::UnknownEntity);
 	}
 }
 
 void ControllerImpl::connectStream(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(listenerStream.entityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(listenerStream.entityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex);
 		_controller->connectStream(talkerStream, listenerStream, [this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 		{
@@ -1546,12 +1534,11 @@ void ControllerImpl::connectStream(entity::model::StreamIdentification const& ta
 
 void ControllerImpl::disconnectStream(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, DisconnectStreamHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(listenerStream.entityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(listenerStream.entityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex);
 		_controller->disconnectStream(talkerStream, listenerStream, [this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 		{
@@ -1607,12 +1594,11 @@ void ControllerImpl::disconnectStream(entity::model::StreamIdentification const&
 
 void ControllerImpl::disconnectTalkerStream(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, DisconnectTalkerStreamHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(talkerStream.entityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(talkerStream.entityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectTalkerStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex);
 		_controller->disconnectTalkerStream(talkerStream, listenerStream, [this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 		{
@@ -1640,12 +1626,11 @@ void ControllerImpl::disconnectTalkerStream(entity::model::StreamIdentification 
 
 void ControllerImpl::getListenerStreamState(entity::model::StreamIdentification const& listenerStream, GetListenerStreamStateHandler const& handler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(listenerStream.entityID);
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(listenerStream.entityID);
 
 	if (controlledEntity)
 	{
-		AVDECC_ASSERT(!controlledEntity->isSelfLocked(), "ControlledEntity should not be self locked when calling a Controller API");
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User getListenerStreamState (ListenerID={} ListenerIndex={})", listenerStream.entityID.getValue(), listenerStream.streamIndex);
 		_controller->getListenerStreamState(listenerStream, [this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 		{

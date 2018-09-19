@@ -172,12 +172,6 @@ public:
 		return _controlledEntity != nullptr;
 	}
 
-	void reset() noexcept
-	{
-		unlock();
-		_controlledEntity = nullptr;
-	}
-
 	// Default constructor to allow creation of an empty Guard
 	ControlledEntityGuard() noexcept
 	{

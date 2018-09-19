@@ -42,7 +42,10 @@ class GenericAecpdu final : public Aecpdu
 public:
 	static constexpr size_t HeaderLength = 0; /* Nothing */
 	static constexpr size_t MaximumPayloadLength_17221 = Aecpdu::MaximumLength_1722_1 - Aecpdu::HeaderLength - HeaderLength;
-	static constexpr size_t MaximumPayloadLength = Aecpdu::MaximumLength - Aecpdu::HeaderLength - HeaderLength;
+	static constexpr size_t MaximumPayloadBufferLength = Aecpdu::MaximumLength_BigPayloads - Aecpdu::HeaderLength - HeaderLength;
+	static constexpr size_t MaximumSendPayloadBufferLength = Aecpdu::MaximumSendLength - Aecpdu::HeaderLength - HeaderLength;
+	static constexpr size_t MaximumRecvPayloadBufferLength = Aecpdu::MaximumRecvLength - Aecpdu::HeaderLength - HeaderLength;
+	static_assert(MaximumPayloadBufferLength >= MaximumSendPayloadBufferLength && MaximumPayloadBufferLength >= MaximumRecvPayloadBufferLength, "Incoherent constexpr values");
 	using Payload = std::pair<void const*, size_t>;
 
 	/**
@@ -94,7 +97,7 @@ private:
 	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION destroy() noexcept override;
 
 	// Generic header data
-	std::array<std::uint8_t, MaximumPayloadLength> _payload{};
+	std::array<std::uint8_t, MaximumPayloadBufferLength> _payload{};
 	size_t _payloadLength{ 0u };
 };
 

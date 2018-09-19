@@ -40,14 +40,7 @@ namespace protocol
 
 GenericAecpdu::GenericAecpdu() noexcept
 {
-	// Initialize parent's specific data length field
-	try
-	{
-		Aecpdu::setAecpSpecificDataLength(GenericAecpdu::HeaderLength); // This method might throw, but it's not possible from here
-	}
-	catch (std::exception const&)
-	{
-	}
+	Aecpdu::setAecpSpecificDataLength(GenericAecpdu::HeaderLength);
 }
 
 GenericAecpdu::~GenericAecpdu() noexcept
@@ -57,7 +50,7 @@ GenericAecpdu::~GenericAecpdu() noexcept
 void LA_AVDECC_CALL_CONVENTION GenericAecpdu::setPayload(void const* const payload, size_t const payloadLength)
 {
 	// Check Aecp do not exceed maximum allowed length
-	if (payloadLength > MaximumPayloadLength)
+	if (payloadLength > MaximumPayloadBufferLength)
 	{
 		throw std::invalid_argument("Generic payload too big");
 	}
@@ -84,11 +77,19 @@ void LA_AVDECC_CALL_CONVENTION GenericAecpdu::serialize(SerializationBuffer& buf
 
 	auto const previousSize = buffer.size();
 
-	buffer.packBuffer(_payload.data(), _payloadLength);
-
-	if (!AVDECC_ASSERT_WITH_RET((buffer.size() - previousSize) == (HeaderLength + _payloadLength), "GenericAecpdu::serialize error: Packed buffer length != expected header length"))
+	auto payloadLength = _payloadLength;
+	// Clamp payload in case ControlDataLength exceeds maximum allowed value
+	if (payloadLength > MaximumSendPayloadBufferLength)
 	{
-		LOG_SERIALIZATION_ERROR(_srcAddress, "GenericAecpdu::serialize error: Packed buffer length != expected header length");
+		LOG_SERIALIZATION_WARN(_destAddress, "GenericAecpdu::serialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumSendPayloadBufferLength) + ",  clamping buffer down from " + std::to_string(_payloadLength));
+		payloadLength = std::min(payloadLength, MaximumSendPayloadBufferLength); // Clamping
+	}
+
+	buffer.packBuffer(_payload.data(), payloadLength);
+
+	if (!AVDECC_ASSERT_WITH_RET((buffer.size() - previousSize) == (HeaderLength + payloadLength), "GenericAecpdu::serialize error: Packed buffer length != expected header length"))
+	{
+		LOG_SERIALIZATION_ERROR(_destAddress, "GenericAecpdu::serialize error: Packed buffer length != expected header length");
 	}
 }
 
@@ -119,15 +120,11 @@ void LA_AVDECC_CALL_CONVENTION GenericAecpdu::deserialize(DeserializationBuffer&
 #endif // IGNORE_INVALID_CONTROL_DATA_LENGTH
 	}
 
-	// Clamp command specific buffer in case ControlDataLength exceeds maximum protocol value, the ControlData specific unpacker will trap any error if the message is further ill-formed
-	if (_payloadLength > MaximumPayloadLength_17221)
+	// Clamp command specific buffer in case ControlDataLength exceeds maximum allowed value
+	if (_payloadLength > MaximumRecvPayloadBufferLength)
 	{
-#if defined(ALLOW_BIG_AECP_PAYLOADS)
-		LOG_SERIALIZATION_INFO(_srcAddress, "GenericAecpdu::deserialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumPayloadLength) + ",  but still processing it because of compilation option ALLOW_BIG_AECP_PAYLOADS");
-#else // !ALLOW_BIG_AECP_PAYLOADS
-		LOG_SERIALIZATION_WARN(_srcAddress, "GenericAecpdu::deserialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumPayloadLength) + ",  clamping buffer down from " + std::to_string(_payloadLength));
-#endif // ALLOW_BIG_AECP_PAYLOADS
-		_payloadLength = std::min(_payloadLength, _payload.size());
+		LOG_SERIALIZATION_WARN(_srcAddress, "GenericAecpdu::deserialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumRecvPayloadBufferLength) + ",  clamping buffer down from " + std::to_string(_payloadLength));
+		_payloadLength = std::min(_payloadLength, MaximumRecvPayloadBufferLength); // Clamping
 	}
 
 	buffer.unpackBuffer(_payload.data(), _payloadLength);
