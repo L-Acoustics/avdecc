@@ -243,6 +243,79 @@ private:
 	void updateOperationStatus(ControlledEntityImpl& controlledEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, std::uint16_t const percentComplete) const noexcept;
 
 	/* ************************************************************ */
+	/* Private classes                                              */
+	/* ************************************************************ */
+	/** A ControlledEntityImpl that is automatically unlocked then relocked, if locked when retrieved. It should be used by the ControllerImpl when called by a public API so the ControlledEntity is no longer locked when lower layers are called (deadlock prevention). */
+	class UnlockedControlledEntity final
+	{
+	public:
+		/** Returns a ControlledEntity const* */
+		ControlledEntityImpl const* get() const noexcept
+		{
+			if (_controlledEntity == nullptr)
+				return nullptr;
+			return _controlledEntity.get();
+		}
+
+		/** Operator to access ControlledEntity */
+		ControlledEntityImpl* operator->() noexcept
+		{
+			if (_controlledEntity == nullptr)
+				return nullptr;
+			return _controlledEntity.operator->();
+		}
+
+		/** Operator to access ControlledEntity */
+		ControlledEntityImpl& operator*()
+		{
+			if (_controlledEntity == nullptr)
+				throw la::avdecc::Exception("ControlledEntityImpl is nullptr");
+			return _controlledEntity.operator*();
+		}
+
+		/** Returns true if the entity is online (meaning a valid ControlledEntity can be retrieved using an operator overload) */
+		explicit operator bool() const noexcept
+		{
+			return _controlledEntity != nullptr;
+		}
+
+		// Default constructor to allow creation of an empty Guard
+		UnlockedControlledEntity() noexcept
+		{
+		}
+
+		UnlockedControlledEntity(OnlineControlledEntity entity)
+			: _controlledEntity(std::move(entity)), _wasLocked(_controlledEntity && _controlledEntity->isSelfLocked())
+		{
+			if (_wasLocked)
+			{
+				_controlledEntity->unlock();
+			}
+		}
+
+		// Destructor
+		~UnlockedControlledEntity()
+		{
+			if (_wasLocked)
+			{
+				_controlledEntity->lock();
+			}
+		}
+
+		// Allow move semantics
+		UnlockedControlledEntity(UnlockedControlledEntity&&) = default;
+		UnlockedControlledEntity& operator=(UnlockedControlledEntity&&) = default;
+
+		// Disallow copy
+		UnlockedControlledEntity(UnlockedControlledEntity const&) = delete;
+		UnlockedControlledEntity& operator=(UnlockedControlledEntity const&) = delete;
+
+	private:
+		OnlineControlledEntity _controlledEntity{ nullptr };
+		bool const _wasLocked{ false };
+	};
+
+	/* ************************************************************ */
 	/* Private enums                                                */
 	/* ************************************************************ */
 	enum class FailureAction
@@ -303,6 +376,18 @@ private:
 	constexpr Controller& getSelf() const noexcept
 	{
 		return *const_cast<Controller*>(static_cast<Controller const*>(this));
+	}
+	inline UnlockedControlledEntity getUnlockedControlledEntityImpl(UniqueIdentifier const entityID) const noexcept
+	{
+		// Lock to protect _controlledEntities
+		std::lock_guard<decltype(_lock)> const lg(_lock);
+
+		auto entityIt = _controlledEntities.find(entityID);
+		if (entityIt != _controlledEntities.end())
+		{
+			return entityIt->second;
+		}
+		return UnlockedControlledEntity{};
 	}
 	inline OnlineControlledEntity getControlledEntityImpl(UniqueIdentifier const entityID) const noexcept
 	{

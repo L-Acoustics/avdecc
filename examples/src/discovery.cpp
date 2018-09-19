@@ -140,6 +140,8 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 				_controller->readDeviceMemory(entity->getEntity().getEntityID(), obj.staticModel->startAddress, obj.staticModel->maximumLength, [](la::avdecc::controller::ControlledEntity const* const /*entity*/, float const percentComplete)
 				{
 					outputText("Memory Object progress: " + std::to_string(percentComplete) + "\n");
+					return false;
+
 				}, [](la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AaCommandStatus const status, la::avdecc::controller::Controller::DeviceMemoryBuffer const& memoryBuffer)
 				{
 					if (!!status && entity)
