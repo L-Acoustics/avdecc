@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [Retrieving entity current acquired state upon enumeration](https://github.com/L-Acoustics/avdecc/issues/26)
+
 ### Changed
 - Split ALLOW_BIG_AEM_PAYLOADS to ALLOW_SEND_BIG_AECP_PAYLOADS and ALLOW_RECV_BIG_AECP_PAYLOADS
 

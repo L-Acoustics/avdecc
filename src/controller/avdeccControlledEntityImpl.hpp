@@ -77,6 +77,7 @@ public:
 	/** Dynamic information to retrieve from entities. This is always required, either from a first enumeration or from recover from loss of unsolicited notification. */
 	enum class DynamicInfoType : std::uint16_t
 	{
+		AcquiredState, // acquireEntity(ReleasedFlag)
 		InputStreamAudioMappings, // getStreamPortInputAudioMap (GET_AUDIO_MAP)
 		OutputStreamAudioMappings, // getStreamPortOutputAudioMap (GET_AUDIO_MAP)
 		InputStreamState, // getListenerStreamState (GET_RX_STATE)
