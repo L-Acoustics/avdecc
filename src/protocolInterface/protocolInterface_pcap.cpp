@@ -25,6 +25,7 @@
 #include "la/avdecc/internals/serialization.hpp"
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
+#include "la/avdecc/internals/protocolMvuAecpdu.hpp"
 #include "stateMachine/controllerStateMachine.hpp"
 #include "protocolInterface_pcap.hpp"
 #include "pcapInterface.hpp"
@@ -462,29 +463,48 @@ private:
 					auto const messageType = static_cast<AecpMessageType>(controlData);
 
 #pragma message("TODO: Handle other AECP message types")
-					static std::unordered_map<AecpMessageType, std::function<Aecpdu::UniquePointer()>, AecpMessageType::Hash> s_Dispatch{
+					static std::unordered_map<AecpMessageType, std::function<Aecpdu::UniquePointer(std::uint8_t const* const pkt_data, size_t const pkt_len)>, AecpMessageType::Hash> s_Dispatch{
 						{
-							AecpMessageType::AemCommand, []()
+							AecpMessageType::AemCommand, [](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
 							{
 								return AemAecpdu::create();
 							}
 						},
 						{
-							AecpMessageType::AemResponse, []()
+							AecpMessageType::AemResponse, [](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
 							{
 								return AemAecpdu::create();
 							}
 						},
 						{
-							AecpMessageType::AddressAccessCommand, []()
+							AecpMessageType::AddressAccessCommand, [](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
 							{
 								return AaAecpdu::create();
 							}
 						},
 						{
-							AecpMessageType::AddressAccessResponse, []()
+							AecpMessageType::AddressAccessResponse, [](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
 							{
 								return AaAecpdu::create();
+							}
+						},
+						{
+							AecpMessageType::VendorUniqueResponse, [](std::uint8_t const* const pkt_data, size_t const pkt_len)
+							{
+								// We have to retrieve the ProtocolID to dispatch
+								auto const protocolIdentifierOffset = AvtpduControl::HeaderLength + Aecpdu::HeaderLength;
+								if (pkt_len >= (protocolIdentifierOffset + VuAecpdu::ProtocolIdentifierSize))
+								{
+									VuAecpdu::ProtocolIdentifier protocolIdentifier;
+									std::memcpy(protocolIdentifier.data(), pkt_data + protocolIdentifierOffset, VuAecpdu::ProtocolIdentifierSize);
+
+									if (protocolIdentifier == MvuAecpdu::ProtocolID)
+									{
+										return MvuAecpdu::create();
+									}
+								}
+
+								return Aecpdu::UniquePointer{nullptr, nullptr};
 							}
 						},
 					};
@@ -494,7 +514,7 @@ private:
 						return; // Unsupported AECP message type
 
 					// Create aecpdu frame based on message type
-					aecpdu = it->second();
+					aecpdu = it->second(pkt_data, pkt_len);
 
 					if (aecpdu != nullptr)
 					{

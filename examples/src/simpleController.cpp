@@ -59,8 +59,9 @@ int doJob()
 				ss << std::hex << "### Unit online (" << la::avdecc::toHexString(entityID, true) << ")";
 				if (la::avdecc::hasFlag(entity.getEntityCapabilities(), la::avdecc::entity::EntityCapabilities::AemSupported))
 				{
-					ss << std::hex << ", querying EntityModel" << std::endl;
-					controller->readEntityDescriptor(entityID, std::bind(&ControllerDelegate::onEntityDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+					controller->getMilanInfo(entityID, 0, nullptr);
+					//ss << std::hex << ", querying EntityModel" << std::endl;
+					//controller->readEntityDescriptor(entityID, std::bind(&ControllerDelegate::onEntityDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 				}
 				else
 				{

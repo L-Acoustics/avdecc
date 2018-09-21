@@ -42,6 +42,7 @@ namespace stateMachine
 /* Aecp commands timeout - Clause 9.2.1 */
 static constexpr auto AecpAemCommandTimeoutMsec = 250u;
 static constexpr auto AecpAaCommandTimeoutMsec = 250u;
+static constexpr auto AecpVuCommandTimeoutMsec = 250u; // This is actually not true, it may be different for each Vendor Unique
 /* Acmp commands timeout - Clause 8.2.2 */
 static constexpr auto AcmpConnectTxCommandTimeoutMsec = 2000u;
 static constexpr auto AcmpDisconnectTxCommandTimeoutMsec = 200u;
@@ -588,6 +589,7 @@ void ControllerStateMachine::resetAecpCommandTimeoutValue(AecpCommandInfo& comma
 	static std::unordered_map<AecpMessageType, std::uint32_t, AecpMessageType::Hash> s_AecpCommandTimeoutMap{
 		{ AecpMessageType::AemCommand, AecpAemCommandTimeoutMsec },
 		{ AecpMessageType::AddressAccessCommand, AecpAaCommandTimeoutMsec },
+		{ AecpMessageType::VendorUniqueCommand, AecpVuCommandTimeoutMsec },
 	};
 
 	std::uint32_t timeout{ 250 };

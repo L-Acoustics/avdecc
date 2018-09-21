@@ -251,6 +251,29 @@ public:
 	static LA_AVDECC_API AaAecpStatus const Unsupported;
 };
 
+/** Milan Vendor Unique Command Type - Milan Clause 7.2.2.3 */
+class MvuCommandType : public TypedDefine<std::uint16_t>
+{
+public:
+	using TypedDefine::TypedDefine;
+
+	static LA_AVDECC_API MvuCommandType const GetMilanInfo;
+
+	static LA_AVDECC_API MvuCommandType const InvalidCommandType;
+
+	LA_AVDECC_API operator std::string() const noexcept;
+};
+
+/** Milan Features Flags - Milan Clause 7.4.1 */
+class MvuFeaturesFlags : public TypedDefine<std::uint32_t>
+{
+public:
+	using TypedDefine::TypedDefine;
+
+	static LA_AVDECC_API MvuFeaturesFlags const None;
+	static LA_AVDECC_API MvuFeaturesFlags const Redundancy;
+};
+
 /** ACMP Message Type - Clause 8.2.1.5 */
 class AcmpMessageType : public TypedDefine<std::uint8_t>
 {

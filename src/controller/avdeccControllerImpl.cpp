@@ -671,11 +671,11 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 	switch (dynamicInfoType)
 	{
 		case ControlledEntityImpl::DynamicInfoType::AcquiredState:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex, subIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID](entity::ControllerEntity* const controller) noexcept
 			{
 				// Send an ACQUIRE command with the RELEASE flag to detect the current acquired state of the entity
 				// It won't change the current acquired state except if we were the acquiring controller, which doesn't matter anyway because having to enumerate the device again means we got interrupted in the middle of something and it's best to start over
-				LOG_CONTROLLER_TRACE(entityID, "releaseEntity (ReleaseFlag)", descriptorIndex);
+				LOG_CONTROLLER_TRACE(entityID, "releaseEntity (ReleaseFlag)");
 				controller->releaseEntity(entityID, entity::model::DescriptorType::Entity, 0u, std::bind(&ControllerImpl::onGetAcquiredStateResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 			};
 			break;

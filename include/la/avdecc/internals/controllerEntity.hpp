@@ -92,6 +92,21 @@ public:
 		InternalError = 999,
 	};
 
+	/** Status code returned by all MVU (AECP) command methods. */
+	enum class MvuCommandStatus : std::uint16_t
+	{
+		// Milan Vendor Unique Protocol Error Codes
+		Success = 0,
+		NotImplemented = 1,
+		BadArguments = 2,
+		// Library Error Codes
+		NetworkError = 995,
+		ProtocolError = 996,
+		TimedOut = 997,
+		UnknownEntity = 998,
+		InternalError = 999,
+	};
+
 	/** Status code returned by all ACMP control methods. */
 	enum class ControlStatus : std::uint16_t
 	{
@@ -308,6 +323,8 @@ public:
 	using GetMemoryObjectLengthHandler = std::function<void(la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length)>;
 	/* Enumeration and Control Protocol (AECP) AA handlers */
 	using AddressAccessHandler = std::function<void(la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AaCommandStatus const status, la::avdecc::entity::addressAccess::Tlvs const& tlvs)>;
+	/* Enumeration and Control Protocol (AECP) MVU handlers (Milan Vendor Unique) */
+	using GetMilanInfoHandler = std::function<void(la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::MvuCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, std::uint32_t const protocolVersion, la::avdecc::protocol::MvuFeaturesFlags const featuresFlags, std::uint32_t const certificationVersion)>;
 	/* Connection Management Protocol (ACMP) handlers */
 	using ConnectStreamHandler = std::function<void(la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::ControllerEntity::ControlStatus const status)>;
 	using DisconnectStreamHandler = std::function<void(la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::ControllerEntity::ControlStatus const status)>;
@@ -408,6 +425,9 @@ public:
 	/* Enumeration and Control Protocol (AECP) AA */
 	virtual void addressAccess(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, AddressAccessHandler const& handler) const noexcept = 0;
 
+	/* Enumeration and Control Protocol (AECP) MVU (Milan Vendor Unique) */
+	virtual void getMilanInfo(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, GetMilanInfoHandler const& handler) const noexcept = 0;
+
 	/* Connection Management Protocol (ACMP) */
 	virtual void connectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept = 0;
 	virtual void disconnectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, DisconnectStreamHandler const& handler) const noexcept = 0;
@@ -422,6 +442,7 @@ public:
 	/* Utility methods */
 	static LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION statusToString(ControllerEntity::AemCommandStatus const status);
 	static LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION statusToString(ControllerEntity::AaCommandStatus const status);
+	static LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION statusToString(ControllerEntity::MvuCommandStatus const status);
 	static LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION statusToString(ControllerEntity::ControlStatus const status);
 
 	// Deleted compiler auto-generated methods
@@ -471,6 +492,22 @@ constexpr ControllerEntity::AaCommandStatus operator|(ControllerEntity::AaComman
 	return lhs;
 }
 constexpr ControllerEntity::AaCommandStatus& operator|=(ControllerEntity::AaCommandStatus& lhs, ControllerEntity::AaCommandStatus const rhs)
+{
+	if (!!lhs)
+		lhs = rhs;
+	return lhs;
+}
+constexpr bool operator!(ControllerEntity::MvuCommandStatus const status)
+{
+	return status != ControllerEntity::MvuCommandStatus::Success;
+}
+constexpr ControllerEntity::MvuCommandStatus operator|(ControllerEntity::MvuCommandStatus const lhs, ControllerEntity::MvuCommandStatus const rhs)
+{
+	if (!!lhs)
+		return rhs;
+	return lhs;
+}
+constexpr ControllerEntity::MvuCommandStatus& operator|=(ControllerEntity::MvuCommandStatus& lhs, ControllerEntity::MvuCommandStatus const rhs)
 {
 	if (!!lhs)
 		lhs = rhs;
