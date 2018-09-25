@@ -71,6 +71,8 @@ using ControlBlockIndex = DescriptorIndex;
 using SamplingRate = std::uint32_t; /** Sampling Rate packed value - Clause 7.3.1 */
 using StreamFormat = std::uint64_t; /** Stream Format packed value - Clause 7.3.2 */
 using LocalizedStringReference = std::uint16_t; /** Localized String Reference packed value - Clause 7.3.6 */
+using DescriptorCounterValidFlag = std::uint32_t; /** Counters valid flag - Clause 7.4.42 */
+using DescriptorCounter = std::uint32_t; /** Counter - Clause 7.4.42 */
 using OperationID = std::uint16_t; /** OperationID for OPERATIONS returned by an entity to a controller - Clause 7.4.53 */
 
 /** Descriptor Type - Clause 7.2 */
@@ -301,6 +303,9 @@ constexpr bool operator==(MsrpMapping const& lhs, MsrpMapping const& rhs) noexce
 }
 
 using MsrpMappings = std::vector<MsrpMapping>;
+
+/** GET_COUNTERS - Clause 7.4.42.2 */
+using DescriptorCounters = std::array<DescriptorCounter, 32>;
 
 /** UTF-8 String */
 class AvdeccFixedString final

@@ -1672,8 +1672,86 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 
 /** GET_AS_PATH Command - Clause 7.4.41.1 */
 /** GET_AS_PATH Response - Clause 7.4.41.2 */
+
 /** GET_COUNTERS Command - Clause 7.4.42.1 */
+Serializer<AecpAemGetCountersCommandPayloadSize> serializeGetCountersCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	Serializer<AecpAemGetCountersCommandPayloadSize> ser;
+
+	ser << descriptorType << descriptorIndex;
+
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeGetCountersCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetCountersCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+
+	des >> descriptorType >> descriptorIndex;
+
+	AVDECC_ASSERT(des.usedBytes() == AecpAemGetCountersCommandPayloadSize, "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(descriptorType, descriptorIndex);
+}
+
 /** GET_COUNTERS Response - Clause 7.4.42.2 */
+Serializer<AecpAemGetCountersResponsePayloadSize> serializeGetCountersResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::DescriptorCounterValidFlag const validCounters, entity::model::DescriptorCounters const& counters)
+{
+	Serializer<AecpAemGetCountersResponsePayloadSize> ser;
+
+	ser << descriptorType << descriptorIndex;
+	ser << validCounters;
+
+	// Serialize the counters
+	for (auto const counter : counters)
+	{
+		ser << counter;
+	}
+
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::DescriptorCounterValidFlag, entity::model::DescriptorCounters> deserializeGetCountersResponse(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetCountersResponsePayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+	entity::model::DescriptorCounterValidFlag validCounters{ 0u };
+	entity::model::DescriptorCounters counters{};
+
+	des >> descriptorType >> descriptorIndex;
+	des >> validCounters;
+
+	// Deserialize the counters
+	for (auto& counter : counters)
+	{
+		des >> counter;
+	}
+
+	AVDECC_ASSERT(des.usedBytes() == AecpAemGetCountersResponsePayloadSize, "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(descriptorType, descriptorIndex, validCounters, counters);
+}
 
 /** GET_AUDIO_MAP Command - Clause 7.4.44.1 */
 Serializer<AecpAemGetAudioMapCommandPayloadSize> serializeGetAudioMapCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::MapIndex const mapIndex)

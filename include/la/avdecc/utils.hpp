@@ -222,7 +222,8 @@ class EnumBitfield
 {
 public:
 	using value_type = EnumType;
-	static constexpr size_t value_size = sizeof(std::underlying_type_t<value_type>) * 8;
+	using underlying_value_type = std::underlying_type_t<value_type>;
+	static constexpr size_t value_size = sizeof(underlying_value_type) * 8;
 
 	/** Iterator allowing quick enumeration of all the bits that are set in the bitfield */
 	class iterator
@@ -373,9 +374,15 @@ public:
 	}
 
 	/** Returns the underlying value of the bitfield */
-	constexpr auto value() const noexcept
+	constexpr underlying_value_type value() const noexcept
 	{
 		return to_integral(_value);
+	}
+
+	/** Sets the underlying value of the bitfield */
+	constexpr void setValue(underlying_value_type const value) noexcept
+	{
+		_value = static_cast<value_type>(value);
 	}
 
 	/** Comparison operator (equality) */

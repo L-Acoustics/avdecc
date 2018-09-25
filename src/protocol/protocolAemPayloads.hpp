@@ -243,8 +243,14 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 
 /** GET_AS_PATH Command - Clause 7.4.41.1 */
 /** GET_AS_PATH Response - Clause 7.4.41.2 */
+
 /** GET_COUNTERS Command - Clause 7.4.42.1 */
+Serializer<AecpAemGetCountersCommandPayloadSize> serializeGetCountersCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeGetCountersCommand(AemAecpdu::Payload const& payload);
+
 /** GET_COUNTERS Response - Clause 7.4.42.2 */
+Serializer<AecpAemGetCountersResponsePayloadSize> serializeGetCountersResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::DescriptorCounterValidFlag const validCounters, entity::model::DescriptorCounters const& counters);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::DescriptorCounterValidFlag, entity::model::DescriptorCounters> deserializeGetCountersResponse(AemAecpdu::Payload const& payload);
 
 /** GET_AUDIO_MAP Command - Clause 7.4.44.1 */
 Serializer<AecpAemGetAudioMapCommandPayloadSize> serializeGetAudioMapCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::MapIndex const mapIndex);

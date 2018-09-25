@@ -1594,6 +1594,64 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 		},
 		// GetASPath
 		// GetCounters
+		{ protocol::AemCommandType::GetCounters.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
+			{
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex, validFlags, counters] = protocol::aemPayload::deserializeGetCountersResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeGetCountersResponse(aem.getPayload());
+				entity::model::DescriptorType const descriptorType = std::get<0>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				entity::model::DescriptorCounterValidFlag const validFlags = std::get<2>(result);
+				entity::model::DescriptorCounters const& counters = std::get<3>(result);
+#endif // __cpp_structured_bindings
+
+				auto const targetID = aem.getTargetEntityID();
+				auto* delegate = controller->getDelegate();
+
+				// Notify handlers
+				switch (descriptorType)
+				{
+					case model::DescriptorType::AvbInterface:
+					{
+						AvbInterfaceCounterValidFlags flags;
+						flags.setValue(validFlags);
+						answerCallback.invoke<GetAvbInterfaceCountersHandler>(controller, targetID, status, descriptorIndex, flags, counters);
+						if (aem.getUnsolicited() && delegate && !!status)
+						{
+							invokeProtectedMethod(&ControllerEntity::Delegate::onAvbInterfaceCountersChanged, delegate, controller, targetID, descriptorIndex, flags, counters);
+						}
+						break;
+					}
+					case model::DescriptorType::ClockDomain:
+					{
+						ClockDomainCounterValidFlags flags;
+						flags.setValue(validFlags);
+						answerCallback.invoke<GetClockDomainCountersHandler>(controller, targetID, status, descriptorIndex, flags, counters);
+						if (aem.getUnsolicited() && delegate && !!status)
+						{
+							invokeProtectedMethod(&ControllerEntity::Delegate::onClockDomainCountersChanged, delegate, controller, targetID, descriptorIndex, flags, counters);
+						}
+						break;
+					}
+					case model::DescriptorType::StreamInput:
+					{
+						StreamInputCounterValidFlags flags;
+						flags.setValue(validFlags);
+						answerCallback.invoke<GetStreamInputCountersHandler>(controller, targetID, status, descriptorIndex, flags, counters);
+						if (aem.getUnsolicited() && delegate && !!status)
+						{
+							invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputCountersChanged, delegate, controller, targetID, descriptorIndex, flags, counters);
+						}
+						break;
+					}
+					default:
+						LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled descriptorType in GET_COUNTERS response: DescriptorType={} DescriptorIndex={}", to_integral(descriptorType), descriptorIndex);
+						break;
+				}
+			}
+		},
 		// Get Audio Map
 		{ protocol::AemCommandType::GetAudioMap.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
@@ -3215,6 +3273,51 @@ void ControllerEntityImpl::getAvbInfo(UniqueIdentifier const targetEntityID, mod
 	catch ([[maybe_unused]] std::exception const& e)
 	{
 		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getAvbInfo: {}", e.what());
+	}
+}
+
+void ControllerEntityImpl::getAvbInterfaceCounters(UniqueIdentifier const targetEntityID, model::AvbInterfaceIndex const avbInterfaceIndex, GetAvbInterfaceCountersHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetCountersCommand(model::DescriptorType::AvbInterface, avbInterfaceIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, avbInterfaceIndex, AvbInterfaceCounterValidFlags{}, model::DescriptorCounters{});
+
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetCounters, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getAvbInterfaceCounters: {}", e.what());
+	}
+}
+
+void ControllerEntityImpl::getClockDomainCounters(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, GetClockDomainCountersHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetCountersCommand(model::DescriptorType::ClockDomain, clockDomainIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, clockDomainIndex, ClockDomainCounterValidFlags{}, model::DescriptorCounters{});
+
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetCounters, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getClockDomainCounters: {}", e.what());
+	}
+}
+
+void ControllerEntityImpl::getStreamInputCounters(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, GetStreamInputCountersHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetCountersCommand(model::DescriptorType::StreamInput, streamIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, StreamInputCounterValidFlags{}, model::DescriptorCounters{});
+
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetCounters, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getStreamInputCounters: {}", e.what());
 	}
 }
 
