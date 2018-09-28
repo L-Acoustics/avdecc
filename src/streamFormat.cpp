@@ -421,6 +421,9 @@ public:
 		_upToChannelsCount = false;
 		switch (base_frequency)
 		{
+			case 500:
+				_samplingRate = SamplingRate::Hz_500;
+				break;
 			case 32000:
 				_samplingRate = SamplingRate::kHz_32;
 				break;
