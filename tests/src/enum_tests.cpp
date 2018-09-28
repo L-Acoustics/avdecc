@@ -654,6 +654,15 @@ TEST(EnumBitfieldClass, At)
 	}
 }
 
+TEST(EnumBitfieldClass, GetPosition)
+{
+	EXPECT_THROW(TestBitfieldClasses::getPosition(TestBitfieldClass::None)
+							 , std::out_of_range);
+	EXPECT_EQ(0u, TestBitfieldClasses::getPosition(TestBitfieldClass::Implemented));
+	EXPECT_EQ(1u, TestBitfieldClasses::getPosition(TestBitfieldClass::Supported));
+	EXPECT_EQ(2u, TestBitfieldClasses::getPosition(TestBitfieldClass::NotSupported));
+}
+
 TEST(EnumBitfieldClass, EnumerateBits)
 {
 	TestBitfieldClasses const v1{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };

@@ -397,7 +397,7 @@ public:
 		return !operator==(other);
 	}
 
-	/** Returns the bit at the specified position. Specified position must be inclusively comprised btw 0 and (count() - 1) or an out_of_range exception will be thrown. */
+	/** Returns the value at the specified position. Specified position must be inclusively comprised btw 0 and (count() - 1) or an out_of_range exception will be thrown. */
 	inline value_type at(size_t const position) const
 	{
 		if (position >= count())
@@ -405,6 +405,17 @@ public:
 			throw std::out_of_range("EnumBitfield::at() out of range");
 		}
 		return *(begin() + position);
+	}
+
+	/** Returns the bit position for the specified value. Specified value must has exactly one bit set or an out_of_range exception will be thrown. */
+	static inline size_t getPosition(value_type const value)
+	{
+		auto const v = to_integral(value);
+		if (countBits(v) != 1u)
+		{
+			throw std::out_of_range("EnumBitfield::getPosition() out of range");
+		}
+		return getBitPosition(v);
 	}
 
 	/** Returns the begin iterator */
@@ -439,13 +450,17 @@ public:
 	EnumBitfield& operator=(EnumBitfield&&) noexcept = default;
 
 private:
-	inline void checkInvalidValue([[maybe_unused]]value_type const value) const
+	static inline void checkInvalidValue([[maybe_unused]]value_type const value)
 	{
 		AVDECC_ASSERT(countBits(to_integral(value)) <= 1, "Invalid value: more than 1 bit set");
 	}
-	constexpr size_t countBits(std::underlying_type_t<value_type> const value) const noexcept
+	static constexpr size_t countBits(std::underlying_type_t<value_type> const value) noexcept
 	{
 		return (value == 0u) ? 0u : 1u + countBits(value & (value - 1u));
+	}
+	static constexpr size_t getBitPosition(std::underlying_type_t<value_type> const value) noexcept
+	{
+		return (value == 1u) ? 0u : 1u + getBitPosition(value >> 1);
 	}
 	// Have to redefine "custom" operators or the compiler might want to use global overload operators in that same file
 	static constexpr value_type operator_and(value_type const lhs, value_type const rhs) noexcept
