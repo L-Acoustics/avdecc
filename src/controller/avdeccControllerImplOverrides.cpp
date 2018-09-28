@@ -1324,9 +1324,11 @@ void ControllerImpl::onUserWriteDeviceMemoryResult(UniqueIdentifier const target
 			{
 				// Ignore exceptions in user handler
 			}
-			// Read next TLV
 			LOG_CONTROLLER_TRACE(targetEntityID, "User writeDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", baseAddress, memoryBuffer.size(), tlv.getAddress() - baseAddress, tlv.size());
-			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress, sentSize = sentSize + tlv.size(), progressHandler = std::move(progressHandler), completionHandler = std::move(completionHandler), memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& /*tlvs*/) mutable
+			// We are moving the tlv, so we have to get its size before that
+			auto const newSentSize = sentSize + tlv.size();
+			// Write next TLV
+			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress, sentSize = newSentSize, progressHandler = std::move(progressHandler), completionHandler = std::move(completionHandler), memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& /*tlvs*/) mutable
 			{
 				onUserWriteDeviceMemoryResult(entityID, status, baseAddress, sentSize, std::move(progressHandler), std::move(completionHandler), std::move(memoryBuffer));
 			});
