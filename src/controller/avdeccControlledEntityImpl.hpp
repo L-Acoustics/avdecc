@@ -87,6 +87,7 @@ public:
 		OutputStreamInfo, // getStreamOutputInfo (GET_STREAM_INFO)
 		GetAvbInfo, // getAvbInfo (GET_AVB_INFO)
 		GetAsPath,
+		GetCounters, // get (GET_COUNTERS)
 	};
 
 	/** Dynamic information stored in descriptors. Only required to retrieve from entities when the static model is known (because it was in EntityModelID cache).  */
@@ -261,6 +262,9 @@ public:
 	void removeStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept;
 	void setClockSource(entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex) noexcept;
 	void setMemoryObjectLength(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) noexcept;
+	model::AvbInterfaceCounters& getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept;
+	model::ClockDomainCounters& getClockDomainCounters(entity::model::ClockDomainIndex const clockDomainIndex) noexcept;
+	model::StreamInputCounters& getStreamInputCounters(entity::model::StreamIndex const streamIndex) noexcept;
 
 	// Setters (of the model, not the physical entity)
 	void setEntity(entity::Entity const& entity) noexcept;

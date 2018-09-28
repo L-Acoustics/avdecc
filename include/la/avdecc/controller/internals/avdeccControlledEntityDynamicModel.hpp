@@ -30,6 +30,7 @@
 #include "avdeccControlledEntityCommonModel.hpp"
 #include <unordered_map>
 #include <cstdint>
+#include <map>
 
 namespace la
 {
@@ -39,6 +40,10 @@ namespace controller
 {
 namespace model
 {
+
+using AvbInterfaceCounters = std::map<entity::AvbInterfaceCounterValidFlag, entity::model::DescriptorCounter>;
+using ClockDomainCounters = std::map<entity::ClockDomainCounterValidFlag, entity::model::DescriptorCounter>;
+using StreamInputCounters = std::map<entity::StreamInputCounterValidFlag, entity::model::DescriptorCounter>;
 
 struct AudioUnitNodeDynamicModel
 {
@@ -57,6 +62,7 @@ struct StreamNodeDynamicModel
 struct StreamInputNodeDynamicModel : public StreamNodeDynamicModel
 {
 	model::StreamConnectionState connectionState{};
+	StreamInputCounters counters{};
 };
 
 struct StreamOutputNodeDynamicModel : public StreamNodeDynamicModel
@@ -69,6 +75,7 @@ struct AvbInterfaceNodeDynamicModel
 	entity::model::AvdeccFixedString objectName{};
 	entity::model::AvbInfo avbInfo{};
 	//entity::model::AsPath asPath{};
+	AvbInterfaceCounters counters{};
 };
 
 struct ClockSourceNodeDynamicModel
@@ -110,6 +117,7 @@ struct ClockDomainNodeDynamicModel
 {
 	entity::model::AvdeccFixedString objectName{};
 	entity::model::ClockSourceIndex clockSourceIndex{ entity::model::ClockSourceIndex(0u) };
+	ClockDomainCounters counters{};
 };
 
 struct ConfigurationNodeDynamicModel
