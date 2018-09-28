@@ -791,6 +791,27 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 			//};
 			assert(false && "Todo");
 			break;
+		case ControlledEntityImpl::DynamicInfoType::GetAvbInterfaceCounters:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getAvbInterfaceCounters (AvbInterfaceIndex={})", descriptorIndex);
+				controller->getAvbInterfaceCounters(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetAvbInterfaceCountersResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
+			};
+			break;
+		case ControlledEntityImpl::DynamicInfoType::GetClockDomainCounters:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getClockDomainCounters (ClockDomainIndex={})", descriptorIndex);
+				controller->getClockDomainCounters(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetClockDomainCountersResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
+			};
+			break;
+		case ControlledEntityImpl::DynamicInfoType::GetStreamInputCounters:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getStreamInputCounters (StreamIndex={})", descriptorIndex);
+				controller->getStreamInputCounters(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetStreamInputCountersResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
+			};
+			break;
 		default:
 			AVDECC_ASSERT(false, "Unhandled DynamicInfoType");
 			break;
@@ -1009,7 +1030,8 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			// Global entity information (not related to current configuration)
 			queryInformation(entity, 0u, ControlledEntityImpl::DynamicInfoType::AcquiredState, 0u);
 		}
-		// Get StreamInfo and RX_STATE for each StreamInput descriptors
+
+		// Get StreamInfo/Counters and RX_STATE for each StreamInput descriptors
 		{
 			auto const count = configStaticTree.streamInputStaticModels.size();
 			for (auto index = entity::model::StreamIndex(0); index < count; ++index)
@@ -1017,10 +1039,14 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 				// StreamInfo
 				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamInfo, index);
 
+				// Counters
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamInputCounters, index);
+
 				// RX_STATE
 				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamState, index);
 			}
 		}
+
 		// Get StreamInfo and TX_STATE for each StreamOutput descriptors
 		{
 			auto const count = configStaticTree.streamOutputStaticModels.size();
@@ -1033,13 +1059,26 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, index);
 			}
 		}
-		// Get AvbInfo for each AvbInterface descriptors
+
+		// Get AvbInfo/Counters for each AvbInterface descriptors
 		{
 			auto const count = configStaticTree.avbInterfaceStaticModels.size();
 			for (auto index = entity::model::AvbInterfaceIndex(0); index < count; ++index)
 			{
 				// AvbInfo
 				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInfo, index);
+				// Counters
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInterfaceCounters, index);
+			}
+		}
+
+		// Get Counters for each ClockDomain descriptors
+		{
+			auto const count = configStaticTree.clockDomainStaticModels.size();
+			for (auto index = entity::model::ClockDomainIndex(0); index < count; ++index)
+			{
+				// Counters
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::GetClockDomainCounters, index);
 			}
 		}
 
@@ -1056,6 +1095,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 				}
 			}
 		}
+
 		// Get AudioMappings for each StreamPortOutput descriptors
 		{
 			auto const count = configStaticTree.streamPortOutputStaticModels.size();

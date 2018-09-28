@@ -87,7 +87,9 @@ public:
 		OutputStreamInfo, // getStreamOutputInfo (GET_STREAM_INFO)
 		GetAvbInfo, // getAvbInfo (GET_AVB_INFO)
 		GetAsPath,
-		GetCounters, // get (GET_COUNTERS)
+		GetAvbInterfaceCounters, // getAvbInterfaceCounters (GET_COUNTERS)
+		GetClockDomainCounters, // getClockDomainCounters (GET_COUNTERS)
+		GetStreamInputCounters, // getStreamInputCounters (GET_COUNTERS)
 	};
 
 	/** Dynamic information stored in descriptors. Only required to retrieve from entities when the static model is known (because it was in EntityModelID cache).  */
