@@ -210,6 +210,14 @@ enum class AvbInterfaceCounterValidFlag : model::DescriptorCounterValidFlag
 	FramesRx = 1u << 3, /**< Total number of network frames received. */
 	RxCrcError = 1u << 4, /**< Total number of network frames received with an incorrect CRC. */
 	GptpGmChanged = 1u << 5, /**< gPTP grandmaster change count. */
+	EntitySpecific8 = 1u << 24, /**< Entity Specific counter 8. */
+	EntitySpecific7 = 1u << 25, /**< Entity Specific counter 7. */
+	EntitySpecific6 = 1u << 26, /**< Entity Specific counter 6. */
+	EntitySpecific5 = 1u << 27, /**< Entity Specific counter 5. */
+	EntitySpecific4 = 1u << 28, /**< Entity Specific counter 4. */
+	EntitySpecific3 = 1u << 29, /**< Entity Specific counter 3. */
+	EntitySpecific2 = 1u << 30, /**< Entity Specific counter 2. */
+	EntitySpecific1 = 1u << 31, /**< Entity Specific counter 1. */
 };
 using AvbInterfaceCounterValidFlags = EnumBitfield<AvbInterfaceCounterValidFlag>;
 
@@ -219,6 +227,14 @@ enum class ClockDomainCounterValidFlag : model::DescriptorCounterValidFlag
 	None = 0u,
 	Locked = 1u << 0, /**< Increments on a clock locking event. */
 	Unlocked = 1u << 1, /**< Increments on a clock unlocking event. */
+	EntitySpecific8 = 1u << 24, /**< Entity Specific counter 8. */ /* WARNING: 1722.1 says EntitySpecific counters are in the reverse order, but that might be a mistake */
+	EntitySpecific7 = 1u << 25, /**< Entity Specific counter 7. */
+	EntitySpecific6 = 1u << 26, /**< Entity Specific counter 6. */
+	EntitySpecific5 = 1u << 27, /**< Entity Specific counter 5. */
+	EntitySpecific4 = 1u << 28, /**< Entity Specific counter 4. */
+	EntitySpecific3 = 1u << 29, /**< Entity Specific counter 3. */
+	EntitySpecific2 = 1u << 30, /**< Entity Specific counter 2. */
+	EntitySpecific1 = 1u << 31, /**< Entity Specific counter 1. */
 };
 using ClockDomainCounterValidFlags = EnumBitfield<ClockDomainCounterValidFlag>;
 
@@ -239,6 +255,14 @@ enum class StreamInputCounterValidFlag : model::DescriptorCounterValidFlag
 	EarlyTimestamp = 1u << 10, /**< Increments on receipt of a Stream data AVTPDU with an avtp_timestamp field that is too far in the future to process. */
 	FramesRx = 1u << 11, /**< Increments on each Stream data AVTPDU received. */
 	FramesTx = 1u << 12, /**< Increments on each Stream data AVTPDU transmitted. */
+	EntitySpecific8 = 1u << 24, /**< Entity Specific counter 8. */
+	EntitySpecific7 = 1u << 25, /**< Entity Specific counter 7. */
+	EntitySpecific6 = 1u << 26, /**< Entity Specific counter 6. */
+	EntitySpecific5 = 1u << 27, /**< Entity Specific counter 5. */
+	EntitySpecific4 = 1u << 28, /**< Entity Specific counter 4. */
+	EntitySpecific3 = 1u << 29, /**< Entity Specific counter 3. */
+	EntitySpecific2 = 1u << 30, /**< Entity Specific counter 2. */
+	EntitySpecific1 = 1u << 31, /**< Entity Specific counter 1. */
 };
 using StreamInputCounterValidFlags = EnumBitfield<StreamInputCounterValidFlag>;
 
