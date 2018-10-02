@@ -490,21 +490,75 @@ TEST(AemPayloads, OperationStatusResponse)
 	}
 }
 
-#if defined(ALLOW_BIG_AEM_PAYLOADS)
-TEST(AemPayloads, BigPayload)
+TEST(AemPayloads, SendPayloadMaximumSize)
 {
 	la::avdecc::entity::model::AudioMappings mappings{};
 
-	// More than 62 mappings do not fit in a single non-big aem payload
+	// More than 62 mappings do not fit in a single non-big aecp payload
 	for (auto i = 0u; i < 64; ++i)
 	{
 		mappings.push_back({});
 	}
 
+#if defined(ALLOW_SEND_BIG_AECP_PAYLOADS)
 	EXPECT_NO_THROW(
 		la::avdecc::protocol::aemPayload::serializeGetAudioMapResponse(la::avdecc::entity::model::DescriptorType::StreamPortInput, 0, 0, 0, mappings);
 	);
+#else // !ALLOW_SEND_BIG_AECP_PAYLOADS
+	EXPECT_THROW(
+		la::avdecc::protocol::aemPayload::serializeGetAudioMapResponse(la::avdecc::entity::model::DescriptorType::StreamPortInput, 0, 0, 0, mappings);
+	, std::invalid_argument);
+#endif // ALLOW_SEND_BIG_AECP_PAYLOADS
 }
-#endif // ALLOW_BIG_AEM_PAYLOADS
+
+TEST(AemPayloads, RecvPayloadMaximumSize)
+{
+	auto const serializeMappings = [](la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, la::avdecc::entity::model::MapIndex const mapIndex, la::avdecc::entity::model::MapIndex const numberOfMaps, auto const& mappings)
+	{
+		la::avdecc::Serializer<la::avdecc::protocol::AemAecpdu::MaximumRecvPayloadBufferLength> ser;
+		std::uint16_t const reserved{ 0u };
+
+		ser << descriptorType << descriptorIndex;
+		ser << mapIndex << numberOfMaps << static_cast<std::uint16_t>(mappings.size()) << reserved;
+
+		// Serialize variable data
+		for (auto const& mapping : mappings)
+		{
+			ser << mapping.streamIndex << mapping.streamChannel << mapping.clusterOffset << mapping.clusterChannel;
+		}
+
+		return la::avdecc::protocol::AemAecpdu::Payload{ ser.data(), ser.usedBytes() };
+	};
+
+	la::avdecc::entity::model::AudioMappings mappings{};
+
+	// More than 62 mappings do not fit in a single non-big aecp payload
+	for (auto i = 0u; i < 64; ++i)
+	{
+		mappings.push_back({});
+	}
+
+	auto const payload = serializeMappings(la::avdecc::entity::model::DescriptorType::AudioCluster, 5u, 8u, 1u, mappings);
+
+#if defined(ALLOW_RECV_BIG_AECP_PAYLOADS)
+	try
+	{
+		auto const[descriptorType, descriptorIndex, mapIndex, numberOfMaps, m] = la::avdecc::protocol::aemPayload::deserializeGetAudioMapResponse(payload);
+		EXPECT_EQ(la::avdecc::entity::model::DescriptorType::AudioCluster, descriptorType);
+		EXPECT_EQ(5u, descriptorIndex);
+		EXPECT_EQ(8u, mapIndex);
+		EXPECT_EQ(1u, numberOfMaps);
+		EXPECT_EQ(mappings.size(), m.size());
+	}
+	catch (...)
+	{
+		EXPECT_FALSE(true) << "Should not have thrown";
+	}
+#else // !ALLOW_RECV_BIG_AECP_PAYLOADS
+	EXPECT_THROW(
+		la::avdecc::protocol::aemPayload::deserializeGetAudioMapResponse(payload);
+	, std::invalid_argument);
+#endif // ALLOW_SEND_BIG_AECP_PAYLOADS
+}
 
 #endif // _WIN32

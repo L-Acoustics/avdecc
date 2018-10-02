@@ -46,7 +46,7 @@ static constexpr std::uint8_t AvtpSubType_Aecp{ 0x7b };
 static constexpr std::uint8_t AvtpSubType_Acmp{ 0x7c };
 static constexpr std::uint8_t AvtpSubType_Maap{ 0x7e };
 static constexpr std::uint8_t AvtpSubType_Experimental{ 0x7f };
-extern LA_AVDECC_API std::uint16_t const AaAecpMaxSingleTlvMemoryDataLength; /* Maximum individual TLV memory_data length */
+extern LA_AVDECC_API std::uint16_t const AaAecpMaxSingleTlvMemoryDataLength; /* Maximum individual TLV memory_data length in commands */
 
 /** ADP Message Type - Clause 6.2.1.5 */
 class AdpMessageType : public TypedDefine<std::uint8_t>
@@ -249,6 +249,29 @@ public:
 	static LA_AVDECC_API AaAecpStatus const TlvInvalid;
 	static LA_AVDECC_API AaAecpStatus const DataInvalid;
 	static LA_AVDECC_API AaAecpStatus const Unsupported;
+};
+
+/** Milan Vendor Unique Command Type - Milan Clause 7.2.2.3 */
+class MvuCommandType : public TypedDefine<std::uint16_t>
+{
+public:
+	using TypedDefine::TypedDefine;
+
+	static LA_AVDECC_API MvuCommandType const GetMilanInfo;
+
+	static LA_AVDECC_API MvuCommandType const InvalidCommandType;
+
+	LA_AVDECC_API operator std::string() const noexcept;
+};
+
+/** Milan Features Flags - Milan Clause 7.4.1 */
+class MvuFeaturesFlags : public TypedDefine<std::uint32_t>
+{
+public:
+	using TypedDefine::TypedDefine;
+
+	static LA_AVDECC_API MvuFeaturesFlags const None;
+	static LA_AVDECC_API MvuFeaturesFlags const Redundancy;
 };
 
 /** ACMP Message Type - Clause 8.2.1.5 */

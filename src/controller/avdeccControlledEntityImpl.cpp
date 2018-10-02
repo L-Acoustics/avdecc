@@ -925,6 +925,24 @@ void ControlledEntityImpl::setMemoryObjectLength(entity::model::ConfigurationInd
 	dynamicModel.length = length;
 }
 
+model::AvbInterfaceCounters& ControlledEntityImpl::getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept
+{
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), avbInterfaceIndex, &model::ConfigurationDynamicTree::avbInterfaceDynamicModels);
+	return dynamicModel.counters;
+}
+
+model::ClockDomainCounters& ControlledEntityImpl::getClockDomainCounters(entity::model::ClockDomainIndex const clockDomainIndex) noexcept
+{
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), clockDomainIndex, &model::ConfigurationDynamicTree::clockDomainDynamicModels);
+	return dynamicModel.counters;
+}
+
+model::StreamInputCounters& ControlledEntityImpl::getStreamInputCounters(entity::model::StreamIndex const streamIndex) noexcept
+{
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels);
+	return dynamicModel.counters;
+}
+
 // Setters (of the model, not the physical entity)
 void ControlledEntityImpl::setEntity(entity::Entity const& entity) noexcept
 {

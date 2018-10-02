@@ -112,7 +112,7 @@ private:
 
 			// Copy the new text
 			if (_text != nullptr)
-				memcpy(_text, text, len);
+				std::memcpy(_text, text, len);
 		}
 	}
 

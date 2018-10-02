@@ -26,6 +26,7 @@
 #pragma once
 
 #include "la/avdecc/utils.hpp"
+#include "entityModelTypes.hpp"
 #include <cstdint>
 #include <string>
 
@@ -198,6 +199,72 @@ enum class AvbInfoFlags : std::uint8_t
 	SrpEnabled = 1u << 2, /**< Indicates that the interface has the IEEE Std 802.1Q-2011 Clause 35, "Stream Reservation Protocol (SRP)" functionality enabled. */
 	/* Bits 0 to 4 reserved for future use */
 };
+
+/* AVB_INTERFACE Counters - Clause 7.4.42.2.2 */
+enum class AvbInterfaceCounterValidFlag : model::DescriptorCounterValidFlag
+{
+	None = 0u,
+	LinkUp = 1u << 0, /**< Total number of network link up events. */
+	LinkDown = 1u << 1, /**< Total number of network link down events. */
+	FramesTx = 1u << 2, /**< Total number of network frames sent. */
+	FramesRx = 1u << 3, /**< Total number of network frames received. */
+	RxCrcError = 1u << 4, /**< Total number of network frames received with an incorrect CRC. */
+	GptpGmChanged = 1u << 5, /**< gPTP grandmaster change count. */
+	EntitySpecific8 = 1u << 24, /**< Entity Specific counter 8. */
+	EntitySpecific7 = 1u << 25, /**< Entity Specific counter 7. */
+	EntitySpecific6 = 1u << 26, /**< Entity Specific counter 6. */
+	EntitySpecific5 = 1u << 27, /**< Entity Specific counter 5. */
+	EntitySpecific4 = 1u << 28, /**< Entity Specific counter 4. */
+	EntitySpecific3 = 1u << 29, /**< Entity Specific counter 3. */
+	EntitySpecific2 = 1u << 30, /**< Entity Specific counter 2. */
+	EntitySpecific1 = 1u << 31, /**< Entity Specific counter 1. */
+};
+using AvbInterfaceCounterValidFlags = EnumBitfield<AvbInterfaceCounterValidFlag>;
+
+/* CLOCK_DOMAIN Counters - Clause 7.4.42.2.3 */
+enum class ClockDomainCounterValidFlag : model::DescriptorCounterValidFlag
+{
+	None = 0u,
+	Locked = 1u << 0, /**< Increments on a clock locking event. */
+	Unlocked = 1u << 1, /**< Increments on a clock unlocking event. */
+	EntitySpecific8 = 1u << 24, /**< Entity Specific counter 8. */ /* WARNING: 1722.1 says EntitySpecific counters are in the reverse order, but that might be a mistake */
+	EntitySpecific7 = 1u << 25, /**< Entity Specific counter 7. */
+	EntitySpecific6 = 1u << 26, /**< Entity Specific counter 6. */
+	EntitySpecific5 = 1u << 27, /**< Entity Specific counter 5. */
+	EntitySpecific4 = 1u << 28, /**< Entity Specific counter 4. */
+	EntitySpecific3 = 1u << 29, /**< Entity Specific counter 3. */
+	EntitySpecific2 = 1u << 30, /**< Entity Specific counter 2. */
+	EntitySpecific1 = 1u << 31, /**< Entity Specific counter 1. */
+};
+using ClockDomainCounterValidFlags = EnumBitfield<ClockDomainCounterValidFlag>;
+
+/* STREAM_INPUT Counters - Clause 7.4.42.2.4 */
+enum class StreamInputCounterValidFlag : model::DescriptorCounterValidFlag
+{
+	None = 0u,
+	MediaLocked = 1u << 0, /**< Increments on a Stream media clock locking. */
+	MediaUnlocked = 1u << 1, /**< Increments on a Stream media clock unlocking. */
+	StreamReset = 1u << 2, /**< Increments whenever the Stream playback is reset. */
+	SeqNumMismatch = 1u << 3, /**< Increments when a Stream data AVTPDU is received with a nonsequential sequence_num field. */
+	MediaReset = 1u << 4, /**< Increments on a toggle of the mr bit in the Stream data AVTPDU. */
+	TimestampUncertain = 1u << 5, /**< Increments on a toggle of the tu bit in the Stream data AVTPDU. */
+	TimestampValid = 1u << 6, /**< Increments on receipt of a Stream data AVTPDU with the tv bit set. */
+	TimestampNotValid = 1u << 7, /**< Increments on receipt of a Stream data AVTPDU with tv bit cleared. */
+	UnsupportedFormat = 1u << 8, /**< Increments on receipt of a Stream data AVTPDU that contains an unsupported media type. */
+	LateTimestamp = 1u << 9, /**< Increments on receipt of a Stream data AVTPDU with an avtp_timestamp field that is in the past. */
+	EarlyTimestamp = 1u << 10, /**< Increments on receipt of a Stream data AVTPDU with an avtp_timestamp field that is too far in the future to process. */
+	FramesRx = 1u << 11, /**< Increments on each Stream data AVTPDU received. */
+	FramesTx = 1u << 12, /**< Increments on each Stream data AVTPDU transmitted. */
+	EntitySpecific8 = 1u << 24, /**< Entity Specific counter 8. */
+	EntitySpecific7 = 1u << 25, /**< Entity Specific counter 7. */
+	EntitySpecific6 = 1u << 26, /**< Entity Specific counter 6. */
+	EntitySpecific5 = 1u << 27, /**< Entity Specific counter 5. */
+	EntitySpecific4 = 1u << 28, /**< Entity Specific counter 4. */
+	EntitySpecific3 = 1u << 29, /**< Entity Specific counter 3. */
+	EntitySpecific2 = 1u << 30, /**< Entity Specific counter 2. */
+	EntitySpecific1 = 1u << 31, /**< Entity Specific counter 1. */
+};
+using StreamInputCounterValidFlags = EnumBitfield<StreamInputCounterValidFlag>;
 
 } // namespace entity
 

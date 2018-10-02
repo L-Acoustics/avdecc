@@ -89,7 +89,7 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 			i.description = getStringFromWide(adapter->Description);
 			i.alias = getStringFromWide(adapter->FriendlyName);
 			if (adapter->PhysicalAddressLength == i.macAddress.size())
-				memcpy(i.macAddress.data(), adapter->PhysicalAddress, adapter->PhysicalAddressLength);
+				std::memcpy(i.macAddress.data(), adapter->PhysicalAddress, adapter->PhysicalAddressLength);
 			i.type = type;
 			i.isActive = adapter->OperStatus == IfOperStatusUp;
 

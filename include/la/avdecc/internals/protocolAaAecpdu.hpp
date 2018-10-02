@@ -41,7 +41,6 @@ class AaAecpdu final : public Aecpdu
 {
 public:
 	static constexpr size_t HeaderLength = 2; /* TlvCount */
-	static constexpr size_t MaximumTlvDataLength = Aecpdu::MaximumLength - Aecpdu::HeaderLength - HeaderLength; /* Maximum tlv_data field length */
 	static constexpr size_t TlvHeaderLength = 10; /* Mode + Length + Address */
 
 	/**
@@ -66,15 +65,9 @@ public:
 
 	// Setters
 	template<class Tlv, typename = std::enable_if_t<std::is_same<entity::addressAccess::Tlv, std::remove_cv_t<std::remove_reference_t<Tlv>>>::value>>
-	void addTlv(Tlv&& tlv)
+	void addTlv(Tlv&& tlv) noexcept
 	{
 		auto const newLength = _tlvDataLength + TlvHeaderLength + tlv.size();
-
-		// Check Aecp do not exceed maximum allowed length
-		if (newLength > MaximumTlvDataLength)
-		{
-			throw std::invalid_argument("Not enough room in packet for this TLV");
-		}
 
 		_tlvDataLength = newLength;
 		_tlvData.push_back(std::move(tlv));

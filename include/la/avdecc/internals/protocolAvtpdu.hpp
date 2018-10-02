@@ -63,38 +63,38 @@ public:
 	virtual ~EtherLayer2() noexcept = default;
 
 	// Setters
-	void setDestAddress(networkInterface::MacAddress const& destAddress) noexcept
+	void LA_AVDECC_CALL_CONVENTION setDestAddress(networkInterface::MacAddress const& destAddress) noexcept
 	{
 		_destAddress = destAddress;
 	}
-	void setSrcAddress(networkInterface::MacAddress const& srcAddress) noexcept
+	void LA_AVDECC_CALL_CONVENTION setSrcAddress(networkInterface::MacAddress const& srcAddress) noexcept
 	{
 		_srcAddress = srcAddress;
 	}
-	void setEtherType(std::uint16_t const etherType) noexcept
+	void LA_AVDECC_CALL_CONVENTION setEtherType(std::uint16_t const etherType) noexcept
 	{
 		_etherType = etherType;
 	}
 
 	// Getters
-	networkInterface::MacAddress getDestAddress() const noexcept
+	networkInterface::MacAddress LA_AVDECC_CALL_CONVENTION getDestAddress() const noexcept
 	{
 		return _destAddress;
 	}
-	networkInterface::MacAddress getSrcAddress() const noexcept
+	networkInterface::MacAddress LA_AVDECC_CALL_CONVENTION getSrcAddress() const noexcept
 	{
 		return _srcAddress;
 	}
-	std::uint16_t getEtherType() const noexcept
+	std::uint16_t LA_AVDECC_CALL_CONVENTION getEtherType() const noexcept
 	{
 		return _etherType;
 	}
 
 	// Serialization method
-	void serialize(SerializationBuffer& buffer) const;
+	void LA_AVDECC_CALL_CONVENTION serialize(SerializationBuffer& buffer) const;
 
 	// Deserialization method
-	void deserialize(DeserializationBuffer& buffer);
+	void LA_AVDECC_CALL_CONVENTION deserialize(DeserializationBuffer& buffer);
 
 	// Defaulted compiler auto-generated methods
 	EtherLayer2(EtherLayer2&&) = default;
@@ -127,37 +127,37 @@ public:
 	virtual ~Avtpdu() noexcept override = default;
 
 	// Setters
-	void setCD(bool const cd) noexcept
+	void LA_AVDECC_CALL_CONVENTION setCD(bool const cd) noexcept
 	{
 		_cd = cd;
 	}
-	void setSubType(std::uint8_t const subType) noexcept
+	void LA_AVDECC_CALL_CONVENTION setSubType(std::uint8_t const subType) noexcept
 	{
 		_subType = subType;
 	}
-	void setHeaderSpecific(bool const headerSpecific) noexcept
+	void LA_AVDECC_CALL_CONVENTION setHeaderSpecific(bool const headerSpecific) noexcept
 	{
 		_headerSpecific = headerSpecific;
 	}
-	void setVersion(std::uint8_t const version) noexcept
+	void LA_AVDECC_CALL_CONVENTION setVersion(std::uint8_t const version) noexcept
 	{
 		_version = version;
 	}
 
 	// Getters
-	bool getCD() const noexcept
+	bool LA_AVDECC_CALL_CONVENTION getCD() const noexcept
 	{
 		return _cd;
 	}
-	std::uint8_t getSubType() const noexcept
+	std::uint8_t LA_AVDECC_CALL_CONVENTION getSubType() const noexcept
 	{
 		return _subType;
 	}
-	bool getHeaderSpecific() const noexcept
+	bool LA_AVDECC_CALL_CONVENTION getHeaderSpecific() const noexcept
 	{
 		return _headerSpecific;
 	}
-	std::uint8_t getVersion() const noexcept
+	std::uint8_t LA_AVDECC_CALL_CONVENTION getVersion() const noexcept
 	{
 		return _version;
 	}
@@ -194,54 +194,54 @@ public:
 	virtual ~AvtpduControl() noexcept override = default;
 
 	// Setters
-	void setStreamValid(bool const streamValid) noexcept
+	void LA_AVDECC_CALL_CONVENTION setStreamValid(bool const streamValid) noexcept
 	{
 		Avtpdu::setHeaderSpecific(streamValid);
 	}
-	void setControlData(std::uint8_t const controlData) noexcept
+	void LA_AVDECC_CALL_CONVENTION setControlData(std::uint8_t const controlData) noexcept
 	{
 		_controlData = controlData;
 	}
-	void setStatus(std::uint8_t const status) noexcept
+	void LA_AVDECC_CALL_CONVENTION setStatus(std::uint8_t const status) noexcept
 	{
 		_status = status;
 	}
-	void setControlDataLength(std::uint16_t controlDataLength) noexcept
+	void LA_AVDECC_CALL_CONVENTION setControlDataLength(std::uint16_t controlDataLength) noexcept
 	{
 		_controlDataLength = controlDataLength;
 	}
-	void setStreamID(std::uint64_t const streamID) noexcept
+	void LA_AVDECC_CALL_CONVENTION setStreamID(std::uint64_t const streamID) noexcept
 	{
 		_streamID = streamID;
 	}
 
 	// Getters
-	bool getStreamValid() const noexcept
+	bool LA_AVDECC_CALL_CONVENTION getStreamValid() const noexcept
 	{
 		return Avtpdu::getHeaderSpecific();
 	}
-	std::uint8_t getControlData() const noexcept
+	std::uint8_t LA_AVDECC_CALL_CONVENTION getControlData() const noexcept
 	{
 		return _controlData;
 	}
-	std::uint8_t getStatus() const noexcept
+	std::uint8_t LA_AVDECC_CALL_CONVENTION getStatus() const noexcept
 	{
 		return _status;
 	}
-	std::uint16_t getControlDataLength() const noexcept
+	std::uint16_t LA_AVDECC_CALL_CONVENTION getControlDataLength() const noexcept
 	{
 		return _controlDataLength;
 	}
-	std::uint64_t getStreamID() const noexcept
+	std::uint64_t LA_AVDECC_CALL_CONVENTION getStreamID() const noexcept
 	{
 		return _streamID;
 	}
 
 	// Serialization method
-	void serialize(SerializationBuffer& buffer) const;
+	void LA_AVDECC_CALL_CONVENTION serialize(SerializationBuffer& buffer) const;
 
 	// Deserialization method
-	void deserialize(DeserializationBuffer& buffer);
+	void LA_AVDECC_CALL_CONVENTION deserialize(DeserializationBuffer& buffer);
 
 	// Defaulted compiler auto-generated methods
 	AvtpduControl(AvtpduControl&&) = default;

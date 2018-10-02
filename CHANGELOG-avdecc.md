@@ -4,6 +4,16 @@ All notable changes to the Avdecc Library will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.7.1] - 2018-10-02
+### Added
+- [Retrieving entity current acquired state upon enumeration](https://github.com/L-Acoustics/avdecc/issues/26)
+- [Support for GET_COUNTERS command and unsolicited notifications](https://github.com/L-Acoustics/avdecc/issues/12)
+- Support for VendorUnique AECP messages
+- Support for 500Hz CRF stream format
+
+### Changed
+- Split ALLOW_BIG_AEM_PAYLOADS to ALLOW_SEND_BIG_AECP_PAYLOADS and ALLOW_RECV_BIG_AECP_PAYLOADS
+
 ## [2.7.0] - 2018-09-12
 ### Added
 - Support for MemoryObject Operations (Contributed by Florian Harmuth)

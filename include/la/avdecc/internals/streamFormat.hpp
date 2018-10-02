@@ -54,6 +54,7 @@ public:
 	// SamplingRate
 	enum class SamplingRate
 	{
+		Hz_500,
 		kHz_8,
 		kHz_16,
 		kHz_24,

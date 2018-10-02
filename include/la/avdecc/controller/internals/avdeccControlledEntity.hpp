@@ -75,9 +75,9 @@ public:
 	// Getters
 	virtual Compatibility getCompatibility() const noexcept = 0;
 	virtual bool gotFatalEnumerationError() const noexcept = 0; // True if the controller had a fatal error during entity information retrieval (leading to Exception::Type::EnumerationError if any throwing method is called).
-	virtual bool isAcquired() const noexcept = 0; // Is entity acquired by the controller it's attached to // TODO: This API and all 'acquire' related ones should take a descriptor and index (the acquired state is per branch of the EM)
-	virtual bool isAcquiring() const noexcept = 0; // Is the attached controller trying to acquire the entity // TODO: This API and all 'acquire' related ones should take a descriptor and index (the acquired state is per branch of the EM)
-	virtual bool isAcquiredByOther() const noexcept = 0; // Is entity acquired by another controller // TODO: This API and all 'acquire' related ones should take a descriptor and index (the acquired state is per branch of the EM)
+	virtual bool isAcquired() const noexcept = 0; // Is entity acquired by the controller it's attached to
+	virtual bool isAcquiring() const noexcept = 0; // Is the attached controller trying to acquire the entity
+	virtual bool isAcquiredByOther() const noexcept = 0; // Is entity acquired by another controller
 	virtual bool isStreamInputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 	virtual bool isStreamOutputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 	virtual UniqueIdentifier getOwningControllerID() const noexcept = 0;
@@ -170,12 +170,6 @@ public:
 	explicit operator bool() const noexcept
 	{
 		return _controlledEntity != nullptr;
-	}
-
-	void reset() noexcept
-	{
-		unlock();
-		_controlledEntity = nullptr;
 	}
 
 	// Default constructor to allow creation of an empty Guard

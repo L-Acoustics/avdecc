@@ -41,64 +41,68 @@ public:
 	static constexpr size_t DefaultMaxInflightCommands = 1;
 	static constexpr size_t HeaderLength = 10; /* ControllerEID + SequenceID */
 	static constexpr size_t MaximumLength_1722_1 = 524; /* AECPDU maximum size - Clause 9.2.1.1.7 */
+#if defined(ALLOW_SEND_BIG_AECP_PAYLOADS) || defined(ALLOW_RECV_BIG_AECP_PAYLOADS) // Memory optimization, only set MaximumLength_BigPayloads to a greater value if either option is enabled
 	static constexpr size_t MaximumLength_BigPayloads = MaximumLength_1722_1 * 2; /* Extended size, up to 1048 */
-#if defined(ALLOW_BIG_AEM_PAYLOADS)
-	static constexpr size_t MaximumLength = MaximumLength_BigPayloads;
-#else // !ALLOW_BIG_AEM_PAYLOADS
-	static constexpr size_t MaximumLength = MaximumLength_1722_1;
-#endif // !ALLOW_BIG_AEM_PAYLOADS
+#else
+	static constexpr size_t MaximumLength_BigPayloads = MaximumLength_1722_1; /* Use same value as 1722.1 to optimize memory footprint */
+#endif
+#if defined(ALLOW_SEND_BIG_AECP_PAYLOADS)
+	static constexpr size_t MaximumSendLength = MaximumLength_BigPayloads;
+#else // !ALLOW_SEND_BIG_AECP_PAYLOADS
+	static constexpr size_t MaximumSendLength = MaximumLength_1722_1;
+#endif // ALLOW_SEND_BIG_AECP_PAYLOADS
+#if defined(ALLOW_RECV_BIG_AECP_PAYLOADS)
+	static constexpr size_t MaximumRecvLength = MaximumLength_BigPayloads;
+#else // !ALLOW_RECV_BIG_AECP_PAYLOADS
+	static constexpr size_t MaximumRecvLength = MaximumLength_1722_1;
+#endif // ALLOW_RECV_BIG_AECP_PAYLOADS
 	using UniquePointer = std::unique_ptr<Aecpdu, void(*)(Aecpdu*)>;
 
 	// Setters
-	void setMessageType(AecpMessageType const messageType) noexcept
+	void LA_AVDECC_CALL_CONVENTION setMessageType(AecpMessageType const messageType) noexcept
 	{
 		AvtpduControl::setControlData(messageType.getValue());
 	}
-	void setStatus(AecpStatus const status) noexcept
+	void LA_AVDECC_CALL_CONVENTION setStatus(AecpStatus const status) noexcept
 	{
 		AvtpduControl::setStatus(status.getValue());
 	}
-	void setTargetEntityID(UniqueIdentifier const targetEntityID) noexcept
+	void LA_AVDECC_CALL_CONVENTION setTargetEntityID(UniqueIdentifier const targetEntityID) noexcept
 	{
 		AvtpduControl::setStreamID(targetEntityID.getValue());
 	}
-	void setControllerEntityID(UniqueIdentifier const controllerEntityID) noexcept
+	void LA_AVDECC_CALL_CONVENTION setControllerEntityID(UniqueIdentifier const controllerEntityID) noexcept
 	{
 		_controllerEntityID = controllerEntityID;
 	}
-	void setSequenceID(AecpSequenceID const sequenceID) noexcept
+	void LA_AVDECC_CALL_CONVENTION setSequenceID(AecpSequenceID const sequenceID) noexcept
 	{
 		_sequenceID = sequenceID;
 	}
-	void setAecpSpecificDataLength(size_t const commandSpecificDataLength)
+	void LA_AVDECC_CALL_CONVENTION setAecpSpecificDataLength(size_t const commandSpecificDataLength) noexcept
 	{
 		auto controlDataLength = static_cast<std::uint16_t>(Aecpdu::HeaderLength + commandSpecificDataLength);
-		// Check Aecp do not exceed maximum allowed length
-		if (controlDataLength > Aecpdu::MaximumLength)
-		{
-			throw std::invalid_argument("AECP payload too big");
-		}
 		AvtpduControl::setControlDataLength(controlDataLength);
 	}
 
 	// Getters
-	AecpMessageType getMessageType() const noexcept
+	AecpMessageType LA_AVDECC_CALL_CONVENTION getMessageType() const noexcept
 	{
 		return AecpMessageType(AvtpduControl::getControlData());
 	}
-	AecpStatus getStatus() const noexcept
+	AecpStatus LA_AVDECC_CALL_CONVENTION getStatus() const noexcept
 	{
 		return AecpStatus(AvtpduControl::getStatus());
 	}
-	UniqueIdentifier getTargetEntityID() const noexcept
+	UniqueIdentifier LA_AVDECC_CALL_CONVENTION getTargetEntityID() const noexcept
 	{
 		return UniqueIdentifier{ AvtpduControl::getStreamID() };
 	}
-	UniqueIdentifier getControllerEntityID() const noexcept
+	UniqueIdentifier LA_AVDECC_CALL_CONVENTION getControllerEntityID() const noexcept
 	{
 		return _controllerEntityID;
 	}
-	AecpSequenceID getSequenceID() const noexcept
+	AecpSequenceID LA_AVDECC_CALL_CONVENTION getSequenceID() const noexcept
 	{
 		return _sequenceID;
 	}
@@ -125,10 +129,6 @@ protected:
 	/** Destructor */
 	virtual ~Aecpdu() noexcept override = default;
 
-	// Aecpdu header data
-	UniqueIdentifier _controllerEntityID{};
-	AecpSequenceID _sequenceID{ 0 };
-
 private:
 	/** Destroy method for COM-like interface */
 	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION destroy() noexcept = 0;
@@ -146,6 +146,10 @@ private:
 	// Hide AvtpduControl const data
 	using AvtpduControl::setStreamValid;
 	using AvtpduControl::getStreamValid;
+
+	// Aecpdu header data
+	UniqueIdentifier _controllerEntityID{};
+	AecpSequenceID _sequenceID{ 0u };
 };
 
 } // namespace protocol

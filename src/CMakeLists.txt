@@ -61,6 +61,9 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAemAecpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAvtpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolDefines.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolGenericAecpdu.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolMvuAecpdu.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolVuAecpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolInterface.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/serialization.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/streamFormat.hpp
@@ -71,6 +74,8 @@ set (PUBLIC_HEADER_FILES
 set (HEADER_FILES_PROTOCOL
 	protocol/protocolAemPayloads.hpp
 	protocol/protocolAemPayloadSizes.hpp
+	protocol/protocolMvuPayloads.hpp
+	protocol/protocolMvuPayloadSizes.hpp
 )
 
 set (SOURCE_FILES_PROTOCOL
@@ -82,6 +87,10 @@ set (SOURCE_FILES_PROTOCOL
 	protocol/protocolAaAecpdu.cpp
 	protocol/protocolAvtpdu.cpp
 	protocol/protocolDefines.cpp
+	protocol/protocolGenericAecpdu.cpp
+	protocol/protocolVuAecpdu.cpp
+	protocol/protocolMvuAecpdu.cpp
+	protocol/protocolMvuPayloads.cpp
 )
 
 # Protocol Interface
@@ -210,8 +219,11 @@ endif()
 if(IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES)
 	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DIGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES")
 endif()
-if(ALLOW_BIG_AEM_PAYLOADS)
-	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DALLOW_BIG_AEM_PAYLOADS")
+if(ALLOW_SEND_BIG_AECP_PAYLOADS)
+	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DALLOW_SEND_BIG_AECP_PAYLOADS")
+endif()
+if(ALLOW_RECV_BIG_AECP_PAYLOADS)
+	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DALLOW_RECV_BIG_AECP_PAYLOADS")
 endif()
 
 # Group sources

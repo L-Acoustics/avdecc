@@ -26,6 +26,7 @@
 #include "logHelper.hpp"
 #include "controllerEntityImpl.hpp"
 #include "protocol/protocolAemPayloads.hpp"
+#include "protocol/protocolMvuPayloads.hpp"
 #include <exception>
 #include <cassert>
 #include <chrono>
@@ -173,6 +174,32 @@ ControllerEntity::AaCommandStatus ControllerEntityImpl::convertErrorToAaCommandS
 			AVDECC_ASSERT(false, "ProtocolInterface error code not handled");
 	}
 	return AaCommandStatus::InternalError;
+}
+
+ControllerEntity::MvuCommandStatus ControllerEntityImpl::convertErrorToMvuCommandStatus(protocol::ProtocolInterface::Error const error) const noexcept
+{
+	switch (error)
+	{
+		case protocol::ProtocolInterface::Error::NoError:
+			return MvuCommandStatus::Success;
+		case protocol::ProtocolInterface::Error::TransportError:
+			return MvuCommandStatus::NetworkError;
+		case protocol::ProtocolInterface::Error::Timeout:
+			return MvuCommandStatus::TimedOut;
+		case protocol::ProtocolInterface::Error::UnknownRemoteEntity:
+			return MvuCommandStatus::UnknownEntity;
+		case protocol::ProtocolInterface::Error::UnknownLocalEntity:
+			AVDECC_ASSERT(false, "Trying to sendAaCommand from a non-existing local entity");
+			return MvuCommandStatus::UnknownEntity;
+		case protocol::ProtocolInterface::Error::InvalidEntityType:
+			AVDECC_ASSERT(false, "Trying to sendAaCommand from a non-controller entity");
+			return MvuCommandStatus::InternalError;
+		case protocol::ProtocolInterface::Error::InternalError:
+			return MvuCommandStatus::InternalError;
+		default:
+			AVDECC_ASSERT(false, "ProtocolInterface error code not handled");
+	}
+	return MvuCommandStatus::InternalError;
 }
 
 ControllerEntity::ControlStatus ControllerEntityImpl::convertErrorToControlStatus(protocol::ProtocolInterface::Error const error) const noexcept
@@ -342,6 +369,77 @@ void ControllerEntityImpl::sendAaAecpCommand(UniqueIdentifier const targetEntity
 	catch (...)
 	{
 		invokeProtectedHandler(onErrorCallback, AaCommandStatus::InternalError);
+	}
+}
+
+void ControllerEntityImpl::sendMvuAecpCommand(UniqueIdentifier const targetEntityID, protocol::MvuCommandType const commandType, void const* const payload, size_t const payloadLength, OnMvuAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept
+{
+	try
+	{
+		auto* pi = const_cast<ControllerEntityImpl*>(this)->getProtocolInterface();
+		auto targetMacAddress = networkInterface::MacAddress{};
+
+		// Search target mac address based on its entityID
+		{
+			// Lock ProtocolInterface
+			std::lock_guard<decltype(*pi)> const lg(*pi);
+
+			auto const it = _discoveredEntities.find(targetEntityID);
+
+			if (it != _discoveredEntities.end())
+			{
+				// Get entity mac address
+				targetMacAddress = it->second.getMacAddress();
+			}
+		}
+
+		// Return an error if entity is not found in the list
+		if (!networkInterface::isMacAddressValid(targetMacAddress))
+		{
+			invokeProtectedHandler(onErrorCallback, MvuCommandStatus::UnknownEntity);
+			return;
+		}
+
+		// Build MVU-AECPDU frame
+		auto frame = protocol::MvuAecpdu::create();
+		auto* mvu = static_cast<protocol::MvuAecpdu*>(frame.get());
+
+		// Set Ether2 fields
+		mvu->setSrcAddress(pi->getMacAddress());
+		mvu->setDestAddress(targetMacAddress);
+		// Set AECP fields
+		mvu->setMessageType(protocol::AecpMessageType::VendorUniqueCommand);
+		mvu->setStatus(protocol::AecpStatus::Success);
+		mvu->setTargetEntityID(targetEntityID);
+		mvu->setControllerEntityID(getEntityID());
+		// No need to set the SequenceID, it's set by the ProtocolInterface layer
+		// Set MVU fields
+		mvu->setCommandType(commandType);
+		mvu->setCommandSpecificData(payload, payloadLength);
+
+		auto const error = pi->sendAecpCommand(std::move(frame), targetMacAddress, [onErrorCallback, answerCallback, this](protocol::Aecpdu const* const response, protocol::ProtocolInterface::Error const error) noexcept
+		{
+			if (!error)
+			{
+				processMvuAecpResponse(response, onErrorCallback, answerCallback); // We sent an MVU command, we know it's an MVU response (so directly call processMvuAecpResponse)
+			}
+			else
+			{
+				invokeProtectedHandler(onErrorCallback, convertErrorToMvuCommandStatus(error));
+			}
+		});
+		if (!!error)
+		{
+			invokeProtectedHandler(onErrorCallback, convertErrorToMvuCommandStatus(error));
+		}
+	}
+	catch (std::invalid_argument const&)
+	{
+		invokeProtectedHandler(onErrorCallback, MvuCommandStatus::ProtocolError);
+	}
+	catch (...)
+	{
+		invokeProtectedHandler(onErrorCallback, MvuCommandStatus::InternalError);
 	}
 }
 
@@ -1496,6 +1594,64 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 		},
 		// GetASPath
 		// GetCounters
+		{ protocol::AemCommandType::GetCounters.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
+			{
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex, validFlags, counters] = protocol::aemPayload::deserializeGetCountersResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeGetCountersResponse(aem.getPayload());
+				entity::model::DescriptorType const descriptorType = std::get<0>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				entity::model::DescriptorCounterValidFlag const validFlags = std::get<2>(result);
+				entity::model::DescriptorCounters const& counters = std::get<3>(result);
+#endif // __cpp_structured_bindings
+
+				auto const targetID = aem.getTargetEntityID();
+				auto* delegate = controller->getDelegate();
+
+				// Notify handlers
+				switch (descriptorType)
+				{
+					case model::DescriptorType::AvbInterface:
+					{
+						AvbInterfaceCounterValidFlags flags;
+						flags.setValue(validFlags);
+						answerCallback.invoke<GetAvbInterfaceCountersHandler>(controller, targetID, status, descriptorIndex, flags, counters);
+						if (aem.getUnsolicited() && delegate && !!status)
+						{
+							invokeProtectedMethod(&ControllerEntity::Delegate::onAvbInterfaceCountersChanged, delegate, controller, targetID, descriptorIndex, flags, counters);
+						}
+						break;
+					}
+					case model::DescriptorType::ClockDomain:
+					{
+						ClockDomainCounterValidFlags flags;
+						flags.setValue(validFlags);
+						answerCallback.invoke<GetClockDomainCountersHandler>(controller, targetID, status, descriptorIndex, flags, counters);
+						if (aem.getUnsolicited() && delegate && !!status)
+						{
+							invokeProtectedMethod(&ControllerEntity::Delegate::onClockDomainCountersChanged, delegate, controller, targetID, descriptorIndex, flags, counters);
+						}
+						break;
+					}
+					case model::DescriptorType::StreamInput:
+					{
+						StreamInputCounterValidFlags flags;
+						flags.setValue(validFlags);
+						answerCallback.invoke<GetStreamInputCountersHandler>(controller, targetID, status, descriptorIndex, flags, counters);
+						if (aem.getUnsolicited() && delegate && !!status)
+						{
+							invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputCountersChanged, delegate, controller, targetID, descriptorIndex, flags, counters);
+						}
+						break;
+					}
+					default:
+						LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled descriptorType in GET_COUNTERS response: DescriptorType={} DescriptorIndex={}", to_integral(descriptorType), descriptorIndex);
+						break;
+				}
+			}
+		},
 		// Get Audio Map
 		{ protocol::AemCommandType::GetAudioMap.getValue(), [](ControllerEntityImpl const* const controller, AemCommandStatus const status, protocol::AemAecpdu const& aem, AnswerCallback const& answerCallback)
 			{
@@ -1719,7 +1875,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 	}
 	else
 	{
-		auto checkProcessInvalidNonSuccessResponse = [status, &aem, &onErrorCallback](char const* const what)
+		auto checkProcessInvalidNonSuccessResponse = [status, &aem, &onErrorCallback]([[maybe_unused]] char const* const what)
 		{
 			auto st = AemCommandStatus::ProtocolError;
 #if defined(IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES)
@@ -1732,7 +1888,6 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 #endif // IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES
 			if (st == AemCommandStatus::ProtocolError)
 			{
-				(void)what;
 				LOG_CONTROLLER_ENTITY_INFO(aem.getTargetEntityID(), "Failed to process {} AEM response: {}", std::string(aem.getCommandType()), what);
 			}
 			invokeProtectedHandler(onErrorCallback, st);
@@ -1768,6 +1923,68 @@ void ControllerEntityImpl::processAaAecpResponse(protocol::Aecpdu const* const r
 	auto const targetID = aa.getTargetEntityID();
 
 	answerCallback.invoke<AddressAccessHandler>(this, targetID, status, aa.getTlvData());
+}
+
+void ControllerEntityImpl::processMvuAecpResponse(protocol::Aecpdu const* const response, OnMvuAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept
+{
+	auto const& mvu = static_cast<protocol::MvuAecpdu const&>(*response);
+	auto const status = static_cast<MvuCommandStatus>(mvu.getStatus().getValue()); // We have to convert protocol status to our extended status
+
+	static std::unordered_map<protocol::MvuCommandType::value_type, std::function<void(ControllerEntityImpl const* const controller, MvuCommandStatus const status, protocol::MvuAecpdu const& mvu, AnswerCallback const& answerCallback)>> s_Dispatch
+	{
+		// Get Milan Info
+		{ protocol::MvuCommandType::GetMilanInfo.getValue(), [](ControllerEntityImpl const* const controller, MvuCommandStatus const status, protocol::MvuAecpdu const& mvu, AnswerCallback const& answerCallback)
+			{
+				// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[configurationIndex, protocolVersion, featuresFlags, certificationVersion] = protocol::mvuPayload::deserializeGetMilanInfoResponse(mvu.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::mvuPayload::deserializeGetMilanInfoResponse(mvu.getPayload());
+				entity::model::ConfigurationIndex const configurationIndex = std::get<0>(result);
+				std::uint32_t const protocolVersion = std::get<1>(result);
+				protocol::MvuFeaturesFlags const featuresFlags = std::get<2>(result);
+				std::uint32_t const certificationVersion = std::get<3>(result);
+#endif // __cpp_structured_bindings
+
+				auto const targetID = mvu.getTargetEntityID();
+
+				answerCallback.invoke<GetMilanInfoHandler>(controller, targetID, status, configurationIndex, protocolVersion, featuresFlags, certificationVersion);
+			}
+		},
+	};
+
+	auto const& it = s_Dispatch.find(mvu.getCommandType().getValue());
+	if (it == s_Dispatch.end())
+	{
+		// It's an expected response, this is an internal error since we sent a command and didn't implement the code to handle the response
+		LOG_CONTROLLER_ENTITY_ERROR(mvu.getTargetEntityID(), "Failed to process MVU response: Unhandled command type {} ({})", std::string(mvu.getCommandType()), toHexString(mvu.getCommandType().getValue()));
+		invokeProtectedHandler(onErrorCallback, MvuCommandStatus::InternalError);
+	}
+	else
+	{
+		try
+		{
+			it->second(this, status, mvu, answerCallback);
+		}
+		catch ([[maybe_unused]] protocol::mvuPayload::IncorrectPayloadSizeException const& e)
+		{
+			LOG_CONTROLLER_ENTITY_INFO(mvu.getTargetEntityID(), "Failed to process {} MVU response: {}", std::string(mvu.getCommandType()), e.what());
+			invokeProtectedHandler(onErrorCallback, MvuCommandStatus::ProtocolError);
+			return;
+		}
+		catch ([[maybe_unused]] InvalidDescriptorTypeException const& e)
+		{
+			LOG_CONTROLLER_ENTITY_INFO(mvu.getTargetEntityID(), "Failed to process {} MVU response: {}", std::string(mvu.getCommandType()), e.what());
+			invokeProtectedHandler(onErrorCallback, MvuCommandStatus::ProtocolError);
+			return;
+		}
+		catch ([[maybe_unused]] std::exception const& e) // Mainly unpacking errors
+		{
+			LOG_CONTROLLER_ENTITY_INFO(mvu.getTargetEntityID(), "Failed to process {} MVU response: {}", std::string(mvu.getCommandType()), e.what());
+			invokeProtectedHandler(onErrorCallback, MvuCommandStatus::ProtocolError);
+			return;
+		}
+	}
 }
 
 void ControllerEntityImpl::processAcmpResponse(protocol::Acmpdu const* const response, OnACMPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback, bool const sniffed) const noexcept
@@ -3059,6 +3276,51 @@ void ControllerEntityImpl::getAvbInfo(UniqueIdentifier const targetEntityID, mod
 	}
 }
 
+void ControllerEntityImpl::getAvbInterfaceCounters(UniqueIdentifier const targetEntityID, model::AvbInterfaceIndex const avbInterfaceIndex, GetAvbInterfaceCountersHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetCountersCommand(model::DescriptorType::AvbInterface, avbInterfaceIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, avbInterfaceIndex, AvbInterfaceCounterValidFlags{}, model::DescriptorCounters{});
+
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetCounters, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getAvbInterfaceCounters: {}", e.what());
+	}
+}
+
+void ControllerEntityImpl::getClockDomainCounters(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, GetClockDomainCountersHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetCountersCommand(model::DescriptorType::ClockDomain, clockDomainIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, clockDomainIndex, ClockDomainCounterValidFlags{}, model::DescriptorCounters{});
+
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetCounters, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getClockDomainCounters: {}", e.what());
+	}
+}
+
+void ControllerEntityImpl::getStreamInputCounters(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, GetStreamInputCountersHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetCountersCommand(model::DescriptorType::StreamInput, streamIndex);
+		auto const errorCallback = ControllerEntityImpl::makeAemAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, streamIndex, StreamInputCounterValidFlags{}, model::DescriptorCounters{});
+
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetCounters, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getStreamInputCounters: {}", e.what());
+	}
+}
+
 void ControllerEntityImpl::startOperation(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer, StartOperationHandler const& handler) const noexcept
 {
 	try
@@ -3131,6 +3393,22 @@ void ControllerEntityImpl::addressAccess(la::avdecc::UniqueIdentifier const targ
 	catch ([[maybe_unused]] std::exception const& e)
 	{
 		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize addressAccess: {}", e.what());
+	}
+}
+
+/* Enumeration and Control Protocol (AECP) MVU (Milan Vendor Unique) */
+void ControllerEntityImpl::getMilanInfo(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, GetMilanInfoHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::mvuPayload::serializeGetMilanInfoCommand(configurationIndex);
+		auto const errorCallback = ControllerEntityImpl::makeMvuAECPErrorHandler(handler, this, targetEntityID, std::placeholders::_1, configurationIndex, 0u, protocol::MvuFeaturesFlags::None, 0u);
+
+		sendMvuAecpCommand(targetEntityID, protocol::MvuCommandType::GetMilanInfo, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getMilanInfo: {}", e.what());
 	}
 }
 
@@ -3365,7 +3643,7 @@ std::string LA_AVDECC_CALL_CONVENTION ControllerEntity::statusToString(Controlle
 		case AemCommandStatus::AuthenticationDisabled:
 			return "The AVDECC Controller is trying to use an authentication command when authentication isn't enable on the AVDECC Entity.";
 		case AemCommandStatus::BadArguments:
-			return "One or more of the values in the fields of the frame were deemed to be bad by the AVDECC Entity(unsupported, incorrect combination, etc.).";
+			return "One or more of the values in the fields of the frame were deemed to be bad by the AVDECC Entity (unsupported, incorrect combination, etc.).";
 		case AemCommandStatus::NoResources:
 			return "The AVDECC Entity cannot complete the command because it does not have the resources to support it.";
 		case AemCommandStatus::InProgress:
@@ -3415,7 +3693,9 @@ std::string LA_AVDECC_CALL_CONVENTION ControllerEntity::statusToString(Controlle
 			return "The data for writing is invalid.";
 		case AaCommandStatus::Unsupported:
 			return "A requested action was unsupported. Typically used when an unknown EXECUTE was encountered or if EXECUTE is not supported.";
-			// Library Error Codes
+		// Library Error Codes
+		case AaCommandStatus::Aborted:
+			return "Operation aborted.";
 		case AaCommandStatus::NetworkError:
 			return "Network error.";
 		case AaCommandStatus::ProtocolError:
@@ -3425,6 +3705,34 @@ std::string LA_AVDECC_CALL_CONVENTION ControllerEntity::statusToString(Controlle
 		case AaCommandStatus::UnknownEntity:
 			return "Unknown entity.";
 		case AaCommandStatus::InternalError:
+			return "Internal error.";
+		default:
+			AVDECC_ASSERT(false, "Unhandled status");
+			return "Unknown status.";
+	}
+}
+
+std::string LA_AVDECC_CALL_CONVENTION ControllerEntity::statusToString(ControllerEntity::MvuCommandStatus const status)
+{
+	switch (status)
+	{
+		// Milan Vendor Unique Error Codes
+		case MvuCommandStatus::Success:
+			return "Success.";
+		case MvuCommandStatus::NotImplemented:
+			return "The AVDECC Entity does not support the command type.";
+		case MvuCommandStatus::BadArguments:
+			return "One or more of the values in the fields of the frame were deemed to be bad by the AVDECC Entity (unsupported, incorrect combination, etc.).";
+		// Library Error Codes
+		case MvuCommandStatus::NetworkError:
+			return "Network error.";
+		case MvuCommandStatus::ProtocolError:
+			return "Protocol error.";
+		case MvuCommandStatus::TimedOut:
+			return "Command timed out.";
+		case MvuCommandStatus::UnknownEntity:
+			return "Unknown entity.";
+		case MvuCommandStatus::InternalError:
 			return "Internal error.";
 		default:
 			AVDECC_ASSERT(false, "Unhandled status");

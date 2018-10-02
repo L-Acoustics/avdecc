@@ -117,7 +117,7 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 			auto sll = reinterpret_cast<struct sockaddr_ll*>(ifa->ifa_addr);
 			if (sll->sll_halen == 6)
 			{
-				memcpy(interface.macAddress.data(), sll->sll_addr, 6);
+				std::memcpy(interface.macAddress.data(), sll->sll_addr, 6);
 			}
 			interfaces[ifa->ifa_name] = interface;
 		}

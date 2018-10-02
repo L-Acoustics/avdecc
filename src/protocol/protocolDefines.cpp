@@ -34,7 +34,7 @@ namespace protocol
 {
 
 /* Global protocol defines */
-std::uint16_t const AaAecpMaxSingleTlvMemoryDataLength{ Aecpdu::MaximumLength - Aecpdu::HeaderLength - AaAecpdu::HeaderLength - AaAecpdu::TlvHeaderLength }; /* Maximum individual TLV memory_data length */
+std::uint16_t const AaAecpMaxSingleTlvMemoryDataLength{ Aecpdu::MaximumSendLength - Aecpdu::HeaderLength - AaAecpdu::HeaderLength - AaAecpdu::TlvHeaderLength }; /* Maximum individual TLV memory_data length in commands */
 
 /** ADP Message Type - Clause 6.2.1.5 */
 AdpMessageType const AdpMessageType::EntityAvailable{ 0 };
@@ -319,6 +319,27 @@ AaAecpStatus const AaAecpStatus::TlvInvalid{ 5 };
 AaAecpStatus const AaAecpStatus::DataInvalid{ 6 };
 AaAecpStatus const AaAecpStatus::Unsupported{ 7 };
 /* 8-31 reserved for future use */
+
+/** Milan Vendor Unique Command Type - Milan Clause 7.2.2.3 */
+MvuCommandType const MvuCommandType::GetMilanInfo{ 0 };
+MvuCommandType const MvuCommandType::InvalidCommandType{ 0xffff };
+
+MvuCommandType::operator std::string() const noexcept
+{
+	static std::unordered_map<MvuCommandType::value_type, std::string> s_MvuCommandTypeMapping = {
+		{ MvuCommandType::GetMilanInfo.getValue(), "GET_MILAN_INFO" },
+		{ MvuCommandType::InvalidCommandType.getValue(), "INVALID_COMMAND_TYPE" },
+	};
+
+	auto const& it = s_MvuCommandTypeMapping.find(getValue());
+	if (it == s_MvuCommandTypeMapping.end())
+		return "INVALID_COMMAND_TYPE";
+	return it->second;
+}
+
+/** Milan Features Flags - Milan Clause 7.4.1 */
+MvuFeaturesFlags const MvuFeaturesFlags::None{ 0x00000000 };
+MvuFeaturesFlags const MvuFeaturesFlags::Redundancy{ 0x00000001 };
 
 /** ACMP Message Type - Clause 8.2.1.5 */
 AcmpMessageType const AcmpMessageType::ConnectTxCommand{ 0 };

@@ -911,6 +911,66 @@ void ControllerImpl::onGetStreamOutputInfoResult(entity::ControllerEntity const*
 	}
 }
 
+void ControllerImpl::onGetAcquiredStateResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onGetAcquiredStateResult (OwningEntity={}): {}", owningEntity, entity::ControllerEntity::statusToString(status));
+
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDynamicInfo(0u, ControlledEntityImpl::DynamicInfoType::AcquiredState, 0u, 0u))
+		{
+			auto acquireState{ model::AcquireState::Undefined };
+			auto owningController{ UniqueIdentifier{} };
+			// We have to manually check each status code (do not use processFailureStatus) because even an error allows AcquiredState detection
+			switch (status)
+			{
+				// Valid responses
+				case entity::ControllerEntity::AemCommandStatus::Success:
+					// Full status check based on returned owningEntity, some devices return SUCCESS although the requesting controller is not the one currently owning the entity
+					acquireState = owningEntity ? (owningEntity == getControllerEID() ? model::AcquireState::Acquired : model::AcquireState::AcquiredByOther) : model::AcquireState::NotAcquired;
+					owningController = owningEntity;
+					break;
+				case entity::ControllerEntity::AemCommandStatus::AcquiredByOther:
+					acquireState = model::AcquireState::AcquiredByOther;
+					owningController = owningEntity;
+					break;
+				case entity::ControllerEntity::AemCommandStatus::BadArguments: // Interpret BadArguments as trying to Release an Entity that is Not Acquired at all
+					[[fallthrough]];
+				case entity::ControllerEntity::AemCommandStatus::NotImplemented:
+					[[fallthrough]];
+				case entity::ControllerEntity::AemCommandStatus::NotSupported:
+					acquireState = model::AcquireState::NotAcquired;
+					break;
+
+				// All other cases, let processFailureStatus do its job
+				default:
+					if (!processFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::AcquiredState, 0u, 0u))
+					{
+						controlledEntity->setGetFatalEnumerationError();
+						notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AcquiredState);
+						return;
+					}
+					break;
+			}
+
+			// Update acquired state
+			controlledEntity->setAcquireState(acquireState);
+			controlledEntity->setOwningController(owningController);
+		}
+
+		// Got all expected dynamic information
+		if (controlledEntity->gotAllExpectedDynamicInfo())
+		{
+			// Clear this enumeration step and check for next one
+			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			checkEnumerationSteps(controlledEntity.get());
+		}
+	}
+}
+
 void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetStreamPortInputAudioMapResult (StreamPortIndex={} NumberMaps={} MapIndex={}): {}", streamPortIndex, numberOfMaps, mapIndex, entity::ControllerEntity::statusToString(status));
@@ -1058,6 +1118,135 @@ void ControllerImpl::onGetAvbInfoResult(entity::ControllerEntity const* const /*
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AvbInfo);
+					return;
+				}
+			}
+		}
+
+		// Got all expected dynamic information
+		if (controlledEntity->gotAllExpectedDynamicInfo())
+		{
+			// Clear this enumeration step and check for next one
+			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			checkEnumerationSteps(controlledEntity.get());
+		}
+	}
+}
+
+void ControllerImpl::onGetAvbInterfaceCountersResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::AvbInterfaceCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, entity::model::ConfigurationIndex const configurationIndex) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onGetAvbInterfaceCountersResult (AvbInterfaceIndex={}): {}", avbInterfaceIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInterfaceCounters, avbInterfaceIndex))
+		{
+			if (!!status)
+			{
+				// Get previous counters
+				auto& avbInterfaceCounters = controlledEntity->getAvbInterfaceCounters(avbInterfaceIndex);
+
+				// Update (or set) counters
+				for (auto counter : validCounters)
+				{
+					avbInterfaceCounters[counter] = counters[validCounters.getPosition(counter)];
+				}
+			}
+			else
+			{
+				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInterfaceCounters, avbInterfaceIndex))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AvbInterfaceCounters);
+					return;
+				}
+			}
+		}
+
+		// Got all expected dynamic information
+		if (controlledEntity->gotAllExpectedDynamicInfo())
+		{
+			// Clear this enumeration step and check for next one
+			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			checkEnumerationSteps(controlledEntity.get());
+		}
+	}
+}
+
+void ControllerImpl::onGetClockDomainCountersResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::ClockDomainCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, entity::model::ConfigurationIndex const configurationIndex) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onGetClockDomainCountersResult (ClockDomainIndex={}): {}", clockDomainIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::GetClockDomainCounters, clockDomainIndex))
+		{
+			if (!!status)
+			{
+				// Get previous counters
+				auto& clockDomainCounters = controlledEntity->getClockDomainCounters(clockDomainIndex);
+
+				// Update (or set) counters
+				for (auto counter : validCounters)
+				{
+					clockDomainCounters[counter] = counters[validCounters.getPosition(counter)];
+				}
+			}
+			else
+			{
+				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetClockDomainCounters, clockDomainIndex))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockDomainCounters);
+					return;
+				}
+			}
+		}
+
+		// Got all expected dynamic information
+		if (controlledEntity->gotAllExpectedDynamicInfo())
+		{
+			// Clear this enumeration step and check for next one
+			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			checkEnumerationSteps(controlledEntity.get());
+		}
+	}
+}
+
+void ControllerImpl::onGetStreamInputCountersResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::StreamInputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, entity::model::ConfigurationIndex const configurationIndex) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onGetStreamInputCountersResult (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamInputCounters, streamIndex))
+		{
+			if (!!status)
+			{
+				// Get previous counters
+				auto& streamCounters = controlledEntity->getStreamInputCounters(streamIndex);
+
+				// Update (or set) counters
+				for (auto counter : validCounters)
+				{
+					streamCounters[counter] = counters[validCounters.getPosition(counter)];
+				}
+			}
+			else
+			{
+				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamInputCounters, streamIndex))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamInputCounters);
 					return;
 				}
 			}

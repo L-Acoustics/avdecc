@@ -50,9 +50,15 @@ void LA_AVDECC_CALL_CONVENTION Aecpdu::serialize(SerializationBuffer& buffer) co
 
 	buffer << _controllerEntityID << _sequenceID;
 
+	// ControlDataLength exceeds maximum protocol value
+	if (_controlDataLength > Aecpdu::MaximumSendLength)
+	{
+		LOG_SERIALIZATION_WARN(_destAddress, "Aecpdu::serialize warning: ControlDataLength field exceeds maximum allowed value of {}: {}", Aecpdu::MaximumSendLength, _controlDataLength);
+	}
+
 	if (!AVDECC_ASSERT_WITH_RET((buffer.size() - previousSize) == HeaderLength, "Aecpdu::serialize error: Packed buffer length != expected header length"))
 	{
-		LOG_SERIALIZATION_WARN(_srcAddress, "Aecpdu::serialize error: Packed buffer length != expected header length");
+		LOG_SERIALIZATION_WARN(_destAddress, "Aecpdu::serialize error: Packed buffer length != expected header length");
 	}
 }
 
@@ -66,9 +72,9 @@ void LA_AVDECC_CALL_CONVENTION Aecpdu::deserialize(DeserializationBuffer& buffer
 	}
 
 	// ControlDataLength exceeds maximum protocol value
-	if (_controlDataLength > Aecpdu::MaximumLength)
+	if (_controlDataLength > Aecpdu::MaximumRecvLength)
 	{
-		LOG_SERIALIZATION_WARN(_srcAddress, "Aecpdu::deserialize warning: ControlDataLength field exceeds maximum protocol value of {}: {}", Aecpdu::MaximumLength, _controlDataLength);
+		LOG_SERIALIZATION_WARN(_srcAddress, "Aecpdu::deserialize warning: ControlDataLength field exceeds maximum allowed value of {}: {}", Aecpdu::MaximumRecvLength, _controlDataLength);
 	}
 
 	buffer >> _controllerEntityID >> _sequenceID;

@@ -125,7 +125,7 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 					if (sdl->sdl_alen == 6)
 					{
 						auto ptr = reinterpret_cast<unsigned char*>(LLADDR(sdl));
-						memcpy(interface.macAddress.data(), ptr, 6);
+						std::memcpy(interface.macAddress.data(), ptr, 6);
 					}
 					// Add the interface to the list
 					interfaces[ifa->ifa_name] = interface;

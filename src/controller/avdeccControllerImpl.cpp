@@ -394,6 +394,60 @@ void ControllerImpl::updateAvbInfo(ControlledEntityImpl& controlledEntity, entit
 	}
 }
 
+void ControllerImpl::updateAvbInterfaceCounters(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::AvbInterfaceCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) const noexcept
+{
+	// Get previous counters
+	auto& avbInterfaceCounters = controlledEntity.getAvbInterfaceCounters(avbInterfaceIndex);
+
+	// Update (or set) counters
+	for (auto counter : validCounters)
+	{
+		avbInterfaceCounters[counter] = counters[validCounters.getPosition(counter)];
+	}
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAvbInterfaceCountersChanged, this, &controlledEntity, avbInterfaceIndex, avbInterfaceCounters);
+	}
+}
+
+void ControllerImpl::updateClockDomainCounters(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::ClockDomainCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) const noexcept
+{
+	// Get previous counters
+	auto& clockDomainCounters = controlledEntity.getClockDomainCounters(clockDomainIndex);
+
+	// Update (or set) counters
+	for (auto counter : validCounters)
+	{
+		clockDomainCounters[counter] = counters[validCounters.getPosition(counter)];
+	}
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onClockDomainCountersChanged, this, &controlledEntity, clockDomainIndex, clockDomainCounters);
+	}
+}
+
+void ControllerImpl::updateStreamInputCounters(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::StreamInputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) const noexcept
+{
+	// Get previous counters
+	auto& streamCounters = controlledEntity.getStreamInputCounters(streamIndex);
+
+	// Update (or set) counters
+	for (auto counter : validCounters)
+	{
+		streamCounters[counter] = counters[validCounters.getPosition(counter)];
+	}
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputCountersChanged, this, &controlledEntity, streamIndex, streamCounters);
+	}
+}
+
 void ControllerImpl::updateMemoryObjectLength(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) const noexcept
 {
 	controlledEntity.setMemoryObjectLength(configurationIndex, memoryObjectIndex, length);
@@ -449,12 +503,36 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntity
 	}
 }
 
-void ControllerImpl::updateOperationStatus(ControlledEntityImpl& controlledEntity, UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, std::uint16_t const percentComplete) const noexcept
+void ControllerImpl::updateOperationStatus(ControlledEntityImpl& controlledEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, std::uint16_t const percentComplete) const noexcept
 {
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
 	{
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onOperationStatus, this, &controlledEntity, targetEntityID, descriptorType, descriptorIndex, operationID, percentComplete);
+		if (percentComplete == 0) /* Clause 7.4.55.2 */
+		{
+			// Failure
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onOperationCompleted, this, &controlledEntity, descriptorType, descriptorIndex, operationID, true);
+		}
+		else if (percentComplete == 1000)
+		{
+			// Completed successfully
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onOperationCompleted, this, &controlledEntity, descriptorType, descriptorIndex, operationID, false);
+		}
+		else if (percentComplete == 0xFFFF)
+		{
+			// Unknown progress but continuing
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onOperationProgress, this, &controlledEntity, descriptorType, descriptorIndex, operationID, -1.0f);
+		}
+		else if (percentComplete < 1000)
+		{
+			// In progress
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onOperationProgress, this, &controlledEntity, descriptorType, descriptorIndex, operationID, percentComplete / 10.0f);
+		}
+		else
+		{
+			// Invalid value
+			AVDECC_ASSERT(percentComplete > 1000, "Unknown percentComplete value");
+		}
 	}
 }
 
@@ -646,6 +724,15 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 
 	switch (dynamicInfoType)
 	{
+		case ControlledEntityImpl::DynamicInfoType::AcquiredState:
+			queryFunc = [this, entityID](entity::ControllerEntity* const controller) noexcept
+			{
+				// Send an ACQUIRE command with the RELEASE flag to detect the current acquired state of the entity
+				// It won't change the current acquired state except if we were the acquiring controller, which doesn't matter anyway because having to enumerate the device again means we got interrupted in the middle of something and it's best to start over
+				LOG_CONTROLLER_TRACE(entityID, "releaseEntity (ReleaseFlag)");
+				controller->releaseEntity(entityID, entity::model::DescriptorType::Entity, 0u, std::bind(&ControllerImpl::onGetAcquiredStateResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+			};
+			break;
 		case ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings:
 			queryFunc = [this, entityID, configurationIndex, descriptorIndex, subIndex](entity::ControllerEntity* const controller) noexcept
 			{
@@ -703,6 +790,27 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 			//{
 			//};
 			assert(false && "Todo");
+			break;
+		case ControlledEntityImpl::DynamicInfoType::GetAvbInterfaceCounters:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getAvbInterfaceCounters (AvbInterfaceIndex={})", descriptorIndex);
+				controller->getAvbInterfaceCounters(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetAvbInterfaceCountersResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
+			};
+			break;
+		case ControlledEntityImpl::DynamicInfoType::GetClockDomainCounters:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getClockDomainCounters (ClockDomainIndex={})", descriptorIndex);
+				controller->getClockDomainCounters(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetClockDomainCountersResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
+			};
+			break;
+		case ControlledEntityImpl::DynamicInfoType::GetStreamInputCounters:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getStreamInputCounters (StreamIndex={})", descriptorIndex);
+				controller->getStreamInputCounters(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetStreamInputCountersResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
+			};
 			break;
 		default:
 			AVDECC_ASSERT(false, "Unhandled DynamicInfoType");
@@ -917,7 +1025,13 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 		auto const configurationIndex = entity->getCurrentConfigurationIndex();
 		auto const& configStaticTree = entity->getConfigurationStaticTree(configurationIndex);
 
-		// Get StreamInfo and RX_STATE for each StreamInput descriptors
+		// Get AcquiredState
+		{
+			// Global entity information (not related to current configuration)
+			queryInformation(entity, 0u, ControlledEntityImpl::DynamicInfoType::AcquiredState, 0u);
+		}
+
+		// Get StreamInfo/Counters and RX_STATE for each StreamInput descriptors
 		{
 			auto const count = configStaticTree.streamInputStaticModels.size();
 			for (auto index = entity::model::StreamIndex(0); index < count; ++index)
@@ -925,10 +1039,14 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 				// StreamInfo
 				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamInfo, index);
 
+				// Counters
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamInputCounters, index);
+
 				// RX_STATE
 				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamState, index);
 			}
 		}
+
 		// Get StreamInfo and TX_STATE for each StreamOutput descriptors
 		{
 			auto const count = configStaticTree.streamOutputStaticModels.size();
@@ -941,13 +1059,26 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, index);
 			}
 		}
-		// Get AvbInfo for each AvbInterface descriptors
+
+		// Get AvbInfo/Counters for each AvbInterface descriptors
 		{
 			auto const count = configStaticTree.avbInterfaceStaticModels.size();
 			for (auto index = entity::model::AvbInterfaceIndex(0); index < count; ++index)
 			{
 				// AvbInfo
 				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInfo, index);
+				// Counters
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInterfaceCounters, index);
+			}
+		}
+
+		// Get Counters for each ClockDomain descriptors
+		{
+			auto const count = configStaticTree.clockDomainStaticModels.size();
+			for (auto index = entity::model::ClockDomainIndex(0); index < count; ++index)
+			{
+				// Counters
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::GetClockDomainCounters, index);
 			}
 		}
 
@@ -964,6 +1095,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 				}
 			}
 		}
+
 		// Get AudioMappings for each StreamPortOutput descriptors
 		{
 			auto const count = configStaticTree.streamPortOutputStaticModels.size();

@@ -63,101 +63,101 @@ public:
 	virtual ~Acmpdu() noexcept override = default;
 
 	// Setters
-	void setMessageType(AcmpMessageType const messageType) noexcept
+	void LA_AVDECC_CALL_CONVENTION setMessageType(AcmpMessageType const messageType) noexcept
 	{
 		AvtpduControl::setControlData(messageType.getValue());
 	}
-	void setStatus(AcmpStatus const status) noexcept
+	void LA_AVDECC_CALL_CONVENTION setStatus(AcmpStatus const status) noexcept
 	{
 		AvtpduControl::setStatus(status.getValue());
 	}
-	void setControllerEntityID(UniqueIdentifier const controllerEntityID) noexcept
+	void LA_AVDECC_CALL_CONVENTION setControllerEntityID(UniqueIdentifier const controllerEntityID) noexcept
 	{
 		_controllerEntityID = controllerEntityID;
 	}
-	void setTalkerEntityID(UniqueIdentifier const talkerEntityID) noexcept
+	void LA_AVDECC_CALL_CONVENTION setTalkerEntityID(UniqueIdentifier const talkerEntityID) noexcept
 	{
 		_talkerEntityID = talkerEntityID;
 	}
-	void setListenerEntityID(UniqueIdentifier const listenerEntityID) noexcept
+	void LA_AVDECC_CALL_CONVENTION setListenerEntityID(UniqueIdentifier const listenerEntityID) noexcept
 	{
 		_listenerEntityID = listenerEntityID;
 	}
-	void setTalkerUniqueID(AcmpUniqueID const talkerUniqueID) noexcept
+	void LA_AVDECC_CALL_CONVENTION setTalkerUniqueID(AcmpUniqueID const talkerUniqueID) noexcept
 	{
 		_talkerUniqueID = talkerUniqueID;
 	}
-	void setListenerUniqueID(AcmpUniqueID const listenerUniqueID) noexcept
+	void LA_AVDECC_CALL_CONVENTION setListenerUniqueID(AcmpUniqueID const listenerUniqueID) noexcept
 	{
 		_listenerUniqueID = listenerUniqueID;
 	}
-	void setStreamDestAddress(networkInterface::MacAddress const& streamDestAddress) noexcept
+	void LA_AVDECC_CALL_CONVENTION setStreamDestAddress(networkInterface::MacAddress const& streamDestAddress) noexcept
 	{
 		_streamDestAddress = streamDestAddress;
 	}
-	void setConnectionCount(std::uint16_t const connectionCount) noexcept
+	void LA_AVDECC_CALL_CONVENTION setConnectionCount(std::uint16_t const connectionCount) noexcept
 	{
 		_connectionCount = connectionCount;
 	}
-	void setSequenceID(AcmpSequenceID const sequenceID) noexcept
+	void LA_AVDECC_CALL_CONVENTION setSequenceID(AcmpSequenceID const sequenceID) noexcept
 	{
 		_sequenceID = sequenceID;
 	}
-	void setFlags(entity::ConnectionFlags const flags) noexcept
+	void LA_AVDECC_CALL_CONVENTION setFlags(entity::ConnectionFlags const flags) noexcept
 	{
 		_flags = flags;
 	}
-	void setStreamVlanID(std::uint16_t const streamVlanID) noexcept
+	void LA_AVDECC_CALL_CONVENTION setStreamVlanID(std::uint16_t const streamVlanID) noexcept
 	{
 		_streamVlanID = streamVlanID;
 	}
 
 	// Getters
-	AcmpMessageType getMessageType() const noexcept
+	AcmpMessageType LA_AVDECC_CALL_CONVENTION getMessageType() const noexcept
 	{
 		return AcmpMessageType(AvtpduControl::getControlData());
 	}
-	AcmpStatus getStatus() const noexcept
+	AcmpStatus LA_AVDECC_CALL_CONVENTION getStatus() const noexcept
 	{
 		return AcmpStatus(AvtpduControl::getStatus());
 	}
-	UniqueIdentifier getControllerEntityID() const noexcept
+	UniqueIdentifier LA_AVDECC_CALL_CONVENTION getControllerEntityID() const noexcept
 	{
 		return _controllerEntityID;
 	}
-	UniqueIdentifier getTalkerEntityID() const noexcept
+	UniqueIdentifier LA_AVDECC_CALL_CONVENTION getTalkerEntityID() const noexcept
 	{
 		return _talkerEntityID;
 	}
-	UniqueIdentifier getListenerEntityID() const noexcept
+	UniqueIdentifier LA_AVDECC_CALL_CONVENTION getListenerEntityID() const noexcept
 	{
 		return _listenerEntityID;
 	}
-	AcmpUniqueID getTalkerUniqueID() const noexcept
+	AcmpUniqueID LA_AVDECC_CALL_CONVENTION getTalkerUniqueID() const noexcept
 	{
 		return _talkerUniqueID;
 	}
-	AcmpUniqueID getListenerUniqueID() const noexcept
+	AcmpUniqueID LA_AVDECC_CALL_CONVENTION getListenerUniqueID() const noexcept
 	{
 		return _listenerUniqueID;
 	}
-	networkInterface::MacAddress getStreamDestAddress() const noexcept
+	networkInterface::MacAddress LA_AVDECC_CALL_CONVENTION getStreamDestAddress() const noexcept
 	{
 		return _streamDestAddress;
 	}
-	std::uint16_t getConnectionCount() const noexcept
+	std::uint16_t LA_AVDECC_CALL_CONVENTION getConnectionCount() const noexcept
 	{
 		return _connectionCount;
 	}
-	AcmpSequenceID getSequenceID() const noexcept
+	AcmpSequenceID LA_AVDECC_CALL_CONVENTION getSequenceID() const noexcept
 	{
 		return _sequenceID;
 	}
-	entity::ConnectionFlags getFlags() const noexcept
+	entity::ConnectionFlags LA_AVDECC_CALL_CONVENTION getFlags() const noexcept
 	{
 		return _flags;
 	}
-	std::uint16_t getStreamVlanID() const noexcept
+	std::uint16_t LA_AVDECC_CALL_CONVENTION getStreamVlanID() const noexcept
 	{
 		return _streamVlanID;
 	}
@@ -188,13 +188,13 @@ private:
 	UniqueIdentifier _controllerEntityID{};
 	UniqueIdentifier _talkerEntityID{};
 	UniqueIdentifier _listenerEntityID{};
-	AcmpUniqueID _talkerUniqueID{ 0 };
-	AcmpUniqueID _listenerUniqueID{ 0 };
+	AcmpUniqueID _talkerUniqueID{ 0u };
+	AcmpUniqueID _listenerUniqueID{ 0u };
 	networkInterface::MacAddress _streamDestAddress{};
-	std::uint16_t _connectionCount{ 0 };
-	AcmpSequenceID _sequenceID{ 0 };
+	std::uint16_t _connectionCount{ 0u };
+	AcmpSequenceID _sequenceID{ 0u };
 	entity::ConnectionFlags _flags{ entity::ConnectionFlags::None };
-	std::uint16_t _streamVlanID{ 0 };
+	std::uint16_t _streamVlanID{ 0u };
 
 private:
 	// Hide renamed AvtpduControl data

@@ -18,7 +18,7 @@
 */
 
 /**
-* @file protocolAemAecpdu.hpp
+* @file protocolGenericAecpdu.hpp
 * @author Christophe Calmejane
 */
 
@@ -36,47 +36,42 @@ namespace avdecc
 namespace protocol
 {
 
-/** AEM Aecpdu message */
-class AemAecpdu final : public Aecpdu
+/** Generic Aecpdu message */
+class GenericAecpdu final : public Aecpdu
 {
 public:
-	static constexpr size_t HeaderLength = 2; /* Unsolicited + CommandType */
+	static constexpr size_t HeaderLength = 0; /* Nothing */
 	static constexpr size_t MaximumPayloadLength_17221 = Aecpdu::MaximumLength_1722_1 - Aecpdu::HeaderLength - HeaderLength;
 	static constexpr size_t MaximumPayloadBufferLength = Aecpdu::MaximumLength_BigPayloads - Aecpdu::HeaderLength - HeaderLength;
 	static constexpr size_t MaximumSendPayloadBufferLength = Aecpdu::MaximumSendLength - Aecpdu::HeaderLength - HeaderLength;
 	static constexpr size_t MaximumRecvPayloadBufferLength = Aecpdu::MaximumRecvLength - Aecpdu::HeaderLength - HeaderLength;
 	static_assert(MaximumPayloadBufferLength >= MaximumSendPayloadBufferLength && MaximumPayloadBufferLength >= MaximumRecvPayloadBufferLength, "Incoherent constexpr values");
-	static LA_AVDECC_API la::avdecc::networkInterface::MacAddress Identify_Mac_Address;
 	using Payload = std::pair<void const*, size_t>;
 
 	/**
-	* @brief Factory method to create a new AemAecpdu.
-	* @details Creates a new AemAecpdu as a unique pointer.
-	* @return A new AemAecpdu as a Aecpdu::UniquePointer.
+	* @brief Factory method to create a new GenericAecpdu.
+	* @details Creates a new GenericAecpdu as a unique pointer.
+	* @return A new GenericAecpdu as a Aecpdu::UniquePointer.
 	*/
 	static UniquePointer create()
 	{
 		auto deleter = [](Aecpdu* self)
 		{
-			static_cast<AemAecpdu*>(self)->destroy();
+			static_cast<GenericAecpdu*>(self)->destroy();
 		};
-		return UniquePointer(createRawAemAecpdu(), deleter);
+		return UniquePointer(createRawGenericAecpdu(), deleter);
 	}
 
-	/** Constructor for heap AemAecpdu */
-	LA_AVDECC_API AemAecpdu() noexcept;
+	/** Constructor for heap GenericAecpdu */
+	LA_AVDECC_API GenericAecpdu() noexcept;
 
 	/** Destructor (for some reason we have to define it in the cpp file or clang complains about missing vtable, using = default or inline not working) */
-	virtual LA_AVDECC_API ~AemAecpdu() noexcept override;
+	virtual LA_AVDECC_API ~GenericAecpdu() noexcept override;
 
 	// Setters
-	LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION setUnsolicited(bool const unsolicited) noexcept;
-	LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION setCommandType(AemCommandType const commandType) noexcept;
-	LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION setCommandSpecificData(void const* const commandSpecificData, size_t const commandSpecificDataLength);
+	LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION setPayload(void const* const payload, size_t const payloadLength);
 
 	// Getters
-	LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION getUnsolicited() const noexcept;
-	LA_AVDECC_API AemCommandType LA_AVDECC_CALL_CONVENTION getCommandType() const noexcept;
 	LA_AVDECC_API Payload LA_AVDECC_CALL_CONVENTION getPayload() const noexcept;
 
 	/** Serialization method */
@@ -89,23 +84,21 @@ public:
 	virtual LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION copy() const override;
 
 	// Defaulted compiler auto-generated methods
-	AemAecpdu(AemAecpdu&&) = default;
-	AemAecpdu(AemAecpdu const&) = default;
-	AemAecpdu& operator=(AemAecpdu const&) = default;
-	AemAecpdu& operator=(AemAecpdu&&) = default;
+	GenericAecpdu(GenericAecpdu&&) = default;
+	GenericAecpdu(GenericAecpdu const&) = default;
+	GenericAecpdu& operator=(GenericAecpdu const&) = default;
+	GenericAecpdu& operator=(GenericAecpdu&&) = default;
 
 private:
 	/** Entry point */
-	static LA_AVDECC_API AemAecpdu* LA_AVDECC_CALL_CONVENTION createRawAemAecpdu();
+	static LA_AVDECC_API GenericAecpdu* LA_AVDECC_CALL_CONVENTION createRawGenericAecpdu();
 
 	/** Destroy method for COM-like interface */
 	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION destroy() noexcept override;
 
-	// Aem header data
-	bool _unsolicited{ false };
-	AemCommandType _commandType{ AemCommandType::InvalidCommandType };
-	std::array<std::uint8_t, MaximumPayloadBufferLength> _commandSpecificData{};
-	size_t _commandSpecificDataLength{ 0u };
+	// Generic header data
+	std::array<std::uint8_t, MaximumPayloadBufferLength> _payload{};
+	size_t _payloadLength{ 0u };
 };
 
 } // namespace protocol
