@@ -937,6 +937,8 @@ void ControllerImpl::onGetAcquiredStateResult(entity::ControllerEntity const* co
 					acquireState = model::AcquireState::AcquiredByOther;
 					owningController = owningEntity;
 					break;
+				case entity::ControllerEntity::AemCommandStatus::BadArguments: // Interpret BadArguments as trying to Release an Entity that is Not Acquired at all
+					[[fallthrough]];
 				case entity::ControllerEntity::AemCommandStatus::NotImplemented:
 					[[fallthrough]];
 				case entity::ControllerEntity::AemCommandStatus::NotSupported:
@@ -945,7 +947,7 @@ void ControllerImpl::onGetAcquiredStateResult(entity::ControllerEntity const* co
 
 				// All other cases, let processFailureStatus do its job
 				default:
-					if (processFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::AcquiredState, 0u, 0u))
+					if (!processFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::AcquiredState, 0u, 0u))
 					{
 						controlledEntity->setGetFatalEnumerationError();
 						notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AcquiredState);
