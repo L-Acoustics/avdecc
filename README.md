@@ -53,7 +53,7 @@ The controller API has 2 interfaces:
 
 ### Windows
 - Windows 8.1
-- Visual Studio 2017 v15.7 or greater (using platform toolset v141)
+- Visual Studio 2017 v15.8 or greater (using platform toolset v141)
 - WinPcap 4.1.2 Developer's Pack (see [this file](externals/3rdparty/winpcap/README.md) for more details)
 - GitBash or cygwin
 
