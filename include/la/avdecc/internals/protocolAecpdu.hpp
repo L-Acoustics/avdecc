@@ -33,7 +33,6 @@ namespace avdecc
 {
 namespace protocol
 {
-
 /** Aecpdu common header */
 class Aecpdu : public AvtpduControl
 {
@@ -56,7 +55,7 @@ public:
 #else // !ALLOW_RECV_BIG_AECP_PAYLOADS
 	static constexpr size_t MaximumRecvLength = MaximumLength_1722_1;
 #endif // ALLOW_RECV_BIG_AECP_PAYLOADS
-	using UniquePointer = std::unique_ptr<Aecpdu, void(*)(Aecpdu*)>;
+	using UniquePointer = std::unique_ptr<Aecpdu, void (*)(Aecpdu*)>;
 
 	// Setters
 	void LA_AVDECC_CALL_CONVENTION setMessageType(AecpMessageType const messageType) noexcept

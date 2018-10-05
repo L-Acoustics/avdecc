@@ -35,7 +35,6 @@ namespace avdecc
 {
 namespace protocol
 {
-
 /* Global protocol defines */
 static constexpr std::uint16_t EthernetMaxFrameSize{ 1522 };
 static constexpr std::uint16_t AvtpEtherType{ 0x22f0 };

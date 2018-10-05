@@ -46,7 +46,6 @@ namespace avdecc
 {
 namespace protocol
 {
-
 class ProtocolInterface : public la::avdecc::Subject<ProtocolInterface, std::recursive_mutex>
 {
 public:
@@ -82,13 +81,21 @@ public:
 	{
 	public:
 		template<class TextType>
-		Exception(Error const error, TextType&& text) noexcept : la::avdecc::Exception(std::forward<TextType>(text)), _error(error) {}
-		Error getError() const noexcept { return _error; }
+		Exception(Error const error, TextType&& text) noexcept
+			: la::avdecc::Exception(std::forward<TextType>(text))
+			, _error(error)
+		{
+		}
+		Error getError() const noexcept
+		{
+			return _error;
+		}
+
 	private:
 		Error const _error{ Error::NoError };
 	};
 
-	using UniquePointer = std::unique_ptr<ProtocolInterface, void(*)(ProtocolInterface*)>;
+	using UniquePointer = std::unique_ptr<ProtocolInterface, void (*)(ProtocolInterface*)>;
 	using SupportedProtocolInterfaceTypes = la::avdecc::EnumBitfield<Type>;
 	using AecpCommandResultHandler = std::function<void(la::avdecc::protocol::Aecpdu const* const response, la::avdecc::protocol::ProtocolInterface::Error const error)>;
 	using AcmpCommandResultHandler = std::function<void(la::avdecc::protocol::Acmpdu const* const response, la::avdecc::protocol::ProtocolInterface::Error const error)>;

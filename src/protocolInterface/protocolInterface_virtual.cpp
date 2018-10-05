@@ -40,29 +40,30 @@
 
 // Only enable instrumentation in static library and in debug (for unit testing mainly)
 #if defined(DEBUG) && defined(la_avdecc_cxx_STATICS)
-#include <chrono>
-#define SEND_INSTRUMENTATION_NOTIFICATION(eventName) la::avdecc::InstrumentationNotifier::getInstance().triggerEvent(eventName)
-#define UNIQUE_LOCK(mutex, sleepDelay, retryCount) la::avdecc::InstrumentationNotifier::getInstance().triggerEvent("ProtocolInterfaceVirtual::PushMessage::PreLock"); \
-std::unique_lock<decltype(mutex)> lock(mutex, std::defer_lock); \
-{ \
-	std::uint8_t count{retryCount}; \
-	while (count > 0) \
-	{ \
-		if (lock.try_lock()) \
-			break; \
-		std::this_thread::sleep_for(sleepDelay); \
-		--count; \
-	} \
-	if (!lock.owns_lock()) \
-	{ \
-		la::avdecc::InstrumentationNotifier::getInstance().triggerEvent("ProtocolInterfaceVirtual::PushMessage::LockTimeOut"); \
-		lock.lock(); \
-	} \
-} \
-la::avdecc::InstrumentationNotifier::getInstance().triggerEvent(std::string("ProtocolInterfaceVirtual::PushMessage::PostLock"))
+#	include <chrono>
+#	define SEND_INSTRUMENTATION_NOTIFICATION(eventName) la::avdecc::InstrumentationNotifier::getInstance().triggerEvent(eventName)
+#	define UNIQUE_LOCK(mutex, sleepDelay, retryCount) \
+		la::avdecc::InstrumentationNotifier::getInstance().triggerEvent("ProtocolInterfaceVirtual::PushMessage::PreLock"); \
+		std::unique_lock<decltype(mutex)> lock(mutex, std::defer_lock); \
+		{ \
+			std::uint8_t count{ retryCount }; \
+			while (count > 0) \
+			{ \
+				if (lock.try_lock()) \
+					break; \
+				std::this_thread::sleep_for(sleepDelay); \
+				--count; \
+			} \
+			if (!lock.owns_lock()) \
+			{ \
+				la::avdecc::InstrumentationNotifier::getInstance().triggerEvent("ProtocolInterfaceVirtual::PushMessage::LockTimeOut"); \
+				lock.lock(); \
+			} \
+		} \
+		la::avdecc::InstrumentationNotifier::getInstance().triggerEvent(std::string("ProtocolInterfaceVirtual::PushMessage::PostLock"))
 #else // !DEBUG || !la_avdecc_cxx_STATICS
-#define SEND_INSTRUMENTATION_NOTIFICATION(eventName)
-#define UNIQUE_LOCK(mutex, sleepDelay, retryCount) std::unique_lock<decltype(mutex)> lock(mutex)
+#	define SEND_INSTRUMENTATION_NOTIFICATION(eventName)
+#	define UNIQUE_LOCK(mutex, sleepDelay, retryCount) std::unique_lock<decltype(mutex)> lock(mutex)
 #endif // DEBUG && la_avdecc_cxx_STATICS
 
 namespace la
@@ -71,7 +72,6 @@ namespace avdecc
 {
 namespace protocol
 {
-
 class MessageDispatcher final
 {
 	using Subject = la::avdecc::TypedSubject<struct SubjectTag, std::mutex>;
@@ -121,59 +121,63 @@ public:
 		if (interfaceIt == _interfaces.end())
 		{
 			auto intfc = std::make_unique<Interface>();
-			intfc->dispatchThread = std::thread([networkInterfaceName, intfc = intfc.get()]()
-			{
-				la::avdecc::setCurrentThreadName("avdecc::VirtualInterface." + networkInterfaceName + "::Capture");
-				while (!intfc->shouldTerminate)
+			intfc->dispatchThread = std::thread(
+				[networkInterfaceName, intfc = intfc.get()]()
 				{
-					MessagesList messagesToSend{};
-
-					// Wait for one (or more) message to be available (while under the lock), or for shouldTerminate to be set
+					la::avdecc::setCurrentThreadName("avdecc::VirtualInterface." + networkInterfaceName + "::Capture");
+					while (!intfc->shouldTerminate)
 					{
-						std::unique_lock<decltype(intfc->mutex)> lock(intfc->mutex);
-						
-						// Wait for message in the queue
-						intfc->cond.wait(lock, [intfc]
-						{
-							return intfc->messages.size() > 0 || intfc->shouldTerminate;
-						});
-						
-						// Empty the queue
-						while (!intfc->shouldTerminate && intfc->messages.size() > 0)
-						{
-							// Pop a message from the queue
-							messagesToSend.push_back(std::move(intfc->messages.front()));
-							intfc->messages.pop_front();
-							
-							SEND_INSTRUMENTATION_NOTIFICATION("ProtocolInterfaceVirtual::onMessage::PostLock");
-						}
-					}
-					
-					// Now we can send messages without locking
-					while (!intfc->shouldTerminate && messagesToSend.size() > 0)
-					{
-						auto const& message = messagesToSend.front();
+						MessagesList messagesToSend{};
 
-						// Transport error
-						if (message.size() == 0)
+						// Wait for one (or more) message to be available (while under the lock), or for shouldTerminate to be set
 						{
-							intfc->observers.notifyObservers<Observer>([](auto* obs)
+							std::unique_lock<decltype(intfc->mutex)> lock(intfc->mutex);
+
+							// Wait for message in the queue
+							intfc->cond.wait(lock,
+								[intfc]
+								{
+									return intfc->messages.size() > 0 || intfc->shouldTerminate;
+								});
+
+							// Empty the queue
+							while (!intfc->shouldTerminate && intfc->messages.size() > 0)
 							{
-								obs->onTransportError();
-							});
-							intfc->shouldTerminate = true;
-							break;
+								// Pop a message from the queue
+								messagesToSend.push_back(std::move(intfc->messages.front()));
+								intfc->messages.pop_front();
+
+								SEND_INSTRUMENTATION_NOTIFICATION("ProtocolInterfaceVirtual::onMessage::PostLock");
+							}
 						}
 
-						// Notify registered observers
-						intfc->observers.notifyObservers<Observer>([&message](auto* obs)
+						// Now we can send messages without locking
+						while (!intfc->shouldTerminate && messagesToSend.size() > 0)
 						{
-							obs->onMessage(message);
-						});
-						messagesToSend.pop_front();
+							auto const& message = messagesToSend.front();
+
+							// Transport error
+							if (message.size() == 0)
+							{
+								intfc->observers.notifyObservers<Observer>(
+									[](auto* obs)
+									{
+										obs->onTransportError();
+									});
+								intfc->shouldTerminate = true;
+								break;
+							}
+
+							// Notify registered observers
+							intfc->observers.notifyObservers<Observer>(
+								[&message](auto* obs)
+								{
+									obs->onMessage(message);
+								});
+							messagesToSend.pop_front();
+						}
 					}
-				}
-			});
+				});
 			auto result = _interfaces.emplace(std::make_pair(networkInterfaceName, std::move(intfc)));
 			// Insertion failed
 			if (!result.second)
@@ -249,9 +253,7 @@ public:
 private:
 	MessageDispatcher() = default;
 
-	~MessageDispatcher() noexcept
-	{
-	}
+	~MessageDispatcher() noexcept {}
 
 	// Private variables
 	std::mutex _mutex;
@@ -392,30 +394,26 @@ void ProtocolInterfaceVirtualImpl::dispatchAvdeccMessage(std::uint8_t const* con
 
 #pragma message("TODO: Handle other AECP message types")
 				static std::unordered_map<AecpMessageType, std::function<Aecpdu::UniquePointer()>, AecpMessageType::Hash> s_Dispatch{
-					{
-						AecpMessageType::AemCommand, []()
+					{ AecpMessageType::AemCommand,
+						[]()
 						{
 							return AemAecpdu::create();
-						}
-					},
-					{
-						AecpMessageType::AemResponse, []()
+						} },
+					{ AecpMessageType::AemResponse,
+						[]()
 						{
 							return AemAecpdu::create();
-						}
-					},
-					{
-						AecpMessageType::AddressAccessCommand, []()
+						} },
+					{ AecpMessageType::AddressAccessCommand,
+						[]()
 						{
 							return AaAecpdu::create();
-						}
-					},
-					{
-						AecpMessageType::AddressAccessResponse, []()
+						} },
+					{ AecpMessageType::AddressAccessResponse,
+						[]()
 						{
 							return AaAecpdu::create();
-						}
-					},
+						} },
 				};
 
 				auto const& it = s_Dispatch.find(messageType);

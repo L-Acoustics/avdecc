@@ -35,7 +35,7 @@ TEST(ProtocolInterfaceVirtual, InvalidName)
 	// Not using EXPECT_THROW, we want to check the error code inside our custom exception
 	try
 	{
-		std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("", {{ 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 }}));
+		std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }));
 		EXPECT_FALSE(true); // We expect an exception to have been raised
 	}
 	catch (la::avdecc::protocol::ProtocolInterface::Exception const& e)
@@ -49,7 +49,7 @@ TEST(ProtocolInterfaceVirtual, InvalidMac)
 	// Not using EXPECT_THROW, we want to check the error code inside our custom exception
 	try
 	{
-		std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("InvalidMac", { }));
+		std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("InvalidMac", {}));
 		EXPECT_FALSE(true); // We expect an exception to have been raised
 	}
 	catch (la::avdecc::protocol::ProtocolInterface::Exception const& e)
@@ -60,9 +60,7 @@ TEST(ProtocolInterfaceVirtual, InvalidMac)
 
 TEST(ProtocolInterfaceVirtual, ValidInterface)
 {
-	EXPECT_NO_THROW(
-		std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("ValidInterface", {{ 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 }}));
-	);
+	EXPECT_NO_THROW(std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("ValidInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } })););
 }
 
 TEST(ProtocolInterfaceVirtual, SendMessage)
@@ -85,12 +83,13 @@ TEST(ProtocolInterfaceVirtual, SendMessage)
 		virtual void onAecpUnsolicitedResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept override {}
 		virtual void onAcmpSniffedCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept override {}
 		virtual void onAcmpSniffedResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept override {}
+
 	private:
 		DECLARE_AVDECC_OBSERVER_GUARD(Observer);
 	};
 	Observer obs;
-	auto intfc1 = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", {{ 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 }}));
-	auto intfc2 = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", {{ 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b }}));
+	auto intfc1 = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }));
+	auto intfc2 = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b } }));
 	intfc2->registerObserver(&obs);
 
 	// Build adpdu frame
@@ -181,7 +180,7 @@ TEST(ProtocolInterfaceVirtual, TransportError)
 
 	Observer obs;
 	la::avdecc::InstrumentationNotifier::getInstance().registerObserver(&obs);
-	auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", {{ 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 }}));
+	auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }));
 	intfc->registerObserver(&obs);
 
 	// Build adpdu frame

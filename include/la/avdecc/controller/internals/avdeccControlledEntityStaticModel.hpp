@@ -38,7 +38,6 @@ namespace controller
 {
 namespace model
 {
-
 struct AudioUnitNodeStaticModel
 {
 	entity::model::LocalizedStringReference localizedDescription{ entity::model::getNullLocalizedStringReference() };

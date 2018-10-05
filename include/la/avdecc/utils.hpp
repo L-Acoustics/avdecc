@@ -44,7 +44,6 @@ namespace la
 {
 namespace avdecc
 {
-
 LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION setCurrentThreadName(std::string const& name);
 LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION enableAssert() noexcept;
 LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION disableAssert() noexcept;
@@ -85,18 +84,17 @@ bool avdeccAssertRelease(Cond const condition) noexcept
 } // namespace la
 
 #if defined(DEBUG) || defined(COMPILE_AVDECC_ASSERT)
-#define AVDECC_ASSERT(cond, msg, ...) (void)la::avdecc::avdeccAssert(__FILE__, __LINE__, cond, msg, ##__VA_ARGS__)
-#define AVDECC_ASSERT_WITH_RET(cond, msg, ...) la::avdecc::avdeccAssert(__FILE__, __LINE__, cond, msg, ##__VA_ARGS__)
+#	define AVDECC_ASSERT(cond, msg, ...) (void)la::avdecc::avdeccAssert(__FILE__, __LINE__, cond, msg, ##__VA_ARGS__)
+#	define AVDECC_ASSERT_WITH_RET(cond, msg, ...) la::avdecc::avdeccAssert(__FILE__, __LINE__, cond, msg, ##__VA_ARGS__)
 #else // !DEBUG && !COMPILE_AVDECC_ASSERT
-#define AVDECC_ASSERT(cond, msg, ...)
-#define AVDECC_ASSERT_WITH_RET(cond, msg, ...) la::avdecc::avdeccAssertRelease(cond)
+#	define AVDECC_ASSERT(cond, msg, ...)
+#	define AVDECC_ASSERT_WITH_RET(cond, msg, ...) la::avdecc::avdeccAssertRelease(cond)
 #endif // DEBUG || COMPILE_AVDECC_ASSERT
 
 namespace la
 {
 namespace avdecc
 {
-
 /**
 * @brief Constexpr to compute a pow(x,y) at compile-time.
 * @details Computes the pow of 2 types at compile-time.<BR>
@@ -113,13 +111,11 @@ template<class T>
 inline constexpr T pow(T const base, std::uint8_t const exponent)
 {
 	// Compute pow using exponentiation by squaring
-	return (exponent == 0) ? 1 :
-		(exponent % 2 == 0) ? pow(base, exponent / 2) * pow(base, exponent / 2) :
-		base * pow(base, (exponent - 1) / 2) * pow(base, (exponent - 1) / 2);
+	return (exponent == 0) ? 1 : (exponent % 2 == 0) ? pow(base, exponent / 2) * pow(base, exponent / 2) : base * pow(base, (exponent - 1) / 2) * pow(base, (exponent - 1) / 2);
 }
 
 /** Useful template to be used with streams, it prevents a char (or uint8_t) to be printed as a char instead of the numeric value */
-template <typename T>
+template<typename T>
 constexpr auto forceNumeric(T const t) noexcept
 {
 	static_assert(std::is_arithmetic<T>::value, "forceNumeric requires an arithmetic value");
@@ -175,7 +171,7 @@ constexpr auto to_integral(EnumType e) noexcept
 */
 struct EnumClassHash
 {
-	template <typename T>
+	template<typename T>
 	std::size_t operator()(T t) const
 	{
 		return static_cast<std::size_t>(t);
@@ -188,7 +184,9 @@ struct EnumClassHash
 *  - is_bitfield: Enables operators and methods to manipulate an enum that represents a bitfield.
 */
 template<typename EnumType, typename = std::enable_if_t<std::is_enum<EnumType>::value>>
-struct enum_traits {};
+struct enum_traits
+{
+};
 
 /**
 * @brief Traits to easily handle std::function.
@@ -201,10 +199,10 @@ struct enum_traits {};
 * @tparam Ret The std::function return type.
 * @tparam Args The std::function parameter types.
 */
-template<typename Ret, typename ...Args>
+template<typename Ret, typename... Args>
 struct function_traits;
 
-template<typename Ret, typename ...Args>
+template<typename Ret, typename... Args>
 struct function_traits<std::function<Ret(Args...)>>
 {
 	static size_t const size_type = sizeof...(Args);
@@ -212,7 +210,7 @@ struct function_traits<std::function<Ret(Args...)>>
 	using args_as_tuple = std::tuple<Args...>;
 	using function_type = std::function<Ret(Args...)>;
 
-	template <size_t N>
+	template<size_t N>
 	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
 };
 
@@ -230,17 +228,19 @@ public:
 	{
 		using self_name = iterator;
 		static constexpr auto EndBit = value_size;
+
 	public:
 		using value_type = value_type;
 		using difference_type = size_t;
 		using iterator_category = std::forward_iterator_tag;
-		using reference = value_type & ;
+		using reference = value_type&;
 		using const_reference = value_type const&;
-		using pointer = value_type * ;
+		using pointer = value_type*;
 		using const_pointer = value_type const*;
 
 		iterator(value_type const value, std::uint8_t const currentBit) noexcept
-			: _value(value), _currentBit(currentBit)
+			: _value(value)
+			, _currentBit(currentBit)
 		{
 			findNextBitSet();
 		}
@@ -296,6 +296,7 @@ public:
 		{
 			return !operator==(other);
 		}
+
 	private:
 		void updateCurrentValue() noexcept
 		{
@@ -450,7 +451,7 @@ public:
 	EnumBitfield& operator=(EnumBitfield&&) noexcept = default;
 
 private:
-	static inline void checkInvalidValue([[maybe_unused]]value_type const value)
+	static inline void checkInvalidValue([[maybe_unused]] value_type const value)
 	{
 		AVDECC_ASSERT(countBits(to_integral(value)) <= 1, "Invalid value: more than 1 bit set");
 	}
@@ -548,7 +549,6 @@ namespace la
 {
 namespace avdecc
 {
-
 /**
 * @brief Test method for a bitfield enum to check if the specified flag is set.
 * @details The is_bitfield trait must be defined to true.
@@ -719,7 +719,9 @@ private:
 *  - is_bitfield: Enables operators and methods to manipulate a TypedDefine that represents a bitfield.
 */
 template<typename TypedDefineType, typename = std::enable_if_t<std::is_base_of<TypedDefine<typename TypedDefineType::value_type>, TypedDefineType>::value>>
-struct typed_define_traits {};
+struct typed_define_traits
+{
+};
 
 } // namespace avdecc
 } // namespace la
@@ -750,17 +752,12 @@ namespace la
 {
 namespace avdecc
 {
-
 /** EmptyLock implementing the BasicLockable concept. Can be used as template parameter for Observer and Subject classes in this file. */
 class EmptyLock
 {
 public:
-	void lock() const noexcept
-	{
-	}
-	void unlock() const noexcept
-	{
-	}
+	void lock() const noexcept {}
+	void unlock() const noexcept {}
 	// Defaulted compiler auto-generated methods
 	EmptyLock() noexcept = default;
 	~EmptyLock() noexcept = default;
@@ -771,9 +768,11 @@ public:
 };
 
 // Forward declare Subject template class
-template<class Derived, class Mut> class Subject;
+template<class Derived, class Mut>
+class Subject;
 // Forward declare ObserverGuard template class
-template<class ObserverType> class ObserverGuard;
+template<class ObserverType>
+class ObserverGuard;
 
 /** Dummy struct required to postpone the Observer template resolution when it's actually needed. This is required because of the forward declaration of the Subject template class, in order to access it's mutex_type typedef. */
 template<typename Subject>
@@ -918,7 +917,7 @@ public:
 	ObserverGuard& operator=(ObserverGuard&&) noexcept = default;
 
 private:
-	ObserverType & _observer{ nullptr };
+	ObserverType& _observer{ nullptr };
 };
 
 /**
@@ -1196,9 +1195,7 @@ protected:
 	}
 
 	/** Allow the Subject to be informed when a new observer has registered. */
-	virtual void onObserverRegistered(observer_type* const /*observer*/) noexcept
-	{
-	}
+	virtual void onObserverRegistered(observer_type* const /*observer*/) noexcept {}
 
 	/** Convenience method to return this as the real Derived class type */
 	Derived* self() noexcept
@@ -1256,11 +1253,17 @@ public:
 
 #define DECLARE_AVDECC_OBSERVER_GUARD_NAME(selfClassType, variableName) \
 	friend class la::avdecc::ObserverGuard<selfClassType>; \
-	la::avdecc::ObserverGuard<selfClassType> variableName{ *this }
+	la::avdecc::ObserverGuard<selfClassType> variableName \
+	{ \
+		*this \
+	}
 
 #define DECLARE_AVDECC_OBSERVER_GUARD(selfClassType) \
 	friend class la::avdecc::ObserverGuard<selfClassType>; \
-	la::avdecc::ObserverGuard<selfClassType> _observer_guard_{ *this }
+	la::avdecc::ObserverGuard<selfClassType> _observer_guard_ \
+	{ \
+		*this \
+	}
 
 } // namespace avdecc
 } // namespace la

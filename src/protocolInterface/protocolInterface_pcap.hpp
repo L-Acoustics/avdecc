@@ -32,7 +32,6 @@ namespace avdecc
 {
 namespace protocol
 {
-
 class ProtocolInterfacePcap : public ProtocolInterface
 {
 public:

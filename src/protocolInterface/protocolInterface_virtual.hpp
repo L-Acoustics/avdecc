@@ -32,7 +32,6 @@ namespace avdecc
 {
 namespace protocol
 {
-
 class ProtocolInterfaceVirtual : public ProtocolInterface
 {
 public:

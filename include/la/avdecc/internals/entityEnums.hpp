@@ -36,7 +36,6 @@ namespace avdecc
 {
 namespace entity
 {
-
 /** ADP Entity Capabilities - Clause 6.2.1.10 */
 enum class EntityCapabilities : std::uint32_t
 {
@@ -227,7 +226,8 @@ enum class ClockDomainCounterValidFlag : model::DescriptorCounterValidFlag
 	None = 0u,
 	Locked = 1u << 0, /**< Increments on a clock locking event. */
 	Unlocked = 1u << 1, /**< Increments on a clock unlocking event. */
-	EntitySpecific8 = 1u << 24, /**< Entity Specific counter 8. */ /* WARNING: 1722.1 says EntitySpecific counters are in the reverse order, but that might be a mistake */
+	EntitySpecific8 = 1u << 24,
+	/**< Entity Specific counter 8. */ /* WARNING: 1722.1 says EntitySpecific counters are in the reverse order, but that might be a mistake */
 	EntitySpecific7 = 1u << 25, /**< Entity Specific counter 7. */
 	EntitySpecific6 = 1u << 26, /**< Entity Specific counter 6. */
 	EntitySpecific5 = 1u << 27, /**< Entity Specific counter 5. */

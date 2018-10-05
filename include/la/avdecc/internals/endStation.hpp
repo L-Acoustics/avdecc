@@ -38,7 +38,6 @@ namespace la
 {
 namespace avdecc
 {
-
 class EndStation
 {
 public:
@@ -56,13 +55,21 @@ public:
 	{
 	public:
 		template<class T>
-		Exception(Error const error, T&& text) noexcept : la::avdecc::Exception(std::forward<T>(text)), _error(error) {}
-		Error getError() const noexcept { return _error; }
+		Exception(Error const error, T&& text) noexcept
+			: la::avdecc::Exception(std::forward<T>(text))
+			, _error(error)
+		{
+		}
+		Error getError() const noexcept
+		{
+			return _error;
+		}
+
 	private:
 		Error const _error{ Error::NoError };
 	};
 
-	using UniquePointer = std::unique_ptr<EndStation, void(*)(EndStation*)>;
+	using UniquePointer = std::unique_ptr<EndStation, void (*)(EndStation*)>;
 
 	/**
 	* @brief Factory method to create a new EndStation.

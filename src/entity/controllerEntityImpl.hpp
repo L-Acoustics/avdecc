@@ -41,7 +41,6 @@ namespace avdecc
 {
 namespace entity
 {
-
 /* ************************************************************************** */
 /* ControllerEntityImpl                                                       */
 /* ************************************************************************** */
@@ -64,7 +63,8 @@ private:
 		// Constructors
 		AnswerCallback() = default;
 		template<typename T>
-		AnswerCallback(T const& f) : onAnswer(reinterpret_cast<Callback const&>(f))
+		AnswerCallback(T const& f)
+			: onAnswer(reinterpret_cast<Callback const&>(f))
 		{
 		}
 		// Call operator

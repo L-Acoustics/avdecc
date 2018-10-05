@@ -33,7 +33,6 @@ namespace avdecc
 {
 namespace controller
 {
-
 class EntityModelCache final
 {
 public:

@@ -41,7 +41,6 @@ namespace avdecc
 {
 namespace controller
 {
-
 class ControllerImpl final : public Controller, private entity::ControllerEntity::Delegate
 {
 public:
@@ -290,12 +289,11 @@ private:
 		}
 
 		// Default constructor to allow creation of an empty Guard
-		UnlockedControlledEntity() noexcept
-		{
-		}
+		UnlockedControlledEntity() noexcept {}
 
 		UnlockedControlledEntity(OnlineControlledEntity entity)
-			: _controlledEntity(std::move(entity)), _wasLocked(_controlledEntity && _controlledEntity->isSelfLocked())
+			: _controlledEntity(std::move(entity))
+			, _wasLocked(_controlledEntity && _controlledEntity->isSelfLocked())
 		{
 			if (_wasLocked)
 			{

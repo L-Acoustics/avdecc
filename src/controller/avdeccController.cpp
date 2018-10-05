@@ -31,7 +31,6 @@ namespace avdecc
 {
 namespace controller
 {
-
 bool LA_AVDECC_CONTROLLER_CALL_CONVENTION isCompatibleWithInterfaceVersion(std::uint32_t const interfaceVersion) noexcept
 {
 	/* Here you have to choose a compatibility mode
@@ -79,9 +78,9 @@ std::vector<CompileOptionInfo> LA_AVDECC_CONTROLLER_CALL_CONVENTION getCompileOp
 
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	options.emplace_back(CompileOptionInfo{ CompileOption::EnableRedundancy, "RDNCY", "Redundancy" });
-#ifdef ENABLE_AVDECC_STRICT_2018_REDUNDANCY
+#	ifdef ENABLE_AVDECC_STRICT_2018_REDUNDANCY
 	options.emplace_back(CompileOptionInfo{ CompileOption::Strict2018Redundancy, "RDNCY2018", "Strict 2018 Redundancy" });
-#endif // ENABLE_AVDECC_STRICT_2018_REDUNDANCY
+#	endif // ENABLE_AVDECC_STRICT_2018_REDUNDANCY
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 	return options;

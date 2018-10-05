@@ -33,7 +33,6 @@ namespace la
 {
 namespace avdecc
 {
-
 class InstrumentationNotifier final : public la::avdecc::Subject<InstrumentationNotifier, la::avdecc::EmptyLock>
 {
 public:

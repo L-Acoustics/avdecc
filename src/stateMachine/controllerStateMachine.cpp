@@ -38,7 +38,6 @@ namespace protocol
 {
 namespace stateMachine
 {
-
 /* Aecp commands timeout - Clause 9.2.1 */
 static constexpr auto AecpAemCommandTimeoutMsec = 250u;
 static constexpr auto AecpAaCommandTimeoutMsec = 250u;
@@ -53,30 +52,33 @@ static constexpr auto AcmpGetRxStateCommandTimeoutMsec = 200u;
 static constexpr auto AcmpGetTxConnectionCommandTimeoutMsec = 200u;
 
 ControllerStateMachine::ControllerStateMachine(ProtocolInterface const* const protocolInterface, Delegate* const delegate, size_t const maxInflightAecpMessages)
-	: _protocolInterface(protocolInterface), _delegate(delegate), _maxInflightAecpMessages(maxInflightAecpMessages)
+	: _protocolInterface(protocolInterface)
+	, _delegate(delegate)
+	, _maxInflightAecpMessages(maxInflightAecpMessages)
 {
 	if (_delegate == nullptr)
 		throw Exception("ControllerStateMachine's delegate cannot be nullptr");
 
 	// Create the state machine thread
-	_stateMachineThread = std::thread([this]
-	{
-		setCurrentThreadName("avdecc::ControllerStateMachine");
-		while (!_shouldTerminate)
+	_stateMachineThread = std::thread(
+		[this]
 		{
-			// Check for local entities announcement
-			checkLocalEntitiesAnnouncement();
+			setCurrentThreadName("avdecc::ControllerStateMachine");
+			while (!_shouldTerminate)
+			{
+				// Check for local entities announcement
+				checkLocalEntitiesAnnouncement();
 
-			// Check for timeout expiracy on all entities
-			checkEntitiesTimeoutExpiracy();
+				// Check for timeout expiracy on all entities
+				checkEntitiesTimeoutExpiracy();
 
-			// Check for inflight commands expiracy
-			checkInflightCommandsTimeoutExpiracy();
+				// Check for inflight commands expiracy
+				checkInflightCommandsTimeoutExpiracy();
 
-			// Wait a little bit so we don't burn the CPU
-			std::this_thread::sleep_for(std::chrono::milliseconds(10));
-		}
-	});
+				// Wait a little bit so we don't burn the CPU
+				std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			}
+		});
 }
 
 ControllerStateMachine::~ControllerStateMachine() noexcept
@@ -186,23 +188,23 @@ bool ControllerStateMachine::processAdpdu(Adpdu const& adpdu) noexcept
 
 	static std::unordered_map<AdpMessageType::value_type, std::function<void(ControllerStateMachine* const stateMachine, Adpdu const& adpdu)>> s_Dispatch{
 		// Entity Available
-		{ AdpMessageType::EntityAvailable.getValue(), [](ControllerStateMachine* const stateMachine, Adpdu const& adpdu)
+		{ AdpMessageType::EntityAvailable.getValue(),
+			[](ControllerStateMachine* const stateMachine, Adpdu const& adpdu)
 			{
 				stateMachine->handleAdpEntityAvailable(adpdu);
-			}
-		},
+			} },
 		// Entity Departing
-		{ AdpMessageType::EntityDeparting.getValue(), [](ControllerStateMachine* const stateMachine, Adpdu const& adpdu)
+		{ AdpMessageType::EntityDeparting.getValue(),
+			[](ControllerStateMachine* const stateMachine, Adpdu const& adpdu)
 			{
 				stateMachine->handleAdpEntityDeparting(adpdu);
-			}
-		},
+			} },
 		// Entity Discover
-		{ AdpMessageType::EntityDiscover.getValue(), [](ControllerStateMachine* const stateMachine, Adpdu const& adpdu)
+		{ AdpMessageType::EntityDiscover.getValue(),
+			[](ControllerStateMachine* const stateMachine, Adpdu const& adpdu)
 			{
 				stateMachine->handleAdpEntityDiscover(adpdu);
-			}
-		},
+			} },
 	};
 
 	auto const messageType = adpdu.getMessageType().getValue();
@@ -287,10 +289,11 @@ bool ControllerStateMachine::processAecpdu(Aecpdu const& aecpdu) noexcept
 				{
 					auto& inflight = inflightIt->second;
 					auto const sequenceID = aecpdu.getSequenceID();
-					auto commandIt = std::find_if(inflight.begin(), inflight.end(), [sequenceID](AecpCommandInfo const& command)
-					{
-						return command.sequenceID == sequenceID;
-					});
+					auto commandIt = std::find_if(inflight.begin(), inflight.end(),
+						[sequenceID](AecpCommandInfo const& command)
+						{
+							return command.sequenceID == sequenceID;
+						});
 					// If the sequenceID is not found, it means the response already timed out (arriving too late)
 					if (commandIt != inflight.end())
 					{
@@ -792,7 +795,7 @@ void ControllerStateMachine::handleAdpEntityAvailable(Adpdu const& adpdu) noexce
 {
 	// Ignore messages from a local entity
 	if (isLocalEntity(adpdu.getEntityID()))
-			return;
+		return;
 
 	// If entity is not ready
 	if (hasFlag(adpdu.getEntityCapabilities(), entity::EntityCapabilities::EntityNotReady))
@@ -954,13 +957,7 @@ ControllerStateMachine::AdpduDiff ControllerStateMachine::getAdpdusDiff(Adpdu co
 
 entity::DiscoveredEntity ControllerStateMachine::makeEntity(Adpdu const& adpdu) const noexcept
 {
-	return entity::DiscoveredEntity{ adpdu.getEntityID(), adpdu.getSrcAddress(), adpdu.getValidTime(), adpdu.getEntityModelID(), adpdu.getEntityCapabilities(),
-		adpdu.getTalkerStreamSources(), adpdu.getTalkerCapabilities(),
-		adpdu.getListenerStreamSinks(), adpdu.getListenerCapabilities(),
-		adpdu.getControllerCapabilities(),
-		adpdu.getAvailableIndex(), adpdu.getGptpGrandmasterID(), adpdu.getGptpDomainNumber(),
-		adpdu.getIdentifyControlIndex(), adpdu.getInterfaceIndex(), adpdu.getAssociationID()
-	};
+	return entity::DiscoveredEntity{ adpdu.getEntityID(), adpdu.getSrcAddress(), adpdu.getValidTime(), adpdu.getEntityModelID(), adpdu.getEntityCapabilities(), adpdu.getTalkerStreamSources(), adpdu.getTalkerCapabilities(), adpdu.getListenerStreamSinks(), adpdu.getListenerCapabilities(), adpdu.getControllerCapabilities(), adpdu.getAvailableIndex(), adpdu.getGptpGrandmasterID(), adpdu.getGptpDomainNumber(), adpdu.getIdentifyControlIndex(), adpdu.getInterfaceIndex(), adpdu.getAssociationID() };
 }
 
 } // namespace stateMachine

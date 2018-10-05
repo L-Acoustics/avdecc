@@ -44,7 +44,6 @@ namespace avdecc
 {
 namespace controller
 {
-
 /**
 * Interface version of the library, used to check for compatibility between the version used to compile and the runtime version.<BR>
 * Everytime the interface changes (what is visible from the user) you increase the InterfaceVersion value.<BR>
@@ -113,7 +112,7 @@ LA_AVDECC_CONTROLLER_API std::vector<CompileOptionInfo> LA_AVDECC_CONTROLLER_CAL
 class Controller : public la::avdecc::Subject<Controller, std::recursive_mutex>
 {
 public:
-	using UniquePointer = std::unique_ptr<Controller, void(*)(Controller*)>;
+	using UniquePointer = std::unique_ptr<Controller, void (*)(Controller*)>;
 	using DeviceMemoryBuffer = MemoryBuffer;
 
 	enum class Error
@@ -131,8 +130,16 @@ public:
 	{
 	public:
 		template<class T>
-		Exception(Error const error, T&& text) noexcept : la::avdecc::Exception(std::forward<T>(text)), _error(error) {}
-		Error getError() const noexcept { return _error; }
+		Exception(Error const error, T&& text) noexcept
+			: la::avdecc::Exception(std::forward<T>(text))
+			, _error(error)
+		{
+		}
+		Error getError() const noexcept
+		{
+			return _error;
+		}
+
 	private:
 		Error const _error{ Error::NoError };
 	};

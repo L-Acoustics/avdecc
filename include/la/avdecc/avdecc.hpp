@@ -60,7 +60,6 @@ namespace la
 {
 namespace avdecc
 {
-
 /**
 * Interface version of the library, used to check for compatibility between the version used to compile and the runtime version.<BR>
 * Everytime the interface changes (what is visible from the user) you increase the InterfaceVersion value.<BR>

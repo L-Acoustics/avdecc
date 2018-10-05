@@ -20,7 +20,7 @@
 #include "networkInterfaceHelper_common.hpp"
 
 #ifndef _GNU_SOURCE
-#define _GNU_SOURCE /* To get defns of NI_MAXSERV and NI_MAXHOST */
+#	define _GNU_SOURCE /* To get defns of NI_MAXSERV and NI_MAXHOST */
 #endif // !_GNU_SOURCE
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
@@ -49,7 +49,6 @@ namespace avdecc
 {
 namespace networkInterface
 {
-
 Interface::Type getInterfaceType(struct ifaddrs const* const ifa, int const ifm_options)
 {
 	// Check for loopback
@@ -71,11 +70,10 @@ Interface::Type getInterfaceType(struct ifaddrs const* const ifa, int const ifm_
 void refreshInterfaces(Interfaces& interfaces) noexcept
 {
 	std::unique_ptr<struct ifaddrs, std::function<void(struct ifaddrs*)>> scopedIfa{ nullptr, [](struct ifaddrs* ptr)
-	{
-		if (ptr != nullptr)
-			freeifaddrs(ptr);
-	}
-	};
+		{
+			if (ptr != nullptr)
+				freeifaddrs(ptr);
+		} };
 
 	struct ifaddrs* ifaddr{ nullptr };
 	if (getifaddrs(&ifaddr) == -1)

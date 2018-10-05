@@ -35,7 +35,7 @@ TEST(StreamFormat, NotAVTPFormat)
 
 TEST(StreamFormat, IIDC_61883_6_Mono_48kHz_24bits_Async)
 {
-	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x00A0020140000100} };
+	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x00A0020140000100 } };
 	EXPECT_EQ(fmt, la::avdecc::entity::model::StreamFormatInfo::buildFormat_IEC_61883_6(1, false, la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int24, false));
 	auto const format = la::avdecc::entity::model::StreamFormatInfo::create(fmt);
 	EXPECT_EQ(fmt, format->getStreamFormat());
@@ -54,7 +54,7 @@ TEST(StreamFormat, IIDC_61883_6_Mono_48kHz_24bits_Async)
 
 TEST(StreamFormat, IIDC_61883_6_Mono_48kHz_24bits_Sync)
 {
-	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x00A0020150000100} };
+	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x00A0020150000100 } };
 	EXPECT_EQ(fmt, la::avdecc::entity::model::StreamFormatInfo::buildFormat_IEC_61883_6(1, false, la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int24, true));
 	auto const format = la::avdecc::entity::model::StreamFormatInfo::create(fmt);
 	EXPECT_EQ(fmt, format->getStreamFormat());
@@ -73,7 +73,7 @@ TEST(StreamFormat, IIDC_61883_6_Mono_48kHz_24bits_Sync)
 
 TEST(StreamFormat, IIDC_61883_6_Octo_48kHz_24bits_Async)
 {
-	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x00A0020840000800} };
+	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x00A0020840000800 } };
 	EXPECT_EQ(fmt, la::avdecc::entity::model::StreamFormatInfo::buildFormat_IEC_61883_6(8, false, la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int24, false));
 	auto const format = la::avdecc::entity::model::StreamFormatInfo::create(fmt);
 	EXPECT_EQ(fmt, format->getStreamFormat());
@@ -92,7 +92,7 @@ TEST(StreamFormat, IIDC_61883_6_Octo_48kHz_24bits_Async)
 
 TEST(StreamFormat, IIDC_61883_6_Octo_48kHz_24bits_Sync)
 {
-	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x00A0020850000800} };
+	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x00A0020850000800 } };
 	EXPECT_EQ(fmt, la::avdecc::entity::model::StreamFormatInfo::buildFormat_IEC_61883_6(8, false, la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int24, true));
 	auto const format = la::avdecc::entity::model::StreamFormatInfo::create(fmt);
 	EXPECT_EQ(fmt, format->getStreamFormat());
@@ -111,7 +111,7 @@ TEST(StreamFormat, IIDC_61883_6_Octo_48kHz_24bits_Sync)
 
 TEST(StreamFormat, IIDC_61883_6_upTo32_48kHz_24bits_Async)
 {
-	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x00A0022060002000} };
+	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x00A0022060002000 } };
 	EXPECT_EQ(fmt, la::avdecc::entity::model::StreamFormatInfo::buildFormat_IEC_61883_6(32, true, la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int24, false));
 	auto const format = la::avdecc::entity::model::StreamFormatInfo::create(fmt);
 	EXPECT_EQ(fmt, format->getStreamFormat());
@@ -131,7 +131,7 @@ TEST(StreamFormat, IIDC_61883_6_upTo32_48kHz_24bits_Async)
 
 TEST(StreamFormat, IIDC_61883_6_upTo32_48kHz_24bits_Sync)
 {
-	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x00A0022070002000} };
+	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x00A0022070002000 } };
 	EXPECT_EQ(fmt, la::avdecc::entity::model::StreamFormatInfo::buildFormat_IEC_61883_6(32, true, la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int24, true));
 	auto const format = la::avdecc::entity::model::StreamFormatInfo::create(fmt);
 	EXPECT_EQ(fmt, format->getStreamFormat());
@@ -151,7 +151,7 @@ TEST(StreamFormat, IIDC_61883_6_upTo32_48kHz_24bits_Sync)
 
 TEST(StreamFormat, AAF_Stereo_48kHz_6spf_16bits)
 {
-	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x0205041000806000} };
+	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x0205041000806000 } };
 	EXPECT_EQ(fmt, la::avdecc::entity::model::StreamFormatInfo::buildFormat_AAF(2, false, la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int16, 16, 6));
 	auto const format = la::avdecc::entity::model::StreamFormatInfo::create(fmt);
 	EXPECT_EQ(fmt, format->getStreamFormat());
@@ -170,7 +170,7 @@ TEST(StreamFormat, AAF_Stereo_48kHz_6spf_16bits)
 
 TEST(StreamFormat, AAF_Octo_48kHz_64spf_16bits)
 {
-	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x0205041002040000} };
+	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x0205041002040000 } };
 	EXPECT_EQ(fmt, la::avdecc::entity::model::StreamFormatInfo::buildFormat_AAF(8, false, la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int16, 16, 64));
 	auto const format = la::avdecc::entity::model::StreamFormatInfo::create(fmt);
 	EXPECT_EQ(fmt, format->getStreamFormat());
@@ -189,7 +189,7 @@ TEST(StreamFormat, AAF_Octo_48kHz_64spf_16bits)
 
 TEST(StreamFormat, AAF_Hexa_96kHz_12spf_32bits_24depth)
 {
-	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x020702180180C000} };
+	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x020702180180C000 } };
 	EXPECT_EQ(fmt, la::avdecc::entity::model::StreamFormatInfo::buildFormat_AAF(6, false, la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_96, la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int32, 24, 12));
 	auto const format = la::avdecc::entity::model::StreamFormatInfo::create(fmt);
 	EXPECT_EQ(fmt, format->getStreamFormat());
@@ -208,7 +208,7 @@ TEST(StreamFormat, AAF_Hexa_96kHz_12spf_32bits_24depth)
 
 TEST(StreamFormat, AAF_upTo32_48kHz_64spf_16bits)
 {
-	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x0215041008040000} };
+	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x0215041008040000 } };
 	EXPECT_EQ(fmt, la::avdecc::entity::model::StreamFormatInfo::buildFormat_AAF(32, true, la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48, la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int16, 16, 64));
 	auto const format = la::avdecc::entity::model::StreamFormatInfo::create(fmt);
 	EXPECT_EQ(fmt, format->getStreamFormat());
@@ -227,7 +227,7 @@ TEST(StreamFormat, AAF_upTo32_48kHz_64spf_16bits)
 
 TEST(StreamFormat, CR_48_6intvl_1ts)
 {
-	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x041006010000bb80} };
+	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x041006010000bb80 } };
 	auto const format = la::avdecc::entity::model::StreamFormatInfo::create(fmt);
 	EXPECT_EQ(fmt, format->getStreamFormat());
 	ASSERT_EQ(la::avdecc::entity::model::StreamFormatInfo::Type::ClockReference, format->getType());
@@ -246,7 +246,7 @@ TEST(StreamFormat, CR_48_6intvl_1ts)
 
 TEST(StreamFormat, CR_96_12intvl_1ts)
 {
-	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x04100c0100017700} };
+	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x04100c0100017700 } };
 	auto const format = la::avdecc::entity::model::StreamFormatInfo::create(fmt);
 	EXPECT_EQ(fmt, format->getStreamFormat());
 	ASSERT_EQ(la::avdecc::entity::model::StreamFormatInfo::Type::ClockReference, format->getType());
@@ -265,7 +265,7 @@ TEST(StreamFormat, CR_96_12intvl_1ts)
 
 TEST(StreamFormat, CR_96_320intvl_6ts)
 {
-	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x0411400600017700} };
+	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x0411400600017700 } };
 	auto const format = la::avdecc::entity::model::StreamFormatInfo::create(fmt);
 	EXPECT_EQ(fmt, format->getStreamFormat());
 	ASSERT_EQ(la::avdecc::entity::model::StreamFormatInfo::Type::ClockReference, format->getType());
@@ -284,7 +284,7 @@ TEST(StreamFormat, CR_96_320intvl_6ts)
 
 TEST(StreamFormat, CR_96_768intvl_5ts)
 {
-	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x0413000500017700} };
+	auto const fmt{ la::avdecc::entity::model::StreamFormat{ 0x0413000500017700 } };
 	auto const format = la::avdecc::entity::model::StreamFormatInfo::create(fmt);
 	EXPECT_EQ(fmt, format->getStreamFormat());
 	ASSERT_EQ(la::avdecc::entity::model::StreamFormatInfo::Type::ClockReference, format->getType());

@@ -34,7 +34,6 @@ namespace protocol
 {
 namespace mvuPayload
 {
-
 /** GET_MILAN_INFO Command - Milan Clause 7.4.1 */
 constexpr size_t AecpMvuGetMilanInfoCommandPayloadSize = 2u;
 

@@ -42,23 +42,21 @@ TEST(ControllerEntity, DispatchWhileSending)
 	static std::promise<void> dispatchDiscoveryPromise;
 	static std::promise<void> testCompletedPromise;
 
-	InstrumentationObserver instrumentationObserver{
-		{
-			// Dispatch ADP (discovery message) - Slow down the dispatcher so it still owns the ProtocolInterfaceVirtual lock when the getListenerStreamState is pushed
-			{ "ProtocolInterfaceVirtual::onMessage::PostLock", []()
-				{
-					dispatchDiscoveryPromise.set_value();
-					std::this_thread::sleep_for(std::chrono::milliseconds(200));
-				}
-			},
-			// Send ACMP (getListenerStreamState message, from main thread) - Lock has successfully been taken
-			{ "ProtocolInterfaceVirtual::PushMessage::PostLock", []()
-				{
-					testCompletedPromise.set_value();
-				}
-			},
-		}
-	};
+	InstrumentationObserver instrumentationObserver{ {
+		// Dispatch ADP (discovery message) - Slow down the dispatcher so it still owns the ProtocolInterfaceVirtual lock when the getListenerStreamState is pushed
+		{ "ProtocolInterfaceVirtual::onMessage::PostLock",
+			[]()
+			{
+				dispatchDiscoveryPromise.set_value();
+				std::this_thread::sleep_for(std::chrono::milliseconds(200));
+			} },
+		// Send ACMP (getListenerStreamState message, from main thread) - Lock has successfully been taken
+		{ "ProtocolInterfaceVirtual::PushMessage::PostLock",
+			[]()
+			{
+				testCompletedPromise.set_value();
+			} },
+	} };
 	la::avdecc::InstrumentationNotifier::getInstance().registerObserver(&instrumentationObserver);
 
 	auto pi = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }));

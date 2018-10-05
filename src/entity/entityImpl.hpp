@@ -40,22 +40,12 @@ namespace avdecc
 {
 namespace entity
 {
-
 template<class SuperClass = LocalEntity>
 class LocalEntityImpl : public SuperClass
 {
 public:
-	LocalEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID,
-									UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities,
-									std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities,
-									std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities,
-									ControllerCapabilities const controllerCapabilities,
-									std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID)
-		: SuperClass(generateEID(protocolInterface, progID), protocolInterface->getMacAddress(), entityModelID, entityCapabilities,
-								 talkerStreamSources, talkerCapabilities,
-								 listenerStreamSinks, listenerCapabilities,
-								 controllerCapabilities,
-								 identifyControlIndex, interfaceIndex, associationID)
+	LocalEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities, std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities, std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities, ControllerCapabilities const controllerCapabilities, std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID)
+		: SuperClass(generateEID(protocolInterface, progID), protocolInterface->getMacAddress(), entityModelID, entityCapabilities, talkerStreamSources, talkerCapabilities, listenerStreamSinks, listenerCapabilities, controllerCapabilities, identifyControlIndex, interfaceIndex, associationID)
 		, _protocolInterface(protocolInterface)
 	{
 		if (!!_protocolInterface->registerLocalEntity(*this))
@@ -64,9 +54,7 @@ public:
 		}
 	}
 
-	virtual ~LocalEntityImpl() noexcept override
-	{
-	}
+	virtual ~LocalEntityImpl() noexcept override {}
 
 	/* ************************************************************************** */
 	/* LocalEntity methods                                                        */
@@ -171,12 +159,18 @@ private:
 		if (progID == 0 || progID == 0xFFFF || progID == 0xFFFE)
 			throw Exception("Reserved value for Entity's progID value: " + std::to_string(progID));
 		eid += macAddress[0];
-		eid <<= 8; eid += macAddress[1];
-		eid <<= 8; eid += macAddress[2];
-		eid <<= 16; eid += progID;
-		eid <<= 8; eid += macAddress[3];
-		eid <<= 8; eid += macAddress[4];
-		eid <<= 8; eid += macAddress[5];
+		eid <<= 8;
+		eid += macAddress[1];
+		eid <<= 8;
+		eid += macAddress[2];
+		eid <<= 16;
+		eid += progID;
+		eid <<= 8;
+		eid += macAddress[3];
+		eid <<= 8;
+		eid += macAddress[4];
+		eid <<= 8;
+		eid += macAddress[5];
 
 		return UniqueIdentifier{ eid };
 	}

@@ -40,7 +40,6 @@ namespace la
 {
 namespace avdecc
 {
-
 /* SERIALIZATION */
 template<size_t MaximumSize>
 class Serializer

@@ -36,12 +36,12 @@ namespace avdecc
 {
 namespace logger
 {
-
 class LogItemGeneric : public la::avdecc::logger::LogItem
 {
 public:
 	LogItemGeneric(std::string message)
-		: LogItem(Layer::Generic), _message(message)
+		: LogItem(Layer::Generic)
+		, _message(message)
 	{
 	}
 
@@ -58,7 +58,9 @@ class LogItemSerialization : public la::avdecc::logger::LogItem
 {
 public:
 	LogItemSerialization(la::avdecc::networkInterface::MacAddress const& source, std::string message)
-		: LogItem(Layer::Serialization), _source(source), _message(message)
+		: LogItem(Layer::Serialization)
+		, _source(source)
+		, _message(message)
 	{
 	}
 
@@ -81,7 +83,10 @@ class LogItemProtocolInterface : public la::avdecc::logger::LogItem
 {
 public:
 	LogItemProtocolInterface(la::avdecc::networkInterface::MacAddress const& source, la::avdecc::networkInterface::MacAddress const& dest, std::string message)
-		: LogItem(Layer::ProtocolInterface), _source(source), _dest(dest), _message(message)
+		: LogItem(Layer::ProtocolInterface)
+		, _source(source)
+		, _dest(dest)
+		, _message(message)
 	{
 	}
 
@@ -110,7 +115,8 @@ class LogItemAemPayload : public la::avdecc::logger::LogItem
 {
 public:
 	LogItemAemPayload(std::string message)
-		: LogItem(Layer::AemPayload), _message(message)
+		: LogItem(Layer::AemPayload)
+		, _message(message)
 	{
 	}
 
@@ -127,7 +133,9 @@ class LogItemControllerEntity : public la::avdecc::logger::LogItem
 {
 public:
 	LogItemControllerEntity(la::avdecc::UniqueIdentifier const& targetID, std::string message)
-		: LogItem(Layer::ControllerEntity), _targetID(targetID), _message(message)
+		: LogItem(Layer::ControllerEntity)
+		, _targetID(targetID)
+		, _message(message)
 	{
 	}
 
@@ -150,7 +158,9 @@ class LogItemControllerStateMachine : public la::avdecc::logger::LogItem
 {
 public:
 	LogItemControllerStateMachine(la::avdecc::UniqueIdentifier const& targetID, std::string message)
-		: LogItem(Layer::ControllerStateMachine), _targetID(targetID), _message(message)
+		: LogItem(Layer::ControllerStateMachine)
+		, _targetID(targetID)
+		, _message(message)
 	{
 	}
 

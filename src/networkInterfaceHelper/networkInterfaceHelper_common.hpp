@@ -35,7 +35,6 @@ namespace avdecc
 {
 namespace networkInterface
 {
-
 using Interfaces = std::unordered_map<std::string, Interface>;
 void refreshInterfaces(Interfaces& interfaces) noexcept;
 

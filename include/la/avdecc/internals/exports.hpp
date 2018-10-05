@@ -27,26 +27,26 @@
 
 #ifdef _WIN32
 
-# define LA_AVDECC_CALL_CONVENTION __stdcall
+#	define LA_AVDECC_CALL_CONVENTION __stdcall
 
-# if defined(la_avdecc_cxx_EXPORTS)
-#   define LA_AVDECC_API __declspec(dllexport)
-# elif defined(la_avdecc_cxx_STATICS)
-#   define LA_AVDECC_API
-# else // !la_avdecc_cxx_EXPORTS
-#   define LA_AVDECC_API __declspec(dllimport)
-# endif // la_avdecc_cxx_EXPORTS
+#	if defined(la_avdecc_cxx_EXPORTS)
+#		define LA_AVDECC_API __declspec(dllexport)
+#	elif defined(la_avdecc_cxx_STATICS)
+#		define LA_AVDECC_API
+#	else // !la_avdecc_cxx_EXPORTS
+#		define LA_AVDECC_API __declspec(dllimport)
+#	endif // la_avdecc_cxx_EXPORTS
 
 #else // !_WIN32
 
-#define LA_AVDECC_CALL_CONVENTION
+#	define LA_AVDECC_CALL_CONVENTION
 
-# if defined(la_avdecc_cxx_EXPORTS)
-#   define LA_AVDECC_API __attribute__((visibility("default")))
-# elif defined(la_avdecc_cxx_STATICS)
-#   define LA_AVDECC_API
-# else // !la_avdecc_cxx_EXPORTS
-#   define LA_AVDECC_API __attribute__((visibility("default")))
-# endif // la_avdecc_cxx_EXPORTS
+#	if defined(la_avdecc_cxx_EXPORTS)
+#		define LA_AVDECC_API __attribute__((visibility("default")))
+#	elif defined(la_avdecc_cxx_STATICS)
+#		define LA_AVDECC_API
+#	else // !la_avdecc_cxx_EXPORTS
+#		define LA_AVDECC_API __attribute__((visibility("default")))
+#	endif // la_avdecc_cxx_EXPORTS
 
 #endif // _WIN32

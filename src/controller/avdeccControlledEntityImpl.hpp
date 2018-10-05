@@ -42,7 +42,6 @@ namespace avdecc
 {
 namespace controller
 {
-
 /* ************************************************************ */
 /* Private entity::Entity modifiable inherited class            */
 /* ************************************************************ */

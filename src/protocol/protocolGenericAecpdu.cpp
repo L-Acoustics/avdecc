@@ -33,7 +33,6 @@ namespace avdecc
 {
 namespace protocol
 {
-
 /***********************************************************/
 /* GenericAecpdu class definition                          */
 /***********************************************************/
@@ -43,9 +42,7 @@ GenericAecpdu::GenericAecpdu() noexcept
 	Aecpdu::setAecpSpecificDataLength(GenericAecpdu::HeaderLength);
 }
 
-GenericAecpdu::~GenericAecpdu() noexcept
-{
-}
+GenericAecpdu::~GenericAecpdu() noexcept {}
 
 void LA_AVDECC_CALL_CONVENTION GenericAecpdu::setPayload(void const* const payload, size_t const payloadLength)
 {

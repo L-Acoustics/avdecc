@@ -35,7 +35,6 @@ namespace avdecc
 {
 namespace controller
 {
-
 static constexpr std::uint16_t MaxQueryDescriptorRetryCount = 5;
 static constexpr std::uint16_t MaxQueryDynamicInfoRetryCount = 5;
 static constexpr std::uint16_t MaxQueryDescriptorDynamicInfoRetryCount = 5;
@@ -242,28 +241,28 @@ model::StreamPortNode const& ControlledEntityImpl::getStreamPortOutputNode(entit
 #if 0
 model::AudioClusterNode const& ControlledEntityImpl::getAudioClusterNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex) const
 {
-#if 1
+#	if 1
 	static model::AudioClusterNode s{};
 	(void)configurationIndex;
 	(void)audioUnitIndex;
 	(void)streamPortIndex;
 	(void)clusterIndex;
 	return s;
-#else
-#endif
+#	else
+#	endif
 }
 
 model::AudioMapNode const& ControlledEntityImpl::getAudioMapNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex) const
 {
-#if 1
+#	if 1
 	static model::AudioMapNode s{};
 	(void)configurationIndex;
 	(void)audioUnitIndex;
 	(void)streamPortIndex;
 	(void)mapIndex;
 	return s;
-#else
-#endif
+#	else
+#	endif
 }
 #endif
 
@@ -822,10 +821,11 @@ void ControlledEntityImpl::addStreamPortInputAudioMappings(entity::model::Stream
 	for (auto const& map : mappings)
 	{
 		// Check if mapping must be replaced
-		auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(), [&map](entity::model::AudioMapping const& mapping)
-		{
-			return (map.clusterOffset == mapping.clusterOffset) && (map.clusterChannel == mapping.clusterChannel);
-		});
+		auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(),
+			[&map](entity::model::AudioMapping const& mapping)
+			{
+				return (map.clusterOffset == mapping.clusterOffset) && (map.clusterChannel == mapping.clusterChannel);
+			});
 		// Not found, add the new mapping
 		if (foundIt == dynamicMap.end())
 		{
@@ -851,10 +851,11 @@ void ControlledEntityImpl::removeStreamPortInputAudioMappings(entity::model::Str
 	for (auto const& map : mappings)
 	{
 		// Check if mapping exists
-		auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(), [&map](entity::model::AudioMapping const& mapping)
-		{
-			return (map.clusterOffset == mapping.clusterOffset) && (map.clusterChannel == mapping.clusterChannel);
-		});
+		auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(),
+			[&map](entity::model::AudioMapping const& mapping)
+			{
+				return (map.clusterOffset == mapping.clusterOffset) && (map.clusterChannel == mapping.clusterChannel);
+			});
 		if (AVDECC_ASSERT_WITH_RET(foundIt != dynamicMap.end(), "Mapping not found"))
 			dynamicMap.erase(foundIt);
 	}
@@ -875,10 +876,11 @@ void ControlledEntityImpl::addStreamPortOutputAudioMappings(entity::model::Strea
 	for (auto const& map : mappings)
 	{
 		// Check if mapping must be replaced
-		auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(), [&map](entity::model::AudioMapping const& mapping)
-		{
-			return (map.streamIndex == mapping.streamIndex) && (map.streamChannel == mapping.streamChannel);
-		});
+		auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(),
+			[&map](entity::model::AudioMapping const& mapping)
+			{
+				return (map.streamIndex == mapping.streamIndex) && (map.streamChannel == mapping.streamChannel);
+			});
 		// Not found, add the new mapping
 		if (foundIt == dynamicMap.end())
 		{
@@ -904,10 +906,11 @@ void ControlledEntityImpl::removeStreamPortOutputAudioMappings(entity::model::St
 	for (auto const& map : mappings)
 	{
 		// Check if mapping exists
-		auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(), [&map](entity::model::AudioMapping const& mapping)
-		{
-			return (map.streamIndex == mapping.streamIndex) && (map.streamChannel == mapping.streamChannel);
-		});
+		auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(),
+			[&map](entity::model::AudioMapping const& mapping)
+			{
+				return (map.streamIndex == mapping.streamIndex) && (map.streamChannel == mapping.streamChannel);
+			});
 		if (AVDECC_ASSERT_WITH_RET(foundIt != dynamicMap.end(), "Mapping not found"))
 			dynamicMap.erase(foundIt);
 	}
@@ -1395,7 +1398,7 @@ void ControlledEntityImpl::setDescriptorExpected(entity::model::ConfigurationInd
 {
 	// Lock during access to the map
 	std::lock_guard<decltype(_lock)> const lg(_lock);
-	
+
 	auto& conf = _expectedDescriptors[configurationIndex];
 
 	auto const key = makeDescriptorKey(descriptorType, descriptorIndex);
@@ -1406,7 +1409,7 @@ bool ControlledEntityImpl::gotAllExpectedDescriptors() const noexcept
 {
 	// Lock during access to the map
 	std::lock_guard<decltype(_lock)> const lg(_lock);
-	
+
 	for (auto const& confKV : _expectedDescriptors)
 	{
 		if (confKV.second.size() != 0)
@@ -1435,7 +1438,7 @@ bool ControlledEntityImpl::checkAndClearExpectedDynamicInfo(entity::model::Confi
 {
 	// Lock during access to the map
 	std::lock_guard<decltype(_lock)> const lg(_lock);
-	
+
 	auto const confIt = _expectedDynamicInfo.find(configurationIndex);
 
 	if (confIt == _expectedDynamicInfo.end())
@@ -1450,7 +1453,7 @@ void ControlledEntityImpl::setDynamicInfoExpected(entity::model::ConfigurationIn
 {
 	// Lock during access to the map
 	std::lock_guard<decltype(_lock)> const lg(_lock);
-	
+
 	auto& conf = _expectedDynamicInfo[configurationIndex];
 
 	auto const key = makeDynamicInfoKey(dynamicInfoType, descriptorIndex, subIndex);
@@ -1461,7 +1464,7 @@ bool ControlledEntityImpl::gotAllExpectedDynamicInfo() const noexcept
 {
 	// Lock during access to the map
 	std::lock_guard<decltype(_lock)> const lg(_lock);
-	
+
 	for (auto const& confKV : _expectedDynamicInfo)
 	{
 		if (confKV.second.size() != 0)
@@ -1490,7 +1493,7 @@ bool ControlledEntityImpl::checkAndClearExpectedDescriptorDynamicInfo(entity::mo
 {
 	// Lock during access to the map
 	std::lock_guard<decltype(_lock)> const lg(_lock);
-	
+
 	auto const confIt = _expectedDescriptorDynamicInfo.find(configurationIndex);
 
 	if (confIt == _expectedDescriptorDynamicInfo.end())
@@ -1505,7 +1508,7 @@ void ControlledEntityImpl::setDescriptorDynamicInfoExpected(entity::model::Confi
 {
 	// Lock during access to the map
 	std::lock_guard<decltype(_lock)> const lg(_lock);
-	
+
 	auto& conf = _expectedDescriptorDynamicInfo[configurationIndex];
 
 	auto const key = makeDescriptorDynamicInfoKey(descriptorDynamicInfoType, descriptorIndex);
@@ -1516,7 +1519,7 @@ void ControlledEntityImpl::clearAllExpectedDescriptorDynamicInfo() noexcept
 {
 	// Lock during access to the map
 	std::lock_guard<decltype(_lock)> const lg(_lock);
-	
+
 	_expectedDescriptorDynamicInfo.clear();
 }
 
@@ -1524,7 +1527,7 @@ bool ControlledEntityImpl::gotAllExpectedDescriptorDynamicInfo() const noexcept
 {
 	// Lock during access to the map
 	std::lock_guard<decltype(_lock)> const lg(_lock);
-	
+
 	for (auto const& confKV : _expectedDescriptorDynamicInfo)
 	{
 		if (confKV.second.size() != 0)
@@ -1816,14 +1819,14 @@ public:
 			if (staticModel->redundantStreams.empty())
 				continue;
 
-#ifdef ENABLE_AVDECC_STRICT_2018_REDUNDANCY
+#	ifdef ENABLE_AVDECC_STRICT_2018_REDUNDANCY
 			// 2018 Redundancy specification only defines stream pairs
 			if (staticModel->redundantStreams.size() != 1)
 			{
 				LOG_CONTROLLER_WARN(entityID, std::string("More than one StreamIndex in RedundantStreamAssociation"));
 				continue;
 			}
-#endif // ENABLE_AVDECC_STRICT_2018_REDUNDANCY
+#	endif // ENABLE_AVDECC_STRICT_2018_REDUNDANCY
 
 			// Check each stream in the association is associated back to this stream and the AVB_INTERFACE index is unique
 			auto isAssociationValid{ true };
@@ -1869,14 +1872,14 @@ public:
 				redundantStreamNodes.emplace(std::make_pair(redundantInterfaceIndex, &redundantStream));
 			}
 
-#ifdef ENABLE_AVDECC_STRICT_2018_REDUNDANCY
+#	ifdef ENABLE_AVDECC_STRICT_2018_REDUNDANCY
 			// Check AVB_INTERFACE index used are 0 for primary and 1 for secondary
 			if (redundantStreamNodes.find(0u) == redundantStreamNodes.end() || redundantStreamNodes.find(1) == redundantStreamNodes.end())
 			{
 				isAssociationValid = false;
 				LOG_CONTROLLER_ERROR(entityID, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": Redundant streams do not use AVB_INTERFACE 0 and 1");
 			}
-#endif // ENABLE_AVDECC_STRICT_2018_REDUNDANCY
+#	endif // ENABLE_AVDECC_STRICT_2018_REDUNDANCY
 
 			if (!isAssociationValid)
 			{

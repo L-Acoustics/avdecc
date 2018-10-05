@@ -113,13 +113,14 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 		if (vendorID == VENDOR_ID)
 		{
 			outputText("New LA unit online: " + la::avdecc::toHexString(entityID, true) + "\n");
-			_controller->acquireEntity(entity->getEntity().getEntityID(), false, [](la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const /*owningEntity*/) noexcept
-			{
-				if (!!status)
+			_controller->acquireEntity(entity->getEntity().getEntityID(), false,
+				[](la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const /*owningEntity*/) noexcept
 				{
-					outputText("Unit acquired: " + la::avdecc::toHexString(entity->getEntity().getEntityID(), true) + "\n");
-				}
-			});
+					if (!!status)
+					{
+						outputText("Unit acquired: " + la::avdecc::toHexString(entity->getEntity().getEntityID(), true) + "\n");
+					}
+				});
 		}
 		else if (la::avdecc::hasFlag(entity->getEntity().getTalkerCapabilities(), la::avdecc::entity::TalkerCapabilities::Implemented))
 		{
@@ -137,25 +138,26 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 			auto const& obj = objIt.second;
 			if (obj.staticModel->memoryObjectType == la::avdecc::entity::model::MemoryObjectType::PngEntity)
 			{
-				_controller->readDeviceMemory(entity->getEntity().getEntityID(), obj.staticModel->startAddress, obj.staticModel->maximumLength, [](la::avdecc::controller::ControlledEntity const* const /*entity*/, float const percentComplete)
-				{
-					outputText("Memory Object progress: " + std::to_string(percentComplete) + "\n");
-					return false;
-
-				}, [](la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AaCommandStatus const status, la::avdecc::controller::Controller::DeviceMemoryBuffer const& memoryBuffer)
-				{
-					if (!!status && entity)
+				_controller->readDeviceMemory(entity->getEntity().getEntityID(), obj.staticModel->startAddress, obj.staticModel->maximumLength,
+					[](la::avdecc::controller::ControlledEntity const* const /*entity*/, float const percentComplete)
 					{
-						auto const fileName{ std::to_string(entity->getEntity().getEntityID()) + ".png" };
-						std::ofstream file(fileName, std::ios::binary);
-						if (file.is_open())
+						outputText("Memory Object progress: " + std::to_string(percentComplete) + "\n");
+						return false;
+					},
+					[](la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AaCommandStatus const status, la::avdecc::controller::Controller::DeviceMemoryBuffer const& memoryBuffer)
+					{
+						if (!!status && entity)
 						{
-							file.write(reinterpret_cast<char const*>(memoryBuffer.data()), memoryBuffer.size());
-							file.close();
-							outputText("Memory Object saved to file: " + fileName + "\n");
+							auto const fileName{ std::to_string(entity->getEntity().getEntityID()) + ".png" };
+							std::ofstream file(fileName, std::ios::binary);
+							if (file.is_open())
+							{
+								file.write(reinterpret_cast<char const*>(memoryBuffer.data()), memoryBuffer.size());
+								file.close();
+								outputText("Memory Object saved to file: " + fileName + "\n");
+							}
 						}
-					}
-				});
+					});
 			}
 		}
 	}

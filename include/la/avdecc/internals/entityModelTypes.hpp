@@ -41,7 +41,6 @@ namespace entity
 {
 namespace model
 {
-
 using ConfigurationIndex = std::uint16_t;
 using DescriptorIndex = std::uint16_t;
 using AudioUnitIndex = DescriptorIndex;
@@ -283,7 +282,10 @@ struct AudioMapping
 	ClusterIndex clusterOffset{ ClusterIndex(0u) };
 	std::uint16_t clusterChannel{ 0u };
 
-	static constexpr size_t size() { return sizeof(streamIndex) + sizeof(streamChannel) + sizeof(clusterOffset) + sizeof(clusterChannel); }
+	static constexpr size_t size()
+	{
+		return sizeof(streamIndex) + sizeof(streamChannel) + sizeof(clusterOffset) + sizeof(clusterChannel);
+	}
 };
 using AudioMappings = std::vector<AudioMapping>;
 
@@ -294,7 +296,10 @@ struct MsrpMapping
 	std::uint8_t priority{ 0xff };
 	std::uint16_t vlanID{ 0u };
 
-	static constexpr size_t size() { return sizeof(trafficClass) + sizeof(priority) + sizeof(vlanID); }
+	static constexpr size_t size()
+	{
+		return sizeof(trafficClass) + sizeof(priority) + sizeof(vlanID);
+	}
 };
 
 constexpr bool operator==(MsrpMapping const& lhs, MsrpMapping const& rhs) noexcept
@@ -469,4 +474,3 @@ inline std::ostream& operator<<(std::ostream& os, la::avdecc::entity::model::Avd
 	os << rhs.str();
 	return os;
 }
-

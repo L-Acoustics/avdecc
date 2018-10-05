@@ -35,7 +35,6 @@ namespace la
 {
 namespace avdecc
 {
-
 /**
 * @brief Base exception type class for the library.
 * @details Base exception type class to be used by all library APIs that throw something.
@@ -47,7 +46,8 @@ namespace avdecc
 class LA_AVDECC_API Exception
 {
 public:
-	Exception(std::string const& text) noexcept : Exception(text.c_str())
+	Exception(std::string const& text) noexcept
+		: Exception(text.c_str())
 	{
 	}
 

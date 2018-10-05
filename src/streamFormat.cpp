@@ -34,7 +34,6 @@ namespace entity
 {
 namespace model
 {
-
 template<std::uint8_t FirstBit, std::uint8_t LastBit, typename T>
 constexpr T contiguousBitMask()
 {
@@ -72,7 +71,7 @@ T getField(StreamFormat const& format) noexcept
 
 	constexpr auto shiftCountLast = sfBitsCount - LastBit - 1;
 	T const v = static_cast<T>(format >> shiftCountLast);
-	return v & contiguousBitMask<0, LastBit - FirstBit,T>();
+	return v & contiguousBitMask<0, LastBit - FirstBit, T>();
 }
 
 template<std::uint8_t FirstBit, std::uint8_t LastBit, typename T = std::uint8_t>
@@ -98,7 +97,8 @@ class StreamFormatInfoBase : public SuperClass
 {
 public:
 	StreamFormatInfoBase(StreamFormat const& streamFormat, StreamFormatInfo::Type const type) noexcept
-		: _streamFormat(streamFormat), _type(type)
+		: _streamFormat(streamFormat)
+		, _type(type)
 	{
 	}
 
@@ -215,7 +215,8 @@ public:
 		Unknown,
 	};
 	StreamFormatInfoIEC_61883(StreamFormat const& streamFormat, Type const type, Fmt const fmt) noexcept
-		: StreamFormatInfoBase(streamFormat, type), _fmt(fmt)
+		: StreamFormatInfoBase(streamFormat, type)
+		, _fmt(fmt)
 	{
 	}
 
@@ -229,7 +230,8 @@ class StreamFormatInfoIEC_61883_6 : public StreamFormatInfoIEC_61883
 public:
 	StreamFormatInfoIEC_61883_6(StreamFormat const& streamFormat, std::uint8_t const fdf_sfc, std::uint8_t const dbs, bool const b, bool const nb, bool const ut, bool const sc)
 		: StreamFormatInfoIEC_61883(streamFormat, Type::IEC_61883_6, Fmt::IEC_61883_6_FMT)
-		, _b(b), _nb(nb)
+		, _b(b)
+		, _nb(nb)
 	{
 		_channelsCount = dbs;
 		_upToChannelsCount = ut;
@@ -272,7 +274,11 @@ class StreamFormatInfoIEC_61883_6_AM824 final : public StreamFormatInfoIEC_61883
 {
 public:
 	StreamFormatInfoIEC_61883_6_AM824(StreamFormat const& streamFormat, std::uint8_t const fdf_sfc, std::uint8_t const dbs, bool const b, bool const nb, bool const ut, bool const sc, std::uint8_t const label_iec_60958_cnt, std::uint8_t const label_mbla_cnt, std::uint8_t const label_midi_cnt, std::uint8_t const label_smptecnt)
-		: StreamFormatInfoIEC_61883_6(streamFormat, fdf_sfc, dbs, b, nb, ut, sc), _label_iec_60958_cnt(label_iec_60958_cnt), _label_mbla_cnt(label_mbla_cnt), _label_midi_cnt(label_midi_cnt), _label_smptecnt(label_smptecnt)
+		: StreamFormatInfoIEC_61883_6(streamFormat, fdf_sfc, dbs, b, nb, ut, sc)
+		, _label_iec_60958_cnt(label_iec_60958_cnt)
+		, _label_mbla_cnt(label_mbla_cnt)
+		, _label_midi_cnt(label_midi_cnt)
+		, _label_smptecnt(label_smptecnt)
 	{
 		_sampleFormat = SampleFormat::Int24;
 		_sampleDepth = 24;
@@ -365,7 +371,8 @@ class StreamFormatInfoAAF_PCM final : public StreamFormatInfoAAF
 {
 public:
 	StreamFormatInfoAAF_PCM(StreamFormat const& streamFormat, bool const ut, std::uint8_t const nsr, std::uint8_t const format, std::uint8_t const bit_depth, std::uint16_t const channels_per_frame, std::uint16_t const samples_per_frame)
-		: StreamFormatInfoAAF(streamFormat, ut, nsr), _samples_per_frame(samples_per_frame)
+		: StreamFormatInfoAAF(streamFormat, ut, nsr)
+		, _samples_per_frame(samples_per_frame)
 	{
 		_channelsCount = channels_per_frame;
 		switch (format)
@@ -415,7 +422,10 @@ class StreamFormatInfoCRFImpl final : public StreamFormatInfoBase<StreamFormatIn
 {
 public:
 	StreamFormatInfoCRFImpl(StreamFormat const& streamFormat, std::uint8_t const crf_type, std::uint16_t const timestamp_interval, std::uint8_t const timestamps_per_pdu, std::uint8_t const pull, std::uint32_t const base_frequency)
-		: StreamFormatInfoBase(streamFormat, Type::ClockReference), _timestamp_interval(timestamp_interval), _timestamps_per_pdu(timestamps_per_pdu), _pull(pull)
+		: StreamFormatInfoBase(streamFormat, Type::ClockReference)
+		, _timestamp_interval(timestamp_interval)
+		, _timestamps_per_pdu(timestamps_per_pdu)
+		, _pull(pull)
 	{
 		_channelsCount = 0u;
 		_upToChannelsCount = false;
@@ -598,65 +608,65 @@ StreamFormatInfo* LA_AVDECC_CALL_CONVENTION StreamFormatInfo::createRawStreamFor
 }
 
 StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_IEC_61883_6(std::uint16_t const channelsCount, bool const isUpToChannelsCount, SamplingRate const samplingRate, SampleFormat const sampleFormat, bool const useSynchronousClock) noexcept
+{
+	StreamFormat fmt{ 0u };
+	replaceField<0, 0>(fmt, static_cast<std::uint8_t>(0)); // 'v' field must be set to zero for an AVTP defined time-sensitive stream
+
+	replaceField<1, 7>(fmt, static_cast<std::uint8_t>(0x00)); // subtype = 61883 or IIDC
+
+	replaceField<8, 8>(fmt, static_cast<std::uint8_t>(1)); // sf = IEC 61883
+	replaceField<9, 14>(fmt, static_cast<std::uint8_t>(0x10)); // fmt = IEC 61883-6
+
+	std::uint8_t fdf_evt{ 0u };
+	switch (sampleFormat)
 	{
-		StreamFormat fmt{ 0u };
-		replaceField<0, 0>(fmt, static_cast<std::uint8_t>(0)); // 'v' field must be set to zero for an AVTP defined time-sensitive stream
+		case SampleFormat::Int24: // IEC 61883-6 AM824
+			fdf_evt = 0x00;
+			break;
+		case SampleFormat::FixedPoint32: // IEC 61883-6 32-bit fixed point packetization
+			[[fallthrough]]; // Not supported
+		case SampleFormat::FloatingPoint32: // IEC 61883-6 32-bit floating point packetization
+			[[fallthrough]]; // Not supported
+		default:
+			return getNullStreamFormat();
+	}
+	replaceField<16, 20>(fmt, static_cast<std::uint8_t>(0x0)); // fdf_evt = sampleFormat
 
-		replaceField<1, 7>(fmt, static_cast<std::uint8_t>(0x00)); // subtype = 61883 or IIDC
+	std::uint8_t fdf_sfc{ 0u };
+	switch (samplingRate)
+	{
+		case SamplingRate::kHz_32:
+			fdf_sfc = 0;
+			break;
+		case SamplingRate::kHz_44_1:
+			fdf_sfc = 1;
+			break;
+		case SamplingRate::kHz_48:
+			fdf_sfc = 2;
+			break;
+		case SamplingRate::kHz_88_2:
+			fdf_sfc = 3;
+			break;
+		case SamplingRate::kHz_96:
+			fdf_sfc = 4;
+			break;
+		case SamplingRate::kHz_176_4:
+			fdf_sfc = 5;
+			break;
+		case SamplingRate::kHz_192:
+			fdf_sfc = 6;
+			break;
+		default:
+			return getNullStreamFormat();
+	}
+	replaceField<21, 23>(fmt, static_cast<std::uint8_t>(fdf_sfc)); // fdf_sfc = samplingRate
+	replaceField<24, 31>(fmt, static_cast<std::uint16_t>(channelsCount)); // dbs = channelsCount
+	replaceField<33, 33>(fmt, static_cast<std::uint8_t>(1)); // nb = 1
+	replaceField<34, 34>(fmt, static_cast<std::uint8_t>(isUpToChannelsCount)); // ut = isUpToChannelsCount
+	replaceField<35, 35>(fmt, static_cast<std::uint8_t>(useSynchronousClock)); // sc = useSynchronousClock
+	replaceField<48, 55>(fmt, static_cast<std::uint16_t>(channelsCount)); // label_mbla_cnt = channelsCount
 
-		replaceField<8, 8>(fmt, static_cast<std::uint8_t>(1)); // sf = IEC 61883
-		replaceField<9, 14>(fmt, static_cast<std::uint8_t>(0x10)); // fmt = IEC 61883-6
-
-		std::uint8_t fdf_evt{ 0u };
-		switch (sampleFormat)
-		{
-			case SampleFormat::Int24: // IEC 61883-6 AM824
-				fdf_evt = 0x00;
-				break;
-			case SampleFormat::FixedPoint32: // IEC 61883-6 32-bit fixed point packetization
-				[[fallthrough]]; // Not supported
-			case SampleFormat::FloatingPoint32: // IEC 61883-6 32-bit floating point packetization
-				[[fallthrough]]; // Not supported
-			default:
-				return getNullStreamFormat();
-		}
-		replaceField<16, 20>(fmt, static_cast<std::uint8_t>(0x0)); // fdf_evt = sampleFormat
-
-		std::uint8_t fdf_sfc{ 0u };
-		switch (samplingRate)
-		{
-			case SamplingRate::kHz_32:
-				fdf_sfc = 0;
-				break;
-			case SamplingRate::kHz_44_1:
-				fdf_sfc = 1;
-				break;
-			case SamplingRate::kHz_48:
-				fdf_sfc = 2;
-				break;
-			case SamplingRate::kHz_88_2:
-				fdf_sfc = 3;
-				break;
-			case SamplingRate::kHz_96:
-				fdf_sfc = 4;
-				break;
-			case SamplingRate::kHz_176_4:
-				fdf_sfc = 5;
-				break;
-			case SamplingRate::kHz_192:
-				fdf_sfc = 6;
-				break;
-			default:
-				return getNullStreamFormat();
-		}
-		replaceField<21, 23>(fmt, static_cast<std::uint8_t>(fdf_sfc)); // fdf_sfc = samplingRate
-		replaceField<24, 31>(fmt, static_cast<std::uint16_t>(channelsCount)); // dbs = channelsCount
-		replaceField<33, 33>(fmt, static_cast<std::uint8_t>(1)); // nb = 1
-		replaceField<34, 34>(fmt, static_cast<std::uint8_t>(isUpToChannelsCount)); // ut = isUpToChannelsCount
-		replaceField<35, 35>(fmt, static_cast<std::uint8_t>(useSynchronousClock)); // sc = useSynchronousClock
-		replaceField<48, 55>(fmt, static_cast<std::uint16_t>(channelsCount)); // label_mbla_cnt = channelsCount
-
-		return fmt;
+	return fmt;
 }
 
 StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_AAF(std::uint16_t const channelsCount, bool const isUpToChannelsCount, SamplingRate const samplingRate, SampleFormat const sampleFormat, std::uint16_t const sampleBitDepth, std::uint16_t const samplesPerFrame) noexcept
@@ -750,8 +760,8 @@ bool LA_AVDECC_CALL_CONVENTION StreamFormatInfo::isListenerFormatCompatibleWithT
 			&& !tFormatInfo->isUpToChannelsCount() // Not an up-to channels count format (has to be an Adapted one)
 			&& lFormatInfo->getSamplingRate() == tFormatInfo->getSamplingRate() // Same sampling rate
 			&& lFormatInfo->getSampleFormat() == tFormatInfo->getSampleFormat() // Same sample format
-			// Ignore SampleBitDepth, because it only affects quality, not compatibility
-			)
+		// Ignore SampleBitDepth, because it only affects quality, not compatibility
+	)
 	{
 		// Check clock sync compatibility (All accepted except if Talker is Async and Listener is Sync)
 		if (tFormatInfo->useSynchronousClock() || !lFormatInfo->useSynchronousClock())
@@ -774,7 +784,7 @@ std::pair<StreamFormat, StreamFormat> LA_AVDECC_CALL_CONVENTION StreamFormatInfo
 			&& lFormatInfo->getSampleFormat() == tFormatInfo->getSampleFormat() // Same sample format
 			// Ignore SampleBitDepth, because it only affects quality, not compatibility
 			&& (tFormatInfo->useSynchronousClock() || !lFormatInfo->useSynchronousClock()) // All accepted except if Talker is Async and Listener is Sync
-			)
+	)
 	{
 		auto lChanCount = lFormatInfo->getChannelsCount();
 		auto tChanCount = tFormatInfo->getChannelsCount();

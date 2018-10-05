@@ -35,7 +35,6 @@ namespace la
 {
 namespace avdecc
 {
-
 class UniqueIdentifier final
 {
 public:

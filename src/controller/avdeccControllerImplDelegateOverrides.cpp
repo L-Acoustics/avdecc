@@ -31,7 +31,6 @@ namespace avdecc
 {
 namespace controller
 {
-
 /* ************************************************************ */
 /* entity::ControllerEntity::Delegate overrides                 */
 /* ************************************************************ */
@@ -103,7 +102,6 @@ void ControllerImpl::onEntityOnline(entity::ControllerEntity const* const contro
 		// This should not happen, but just in case... update it
 		onEntityUpdate(controller, entityID, entity);
 	}
-
 }
 
 void ControllerImpl::onEntityUpdate(entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::Entity const& entity) noexcept
