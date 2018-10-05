@@ -42,7 +42,6 @@ namespace avdecc
 {
 namespace entity
 {
-
 class ControllerEntity : public LocalEntity
 {
 public:
@@ -462,11 +461,7 @@ public:
 
 protected:
 	/** Constructor */
-	ControllerEntity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities,
-									 std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities,
-									 std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities,
-									 ControllerCapabilities const controllerCapabilities,
-									 std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID) noexcept;
+	ControllerEntity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities, std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities, std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities, ControllerCapabilities const controllerCapabilities, std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID) noexcept;
 
 
 	/** Destructor */

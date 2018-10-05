@@ -31,9 +31,9 @@
 #include "avdeccControlledEntityStaticModel.hpp"
 #include "avdeccControlledEntityDynamicModel.hpp"
 #if defined(ENABLE_AVDECC_CUSTOM_ANY)
-#include <la/avdecc/internals/any.hpp>
+#	include <la/avdecc/internals/any.hpp>
 #else // !ENABLE_AVDECC_CUSTOM_ANY
-#include <any>
+#	include <any>
 #endif // ENABLE_AVDECC_CUSTOM_ANY
 #include "exports.hpp"
 #include <string>
@@ -51,7 +51,6 @@ class ControlledEntity;
 
 namespace model
 {
-
 using VirtualIndex = entity::model::DescriptorIndex;
 
 enum class AcquireState
@@ -184,7 +183,7 @@ struct MemoryObjectNode : public EntityModelNode
 	MemoryObjectNodeStaticModel const* staticModel{ nullptr };
 
 	// AEM Dynamic info
-	MemoryObjectNodeDynamicModel * dynamicModel{ nullptr };
+	MemoryObjectNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 struct StringsNode : public EntityModelNode

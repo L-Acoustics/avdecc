@@ -39,7 +39,6 @@ namespace controller
 {
 namespace model
 {
-
 struct StreamConnectionState
 {
 	enum class State

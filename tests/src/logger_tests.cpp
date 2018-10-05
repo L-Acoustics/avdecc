@@ -30,7 +30,6 @@
 
 namespace
 {
-
 class Observer : public la::avdecc::logger::Logger::Observer
 {
 private:
@@ -48,7 +47,7 @@ private:
 	}
 };
 
-}
+} // namespace
 
 TEST(Logger, Log)
 {

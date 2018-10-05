@@ -49,7 +49,6 @@ namespace entity
 {
 namespace model
 {
-
 constexpr StreamFormat getNullStreamFormat() noexcept
 {
 	return StreamFormat(0u);
@@ -352,10 +351,7 @@ struct StreamInfo
 
 constexpr bool operator==(StreamInfo const& lhs, StreamInfo const& rhs) noexcept
 {
-	return (lhs.streamInfoFlags == rhs.streamInfoFlags) && (lhs.streamFormat == rhs.streamFormat) &&
-		(lhs.streamID == rhs.streamID) && (lhs.msrpAccumulatedLatency == rhs.msrpAccumulatedLatency) &&
-		(lhs.streamDestMac == rhs.streamDestMac) && (lhs.msrpFailureCode == rhs.msrpFailureCode) &&
-		(lhs.msrpFailureBridgeID == rhs.msrpFailureBridgeID) && (lhs.streamVlanID == rhs.streamVlanID);
+	return (lhs.streamInfoFlags == rhs.streamInfoFlags) && (lhs.streamFormat == rhs.streamFormat) && (lhs.streamID == rhs.streamID) && (lhs.msrpAccumulatedLatency == rhs.msrpAccumulatedLatency) && (lhs.streamDestMac == rhs.streamDestMac) && (lhs.msrpFailureCode == rhs.msrpFailureCode) && (lhs.msrpFailureBridgeID == rhs.msrpFailureBridgeID) && (lhs.streamVlanID == rhs.streamVlanID);
 }
 
 constexpr bool operator!=(StreamInfo const& lhs, StreamInfo const& rhs) noexcept
@@ -375,9 +371,7 @@ struct AvbInfo
 
 constexpr bool operator==(AvbInfo const& lhs, AvbInfo const& rhs) noexcept
 {
-	return (lhs.gptpGrandmasterID == rhs.gptpGrandmasterID) && (lhs.propagationDelay == rhs.propagationDelay) &&
-		(lhs.gptpDomainNumber == rhs.gptpDomainNumber) && (lhs.flags == rhs.flags) &&
-		(lhs.mappings == rhs.mappings);
+	return (lhs.gptpGrandmasterID == rhs.gptpGrandmasterID) && (lhs.propagationDelay == rhs.propagationDelay) && (lhs.gptpDomainNumber == rhs.gptpDomainNumber) && (lhs.flags == rhs.flags) && (lhs.mappings == rhs.mappings);
 }
 
 constexpr bool operator!=(AvbInfo const& lhs, AvbInfo const& rhs) noexcept
@@ -411,11 +405,7 @@ inline UniqueIdentifier makeEntityModelID(std::uint32_t const vendorID, std::uin
 inline std::tuple<std::uint32_t, std::uint8_t, std::uint32_t> splitEntityModelID(UniqueIdentifier const entityModelID) noexcept
 {
 	auto const value = entityModelID.getValue();
-	return std::make_tuple(
-		static_cast<std::uint32_t>((value >> 40) & 0x0000000000FFFFFF),
-		static_cast<std::uint8_t>((value >> 32) & 0x00000000000000FF),
-		static_cast<std::uint32_t>(value & 0x00000000FFFFFFFF)
-	);
+	return std::make_tuple(static_cast<std::uint32_t>((value >> 40) & 0x0000000000FFFFFF), static_cast<std::uint8_t>((value >> 32) & 0x00000000000000FF), static_cast<std::uint32_t>(value & 0x00000000FFFFFFFF));
 }
 
 } // namespace model

@@ -35,8 +35,7 @@ namespace avdecc
 {
 namespace networkInterface
 {
-
-template <typename T>
+template<typename T>
 inline auto forceNumeric(T&& t)
 {
 	// Promote a built-in type to at least (unsigned)int
@@ -118,7 +117,7 @@ std::string LA_AVDECC_CALL_CONVENTION macAddressToString(MacAddress const& macAd
 	}
 	catch (...)
 	{
-		return{};
+		return {};
 	}
 }
 

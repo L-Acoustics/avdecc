@@ -33,7 +33,6 @@ namespace avdecc
 {
 namespace protocol
 {
-
 /***********************************************************/
 /* MvuAecpdu class definition                              */
 /***********************************************************/
@@ -46,9 +45,7 @@ MvuAecpdu::MvuAecpdu() noexcept
 	VuAecpdu::setProtocolIdentifier(ProtocolID);
 }
 
-MvuAecpdu::~MvuAecpdu() noexcept
-{
-}
+MvuAecpdu::~MvuAecpdu() noexcept {}
 
 void LA_AVDECC_CALL_CONVENTION MvuAecpdu::setCommandType(MvuCommandType const commandType) noexcept
 {

@@ -35,7 +35,6 @@ namespace avdecc
 {
 namespace protocol
 {
-
 /** AA Aecpdu message */
 class AaAecpdu final : public Aecpdu
 {

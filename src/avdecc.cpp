@@ -30,7 +30,6 @@ namespace la
 {
 namespace avdecc
 {
-
 bool LA_AVDECC_CALL_CONVENTION isCompatibleWithInterfaceVersion(std::uint32_t const interfaceVersion) noexcept
 {
 	/* Here you have to choose a compatibility mode

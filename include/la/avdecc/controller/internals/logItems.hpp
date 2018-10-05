@@ -35,12 +35,13 @@ namespace avdecc
 {
 namespace logger
 {
-
 class LogItemController : public la::avdecc::logger::LogItem
 {
 public:
 	LogItemController(la::avdecc::UniqueIdentifier const& targetID, std::string message)
-		: LogItem(Layer::Controller), _targetID(targetID), _message(message)
+		: LogItem(Layer::Controller)
+		, _targetID(targetID)
+		, _message(message)
 	{
 	}
 

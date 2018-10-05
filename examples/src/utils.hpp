@@ -29,7 +29,7 @@
 /** ************************************************************************ **/
 
 #if (defined(__APPLE__) || defined(__linux__)) && !defined(USE_CURSES)
-#define USE_CURSES
+#	define USE_CURSES
 #endif // __APPLE__
 
 #include <la/avdecc/avdecc.hpp>
@@ -37,12 +37,12 @@
 #include <string>
 
 #if defined(USE_CURSES)
-#include <curses.h>
+#	include <curses.h>
 #else // !USE_CURSES
-#include <conio.h>
-#ifdef _WIN32
-#define getch _getch
-#endif // _WIN32
+#	include <conio.h>
+#	ifdef _WIN32
+#		define getch _getch
+#	endif // _WIN32
 #endif // USE_CURSES
 
 #define VENDOR_ID 0x001B92

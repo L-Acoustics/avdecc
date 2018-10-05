@@ -29,68 +29,46 @@
 * And some OSs provide some for of endian header also.
 */
 #if defined(__APPLE__)
-# include <machine/endian.h>
+#	include <machine/endian.h>
 #elif defined(__GNUC__)
-# include <endian.h>
+#	include <endian.h>
 #endif
 
 #if defined(__BYTE_ORDER)
-# if defined(__BIG_ENDIAN) && (__BYTE_ORDER == __BIG_ENDIAN)
-#   define AVDECC_BIG_ENDIAN
-# endif
-# if defined(__LITTLE_ENDIAN) && (__BYTE_ORDER == __LITTLE_ENDIAN)
-#   define AVDECC_LITTLE_ENDIAN
-# endif
+#	if defined(__BIG_ENDIAN) && (__BYTE_ORDER == __BIG_ENDIAN)
+#		define AVDECC_BIG_ENDIAN
+#	endif
+#	if defined(__LITTLE_ENDIAN) && (__BYTE_ORDER == __LITTLE_ENDIAN)
+#		define AVDECC_LITTLE_ENDIAN
+#	endif
 #endif
 #if !defined(__BYTE_ORDER) && defined(_BYTE_ORDER)
-# if defined(_BIG_ENDIAN) && (_BYTE_ORDER == _BIG_ENDIAN)
-#   define AVDECC_BIG_ENDIAN
-# endif
-# if defined(_LITTLE_ENDIAN) && (_BYTE_ORDER == _LITTLE_ENDIAN)
-#   define AVDECC_LITTLE_ENDIAN
-# endif
+#	if defined(_BIG_ENDIAN) && (_BYTE_ORDER == _BIG_ENDIAN)
+#		define AVDECC_BIG_ENDIAN
+#	endif
+#	if defined(_LITTLE_ENDIAN) && (_BYTE_ORDER == _LITTLE_ENDIAN)
+#		define AVDECC_LITTLE_ENDIAN
+#	endif
 #endif
 
 
 /* Built-in byte-swpped big-endian macros.
 */
-#if (defined(__BIG_ENDIAN__) && !defined(__LITTLE_ENDIAN__)) || \
-		(defined(_BIG_ENDIAN) && !defined(_LITTLE_ENDIAN)) || \
-		 defined(__ARMEB__) || \
-		 defined(__THUMBEB__) || \
-		 defined(__AARCH64EB__) || \
-		 defined(_MIPSEB) || \
-		 defined(__MIPSEB) || \
-		 defined(__MIPSEB__)
-#   define AVDECC_BIG_ENDIAN
+#if (defined(__BIG_ENDIAN__) && !defined(__LITTLE_ENDIAN__)) || (defined(_BIG_ENDIAN) && !defined(_LITTLE_ENDIAN)) || defined(__ARMEB__) || defined(__THUMBEB__) || defined(__AARCH64EB__) || defined(_MIPSEB) || defined(__MIPSEB) || defined(__MIPSEB__)
+#	define AVDECC_BIG_ENDIAN
 #endif
 
 /* Built-in byte-swpped little-endian macros.
 */
-#if (defined(__LITTLE_ENDIAN__) && !defined(__BIG_ENDIAN__)) || \
-		(defined(_LITTLE_ENDIAN) && !defined(_BIG_ENDIAN)) || \
-		 defined(__ARMEL__) || \
-		 defined(__THUMBEL__) || \
-		 defined(__AARCH64EL__) || \
-		 defined(_MIPSEL) || \
-		 defined(__MIPSEL) || \
-		 defined(__MIPSEL__)
-#   define AVDECC_LITTLE_ENDIAN
+#if (defined(__LITTLE_ENDIAN__) && !defined(__BIG_ENDIAN__)) || (defined(_LITTLE_ENDIAN) && !defined(_BIG_ENDIAN)) || defined(__ARMEL__) || defined(__THUMBEL__) || defined(__AARCH64EL__) || defined(_MIPSEL) || defined(__MIPSEL) || defined(__MIPSEL__)
+#	define AVDECC_LITTLE_ENDIAN
 #endif
 
 /* Some architectures are strictly one endianess (as opposed
 * the current common bi-endianess).
 */
-#if defined(i386) || defined(__i386__) || \
-		defined(__i486__) || defined(__i586__) || \
-		defined(__i686__) || defined(__i386) || \
-		defined(_M_IX86) || defined(_X86_) || \
-		defined(__THW_INTEL__) || defined(__I86__) || \
-		defined(__INTEL__) || \
-		defined(__x86_64) || defined(__x86_64__) || \
-		defined(__amd64__) || defined(__amd64) || \
-		defined(_M_X64)
-# define AVDECC_LITTLE_ENDIAN
+#if defined(i386) || defined(__i386__) || defined(__i486__) || defined(__i586__) || defined(__i686__) || defined(__i386) || defined(_M_IX86) || defined(_X86_) || defined(__THW_INTEL__) || defined(__I86__) || defined(__INTEL__) || defined(__x86_64) || defined(__x86_64__) || defined(__amd64__) || defined(__amd64) || defined(_M_X64)
+#	define AVDECC_LITTLE_ENDIAN
 #endif
 
 #include <climits>
@@ -100,7 +78,6 @@ namespace la
 {
 namespace avdecc
 {
-
 enum class Endianness
 {
 	Unknown,
@@ -114,17 +91,16 @@ enum class Endianness
 	HostEndian = BigEndian,
 	InvertHostEndian = LittleEndian,
 #else
-#error "Unknown host endianness"
+#	error "Unknown host endianness"
 #endif
 };
 
 namespace detail
 {
-
-template <typename T>
+template<typename T>
 T swapBytes(T const& u)
 {
-	static_assert (CHAR_BIT == 8, "CHAR_BIT != 8");
+	static_assert(CHAR_BIT == 8, "CHAR_BIT != 8");
 
 	union
 	{
@@ -150,14 +126,16 @@ struct endianSwap
 };
 
 // Specializations when attempting to swap to the same endianess
-template<typename T> struct endianSwap<Endianness::LittleEndian, Endianness::LittleEndian, T>
+template<typename T>
+struct endianSwap<Endianness::LittleEndian, Endianness::LittleEndian, T>
 {
 	inline T operator()(T const& value)
 	{
 		return value;
 	}
 };
-template<typename T> struct endianSwap<Endianness::BigEndian, Endianness::BigEndian, T>
+template<typename T>
+struct endianSwap<Endianness::BigEndian, Endianness::BigEndian, T>
 {
 	inline T operator()(T const& value)
 	{
@@ -167,7 +145,7 @@ template<typename T> struct endianSwap<Endianness::BigEndian, Endianness::BigEnd
 
 } // namespace detail
 
-template <Endianness from, Endianness to, typename T>
+template<Endianness from, Endianness to, typename T>
 inline T endianSwap(T const& u)
 {
 	static_assert(sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4 || sizeof(T) == 8, "Unsupported value size");

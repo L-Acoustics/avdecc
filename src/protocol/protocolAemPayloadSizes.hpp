@@ -34,7 +34,6 @@ namespace protocol
 {
 namespace aemPayload
 {
-
 /** ACQUIRE_ENTITY Command and Response - Clause 7.4.1.1 */
 constexpr size_t AecpAemAcquireEntityCommandPayloadSize = 16u;
 constexpr size_t AecpAemAcquireEntityResponsePayloadSize = 16u;

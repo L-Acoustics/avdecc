@@ -211,34 +211,36 @@ int doJob()
 								count = countIt->second;
 							ss << std::dec << "Listener configuration '" << descriptor.objectName << "' has " << count << " LOCALES" << std::endl;
 							for (auto index = la::avdecc::entity::model::LocaleIndex(0); index < count; ++index)
-								controller->readLocaleDescriptor(entityID, _listenerConfiguration, index, [this](la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const /*configurationIndex*/, la::avdecc::entity::model::LocaleIndex const localeIndex, la::avdecc::entity::model::LocaleDescriptor const& descriptor)
-							{
-								if (!!status)
-								{
-									std::stringstream ss;
-									ss << "Locales for index " << localeIndex << ": " << descriptor.numberOfStringDescriptors << " string descriptors (start at offset " << descriptor.baseStringDescriptorIndex << ")" << std::endl;
-									outputText(ss.str());
-									for (auto stringDescriptorIndex = la::avdecc::entity::model::StringsIndex(0); stringDescriptorIndex < descriptor.numberOfStringDescriptors; ++stringDescriptorIndex)
+								controller->readLocaleDescriptor(entityID, _listenerConfiguration, index,
+									[this](la::avdecc::entity::ControllerEntity const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const /*configurationIndex*/, la::avdecc::entity::model::LocaleIndex const localeIndex, la::avdecc::entity::model::LocaleDescriptor const& descriptor)
 									{
-										controller->readStringsDescriptor(entityID, _listenerConfiguration, descriptor.baseStringDescriptorIndex + stringDescriptorIndex, [localeIdentifier = descriptor.localeID](la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const /*configurationIndex*/, la::avdecc::entity::model::StringsIndex const stringsIndex, la::avdecc::entity::model::StringsDescriptor const& descriptor)
+										if (!!status)
 										{
 											std::stringstream ss;
-											if (!!status)
-											{
-												for (auto strIndex = 0u; strIndex < descriptor.strings.size(); ++strIndex)
-												{
-													ss << "String " << (stringsIndex * descriptor.strings.size()) + strIndex << " locale " << localeIdentifier << ": " << descriptor.strings[strIndex] << std::endl;
-												}
-											}
-											else
-											{
-												ss << "Error getting strings descriptor " << stringsIndex << ": " << la::avdecc::to_integral(status) << std::endl;
-											}
+											ss << "Locales for index " << localeIndex << ": " << descriptor.numberOfStringDescriptors << " string descriptors (start at offset " << descriptor.baseStringDescriptorIndex << ")" << std::endl;
 											outputText(ss.str());
-										});
-									}
-								}
-							});
+											for (auto stringDescriptorIndex = la::avdecc::entity::model::StringsIndex(0); stringDescriptorIndex < descriptor.numberOfStringDescriptors; ++stringDescriptorIndex)
+											{
+												controller->readStringsDescriptor(entityID, _listenerConfiguration, descriptor.baseStringDescriptorIndex + stringDescriptorIndex,
+													[localeIdentifier = descriptor.localeID](la::avdecc::entity::ControllerEntity const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const /*configurationIndex*/, la::avdecc::entity::model::StringsIndex const stringsIndex, la::avdecc::entity::model::StringsDescriptor const& descriptor)
+													{
+														std::stringstream ss;
+														if (!!status)
+														{
+															for (auto strIndex = 0u; strIndex < descriptor.strings.size(); ++strIndex)
+															{
+																ss << "String " << (stringsIndex * descriptor.strings.size()) + strIndex << " locale " << localeIdentifier << ": " << descriptor.strings[strIndex] << std::endl;
+															}
+														}
+														else
+														{
+															ss << "Error getting strings descriptor " << stringsIndex << ": " << la::avdecc::to_integral(status) << std::endl;
+														}
+														outputText(ss.str());
+													});
+											}
+										}
+									});
 						}
 						// Read input streams
 						{
@@ -328,7 +330,6 @@ int doJob()
 				outputText("Uncaught exception in onGetListenerStreamStateSniffed");
 			}
 		}
-
 
 
 	private:

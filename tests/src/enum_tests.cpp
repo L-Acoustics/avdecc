@@ -33,7 +33,6 @@
 
 namespace
 {
-
 enum class TestEnum : std::uint8_t
 {
 	None = 0,
@@ -58,7 +57,7 @@ enum class TestBitfieldClass : std::uint8_t
 
 using TestBitfieldClasses = la::avdecc::EnumBitfield<TestBitfieldClass>;
 
-};
+}; // namespace
 
 // Define bitfield enum traits for TestBitfieldEnum
 template<>
@@ -78,16 +77,12 @@ TEST(Enum, EnumClassHash)
 {
 	std::unordered_map<TestEnum, char const*, la::avdecc::EnumClassHash> myEnumToStringMap{
 		{ TestEnum::None, "None" },
-	{ TestEnum::First, "First" },
-	{ TestEnum::Other, "Other" },
+		{ TestEnum::First, "First" },
+		{ TestEnum::Other, "Other" },
 	};
 
-	EXPECT_NO_THROW(
-		EXPECT_STREQ("First", myEnumToStringMap.at(TestEnum::First));
-	);
-	EXPECT_THROW(
-		(void)myEnumToStringMap.at(static_cast<TestEnum>(2));
-	, std::out_of_range);
+	EXPECT_NO_THROW(EXPECT_STREQ("First", myEnumToStringMap.at(TestEnum::First)););
+	EXPECT_THROW((void)myEnumToStringMap.at(static_cast<TestEnum>(2));, std::out_of_range);
 }
 
 TEST(EnumBitfieldTrait, OperatorAnd)
@@ -607,57 +602,44 @@ TEST(EnumBitfieldClass, At)
 	EXPECT_EQ(TestBitfieldClass::NotSupported, v1.at(2));
 	for (auto i = v1.count(); i < v1.size(); ++i)
 	{
-		EXPECT_THROW(
-			v1.at(i);
-		, std::out_of_range);
+		EXPECT_THROW(v1.at(i);, std::out_of_range);
 	}
 
 	EXPECT_EQ(TestBitfieldClass::Implemented, v2.at(0));
 	EXPECT_EQ(TestBitfieldClass::Supported, v2.at(1));
 	for (auto i = v2.count(); i < v2.size(); ++i)
 	{
-		EXPECT_THROW(
-			v2.at(i);
-		, std::out_of_range);
+		EXPECT_THROW(v2.at(i);, std::out_of_range);
 	}
 
 	EXPECT_EQ(TestBitfieldClass::Supported, v3.at(0));
 	EXPECT_EQ(TestBitfieldClass::NotSupported, v3.at(1));
 	for (auto i = v3.count(); i < v3.size(); ++i)
 	{
-		EXPECT_THROW(
-			v3.at(i);
-		, std::out_of_range);
+		EXPECT_THROW(v3.at(i);, std::out_of_range);
 	}
 
 	EXPECT_EQ(TestBitfieldClass::Implemented, v4.at(0));
 	for (auto i = v4.count(); i < v4.size(); ++i)
 	{
-		EXPECT_THROW(
-			v4.at(i);
-		, std::out_of_range);
+		EXPECT_THROW(v4.at(i);, std::out_of_range);
 	}
 
 	EXPECT_EQ(TestBitfieldClass::Supported, v5.at(0));
 	for (auto i = v5.count(); i < v5.size(); ++i)
 	{
-		EXPECT_THROW(
-			v5.at(i);
-		, std::out_of_range);
+		EXPECT_THROW(v5.at(i);, std::out_of_range);
 	}
 
 	for (auto i = v6.count(); i < v6.size(); ++i)
 	{
-		EXPECT_THROW(
-			v6.at(i);
-		, std::out_of_range);
+		EXPECT_THROW(v6.at(i);, std::out_of_range);
 	}
 }
 
 TEST(EnumBitfieldClass, GetPosition)
 {
-	EXPECT_THROW(TestBitfieldClasses::getPosition(TestBitfieldClass::None)
-							 , std::out_of_range);
+	EXPECT_THROW(TestBitfieldClasses::getPosition(TestBitfieldClass::None), std::out_of_range);
 	EXPECT_EQ(0u, TestBitfieldClasses::getPosition(TestBitfieldClass::Implemented));
 	EXPECT_EQ(1u, TestBitfieldClasses::getPosition(TestBitfieldClass::Supported));
 	EXPECT_EQ(2u, TestBitfieldClasses::getPosition(TestBitfieldClass::NotSupported));
@@ -678,7 +660,7 @@ TEST(EnumBitfieldClass, EnumerateBits)
 		std::set<TestBitfieldClass> enumerated{};
 		for (auto v : v1)
 		{
-			auto const[it, inserted] = enumerated.insert(v);
+			auto const [it, inserted] = enumerated.insert(v);
 			EXPECT_TRUE(inserted);
 		}
 		EXPECT_EQ(ControlSet, enumerated);
@@ -690,7 +672,7 @@ TEST(EnumBitfieldClass, EnumerateBits)
 		std::set<TestBitfieldClass> enumerated{};
 		for (auto v : v2)
 		{
-			auto const[it, inserted] = enumerated.insert(v);
+			auto const [it, inserted] = enumerated.insert(v);
 			EXPECT_TRUE(inserted);
 		}
 		EXPECT_EQ(ControlSet, enumerated);
@@ -702,7 +684,7 @@ TEST(EnumBitfieldClass, EnumerateBits)
 		std::set<TestBitfieldClass> enumerated{};
 		for (auto v : v3)
 		{
-			auto const[it, inserted] = enumerated.insert(v);
+			auto const [it, inserted] = enumerated.insert(v);
 			EXPECT_TRUE(inserted);
 		}
 		EXPECT_EQ(ControlSet, enumerated);
@@ -714,7 +696,7 @@ TEST(EnumBitfieldClass, EnumerateBits)
 		std::set<TestBitfieldClass> enumerated{};
 		for (auto v : v4)
 		{
-			auto const[it, inserted] = enumerated.insert(v);
+			auto const [it, inserted] = enumerated.insert(v);
 			EXPECT_TRUE(inserted);
 		}
 		EXPECT_EQ(ControlSet, enumerated);
@@ -726,7 +708,7 @@ TEST(EnumBitfieldClass, EnumerateBits)
 		std::set<TestBitfieldClass> enumerated{};
 		for (auto v : v5)
 		{
-			auto const[it, inserted] = enumerated.insert(v);
+			auto const [it, inserted] = enumerated.insert(v);
 			EXPECT_TRUE(inserted);
 		}
 		EXPECT_EQ(ControlSet, enumerated);
@@ -738,7 +720,7 @@ TEST(EnumBitfieldClass, EnumerateBits)
 		std::set<TestBitfieldClass> enumerated{};
 		for (auto v : v6)
 		{
-			auto const[it, inserted] = enumerated.insert(v);
+			auto const [it, inserted] = enumerated.insert(v);
 			EXPECT_TRUE(inserted);
 		}
 		EXPECT_EQ(ControlSet, enumerated);

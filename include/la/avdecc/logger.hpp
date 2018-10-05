@@ -34,7 +34,6 @@ namespace avdecc
 {
 namespace logger
 {
-
 /** Log layers */
 enum class Layer
 {
@@ -63,7 +62,10 @@ enum class Level
 class LogItem
 {
 public:
-	LogItem(Layer const layer) noexcept : _layer(layer) {}
+	LogItem(Layer const layer) noexcept
+		: _layer(layer)
+	{
+	}
 	virtual ~LogItem() noexcept {}
 
 	Layer getLayer() const noexcept
@@ -77,6 +79,7 @@ public:
 	LogItem(LogItem const&) = default;
 	LogItem& operator=(LogItem const&) = default;
 	LogItem& operator=(LogItem&&) = default;
+
 private:
 	Layer const _layer{ Layer::Generic };
 };

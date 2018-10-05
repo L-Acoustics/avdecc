@@ -37,7 +37,6 @@ namespace la
 {
 namespace avdecc
 {
-
 class EndStationImpl final : public EndStation
 {
 public:

@@ -38,7 +38,6 @@ namespace entity
 {
 namespace model
 {
-
 class StreamFormatInfo
 {
 public:
@@ -81,7 +80,7 @@ public:
 		Unknown,
 	};
 
-	using UniquePointer = std::unique_ptr<StreamFormatInfo, void(*)(StreamFormatInfo*)>;
+	using UniquePointer = std::unique_ptr<StreamFormatInfo, void (*)(StreamFormatInfo*)>;
 
 	/**
 	* @brief Factory method to create a new StreamFormatInfo.

@@ -24,13 +24,13 @@
 
 #include "la/avdecc/utils.hpp"
 #if defined(_WIN32)
-#include <Windows.h>
+#	include <Windows.h>
 #endif // _WIN32
 #if defined(__APPLE__)
-#include <pthread.h>
+#	include <pthread.h>
 #endif // __APPLE__
 #if defined(__unix__)
-#include <pthread.h>
+#	include <pthread.h>
 #endif // __unix__
 #include <iostream>
 #include <cstdio>
@@ -39,7 +39,6 @@ namespace la
 {
 namespace avdecc
 {
-
 bool LA_AVDECC_CALL_CONVENTION setCurrentThreadName(std::string const& name)
 {
 #if defined(_WIN32)
@@ -70,13 +69,13 @@ bool LA_AVDECC_CALL_CONVENTION setCurrentThreadName(std::string const& name)
 	return true;
 
 #elif defined(__unix__) && !defined(__CYGWIN__)
-#if (__GLIBC__ * 1000 + __GLIBC_MINOR__) >= 2012
+#	if (__GLIBC__ * 1000 + __GLIBC_MINOR__) >= 2012
 	pthread_setname_np(pthread_self(), name.c_str());
 	return true;
-#else // !GLIBC >= 2012
+#	else // !GLIBC >= 2012
 	prctl(PR_SET_NAME, name.c_str(), 0, 0, 0);
 	return true;
-#endif
+#	endif
 
 #else
 	(void)name;
@@ -119,11 +118,11 @@ void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsig
 			if (offset < sizeof(buffer) - 1)
 			{
 				offset += std::snprintf(buffer + offset, sizeof(buffer) - offset,
-																"\n"
-																"\n"
-																"Press 'Abort' to abort immediately\n"
-																"Press 'Retry' to debug the program\n"
-																"Press 'Ignore' to try to continue normal execution\n");
+					"\n"
+					"\n"
+					"Press 'Abort' to abort immediately\n"
+					"Press 'Retry' to debug the program\n"
+					"Press 'Ignore' to try to continue normal execution\n");
 			}
 		}
 #ifdef _WIN32

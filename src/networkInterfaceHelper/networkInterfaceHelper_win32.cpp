@@ -39,7 +39,6 @@ namespace avdecc
 {
 namespace networkInterface
 {
-
 std::string getStringFromWide(PWCHAR wide)
 {
 	char multiByte[1024];

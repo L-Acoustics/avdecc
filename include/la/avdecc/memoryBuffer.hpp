@@ -37,7 +37,6 @@ namespace la
 {
 namespace avdecc
 {
-
 /**
 * @brief Lightweight and efficient vector-like container.
 * @details A vector-like container that handles a "byte" resizable array
@@ -58,9 +57,7 @@ public:
 	/* Life cycle                                                                 */
 
 	/** Default constructor */
-	MemoryBuffer() noexcept
-	{
-	}
+	MemoryBuffer() noexcept {}
 
 	/** Contructor from a std::vector */
 	template<typename T>

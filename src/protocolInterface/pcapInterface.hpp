@@ -33,7 +33,6 @@ namespace avdecc
 {
 namespace protocol
 {
-
 class PcapInterface
 {
 public:
@@ -41,18 +40,18 @@ public:
 	~PcapInterface();
 
 	bool is_available() const;
-	pcap_t * open_live(const char *, int, int, int, char *) const;
-	int fileno(pcap_t *) const;
-	void close(pcap_t *) const;
-	int compile(pcap_t *, struct bpf_program *, const char *, int, bpf_u_int32) const;
-	int setfilter(pcap_t *, struct bpf_program *) const;
-	void freecode(struct bpf_program *) const;
-	int next_ex(pcap_t *, struct pcap_pkthdr **, const u_char **) const;
-	int sendpacket(pcap_t *, const u_char *, int) const;
+	pcap_t* open_live(const char*, int, int, int, char*) const;
+	int fileno(pcap_t*) const;
+	void close(pcap_t*) const;
+	int compile(pcap_t*, struct bpf_program*, const char*, int, bpf_u_int32) const;
+	int setfilter(pcap_t*, struct bpf_program*) const;
+	void freecode(struct bpf_program*) const;
+	int next_ex(pcap_t*, struct pcap_pkthdr**, const u_char**) const;
+	int sendpacket(pcap_t*, const u_char*, int) const;
 
 private:
 	struct pImpl;
-	std::unique_ptr<pImpl> _pImpl;//{ nullptr }; NSDMI for unique_ptr not supported by gcc (for incomplete type)
+	std::unique_ptr<pImpl> _pImpl; //{ nullptr }; NSDMI for unique_ptr not supported by gcc (for incomplete type)
 };
 
 } // namespace protocol

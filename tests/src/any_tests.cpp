@@ -23,8 +23,8 @@
 */
 
 #if ENABLE_AVDECC_CUSTOM_ANY
-#include <la/avdecc/internals/any.hpp>
-#include <gtest/gtest.h>
+#	include <la/avdecc/internals/any.hpp>
+#	include <gtest/gtest.h>
 
 // Some tests for our std::any implementation, until it's available on all c++17 compilers
 TEST(Any, ConstructorLiteral)
@@ -33,14 +33,10 @@ TEST(Any, ConstructorLiteral)
 	EXPECT_EQ(typeid(std::uint32_t), v.type());
 	EXPECT_NE(typeid(float), v.type());
 
-	EXPECT_THROW(
-		std::any_cast<float>(v);
-	, std::bad_any_cast);
+	EXPECT_THROW(std::any_cast<float>(v);, std::bad_any_cast);
 
 	std::uint32_t value{ 0u };
-	EXPECT_NO_THROW(
-		value = std::any_cast<std::uint32_t>(v);
-	);
+	EXPECT_NO_THROW(value = std::any_cast<std::uint32_t>(v););
 	EXPECT_EQ(123u, value);
 }
 
@@ -56,17 +52,13 @@ TEST(Any, ConstructorStruct)
 	EXPECT_EQ(typeid(Test), v.type());
 
 	Test value{};
-	EXPECT_NO_THROW(
-		value = std::any_cast<Test>(v);
-	);
+	EXPECT_NO_THROW(value = std::any_cast<Test>(v););
 	EXPECT_EQ(0, value.a);
 	EXPECT_EQ(1, value.b);
 
 	v = Test{ 5, 6 };
 	EXPECT_EQ(typeid(Test), v.type());
-	EXPECT_NO_THROW(
-		value = std::any_cast<Test>(v);
-	);
+	EXPECT_NO_THROW(value = std::any_cast<Test>(v););
 	EXPECT_EQ(5, value.a);
 	EXPECT_EQ(6, value.b);
 }
@@ -80,9 +72,7 @@ TEST(Any, CopyOperator)
 	float value{ 0.0f };
 	v = 1.0f;
 	EXPECT_EQ(typeid(float), v.type());
-	EXPECT_NO_THROW(
-		value = std::any_cast<float>(v);
-	);
+	EXPECT_NO_THROW(value = std::any_cast<float>(v););
 	EXPECT_EQ(1.0f, value);
 }
 

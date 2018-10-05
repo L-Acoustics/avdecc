@@ -42,7 +42,11 @@ public:
 	};
 	using Actions = std::list<Action>;
 
-	InstrumentationObserver(Actions&& actions) : _actions(actions) {}
+	InstrumentationObserver(Actions&& actions)
+		: _actions(actions)
+	{
+	}
+
 private:
 	virtual void onEvent(std::string const& eventName) noexcept override
 	{

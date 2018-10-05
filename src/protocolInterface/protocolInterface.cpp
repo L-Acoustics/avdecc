@@ -26,17 +26,17 @@
 
 // Protocol Interface
 #ifdef HAVE_PROTOCOL_INTERFACE_PCAP
-#include "protocolInterface/protocolInterface_pcap.hpp"
+#	include "protocolInterface/protocolInterface_pcap.hpp"
 #endif // HAVE_PROTOCOL_INTERFACE_PCAP
 #ifdef HAVE_PROTOCOL_INTERFACE_MAC
-#include "protocolInterface/protocolInterface_macNative.hpp"
+#	include "protocolInterface/protocolInterface_macNative.hpp"
 #endif // HAVE_PROTOCOL_INTERFACE_MAC
 #ifdef HAVE_PROTOCOL_INTERFACE_PROXY
-#error "Not implemented yet"
-#include "protocolInterface/protocolInterface_proxy.hpp"
+#	error "Not implemented yet"
+#	include "protocolInterface/protocolInterface_proxy.hpp"
 #endif // HAVE_PROTOCOL_INTERFACE_PROXY
 #ifdef HAVE_PROTOCOL_INTERFACE_VIRTUAL
-#include "protocolInterface/protocolInterface_virtual.hpp"
+#	include "protocolInterface/protocolInterface_virtual.hpp"
 #endif // HAVE_PROTOCOL_INTERFACE_VIRTUAL
 
 namespace la
@@ -45,7 +45,6 @@ namespace avdecc
 {
 namespace protocol
 {
-
 // Throws an Exception if networkInterfaceName is not usable
 ProtocolInterface::ProtocolInterface(std::string const& networkInterfaceName)
 	: _networkInterfaceName(networkInterfaceName)
@@ -67,7 +66,8 @@ ProtocolInterface::ProtocolInterface(std::string const& networkInterfaceName)
 }
 
 ProtocolInterface::ProtocolInterface(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress)
-	: _networkInterfaceName(networkInterfaceName), _networkInterfaceMacAddress(macAddress)
+	: _networkInterfaceName(networkInterfaceName)
+	, _networkInterfaceMacAddress(macAddress)
 {
 	// Check we have a valid name
 	if (networkInterfaceName.empty())

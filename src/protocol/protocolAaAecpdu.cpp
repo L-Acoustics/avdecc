@@ -33,7 +33,6 @@ namespace avdecc
 {
 namespace protocol
 {
-
 /***********************************************************/
 /* AaAecpdu class definition                              */
 /***********************************************************/
@@ -43,9 +42,7 @@ AaAecpdu::AaAecpdu() noexcept
 	Aecpdu::setAecpSpecificDataLength(AaAecpdu::HeaderLength);
 }
 
-AaAecpdu::~AaAecpdu() noexcept
-{
-}
+AaAecpdu::~AaAecpdu() noexcept {}
 
 void LA_AVDECC_CALL_CONVENTION AaAecpdu::serialize(SerializationBuffer& buffer) const
 {
