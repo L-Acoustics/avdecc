@@ -955,9 +955,9 @@ ControllerStateMachine::AdpduDiff ControllerStateMachine::getAdpdusDiff(Adpdu co
 	return AdpduDiff::Same;
 }
 
-entity::DiscoveredEntity ControllerStateMachine::makeEntity(Adpdu const& adpdu) const noexcept
+entity::Entity ControllerStateMachine::makeEntity(Adpdu const& adpdu) const noexcept
 {
-	return entity::DiscoveredEntity{ adpdu.getEntityID(), adpdu.getSrcAddress(), adpdu.getValidTime(), adpdu.getEntityModelID(), adpdu.getEntityCapabilities(), adpdu.getTalkerStreamSources(), adpdu.getTalkerCapabilities(), adpdu.getListenerStreamSinks(), adpdu.getListenerCapabilities(), adpdu.getControllerCapabilities(), adpdu.getAvailableIndex(), adpdu.getGptpGrandmasterID(), adpdu.getGptpDomainNumber(), adpdu.getIdentifyControlIndex(), adpdu.getInterfaceIndex(), adpdu.getAssociationID() };
+	return entity::Entity{ adpdu.getEntityID(), adpdu.getSrcAddress(), adpdu.getValidTime(), adpdu.getEntityModelID(), adpdu.getEntityCapabilities(), adpdu.getTalkerStreamSources(), adpdu.getTalkerCapabilities(), adpdu.getListenerStreamSinks(), adpdu.getListenerCapabilities(), adpdu.getControllerCapabilities(), adpdu.getAvailableIndex(), adpdu.getGptpGrandmasterID(), adpdu.getGptpDomainNumber(), adpdu.getIdentifyControlIndex(), adpdu.getInterfaceIndex(), adpdu.getAssociationID() };
 }
 
 } // namespace stateMachine

@@ -18,13 +18,13 @@
 */
 
 /**
-* @file controllerEntityImpl.hpp
+* @file aggregateEntityImpl.hpp
 * @author Christophe Calmejane
 */
 
 #pragma once
 
-#include "la/avdecc/internals/controllerEntity.hpp"
+#include "la/avdecc/internals/aggregateEntity.hpp"
 #include "la/avdecc/internals/protocolInterface.hpp"
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
@@ -34,6 +34,7 @@
 #include <functional>
 #include <thread>
 #include <mutex>
+#include <memory>
 
 namespace la
 {
@@ -42,108 +43,53 @@ namespace avdecc
 namespace entity
 {
 /* ************************************************************************** */
-/* ControllerEntityImpl                                                       */
+/* AggregateEntityImpl                                                        */
 /* ************************************************************************** */
-class ControllerEntityImpl : public LocalEntityImpl<ControllerEntity>
+class AggregateEntityImpl : public LocalEntityImpl<AggregateEntity>
 {
 private:
-	friend class LocalEntityGuard<ControllerEntityImpl>; // The only way to construct ControllerEntityImpl, through LocalEntityGuard
+	friend class LocalEntityGuard<AggregateEntityImpl>; // The only way to construct AggregateEntityImpl, through LocalEntityGuard
 
 	/* ************************************************************************** */
-	/* ControllerEntityImpl life cycle                                            */
+	/* AggregateEntityImpl life cycle                                             */
 	/* ************************************************************************** */
-	ControllerEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, UniqueIdentifier const entityModelID, controller::Delegate* const controllerDelegate);
-	virtual ~ControllerEntityImpl() noexcept;
+	AggregateEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities, std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities, std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities, ControllerCapabilities const controllerCapabilities, std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID, controller::Delegate* const controllerDelegate);
+	virtual ~AggregateEntityImpl() noexcept;
 
-private:
-	struct AnswerCallback
+public:
+	class CapabilityDelegate
 	{
-		using Callback = std::function<void()>;
-		Callback onAnswer{ nullptr };
-		// Constructors
-		AnswerCallback() = default;
-		template<typename T>
-		AnswerCallback(T const& f)
-			: onAnswer(reinterpret_cast<Callback const&>(f))
+	public:
+		using UniquePointer = std::unique_ptr<CapabilityDelegate>;
+		virtual ~CapabilityDelegate() = default;
+
+		virtual void onTransportError(protocol::ProtocolInterface* const /*pi*/) noexcept {}
+		/* **** Discovery notifications **** */
+		virtual void onLocalEntityOnline(protocol::ProtocolInterface* const /*pi*/, Entity const& /*entity*/) noexcept {}
+		virtual void onLocalEntityOffline(protocol::ProtocolInterface* const /*pi*/, UniqueIdentifier const /*entityID*/) noexcept {}
+		virtual void onLocalEntityUpdated(protocol::ProtocolInterface* const /*pi*/, Entity const& /*entity*/) noexcept {}
+		virtual void onRemoteEntityOnline(protocol::ProtocolInterface* const /*pi*/, Entity const& /*entity*/) noexcept {}
+		virtual void onRemoteEntityOffline(protocol::ProtocolInterface* const /*pi*/, UniqueIdentifier const /*entityID*/) noexcept {}
+		virtual void onRemoteEntityUpdated(protocol::ProtocolInterface* const /*pi*/, Entity const& /*entity*/) noexcept {}
+		/* **** AECP notifications **** */
+		virtual bool onUnhandledAecpCommand(protocol::ProtocolInterface* const /*pi*/, protocol::Aecpdu const& /*aecpdu*/) noexcept
 		{
+			return false;
 		}
-		// Call operator
-		template<typename T, typename... Ts>
-		void invoke(Ts&&... params) const noexcept
-		{
-			if (onAnswer)
-			{
-				try
-				{
-					reinterpret_cast<T const&>(onAnswer)(std::forward<Ts>(params)...);
-				}
-				catch (...)
-				{
-					// Ignore throws in user handler
-				}
-			}
-		}
+		virtual void onAecpUnsolicitedResponse(protocol::ProtocolInterface* const /*pi*/, LocalEntity const& /*entity*/, protocol::Aecpdu const& /*aecpdu*/) noexcept {}
+		/* **** ACMP notifications **** */
+		virtual void onAcmpSniffedCommand(protocol::ProtocolInterface* const /*pi*/, LocalEntity const& /*entity*/, protocol::Acmpdu const& /*acmpdu*/) noexcept {}
+		virtual void onAcmpSniffedResponse(protocol::ProtocolInterface* const /*pi*/, LocalEntity const& /*entity*/, protocol::Acmpdu const& /*acmpdu*/) noexcept {}
 	};
 
-	using DiscoveredEntities = std::unordered_map<UniqueIdentifier, Entity, UniqueIdentifier::hash>;
-	using OnAemAECPErrorCallback = std::function<void(ControllerEntity::AemCommandStatus const error)>;
-	using OnAaAECPErrorCallback = std::function<void(ControllerEntity::AaCommandStatus const error)>;
-	using OnMvuAECPErrorCallback = std::function<void(ControllerEntity::MvuCommandStatus const error)>;
-	using OnACMPErrorCallback = std::function<void(ControllerEntity::ControlStatus const error)>;
-
 	/* ************************************************************************** */
-	/* ControllerEntityImpl internal methods                                      */
+	/* Public methods                                                             */
 	/* ************************************************************************** */
-	template<typename T, typename... Ts>
-	static OnAemAECPErrorCallback makeAemAECPErrorHandler(T const& handler, ControllerEntity const* const controller, Ts&&... params)
-	{
-		if (handler)
-			return std::bind(handler, controller, std::forward<Ts>(params)...);
-		// No handler specified, return an empty handler
-		return [](ControllerEntity::AemCommandStatus const /*error*/)
-		{
-		};
-	}
-	template<typename T, typename... Ts>
-	static OnAaAECPErrorCallback makeAaAECPErrorHandler(T const& handler, ControllerEntity const* const controller, Ts&&... params)
-	{
-		if (handler)
-			return std::bind(handler, controller, std::forward<Ts>(params)...);
-		// No handler specified, return an empty handler
-		return [](ControllerEntity::AaCommandStatus const /*error*/)
-		{
-		};
-	}
-	template<typename T, typename... Ts>
-	static OnMvuAECPErrorCallback makeMvuAECPErrorHandler(T const& handler, ControllerEntity const* const controller, Ts&&... params)
-	{
-		if (handler)
-			return std::bind(handler, controller, std::forward<Ts>(params)...);
-		// No handler specified, return an empty handler
-		return [](ControllerEntity::MvuCommandStatus const /*error*/)
-		{
-		};
-	}
-	template<typename T, typename... Ts>
-	static OnACMPErrorCallback makeACMPErrorHandler(T const& handler, ControllerEntity const* const controller, Ts&&... params)
-	{
-		if (handler)
-			return std::bind(handler, controller, std::forward<Ts>(params)...);
-		// No handler specified, return an empty handler
-		return [](ControllerEntity::ControlStatus const /*error*/)
-		{
-		};
-	}
+	controller::Delegate* getControllerDelegate() const noexcept;
+	//listener::Delegate* getListenerDelegate() const noexcept;
+	//talker::Delegate* getTalkerDelegate() const noexcept;
 
-	void sendAemAecpCommand(UniqueIdentifier const targetEntityID, protocol::AemCommandType const commandType, void const* const payload, size_t const payloadLength, OnAemAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
-	void sendAaAecpCommand(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, OnAaAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
-	void sendMvuAecpCommand(UniqueIdentifier const targetEntityID, protocol::MvuCommandType const commandType, void const* const payload, size_t const payloadLength, OnMvuAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
-	void sendAcmpCommand(protocol::AcmpMessageType const messageType, UniqueIdentifier const talkerEntityID, model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, model::StreamIndex const listenerStreamIndex, uint16_t const connectionIndex, OnACMPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
-	void processAemAecpResponse(protocol::Aecpdu const* const response, OnAemAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
-	void processAaAecpResponse(protocol::Aecpdu const* const response, OnAaAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
-	void processMvuAecpResponse(protocol::Aecpdu const* const response, OnMvuAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
-	void processAcmpResponse(protocol::Acmpdu const* const response, OnACMPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback, bool const sniffed) const noexcept;
-
+private:
 	/* ************************************************************************** */
 	/* controller::Interface overrides                                            */
 	/* ************************************************************************** */
@@ -244,9 +190,13 @@ private:
 	virtual void getTalkerStreamState(model::StreamIdentification const& talkerStream, GetTalkerStreamStateHandler const& handler) const noexcept override;
 	virtual void getListenerStreamState(model::StreamIdentification const& listenerStream, GetListenerStreamStateHandler const& handler) const noexcept override;
 	virtual void getTalkerStreamConnection(model::StreamIdentification const& talkerStream, uint16_t const connectionIndex, GetTalkerStreamConnectionHandler const& handler) const noexcept override;
-	/* Other methods */
+
+	/* ************************************************************************** */
+	/* AggregateEntity overrides                                                  */
+	/* ************************************************************************** */
 	virtual void setControllerDelegate(controller::Delegate* const delegate) noexcept override;
-	controller::Delegate* getControllerDelegate() const noexcept;
+	//virtual void setListenerDelegate(listener::Delegate* const delegate) noexcept override;
+	//virtual void setTalkerDelegate(talker::Delegate* const delegate) noexcept override;
 
 	/* ************************************************************************** */
 	/* protocol::ProtocolInterface::Observer overrides                            */
@@ -275,10 +225,10 @@ private:
 	/* ************************************************************************** */
 	/* Internal variables                                                         */
 	/* ************************************************************************** */
-	controller::Delegate* _delegate{ nullptr };
-	bool _shouldTerminate{ false };
-	DiscoveredEntities _discoveredEntities{};
-	std::thread _discoveryThread{};
+	controller::Delegate* _controllerDelegate{ nullptr };
+	CapabilityDelegate::UniquePointer _controllerCapabilityDelegate{ nullptr };
+	CapabilityDelegate::UniquePointer _listenerCapabilityDelegate{ nullptr };
+	CapabilityDelegate::UniquePointer _talkerCapabilityDelegate{ nullptr };
 };
 
 } // namespace entity

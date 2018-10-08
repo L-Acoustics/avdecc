@@ -49,12 +49,12 @@ public:
 	{
 	public:
 		/* **** Discovery notifications **** */
-		virtual void onLocalEntityOnline(la::avdecc::entity::DiscoveredEntity const& entity) noexcept = 0;
+		virtual void onLocalEntityOnline(la::avdecc::entity::Entity const& entity) noexcept = 0;
 		virtual void onLocalEntityOffline(la::avdecc::UniqueIdentifier const entityID) noexcept = 0;
-		virtual void onLocalEntityUpdated(la::avdecc::entity::DiscoveredEntity const& entity) noexcept = 0;
-		virtual void onRemoteEntityOnline(la::avdecc::entity::DiscoveredEntity const& entity) noexcept = 0;
+		virtual void onLocalEntityUpdated(la::avdecc::entity::Entity const& entity) noexcept = 0;
+		virtual void onRemoteEntityOnline(la::avdecc::entity::Entity const& entity) noexcept = 0;
 		virtual void onRemoteEntityOffline(la::avdecc::UniqueIdentifier const entityID) noexcept = 0;
-		virtual void onRemoteEntityUpdated(la::avdecc::entity::DiscoveredEntity const& entity) noexcept = 0;
+		virtual void onRemoteEntityUpdated(la::avdecc::entity::Entity const& entity) noexcept = 0;
 		/* **** AECP notifications **** */
 		virtual void onAecpCommand(la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Aecpdu const& aecpdu) noexcept = 0;
 		virtual void onAecpUnsolicitedResponse(la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Aecpdu const& aecpdu) noexcept = 0;
@@ -231,7 +231,7 @@ private:
 	void handleAdpEntityDiscover(Adpdu const& adpdu) noexcept;
 	bool isLocalEntity(UniqueIdentifier const entityID) const noexcept;
 	AdpduDiff getAdpdusDiff(Adpdu const& lhs, Adpdu const& rhs) const noexcept;
-	entity::DiscoveredEntity makeEntity(Adpdu const& adpdu) const noexcept;
+	entity::Entity makeEntity(Adpdu const& adpdu) const noexcept;
 
 	// Common variables
 	mutable std::recursive_mutex _lock{}; /** Lock to protect the whole class */

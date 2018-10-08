@@ -77,7 +77,7 @@ struct EntityQueues
 + (std::string)getStdString:(NSString*)nsString;
 + (la::avdecc::networkInterface::MacAddress)getMacAddress:(NSArray*)array;
 + (AVB17221Entity*)makeAVB17221Entity:(la::avdecc::entity::Entity const&)entity;
-+ (la::avdecc::entity::DiscoveredEntity)makeEntity:(AVB17221Entity*)entity;
++ (la::avdecc::entity::Entity)makeEntity:(AVB17221Entity*)entity;
 + (AVB17221AECPAEMMessage*)makeAemCommand:(la::avdecc::protocol::AemAecpdu const&)command;
 + (la::avdecc::protocol::AemAecpdu::UniquePointer)makeAemResponse:(AVB17221AECPAEMMessage*)response;
 + (AVB17221AECPAddressAccessMessage*)makeAaCommand:(la::avdecc::protocol::AaAecpdu const&)command;
@@ -225,17 +225,22 @@ private:
 		return ProtocolInterface::Error::TransportError;
 	}
 
-	virtual Error sendAdpMessage(Adpdu::UniquePointer&& adpdu) const noexcept override
+	virtual bool isDirectMessageSupported() const noexcept override
+	{
+		return false;
+	}
+
+	virtual Error sendAdpMessage(Adpdu const& adpdu) const noexcept override
 	{
 		return Error::MessageNotSupported;
 	}
 
-	virtual Error sendAecpMessage(Aecpdu::UniquePointer&& aecpdu) const noexcept override
+	virtual Error sendAecpMessage(Aecpdu const& aecpdu) const noexcept override
 	{
 		return Error::MessageNotSupported;
 	}
 
-	virtual Error sendAcmpMessage(Acmpdu::UniquePointer&& acmpdu) const noexcept override
+	virtual Error sendAcmpMessage(Acmpdu const& acmpdu) const noexcept override
 	{
 		return Error::MessageNotSupported;
 	}
@@ -249,6 +254,7 @@ private:
 	{
 		AVDECC_ASSERT(false, "TBD: To be implemented");
 		return ProtocolInterface::Error::InternalError;
+		//return [_bridge sendAecpResponse:std::move(aecpdu) macAddress:macAddress];
 	}
 
 	virtual Error sendAcmpCommand(Acmpdu::UniquePointer&& acmpdu, AcmpCommandResultHandler const& onResult) const noexcept override
@@ -260,6 +266,7 @@ private:
 	{
 		AVDECC_ASSERT(false, "TBD: To be implemented");
 		return ProtocolInterface::Error::InternalError;
+		//return [_bridge sendAcmpResponse:std::move(acmpdu)];
 	}
 
 	virtual void lock() noexcept override
@@ -363,7 +370,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	return e;
 }
 
-+ (la::avdecc::entity::DiscoveredEntity)makeEntity:(AVB17221Entity*)entity {
++ (la::avdecc::entity::Entity)makeEntity:(AVB17221Entity*)entity {
 	return { entity.entityID, [BridgeInterface getMacAddress:entity.macAddresses], static_cast<std::uint8_t>(entity.timeToLive / 2u), entity.entityModelID, static_cast<la::avdecc::entity::EntityCapabilities>(entity.entityCapabilities), entity.talkerStreamSources, static_cast<la::avdecc::entity::TalkerCapabilities>(entity.talkerCapabilities), entity.listenerStreamSinks, static_cast<la::avdecc::entity::ListenerCapabilities>(entity.listenerCapabilities), static_cast<la::avdecc::entity::ControllerCapabilities>(entity.controllerCapabilities), entity.availableIndex, entity.gPTPGrandmasterID, entity.gPTPDomainNumber, entity.identifyControlIndex, entity.interfaceIndex, entity.associationID };
 }
 
@@ -675,7 +682,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	// Add the entity to our cache of local entities declared by the running program
 	_localProcessEntities.insert(decltype(_localProcessEntities)::value_type(entityID, entity));
 
-	// Notify observers (creating a DiscoveredEntity from a LocalEntity)
+	// Notify observers
 	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOnline, _protocolInterface, entity);
 
 	return la::avdecc::protocol::ProtocolInterface::Error::NoError;

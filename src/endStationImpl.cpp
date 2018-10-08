@@ -24,6 +24,9 @@
 
 #include "la/avdecc/internals/protocolInterface.hpp"
 #include "endStationImpl.hpp"
+// Entities
+#include "entity/controllerEntityImpl.hpp"
+#include "entity/aggregateEntityImpl.hpp"
 
 namespace la
 {
@@ -43,7 +46,7 @@ EndStationImpl::~EndStationImpl() noexcept
 }
 
 // EndStation overrides
-entity::ControllerEntity* EndStationImpl::addControllerEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::ControllerEntity::Delegate* const delegate)
+entity::ControllerEntity* EndStationImpl::addControllerEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::controller::Delegate* const delegate)
 {
 	std::unique_ptr<entity::LocalEntityGuard<entity::ControllerEntityImpl>> controller{ nullptr };
 	try
@@ -63,6 +66,28 @@ entity::ControllerEntity* EndStationImpl::addControllerEntity(std::uint16_t cons
 
 	// Return the controller to the user
 	return controllerPtr;
+}
+
+entity::AggregateEntity* EndStationImpl::addAggregateEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::controller::Delegate* const controllerDelegate)
+{
+	std::unique_ptr<entity::LocalEntityGuard<entity::AggregateEntityImpl>> aggregate{ nullptr };
+	try
+	{
+		aggregate = std::make_unique<entity::LocalEntityGuard<entity::AggregateEntityImpl>>(_protocolInterface.get(), progID, entityModelID, entity::EntityCapabilities::None, std::uint16_t{ 0u }, entity::TalkerCapabilities::None, std::uint16_t{ 0 }, entity::ListenerCapabilities::None, controllerDelegate ? entity::ControllerCapabilities::Implemented : entity::ControllerCapabilities::None, entity::model::ControlIndex{ 0u }, entity::model::AvbInterfaceIndex{ 0u }, UniqueIdentifier{}, controllerDelegate);
+	}
+	catch (la::avdecc::Exception const& e) // Because entity::AggregateEntityImpl::AggregateEntityImpl might throw if an entityID cannot be generated
+	{
+		throw Exception(Error::InterfaceInvalid, e.what());
+	}
+
+	// Get aggregate's pointer now, we'll soon move the object
+	auto* const aggregatePtr = static_cast<entity::AggregateEntity*>(aggregate.get());
+
+	// Add the entity to our list
+	_entities.push_back(std::move(aggregate));
+
+	// Return the aggregate to the user
+	return aggregatePtr;
 }
 
 /** Destroy method for COM-like interface */

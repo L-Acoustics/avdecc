@@ -27,6 +27,7 @@
 
 #include "entity.hpp"
 #include "controllerEntity.hpp"
+#include "aggregateEntity.hpp"
 #include "protocolInterface.hpp"
 #include "exports.hpp"
 #include "exception.hpp"
@@ -98,7 +99,9 @@ public:
 	* @return A weak pointer to the newly created ControllerEntity.
 	* @note Might throw an Exception.
 	*/
-	virtual entity::ControllerEntity* addControllerEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::ControllerEntity::Delegate* const delegate) = 0;
+	virtual entity::ControllerEntity* addControllerEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::controller::Delegate* const delegate) = 0;
+
+	virtual entity::AggregateEntity* addAggregateEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::controller::Delegate* const controllerDelegate) = 0;
 
 	// Deleted compiler auto-generated methods
 	EndStation(EndStation&&) = delete;

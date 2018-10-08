@@ -59,35 +59,35 @@ public:
 	}
 };
 
-class ControlException final : public std::exception
-{
-public:
-	ControlException(ControllerEntity::ControlStatus const status, char const* const text)
-		: _status(status)
-		, _text(text)
-	{
-	}
-	ControllerEntity::ControlStatus getStatus() const
-	{
-		return _status;
-	}
-	virtual char const* what() const noexcept override
-	{
-		return _text;
-	}
-
-private:
-	ControllerEntity::ControlStatus _status{ ControllerEntity::ControlStatus::InternalError };
-	char const* _text{ nullptr };
-};
+//class ControlException final : public std::exception
+//{
+//public:
+//	ControlException(ControllerEntity::ControlStatus const status, char const* const text)
+//		: _status(status)
+//		, _text(text)
+//	{
+//	}
+//	ControllerEntity::ControlStatus getStatus() const
+//	{
+//		return _status;
+//	}
+//	virtual char const* what() const noexcept override
+//	{
+//		return _text;
+//	}
+//
+//private:
+//	ControllerEntity::ControlStatus _status{ ControllerEntity::ControlStatus::InternalError };
+//	char const* _text{ nullptr };
+//};
 
 
 /* ************************************************************************** */
 /* ControllerEntityImpl life cycle                                            */
 /* ************************************************************************** */
-ControllerEntityImpl::ControllerEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, UniqueIdentifier const entityModelID, ControllerEntity::Delegate* const delegate)
+ControllerEntityImpl::ControllerEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, UniqueIdentifier const entityModelID, controller::Delegate* const controllerDelegate)
 	: LocalEntityImpl(protocolInterface, progID, entityModelID, EntityCapabilities::None, 0, TalkerCapabilities::None, 0, ListenerCapabilities::None, ControllerCapabilities::Implemented, 0, 0, UniqueIdentifier{})
-	, _delegate(delegate)
+	, _delegate(controllerDelegate)
 {
 	// Register observer
 	getProtocolInterface()->registerObserver(this);
@@ -130,109 +130,6 @@ ControllerEntityImpl::~ControllerEntityImpl() noexcept
 /* ************************************************************************** */
 /* ControllerEntityImpl internal methods                                      */
 /* ************************************************************************** */
-ControllerEntity::AemCommandStatus ControllerEntityImpl::convertErrorToAemCommandStatus(protocol::ProtocolInterface::Error const error) const noexcept
-{
-	switch (error)
-	{
-		case protocol::ProtocolInterface::Error::NoError:
-			return AemCommandStatus::Success;
-		case protocol::ProtocolInterface::Error::TransportError:
-			return AemCommandStatus::NetworkError;
-		case protocol::ProtocolInterface::Error::Timeout:
-			return AemCommandStatus::TimedOut;
-		case protocol::ProtocolInterface::Error::UnknownRemoteEntity:
-			return AemCommandStatus::UnknownEntity;
-		case protocol::ProtocolInterface::Error::UnknownLocalEntity:
-			AVDECC_ASSERT(false, "Trying to sendAemAecpCommand from a non-existing local entity");
-			return AemCommandStatus::UnknownEntity;
-		case protocol::ProtocolInterface::Error::InvalidEntityType:
-			AVDECC_ASSERT(false, "Trying to sendAemAecpCommand from a non-controller entity");
-			return AemCommandStatus::InternalError;
-		case protocol::ProtocolInterface::Error::InternalError:
-			return AemCommandStatus::InternalError;
-		default:
-			AVDECC_ASSERT(false, "ProtocolInterface error code not handled");
-	}
-	return AemCommandStatus::InternalError;
-}
-
-ControllerEntity::AaCommandStatus ControllerEntityImpl::convertErrorToAaCommandStatus(protocol::ProtocolInterface::Error const error) const noexcept
-{
-	switch (error)
-	{
-		case protocol::ProtocolInterface::Error::NoError:
-			return AaCommandStatus::Success;
-		case protocol::ProtocolInterface::Error::TransportError:
-			return AaCommandStatus::NetworkError;
-		case protocol::ProtocolInterface::Error::Timeout:
-			return AaCommandStatus::TimedOut;
-		case protocol::ProtocolInterface::Error::UnknownRemoteEntity:
-			return AaCommandStatus::UnknownEntity;
-		case protocol::ProtocolInterface::Error::UnknownLocalEntity:
-			AVDECC_ASSERT(false, "Trying to sendAaCommand from a non-existing local entity");
-			return AaCommandStatus::UnknownEntity;
-		case protocol::ProtocolInterface::Error::InvalidEntityType:
-			AVDECC_ASSERT(false, "Trying to sendAaCommand from a non-controller entity");
-			return AaCommandStatus::InternalError;
-		case protocol::ProtocolInterface::Error::InternalError:
-			return AaCommandStatus::InternalError;
-		default:
-			AVDECC_ASSERT(false, "ProtocolInterface error code not handled");
-	}
-	return AaCommandStatus::InternalError;
-}
-
-ControllerEntity::MvuCommandStatus ControllerEntityImpl::convertErrorToMvuCommandStatus(protocol::ProtocolInterface::Error const error) const noexcept
-{
-	switch (error)
-	{
-		case protocol::ProtocolInterface::Error::NoError:
-			return MvuCommandStatus::Success;
-		case protocol::ProtocolInterface::Error::TransportError:
-			return MvuCommandStatus::NetworkError;
-		case protocol::ProtocolInterface::Error::Timeout:
-			return MvuCommandStatus::TimedOut;
-		case protocol::ProtocolInterface::Error::UnknownRemoteEntity:
-			return MvuCommandStatus::UnknownEntity;
-		case protocol::ProtocolInterface::Error::UnknownLocalEntity:
-			AVDECC_ASSERT(false, "Trying to sendAaCommand from a non-existing local entity");
-			return MvuCommandStatus::UnknownEntity;
-		case protocol::ProtocolInterface::Error::InvalidEntityType:
-			AVDECC_ASSERT(false, "Trying to sendAaCommand from a non-controller entity");
-			return MvuCommandStatus::InternalError;
-		case protocol::ProtocolInterface::Error::InternalError:
-			return MvuCommandStatus::InternalError;
-		default:
-			AVDECC_ASSERT(false, "ProtocolInterface error code not handled");
-	}
-	return MvuCommandStatus::InternalError;
-}
-
-ControllerEntity::ControlStatus ControllerEntityImpl::convertErrorToControlStatus(protocol::ProtocolInterface::Error const error) const noexcept
-{
-	switch (error)
-	{
-		case protocol::ProtocolInterface::Error::NoError:
-			return ControlStatus::Success;
-		case protocol::ProtocolInterface::Error::TransportError:
-			return ControlStatus::NetworkError;
-		case protocol::ProtocolInterface::Error::Timeout:
-			return ControlStatus::TimedOut;
-		case protocol::ProtocolInterface::Error::UnknownRemoteEntity:
-			return ControlStatus::UnknownEntity;
-		case protocol::ProtocolInterface::Error::UnknownLocalEntity:
-			AVDECC_ASSERT(false, "Trying to sendAcmpCommand from a non-existing local entity");
-			return ControlStatus::UnknownEntity;
-		case protocol::ProtocolInterface::Error::InvalidEntityType:
-			return ControlStatus::InternalError;
-		case protocol::ProtocolInterface::Error::InternalError:
-			return ControlStatus::InternalError;
-		default:
-			AVDECC_ASSERT(false, "ProtocolInterface error code not handled");
-	}
-	return ControlStatus::InternalError;
-}
-
 void ControllerEntityImpl::sendAemAecpCommand(UniqueIdentifier const targetEntityID, protocol::AemCommandType const commandType, void const* const payload, size_t const payloadLength, OnAemAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept
 {
 	try
@@ -452,43 +349,6 @@ void ControllerEntityImpl::sendMvuAecpCommand(UniqueIdentifier const targetEntit
 	}
 }
 
-void ControllerEntityImpl::sendAemResponse(protocol::AemAecpdu const& commandAem, protocol::AecpStatus const status, void const* const payload, size_t const payloadLength) const noexcept
-{
-	try
-	{
-		auto* pi = getProtocolInterface();
-		auto targetMacAddress = networkInterface::MacAddress{};
-
-		// Build AEM-AECPDU frame
-		auto frame = protocol::AemAecpdu::create();
-		auto* aem = static_cast<protocol::AemAecpdu*>(frame.get());
-
-		// Set Ether2 fields
-		if (commandAem.getDestAddress() != pi->getMacAddress())
-		{
-			LOG_CONTROLLER_ENTITY_WARN(commandAem.getTargetEntityID(), "Sending AEM response using own MacAddress as source, instead of the incorrect one from the AEM command");
-		}
-		aem->setSrcAddress(pi->getMacAddress()); // Using our MacAddress instead of the one from the Command, some devices incorrectly send some AEM messages to the multicast Ether2 MacAddress instead of targeting an entity
-		aem->setDestAddress(commandAem.getSrcAddress());
-		// Set AECP fields
-		aem->setMessageType(protocol::AecpMessageType::AemResponse);
-		aem->setStatus(status);
-		aem->setTargetEntityID(commandAem.getTargetEntityID());
-		aem->setControllerEntityID(commandAem.getControllerEntityID());
-		aem->setSequenceID(commandAem.getSequenceID());
-		// Set AEM fields
-		aem->setUnsolicited(false);
-		aem->setCommandType(commandAem.getCommandType());
-		aem->setCommandSpecificData(payload, payloadLength);
-
-		// We don't care about the send errors
-		pi->sendAecpResponse(std::move(frame), targetMacAddress);
-	}
-	catch (...)
-	{
-	}
-}
-
 void ControllerEntityImpl::sendAcmpCommand(protocol::AcmpMessageType const messageType, UniqueIdentifier const talkerEntityID, model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, model::StreamIndex const listenerStreamIndex, uint16_t const connectionIndex, OnACMPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept
 {
 	try
@@ -568,13 +428,13 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 
 				auto const targetID = aem.getTargetEntityID();
 
-				auto* delegate = controller->getDelegate();
+				auto* delegate = controller->getControllerDelegate();
 				if ((flags & protocol::AemAcquireEntityFlags::Release) == protocol::AemAcquireEntityFlags::Release)
 				{
 					answerCallback.invoke<ReleaseEntityHandler>(controller, targetID, status, ownerID, descriptorType, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityReleased, delegate, controller, targetID, ownerID, descriptorType, descriptorIndex);
+						invokeProtectedMethod(&controller::Delegate::onEntityReleased, delegate, controller, targetID, ownerID, descriptorType, descriptorIndex);
 					}
 				}
 				else
@@ -582,7 +442,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 					answerCallback.invoke<AcquireEntityHandler>(controller, targetID, status, ownerID, descriptorType, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityAcquired, delegate, controller, targetID, ownerID, descriptorType, descriptorIndex);
+						invokeProtectedMethod(&controller::Delegate::onEntityAcquired, delegate, controller, targetID, ownerID, descriptorType, descriptorIndex);
 					}
 				}
 			}
@@ -603,13 +463,13 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 
 				auto const targetID = aem.getTargetEntityID();
 
-				//auto* delegate = controller->getDelegate();
+				//auto* delegate = controller->getControllerDelegate();
 				if ((flags & protocol::AemLockEntityFlags::Unlock) == protocol::AemLockEntityFlags::Unlock)
 				{
 					answerCallback.invoke<UnlockEntityHandler>(controller, targetID, status);
 					/*if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityUnlocked, delegate, controller, targetID, lockedID);
+						invokeProtectedMethod(&controller::Delegate::onEntityUnlocked, delegate, controller, targetID, lockedID);
 					}*/
 				}
 				else
@@ -617,7 +477,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 					answerCallback.invoke<LockEntityHandler>(controller, targetID, status, lockedID);
 					/*if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onEntityLocked, delegate, controller, targetID, lockedID);
+						invokeProtectedMethod(&controller::Delegate::onEntityLocked, delegate, controller, targetID, lockedID);
 					}*/
 				}
 			}
@@ -864,13 +724,13 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
-				auto* delegate = controller->getDelegate();
+				auto* delegate = controller->getControllerDelegate();
 
 				// Notify handlers
 				answerCallback.invoke<SetConfigurationHandler>(controller, targetID, status, configurationIndex);
 				if (aem.getUnsolicited() && delegate && !!status)
 				{
-					invokeProtectedMethod(&ControllerEntity::Delegate::onConfigurationChanged, delegate, controller, targetID, configurationIndex);
+					invokeProtectedMethod(&controller::Delegate::onConfigurationChanged, delegate, controller, targetID, configurationIndex);
 				}
 			}
 		},
@@ -889,7 +749,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
-				auto* delegate = controller->getDelegate();
+				auto* delegate = controller->getControllerDelegate();
 
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::StreamInput)
@@ -897,7 +757,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 					answerCallback.invoke<SetStreamInputFormatHandler>(controller, targetID, status, descriptorIndex, streamFormat);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputFormatChanged, delegate, controller, targetID, descriptorIndex, streamFormat);
+						invokeProtectedMethod(&controller::Delegate::onStreamInputFormatChanged, delegate, controller, targetID, descriptorIndex, streamFormat);
 					}
 				}
 				else if (descriptorType == model::DescriptorType::StreamOutput)
@@ -905,7 +765,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 					answerCallback.invoke<SetStreamOutputFormatHandler>(controller, targetID, status, descriptorIndex, streamFormat);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputFormatChanged, delegate, controller, targetID, descriptorIndex, streamFormat);
+						invokeProtectedMethod(&controller::Delegate::onStreamOutputFormatChanged, delegate, controller, targetID, descriptorIndex, streamFormat);
 					}
 				}
 				else
@@ -955,7 +815,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
-				auto* delegate = controller->getDelegate();
+				auto* delegate = controller->getControllerDelegate();
 
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::StreamInput)
@@ -963,7 +823,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 					answerCallback.invoke<GetStreamInputInfoHandler>(controller, targetID, status, descriptorIndex, streamInfo);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputInfoChanged, delegate, controller, targetID, descriptorIndex, streamInfo);
+						invokeProtectedMethod(&controller::Delegate::onStreamInputInfoChanged, delegate, controller, targetID, descriptorIndex, streamInfo);
 					}
 				}
 				else if (descriptorType == model::DescriptorType::StreamOutput)
@@ -971,7 +831,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 					answerCallback.invoke<GetStreamOutputInfoHandler>(controller, targetID, status, descriptorIndex, streamInfo);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputInfoChanged, delegate, controller, targetID, descriptorIndex, streamInfo);
+						invokeProtectedMethod(&controller::Delegate::onStreamOutputInfoChanged, delegate, controller, targetID, descriptorIndex, streamInfo);
 					}
 				}
 				else
@@ -994,7 +854,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
-				auto* delegate = controller->getDelegate();
+				auto* delegate = controller->getControllerDelegate();
 
 				// Notify handlers
 				switch (descriptorType)
@@ -1015,14 +875,14 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 								answerCallback.invoke<SetEntityNameHandler>(controller, targetID, status);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									invokeProtectedMethod(&ControllerEntity::Delegate::onEntityNameChanged, delegate, controller, targetID, name);
+									invokeProtectedMethod(&controller::Delegate::onEntityNameChanged, delegate, controller, targetID, name);
 								}
 								break;
 							case 1: // group_name
 								answerCallback.invoke<SetEntityGroupNameHandler>(controller, targetID, status);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									invokeProtectedMethod(&ControllerEntity::Delegate::onEntityGroupNameChanged, delegate, controller, targetID, name);
+									invokeProtectedMethod(&controller::Delegate::onEntityGroupNameChanged, delegate, controller, targetID, name);
 								}
 								break;
 							default:
@@ -1043,7 +903,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 								answerCallback.invoke<SetConfigurationNameHandler>(controller, targetID, status, descriptorIndex);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									invokeProtectedMethod(&ControllerEntity::Delegate::onConfigurationNameChanged, delegate, controller, targetID, descriptorIndex, name);
+									invokeProtectedMethod(&controller::Delegate::onConfigurationNameChanged, delegate, controller, targetID, descriptorIndex, name);
 								}
 								break;
 							default:
@@ -1060,7 +920,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 								answerCallback.invoke<SetAudioUnitNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									invokeProtectedMethod(&ControllerEntity::Delegate::onAudioUnitNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
+									invokeProtectedMethod(&controller::Delegate::onAudioUnitNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
 								}
 								break;
 							default:
@@ -1077,7 +937,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 								answerCallback.invoke<SetStreamInputNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
+									invokeProtectedMethod(&controller::Delegate::onStreamInputNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
 								}
 								break;
 							default:
@@ -1094,7 +954,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 								answerCallback.invoke<SetStreamOutputNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
+									invokeProtectedMethod(&controller::Delegate::onStreamOutputNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
 								}
 								break;
 							default:
@@ -1111,7 +971,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 								answerCallback.invoke<SetAvbInterfaceNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									invokeProtectedMethod(&ControllerEntity::Delegate::onAvbInterfaceNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
+									invokeProtectedMethod(&controller::Delegate::onAvbInterfaceNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
 								}
 								break;
 							default:
@@ -1128,7 +988,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 								answerCallback.invoke<SetClockSourceNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									invokeProtectedMethod(&ControllerEntity::Delegate::onClockSourceNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
+									invokeProtectedMethod(&controller::Delegate::onClockSourceNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
 								}
 								break;
 							default:
@@ -1145,7 +1005,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 								answerCallback.invoke<SetMemoryObjectNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									invokeProtectedMethod(&ControllerEntity::Delegate::onMemoryObjectNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
+									invokeProtectedMethod(&controller::Delegate::onMemoryObjectNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
 								}
 								break;
 							default:
@@ -1162,7 +1022,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 								answerCallback.invoke<SetAudioClusterNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									invokeProtectedMethod(&ControllerEntity::Delegate::onAudioClusterNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
+									invokeProtectedMethod(&controller::Delegate::onAudioClusterNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
 								}
 								break;
 							default:
@@ -1179,7 +1039,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 								answerCallback.invoke<SetClockDomainNameHandler>(controller, targetID, status, configurationIndex, descriptorIndex);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									invokeProtectedMethod(&ControllerEntity::Delegate::onClockDomainNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
+									invokeProtectedMethod(&controller::Delegate::onClockDomainNameChanged, delegate, controller, targetID, configurationIndex, descriptorIndex, name);
 								}
 								break;
 							default:
@@ -1379,7 +1239,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
-				auto* delegate = controller->getDelegate();
+				auto* delegate = controller->getControllerDelegate();
 
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::AudioUnit)
@@ -1387,7 +1247,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 					answerCallback.invoke<SetAudioUnitSamplingRateHandler>(controller, targetID, status, descriptorIndex, samplingRate);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onAudioUnitSamplingRateChanged, delegate, controller, targetID, descriptorIndex, samplingRate);
+						invokeProtectedMethod(&controller::Delegate::onAudioUnitSamplingRateChanged, delegate, controller, targetID, descriptorIndex, samplingRate);
 					}
 				}
 				else if (descriptorType == model::DescriptorType::VideoCluster)
@@ -1395,7 +1255,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 					answerCallback.invoke<SetVideoClusterSamplingRateHandler>(controller, targetID, status, descriptorIndex, samplingRate);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onVideoClusterSamplingRateChanged, delegate, controller, targetID, descriptorIndex, samplingRate);
+						invokeProtectedMethod(&controller::Delegate::onVideoClusterSamplingRateChanged, delegate, controller, targetID, descriptorIndex, samplingRate);
 					}
 				}
 				else if (descriptorType == model::DescriptorType::SensorCluster)
@@ -1403,7 +1263,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 					answerCallback.invoke<SetSensorClusterSamplingRateHandler>(controller, targetID, status, descriptorIndex, samplingRate);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onSensorClusterSamplingRateChanged, delegate, controller, targetID, descriptorIndex , samplingRate);
+						invokeProtectedMethod(&controller::Delegate::onSensorClusterSamplingRateChanged, delegate, controller, targetID, descriptorIndex , samplingRate);
 					}
 				}
 				else
@@ -1456,13 +1316,13 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
-				auto* delegate = controller->getDelegate();
+				auto* delegate = controller->getControllerDelegate();
 
 				// Notify handlers
 				answerCallback.invoke<SetClockSourceHandler>(controller, targetID, status, descriptorIndex, clockSourceIndex);
 				if (aem.getUnsolicited() && delegate && !!status)
 				{
-					invokeProtectedMethod(&ControllerEntity::Delegate::onClockSourceChanged, delegate, controller, targetID, descriptorIndex, clockSourceIndex);
+					invokeProtectedMethod(&controller::Delegate::onClockSourceChanged, delegate, controller, targetID, descriptorIndex, clockSourceIndex);
 				}
 			}
 		},
@@ -1498,7 +1358,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
-				auto* delegate = controller->getDelegate();
+				auto* delegate = controller->getControllerDelegate();
 
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::StreamInput)
@@ -1506,7 +1366,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 					answerCallback.invoke<StartStreamInputHandler>(controller, targetID, status, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputStarted, delegate, controller, targetID, descriptorIndex);
+						invokeProtectedMethod(&controller::Delegate::onStreamInputStarted, delegate, controller, targetID, descriptorIndex);
 					}
 				}
 				else if (descriptorType == model::DescriptorType::StreamOutput)
@@ -1514,7 +1374,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 					answerCallback.invoke<StartStreamOutputHandler>(controller, targetID, status, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputStarted, delegate, controller, targetID, descriptorIndex);
+						invokeProtectedMethod(&controller::Delegate::onStreamOutputStarted, delegate, controller, targetID, descriptorIndex);
 					}
 				}
 				else
@@ -1534,7 +1394,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
-				auto* delegate = controller->getDelegate();
+				auto* delegate = controller->getControllerDelegate();
 
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::StreamInput)
@@ -1542,7 +1402,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 					answerCallback.invoke<StopStreamInputHandler>(controller, targetID, status, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputStopped, delegate, controller, targetID, descriptorIndex);
+						invokeProtectedMethod(&controller::Delegate::onStreamInputStopped, delegate, controller, targetID, descriptorIndex);
 					}
 				}
 				else if (descriptorType == model::DescriptorType::StreamOutput)
@@ -1550,7 +1410,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 					answerCallback.invoke<StopStreamOutputHandler>(controller, targetID, status, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamOutputStopped, delegate, controller, targetID, descriptorIndex);
+						invokeProtectedMethod(&controller::Delegate::onStreamOutputStopped, delegate, controller, targetID, descriptorIndex);
 					}
 				}
 				else
@@ -1587,7 +1447,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
-				auto* delegate = controller->getDelegate();
+				auto* delegate = controller->getControllerDelegate();
 
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::AvbInterface)
@@ -1595,7 +1455,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 					answerCallback.invoke<GetAvbInfoHandler>(controller, targetID, status, descriptorIndex, avbInfo);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onAvbInfoChanged, delegate, controller, targetID, descriptorIndex, avbInfo);
+						invokeProtectedMethod(&controller::Delegate::onAvbInfoChanged, delegate, controller, targetID, descriptorIndex, avbInfo);
 					}
 				}
 				else
@@ -1618,7 +1478,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
-				auto* delegate = controller->getDelegate();
+				auto* delegate = controller->getControllerDelegate();
 
 				// Notify handlers
 				switch (descriptorType)
@@ -1630,7 +1490,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 						answerCallback.invoke<GetAvbInterfaceCountersHandler>(controller, targetID, status, descriptorIndex, flags, counters);
 						if (aem.getUnsolicited() && delegate && !!status)
 						{
-							invokeProtectedMethod(&ControllerEntity::Delegate::onAvbInterfaceCountersChanged, delegate, controller, targetID, descriptorIndex, flags, counters);
+							invokeProtectedMethod(&controller::Delegate::onAvbInterfaceCountersChanged, delegate, controller, targetID, descriptorIndex, flags, counters);
 						}
 						break;
 					}
@@ -1641,7 +1501,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 						answerCallback.invoke<GetClockDomainCountersHandler>(controller, targetID, status, descriptorIndex, flags, counters);
 						if (aem.getUnsolicited() && delegate && !!status)
 						{
-							invokeProtectedMethod(&ControllerEntity::Delegate::onClockDomainCountersChanged, delegate, controller, targetID, descriptorIndex, flags, counters);
+							invokeProtectedMethod(&controller::Delegate::onClockDomainCountersChanged, delegate, controller, targetID, descriptorIndex, flags, counters);
 						}
 						break;
 					}
@@ -1652,7 +1512,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 						answerCallback.invoke<GetStreamInputCountersHandler>(controller, targetID, status, descriptorIndex, flags, counters);
 						if (aem.getUnsolicited() && delegate && !!status)
 						{
-							invokeProtectedMethod(&ControllerEntity::Delegate::onStreamInputCountersChanged, delegate, controller, targetID, descriptorIndex, flags, counters);
+							invokeProtectedMethod(&controller::Delegate::onStreamInputCountersChanged, delegate, controller, targetID, descriptorIndex, flags, counters);
 						}
 						break;
 					}
@@ -1678,7 +1538,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
-				auto* delegate = controller->getDelegate();
+				auto* delegate = controller->getControllerDelegate();
 
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::StreamPortInput)
@@ -1686,7 +1546,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 					answerCallback.invoke<GetStreamPortInputAudioMapHandler>(controller, targetID, status, descriptorIndex, numberOfMaps, mapIndex, mappings);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamPortInputAudioMappingsChanged, delegate, controller, targetID, descriptorIndex, numberOfMaps, mapIndex, mappings);
+						invokeProtectedMethod(&controller::Delegate::onStreamPortInputAudioMappingsChanged, delegate, controller, targetID, descriptorIndex, numberOfMaps, mapIndex, mappings);
 					}
 				}
 				else if (descriptorType == model::DescriptorType::StreamPortOutput)
@@ -1694,7 +1554,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 					answerCallback.invoke<GetStreamPortOutputAudioMapHandler>(controller, targetID, status, descriptorIndex, numberOfMaps, mapIndex, mappings);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&ControllerEntity::Delegate::onStreamPortOutputAudioMappingsChanged, delegate, controller, targetID, descriptorIndex, numberOfMaps, mapIndex, mappings);
+						invokeProtectedMethod(&controller::Delegate::onStreamPortOutputAudioMappingsChanged, delegate, controller, targetID, descriptorIndex, numberOfMaps, mapIndex, mappings);
 					}
 				}
 				else
@@ -1814,11 +1674,11 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
-				auto* delegate = controller->getDelegate();
+				auto* delegate = controller->getControllerDelegate();
 
 				// Notify handlers
 				AVDECC_ASSERT(aem.getUnsolicited(), "OperationStatus can only be an unsolicited response");
-				invokeProtectedMethod(&ControllerEntity::Delegate::onOperationStatus, delegate, controller, targetID, descriptorType, descriptorIndex, operationID, percentComplete);
+				invokeProtectedMethod(&controller::Delegate::onOperationStatus, delegate, controller, targetID, descriptorType, descriptorIndex, operationID, percentComplete);
 			}
 		},
 		// Set Memory Object Length
@@ -1835,13 +1695,13 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
-				auto* delegate = controller->getDelegate();
+				auto* delegate = controller->getControllerDelegate();
 
 				// Notify handlers
 				answerCallback.invoke<SetMemoryObjectLengthHandler>(controller, targetID, status, configurationIndex, memoryObjectIndex, length);
 				if (aem.getUnsolicited() && delegate && !!status)
 				{
-					invokeProtectedMethod(&ControllerEntity::Delegate::onMemoryObjectLengthChanged, delegate, controller, targetID, configurationIndex, memoryObjectIndex, length);
+					invokeProtectedMethod(&controller::Delegate::onMemoryObjectLengthChanged, delegate, controller, targetID, configurationIndex, memoryObjectIndex, length);
 				}
 			}
 		},
@@ -2012,10 +1872,10 @@ void ControllerEntityImpl::processAcmpResponse(protocol::Acmpdu const* const res
 				auto const listenerStreamIndex = acmp.getListenerUniqueID();
 				auto const connectionCount = acmp.getConnectionCount();
 				auto const flags = acmp.getFlags();
-				auto* delegate = controller->getDelegate();
+				auto* delegate = controller->getControllerDelegate();
 				if (sniffed && delegate)
 				{
-					invokeProtectedMethod(&ControllerEntity::Delegate::onListenerConnectResponseSniffed, delegate, controller, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
+					invokeProtectedMethod(&controller::Delegate::onListenerConnectResponseSniffed, delegate, controller, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
 				}
 			} },
 		// Disconnect TX response
@@ -2029,10 +1889,10 @@ void ControllerEntityImpl::processAcmpResponse(protocol::Acmpdu const* const res
 				auto const connectionCount = acmp.getConnectionCount();
 				auto const flags = acmp.getFlags();
 				answerCallback.invoke<DisconnectTalkerStreamHandler>(controller, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
-				auto* delegate = controller->getDelegate();
+				auto* delegate = controller->getControllerDelegate();
 				if (sniffed && delegate)
 				{
-					invokeProtectedMethod(&ControllerEntity::Delegate::onListenerDisconnectResponseSniffed, delegate, controller, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
+					invokeProtectedMethod(&controller::Delegate::onListenerDisconnectResponseSniffed, delegate, controller, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
 				}
 			} },
 		// Get TX state response
@@ -2046,10 +1906,10 @@ void ControllerEntityImpl::processAcmpResponse(protocol::Acmpdu const* const res
 				auto const connectionCount = acmp.getConnectionCount();
 				auto const flags = acmp.getFlags();
 				answerCallback.invoke<GetTalkerStreamStateHandler>(controller, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
-				auto* delegate = controller->getDelegate();
+				auto* delegate = controller->getControllerDelegate();
 				if (sniffed && delegate)
 				{
-					invokeProtectedMethod(&ControllerEntity::Delegate::onGetTalkerStreamStateResponseSniffed, delegate, controller, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
+					invokeProtectedMethod(&controller::Delegate::onGetTalkerStreamStateResponseSniffed, delegate, controller, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
 				}
 			} },
 		// Connect RX response
@@ -2063,10 +1923,10 @@ void ControllerEntityImpl::processAcmpResponse(protocol::Acmpdu const* const res
 				auto const connectionCount = acmp.getConnectionCount();
 				auto const flags = acmp.getFlags();
 				answerCallback.invoke<ConnectStreamHandler>(controller, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
-				auto* delegate = controller->getDelegate();
+				auto* delegate = controller->getControllerDelegate();
 				if (sniffed && delegate)
 				{
-					invokeProtectedMethod(&ControllerEntity::Delegate::onControllerConnectResponseSniffed, delegate, controller, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
+					invokeProtectedMethod(&controller::Delegate::onControllerConnectResponseSniffed, delegate, controller, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
 				}
 			} },
 		// Disconnect RX response
@@ -2080,10 +1940,10 @@ void ControllerEntityImpl::processAcmpResponse(protocol::Acmpdu const* const res
 				auto const connectionCount = acmp.getConnectionCount();
 				auto const flags = acmp.getFlags();
 				answerCallback.invoke<DisconnectStreamHandler>(controller, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
-				auto* delegate = controller->getDelegate();
+				auto* delegate = controller->getControllerDelegate();
 				if (sniffed && delegate)
 				{
-					invokeProtectedMethod(&ControllerEntity::Delegate::onControllerDisconnectResponseSniffed, delegate, controller, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
+					invokeProtectedMethod(&controller::Delegate::onControllerDisconnectResponseSniffed, delegate, controller, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
 				}
 			} },
 		// Get RX state response
@@ -2097,10 +1957,10 @@ void ControllerEntityImpl::processAcmpResponse(protocol::Acmpdu const* const res
 				auto const connectionCount = acmp.getConnectionCount();
 				auto const flags = acmp.getFlags();
 				answerCallback.invoke<GetListenerStreamStateHandler>(controller, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
-				auto* delegate = controller->getDelegate();
+				auto* delegate = controller->getControllerDelegate();
 				if (sniffed && delegate)
 				{
-					invokeProtectedMethod(&ControllerEntity::Delegate::onGetListenerStreamStateResponseSniffed, delegate, controller, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
+					invokeProtectedMethod(&controller::Delegate::onGetListenerStreamStateResponseSniffed, delegate, controller, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
 				}
 			} },
 		// Get TX connection response
@@ -2137,13 +1997,6 @@ void ControllerEntityImpl::processAcmpResponse(protocol::Acmpdu const* const res
 		try
 		{
 			it->second(this, status, acmp, answerCallback, sniffed);
-		}
-		catch (ControlException const& e)
-		{
-			auto st = e.getStatus();
-			LOG_CONTROLLER_ENTITY_INFO(acmp.getTalkerEntityID(), "Failed to process ACMP response: {}", e.what());
-			invokeProtectedHandler(onErrorCallback, st);
-			return;
 		}
 		catch ([[maybe_unused]] std::exception const& e) // Mainly unpacking errors
 		{
@@ -2192,7 +2045,6 @@ void ControllerEntityImpl::releaseEntity(UniqueIdentifier const targetEntityID, 
 
 void ControllerEntityImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntityHandler const& handler) const noexcept
 {
-#pragma message("TODO: Change the API to allow partial EM lock")
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeLockEntityCommand(protocol::AemLockEntityFlags::None, UniqueIdentifier::getNullUniqueIdentifier(), model::DescriptorType::Entity, 0);
@@ -2208,7 +2060,6 @@ void ControllerEntityImpl::lockEntity(UniqueIdentifier const targetEntityID, Loc
 
 void ControllerEntityImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockEntityHandler const& handler) const noexcept
 {
-#pragma message("TODO: Change the API to allow partial EM unlock")
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeLockEntityCommand(protocol::AemLockEntityFlags::Unlock, UniqueIdentifier::getNullUniqueIdentifier(), model::DescriptorType::Entity, 0);
@@ -3458,12 +3309,12 @@ void ControllerEntityImpl::getTalkerStreamConnection(model::StreamIdentification
 }
 
 /* Other methods */
-void ControllerEntityImpl::setDelegate(Delegate* const delegate) noexcept
+void ControllerEntityImpl::setControllerDelegate(controller::Delegate* const delegate) noexcept
 {
 	_delegate = delegate;
 }
 
-ControllerEntityImpl::Delegate* ControllerEntityImpl::getDelegate() const noexcept
+controller::Delegate* ControllerEntityImpl::getControllerDelegate() const noexcept
 {
 	return _delegate;
 }
@@ -3474,11 +3325,11 @@ ControllerEntityImpl::Delegate* ControllerEntityImpl::getDelegate() const noexce
 /* **** Global notifications **** */
 void ControllerEntityImpl::onTransportError(protocol::ProtocolInterface* const /*pi*/) noexcept
 {
-	invokeProtectedMethod(&ControllerEntity::Delegate::onTransportError, _delegate, this);
+	invokeProtectedMethod(&controller::Delegate::onTransportError, _delegate, this);
 }
 
 /* **** Discovery notifications **** */
-void ControllerEntityImpl::onLocalEntityOnline(protocol::ProtocolInterface* const pi, DiscoveredEntity const& entity) noexcept
+void ControllerEntityImpl::onLocalEntityOnline(protocol::ProtocolInterface* const pi, Entity const& entity) noexcept
 {
 	// The controller doesn't make any difference btw a local and a remote entity, just ignore ourself
 	if (getEntityID() != entity.getEntityID())
@@ -3492,14 +3343,14 @@ void ControllerEntityImpl::onLocalEntityOffline(protocol::ProtocolInterface* con
 		onRemoteEntityOffline(pi, entityID); // The controller doesn't make any difference btw a local and a remote entity
 }
 
-void ControllerEntityImpl::onLocalEntityUpdated(protocol::ProtocolInterface* const pi, DiscoveredEntity const& entity) noexcept
+void ControllerEntityImpl::onLocalEntityUpdated(protocol::ProtocolInterface* const pi, Entity const& entity) noexcept
 {
 	// The controller doesn't make any difference btw a local and a remote entity, just ignore ourself
 	if (getEntityID() != entity.getEntityID())
 		onRemoteEntityUpdated(pi, entity); // The controller doesn't make any difference btw a local and a remote entity
 }
 
-void ControllerEntityImpl::onRemoteEntityOnline(protocol::ProtocolInterface* const pi, DiscoveredEntity const& entity) noexcept
+void ControllerEntityImpl::onRemoteEntityOnline(protocol::ProtocolInterface* const pi, Entity const& entity) noexcept
 {
 	auto const entityID = entity.getEntityID();
 	{
@@ -3508,16 +3359,20 @@ void ControllerEntityImpl::onRemoteEntityOnline(protocol::ProtocolInterface* con
 
 		// Store or replace entity
 		{
-#pragma message("TODO: Replace with c++17 insert_or_assign")
+#ifdef __cpp_lib_unordered_map_try_emplace
+			AVDECC_ASSERT(_discoveredEntities.find(entityID) == _discoveredEntities.end(), "ControllerEntityImpl::onRemoteEntityOnline: Entity already online");
+			_discoveredEntities.insert_or_assign(entityID, entity);
+#else // !__cpp_lib_unordered_map_try_emplace
 			auto it = _discoveredEntities.find(entityID);
 			if (AVDECC_ASSERT_WITH_RET(it == _discoveredEntities.end(), "ControllerEntityImpl::onRemoteEntityOnline: Entity already online"))
 				_discoveredEntities.insert(std::make_pair(entityID, entity));
 			else
 				it->second = entity;
+#endif // __cpp_lib_unordered_map_try_emplace
 		}
 	}
 
-	invokeProtectedMethod(&ControllerEntity::Delegate::onEntityOnline, _delegate, this, entityID, entity);
+	invokeProtectedMethod(&controller::Delegate::onEntityOnline, _delegate, this, entityID, entity);
 }
 
 void ControllerEntityImpl::onRemoteEntityOffline(protocol::ProtocolInterface* const pi, UniqueIdentifier const entityID) noexcept
@@ -3530,10 +3385,10 @@ void ControllerEntityImpl::onRemoteEntityOffline(protocol::ProtocolInterface* co
 		_discoveredEntities.erase(entityID);
 	}
 
-	invokeProtectedMethod(&ControllerEntity::Delegate::onEntityOffline, _delegate, this, entityID);
+	invokeProtectedMethod(&controller::Delegate::onEntityOffline, _delegate, this, entityID);
 }
 
-void ControllerEntityImpl::onRemoteEntityUpdated(protocol::ProtocolInterface* const pi, DiscoveredEntity const& entity) noexcept
+void ControllerEntityImpl::onRemoteEntityUpdated(protocol::ProtocolInterface* const pi, Entity const& entity) noexcept
 {
 	auto const entityID = entity.getEntityID();
 	{
@@ -3542,70 +3397,29 @@ void ControllerEntityImpl::onRemoteEntityUpdated(protocol::ProtocolInterface* co
 
 		// Store or replace entity
 		{
-#pragma message("TODO: Replace with c++17 insert_or_assign")
+#ifdef __cpp_lib_unordered_map_try_emplace
+			AVDECC_ASSERT(_discoveredEntities.find(entityID) != _discoveredEntities.end(), "ControllerEntityImpl::onRemoteEntityUpdated: Entity offline");
+			_discoveredEntities.insert_or_assign(entityID, entity);
+#else // !__cpp_lib_unordered_map_try_emplace
 			auto it = _discoveredEntities.find(entityID);
 			if (!AVDECC_ASSERT_WITH_RET(it != _discoveredEntities.end(), "ControllerEntityImpl::onRemoteEntityUpdated: Entity offline"))
 				_discoveredEntities.insert(std::make_pair(entityID, entity));
 			else
 				it->second = entity;
+#endif // __cpp_lib_unordered_map_try_emplace
 		}
 	}
 
-	invokeProtectedMethod(&ControllerEntity::Delegate::onEntityUpdate, _delegate, this, entityID, entity);
+	invokeProtectedMethod(&controller::Delegate::onEntityUpdate, _delegate, this, entityID, entity);
 }
 
 /* **** AECP notifications **** */
-void ControllerEntityImpl::onAecpCommand(protocol::ProtocolInterface* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Aecpdu const& aecpdu) noexcept
-{
-	auto const selfID = getEntityID();
-	auto const targetID = aecpdu.getTargetEntityID();
-
-	// Filter messages not for me
-	if (!AVDECC_ASSERT_WITH_RET(targetID == selfID, "Should be filtered by controller_state_machine already... on mac too??"))
-		return;
-
-	if (aecpdu.getMessageType() == protocol::AecpMessageType::AemCommand)
-	{
-		auto const& aem = static_cast<protocol::AemAecpdu const&>(aecpdu);
-		auto const controllerID = aem.getControllerEntityID();
-
-		// Filter self messages
-		if (controllerID == selfID)
-			return;
-
-		static std::unordered_map<protocol::AemCommandType::value_type, std::function<void(ControllerEntityImpl const* const controller, protocol::AemAecpdu const& aem)>> s_Dispatch{
-			// Entity Available
-			{ protocol::AemCommandType::EntityAvailable.getValue(),
-				[](ControllerEntityImpl const* const controller, protocol::AemAecpdu const& aem)
-				{
-					// We are being asked if we are available, and we are! Reply that
-					controller->sendAemResponse(aem, protocol::AemAecpStatus::Success, nullptr, 0u);
-				} },
-			// Controller Available
-			{ protocol::AemCommandType::ControllerAvailable.getValue(),
-				[](ControllerEntityImpl const* const controller, protocol::AemAecpdu const& aem)
-				{
-					// We are being asked if we are available, and we are! Reply that
-					controller->sendAemResponse(aem, protocol::AemAecpStatus::Success, nullptr, 0u);
-				} },
-		};
-
-		auto const& it = s_Dispatch.find(aem.getCommandType().getValue());
-		if (it != s_Dispatch.end())
-		{
-			invokeProtectedHandler(it->second, this, aem);
-		}
-		else
-		{
-			// Reflect back the payload, and return a NotSupported error code
-			auto const payload = aem.getPayload();
-			sendAemResponse(aem, protocol::AemAecpStatus::NotSupported, payload.first, payload.second);
-		}
-	}
-}
-
 void ControllerEntityImpl::onAecpUnsolicitedResponse(protocol::ProtocolInterface* const /*pi*/, entity::LocalEntity const& /*entity*/, protocol::Aecpdu const& aecpdu) noexcept
 {
+	// Ignore messages not for me
+	if (aecpdu.getControllerEntityID() != getEntityID())
+		return;
+
 	auto const messageType = aecpdu.getMessageType();
 
 	if (messageType == protocol::AecpMessageType::AemResponse)
@@ -3628,182 +3442,26 @@ void ControllerEntityImpl::onAcmpSniffedResponse(protocol::ProtocolInterface* co
 }
 
 /* ************************************************************************** */
-/* Utility methods                                                            */
+/* LocalEntityImpl overrides                                                  */
 /* ************************************************************************** */
-std::string LA_AVDECC_CALL_CONVENTION ControllerEntity::statusToString(ControllerEntity::AemCommandStatus const status)
+bool ControllerEntityImpl::onUnhandledAecpCommand(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept
 {
-	switch (status)
-	{
-		// AVDECC Error Codes
-		case AemCommandStatus::Success:
-			return "Success.";
-		case AemCommandStatus::NotImplemented:
-			return "The AVDECC Entity does not support the command type.";
-		case AemCommandStatus::NoSuchDescriptor:
-			return "A descriptor with the descriptor_type and descriptor_index specified does not exist.";
-		case AemCommandStatus::LockedByOther:
-			return "The AVDECC Entity has been locked by another AVDECC Controller.";
-		case AemCommandStatus::AcquiredByOther:
-			return "The AVDECC Entity has been acquired by another AVDECC Controller.";
-		case AemCommandStatus::NotAuthenticated:
-			return "The AVDECC Controller is not authenticated with the AVDECC Entity.";
-		case AemCommandStatus::AuthenticationDisabled:
-			return "The AVDECC Controller is trying to use an authentication command when authentication isn't enable on the AVDECC Entity.";
-		case AemCommandStatus::BadArguments:
-			return "One or more of the values in the fields of the frame were deemed to be bad by the AVDECC Entity (unsupported, incorrect combination, etc.).";
-		case AemCommandStatus::NoResources:
-			return "The AVDECC Entity cannot complete the command because it does not have the resources to support it.";
-		case AemCommandStatus::InProgress:
-			AVDECC_ASSERT(false, "Should not happen");
-			return "The AVDECC Entity is processing the command and will send a second response at a later time with the result of the command.";
-		case AemCommandStatus::EntityMisbehaving:
-			return "The AVDECC Entity is generated an internal error while trying to process the command.";
-		case AemCommandStatus::NotSupported:
-			return "The command is implemented but the target of the command is not supported. For example trying to set the value of a read - only Control.";
-		case AemCommandStatus::StreamIsRunning:
-			return "The Stream is currently streaming and the command is one which cannot be executed on an Active Stream.";
-		// Library Error Codes
-		case AemCommandStatus::NetworkError:
-			return "Network error.";
-		case AemCommandStatus::ProtocolError:
-			return "Protocol error.";
-		case AemCommandStatus::TimedOut:
-			return "Command timed out.";
-		case AemCommandStatus::UnknownEntity:
-			return "Unknown entity.";
-		case AemCommandStatus::InternalError:
-			return "Internal error.";
-		default:
-			AVDECC_ASSERT(false, "Unhandled status");
-			return "Unknown status.";
-	}
-}
+	// Ignore messages not for me
+	if (aecpdu.getTargetEntityID() != getEntityID())
+		return false;
 
-std::string LA_AVDECC_CALL_CONVENTION ControllerEntity::statusToString(ControllerEntity::AaCommandStatus const status)
-{
-	switch (status)
+	if (aecpdu.getMessageType() == protocol::AecpMessageType::AemCommand)
 	{
-		// AVDECC Error Codes
-		case AaCommandStatus::Success:
-			return "Success.";
-		case AaCommandStatus::NotImplemented:
-			return "The AVDECC Entity does not support the command type.";
-		case AaCommandStatus::AddressTooLow:
-			return "The value in the address field is below the start of the memory map.";
-		case AaCommandStatus::AddressTooHigh:
-			return "The value in the address field is above the end of the memory map.";
-		case AaCommandStatus::AddressInvalid:
-			return "The value in the address field is within the memory map but is part of an invalid region.";
-		case AaCommandStatus::TlvInvalid:
-			return "One or more of the TLVs were invalid. No TLVs have been processed.";
-		case AaCommandStatus::DataInvalid:
-			return "The data for writing is invalid.";
-		case AaCommandStatus::Unsupported:
-			return "A requested action was unsupported. Typically used when an unknown EXECUTE was encountered or if EXECUTE is not supported.";
-		// Library Error Codes
-		case AaCommandStatus::Aborted:
-			return "Operation aborted.";
-		case AaCommandStatus::NetworkError:
-			return "Network error.";
-		case AaCommandStatus::ProtocolError:
-			return "Protocol error.";
-		case AaCommandStatus::TimedOut:
-			return "Command timed out.";
-		case AaCommandStatus::UnknownEntity:
-			return "Unknown entity.";
-		case AaCommandStatus::InternalError:
-			return "Internal error.";
-		default:
-			AVDECC_ASSERT(false, "Unhandled status");
-			return "Unknown status.";
-	}
-}
+		auto const& aem = static_cast<protocol::AemAecpdu const&>(aecpdu);
 
-std::string LA_AVDECC_CALL_CONVENTION ControllerEntity::statusToString(ControllerEntity::MvuCommandStatus const status)
-{
-	switch (status)
-	{
-		// Milan Vendor Unique Error Codes
-		case MvuCommandStatus::Success:
-			return "Success.";
-		case MvuCommandStatus::NotImplemented:
-			return "The AVDECC Entity does not support the command type.";
-		case MvuCommandStatus::BadArguments:
-			return "One or more of the values in the fields of the frame were deemed to be bad by the AVDECC Entity (unsupported, incorrect combination, etc.).";
-		// Library Error Codes
-		case MvuCommandStatus::NetworkError:
-			return "Network error.";
-		case MvuCommandStatus::ProtocolError:
-			return "Protocol error.";
-		case MvuCommandStatus::TimedOut:
-			return "Command timed out.";
-		case MvuCommandStatus::UnknownEntity:
-			return "Unknown entity.";
-		case MvuCommandStatus::InternalError:
-			return "Internal error.";
-		default:
-			AVDECC_ASSERT(false, "Unhandled status");
-			return "Unknown status.";
+		if (aem.getCommandType() == protocol::AemCommandType::ControllerAvailable)
+		{
+			// We are being asked if we are available, and we are! Reply that
+			sendAemAecpResponse(pi, aem, protocol::AemAecpStatus::Success, nullptr, 0u);
+			return true;
+		}
 	}
-}
-
-std::string LA_AVDECC_CALL_CONVENTION ControllerEntity::statusToString(ControllerEntity::ControlStatus const status)
-{
-	switch (status)
-	{
-		// AVDECC Error Codes
-		case ControlStatus::Success:
-			return "Success";
-		case ControlStatus::ListenerUnknownID:
-			return "Listener does not have the specified unique identifier";
-		case ControlStatus::TalkerUnknownID:
-			return "Talker does not have the specified unique identifier";
-		case ControlStatus::TalkerDestMacFail:
-			return "Talker could not allocate a destination MAC for the Stream";
-		case ControlStatus::TalkerNoStreamIndex:
-			return "Talker does not have an available Stream index for the Stream";
-		case ControlStatus::TalkerNoBandwidth:
-			return "Talker could not allocate bandwidth for the Stream";
-		case ControlStatus::TalkerExclusive:
-			return "Talker already has an established Stream and only supports one Listener";
-		case ControlStatus::ListenerTalkerTimeout:
-			return "Listener had timeout for all retries when trying to send command to Talker";
-		case ControlStatus::ListenerExclusive:
-			return "The AVDECC Listener already has an established connection to a Stream";
-		case ControlStatus::StateUnavailable:
-			return "Could not get the state from the AVDECC Entity";
-		case ControlStatus::NotConnected:
-			return "Trying to disconnect when not connected or not connected to the AVDECC Talker specified";
-		case ControlStatus::NoSuchConnection:
-			return "Trying to obtain connection info for an AVDECC Talker connection which does not exist";
-		case ControlStatus::CouldNotSendMessage:
-			return "The AVDECC Listener failed to send the message to the AVDECC Talker";
-		case ControlStatus::TalkerMisbehaving:
-			return "Talker was unable to complete the command because an internal error occurred";
-		case ControlStatus::ListenerMisbehaving:
-			return "Listener was unable to complete the command because an internal error occurred";
-		// Reserved
-		case ControlStatus::ControllerNotAuthorized:
-			return "The AVDECC Controller with the specified Entity ID is not authorized to change Stream connections";
-		case ControlStatus::IncompatibleRequest:
-			return "The AVDECC Listener is trying to connect to an AVDECC Talker that is already streaming with a different traffic class, etc. or does not support the requested traffic class";
-		case ControlStatus::NotSupported:
-			return "The command is not supported";
-		// Library Error Codes
-		case ControlStatus::NetworkError:
-			return "Network error";
-		case ControlStatus::ProtocolError:
-			return "Protocol error";
-		case ControlStatus::TimedOut:
-			return "Control timed out";
-		case ControlStatus::UnknownEntity:
-			return "Unknown entity";
-		case ControlStatus::InternalError:
-			return "Internal error";
-		default:
-			AVDECC_ASSERT(false, "Unhandled status");
-			return "Unknown status";
-	}
+	return false;
 }
 
 ControllerEntity::ControllerEntity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities, std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities, std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities, ControllerCapabilities const controllerCapabilities, std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID) noexcept

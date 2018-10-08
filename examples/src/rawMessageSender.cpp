@@ -45,12 +45,12 @@ int doJob()
 	private:
 		// la::avdecc::protocol::ProtocolInterface::Observer overrides
 		virtual void onTransportError(la::avdecc::protocol::ProtocolInterface* const /*pi*/) noexcept override {}
-		virtual void onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept override {}
+		virtual void onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override {}
 		virtual void onLocalEntityOffline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const /*entityID*/) noexcept override {}
-		virtual void onLocalEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept override {}
-		virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept override {}
+		virtual void onLocalEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override {}
+		virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override {}
 		virtual void onRemoteEntityOffline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const /*entityID*/) noexcept override {}
-		virtual void onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept override {}
+		virtual void onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override {}
 		virtual void onAecpCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept override {}
 		virtual void onAecpUnsolicitedResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept override {}
 		virtual void onAcmpSniffedCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept override {}
@@ -75,31 +75,31 @@ int doJob()
 		pi->registerObserver(&observer);
 
 		// Send a raw message (Entity Available message)
-		auto adpdu = la::avdecc::protocol::Adpdu::create();
+		auto adpdu = la::avdecc::protocol::Adpdu{};
 
 		// Set Ether2 fields
-		adpdu->setSrcAddress(pi->getMacAddress());
-		adpdu->setDestAddress(la::avdecc::protocol::Adpdu::Multicast_Mac_Address);
+		adpdu.setSrcAddress(pi->getMacAddress());
+		adpdu.setDestAddress(la::avdecc::protocol::Adpdu::Multicast_Mac_Address);
 		// Set ADP fields
-		adpdu->setMessageType(la::avdecc::protocol::AdpMessageType::EntityAvailable);
-		adpdu->setValidTime(10);
-		adpdu->setEntityID(0x0102030405060708);
-		adpdu->setEntityModelID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
-		adpdu->setEntityCapabilities(la::avdecc::entity::EntityCapabilities::None);
-		adpdu->setTalkerStreamSources(0u);
-		adpdu->setTalkerCapabilities(la::avdecc::entity::TalkerCapabilities::None);
-		adpdu->setListenerStreamSinks(0u);
-		adpdu->setListenerCapabilities(la::avdecc::entity::ListenerCapabilities::None);
-		adpdu->setControllerCapabilities(la::avdecc::entity::ControllerCapabilities::Implemented);
-		adpdu->setAvailableIndex(0);
-		adpdu->setGptpGrandmasterID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
-		adpdu->setGptpDomainNumber(0u);
-		adpdu->setIdentifyControlIndex(0u);
-		adpdu->setInterfaceIndex(0);
-		adpdu->setAssociationID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
+		adpdu.setMessageType(la::avdecc::protocol::AdpMessageType::EntityAvailable);
+		adpdu.setValidTime(10);
+		adpdu.setEntityID(0x0102030405060708);
+		adpdu.setEntityModelID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
+		adpdu.setEntityCapabilities(la::avdecc::entity::EntityCapabilities::None);
+		adpdu.setTalkerStreamSources(0u);
+		adpdu.setTalkerCapabilities(la::avdecc::entity::TalkerCapabilities::None);
+		adpdu.setListenerStreamSinks(0u);
+		adpdu.setListenerCapabilities(la::avdecc::entity::ListenerCapabilities::None);
+		adpdu.setControllerCapabilities(la::avdecc::entity::ControllerCapabilities::Implemented);
+		adpdu.setAvailableIndex(0);
+		adpdu.setGptpGrandmasterID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
+		adpdu.setGptpDomainNumber(0u);
+		adpdu.setIdentifyControlIndex(0u);
+		adpdu.setInterfaceIndex(0);
+		adpdu.setAssociationID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
 
 		// Send the message
-		pi->sendAdpMessage(std::move(adpdu));
+		pi->sendAdpMessage(adpdu);
 
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 
