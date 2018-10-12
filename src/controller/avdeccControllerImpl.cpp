@@ -110,7 +110,7 @@ void ControllerImpl::updateAcquiredState(ControlledEntityImpl& controlledEntity,
 	}
 }
 
-void ControllerImpl::updateConfiguration(entity::ControllerEntity const* const controller, ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex) const noexcept
+void ControllerImpl::updateConfiguration(entity::controller::Interface const* const controller, ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex) const noexcept
 {
 	controlledEntity.setCurrentConfiguration(configurationIndex);
 
