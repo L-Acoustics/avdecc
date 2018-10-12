@@ -37,25 +37,25 @@ LocalEntity::AemCommandStatus LocalEntityImpl<SuperClass>::convertErrorToAemComm
 	switch (error)
 	{
 		case protocol::ProtocolInterface::Error::NoError:
-			return AemCommandStatus::Success;
+			return LocalEntity::AemCommandStatus::Success;
 		case protocol::ProtocolInterface::Error::TransportError:
-			return AemCommandStatus::NetworkError;
+			return LocalEntity::AemCommandStatus::NetworkError;
 		case protocol::ProtocolInterface::Error::Timeout:
-			return AemCommandStatus::TimedOut;
+			return LocalEntity::AemCommandStatus::TimedOut;
 		case protocol::ProtocolInterface::Error::UnknownRemoteEntity:
-			return AemCommandStatus::UnknownEntity;
+			return LocalEntity::AemCommandStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::UnknownLocalEntity:
 			AVDECC_ASSERT(false, "Trying to sendAemAecpCommand from a non-existing local entity");
-			return AemCommandStatus::UnknownEntity;
+			return LocalEntity::AemCommandStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::InvalidEntityType:
 			AVDECC_ASSERT(false, "Trying to sendAemAecpCommand from a non-controller entity");
-			return AemCommandStatus::InternalError;
+			return LocalEntity::AemCommandStatus::InternalError;
 		case protocol::ProtocolInterface::Error::InternalError:
-			return AemCommandStatus::InternalError;
+			return LocalEntity::AemCommandStatus::InternalError;
 		default:
 			AVDECC_ASSERT(false, "ProtocolInterface error code not handled");
 	}
-	return AemCommandStatus::InternalError;
+	return LocalEntity::AemCommandStatus::InternalError;
 }
 
 template<class SuperClass>
@@ -64,25 +64,25 @@ LocalEntity::AaCommandStatus LocalEntityImpl<SuperClass>::convertErrorToAaComman
 	switch (error)
 	{
 		case protocol::ProtocolInterface::Error::NoError:
-			return AaCommandStatus::Success;
+			return LocalEntity::AaCommandStatus::Success;
 		case protocol::ProtocolInterface::Error::TransportError:
-			return AaCommandStatus::NetworkError;
+			return LocalEntity::AaCommandStatus::NetworkError;
 		case protocol::ProtocolInterface::Error::Timeout:
-			return AaCommandStatus::TimedOut;
+			return LocalEntity::AaCommandStatus::TimedOut;
 		case protocol::ProtocolInterface::Error::UnknownRemoteEntity:
-			return AaCommandStatus::UnknownEntity;
+			return LocalEntity::AaCommandStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::UnknownLocalEntity:
 			AVDECC_ASSERT(false, "Trying to sendAaCommand from a non-existing local entity");
-			return AaCommandStatus::UnknownEntity;
+			return LocalEntity::AaCommandStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::InvalidEntityType:
 			AVDECC_ASSERT(false, "Trying to sendAaCommand from a non-controller entity");
-			return AaCommandStatus::InternalError;
+			return LocalEntity::AaCommandStatus::InternalError;
 		case protocol::ProtocolInterface::Error::InternalError:
-			return AaCommandStatus::InternalError;
+			return LocalEntity::AaCommandStatus::InternalError;
 		default:
 			AVDECC_ASSERT(false, "ProtocolInterface error code not handled");
 	}
-	return AaCommandStatus::InternalError;
+	return LocalEntity::AaCommandStatus::InternalError;
 }
 
 template<class SuperClass>
@@ -91,25 +91,25 @@ LocalEntity::MvuCommandStatus LocalEntityImpl<SuperClass>::convertErrorToMvuComm
 	switch (error)
 	{
 		case protocol::ProtocolInterface::Error::NoError:
-			return MvuCommandStatus::Success;
+			return LocalEntity::MvuCommandStatus::Success;
 		case protocol::ProtocolInterface::Error::TransportError:
-			return MvuCommandStatus::NetworkError;
+			return LocalEntity::MvuCommandStatus::NetworkError;
 		case protocol::ProtocolInterface::Error::Timeout:
-			return MvuCommandStatus::TimedOut;
+			return LocalEntity::MvuCommandStatus::TimedOut;
 		case protocol::ProtocolInterface::Error::UnknownRemoteEntity:
-			return MvuCommandStatus::UnknownEntity;
+			return LocalEntity::MvuCommandStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::UnknownLocalEntity:
 			AVDECC_ASSERT(false, "Trying to sendAaCommand from a non-existing local entity");
-			return MvuCommandStatus::UnknownEntity;
+			return LocalEntity::MvuCommandStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::InvalidEntityType:
 			AVDECC_ASSERT(false, "Trying to sendAaCommand from a non-controller entity");
-			return MvuCommandStatus::InternalError;
+			return LocalEntity::MvuCommandStatus::InternalError;
 		case protocol::ProtocolInterface::Error::InternalError:
-			return MvuCommandStatus::InternalError;
+			return LocalEntity::MvuCommandStatus::InternalError;
 		default:
 			AVDECC_ASSERT(false, "ProtocolInterface error code not handled");
 	}
-	return MvuCommandStatus::InternalError;
+	return LocalEntity::MvuCommandStatus::InternalError;
 }
 
 template<class SuperClass>
@@ -118,24 +118,24 @@ LocalEntity::ControlStatus LocalEntityImpl<SuperClass>::convertErrorToControlSta
 	switch (error)
 	{
 		case protocol::ProtocolInterface::Error::NoError:
-			return ControlStatus::Success;
+			return LocalEntity::ControlStatus::Success;
 		case protocol::ProtocolInterface::Error::TransportError:
-			return ControlStatus::NetworkError;
+			return LocalEntity::ControlStatus::NetworkError;
 		case protocol::ProtocolInterface::Error::Timeout:
-			return ControlStatus::TimedOut;
+			return LocalEntity::ControlStatus::TimedOut;
 		case protocol::ProtocolInterface::Error::UnknownRemoteEntity:
-			return ControlStatus::UnknownEntity;
+			return LocalEntity::ControlStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::UnknownLocalEntity:
 			AVDECC_ASSERT(false, "Trying to sendAcmpCommand from a non-existing local entity");
-			return ControlStatus::UnknownEntity;
+			return LocalEntity::ControlStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::InvalidEntityType:
-			return ControlStatus::InternalError;
+			return LocalEntity::ControlStatus::InternalError;
 		case protocol::ProtocolInterface::Error::InternalError:
-			return ControlStatus::InternalError;
+			return LocalEntity::ControlStatus::InternalError;
 		default:
 			AVDECC_ASSERT(false, "ProtocolInterface error code not handled");
 	}
-	return ControlStatus::InternalError;
+	return LocalEntity::ControlStatus::InternalError;
 }
 
 template<class SuperClass>

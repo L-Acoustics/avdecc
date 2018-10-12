@@ -26,8 +26,6 @@
 #include "logHelper.hpp"
 #include "aggregateEntityImpl.hpp"
 #include "controllerCapabilityDelegate.hpp"
-#include "protocol/protocolAemPayloads.hpp"
-#include "protocol/protocolMvuPayloads.hpp"
 #include <exception>
 #include <cassert>
 #include <chrono>
@@ -45,7 +43,6 @@ namespace entity
 /* ************************************************************************** */
 AggregateEntityImpl::AggregateEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities, std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities, std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities, ControllerCapabilities const controllerCapabilities, std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID, controller::Delegate* const controllerDelegate)
 	: LocalEntityImpl(protocolInterface, progID, entityModelID, entityCapabilities, talkerStreamSources, talkerCapabilities, listenerStreamSinks, listenerCapabilities, controllerCapabilities, identifyControlIndex, interfaceIndex, associationID)
-	, _controllerDelegate(controllerDelegate)
 {
 	// Register observer
 	getProtocolInterface()->registerObserver(this);
@@ -56,7 +53,7 @@ AggregateEntityImpl::AggregateEntityImpl(protocol::ProtocolInterface* const prot
 	// Entity is controller capable
 	if (la::avdecc::hasFlag(controllerCapabilities, entity::ControllerCapabilities::Implemented))
 	{
-		_controllerCapabilityDelegate = std::make_unique<controller::CapabilityDelegate>(*this, *this, entityID);
+		_controllerCapabilityDelegate = std::make_unique<controller::CapabilityDelegate>(getProtocolInterface(), controllerDelegate, *this, entityID);
 	}
 
 	// Entity is listener capable
@@ -86,18 +83,7 @@ AggregateEntityImpl::~AggregateEntityImpl() noexcept
 }
 
 /* ************************************************************************** */
-/* Public methods                                                             */
-/* ************************************************************************** */
-controller::Delegate* AggregateEntityImpl::getControllerDelegate() const noexcept
-{
-	return _controllerDelegate;
-}
-
-//listener::Delegate* AggregateEntityImpl::getListenerDelegate() const noexcept {}
-//talker::Delegate* AggregateEntityImpl::getTalkerDelegate() const noexcept {}
-
-/* ************************************************************************** */
-/* AggregateEntityImpl internal methods                                       */
+/* controller::Interface overrides                                            */
 /* ************************************************************************** */
 /* Discovery Protocol (ADP) */
 
@@ -841,28 +827,51 @@ void AggregateEntityImpl::getTalkerStreamConnection(model::StreamIdentification 
 	}
 }
 
-	/* ************************************************************************** */
-/* controller::Interface overrides                                            */
-/* ************************************************************************** */
-
 /* ************************************************************************** */
 /* AggregateEntity overrides                                                  */
 /* ************************************************************************** */
 void AggregateEntityImpl::setControllerDelegate(controller::Delegate* const delegate) noexcept
 {
-	_controllerDelegate = delegate;
+	if (_controllerCapabilityDelegate != nullptr)
+	{
+		_controllerCapabilityDelegate->onControllerDelegateChanged(delegate);
+	}
 }
 
-//void AggregateEntityImpl::setListenerDelegate(listener::Delegate* const delegate) noexcept {}
-//void AggregateEntityImpl::setTalkerDelegate(talker::Delegate* const delegate) noexcept {}
+/*void AggregateEntityImpl::setListenerDelegate(listener::Delegate* const delegate) noexcept
+{
+	if (_listenerCapabilityDelegate != nullptr)
+	{
+		_listenerCapabilityDelegate->onListenerDelegateChanged(delegate);
+	}
+}
+
+void AggregateEntityImpl::setTalkerDelegate(talker::Delegate* const delegate) noexcept
+{
+	if (_talkerCapabilityDelegate != nullptr)
+	{
+		_talkerCapabilityDelegate->onTalkerDelegateChanged(delegate);
+	}
+}*/
 
 /* ************************************************************************** */
 /* protocol::ProtocolInterface::Observer overrides                            */
 /* ************************************************************************** */
 /* **** Global notifications **** */
-void AggregateEntityImpl::onTransportError(protocol::ProtocolInterface* const /*pi*/) noexcept
+void AggregateEntityImpl::onTransportError(protocol::ProtocolInterface* const pi) noexcept
 {
-	//invokeProtectedMethod(&AggregateEntity::Delegate::onTransportError, _delegate, this);
+	if (_controllerCapabilityDelegate != nullptr)
+	{
+		_controllerCapabilityDelegate->onTransportError(pi);
+	}
+	if (_listenerCapabilityDelegate != nullptr)
+	{
+		_listenerCapabilityDelegate->onTransportError(pi);
+	}
+	if (_talkerCapabilityDelegate != nullptr)
+	{
+		_talkerCapabilityDelegate->onTransportError(pi);
+	}
 }
 
 /* **** Discovery notifications **** */

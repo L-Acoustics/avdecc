@@ -26,9 +26,6 @@
 
 #include "la/avdecc/internals/aggregateEntity.hpp"
 #include "la/avdecc/internals/protocolInterface.hpp"
-#include "la/avdecc/internals/protocolAemAecpdu.hpp"
-#include "la/avdecc/internals/protocolAaAecpdu.hpp"
-#include "la/avdecc/internals/protocolMvuAecpdu.hpp"
 #include "entityImpl.hpp"
 #include <unordered_map>
 #include <functional>
@@ -55,39 +52,6 @@ private:
 	/* ************************************************************************** */
 	AggregateEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities, std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities, std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities, ControllerCapabilities const controllerCapabilities, std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID, controller::Delegate* const controllerDelegate);
 	virtual ~AggregateEntityImpl() noexcept;
-
-public:
-	class CapabilityDelegate
-	{
-	public:
-		using UniquePointer = std::unique_ptr<CapabilityDelegate>;
-		virtual ~CapabilityDelegate() = default;
-
-		virtual void onTransportError(protocol::ProtocolInterface* const /*pi*/) noexcept {}
-		/* **** Discovery notifications **** */
-		virtual void onLocalEntityOnline(protocol::ProtocolInterface* const /*pi*/, Entity const& /*entity*/) noexcept {}
-		virtual void onLocalEntityOffline(protocol::ProtocolInterface* const /*pi*/, UniqueIdentifier const /*entityID*/) noexcept {}
-		virtual void onLocalEntityUpdated(protocol::ProtocolInterface* const /*pi*/, Entity const& /*entity*/) noexcept {}
-		virtual void onRemoteEntityOnline(protocol::ProtocolInterface* const /*pi*/, Entity const& /*entity*/) noexcept {}
-		virtual void onRemoteEntityOffline(protocol::ProtocolInterface* const /*pi*/, UniqueIdentifier const /*entityID*/) noexcept {}
-		virtual void onRemoteEntityUpdated(protocol::ProtocolInterface* const /*pi*/, Entity const& /*entity*/) noexcept {}
-		/* **** AECP notifications **** */
-		virtual bool onUnhandledAecpCommand(protocol::ProtocolInterface* const /*pi*/, protocol::Aecpdu const& /*aecpdu*/) noexcept
-		{
-			return false;
-		}
-		virtual void onAecpUnsolicitedResponse(protocol::ProtocolInterface* const /*pi*/, LocalEntity const& /*entity*/, protocol::Aecpdu const& /*aecpdu*/) noexcept {}
-		/* **** ACMP notifications **** */
-		virtual void onAcmpSniffedCommand(protocol::ProtocolInterface* const /*pi*/, LocalEntity const& /*entity*/, protocol::Acmpdu const& /*acmpdu*/) noexcept {}
-		virtual void onAcmpSniffedResponse(protocol::ProtocolInterface* const /*pi*/, LocalEntity const& /*entity*/, protocol::Acmpdu const& /*acmpdu*/) noexcept {}
-	};
-
-	/* ************************************************************************** */
-	/* Public methods                                                             */
-	/* ************************************************************************** */
-	controller::Delegate* getControllerDelegate() const noexcept;
-	//listener::Delegate* getListenerDelegate() const noexcept;
-	//talker::Delegate* getTalkerDelegate() const noexcept;
 
 private:
 	/* ************************************************************************** */
@@ -225,7 +189,6 @@ private:
 	/* ************************************************************************** */
 	/* Internal variables                                                         */
 	/* ************************************************************************** */
-	controller::Delegate* _controllerDelegate{ nullptr };
 	CapabilityDelegate::UniquePointer _controllerCapabilityDelegate{ nullptr };
 	CapabilityDelegate::UniquePointer _listenerCapabilityDelegate{ nullptr };
 	CapabilityDelegate::UniquePointer _talkerCapabilityDelegate{ nullptr };

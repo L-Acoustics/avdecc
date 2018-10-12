@@ -56,94 +56,6 @@ private:
 	virtual ~ControllerEntityImpl() noexcept;
 
 private:
-	struct AnswerCallback
-	{
-		using Callback = std::function<void()>;
-		Callback onAnswer{ nullptr };
-		// Constructors
-		AnswerCallback() = default;
-		template<typename T>
-		AnswerCallback(T const& f)
-			: onAnswer(reinterpret_cast<Callback const&>(f))
-		{
-		}
-		// Call operator
-		template<typename T, typename... Ts>
-		void invoke(Ts&&... params) const noexcept
-		{
-			if (onAnswer)
-			{
-				try
-				{
-					reinterpret_cast<T const&>(onAnswer)(std::forward<Ts>(params)...);
-				}
-				catch (...)
-				{
-					// Ignore throws in user handler
-				}
-			}
-		}
-	};
-
-	using DiscoveredEntities = std::unordered_map<UniqueIdentifier, Entity, UniqueIdentifier::hash>;
-	using OnAemAECPErrorCallback = std::function<void(ControllerEntity::AemCommandStatus const error)>;
-	using OnAaAECPErrorCallback = std::function<void(ControllerEntity::AaCommandStatus const error)>;
-	using OnMvuAECPErrorCallback = std::function<void(ControllerEntity::MvuCommandStatus const error)>;
-	using OnACMPErrorCallback = std::function<void(ControllerEntity::ControlStatus const error)>;
-
-	/* ************************************************************************** */
-	/* ControllerEntityImpl internal methods                                      */
-	/* ************************************************************************** */
-	template<typename T, typename... Ts>
-	static OnAemAECPErrorCallback makeAemAECPErrorHandler(T const& handler, ControllerEntity const* const controller, Ts&&... params)
-	{
-		if (handler)
-			return std::bind(handler, controller, std::forward<Ts>(params)...);
-		// No handler specified, return an empty handler
-		return [](ControllerEntity::AemCommandStatus const /*error*/)
-		{
-		};
-	}
-	template<typename T, typename... Ts>
-	static OnAaAECPErrorCallback makeAaAECPErrorHandler(T const& handler, ControllerEntity const* const controller, Ts&&... params)
-	{
-		if (handler)
-			return std::bind(handler, controller, std::forward<Ts>(params)...);
-		// No handler specified, return an empty handler
-		return [](ControllerEntity::AaCommandStatus const /*error*/)
-		{
-		};
-	}
-	template<typename T, typename... Ts>
-	static OnMvuAECPErrorCallback makeMvuAECPErrorHandler(T const& handler, ControllerEntity const* const controller, Ts&&... params)
-	{
-		if (handler)
-			return std::bind(handler, controller, std::forward<Ts>(params)...);
-		// No handler specified, return an empty handler
-		return [](ControllerEntity::MvuCommandStatus const /*error*/)
-		{
-		};
-	}
-	template<typename T, typename... Ts>
-	static OnACMPErrorCallback makeACMPErrorHandler(T const& handler, ControllerEntity const* const controller, Ts&&... params)
-	{
-		if (handler)
-			return std::bind(handler, controller, std::forward<Ts>(params)...);
-		// No handler specified, return an empty handler
-		return [](ControllerEntity::ControlStatus const /*error*/)
-		{
-		};
-	}
-
-	void sendAemAecpCommand(UniqueIdentifier const targetEntityID, protocol::AemCommandType const commandType, void const* const payload, size_t const payloadLength, OnAemAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
-	void sendAaAecpCommand(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, OnAaAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
-	void sendMvuAecpCommand(UniqueIdentifier const targetEntityID, protocol::MvuCommandType const commandType, void const* const payload, size_t const payloadLength, OnMvuAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
-	void sendAcmpCommand(protocol::AcmpMessageType const messageType, UniqueIdentifier const talkerEntityID, model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, model::StreamIndex const listenerStreamIndex, uint16_t const connectionIndex, OnACMPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
-	void processAemAecpResponse(protocol::Aecpdu const* const response, OnAemAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
-	void processAaAecpResponse(protocol::Aecpdu const* const response, OnAaAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
-	void processMvuAecpResponse(protocol::Aecpdu const* const response, OnMvuAECPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback) const noexcept;
-	void processAcmpResponse(protocol::Acmpdu const* const response, OnACMPErrorCallback const& onErrorCallback, AnswerCallback const& answerCallback, bool const sniffed) const noexcept;
-
 	/* ************************************************************************** */
 	/* controller::Interface overrides                                            */
 	/* ************************************************************************** */
@@ -275,10 +187,7 @@ private:
 	/* ************************************************************************** */
 	/* Internal variables                                                         */
 	/* ************************************************************************** */
-	controller::Delegate* _delegate{ nullptr };
-	bool _shouldTerminate{ false };
-	DiscoveredEntities _discoveredEntities{};
-	std::thread _discoveryThread{};
+	CapabilityDelegate::UniquePointer _controllerCapabilityDelegate{ nullptr };
 };
 
 } // namespace entity

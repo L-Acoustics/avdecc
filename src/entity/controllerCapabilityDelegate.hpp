@@ -25,7 +25,7 @@
 #pragma once
 
 #include "la/avdecc/internals/controllerEntity.hpp"
-#include "aggregateEntityImpl.hpp"
+#include "entityImpl.hpp"
 
 namespace la
 {
@@ -35,13 +35,13 @@ namespace entity
 {
 namespace controller
 {
-class CapabilityDelegate : public AggregateEntityImpl::CapabilityDelegate
+class CapabilityDelegate : public entity::CapabilityDelegate
 {
 public:
 	/* ************************************************************************** */
 	/* CapabilityDelegate life cycle                                              */
 	/* ************************************************************************** */
-	CapabilityDelegate(AggregateEntityImpl& aggregateEntity, Interface& controllerInterface, UniqueIdentifier const controllerID) noexcept;
+	CapabilityDelegate(protocol::ProtocolInterface* const protocolInterface, controller::Delegate* controllerDelegate, Interface& controllerInterface, UniqueIdentifier const controllerID) noexcept;
 	virtual ~CapabilityDelegate() noexcept;
 
 	/* ************************************************************************** */
@@ -155,8 +155,12 @@ private:
 	using DiscoveredEntities = std::unordered_map<UniqueIdentifier, Entity, UniqueIdentifier::hash>;
 
 	/* ************************************************************************** */
-	/* AggregateEntityImpl::CapabilityDelegate overrides                          */
+	/* CapabilityDelegate overrides                                               */
 	/* ************************************************************************** */
+	/* **** Global notifications **** */
+	virtual void onControllerDelegateChanged(controller::Delegate* const delegate) noexcept override;
+	//virtual void onListenerDelegateChanged(listener::Delegate* const delegate) noexcept override;
+	//virtual void onTalkerDelegateChanged(talker::Delegate* const delegate) noexcept override;
 	virtual void onTransportError(protocol::ProtocolInterface* const pi) noexcept override;
 	/* **** Discovery notifications **** */
 	virtual void onLocalEntityOnline(protocol::ProtocolInterface* const pi, Entity const& entity) noexcept override;
@@ -175,19 +179,20 @@ private:
 	/* ************************************************************************** */
 	/* Internal methods                                                           */
 	/* ************************************************************************** */
-	void sendAemAecpCommand(UniqueIdentifier const targetEntityID, protocol::AemCommandType const commandType, void const* const payload, size_t const payloadLength, AggregateEntityImpl::OnAemAECPErrorCallback const& onErrorCallback, AggregateEntityImpl::AnswerCallback const& answerCallback) const noexcept;
-	void sendAaAecpCommand(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, AggregateEntityImpl::OnAaAECPErrorCallback const& onErrorCallback, AggregateEntityImpl::AnswerCallback const& answerCallback) const noexcept;
-	void sendMvuAecpCommand(UniqueIdentifier const targetEntityID, protocol::MvuCommandType const commandType, void const* const payload, size_t const payloadLength, AggregateEntityImpl::OnMvuAECPErrorCallback const& onErrorCallback, AggregateEntityImpl::AnswerCallback const& answerCallback) const noexcept;
-	void sendAcmpCommand(protocol::AcmpMessageType const messageType, UniqueIdentifier const talkerEntityID, model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, model::StreamIndex const listenerStreamIndex, uint16_t const connectionIndex, AggregateEntityImpl::OnACMPErrorCallback const& onErrorCallback, AggregateEntityImpl::AnswerCallback const& answerCallback) const noexcept;
-	void processAemAecpResponse(protocol::Aecpdu const* const response, AggregateEntityImpl::OnAemAECPErrorCallback const& onErrorCallback, AggregateEntityImpl::AnswerCallback const& answerCallback) const noexcept;
-	void processAaAecpResponse(protocol::Aecpdu const* const response, AggregateEntityImpl::OnAaAECPErrorCallback const& onErrorCallback, AggregateEntityImpl::AnswerCallback const& answerCallback) const noexcept;
-	void processMvuAecpResponse(protocol::Aecpdu const* const response, AggregateEntityImpl::OnMvuAECPErrorCallback const& onErrorCallback, AggregateEntityImpl::AnswerCallback const& answerCallback) const noexcept;
-	void processAcmpResponse(protocol::Acmpdu const* const response, AggregateEntityImpl::OnACMPErrorCallback const& onErrorCallback, AggregateEntityImpl::AnswerCallback const& answerCallback, bool const sniffed) const noexcept;
+	void sendAemAecpCommand(UniqueIdentifier const targetEntityID, protocol::AemCommandType const commandType, void const* const payload, size_t const payloadLength, LocalEntityImpl<>::OnAemAECPErrorCallback const& onErrorCallback, LocalEntityImpl<>::AnswerCallback const& answerCallback) const noexcept;
+	void sendAaAecpCommand(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, LocalEntityImpl<>::OnAaAECPErrorCallback const& onErrorCallback, LocalEntityImpl<>::AnswerCallback const& answerCallback) const noexcept;
+	void sendMvuAecpCommand(UniqueIdentifier const targetEntityID, protocol::MvuCommandType const commandType, void const* const payload, size_t const payloadLength, LocalEntityImpl<>::OnMvuAECPErrorCallback const& onErrorCallback, LocalEntityImpl<>::AnswerCallback const& answerCallback) const noexcept;
+	void sendAcmpCommand(protocol::AcmpMessageType const messageType, UniqueIdentifier const talkerEntityID, model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, model::StreamIndex const listenerStreamIndex, uint16_t const connectionIndex, LocalEntityImpl<>::OnACMPErrorCallback const& onErrorCallback, LocalEntityImpl<>::AnswerCallback const& answerCallback) const noexcept;
+	void processAemAecpResponse(protocol::Aecpdu const* const response, LocalEntityImpl<>::OnAemAECPErrorCallback const& onErrorCallback, LocalEntityImpl<>::AnswerCallback const& answerCallback) const noexcept;
+	void processAaAecpResponse(protocol::Aecpdu const* const response, LocalEntityImpl<>::OnAaAECPErrorCallback const& onErrorCallback, LocalEntityImpl<>::AnswerCallback const& answerCallback) const noexcept;
+	void processMvuAecpResponse(protocol::Aecpdu const* const response, LocalEntityImpl<>::OnMvuAECPErrorCallback const& onErrorCallback, LocalEntityImpl<>::AnswerCallback const& answerCallback) const noexcept;
+	void processAcmpResponse(protocol::Acmpdu const* const response, LocalEntityImpl<>::OnACMPErrorCallback const& onErrorCallback, LocalEntityImpl<>::AnswerCallback const& answerCallback, bool const sniffed) const noexcept;
 
 	/* ************************************************************************** */
 	/* Internal variables                                                         */
 	/* ************************************************************************** */
-	AggregateEntityImpl& _aggregateEntity;
+	protocol::ProtocolInterface* const _protocolInterface{ nullptr };
+	controller::Delegate* _controllerDelegate{ nullptr };
 	Interface& _controllerInterface;
 	UniqueIdentifier const _controllerID{ UniqueIdentifier::getNullUniqueIdentifier() };
 	bool _shouldTerminate{ false };

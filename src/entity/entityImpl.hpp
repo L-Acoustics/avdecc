@@ -28,6 +28,9 @@
 #include "la/avdecc/internals/entityModel.hpp"
 #include "la/avdecc/internals/protocolInterface.hpp"
 #include "la/avdecc/internals/protocolGenericAecpdu.hpp"
+#include "la/avdecc/internals/protocolAemAecpdu.hpp"
+#include "la/avdecc/internals/protocolAaAecpdu.hpp"
+#include "la/avdecc/internals/protocolMvuAecpdu.hpp"
 #include "logHelper.hpp"
 #include <cstdint>
 #include <algorithm>
@@ -168,10 +171,10 @@ public:
 		}
 	};
 
-	using OnAemAECPErrorCallback = std::function<void(LocalEntity::AemCommandStatus const error)>;
-	using OnAaAECPErrorCallback = std::function<void(LocalEntity::AaCommandStatus const error)>;
-	using OnMvuAECPErrorCallback = std::function<void(LocalEntity::MvuCommandStatus const error)>;
-	using OnACMPErrorCallback = std::function<void(LocalEntity::ControlStatus const error)>;
+	using OnAemAECPErrorCallback = std::function<void(LocalEntity::AemCommandStatus)>;
+	using OnAaAECPErrorCallback = std::function<void(LocalEntity::AaCommandStatus)>;
+	using OnMvuAECPErrorCallback = std::function<void(LocalEntity::MvuCommandStatus)>;
+	using OnACMPErrorCallback = std::function<void(LocalEntity::ControlStatus)>;
 
 	template<typename T, typename Object, typename... Ts>
 	static OnAemAECPErrorCallback makeAemAECPErrorHandler(T const& handler, Object const* const object, Ts&&... params)
@@ -219,7 +222,7 @@ public:
 	static LocalEntity::MvuCommandStatus convertErrorToMvuCommandStatus(protocol::ProtocolInterface::Error const error) noexcept;
 	static LocalEntity::ControlStatus convertErrorToControlStatus(protocol::ProtocolInterface::Error const error) noexcept;
 
-	void sendAemAecpCommand(protocol::ProtocolInterface const* const pi, UniqueIdentifier const targetEntityID, networkInterface::MacAddress targetMacAddress, protocol::AemCommandType const commandType, void const* const payload, size_t const payloadLength, std::function<void(la::avdecc::protocol::Aecpdu const*, LocalEntity::AemCommandStatus)> const& onResult) const noexcept
+	static void sendAemAecpCommand(protocol::ProtocolInterface const* const pi, UniqueIdentifier const controllerEntityID, UniqueIdentifier const targetEntityID, networkInterface::MacAddress targetMacAddress, protocol::AemCommandType const commandType, void const* const payload, size_t const payloadLength, std::function<void(la::avdecc::protocol::Aecpdu const*, LocalEntity::AemCommandStatus)> const& onResult) noexcept
 	{
 		try
 		{
@@ -234,7 +237,7 @@ public:
 			aem->setMessageType(protocol::AecpMessageType::AemCommand);
 			aem->setStatus(protocol::AecpStatus::Success);
 			aem->setTargetEntityID(targetEntityID);
-			aem->setControllerEntityID(getEntityID());
+			aem->setControllerEntityID(controllerEntityID);
 			// No need to set the SequenceID, it's set by the ProtocolInterface layer
 			// Set AEM fields
 			aem->setUnsolicited(false);
@@ -253,15 +256,15 @@ public:
 		}
 		catch (std::invalid_argument const&)
 		{
-			invokeProtectedHandler(onResult, nullptr, AemCommandStatus::ProtocolError);
+			invokeProtectedHandler(onResult, nullptr, LocalEntity::AemCommandStatus::ProtocolError);
 		}
 		catch (...)
 		{
-			invokeProtectedHandler(onResult, nullptr, AemCommandStatus::InternalError);
+			invokeProtectedHandler(onResult, nullptr, LocalEntity::AemCommandStatus::InternalError);
 		}
 	}
 
-	void sendAaAecpCommand(protocol::ProtocolInterface const* const pi, UniqueIdentifier const targetEntityID, networkInterface::MacAddress targetMacAddress, addressAccess::Tlvs const& tlvs, std::function<void(la::avdecc::protocol::Aecpdu const*, LocalEntity::AaCommandStatus)> const& onResult) const noexcept
+	static void sendAaAecpCommand(protocol::ProtocolInterface const* const pi, UniqueIdentifier const controllerEntityID, UniqueIdentifier const targetEntityID, networkInterface::MacAddress targetMacAddress, addressAccess::Tlvs const& tlvs, std::function<void(la::avdecc::protocol::Aecpdu const*, LocalEntity::AaCommandStatus)> const& onResult) noexcept
 	{
 		try
 		{
@@ -276,7 +279,7 @@ public:
 			aa->setMessageType(protocol::AecpMessageType::AddressAccessCommand);
 			aa->setStatus(protocol::AecpStatus::Success);
 			aa->setTargetEntityID(targetEntityID);
-			aa->setControllerEntityID(getEntityID());
+			aa->setControllerEntityID(controllerEntityID);
 			// No need to set the SequenceID, it's set by the ProtocolInterface layer
 			// Set Address Access fields
 			for (auto const& tlv : tlvs)
@@ -296,15 +299,15 @@ public:
 		}
 		catch (std::invalid_argument const&)
 		{
-			invokeProtectedHandler(onResult, nullptr, AaCommandStatus::ProtocolError);
+			invokeProtectedHandler(onResult, nullptr, LocalEntity::AaCommandStatus::ProtocolError);
 		}
 		catch (...)
 		{
-			invokeProtectedHandler(onResult, nullptr, AaCommandStatus::InternalError);
+			invokeProtectedHandler(onResult, nullptr, LocalEntity::AaCommandStatus::InternalError);
 		}
 	}
 
-	void sendMvuAecpCommand(protocol::ProtocolInterface const* const pi, UniqueIdentifier const targetEntityID, networkInterface::MacAddress targetMacAddress, protocol::MvuCommandType const commandType, void const* const payload, size_t const payloadLength, std::function<void(la::avdecc::protocol::Aecpdu const*, LocalEntity::MvuCommandStatus)> const& onResult) const noexcept
+	static void sendMvuAecpCommand(protocol::ProtocolInterface const* const pi, UniqueIdentifier const controllerEntityID, UniqueIdentifier const targetEntityID, networkInterface::MacAddress targetMacAddress, protocol::MvuCommandType const commandType, void const* const payload, size_t const payloadLength, std::function<void(la::avdecc::protocol::Aecpdu const*, LocalEntity::MvuCommandStatus)> const& onResult) noexcept
 	{
 		try
 		{
@@ -319,7 +322,7 @@ public:
 			mvu->setMessageType(protocol::AecpMessageType::VendorUniqueCommand);
 			mvu->setStatus(protocol::AecpStatus::Success);
 			mvu->setTargetEntityID(targetEntityID);
-			mvu->setControllerEntityID(getEntityID());
+			mvu->setControllerEntityID(controllerEntityID);
 			// No need to set the SequenceID, it's set by the ProtocolInterface layer
 			// Set MVU fields
 			mvu->setCommandType(commandType);
@@ -337,15 +340,15 @@ public:
 		}
 		catch (std::invalid_argument const&)
 		{
-			invokeProtectedHandler(onResult, nullptr, MvuCommandStatus::ProtocolError);
+			invokeProtectedHandler(onResult, nullptr, LocalEntity::MvuCommandStatus::ProtocolError);
 		}
 		catch (...)
 		{
-			invokeProtectedHandler(onResult, nullptr, MvuCommandStatus::InternalError);
+			invokeProtectedHandler(onResult, nullptr, LocalEntity::MvuCommandStatus::InternalError);
 		}
 	}
 
-	void sendAcmpCommand(protocol::ProtocolInterface const* const pi, protocol::AcmpMessageType const messageType, UniqueIdentifier const talkerEntityID, model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, model::StreamIndex const listenerStreamIndex, uint16_t const connectionIndex, std::function<void(la::avdecc::protocol::Acmpdu const*, LocalEntity::ControlStatus)> const& onResult) const noexcept
+	static void sendAcmpCommand(protocol::ProtocolInterface const* const pi, protocol::AcmpMessageType const messageType, UniqueIdentifier const controllerEntityID, UniqueIdentifier const talkerEntityID, model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, model::StreamIndex const listenerStreamIndex, uint16_t const connectionIndex, std::function<void(la::avdecc::protocol::Acmpdu const*, LocalEntity::ControlStatus)> const& onResult) noexcept
 	{
 		try
 		{
@@ -361,7 +364,7 @@ public:
 			// Set ACMP fields
 			acmp->setMessageType(messageType);
 			acmp->setStatus(protocol::AcmpStatus::Success);
-			acmp->setControllerEntityID(getEntityID());
+			acmp->setControllerEntityID(controllerEntityID);
 			acmp->setTalkerEntityID(talkerEntityID);
 			acmp->setListenerEntityID(listenerEntityID);
 			acmp->setTalkerUniqueID(talkerStreamIndex);
@@ -373,7 +376,7 @@ public:
 			acmp->setStreamVlanID(0);
 
 			auto const error = pi->sendAcmpCommand(std::move(frame),
-				[onResult, this](protocol::Acmpdu const* const response, protocol::ProtocolInterface::Error const error) noexcept
+				[onResult](protocol::Acmpdu const* const response, protocol::ProtocolInterface::Error const error) noexcept
 				{
 					invokeProtectedHandler(onResult, response, convertErrorToControlStatus(error));
 				});
@@ -385,15 +388,15 @@ public:
 
 		catch (std::invalid_argument const&)
 		{
-			invokeProtectedHandler(onResult, nullptr, ControlStatus::ProtocolError);
+			invokeProtectedHandler(onResult, nullptr, LocalEntity::ControlStatus::ProtocolError);
 		}
 		catch (...)
 		{
-			invokeProtectedHandler(onResult, nullptr, ControlStatus::InternalError);
+			invokeProtectedHandler(onResult, nullptr, LocalEntity::ControlStatus::InternalError);
 		}
 	}
 
-	void reflectAecpCommand(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& command, protocol::AecpStatus const status) const noexcept
+	static void reflectAecpCommand(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& command, protocol::AecpStatus const status) noexcept
 	{
 		try
 		{
@@ -424,7 +427,7 @@ public:
 		}
 	}
 
-	void sendAemAecpResponse(protocol::ProtocolInterface* const pi, protocol::AemAecpdu const& commandAem, protocol::AecpStatus const status, void const* const payload, size_t const payloadLength) const noexcept
+	static void sendAemAecpResponse(protocol::ProtocolInterface* const pi, protocol::AemAecpdu const& commandAem, protocol::AecpStatus const status, void const* const payload, size_t const payloadLength) noexcept
 	{
 		try
 		{
@@ -538,6 +541,36 @@ public:
 		// This is to prevent the processing of an incoming message while LocalEntityGuard's parent class (which is LocalEntityImpl's derivated class) has already been destroyed (in LocalEntityImpl's destructor)
 		SuperClass::shutdown();
 	}
+};
+
+/** Entity Capability delegate interface (Controller, Listener, Talker) */
+class CapabilityDelegate
+{
+public:
+	using UniquePointer = std::unique_ptr<CapabilityDelegate>;
+	virtual ~CapabilityDelegate() = default;
+
+	/* **** Global notifications **** */
+	virtual void onControllerDelegateChanged(controller::Delegate* const delegate) noexcept = 0;
+	//virtual void onListenerDelegateChanged(listener::Delegate* const delegate) noexcept = 0;
+	//virtual void onTalkerDelegateChanged(talker::Delegate* const delegate) noexcept = 0;
+	virtual void onTransportError(protocol::ProtocolInterface* const /*pi*/) noexcept {}
+	/* **** Discovery notifications **** */
+	virtual void onLocalEntityOnline(protocol::ProtocolInterface* const /*pi*/, Entity const& /*entity*/) noexcept {}
+	virtual void onLocalEntityOffline(protocol::ProtocolInterface* const /*pi*/, UniqueIdentifier const /*entityID*/) noexcept {}
+	virtual void onLocalEntityUpdated(protocol::ProtocolInterface* const /*pi*/, Entity const& /*entity*/) noexcept {}
+	virtual void onRemoteEntityOnline(protocol::ProtocolInterface* const /*pi*/, Entity const& /*entity*/) noexcept {}
+	virtual void onRemoteEntityOffline(protocol::ProtocolInterface* const /*pi*/, UniqueIdentifier const /*entityID*/) noexcept {}
+	virtual void onRemoteEntityUpdated(protocol::ProtocolInterface* const /*pi*/, Entity const& /*entity*/) noexcept {}
+	/* **** AECP notifications **** */
+	virtual bool onUnhandledAecpCommand(protocol::ProtocolInterface* const /*pi*/, protocol::Aecpdu const& /*aecpdu*/) noexcept
+	{
+		return false;
+	}
+	virtual void onAecpUnsolicitedResponse(protocol::ProtocolInterface* const /*pi*/, LocalEntity const& /*entity*/, protocol::Aecpdu const& /*aecpdu*/) noexcept {}
+	/* **** ACMP notifications **** */
+	virtual void onAcmpSniffedCommand(protocol::ProtocolInterface* const /*pi*/, LocalEntity const& /*entity*/, protocol::Acmpdu const& /*acmpdu*/) noexcept {}
+	virtual void onAcmpSniffedResponse(protocol::ProtocolInterface* const /*pi*/, LocalEntity const& /*entity*/, protocol::Acmpdu const& /*acmpdu*/) noexcept {}
 };
 
 } // namespace entity
