@@ -44,11 +44,11 @@ namespace entity
 ControllerEntityImpl::ControllerEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, UniqueIdentifier const entityModelID, controller::Delegate* const controllerDelegate)
 	: LocalEntityImpl(protocolInterface, progID, entityModelID, EntityCapabilities::None, 0, TalkerCapabilities::None, 0, ListenerCapabilities::None, ControllerCapabilities::Implemented, 0, 0, UniqueIdentifier{})
 {
-	// Register observer
-	getProtocolInterface()->registerObserver(this);
-
 	// Entity is controller capable
 	_controllerCapabilityDelegate = std::make_unique<controller::CapabilityDelegate>(getProtocolInterface(), controllerDelegate, *this, getEntityID());
+
+	// Register observer
+	getProtocolInterface()->registerObserver(this);
 }
 
 ControllerEntityImpl::~ControllerEntityImpl() noexcept
@@ -58,6 +58,11 @@ ControllerEntityImpl::~ControllerEntityImpl() noexcept
 
 	// Remove controller capability delegate
 	_controllerCapabilityDelegate.reset();
+}
+
+void ControllerEntityImpl::destroy() noexcept
+{
+	delete this;
 }
 
 /* ************************************************************************** */
@@ -603,6 +608,15 @@ void ControllerEntityImpl::onAcmpSniffedResponse(protocol::ProtocolInterface* co
 bool ControllerEntityImpl::onUnhandledAecpCommand(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept
 {
 	return _controllerCapabilityDelegate->onUnhandledAecpCommand(pi, aecpdu);
+}
+
+/* ************************************************************************** */
+/* ControllerEntity methods                                                   */
+/* ************************************************************************** */
+/** Entry point */
+ControllerEntity* LA_AVDECC_CALL_CONVENTION ControllerEntity::createRawControllerEntity(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::controller::Delegate* const delegate)
+{
+	return new entity::LocalEntityGuard<entity::ControllerEntityImpl>(protocolInterface, progID, entityModelID, delegate);
 }
 
 ControllerEntity::ControllerEntity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities, std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities, std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities, ControllerCapabilities const controllerCapabilities, std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID) noexcept

@@ -101,6 +101,7 @@ public:
 	*/
 	virtual entity::ControllerEntity* addControllerEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::controller::Delegate* const delegate) = 0;
 
+	// TODO: Add all other AggregateEntity parameters
 	virtual entity::AggregateEntity* addAggregateEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::controller::Delegate* const controllerDelegate) = 0;
 
 	// Deleted compiler auto-generated methods

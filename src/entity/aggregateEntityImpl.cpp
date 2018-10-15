@@ -44,9 +44,6 @@ namespace entity
 AggregateEntityImpl::AggregateEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities, std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities, std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities, ControllerCapabilities const controllerCapabilities, std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID, controller::Delegate* const controllerDelegate)
 	: LocalEntityImpl(protocolInterface, progID, entityModelID, entityCapabilities, talkerStreamSources, talkerCapabilities, listenerStreamSinks, listenerCapabilities, controllerCapabilities, identifyControlIndex, interfaceIndex, associationID)
 {
-	// Register observer
-	getProtocolInterface()->registerObserver(this);
-
 	// Create all capabilities based on passed flags
 	auto const entityID = getEntityID();
 
@@ -69,6 +66,9 @@ AggregateEntityImpl::AggregateEntityImpl(protocol::ProtocolInterface* const prot
 		AVDECC_ASSERT(false, "TODO: AggregateEntityImpl: Handle talker capability");
 		//_talkerCapabilityDelegate = std::make_unique<talker::CapabilityDelegate>(entityID);
 	}
+
+	// Register observer
+	getProtocolInterface()->registerObserver(this);
 }
 
 AggregateEntityImpl::~AggregateEntityImpl() noexcept
