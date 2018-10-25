@@ -30,6 +30,8 @@
 #include <cstdint>
 #include <thread>
 #include <algorithm>
+#include <optional>
+#include <map>
 
 namespace la
 {
@@ -41,146 +43,250 @@ namespace entity
 class Entity
 {
 public:
+	/** Entity common information, identical for all network interfaces. */
+	struct CommonInformation
+	{
+		UniqueIdentifier entityID{ la::avdecc::UniqueIdentifier::getNullUniqueIdentifier() }; /** The entity's unique identifier. */
+		UniqueIdentifier entityModelID{ la::avdecc::UniqueIdentifier::getNullUniqueIdentifier() }; /** The EntityModel unique identifier. */
+		EntityCapabilities entityCapabilities{ EntityCapabilities::None }; /** The entity's current capabilities (can change over time). */
+		std::uint16_t talkerStreamSources{ 0u }; /** The maximum number of streams the entity is capable of sourcing simultaneously. */
+		TalkerCapabilities talkerCapabilities{ TalkerCapabilities::None }; /** The entity's capabilities as a talker. */
+		std::uint16_t listenerStreamSinks{ 0u }; /** The maximum number of streams the entity is capable of sinking simultaneously. */
+		ListenerCapabilities listenerCapabilities{ ListenerCapabilities::None }; /** The entity's capabilities as a listener. */
+		ControllerCapabilities controllerCapabilities{ ControllerCapabilities::None }; /** The entity's capabilities as a controller. */
+		std::optional<model::ControlIndex> identifyControlIndex{ std::nullopt }; /** The ControlIndex for the primary IDENTIFY control, if set. Only valid if EntityCapabilities::AemIdentifyControlIndexValid is defined. */
+		std::optional<UniqueIdentifier> associationID{ std::nullopt }; /** The unique identifier of the associated entity, if set. Only valid if EntityCapabilities::AssociationIDValid is defined. */
+	};
+
+	/** Information specific to each entity's network interfaces plugged on the discovery domain (if entity does not support nor specify an AvbInterfaceIndex, GlobalAvbInterfaceIndex is used instead). */
+	struct InterfaceInformation
+	{
+		networkInterface::MacAddress macAddress{}; /** The mac address this interface is attached to. */
+		std::uint8_t validTime{ 31u }; /** The number of 2-seconds periods the entity's announcement is valid on this interface. */
+		std::uint32_t availableIndex{ 0u }; /** The current available index for the entity on this interface. */
+		std::optional<UniqueIdentifier> gptpGrandmasterID{ std::nullopt }; /** The current gPTP grandmaster unique identifier on this interface. Only valid if EntityCapabilities::GptpSupported is defined. */
+		std::optional<std::uint8_t> gptpDomainNumber{ std::nullopt }; /** The current gPTP domain number on this interface. Only valid if EntityCapabilities::GptpSupported is defined. */
+	};
+
 	using UniquePointer = std::unique_ptr<Entity>;
+	static constexpr model::AvbInterfaceIndex GlobalAvbInterfaceIndex{ 0xffff }; /** The AvbInterfaceIndex value used when EntityCapabilities::AemInterfaceIndexValid is not set */
+	using InterfacesInformation = std::map<model::AvbInterfaceIndex, InterfaceInformation>;
+
+	/** Sets (or replaces) the InterfaceInformation for the specified AvbInterfaceIndex. */
+	virtual void setInterfaceInformation(InterfaceInformation const& interfaceInformation, model::AvbInterfaceIndex const interfaceIndex) noexcept
+	{
+		_interfaceInformation[interfaceIndex] = interfaceInformation;
+	}
+
+	/** Removes the InterfaceInformation for the specified AvbInterfaceIndex. */
+	virtual void removeInterfaceInformation(model::AvbInterfaceIndex const interfaceIndex) noexcept
+	{
+		_interfaceInformation.erase(interfaceIndex);
+	}
+
+	/** Gets non-modifiable CommonInformation */
+	CommonInformation const& getCommonInformation() const noexcept
+	{
+		return _commonInformation;
+	}
+
+	/** Gets modifiable CommonInformation */
+	CommonInformation& getCommonInformation() noexcept
+	{
+		return _commonInformation;
+	}
+
+	/** Gets non-modifiable InterfaceInformation */
+	InterfaceInformation const& getInterfaceInformation(model::AvbInterfaceIndex const interfaceIndex) const
+	{
+		auto const infoIt = _interfaceInformation.find(interfaceIndex);
+		if (infoIt == _interfaceInformation.end())
+		{
+			throw la::avdecc::Exception("Invalid interfaceIndex");
+		}
+
+		return infoIt->second;
+	}
+
+	/** Gets modifiable InterfaceInformation */
+	InterfaceInformation& getInterfaceInformation(model::AvbInterfaceIndex const interfaceIndex)
+	{
+		auto const infoIt = _interfaceInformation.find(interfaceIndex);
+		if (infoIt == _interfaceInformation.end())
+		{
+			throw la::avdecc::Exception("Invalid interfaceIndex");
+		}
+
+		return infoIt->second;
+	}
+
+	/** Gets the non-modifiable InterfaceInformation for all interfaces */
+	InterfacesInformation const& getInterfacesInformation() const noexcept
+	{
+		return _interfaceInformation;
+	}
+
+	/** Gets the modifiable InterfaceInformation for all interfaces */
+	InterfacesInformation& getInterfacesInformation() noexcept
+	{
+		return _interfaceInformation;
+	}
 
 	/** Gets the unique identifier computed for this entity */
 	UniqueIdentifier getEntityID() const noexcept
 	{
-		return _entityID;
+		return _commonInformation.entityID;
 	}
 
-	/** Gets the entity's mac address */
-	la::avdecc::networkInterface::MacAddress getMacAddress() const noexcept
+	/** Gets any mac address for the entity */
+	la::avdecc::networkInterface::MacAddress getAnyMacAddress() const
 	{
-		return _macAddress;
-	}
+		// Get the first InterfaceInformation data (ordered, so we always get the same)
+		auto infoIt = _interfaceInformation.begin();
+		if (infoIt == _interfaceInformation.end())
+		{
+			throw la::avdecc::Exception("Invalid interfaceIndex");
+		}
 
-	/** Gets the valid time value */
-	std::uint8_t getValidTime() const noexcept
-	{
-		return _validTime;
+		return infoIt->second.macAddress;
 	}
 
 	/** Gets the entity model ID */
 	UniqueIdentifier getEntityModelID() const noexcept
 	{
-		return _entityModelID;
+		return _commonInformation.entityModelID;
 	}
 
 	/** Gets the entity capabilities */
 	EntityCapabilities getEntityCapabilities() const noexcept
 	{
-		return _entityCapabilities;
+		return _commonInformation.entityCapabilities;
 	}
 
 	/** Gets the talker stream sources */
 	std::uint16_t getTalkerStreamSources() const noexcept
 	{
-		return _talkerStreamSources;
+		return _commonInformation.talkerStreamSources;
 	}
 
 	/** Gets the talker capabilities */
 	TalkerCapabilities getTalkerCapabilities() const noexcept
 	{
-		return _talkerCapabilities;
+		return _commonInformation.talkerCapabilities;
 	}
 
 	/** Gets the listener stream sinks */
 	std::uint16_t getListenerStreamSinks() const noexcept
 	{
-		return _listenerStreamSinks;
+		return _commonInformation.listenerStreamSinks;
 	}
 
 	/** Gets the listener capabilities */
 	ListenerCapabilities getListenerCapabilities() const noexcept
 	{
-		return _listenerCapabilities;
+		return _commonInformation.listenerCapabilities;
 	}
 
 	/** Gets the controller capabilities */
 	ControllerCapabilities getControllerCapabilities() const noexcept
 	{
-		return _controllerCapabilities;
-	}
-
-	/** Gets the available index value */
-	std::uint32_t getAvailableIndex() const noexcept
-	{
-		return _availableIndex;
-	}
-
-	/** Gets the gptp grandmaster unique identifier */
-	UniqueIdentifier getGptpGrandmasterID() const noexcept
-	{
-		return _gptpGrandmasterID;
-	}
-
-	/** Gets the gptp domain number */
-	std::uint8_t getGptpDomainNumber() const noexcept
-	{
-		return _gptpDomainNumber;
+		return _commonInformation.controllerCapabilities;
 	}
 
 	/** Gets the identify control index */
-	std::uint16_t getIdentifyControlIndex() const noexcept
+	std::optional<model::ControlIndex> getIdentifyControlIndex() const noexcept
 	{
-		return _identifyControlIndex;
-	}
-
-	/** Gets the interface index */
-	std::uint16_t getInterfaceIndex() const noexcept
-	{
-		return _interfaceIndex;
+		return _commonInformation.identifyControlIndex;
 	}
 
 	/** Gets the association unique identifier */
-	UniqueIdentifier getAssociationID() const noexcept
+	std::optional<UniqueIdentifier> getAssociationID() const noexcept
 	{
-		return _associationID;
+		return _commonInformation.associationID;
 	}
 
-	/** Gets next available index value */
-	virtual std::uint32_t getNextAvailableIndex() noexcept
+	/** Generates an EID from a MacAddress (OUI-36) and a ProgID. This method is provided for backward compatibility, ProtocolInterface::getDynamicEID */
+	static UniqueIdentifier generateEID(la::avdecc::networkInterface::MacAddress const& macAddress, std::uint16_t const progID)
 	{
-		return ++_availableIndex;
+		UniqueIdentifier::value_type eid{ 0u };
+		if (macAddress.size() != 6)
+			throw Exception("Invalid MAC address size");
+		if (progID == 0 || progID == 0xFFFF || progID == 0xFFFE)
+			throw Exception("Reserved value for Entity's progID value: " + std::to_string(progID));
+		eid += macAddress[0];
+		eid <<= 8;
+		eid += macAddress[1];
+		eid <<= 8;
+		eid += macAddress[2];
+		eid <<= 16;
+		eid += progID;
+		eid <<= 8;
+		eid += macAddress[3];
+		eid <<= 8;
+		eid += macAddress[4];
+		eid <<= 8;
+		eid += macAddress[5];
+
+		return UniqueIdentifier{ eid };
 	}
 
-	/** Constructor using fields that are not allowed to change after creation */
-	Entity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities, std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities, std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities, ControllerCapabilities const controllerCapabilities, std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID) noexcept
-		: _entityID(entityID)
-		, _macAddress(macAddress)
-		, _entityModelID(entityModelID)
-		, _entityCapabilities(entityCapabilities)
-		, _talkerStreamSources(talkerStreamSources)
-		, _talkerCapabilities(talkerCapabilities)
-		, _listenerStreamSinks(listenerStreamSinks)
-		, _listenerCapabilities(listenerCapabilities)
-		, _controllerCapabilities(controllerCapabilities)
-		, _identifyControlIndex(identifyControlIndex)
-		, _interfaceIndex(interfaceIndex)
-		, _associationID(associationID)
+	/** Constructor */
+	Entity(CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation)
+		: _commonInformation(commonInformation)
+		, _interfaceInformation(interfacesInformation)
 	{
+		if (interfacesInformation.empty())
+		{
+			throw Exception("An Entity should at least have one InterfaceInformation");
+		}
 	}
 
-	/** Constructor using all fields */
-	Entity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, std::uint8_t const validTime, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities, std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities, std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities, ControllerCapabilities const controllerCapabilities, std::uint32_t const availableIndex, UniqueIdentifier const gptpGrandmasterID, std::uint8_t const gptpDomainNumber, std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID) noexcept
-		: _entityID(entityID)
-		, _macAddress(macAddress)
-		, _validTime(validTime)
-		, _entityModelID(entityModelID)
-		, _entityCapabilities(entityCapabilities)
-		, _talkerStreamSources(talkerStreamSources)
-		, _talkerCapabilities(talkerCapabilities)
-		, _listenerStreamSinks(listenerStreamSinks)
-		, _listenerCapabilities(listenerCapabilities)
-		, _controllerCapabilities(controllerCapabilities)
-		, _availableIndex(availableIndex)
-		, _gptpGrandmasterID(gptpGrandmasterID)
-		, _gptpDomainNumber(gptpDomainNumber)
-		, _identifyControlIndex(identifyControlIndex)
-		, _interfaceIndex(interfaceIndex)
-		, _associationID(associationID)
+	/** Sets the entity capabilities */
+	virtual void setEntityCapabilities(EntityCapabilities const entityCapabilities) noexcept
 	{
+		_commonInformation.entityCapabilities = entityCapabilities;
+	}
+
+	/** Sets the association unique identifier */
+	virtual void setAssociationID(UniqueIdentifier const associationID) noexcept
+	{
+		_commonInformation.associationID = associationID;
+	}
+
+	/** Sets the valid time value */
+	virtual void setValidTime(std::uint8_t const validTime, std::optional<model::AvbInterfaceIndex> const interfaceIndex = std::nullopt)
+	{
+		constexpr std::uint8_t minValidTime = 1;
+		constexpr std::uint8_t maxValidTime = 31;
+		auto const value = std::min(maxValidTime, std::max(minValidTime, validTime));
+
+		// If interfaceIndex is specified, only set the value for this interface
+		if (interfaceIndex)
+		{
+			getInterfaceInformation(interfaceIndex.value()).validTime = value;
+		}
+		else
+		{
+			// Otherwise set the value for all interfaces on the entity
+			for (auto& infoKV : getInterfacesInformation())
+			{
+				auto const avbInterfaceIndex = infoKV.first;
+				auto& information = infoKV.second;
+				information.validTime = value;
+			}
+		}
+	}
+
+	/** Sets the gptp grandmaster unique identifier */
+	virtual void setGptpGrandmasterID(UniqueIdentifier const gptpGrandmasterID, model::AvbInterfaceIndex const interfaceIndex)
+	{
+		getInterfaceInformation(interfaceIndex).gptpGrandmasterID = gptpGrandmasterID;
+	}
+
+	/** Sets the gptp domain number */
+	virtual void setGptpDomainNumber(std::uint8_t const gptpDomainNumber, model::AvbInterfaceIndex const interfaceIndex)
+	{
+		getInterfaceInformation(interfaceIndex).gptpDomainNumber = gptpDomainNumber;
 	}
 
 	// Defaulted compiler auto-generated methods
@@ -190,58 +296,9 @@ public:
 	Entity& operator=(Entity const&) = default;
 	Entity& operator=(Entity&&) = default;
 
-protected:
-	/** Sets the valid time value */
-	virtual void setValidTime(std::uint8_t const validTime) noexcept
-	{
-		constexpr std::uint8_t minValidTime = 1;
-		constexpr std::uint8_t maxValidTime = 31;
-
-		AVDECC_ASSERT(validTime >= 1 && validTime <= 31, "setValidTime: Invalid validTime value (must be comprised btw 1 and 31 inclusive)");
-		_validTime = std::min(maxValidTime, std::max(minValidTime, validTime));
-	}
-
-	/** Sets the entity capabilities */
-	virtual void setEntityCapabilities(EntityCapabilities const entityCapabilities) noexcept
-	{
-		_entityCapabilities = entityCapabilities;
-	}
-
-	/** Sets the gptp grandmaster unique identifier */
-	virtual void setGptpGrandmasterID(UniqueIdentifier const gptpGrandmasterID) noexcept
-	{
-		_gptpGrandmasterID = gptpGrandmasterID;
-	}
-
-	/** Sets the gptp domain number */
-	virtual void setGptpDomainNumber(std::uint8_t const gptpDomainNumber) noexcept
-	{
-		_gptpDomainNumber = gptpDomainNumber;
-	}
-
-	/** Sets the association unique identifier */
-	virtual void setAssociationID(UniqueIdentifier const associationID) noexcept
-	{
-		_associationID = associationID;
-	}
-
 private:
-	UniqueIdentifier _entityID{};
-	networkInterface::MacAddress _macAddress{};
-	std::uint8_t _validTime{ 31 }; // Default protocol value is 31 (meaning 62 seconds)
-	UniqueIdentifier _entityModelID{};
-	EntityCapabilities _entityCapabilities{ EntityCapabilities::None };
-	std::uint16_t _talkerStreamSources{ 0u };
-	TalkerCapabilities _talkerCapabilities{ TalkerCapabilities::None };
-	std::uint16_t _listenerStreamSinks{ 0u };
-	ListenerCapabilities _listenerCapabilities{ ListenerCapabilities::None };
-	ControllerCapabilities _controllerCapabilities{ ControllerCapabilities::None };
-	std::uint32_t _availableIndex{ 0 };
-	UniqueIdentifier _gptpGrandmasterID{};
-	std::uint8_t _gptpDomainNumber{ 0 };
-	std::uint16_t _identifyControlIndex{ 0 };
-	std::uint16_t _interfaceIndex{ 0 };
-	UniqueIdentifier _associationID{};
+	CommonInformation _commonInformation{};
+	InterfacesInformation _interfaceInformation{};
 };
 
 /** Virtual interface for a local entity (on the same computer) */
@@ -341,14 +398,14 @@ public:
 		InternalError = 999, /**< Internal library error. */
 	};
 
-	/** Enables entity advertising with available duration included between 2-62 seconds, defaulting to 62. Returns false if EntityID is already in use on the local computer, true otherwise. */
-	virtual bool enableEntityAdvertising(std::uint32_t const availableDuration) noexcept = 0;
+	/** Enables entity advertising with available duration included between 2-62 seconds on the specified interfaceIndex if set, otherwise on all interfaces. Returns false if EntityID is already in use on the local computer, true otherwise. */
+	virtual bool enableEntityAdvertising(std::uint32_t const availableDuration, std::optional<model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept = 0;
 
-	/** Disables entity advertising. */
-	virtual void disableEntityAdvertising() noexcept = 0;
+	/** Disables entity advertising on the specified interfaceIndex if set, otherwise on all interfaces. */
+	virtual void disableEntityAdvertising(std::optional<model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept = 0;
 
 	/** Gets the dirty state of the entity. If true, then it should be announced again using ENTITY_AVAILABLE message. The state is reset once retrieved. */
-	virtual bool isDirty() noexcept = 0;
+	//virtual bool isDirty() noexcept = 0;
 
 	/** BasicLockable concept lock method */
 	virtual void lock() noexcept = 0;
@@ -363,10 +420,12 @@ public:
 	static LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION statusToString(ControlStatus const status);
 
 protected:
-	LocalEntity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities, std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities, std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities, ControllerCapabilities const controllerCapabilities, std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID) noexcept
-		: Entity(entityID, macAddress, entityModelID, entityCapabilities, talkerStreamSources, talkerCapabilities, listenerStreamSinks, listenerCapabilities, controllerCapabilities, identifyControlIndex, interfaceIndex, associationID)
+	/** Constructor */
+	LocalEntity(CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation)
+		: Entity(commonInformation, interfacesInformation)
 	{
 	}
+
 	virtual ~LocalEntity() noexcept = default;
 };
 

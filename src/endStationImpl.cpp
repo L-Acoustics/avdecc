@@ -51,7 +51,9 @@ entity::ControllerEntity* EndStationImpl::addControllerEntity(std::uint16_t cons
 	std::unique_ptr<entity::LocalEntityGuard<entity::ControllerEntityImpl>> controller{ nullptr };
 	try
 	{
-		controller = std::make_unique<entity::LocalEntityGuard<entity::ControllerEntityImpl>>(_protocolInterface.get(), progID, entityModelID, delegate);
+		auto const commonInformation{ entity::Entity::CommonInformation{ entity::Entity::generateEID(_protocolInterface->getMacAddress(), progID), entityModelID, entity::EntityCapabilities::None, 0u, entity::TalkerCapabilities::None, 0u, entity::ListenerCapabilities::None, entity::ControllerCapabilities::Implemented, std::nullopt, std::nullopt } };
+		auto const interfaceInfo{ entity::Entity::InterfaceInformation{ _protocolInterface->getMacAddress(), 31u, 0u, std::nullopt, std::nullopt } };
+		controller = std::make_unique<entity::LocalEntityGuard<entity::ControllerEntityImpl>>(_protocolInterface.get(), commonInformation, entity::Entity::InterfacesInformation{ { entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } }, delegate);
 	}
 	catch (la::avdecc::Exception const& e) // Because entity::ControllerEntityImpl::ControllerEntityImpl might throw if an entityID cannot be generated
 	{
@@ -73,7 +75,9 @@ entity::AggregateEntity* EndStationImpl::addAggregateEntity(std::uint16_t const 
 	std::unique_ptr<entity::LocalEntityGuard<entity::AggregateEntityImpl>> aggregate{ nullptr };
 	try
 	{
-		aggregate = std::make_unique<entity::LocalEntityGuard<entity::AggregateEntityImpl>>(_protocolInterface.get(), progID, entityModelID, entity::EntityCapabilities::None, std::uint16_t{ 0u }, entity::TalkerCapabilities::None, std::uint16_t{ 0 }, entity::ListenerCapabilities::None, controllerDelegate ? entity::ControllerCapabilities::Implemented : entity::ControllerCapabilities::None, entity::model::ControlIndex{ 0u }, entity::model::AvbInterfaceIndex{ 0u }, UniqueIdentifier{}, controllerDelegate);
+		auto const commonInformation{ entity::Entity::CommonInformation{ entity::Entity::generateEID(_protocolInterface->getMacAddress(), progID), entityModelID, entity::EntityCapabilities::None, 0u, entity::TalkerCapabilities::None, 0u, entity::ListenerCapabilities::None, controllerDelegate ? entity::ControllerCapabilities::Implemented : entity::ControllerCapabilities::None, std::nullopt, std::nullopt } };
+		auto const interfaceInfo{ entity::Entity::InterfaceInformation{ _protocolInterface->getMacAddress(), 31u, 0u, std::nullopt, std::nullopt } };
+		aggregate = std::make_unique<entity::LocalEntityGuard<entity::AggregateEntityImpl>>(_protocolInterface.get(), commonInformation, entity::Entity::InterfacesInformation{ { entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } }, controllerDelegate);
 	}
 	catch (la::avdecc::Exception const& e) // Because entity::AggregateEntityImpl::AggregateEntityImpl might throw if an entityID cannot be generated
 	{

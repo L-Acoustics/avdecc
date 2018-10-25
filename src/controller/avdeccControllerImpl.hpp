@@ -59,8 +59,8 @@ private:
 	virtual UniqueIdentifier getControllerEID() const noexcept override;
 
 	/* Controller configuration */
-	virtual void enableEntityAdvertising(std::uint32_t const availableDuration) override;
-	virtual void disableEntityAdvertising() noexcept override;
+	virtual void enableEntityAdvertising(std::uint32_t const availableDuration, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) override;
+	virtual void disableEntityAdvertising(std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override;
 	virtual void enableEntityModelCache() noexcept override;
 	virtual void disableEntityModelCache() noexcept override;
 

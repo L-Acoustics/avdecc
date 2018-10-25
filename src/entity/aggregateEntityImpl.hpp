@@ -50,8 +50,10 @@ private:
 	/* ************************************************************************** */
 	/* AggregateEntityImpl life cycle                                             */
 	/* ************************************************************************** */
-	AggregateEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities, std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities, std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities, ControllerCapabilities const controllerCapabilities, std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID, controller::Delegate* const controllerDelegate);
+	AggregateEntityImpl(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, controller::Delegate* const controllerDelegate);
 	virtual ~AggregateEntityImpl() noexcept;
+	/** Destroy method for COM-like interface */
+	virtual void destroy() noexcept override;
 
 private:
 	/* ************************************************************************** */

@@ -41,8 +41,8 @@ namespace entity
 /* ************************************************************************** */
 /* ControllerEntityImpl life cycle                                            */
 /* ************************************************************************** */
-ControllerEntityImpl::ControllerEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, UniqueIdentifier const entityModelID, controller::Delegate* const controllerDelegate)
-	: LocalEntityImpl(protocolInterface, progID, entityModelID, EntityCapabilities::None, 0, TalkerCapabilities::None, 0, ListenerCapabilities::None, ControllerCapabilities::Implemented, 0, 0, UniqueIdentifier{})
+ControllerEntityImpl::ControllerEntityImpl(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, controller::Delegate* const controllerDelegate)
+	: LocalEntityImpl(protocolInterface, commonInformation, interfacesInformation)
 {
 	// Entity is controller capable
 	_controllerCapabilityDelegate = std::make_unique<controller::CapabilityDelegate>(getProtocolInterface(), controllerDelegate, *this, getEntityID());
@@ -614,13 +614,14 @@ bool ControllerEntityImpl::onUnhandledAecpCommand(protocol::ProtocolInterface* c
 /* ControllerEntity methods                                                   */
 /* ************************************************************************** */
 /** Entry point */
-ControllerEntity* LA_AVDECC_CALL_CONVENTION ControllerEntity::createRawControllerEntity(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::controller::Delegate* const delegate)
+ControllerEntity* LA_AVDECC_CALL_CONVENTION ControllerEntity::createRawControllerEntity(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, entity::controller::Delegate* const delegate)
 {
-	return new entity::LocalEntityGuard<entity::ControllerEntityImpl>(protocolInterface, progID, entityModelID, delegate);
+	return new entity::LocalEntityGuard<entity::ControllerEntityImpl>(protocolInterface, commonInformation, interfacesInformation, delegate);
 }
 
-ControllerEntity::ControllerEntity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities, std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities, std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities, ControllerCapabilities const controllerCapabilities, std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID) noexcept
-	: LocalEntity(entityID, macAddress, entityModelID, entityCapabilities, talkerStreamSources, talkerCapabilities, listenerStreamSinks, listenerCapabilities, controllerCapabilities, identifyControlIndex, interfaceIndex, associationID)
+/** Constructor */
+ControllerEntity::ControllerEntity(CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation)
+	: LocalEntity(commonInformation, interfacesInformation)
 {
 }
 

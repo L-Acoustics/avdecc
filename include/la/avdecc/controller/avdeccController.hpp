@@ -312,10 +312,10 @@ public:
 	virtual UniqueIdentifier getControllerEID() const noexcept = 0;
 
 	/* Controller configuration methods */
-	/** Enables controller advertising with available duration included between 2-62 seconds. Might throw an Exception. */
-	virtual void enableEntityAdvertising(std::uint32_t const availableDuration) = 0;
-	/** Disables controller advertising. */
-	virtual void disableEntityAdvertising() noexcept = 0;
+	/** Enables entity advertising with available duration included between 2-62 seconds on the specified interfaceIndex if set, otherwise on all interfaces. Might throw an Exception. */
+	virtual void enableEntityAdvertising(std::uint32_t const availableDuration, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) = 0;
+	/** Disables entity advertising on the specified interfaceIndex if set, otherwise on all interfaces. */
+	virtual void disableEntityAdvertising(std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept = 0;
 	/** Enables the EntityModel cache */
 	virtual void enableEntityModelCache() noexcept = 0;
 	/** Disables the EntityModel cache */

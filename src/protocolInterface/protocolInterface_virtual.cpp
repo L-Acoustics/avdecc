@@ -291,8 +291,9 @@ private:
 	virtual void shutdown() noexcept override;
 	virtual Error registerLocalEntity(entity::LocalEntity& entity) noexcept override;
 	virtual Error unregisterLocalEntity(entity::LocalEntity& entity) noexcept override;
-	virtual Error enableEntityAdvertising(entity::LocalEntity const& entity) noexcept override;
-	virtual Error disableEntityAdvertising(entity::LocalEntity& entity) noexcept override;
+	virtual Error setNeedsAdvertiseEntity(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override;
+	virtual Error enableEntityAdvertising(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override;
+	virtual Error disableEntityAdvertising(entity::LocalEntity& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override;
 	virtual Error discoverRemoteEntities() const noexcept override;
 	virtual Error discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept override;
 	virtual bool isDirectMessageSupported() const noexcept override;
@@ -541,14 +542,19 @@ ProtocolInterface::Error ProtocolInterfaceVirtualImpl::unregisterLocalEntity(ent
 	return ProtocolInterface::Error::NoError;
 }
 
-ProtocolInterface::Error ProtocolInterfaceVirtualImpl::enableEntityAdvertising(entity::LocalEntity const& entity) noexcept
+ProtocolInterface::Error ProtocolInterfaceVirtualImpl::setNeedsAdvertiseEntity(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept
 {
-	return _controllerStateMachine.enableEntityAdvertising(entity);
+	return _controllerStateMachine.setNeedsAdvertiseEntity(entity, interfaceIndex);
 }
 
-ProtocolInterface::Error ProtocolInterfaceVirtualImpl::disableEntityAdvertising(entity::LocalEntity& entity) noexcept
+ProtocolInterface::Error ProtocolInterfaceVirtualImpl::enableEntityAdvertising(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept
 {
-	return _controllerStateMachine.disableEntityAdvertising(entity);
+	return _controllerStateMachine.enableEntityAdvertising(entity, interfaceIndex);
+}
+
+ProtocolInterface::Error ProtocolInterfaceVirtualImpl::disableEntityAdvertising(entity::LocalEntity& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept
+{
+	return _controllerStateMachine.disableEntityAdvertising(entity, interfaceIndex);
 }
 
 ProtocolInterface::Error ProtocolInterfaceVirtualImpl::discoverRemoteEntities() const noexcept

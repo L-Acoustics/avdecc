@@ -39,6 +39,7 @@
 #include <vector>
 #include <stdexcept>
 #include <functional>
+#include <optional>
 
 namespace la
 {
@@ -152,10 +153,12 @@ public:
 	virtual Error registerLocalEntity(entity::LocalEntity& entity) noexcept = 0;
 	/** Unregisters a local entity from the interface. It won't be able to send or receive messages anymore. */
 	virtual Error unregisterLocalEntity(entity::LocalEntity& entity) noexcept = 0;
+	/** Flags the entity for re-announcement on specified interfaceIndex if set, otherwise on all interfaces. */
+	virtual Error setNeedsAdvertiseEntity(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept = 0;
 	/** Enables entity advertising on the network. */
-	virtual Error enableEntityAdvertising(entity::LocalEntity const& entity) noexcept = 0;
+	virtual Error enableEntityAdvertising(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept = 0;
 	/** Disables entity advertising on the network. */
-	virtual Error disableEntityAdvertising(entity::LocalEntity& entity) noexcept = 0;
+	virtual Error disableEntityAdvertising(entity::LocalEntity& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept = 0;
 	/** Requests a remote entities discovery. */
 	virtual Error discoverRemoteEntities() const noexcept = 0;
 	/** Requests a targetted remote entity discovery. */
@@ -181,6 +184,9 @@ public:
 	virtual void lock() noexcept = 0;
 	/** BasicLockable concept 'unlock' method for the whole ProtocolInterface */
 	virtual void unlock() noexcept = 0;
+
+	/** Gets an available Entity UniqueIdentifier that is valid for this ProtocolInterface (not supported by all kinds of ProtocolInterface). */
+	static LA_AVDECC_API UniqueIdentifier LA_AVDECC_CALL_CONVENTION getDynamicEID();
 
 	/** Returns true if the specified protocol interface type is supported on the local computer. */
 	static LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION isSupportedProtocolInterfaceType(Type const protocolInterfaceType) noexcept;

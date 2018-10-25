@@ -46,8 +46,8 @@ template<class SuperClass = LocalEntity>
 class LocalEntityImpl : public SuperClass, public protocol::ProtocolInterface::Observer
 {
 public:
-	LocalEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities, std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities, std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities, ControllerCapabilities const controllerCapabilities, std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID)
-		: SuperClass(generateEID(protocolInterface, progID), protocolInterface->getMacAddress(), entityModelID, entityCapabilities, talkerStreamSources, talkerCapabilities, listenerStreamSinks, listenerCapabilities, controllerCapabilities, identifyControlIndex, interfaceIndex, associationID)
+	LocalEntityImpl(protocol::ProtocolInterface* const protocolInterface, typename SuperClass::CommonInformation const& commonInformation, typename SuperClass::InterfacesInformation const& interfacesInformation)
+		: SuperClass(commonInformation, interfacesInformation)
 		, _protocolInterface(protocolInterface)
 	{
 		if (!!_protocolInterface->registerLocalEntity(*this))
@@ -61,36 +61,24 @@ public:
 	/* ************************************************************************** */
 	/* LocalEntity overrides                                                      */
 	/* ************************************************************************** */
-	virtual bool enableEntityAdvertising(std::uint32_t const availableDuration) noexcept override
+	virtual bool enableEntityAdvertising(std::uint32_t const availableDuration, std::optional<model::AvbInterfaceIndex> const interfaceIndex) noexcept override
 	{
-		std::uint8_t validTime = static_cast<decltype(validTime)>(availableDuration / 2);
-		if (validTime < 1)
-			validTime = 1;
-		else if (validTime > 31)
-			validTime = 31;
-		setValidTime(validTime);
-		return !_protocolInterface->enableEntityAdvertising(*this);
+		std::uint8_t const validTime = static_cast<decltype(validTime)>(availableDuration / 2);
+		SuperClass::setValidTime(validTime, interfaceIndex);
+		return !_protocolInterface->enableEntityAdvertising(*this, interfaceIndex);
 	}
 
-	virtual void disableEntityAdvertising() noexcept override
+	virtual void disableEntityAdvertising(std::optional<model::AvbInterfaceIndex> const interfaceIndex) noexcept override
 	{
-		_protocolInterface->disableEntityAdvertising(*this);
+		_protocolInterface->disableEntityAdvertising(*this, interfaceIndex);
 	}
 
-	virtual bool isDirty() noexcept override
+	/** Sets (or replaces) the InterfaceInformation for the specified AvbInterfaceIndex and flag for announcement. */
+	virtual void setInterfaceInformation(typename SuperClass::InterfaceInformation const& interfaceInformation, model::AvbInterfaceIndex const interfaceIndex = GlobalAvbInterfaceIndex) noexcept override
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
-		auto const dirty = _dirty;
-		_dirty = false;
-		return dirty;
-	}
-
-	/** Sets the valid time value and flag for announcement */
-	virtual void setValidTime(std::uint8_t const validTime) noexcept override
-	{
-		std::lock_guard<decltype(_lock)> const lg(_lock);
-		SuperClass::setValidTime(validTime);
-		_dirty = true;
+		SuperClass::setInterfaceInformation(interfaceInformation, interfaceIndex);
+		_protocolInterface->setNeedsAdvertiseEntity(*this, interfaceIndex);
 	}
 
 	/** Sets the entity capabilities and flag for announcement */
@@ -98,23 +86,39 @@ public:
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
 		SuperClass::setEntityCapabilities(entityCapabilities);
-		_dirty = true;
+		_protocolInterface->setNeedsAdvertiseEntity(*this, std::nullopt);
+	}
+
+	/** Sets the association unique identifier and flag for announcement */
+	virtual void setAssociationID(UniqueIdentifier const associationID) noexcept override
+	{
+		std::lock_guard<decltype(_lock)> const lg(_lock);
+		SuperClass::setAssociationID(associationID);
+		_protocolInterface->setNeedsAdvertiseEntity(*this, std::nullopt);
+	}
+
+	/** Sets the valid time value on the specified interfaceIndex if set, otherwise on all interfaces, and flag for announcement */
+	virtual void setValidTime(std::uint8_t const validTime, std::optional<model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) override
+	{
+		std::lock_guard<decltype(_lock)> const lg(_lock);
+		SuperClass::setValidTime(validTime, interfaceIndex);
+		_protocolInterface->setNeedsAdvertiseEntity(*this, interfaceIndex);
 	}
 
 	/** Sets the gptp grandmaster unique identifier and flag for announcement */
-	virtual void setGptpGrandmasterID(UniqueIdentifier const gptpGrandmasterID) noexcept override
+	virtual void setGptpGrandmasterID(UniqueIdentifier const gptpGrandmasterID, model::AvbInterfaceIndex const interfaceIndex) override
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
-		SuperClass::setGptpGrandmasterID(gptpGrandmasterID);
-		_dirty = true;
+		SuperClass::setGptpGrandmasterID(gptpGrandmasterID, interfaceIndex);
+		_protocolInterface->setNeedsAdvertiseEntity(*this, interfaceIndex);
 	}
 
 	/** Sets th gptp domain number and flag for announcement */
-	virtual void setGptpDomainNumber(std::uint8_t const gptpDomainNumber) noexcept override
+	virtual void setGptpDomainNumber(std::uint8_t const gptpDomainNumber, model::AvbInterfaceIndex const interfaceIndex) override
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
-		SuperClass::setGptpDomainNumber(gptpDomainNumber);
-		_dirty = true;
+		SuperClass::setGptpDomainNumber(gptpDomainNumber, interfaceIndex);
+		_protocolInterface->setNeedsAdvertiseEntity(*this, interfaceIndex);
 	}
 
 	/* ************************************************************************** */
@@ -474,7 +478,7 @@ protected:
 		std::lock_guard const lg(*_protocolInterface);
 
 		// Disable advertising
-		disableEntityAdvertising();
+		disableEntityAdvertising(std::nullopt);
 
 		// Unregister local entity
 		_protocolInterface->unregisterLocalEntity(*this); // Ignore errors
@@ -490,39 +494,9 @@ private:
 	/* **** AECP notifications **** */
 	virtual void onAecpCommand(protocol::ProtocolInterface* const /*pi*/, LocalEntity const& /*entity*/, protocol::Aecpdu const& aecpdu) noexcept override;
 
-	/* ************************************************************************** */
-	/* Private methods                                                            */
-	/* ************************************************************************** */
-	UniqueIdentifier generateEID(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID) const
-	{
-		// Generate eid
-		UniqueIdentifier::value_type eid{ 0u };
-		auto macAddress = protocolInterface->getMacAddress();
-		if (macAddress.size() != 6)
-			throw Exception("Invalid MAC address size");
-		if (progID == 0 || progID == 0xFFFF || progID == 0xFFFE)
-			throw Exception("Reserved value for Entity's progID value: " + std::to_string(progID));
-		eid += macAddress[0];
-		eid <<= 8;
-		eid += macAddress[1];
-		eid <<= 8;
-		eid += macAddress[2];
-		eid <<= 16;
-		eid += progID;
-		eid <<= 8;
-		eid += macAddress[3];
-		eid <<= 8;
-		eid += macAddress[4];
-		eid <<= 8;
-		eid += macAddress[5];
-
-		return UniqueIdentifier{ eid };
-	}
-
 	// Internal variables
-	std::recursive_mutex _lock{}; // Lock to protect writable fields and dirty state
+	std::recursive_mutex _lock{}; // Lock to protect writable fields
 	protocol::ProtocolInterface* const _protocolInterface{ nullptr }; // Weak reference to the protocolInterface
-	bool _dirty{ false }; // Is the entity dirty and should send an ENTITY_AVAILABLE message
 };
 
 /** Class to be used as final LocalEntityImpl inherited class in order to properly shutdown any inflight messages. */
@@ -531,8 +505,8 @@ class LocalEntityGuard final : public SuperClass
 {
 public:
 	template<typename... Args>
-	LocalEntityGuard(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, Args&&... params)
-		: SuperClass(protocolInterface, progID, std::forward<Args>(params)...)
+	LocalEntityGuard(protocol::ProtocolInterface* const protocolInterface, Args&&... params)
+		: SuperClass(protocolInterface, std::forward<Args>(params)...)
 	{
 	}
 	~LocalEntityGuard() noexcept

@@ -79,8 +79,9 @@ public:
 	bool processAcmpdu(Acmpdu const& acmpdu) noexcept; // Returns true if processed
 	ProtocolInterface::Error registerLocalEntity(entity::LocalEntity& entity) noexcept;
 	ProtocolInterface::Error unregisterLocalEntity(entity::LocalEntity& entity) noexcept;
-	ProtocolInterface::Error enableEntityAdvertising(entity::LocalEntity const& entity) noexcept;
-	ProtocolInterface::Error disableEntityAdvertising(entity::LocalEntity& entity) noexcept;
+	ProtocolInterface::Error setNeedsAdvertiseEntity(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept;
+	ProtocolInterface::Error enableEntityAdvertising(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept;
+	ProtocolInterface::Error disableEntityAdvertising(entity::LocalEntity& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept;
 	ProtocolInterface::Error discoverRemoteEntities() noexcept;
 	ProtocolInterface::Error discoverRemoteEntity(UniqueIdentifier const entityID) noexcept;
 
@@ -92,8 +93,8 @@ public:
 private:
 	struct DiscoveredEntityInfo
 	{
-		std::chrono::time_point<std::chrono::system_clock> timeout;
-		Adpdu adpdu;
+		entity::Entity entity;
+		std::unordered_map<entity::model::AvbInterfaceIndex, std::chrono::time_point<std::chrono::system_clock>> timeouts;
 	};
 	using DiscoveredEntities = std::unordered_map<UniqueIdentifier, DiscoveredEntityInfo, UniqueIdentifier::hash>;
 
@@ -140,8 +141,7 @@ private:
 	{
 		// ADP variables
 		entity::LocalEntity& entity;
-		bool isAdvertising{ false };
-		std::chrono::time_point<std::chrono::system_clock> nextAdvertiseAt{};
+		std::unordered_map<entity::model::AvbInterfaceIndex, std::chrono::time_point<std::chrono::system_clock>> nextAdvertiseTime{};
 		// AECP variables
 		AecpSequenceID currentAecpSequenceID{ 0 };
 		InflightAecpCommands inflightAecpCommands{};
@@ -203,26 +203,21 @@ private:
 		return checkQueue(info, entityID, inflight, retIt);
 	}
 
-	enum class AdpduDiff
-	{
-		Same = 0, /**< Compared Adpdus are identical */
-		DiffAllowed = 1, /**< Compared Adpdus differs by one or more allowed fields (This is an update) */
-		DiffNotAllowed = 2, /**< Compared Adpdus differs by one or more not allowed fields (This is a 'new' entity) */
-	};
-
 	// Private methods
 	constexpr ControllerStateMachine& getSelf() const noexcept
 	{
 		return *const_cast<ControllerStateMachine*>(this);
 	}
 	Adpdu makeDiscoveryMessage(UniqueIdentifier const entityID) const noexcept;
-	Adpdu makeEntityAvailableMessage(entity::Entity& entity) const noexcept;
-	Adpdu makeEntityDepartingMessage(entity::Entity& entity) const noexcept;
+	Adpdu makeEntityAvailableMessage(entity::Entity& entity, entity::model::AvbInterfaceIndex const interfaceIndex) const;
+	Adpdu makeEntityDepartingMessage(entity::Entity& entity, entity::model::AvbInterfaceIndex const interfaceIndex) const noexcept;
 	void resetAecpCommandTimeoutValue(AecpCommandInfo& command) const noexcept;
 	void resetAcmpCommandTimeoutValue(AcmpCommandInfo& command) const noexcept;
 	AecpSequenceID getNextAecpSequenceID(LocalEntityInfo& info) noexcept;
 	AcmpSequenceID getNextAcmpSequenceID(LocalEntityInfo& info) noexcept;
-	std::chrono::time_point<std::chrono::system_clock> computeNextAdvertiseTime(entity::Entity const& entity) const noexcept;
+	std::chrono::milliseconds computeRandomDelay(entity::Entity const& entity, entity::model::AvbInterfaceIndex const interfaceIndex) const noexcept;
+	std::chrono::time_point<std::chrono::system_clock> computeNextAdvertiseTime(entity::Entity const& entity, entity::model::AvbInterfaceIndex const interfaceIndex) const;
+	std::chrono::time_point<std::chrono::system_clock> computeDelayedAdvertiseTime(entity::Entity const& entity, entity::model::AvbInterfaceIndex const interfaceIndex) const;
 	void checkLocalEntitiesAnnouncement() noexcept;
 	void checkEntitiesTimeoutExpiracy() noexcept;
 	void checkInflightCommandsTimeoutExpiracy() noexcept;
@@ -230,8 +225,6 @@ private:
 	void handleAdpEntityDeparting(Adpdu const& adpdu) noexcept;
 	void handleAdpEntityDiscover(Adpdu const& adpdu) noexcept;
 	bool isLocalEntity(UniqueIdentifier const entityID) const noexcept;
-	AdpduDiff getAdpdusDiff(Adpdu const& lhs, Adpdu const& rhs) const noexcept;
-	entity::Entity makeEntity(Adpdu const& adpdu) const noexcept;
 
 	// Common variables
 	mutable std::recursive_mutex _lock{}; /** Lock to protect the whole class */

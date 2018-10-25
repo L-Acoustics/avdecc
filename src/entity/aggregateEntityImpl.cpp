@@ -41,27 +41,27 @@ namespace entity
 /* ************************************************************************** */
 /* AggregateEntityImpl life cycle                                             */
 /* ************************************************************************** */
-AggregateEntityImpl::AggregateEntityImpl(protocol::ProtocolInterface* const protocolInterface, std::uint16_t const progID, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities, std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities, std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities, ControllerCapabilities const controllerCapabilities, std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID, controller::Delegate* const controllerDelegate)
-	: LocalEntityImpl(protocolInterface, progID, entityModelID, entityCapabilities, talkerStreamSources, talkerCapabilities, listenerStreamSinks, listenerCapabilities, controllerCapabilities, identifyControlIndex, interfaceIndex, associationID)
+AggregateEntityImpl::AggregateEntityImpl(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, controller::Delegate* const controllerDelegate)
+	: LocalEntityImpl(protocolInterface, commonInformation, interfacesInformation)
 {
 	// Create all capabilities based on passed flags
 	auto const entityID = getEntityID();
 
 	// Entity is controller capable
-	if (la::avdecc::hasFlag(controllerCapabilities, entity::ControllerCapabilities::Implemented))
+	if (la::avdecc::hasFlag(commonInformation.controllerCapabilities, entity::ControllerCapabilities::Implemented))
 	{
 		_controllerCapabilityDelegate = std::make_unique<controller::CapabilityDelegate>(getProtocolInterface(), controllerDelegate, *this, entityID);
 	}
 
 	// Entity is listener capable
-	if (la::avdecc::hasFlag(listenerCapabilities, entity::ListenerCapabilities::Implemented))
+	if (la::avdecc::hasFlag(commonInformation.listenerCapabilities, entity::ListenerCapabilities::Implemented))
 	{
 		AVDECC_ASSERT(false, "TODO: AggregateEntityImpl: Handle listener capability");
 		//_listenerCapabilityDelegate = std::make_unique<listener::CapabilityDelegate>(entityID);
 	}
 
 	// Entity is talker capable
-	if (la::avdecc::hasFlag(talkerCapabilities, entity::TalkerCapabilities::Implemented))
+	if (la::avdecc::hasFlag(commonInformation.talkerCapabilities, entity::TalkerCapabilities::Implemented))
 	{
 		AVDECC_ASSERT(false, "TODO: AggregateEntityImpl: Handle talker capability");
 		//_talkerCapabilityDelegate = std::make_unique<talker::CapabilityDelegate>(entityID);
@@ -80,6 +80,11 @@ AggregateEntityImpl::~AggregateEntityImpl() noexcept
 	_controllerCapabilityDelegate.reset();
 	_listenerCapabilityDelegate.reset();
 	_talkerCapabilityDelegate.reset();
+}
+
+void AggregateEntityImpl::destroy() noexcept
+{
+	delete this;
 }
 
 /* ************************************************************************** */
@@ -1044,8 +1049,18 @@ bool AggregateEntityImpl::onUnhandledAecpCommand(protocol::ProtocolInterface* co
 	return handled;
 }
 
-AggregateEntity::AggregateEntity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities, std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities, std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities, ControllerCapabilities const controllerCapabilities, std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID) noexcept
-	: LocalEntity(entityID, macAddress, entityModelID, entityCapabilities, talkerStreamSources, talkerCapabilities, listenerStreamSinks, listenerCapabilities, controllerCapabilities, identifyControlIndex, interfaceIndex, associationID)
+/* ************************************************************************** */
+/* AggregateEntity methods                                                    */
+/* ************************************************************************** */
+/** Entry point */
+AggregateEntity* LA_AVDECC_CALL_CONVENTION AggregateEntity::createRawAggregateEntity(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, entity::controller::Delegate* const controllerDelegate)
+{
+	return new entity::LocalEntityGuard<entity::AggregateEntityImpl>(protocolInterface, commonInformation, interfacesInformation, controllerDelegate);
+}
+
+/** Constructor */
+AggregateEntity::AggregateEntity(CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation)
+	: LocalEntity(commonInformation, interfacesInformation)
 {
 }
 

@@ -29,6 +29,7 @@
 #include <stdexcept>
 #include <chrono>
 #include <algorithm>
+#include <cstdlib>
 
 namespace la
 {
@@ -50,6 +51,112 @@ static constexpr auto AcmpConnectRxCommandTimeoutMsec = 4500u;
 static constexpr auto AcmpDisconnectRxCommandTimeoutMsec = 500u;
 static constexpr auto AcmpGetRxStateCommandTimeoutMsec = 200u;
 static constexpr auto AcmpGetTxConnectionCommandTimeoutMsec = 200u;
+
+enum class EntityUpdateAction
+{
+	NoNotify = 0, /**< Ne need to notify upper layers, the change(s) are only for the ControllerStateMachine to interpret */
+	NotifyUpdate = 1, /**< Upper layers shall be notified of change(s) in the entity */
+	NotifyOfflineOnline = 2, /**< An invalid change in consecutive ADPDUs has been detecter, upper layers will be notified through Offline/Online simulation calls */
+};
+
+static EntityUpdateAction updateEntity(entity::Entity& entity, entity::Entity&& newEntity) noexcept
+{
+	// First check common fields that are not allowed to change from an ADPDU to another
+	auto& commonInfo = entity.getCommonInformation();
+	auto const& newCommonInfo = newEntity.getCommonInformation();
+
+	if (commonInfo.entityModelID != newCommonInfo.entityModelID || commonInfo.talkerCapabilities != newCommonInfo.talkerCapabilities || commonInfo.talkerStreamSources != newCommonInfo.talkerStreamSources || commonInfo.listenerCapabilities != newCommonInfo.listenerCapabilities || commonInfo.listenerStreamSinks != newCommonInfo.listenerStreamSinks || commonInfo.controllerCapabilities != newCommonInfo.controllerCapabilities || commonInfo.identifyControlIndex != newCommonInfo.identifyControlIndex)
+	{
+		// Replace current entity with new one
+		entity = std::move(newEntity);
+		return EntityUpdateAction::NotifyOfflineOnline;
+	}
+
+	// Then search if this is an interface we already know
+	auto& interfacesInfo = entity.getInterfacesInformation();
+	AVDECC_ASSERT(newEntity.getInterfacesInformation().size() == 1, "NewEntity should have exactly one InterfaceInformation");
+	auto const newInterfaceInfoIt = newEntity.getInterfacesInformation().begin();
+	auto const avbInterfaceIndex = newInterfaceInfoIt->first;
+	auto& newInterfaceInfo = newInterfaceInfoIt->second;
+	auto result{ EntityUpdateAction::NoNotify };
+
+	auto interfaceInfoIt = interfacesInfo.find(avbInterfaceIndex);
+	// This interface already exists, check fields that are not allowed to change from an ADPDU to another
+	if (interfaceInfoIt != interfacesInfo.end())
+	{
+		auto& interfaceInfo = interfaceInfoIt->second;
+
+		// macAddress should not change, and availableIndex should always increment
+		if (interfaceInfo.macAddress != newInterfaceInfo.macAddress || interfaceInfo.availableIndex >= newInterfaceInfo.availableIndex)
+		{
+			// Replace current entity with new one
+			entity = std::move(newEntity);
+			return EntityUpdateAction::NotifyOfflineOnline;
+		}
+		// Check for changes in fields that are allowed to change and should trigger an update notification to upper layers
+		if (interfaceInfo.gptpGrandmasterID != newInterfaceInfo.gptpGrandmasterID || interfaceInfo.gptpDomainNumber != newInterfaceInfo.gptpDomainNumber)
+		{
+			// Update the changed fields
+			interfaceInfo.gptpGrandmasterID = newInterfaceInfo.gptpGrandmasterID;
+			interfaceInfo.gptpDomainNumber = newInterfaceInfo.gptpDomainNumber;
+			result = EntityUpdateAction::NotifyUpdate;
+		}
+		// Update the other fields
+		interfaceInfo.availableIndex = newInterfaceInfo.availableIndex;
+		interfaceInfo.validTime = newInterfaceInfo.validTime;
+	}
+	// This is a new interface, add it to the entity
+	else
+	{
+		interfacesInfo.emplace(std::make_pair(avbInterfaceIndex, std::move(newInterfaceInfo)));
+		result = EntityUpdateAction::NotifyUpdate;
+	}
+
+	// Lastly check for changes in common fields that are allowed to change and should trigger an update notification to upper layers
+	if (commonInfo.entityCapabilities != newCommonInfo.entityCapabilities || commonInfo.associationID != newCommonInfo.associationID)
+	{
+		// Update the changed fields
+		commonInfo.entityCapabilities = newCommonInfo.entityCapabilities;
+		commonInfo.associationID = newCommonInfo.associationID;
+		result = EntityUpdateAction::NotifyUpdate;
+	}
+
+	return result;
+}
+
+/** Constructs a la::avdecc::entity::Entity from a la::avdecc:protocol::Adpdu */
+static entity::Entity makeEntity(Adpdu const& adpdu) noexcept
+{
+	auto const entityCaps = adpdu.getEntityCapabilities();
+	auto controlIndex{ std::optional<entity::model::ControlIndex>{} };
+	auto associationID{ std::optional<UniqueIdentifier>{} };
+	auto avbInterfaceIndex{ entity::Entity::GlobalAvbInterfaceIndex };
+	auto gptpGrandmasterID{ std::optional<UniqueIdentifier>{} };
+	auto gptpDomainNumber{ std::optional<std::uint8_t>{} };
+
+	if (hasFlag(entityCaps, entity::EntityCapabilities::AemIdentifyControlIndexValid))
+	{
+		controlIndex = adpdu.getIdentifyControlIndex();
+	}
+	if (hasFlag(entityCaps, entity::EntityCapabilities::AssociationIDValid))
+	{
+		associationID = adpdu.getAssociationID();
+	}
+	if (hasFlag(entityCaps, entity::EntityCapabilities::AemInterfaceIndexValid))
+	{
+		avbInterfaceIndex = adpdu.getInterfaceIndex();
+	}
+	if (hasFlag(entityCaps, entity::EntityCapabilities::GptpSupported))
+	{
+		gptpGrandmasterID = adpdu.getGptpGrandmasterID();
+		gptpDomainNumber = adpdu.getGptpDomainNumber();
+	}
+
+	auto const commonInfo{ entity::Entity::CommonInformation{ adpdu.getEntityID(), adpdu.getEntityModelID(), entityCaps, adpdu.getTalkerStreamSources(), adpdu.getTalkerCapabilities(), adpdu.getListenerStreamSinks(), adpdu.getListenerCapabilities(), adpdu.getControllerCapabilities(), controlIndex, associationID } };
+	auto const interfaceInfo{ entity::Entity::InterfaceInformation{ adpdu.getSrcAddress(), adpdu.getValidTime(), adpdu.getAvailableIndex(), gptpGrandmasterID, gptpDomainNumber } };
+
+	return entity::Entity{ commonInfo, { { avbInterfaceIndex, interfaceInfo } } };
+}
 
 ControllerStateMachine::ControllerStateMachine(ProtocolInterface const* const protocolInterface, Delegate* const delegate, size_t const maxInflightAecpMessages)
 	: _protocolInterface(protocolInterface)
@@ -426,8 +533,8 @@ ProtocolInterface::Error ControllerStateMachine::unregisterLocalEntity(entity::L
 		auto& entityInfo = it->second;
 		if (&entityInfo.entity == &entity)
 		{
-			// Disable advertising
-			disableEntityAdvertising(entity);
+			// Disable advertising for all interfaces
+			disableEntityAdvertising(entity, std::nullopt);
 			// Remove from the list
 			it = _localEntities.erase(it);
 		}
@@ -441,7 +548,7 @@ ProtocolInterface::Error ControllerStateMachine::unregisterLocalEntity(entity::L
 	return ProtocolInterface::Error::NoError;
 }
 
-ProtocolInterface::Error ControllerStateMachine::enableEntityAdvertising(entity::LocalEntity const& entity) noexcept
+ProtocolInterface::Error ControllerStateMachine::setNeedsAdvertiseEntity(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept
 {
 	// Lock self
 	std::lock_guard<ControllerStateMachine> const lg(getSelf());
@@ -450,15 +557,44 @@ ProtocolInterface::Error ControllerStateMachine::enableEntityAdvertising(entity:
 	auto const& localEntityIt = _localEntities.find(entity.getEntityID());
 	if (localEntityIt == _localEntities.end())
 		return ProtocolInterface::Error::UnknownLocalEntity;
+
 	auto& localEntity = localEntityIt->second;
 
-	localEntity.isAdvertising = true;
-	// No need to update nextAdvertiseAt value, we want to advertise asap
+	try
+	{
+		// If interfaceIndex is specified
+		if (interfaceIndex)
+		{
+			// Only if advertising is enabled
+			auto advertiseIt = localEntity.nextAdvertiseTime.find(interfaceIndex.value());
+			if (advertiseIt != localEntity.nextAdvertiseTime.end())
+			{
+				// Schedule EntityAvailable message
+				advertiseIt->second = computeDelayedAdvertiseTime(entity, interfaceIndex.value());
+			}
+		}
+		else
+		{
+			// Otherwise schedule for all advertising interfaces
+			for (auto& advertiseKV : localEntity.nextAdvertiseTime)
+			{
+				auto const avbInterfaceIndex = advertiseKV.first;
+
+				// Schedule EntityAvailable message
+				advertiseKV.second = computeDelayedAdvertiseTime(entity, avbInterfaceIndex);
+			}
+		}
+	}
+	catch (Exception const&)
+	{
+		AVDECC_ASSERT(false, "avbInterfaceIndex might not be valid");
+		return ProtocolInterface::Error::InternalError;
+	}
 
 	return ProtocolInterface::Error::NoError;
 }
 
-ProtocolInterface::Error ControllerStateMachine::disableEntityAdvertising(entity::LocalEntity& entity) noexcept
+ProtocolInterface::Error ControllerStateMachine::enableEntityAdvertising(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept
 {
 	// Lock self
 	std::lock_guard<ControllerStateMachine> const lg(getSelf());
@@ -467,17 +603,60 @@ ProtocolInterface::Error ControllerStateMachine::disableEntityAdvertising(entity
 	auto const& localEntityIt = _localEntities.find(entity.getEntityID());
 	if (localEntityIt == _localEntities.end())
 		return ProtocolInterface::Error::UnknownLocalEntity;
+
 	auto& localEntity = localEntityIt->second;
 
-	// Send a departing message, if advertising was enabled
-	if (localEntity.isAdvertising)
+	// If interfaceIndex is specified, only enable advertising for this interface
+	if (interfaceIndex)
 	{
-		auto frame = makeEntityDepartingMessage(entity);
-		_delegate->sendMessage(frame);
+		localEntity.nextAdvertiseTime[interfaceIndex.value()] = {}; // Set next advertise time to minimum value so we advertise ASAP
+	}
+	else
+	{
+		// Otherwise enable advertising for all interfaces on the entity
+		for (auto const& infoKV : entity.getInterfacesInformation())
+		{
+			auto const avbInterfaceIndex = infoKV.first;
+			localEntity.nextAdvertiseTime[avbInterfaceIndex] = {}; // Set next advertise time to minimum value so we advertise ASAP
+		}
 	}
 
-	localEntity.isAdvertising = false;
-	// No need to reset nextAdvertiseAt value, we don't want to advertise immediately in case we re-enable advertising too quickly
+	return ProtocolInterface::Error::NoError;
+}
+
+ProtocolInterface::Error ControllerStateMachine::disableEntityAdvertising(entity::LocalEntity& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept
+{
+	// Lock self
+	std::lock_guard<ControllerStateMachine> const lg(getSelf());
+
+	// Search our local entity info
+	auto const& localEntityIt = _localEntities.find(entity.getEntityID());
+	if (localEntityIt == _localEntities.end())
+		return ProtocolInterface::Error::UnknownLocalEntity;
+
+	auto& localEntity = localEntityIt->second;
+
+	// If interfaceIndex is specified
+	if (interfaceIndex)
+	{
+		// Send a departing message, if advertising was enabled
+		if (localEntity.nextAdvertiseTime.erase(interfaceIndex.value()) != 0)
+		{
+			auto frame = makeEntityDepartingMessage(entity, interfaceIndex.value());
+			_delegate->sendMessage(frame);
+		}
+	}
+	else
+	{
+		// Otherwise disable advertising for all advertising interfaces
+		for (auto const& advertiseKV : localEntity.nextAdvertiseTime)
+		{
+			auto const avbInterfaceIndex = advertiseKV.first;
+
+			auto frame = makeEntityDepartingMessage(entity, avbInterfaceIndex);
+			_delegate->sendMessage(frame);
+		}
+	}
 
 	return ProtocolInterface::Error::NoError;
 }
@@ -531,37 +710,100 @@ Adpdu ControllerStateMachine::makeDiscoveryMessage(UniqueIdentifier const entity
 	return frame;
 }
 
-Adpdu ControllerStateMachine::makeEntityAvailableMessage(entity::Entity& entity) const noexcept
+Adpdu ControllerStateMachine::makeEntityAvailableMessage(entity::Entity& entity, entity::model::AvbInterfaceIndex const interfaceIndex) const
 {
-	Adpdu frame;
+	auto& interfaceInfo = entity.getInterfaceInformation(interfaceIndex);
+	auto entityCaps{ entity.getEntityCapabilities() };
+	auto identifyControlIndex{ entity::model::ControlIndex{ 0u } };
+	auto avbInterfaceIndex{ entity::model::AvbInterfaceIndex{ 0u } };
+	auto associationID{ UniqueIdentifier::getNullUniqueIdentifier() };
+	auto gptpGrandmasterID{ UniqueIdentifier::getNullUniqueIdentifier() };
+	auto gptpDomainNumber{ std::uint8_t{ 0u } };
 
+	if (entity.getIdentifyControlIndex().has_value())
+	{
+		addFlag(entityCaps, entity::EntityCapabilities::AemIdentifyControlIndexValid);
+		identifyControlIndex = entity.getIdentifyControlIndex().value();
+	}
+	else
+	{
+		// We don't have a valid IdentifyControlIndex, don't set the flag
+		clearFlag(entityCaps, entity::EntityCapabilities::AemIdentifyControlIndexValid);
+	}
+
+	if (interfaceIndex != entity::Entity::GlobalAvbInterfaceIndex)
+	{
+		addFlag(entityCaps, entity::EntityCapabilities::AemInterfaceIndexValid);
+		avbInterfaceIndex = interfaceIndex;
+	}
+	else
+	{
+		// We don't have a valid AvbInterfaceIndex, don't set the flag
+		clearFlag(entityCaps, entity::EntityCapabilities::AemInterfaceIndexValid);
+	}
+
+	if (entity.getAssociationID().has_value())
+	{
+		addFlag(entityCaps, entity::EntityCapabilities::AssociationIDValid);
+		associationID = entity.getAssociationID().value();
+	}
+	else
+	{
+		// We don't have a valid AssociationID, don't set the flag
+		clearFlag(entityCaps, entity::EntityCapabilities::AssociationIDValid);
+	}
+
+	if (interfaceInfo.gptpGrandmasterID.has_value())
+	{
+		addFlag(entityCaps, entity::EntityCapabilities::GptpSupported);
+		gptpGrandmasterID = interfaceInfo.gptpGrandmasterID.value();
+		if (AVDECC_ASSERT_WITH_RET(interfaceInfo.gptpDomainNumber.has_value(), "gptpDomainNumber should be set when gptpGrandmasterID is set"))
+		{
+			gptpDomainNumber = interfaceInfo.gptpDomainNumber.value();
+		}
+	}
+	else
+	{
+		// We don't have a valid gptpGrandmasterID value, don't set the flag
+		clearFlag(entityCaps, entity::EntityCapabilities::GptpSupported);
+	}
+
+	Adpdu frame;
 	// Set Ether2 fields
 	frame.setSrcAddress(_protocolInterface->getMacAddress());
 	frame.setDestAddress(Adpdu::Multicast_Mac_Address);
 	// Set ADP fields
 	frame.setMessageType(AdpMessageType::EntityAvailable);
-	frame.setValidTime(entity.getValidTime());
+	frame.setValidTime(interfaceInfo.validTime);
 	frame.setEntityID(entity.getEntityID());
 	frame.setEntityModelID(entity.getEntityModelID());
-	frame.setEntityCapabilities(entity.getEntityCapabilities());
+	frame.setEntityCapabilities(entityCaps);
 	frame.setTalkerStreamSources(entity.getTalkerStreamSources());
 	frame.setTalkerCapabilities(entity.getTalkerCapabilities());
 	frame.setListenerStreamSinks(entity.getListenerStreamSinks());
 	frame.setListenerCapabilities(entity.getListenerCapabilities());
 	frame.setControllerCapabilities(entity.getControllerCapabilities());
-	frame.setAvailableIndex(entity.getNextAvailableIndex());
-	frame.setGptpGrandmasterID(entity.getGptpGrandmasterID());
-	frame.setGptpDomainNumber(entity.getGptpDomainNumber());
-	frame.setIdentifyControlIndex(entity.getIdentifyControlIndex());
-	frame.setInterfaceIndex(entity.getInterfaceIndex());
-	frame.setAssociationID(entity.getAssociationID());
+	frame.setAvailableIndex(interfaceInfo.availableIndex++);
+	frame.setGptpGrandmasterID(gptpGrandmasterID);
+	frame.setGptpDomainNumber(gptpDomainNumber);
+	frame.setIdentifyControlIndex(identifyControlIndex);
+	frame.setInterfaceIndex(avbInterfaceIndex);
+	frame.setAssociationID(associationID);
 
 	return frame;
 }
 
-Adpdu ControllerStateMachine::makeEntityDepartingMessage(entity::Entity& entity) const noexcept
+Adpdu ControllerStateMachine::makeEntityDepartingMessage(entity::Entity& entity, entity::model::AvbInterfaceIndex const interfaceIndex) const noexcept
 {
 	Adpdu frame;
+	auto entityCaps{ entity::EntityCapabilities::None };
+	auto avbInterfaceIndex{ entity::model::AvbInterfaceIndex{ 0u } };
+
+	if (interfaceIndex != entity::Entity::GlobalAvbInterfaceIndex)
+	{
+		addFlag(entityCaps, entity::EntityCapabilities::AemInterfaceIndexValid);
+		avbInterfaceIndex = interfaceIndex;
+	}
 
 	// Set Ether2 fields
 	frame.setSrcAddress(_protocolInterface->getMacAddress());
@@ -571,7 +813,7 @@ Adpdu ControllerStateMachine::makeEntityDepartingMessage(entity::Entity& entity)
 	frame.setValidTime(0);
 	frame.setEntityID(entity.getEntityID());
 	frame.setEntityModelID(UniqueIdentifier::getNullUniqueIdentifier());
-	frame.setEntityCapabilities(entity::EntityCapabilities::None);
+	frame.setEntityCapabilities(entityCaps);
 	frame.setTalkerStreamSources(0);
 	frame.setTalkerCapabilities(entity::TalkerCapabilities::None);
 	frame.setListenerStreamSinks(0);
@@ -581,7 +823,7 @@ Adpdu ControllerStateMachine::makeEntityDepartingMessage(entity::Entity& entity)
 	frame.setGptpGrandmasterID(UniqueIdentifier::getNullUniqueIdentifier());
 	frame.setGptpDomainNumber(0);
 	frame.setIdentifyControlIndex(0);
-	frame.setInterfaceIndex(0);
+	frame.setInterfaceIndex(avbInterfaceIndex);
 	frame.setAssociationID(UniqueIdentifier::getNullUniqueIdentifier());
 
 	return frame;
@@ -641,11 +883,23 @@ AcmpSequenceID ControllerStateMachine::getNextAcmpSequenceID(LocalEntityInfo& in
 	return nextID;
 }
 
-std::chrono::time_point<std::chrono::system_clock> ControllerStateMachine::computeNextAdvertiseTime(entity::Entity const& entity) const noexcept
+std::chrono::milliseconds ControllerStateMachine::computeRandomDelay(entity::Entity const& entity, entity::model::AvbInterfaceIndex const interfaceIndex) const noexcept
 {
-#pragma message("TODO: Compute a random delay. See IEEE-P1722.1-cor1-D8.pdf clause 6.2.4.2.2")
-	auto const randomDelay{ 0u };
-	return std::chrono::system_clock::now() + std::chrono::milliseconds(std::max(1000u, entity.getValidTime() * 1000 / 2 + randomDelay));
+	auto const& interfaceInfo = entity.getInterfaceInformation(interfaceIndex);
+	auto const maxRandValue{ interfaceInfo.validTime * 1000u * 2u / 5u }; // Maximum value for rand range is 1/5 of the "valid time period" (which is twice the validTime field)
+	auto const randomValue{ std::rand() % maxRandValue };
+	return std::chrono::milliseconds(randomValue);
+}
+
+std::chrono::time_point<std::chrono::system_clock> ControllerStateMachine::computeNextAdvertiseTime(entity::Entity const& entity, entity::model::AvbInterfaceIndex const interfaceIndex) const
+{
+	auto const& interfaceInfo = entity.getInterfaceInformation(interfaceIndex);
+	return std::chrono::system_clock::now() + std::chrono::milliseconds(std::max(1000u, interfaceInfo.validTime * 1000u / 2u)) + computeRandomDelay(entity, interfaceIndex);
+}
+
+std::chrono::time_point<std::chrono::system_clock> ControllerStateMachine::computeDelayedAdvertiseTime(entity::Entity const& entity, entity::model::AvbInterfaceIndex const interfaceIndex) const
+{
+	return std::chrono::system_clock::now() + computeRandomDelay(entity, interfaceIndex);
 }
 
 void ControllerStateMachine::checkLocalEntitiesAnnouncement() noexcept
@@ -660,22 +914,35 @@ void ControllerStateMachine::checkLocalEntitiesAnnouncement() noexcept
 		auto& entityInfo = entityKV.second;
 		auto& entity = entityInfo.entity;
 
-		// Continue to next entity if advertising is disabled for this one
-		if (!entityInfo.isAdvertising)
-			continue;
-
 		// Lock the whole entity while checking dirty state and building the EntityAvailable message so that nobody alters discovery fields at the same time
 		std::lock_guard<entity::LocalEntity> const elg(entity);
 
-		// Send an EntityAvailable message if entity is dirty or if the advertise timeout expired
-		if (entity.isDirty() || now >= entityInfo.nextAdvertiseAt)
+		// Continue to next entity if advertising is disabled for this one
+		if (entityInfo.nextAdvertiseTime.empty())
+			continue;
+
+		// Send an EntityAvailable message if the advertise timeout expired
+		for (auto& advertiseKV : entityInfo.nextAdvertiseTime)
 		{
-			// Build the EntityAvailable message
-			auto frame = makeEntityAvailableMessage(entity);
-			// Send it
-			_delegate->sendMessage(frame);
-			// Update the time for next advertise
-			entityInfo.nextAdvertiseAt = computeNextAdvertiseTime(entity);
+			auto const interfaceIndex = advertiseKV.first;
+			auto& advertiseTime = advertiseKV.second;
+
+			if (now >= advertiseTime)
+			{
+				try
+				{
+					// Build the EntityAvailable message
+					auto frame = makeEntityAvailableMessage(entity, interfaceIndex);
+					// Send it
+					_delegate->sendMessage(frame);
+					// Update the time for next advertise
+					advertiseTime = computeNextAdvertiseTime(entity, interfaceIndex);
+				}
+				catch (...)
+				{
+					AVDECC_ASSERT(false, "Should not happen");
+				}
+			}
 		}
 	}
 }
@@ -688,18 +955,55 @@ void ControllerStateMachine::checkEntitiesTimeoutExpiracy() noexcept
 	// Get current time
 	std::chrono::time_point<std::chrono::system_clock> currentTime = std::chrono::system_clock::now();
 
-	for (auto it = _discoveredEntities.begin(); it != _discoveredEntities.end(); /* Iterate inside the loop */)
+	for (auto discoveredEntityKV = _discoveredEntities.begin(); discoveredEntityKV != _discoveredEntities.end(); /* Iterate inside the loop */)
 	{
-		auto const& entity = it->second;
-		if (currentTime > entity.timeout)
+		auto& entity = discoveredEntityKV->second;
+		auto hasInterfaceTimeout{ false };
+		auto shouldRemoveEntity{ false };
+
+		// Check timeout value for all interfaces
+		for (auto timeoutKV = entity.timeouts.begin(); timeoutKV != entity.timeouts.end(); /* Iterate inside the loop */)
 		{
-			// Notify this entity is offline
-			invokeProtectedMethod(&Delegate::onRemoteEntityOffline, _delegate, it->first);
-			// Remove it from the list of known entities
-			it = _discoveredEntities.erase(it);
+			auto const timeout = timeoutKV->second;
+			if (currentTime > timeout)
+			{
+				hasInterfaceTimeout = true;
+				entity.entity.removeInterfaceInformation(timeoutKV->first);
+				timeoutKV = entity.timeouts.erase(timeoutKV);
+			}
+			else
+			{
+				++timeoutKV;
+			}
+		}
+
+		// We had at least one interface timeout
+		if (hasInterfaceTimeout)
+		{
+			// No more interfaces, set the entity offline
+			if (entity.entity.getInterfacesInformation().empty())
+			{
+				// Notify this entity is offline
+				invokeProtectedMethod(&Delegate::onRemoteEntityOffline, _delegate, discoveredEntityKV->first);
+				shouldRemoveEntity = true;
+			}
+			// Otherwise just notify an update
+			else
+			{
+				// Notify this entity has been updated
+				invokeProtectedMethod(&Delegate::onRemoteEntityUpdated, _delegate, entity.entity);
+			}
+		}
+
+		// Should we remove the entity from the list of known entities
+		if (shouldRemoveEntity)
+		{
+			discoveredEntityKV = _discoveredEntities.erase(discoveredEntityKV);
 		}
 		else
-			++it;
+		{
+			++discoveredEntityKV;
+		}
 	}
 }
 
@@ -795,20 +1099,23 @@ void ControllerStateMachine::handleAdpEntityAvailable(Adpdu const& adpdu) noexce
 {
 	// Ignore messages from a local entity
 	if (isLocalEntity(adpdu.getEntityID()))
+	{
 		return;
+	}
 
 	// If entity is not ready
 	if (hasFlag(adpdu.getEntityCapabilities(), entity::EntityCapabilities::EntityNotReady))
+	{
 		return;
+	}
 
 	auto const entityID = adpdu.getEntityID();
-	bool notify = true;
-	bool update = false;
-	bool notAllowedUpdate = false;
-	// Compute timeout value
-	std::chrono::time_point<std::chrono::system_clock> timeout = std::chrono::system_clock::now() + std::chrono::seconds(2 * adpdu.getValidTime());
-	DiscoveredEntityInfo info{ timeout, adpdu };
-	Adpdu previousAdpdu;
+	auto notify{ true };
+	auto update{ false };
+	auto simulateOffline{ false };
+	DiscoveredEntityInfo* discoveredInfo{ nullptr };
+	auto entity{ makeEntity(adpdu) };
+	auto const avbInterfaceIndex{ entity.getInterfacesInformation().begin()->first };
 
 	// Lock self
 	std::lock_guard<ControllerStateMachine> const lg(getSelf());
@@ -819,34 +1126,45 @@ void ControllerStateMachine::handleAdpEntityAvailable(Adpdu const& adpdu) noexce
 	// Found it in the list, check if data are the same
 	if (entityIt != _discoveredEntities.end())
 	{
-		previousAdpdu = std::move(entityIt->second.adpdu);
-		// Get adpdu difference
-		auto const diff = getAdpdusDiff(previousAdpdu, adpdu);
-		if (diff == AdpduDiff::Same)
-			notify = false;
-		// Always update info
-		entityIt->second = info;
-		notAllowedUpdate = diff == AdpduDiff::DiffNotAllowed;
-		update = !notAllowedUpdate;
+		// Merge changes from new entity into current one, and return the action to perform
+		auto const action = updateEntity(entityIt->second.entity, std::move(entity));
+		discoveredInfo = &entityIt->second;
+		notify = action != EntityUpdateAction::NoNotify;
+		update = action == EntityUpdateAction::NotifyUpdate;
+		simulateOffline = action == EntityUpdateAction::NotifyOfflineOnline;
 	}
 	// Not found, create a new entity
 	else
 	{
-		_discoveredEntities[entityID] = info;
+		// Insert new info and get address of the created Entity so it can be passed to Delegate
+		discoveredInfo = &_discoveredEntities.emplace(std::make_pair(entityID, DiscoveredEntityInfo{ std::move(entity) })).first->second;
 	}
+
+	// Compute timeout value and always update
+	discoveredInfo->timeouts[avbInterfaceIndex] = std::chrono::system_clock::now() + std::chrono::seconds(2 * adpdu.getValidTime());
 
 	// Notify delegate
 	if (notify && _delegate != nullptr)
 	{
-		auto entity = makeEntity(adpdu);
-		// Adpdu diff is not allowed, simulate entity offline/online
-		if (notAllowedUpdate)
+		if (!AVDECC_ASSERT_WITH_RET(discoveredInfo != nullptr, "discoveredInfo should not be nullptr here"))
+		{
+			return;
+		}
+		// Invalid change in entity announcement, simulate offline/online
+		if (simulateOffline)
+		{
+			AVDECC_ASSERT(!update, "When simulateOffline is set, update should not be");
 			invokeProtectedMethod(&Delegate::onRemoteEntityOffline, _delegate, entityID);
+		}
 
 		if (update)
-			invokeProtectedMethod(&Delegate::onRemoteEntityUpdated, _delegate, entity);
+		{
+			invokeProtectedMethod(&Delegate::onRemoteEntityUpdated, _delegate, discoveredInfo->entity);
+		}
 		else
-			invokeProtectedMethod(&Delegate::onRemoteEntityOnline, _delegate, entity);
+		{
+			invokeProtectedMethod(&Delegate::onRemoteEntityOnline, _delegate, discoveredInfo->entity);
+		}
 	}
 }
 
@@ -888,18 +1206,30 @@ void ControllerStateMachine::handleAdpEntityDiscover(Adpdu const& adpdu) noexcep
 	for (auto& entityKV : _localEntities)
 	{
 		auto& entityInfo = entityKV.second;
-		auto& entity = entityInfo.entity;
-		// Only reply to global (entityID == 0) discovery messages (only if advertising is active) and to targeted ones
-		if ((!entityID && entityInfo.isAdvertising) || entityID == entity.getEntityID())
+		auto const& entity = entityInfo.entity;
+
+		// Check on which interface we received the message so we only respond to this one (if not found then advertise is not active on this interface)
+		auto const& destAddress = adpdu.getDestAddress();
+		for (auto& advertiseKV : entityInfo.nextAdvertiseTime)
 		{
-			// Build the EntityAvailable message
-			auto frame = makeEntityAvailableMessage(entity);
-			// Send it
-			_delegate->sendMessage(frame);
-			// Update the time for next advertise (only if isAdvertising is true, meaning it's not a targeted message)
-			if (entityInfo.isAdvertising)
+			auto const interfaceIndex = advertiseKV.first;
+			auto& advertiseTime = advertiseKV.second;
+			try
 			{
-				entityInfo.nextAdvertiseAt = computeNextAdvertiseTime(entity);
+				auto const& interfaceInfo = entity.getInterfaceInformation(interfaceIndex);
+				if (destAddress == interfaceInfo.macAddress)
+				{
+					// Only reply to global (entityID == 0) discovery messages and to targeted ones
+					if (!entityID || entityID == entity.getEntityID())
+					{
+						// Schedule EntityAvailable message
+						advertiseTime = computeDelayedAdvertiseTime(entity, interfaceIndex);
+					}
+				}
+			}
+			catch (Exception const&)
+			{
+				AVDECC_ASSERT(false, "avbInterfaceIndex might not be valid");
 			}
 		}
 	}
@@ -911,53 +1241,6 @@ bool ControllerStateMachine::isLocalEntity(UniqueIdentifier const entityID) cons
 	std::lock_guard<ControllerStateMachine> const lg(getSelf());
 
 	return _localEntities.find(entityID) != _localEntities.end();
-}
-
-ControllerStateMachine::AdpduDiff ControllerStateMachine::getAdpdusDiff(Adpdu const& lhs, Adpdu const& rhs) const noexcept
-{
-	// First check not allowed changed fields
-	if (lhs.getEntityID() != rhs.getEntityID())
-		return AdpduDiff::DiffNotAllowed;
-	if (lhs.getSrcAddress() != rhs.getSrcAddress())
-		return AdpduDiff::DiffNotAllowed;
-	if (lhs.getEntityModelID() != rhs.getEntityModelID())
-		return AdpduDiff::DiffNotAllowed;
-	if (lhs.getTalkerStreamSources() != rhs.getTalkerStreamSources())
-		return AdpduDiff::DiffNotAllowed;
-	if (lhs.getTalkerCapabilities() != rhs.getTalkerCapabilities())
-		return AdpduDiff::DiffNotAllowed;
-	if (lhs.getListenerStreamSinks() != rhs.getListenerStreamSinks())
-		return AdpduDiff::DiffNotAllowed;
-	if (lhs.getListenerCapabilities() != rhs.getListenerCapabilities())
-		return AdpduDiff::DiffNotAllowed;
-	if (lhs.getControllerCapabilities() != rhs.getControllerCapabilities())
-		return AdpduDiff::DiffNotAllowed;
-	if (lhs.getIdentifyControlIndex() != rhs.getIdentifyControlIndex())
-		return AdpduDiff::DiffNotAllowed;
-	if (lhs.getInterfaceIndex() != rhs.getInterfaceIndex())
-		return AdpduDiff::DiffNotAllowed;
-	if (lhs.getAssociationID() != rhs.getAssociationID())
-		return AdpduDiff::DiffNotAllowed;
-
-	// Special case for AvailableIndex which always be increasing
-	if (lhs.getAvailableIndex() >= rhs.getAvailableIndex())
-		return AdpduDiff::DiffNotAllowed;
-
-	// Then check allowed changed fields
-	if (lhs.getEntityCapabilities() != rhs.getEntityCapabilities())
-		return AdpduDiff::DiffAllowed;
-	if (lhs.getGptpGrandmasterID() != rhs.getGptpGrandmasterID())
-		return AdpduDiff::DiffAllowed;
-	if (lhs.getGptpDomainNumber() != rhs.getGptpDomainNumber())
-		return AdpduDiff::DiffAllowed;
-
-	// All other changes are not considered as a diff (ValidTime and AvailableIndex)
-	return AdpduDiff::Same;
-}
-
-entity::Entity ControllerStateMachine::makeEntity(Adpdu const& adpdu) const noexcept
-{
-	return entity::Entity{ adpdu.getEntityID(), adpdu.getSrcAddress(), adpdu.getValidTime(), adpdu.getEntityModelID(), adpdu.getEntityCapabilities(), adpdu.getTalkerStreamSources(), adpdu.getTalkerCapabilities(), adpdu.getListenerStreamSinks(), adpdu.getListenerCapabilities(), adpdu.getControllerCapabilities(), adpdu.getAvailableIndex(), adpdu.getGptpGrandmasterID(), adpdu.getGptpDomainNumber(), adpdu.getIdentifyControlIndex(), adpdu.getInterfaceIndex(), adpdu.getAssociationID() };
 }
 
 } // namespace stateMachine

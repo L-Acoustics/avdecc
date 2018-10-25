@@ -185,16 +185,16 @@ UniqueIdentifier ControllerImpl::getControllerEID() const noexcept
 }
 
 /* Controller configuration */
-void ControllerImpl::enableEntityAdvertising(std::uint32_t const availableDuration)
+void ControllerImpl::enableEntityAdvertising(std::uint32_t const availableDuration, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex)
 {
-	if (!_controller->enableEntityAdvertising(availableDuration))
+	if (!_controller->enableEntityAdvertising(availableDuration, interfaceIndex))
 		throw Exception(Error::DuplicateProgID, "Specified ProgID already in use on the local computer");
 	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Controller advertising enabled");
 }
 
-void ControllerImpl::disableEntityAdvertising() noexcept
+void ControllerImpl::disableEntityAdvertising(std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept
 {
-	_controller->disableEntityAdvertising();
+	_controller->disableEntityAdvertising(interfaceIndex);
 	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Controller advertising disabled");
 }
 

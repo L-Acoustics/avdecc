@@ -1582,7 +1582,7 @@ void CapabilityDelegate::sendAemAecpCommand(UniqueIdentifier const targetEntityI
 		if (it != _discoveredEntities.end())
 		{
 			// Get entity mac address
-			targetMacAddress = it->second.getMacAddress();
+			targetMacAddress = it->second.getAnyMacAddress();
 		}
 	}
 
@@ -1621,7 +1621,7 @@ void CapabilityDelegate::sendAaAecpCommand(UniqueIdentifier const targetEntityID
 		if (it != _discoveredEntities.end())
 		{
 			// Get entity mac address
-			targetMacAddress = it->second.getMacAddress();
+			targetMacAddress = it->second.getAnyMacAddress();
 		}
 	}
 
@@ -1660,7 +1660,7 @@ void CapabilityDelegate::sendMvuAecpCommand(UniqueIdentifier const targetEntityI
 		if (it != _discoveredEntities.end())
 		{
 			// Get entity mac address
-			targetMacAddress = it->second.getMacAddress();
+			targetMacAddress = it->second.getAnyMacAddress();
 		}
 	}
 

@@ -123,7 +123,9 @@ void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 {
 	// In order to be allowed to send Commands, we have to declare ourself as a LocalEntity
-	auto entity = la::avdecc::entity::ControllerEntity::create(&pi, 0x0005, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), nullptr);
+	auto const commonInformation{ la::avdecc::entity::Entity::CommonInformation{ la::avdecc::entity::Entity::generateEID(pi.getMacAddress(), 0x0005), la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), la::avdecc::entity::EntityCapabilities::None, 0u, la::avdecc::entity::TalkerCapabilities::None, 0u, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::Implemented, std::nullopt, std::nullopt } };
+	auto const interfaceInfo{ la::avdecc::entity::Entity::InterfaceInformation{ pi.getMacAddress(), 31u, 0u, std::nullopt, std::nullopt } };
+	auto entity = la::avdecc::entity::ControllerEntity::create(&pi, commonInformation, la::avdecc::entity::Entity::InterfacesInformation{ { la::avdecc::entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } }, nullptr);
 
 	entity->setControllerDelegate(nullptr);
 

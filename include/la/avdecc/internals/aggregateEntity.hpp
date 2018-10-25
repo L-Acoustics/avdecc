@@ -46,10 +46,31 @@ namespace entity
 class AggregateEntity : public LocalEntity, public controller::Interface
 {
 public:
+	using UniquePointer = std::unique_ptr<AggregateEntity, void (*)(AggregateEntity*)>;
+
+	/**
+	* @brief Factory method to create a new AggregateEntity.
+	* @details Creates a new AggregateEntity as a unique pointer.
+	* @param[in] protocolInterface The protocol interface to bind the entity to.
+	* @param[in] commonInformation Common information for this aggregate entity.
+	* @param[in] interfacesInformation All interfaces information for this aggregate entity.
+	* @param[in] delegate The Delegate to be called whenever a controller related notification occurs.
+	* @return A new AggregateEntity as a Entity::UniquePointer.
+	* @note Might throw an Exception.
+	*/
+	static UniquePointer create(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, entity::controller::Delegate* const controllerDelegate)
+	{
+		auto deleter = [](AggregateEntity* self)
+		{
+			self->destroy();
+		};
+		return UniquePointer(createRawAggregateEntity(protocolInterface, commonInformation, interfacesInformation, controllerDelegate), deleter);
+	}
+
 	/* Discovery Protocol (ADP) */
-	/** Enables entity advertising with available duration included between 2-62 seconds, defaulting to 62. */
+	/** Enables entity advertising with available duration included between 2-62 seconds on the specified interfaceIndex if set, otherwise on all interfaces. Returns false if EntityID is already in use on the local computer, true otherwise. */
 	using LocalEntity::enableEntityAdvertising;
-	/** Disables entity advertising. */
+	/** Disables entity advertising on the specified interfaceIndex if set, otherwise on all interfaces. */
 	using LocalEntity::disableEntityAdvertising;
 
 	virtual void setControllerDelegate(controller::Delegate* const delegate) noexcept = 0;
@@ -64,10 +85,17 @@ public:
 
 protected:
 	/** Constructor */
-	AggregateEntity(UniqueIdentifier const entityID, networkInterface::MacAddress const& macAddress, UniqueIdentifier const entityModelID, EntityCapabilities const entityCapabilities, std::uint16_t const talkerStreamSources, TalkerCapabilities const talkerCapabilities, std::uint16_t const listenerStreamSinks, ListenerCapabilities const listenerCapabilities, ControllerCapabilities const controllerCapabilities, std::uint16_t const identifyControlIndex, std::uint16_t const interfaceIndex, UniqueIdentifier const associationID) noexcept;
+	AggregateEntity(CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation);
 
 	/** Destructor */
 	virtual ~AggregateEntity() noexcept = default;
+
+private:
+	/** Entry point */
+	static LA_AVDECC_API AggregateEntity* LA_AVDECC_CALL_CONVENTION createRawAggregateEntity(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, entity::controller::Delegate* const controllerDelegate);
+
+	/** Destroy method for COM-like interface */
+	virtual void destroy() noexcept = 0;
 };
 
 } // namespace entity
