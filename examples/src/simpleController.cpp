@@ -43,6 +43,12 @@ int doJob()
 {
 	class ControllerDelegate : public la::avdecc::entity::controller::Delegate, public la::avdecc::logger::Logger::Observer
 	{
+	public:
+		~ControllerDelegate() noexcept override
+		{
+			la::avdecc::logger::Logger::getInstance().unregisterObserver(this);
+		}
+
 	private:
 		// la::avdecc::logger::Logger::Observer overrides
 		virtual void onLogItem(la::avdecc::logger::Level const level, la::avdecc::logger::LogItem const* const item) noexcept override

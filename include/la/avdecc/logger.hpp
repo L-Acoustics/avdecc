@@ -93,6 +93,7 @@ public:
 	class Observer
 	{
 	public:
+		virtual ~Observer() noexcept {}
 		virtual void onLogItem(la::avdecc::logger::Level const /*level*/, la::avdecc::logger::LogItem const* const /*item*/) noexcept {}
 	};
 

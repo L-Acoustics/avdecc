@@ -165,7 +165,9 @@ TEST(Controller, RedundantStreams)
 #	ifdef ENABLE_AVDECC_STRICT_2018_REDUNDANCY
 	// Invalid redundant association: More than 2 streams in the association
 	{
-		auto const e{ la::avdecc::entity::Entity{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::networkInterface::MacAddress{}, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier() } };
+		auto const commonInformation{ la::avdecc::entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities::AemSupported, 0u, la::avdecc::entity::TalkerCapabilities::None, 0u, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::Implemented, std::nullopt, std::nullopt } };
+		auto const interfaceInfo{ la::avdecc::entity::Entity::InterfaceInformation{ la::avdecc::networkInterface::MacAddress{}, 31u, 0u, std::nullopt, std::nullopt } };
+		auto const e{ la::avdecc::entity::Entity{ commonInformation, la::avdecc::entity::Entity::InterfacesInformation{ { la::avdecc::entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } } } };
 		la::avdecc::controller::ControlledEntityImpl entity{ e };
 
 		entity.setEntityDescriptor(la::avdecc::entity::model::EntityDescriptor{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), std::string("Test entity"), la::avdecc::entity::model::getNullLocalizedStringReference(), la::avdecc::entity::model::getNullLocalizedStringReference(), std::string("Test firmware"), std::string("Test group"), std::string("Test serial number"), 1, 0 });
@@ -201,7 +203,9 @@ TEST(Controller, RedundantStreams)
 
 	// Invalid redundant association: Stream referencing itself
 	{
-		auto const e{ la::avdecc::entity::Entity{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::networkInterface::MacAddress{}, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier() } };
+		auto const commonInformation{ la::avdecc::entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities::AemSupported, 0u, la::avdecc::entity::TalkerCapabilities::None, 0u, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::Implemented, std::nullopt, std::nullopt } };
+		auto const interfaceInfo{ la::avdecc::entity::Entity::InterfaceInformation{ la::avdecc::networkInterface::MacAddress{}, 31u, 0u, std::nullopt, std::nullopt } };
+		auto const e{ la::avdecc::entity::Entity{ commonInformation, la::avdecc::entity::Entity::InterfacesInformation{ { la::avdecc::entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } } } };
 		la::avdecc::controller::ControlledEntityImpl entity{ e };
 
 		entity.setEntityDescriptor(la::avdecc::entity::model::EntityDescriptor{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), std::string("Test entity"), la::avdecc::entity::model::getNullLocalizedStringReference(), la::avdecc::entity::model::getNullLocalizedStringReference(), std::string("Test firmware"), std::string("Test group"), std::string("Test serial number"), 1, 0 });
@@ -217,7 +221,9 @@ TEST(Controller, RedundantStreams)
 
 	// Valid redundant association (primary stream declared first)
 	{
-		auto const e{ la::avdecc::entity::Entity{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::networkInterface::MacAddress{}, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier() } };
+		auto const commonInformation{ la::avdecc::entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities::AemSupported, 0u, la::avdecc::entity::TalkerCapabilities::None, 0u, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::Implemented, std::nullopt, std::nullopt } };
+		auto const interfaceInfo{ la::avdecc::entity::Entity::InterfaceInformation{ la::avdecc::networkInterface::MacAddress{}, 31u, 0u, std::nullopt, std::nullopt } };
+		auto const e{ la::avdecc::entity::Entity{ commonInformation, la::avdecc::entity::Entity::InterfacesInformation{ { la::avdecc::entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } } } };
 		la::avdecc::controller::ControlledEntityImpl entity{ e };
 
 		entity.setEntityDescriptor(la::avdecc::entity::model::EntityDescriptor{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), std::string("Test entity"), la::avdecc::entity::model::getNullLocalizedStringReference(), la::avdecc::entity::model::getNullLocalizedStringReference(), std::string("Test firmware"), std::string("Test group"), std::string("Test serial number"), 1, 0 });
@@ -233,7 +239,9 @@ TEST(Controller, RedundantStreams)
 
 	// Valid redundant association (secondary stream declared first)
 	{
-		auto const e{ la::avdecc::entity::Entity{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::networkInterface::MacAddress{}, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier() } };
+		auto const commonInformation{ la::avdecc::entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities::AemSupported, 0u, la::avdecc::entity::TalkerCapabilities::None, 0u, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::Implemented, std::nullopt, std::nullopt } };
+		auto const interfaceInfo{ la::avdecc::entity::Entity::InterfaceInformation{ la::avdecc::networkInterface::MacAddress{}, 31u, 0u, std::nullopt, std::nullopt } };
+		auto const e{ la::avdecc::entity::Entity{ commonInformation, la::avdecc::entity::Entity::InterfacesInformation{ { la::avdecc::entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } } } };
 		la::avdecc::controller::ControlledEntityImpl entity{ e };
 
 		entity.setEntityDescriptor(la::avdecc::entity::model::EntityDescriptor{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), std::string("Test entity"), la::avdecc::entity::model::getNullLocalizedStringReference(), la::avdecc::entity::model::getNullLocalizedStringReference(), std::string("Test firmware"), std::string("Test group"), std::string("Test serial number"), 1, 0 });
@@ -249,7 +257,9 @@ TEST(Controller, RedundantStreams)
 
 	// Valid redundant association (single stream declared as well as redundant pair)
 	{
-		auto const e{ la::avdecc::entity::Entity{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::networkInterface::MacAddress{}, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier() } };
+		auto const commonInformation{ la::avdecc::entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities::AemSupported, 0u, la::avdecc::entity::TalkerCapabilities::None, 0u, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::Implemented, std::nullopt, std::nullopt } };
+		auto const interfaceInfo{ la::avdecc::entity::Entity::InterfaceInformation{ la::avdecc::networkInterface::MacAddress{}, 31u, 0u, std::nullopt, std::nullopt } };
+		auto const e{ la::avdecc::entity::Entity{ commonInformation, la::avdecc::entity::Entity::InterfacesInformation{ { la::avdecc::entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } } } };
 		la::avdecc::controller::ControlledEntityImpl entity{ e };
 
 		entity.setEntityDescriptor(la::avdecc::entity::model::EntityDescriptor{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities::AemSupported, 0, la::avdecc::entity::TalkerCapabilities::None, 0, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::None, 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), std::string("Test entity"), la::avdecc::entity::model::getNullLocalizedStringReference(), la::avdecc::entity::model::getNullLocalizedStringReference(), std::string("Test firmware"), std::string("Test group"), std::string("Test serial number"), 1, 0 });
@@ -271,7 +281,9 @@ TEST(Controller, DestroyWhileSending)
 	static std::promise<void> commandResultPromise{};
 	{
 		auto pi = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }));
-		auto controllerGuard = std::make_unique<la::avdecc::entity::LocalEntityGuard<la::avdecc::entity::ControllerEntityImpl>>(pi.get(), std::uint16_t{ 1 }, la::avdecc::UniqueIdentifier{ 0u }, nullptr);
+		auto const commonInformation{ la::avdecc::entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities::AemSupported, 0u, la::avdecc::entity::TalkerCapabilities::None, 0u, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::Implemented, std::nullopt, std::nullopt } };
+		auto const interfaceInfo{ la::avdecc::entity::Entity::InterfaceInformation{ la::avdecc::networkInterface::MacAddress{}, 31u, 0u, std::nullopt, std::nullopt } };
+		auto controllerGuard = std::make_unique<la::avdecc::entity::LocalEntityGuard<la::avdecc::entity::ControllerEntityImpl>>(pi.get(), commonInformation, la::avdecc::entity::Entity::InterfacesInformation{ { la::avdecc::entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } }, nullptr);
 		auto* const controller = static_cast<la::avdecc::entity::ControllerEntity*>(controllerGuard.get());
 
 		controller->getListenerStreamState({ la::avdecc::UniqueIdentifier{ 0x000102FFFE030405 }, 0u },

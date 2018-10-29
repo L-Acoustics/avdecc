@@ -1546,6 +1546,11 @@ std::pair<bool, std::chrono::milliseconds> ControlledEntityImpl::getQueryDescrip
 	return std::make_pair(true, std::chrono::milliseconds{ QueryRetryMillisecondDelay });
 }
 
+entity::Entity& ControlledEntityImpl::getEntity() noexcept
+{
+	return _entity;
+}
+
 bool ControlledEntityImpl::shouldIgnoreCachedEntityModel() const noexcept
 {
 	return _ignoreCachedEntityModel;

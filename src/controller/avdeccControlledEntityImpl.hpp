@@ -42,21 +42,6 @@ namespace avdecc
 {
 namespace controller
 {
-/* ************************************************************ */
-/* Private entity::Entity modifiable inherited class            */
-/* ************************************************************ */
-class ModifiableEntity : public entity::Entity
-{
-public:
-	ModifiableEntity(entity::Entity const& entity)
-		: Entity(entity)
-	{
-	}
-
-	using Entity::setGptpGrandmasterID;
-	using Entity::setGptpDomainNumber;
-};
-
 /* ************************************************************************** */
 /* ControlledEntityImpl                                                       */
 /* ************************************************************************** */
@@ -311,6 +296,7 @@ public:
 	std::pair<bool, std::chrono::milliseconds> getQueryDescriptorDynamicInfoRetryTimer() noexcept;
 
 	// Other getters/setters
+	entity::Entity& getEntity() noexcept;
 	bool shouldIgnoreCachedEntityModel() const noexcept;
 	void setIgnoreCachedEntityModel() noexcept;
 	EnumerationSteps getEnumerationSteps() const noexcept;
@@ -401,7 +387,7 @@ private:
 	model::AcquireState _acquireState{ model::AcquireState::Undefined }; // TODO: Should be a graph of descriptors
 	UniqueIdentifier _owningControllerID{}; // EID of the controller currently owning (who acquired) this entity
 	// Entity variables
-	ModifiableEntity _entity; // No NSMI, Entity has no default constructor but it has to be passed to the only constructor of this class anyway
+	entity::Entity _entity; // No NSMI, Entity has no default constructor but it has to be passed to the only constructor of this class anyway
 	// Entity Model
 	mutable model::EntityStaticTree _entityStaticTree{}; // Static part of the model as represented by the AVDECC protocol
 	mutable model::EntityDynamicTree _entityDynamicTree{}; // Dynamic part of the model as represented by the AVDECC protocol

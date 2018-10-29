@@ -53,7 +53,10 @@ class Discovery : public la::avdecc::controller::Controller::Observer, public la
 public:
 	/** Constructor/destructor/destroy */
 	Discovery(la::avdecc::protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, la::avdecc::UniqueIdentifier const entityModelID, std::string const& preferedLocale);
-	~Discovery() = default;
+	~Discovery() noexcept override
+	{
+		la::avdecc::logger::Logger::getInstance().unregisterObserver(this);
+	}
 
 	// Deleted compiler auto-generated methods
 	Discovery(Discovery&&) = delete;

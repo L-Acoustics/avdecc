@@ -35,7 +35,7 @@ namespace controller
 /* ************************************************************ */
 /* Private methods used to update AEM and notify observers      */
 /* ************************************************************ */
-void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity::Entity const& entity, bool const alsoUpdateAvbInfo) const noexcept
+void ControllerImpl::setEntityAndNotify(ControlledEntityImpl& controlledEntity, entity::Entity const& entity) const noexcept
 {
 	// Get previous entity info, so we can check what changed
 	auto oldEntity = controlledEntity.getEntity();
@@ -43,31 +43,48 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 	// Update entity info
 	controlledEntity.setEntity(entity);
 
-	// Check for specific changes
-	if (alsoUpdateAvbInfo)
+	// Only do checks if entity was advertised to the user (we already changed the values anyway)
+	if (controlledEntity.wasAdvertised())
 	{
-		auto const oldCaps = oldEntity.getEntityCapabilities();
-		auto const caps = entity.getEntityCapabilities();
-		// gPTP info change (if it's both previously and now supported)
-		if (hasFlag(oldCaps, entity::EntityCapabilities::GptpSupported) && hasFlag(caps, entity::EntityCapabilities::GptpSupported) && hasFlag(caps, entity::EntityCapabilities::AemInterfaceIndexValid))
+		// Check if Capabilities changed
+		if (oldEntity.getEntityCapabilities() != entity.getEntityCapabilities())
 		{
-			auto const oldGptpGrandmasterID = oldEntity.getGptpGrandmasterID();
-			auto const oldGptpDomainNumber = oldEntity.getGptpDomainNumber();
-			auto const newGptpGrandmasterID = entity.getGptpGrandmasterID();
-			auto const newGptpDomainNumber = entity.getGptpDomainNumber();
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityCapabilitiesChanged, this, &controlledEntity);
+		}
+	}
+}
+void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity::Entity const& entity) const noexcept
+{
+	// Set the new Entity and notify if it changed
+	setEntityAndNotify(controlledEntity, entity);
 
-			if (oldGptpGrandmasterID != newGptpGrandmasterID || oldGptpDomainNumber != newGptpDomainNumber)
+	// For each interface, check if gPTP info changed (if we have the info)
+	for (auto const& infoKV : entity.getInterfacesInformation())
+	{
+		auto const avbInterfaceIndex = infoKV.first;
+
+		// Only non-global interface indexes have an AvbInterface descriptor we can update
+		if (avbInterfaceIndex != entity::Entity::GlobalAvbInterfaceIndex)
+		{
+			auto const& information = infoKV.second;
+
+			if (information.gptpGrandmasterID.has_value())
 			{
-				auto const avbInterfaceIndex = entity.getInterfaceIndex();
-				auto& avbInterfaceDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), avbInterfaceIndex, &model::ConfigurationDynamicTree::avbInterfaceDynamicModels);
+				// Build an AVBInfo and forward to updateAvbInfo (which will check for changes)
+				auto const& avbInterfaceDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), avbInterfaceIndex, &model::ConfigurationDynamicTree::avbInterfaceDynamicModels);
 
-				auto info = avbInterfaceDynamicModel.avbInfo; // Copy the AvbInfo so we can alter values
-				info.gptpGrandmasterID = newGptpGrandmasterID;
-				info.gptpDomainNumber = newGptpDomainNumber;
-				updateAvbInfo(controlledEntity, entity.getInterfaceIndex(), info, false);
+				// Copy the AvbInfo and update it with the new values we got from the ADPDU
+				auto info = avbInterfaceDynamicModel.avbInfo;
+				info.gptpGrandmasterID = information.gptpGrandmasterID.value();
+				info.gptpDomainNumber = information.gptpDomainNumber.value();
+				setAvbInfoAndNotify(controlledEntity, avbInterfaceIndex, info);
 			}
 		}
 	}
+
+	// Set the new AssociationID and notify if it changed
+	auto const associationID = entity.getAssociationID();
+	setAssociationAndNotify(controlledEntity, associationID.has_value() ? associationID.value() : UniqueIdentifier::getNullUniqueIdentifier());
 }
 
 void ControllerImpl::updateAcquiredState(ControlledEntityImpl& controlledEntity, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const /*descriptorIndex*/, bool const undefined) const noexcept
@@ -315,6 +332,46 @@ void ControllerImpl::updateClockDomainName(ControlledEntityImpl& controlledEntit
 	}
 }
 
+void ControllerImpl::setAssociationAndNotify(ControlledEntityImpl& controlledEntity, UniqueIdentifier const associationID) const noexcept
+{
+	auto& entity = controlledEntity.getEntity();
+	auto const previousAssociationID = entity.getAssociationID();
+	entity.setAssociationID(associationID);
+
+	// Only do checks if entity was advertised to the user (we already changed the values anyway)
+	if (controlledEntity.wasAdvertised())
+	{
+		// Notify if AssociationID changed
+		if (previousAssociationID != associationID)
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityAssociationChanged, this, &controlledEntity);
+		}
+	}
+}
+
+void ControllerImpl::updateAssociationID(ControlledEntityImpl& controlledEntity, UniqueIdentifier const associationID) const noexcept
+{
+	// Set the new AssociationID and notify if it changed
+	setAssociationAndNotify(controlledEntity, associationID);
+
+	// Update the Entity as well
+	auto entity = controlledEntity.getEntity(); // Copy the entity so we can alter values in the copy and not the original
+	auto const caps = entity.getEntityCapabilities();
+
+	if (!hasFlag(caps, entity::EntityCapabilities::AssociationIDSupported))
+	{
+		LOG_CONTROLLER_WARN(entity.getEntityID(), "Entity changed its ASSOCIATION_ID but it said ASSOCIATION_ID_NOT_SUPPORTED in ADPDU");
+		return;
+	}
+
+	// Only update the Entity if AssociationIDValid flag was not set in ADPDU
+	if (hasFlag(caps, entity::EntityCapabilities::AssociationIDValid))
+	{
+		entity.setAssociationID(associationID);
+		setEntityAndNotify(controlledEntity, entity);
+	}
+}
+
 void ControllerImpl::updateAudioUnitSamplingRate(ControlledEntityImpl& controlledEntity, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate) const noexcept
 {
 	controlledEntity.setSamplingRate(audioUnitIndex, samplingRate);
@@ -361,33 +418,54 @@ void ControllerImpl::updateStreamOutputRunningStatus(ControlledEntityImpl& contr
 	updateStreamOutputInfo(controlledEntity, streamIndex, newInfo);
 }
 
-void ControllerImpl::updateAvbInfo(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info, bool const alsoUpdateEntity) const noexcept
+void ControllerImpl::setAvbInfoAndNotify(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) const noexcept
 {
 	// Update AvbInfo
 	auto const previousInfo = controlledEntity.setAvbInfo(avbInterfaceIndex, info);
 
-	// Also update the gPTP values in ADP entity info
-	if (alsoUpdateEntity)
+	// Only do checks if entity was advertised to the user (we already changed the values anyway)
+	if (controlledEntity.wasAdvertised())
 	{
-		auto entity{ ModifiableEntity(controlledEntity.getEntity()) }; // Copy the Entity so we can alter values
-		auto const caps = entity.getEntityCapabilities();
-		if (hasFlag(caps, entity::EntityCapabilities::GptpSupported) && (!hasFlag(caps, entity::EntityCapabilities::AemInterfaceIndexValid) || entity.getInterfaceIndex() == avbInterfaceIndex))
+		// Info changed
+		if (previousInfo != info)
 		{
-			entity.setGptpGrandmasterID(info.gptpGrandmasterID);
-			entity.setGptpDomainNumber(info.gptpDomainNumber);
-			updateEntity(controlledEntity, entity, false);
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAvbInfoChanged, this, &controlledEntity, avbInterfaceIndex, info);
+
+			// Check if gPTP changed (since it's a separate Controller event)
+			if (previousInfo.gptpGrandmasterID != info.gptpGrandmasterID || previousInfo.gptpDomainNumber != info.gptpDomainNumber)
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onGptpChanged, this, &controlledEntity, avbInterfaceIndex, info.gptpGrandmasterID, info.gptpDomainNumber);
+			}
 		}
 	}
+}
 
-	// Entity was advertised to the user, notify observers (check if info actually changed)
-	if (controlledEntity.wasAdvertised() && previousInfo != info)
+void ControllerImpl::updateAvbInfo(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) const noexcept
+{
+	// Set the new AvbInfo and notify if it changed
+	setAvbInfoAndNotify(controlledEntity, avbInterfaceIndex, info);
+
+	// Only update if we have valid gPTP information
+	if (hasFlag(info.flags, entity::AvbInfoFlags::GptpEnabled))
 	{
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAvbInfoChanged, this, &controlledEntity, avbInterfaceIndex, info);
-
-		// Check if gPTP changed (since it's a separate Controller event)
-		if (previousInfo.gptpGrandmasterID != info.gptpGrandmasterID || previousInfo.gptpDomainNumber != info.gptpDomainNumber)
+		auto entity = controlledEntity.getEntity(); // Copy the entity so we can alter values in the copy and not the original
+		auto const caps = entity.getEntityCapabilities();
+		if (hasFlag(caps, entity::EntityCapabilities::GptpSupported))
 		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onGptpChanged, this, &controlledEntity, avbInterfaceIndex, info.gptpGrandmasterID, info.gptpDomainNumber);
+			try
+			{
+				auto& interfaceInfo = entity.getInterfaceInformation(avbInterfaceIndex);
+				interfaceInfo.gptpGrandmasterID = info.gptpGrandmasterID;
+				interfaceInfo.gptpDomainNumber = info.gptpDomainNumber;
+				setEntityAndNotify(controlledEntity, entity);
+			}
+			catch (la::avdecc::Exception const&)
+			{
+			}
+			catch (...)
+			{
+				AVDECC_ASSERT(false, "Unhandled exception");
+			}
 		}
 	}
 }
