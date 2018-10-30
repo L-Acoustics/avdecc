@@ -29,9 +29,9 @@
 #include "la/avdecc/internals/entityModel.hpp"
 #include "protocolAemPayloadSizes.hpp"
 #if defined(ENABLE_AVDECC_CUSTOM_ANY)
-#include "la/avdecc/internals/any.hpp"
+#	include "la/avdecc/internals/any.hpp"
 #else // !ENABLE_AVDECC_CUSTOM_ANY
-#include <any>
+#	include <any>
 #endif // ENABLE_AVDECC_CUSTOM_ANY
 #include <cstdint>
 #include <tuple>
@@ -44,11 +44,13 @@ namespace protocol
 {
 namespace aemPayload
 {
-
 class IncorrectPayloadSizeException final : public Exception
 {
 public:
-	IncorrectPayloadSizeException() : Exception("Incorrect payload size") {}
+	IncorrectPayloadSizeException()
+		: Exception("Incorrect payload size")
+	{
+	}
 };
 
 // All serialization methods might throw a std::invalid_argument if serialization goes wrong

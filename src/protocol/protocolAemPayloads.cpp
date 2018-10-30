@@ -33,7 +33,6 @@ namespace protocol
 {
 namespace aemPayload
 {
-
 /** ACQUIRE_ENTITY Command - Clause 7.4.1.1 */
 Serializer<AecpAemAcquireEntityCommandPayloadSize> serializeAcquireEntityCommand(AemAcquireEntityFlags const flags, UniqueIdentifier const ownerID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {

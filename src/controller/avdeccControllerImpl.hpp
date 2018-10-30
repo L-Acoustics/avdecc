@@ -41,7 +41,6 @@ namespace avdecc
 {
 namespace controller
 {
-
 class ControllerImpl final : public Controller, private entity::ControllerEntity::Delegate
 {
 public:
@@ -290,12 +289,11 @@ private:
 		}
 
 		// Default constructor to allow creation of an empty Guard
-		UnlockedControlledEntity() noexcept
-		{
-		}
+		UnlockedControlledEntity() noexcept {}
 
 		UnlockedControlledEntity(OnlineControlledEntity entity)
-			: _controlledEntity(std::move(entity)), _wasLocked(_controlledEntity && _controlledEntity->isSelfLocked())
+			: _controlledEntity(std::move(entity))
+			, _wasLocked(_controlledEntity && _controlledEntity->isSelfLocked())
 		{
 			if (_wasLocked)
 			{
@@ -330,7 +328,8 @@ private:
 	/* ************************************************************ */
 	enum class FailureAction
 	{
-		Ignore, /**< Ignore this query and continue to next one. */
+		WarningIgnore, /**< This query had a warning, but ignore and continue to next one. */
+		ErrorIgnore, /**< This query had an error, flag it, ignore and continue to next one. */
 		Retry, /**< Should retry this query. */
 		NotSupported, /**< This query is not supported by the entity. Caller should decide whether to continue or not. */
 		Fatal, /**< This query returned a fatal error, enumeration should be stopped immediately. */

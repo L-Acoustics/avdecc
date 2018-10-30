@@ -26,12 +26,12 @@
 #include <mutex>
 
 #if defined(USE_CURSES)
-#include <stdlib.h>
-#include <locale.h>
+#	include <stdlib.h>
+#	include <locale.h>
 static WINDOW* s_Window = nullptr;
 static SCREEN* s_Screen = nullptr;
 #else // !USE_CURSES
-#include <iostream>
+#	include <iostream>
 #endif // USE_CURSES
 
 
@@ -135,12 +135,13 @@ la::avdecc::networkInterface::Interface chooseNetworkInterface()
 	std::vector<la::avdecc::networkInterface::Interface> interfaces;
 
 	// Enumerate available interfaces
-	la::avdecc::networkInterface::enumerateInterfaces([&interfaces](la::avdecc::networkInterface::Interface const& intfc)
-	{
-		// Only select interfaces that is not loopback and has at least one IP address
-		if (intfc.type != la::avdecc::networkInterface::Interface::Type::Loopback && !intfc.ipAddresses.empty() && intfc.isActive)
-			interfaces.push_back(intfc);
-	});
+	la::avdecc::networkInterface::enumerateInterfaces(
+		[&interfaces](la::avdecc::networkInterface::Interface const& intfc)
+		{
+			// Only select interfaces that is not loopback and has at least one IP address
+			if (intfc.type != la::avdecc::networkInterface::Interface::Type::Loopback && !intfc.ipAddresses.empty() && intfc.isActive)
+				interfaces.push_back(intfc);
+		});
 
 	if (interfaces.empty())
 	{

@@ -42,7 +42,6 @@ namespace protocol
 {
 namespace stateMachine
 {
-
 class ControllerStateMachine final
 {
 public:
@@ -106,11 +105,11 @@ private:
 		Aecpdu::UniquePointer command{ nullptr, nullptr };
 		ProtocolInterface::AecpCommandResultHandler resultHandler{};
 
-		AecpCommandInfo()
-		{
-		}
+		AecpCommandInfo() {}
 		AecpCommandInfo(AecpSequenceID const sequenceID, Aecpdu::UniquePointer&& command, ProtocolInterface::AecpCommandResultHandler const& resultHandler)
-			: sequenceID(sequenceID), command(std::move(command)), resultHandler(resultHandler)
+			: sequenceID(sequenceID)
+			, command(std::move(command))
+			, resultHandler(resultHandler)
 		{
 		}
 	};
@@ -126,11 +125,11 @@ private:
 		Acmpdu::UniquePointer command{ nullptr, nullptr };
 		ProtocolInterface::AcmpCommandResultHandler resultHandler{};
 
-		AcmpCommandInfo()
-		{
-		}
+		AcmpCommandInfo() {}
 		AcmpCommandInfo(AcmpSequenceID const sequenceID, Acmpdu::UniquePointer&& command, ProtocolInterface::AcmpCommandResultHandler const& resultHandler)
-			: sequenceID(sequenceID), command(std::move(command)), resultHandler(resultHandler)
+			: sequenceID(sequenceID)
+			, command(std::move(command))
+			, resultHandler(resultHandler)
 		{
 		}
 	};
@@ -154,7 +153,10 @@ private:
 		ScheduledAecpErrors scheduledAecpErrors{};
 
 		/** Constructor */
-		LocalEntityInfo(entity::LocalEntity& entity) noexcept : entity(entity) {}
+		LocalEntityInfo(entity::LocalEntity& entity) noexcept
+			: entity(entity)
+		{
+		}
 	};
 
 	template<typename T>
@@ -203,9 +205,9 @@ private:
 
 	enum class AdpduDiff
 	{
-		Same = 0,						/**< Compared Adpdus are identical */
-		DiffAllowed = 1,		/**< Compared Adpdus differs by one or more allowed fields (This is an update) */
-		DiffNotAllowed = 2,	/**< Compared Adpdus differs by one or more not allowed fields (This is a 'new' entity) */
+		Same = 0, /**< Compared Adpdus are identical */
+		DiffAllowed = 1, /**< Compared Adpdus differs by one or more allowed fields (This is an update) */
+		DiffNotAllowed = 2, /**< Compared Adpdus differs by one or more not allowed fields (This is a 'new' entity) */
 	};
 
 	// Private methods

@@ -38,7 +38,6 @@ namespace entity
 {
 namespace addressAccess
 {
-
 /** Type-Length-Value for AddressAccess */
 class Tlv final
 {
@@ -48,13 +47,12 @@ public:
 	using memory_data_type = std::vector<value_type>;
 
 	/** Default constructor for an invalid Tlv. */
-	Tlv() noexcept
-	{
-	}
+	Tlv() noexcept {}
 
 	/** Constructor from a length for a Read mode. */
 	Tlv(std::uint64_t const address, size_t const length)
-		: _mode(protocol::AaMode::Read), _address(address)
+		: _mode(protocol::AaMode::Read)
+		, _address(address)
 	{
 		if (length == 0u)
 		{
@@ -69,7 +67,8 @@ public:
 
 	/** Constructor from a length and a mode, allocating the memory data. */
 	Tlv(protocol::AaMode const mode, std::uint64_t const address, size_t const length)
-		: _mode(mode), _address(address)
+		: _mode(mode)
+		, _address(address)
 	{
 		if (length == 0u)
 		{
@@ -84,7 +83,8 @@ public:
 
 	/** Constructor from a memory data for a Write or Execute mode. */
 	Tlv(std::uint64_t const address, protocol::AaMode const mode, memory_data_type const& memoryData)
-		: _mode(mode), _address(address)
+		: _mode(mode)
+		, _address(address)
 	{
 		if (memoryData.size() == 0u)
 		{
@@ -99,7 +99,8 @@ public:
 
 	/** Constructor from a memory data for a Write or Execute mode. */
 	Tlv(std::uint64_t const address, protocol::AaMode const mode, memory_data_type&& memoryData)
-		: _mode(mode), _address(address)
+		: _mode(mode)
+		, _address(address)
 	{
 		if (memoryData.size() == 0u)
 		{
@@ -114,7 +115,8 @@ public:
 
 	/** Constructor from a raw buffer for a Write or Execute mode. */
 	Tlv(std::uint64_t const address, protocol::AaMode const mode, void const* const ptr, size_t const size)
-		: _mode(mode), _address(address)
+		: _mode(mode)
+		, _address(address)
 	{
 		if (size == 0u)
 		{

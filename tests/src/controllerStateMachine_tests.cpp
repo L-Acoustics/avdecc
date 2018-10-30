@@ -29,7 +29,5 @@
 
 TEST(ControllerStateMachine, InvalidDelegate)
 {
-	EXPECT_THROW(
-		la::avdecc::protocol::stateMachine::ControllerStateMachine(nullptr, nullptr);
-	, la::avdecc::Exception);
+	EXPECT_THROW(la::avdecc::protocol::stateMachine::ControllerStateMachine(nullptr, nullptr);, la::avdecc::Exception);
 }

@@ -29,7 +29,7 @@ We use GitHub issues for tracking requests and bugs.
 * Apple: macOS Talker, Listener and Controller (El Capitan and later)
 * AudioScience: Hono AVB Mini
 
-## la_avdecc Library
+## la_avdecc library
 
 Implementation of the IEEE Std 1722.1-2013 specification.  
 Also implementing non-released IEEE Std 1722.1 corrigendum 1 draft 8.
@@ -38,7 +38,7 @@ Also implementing AVnu Alliance Network Redundancy.
 
 The library exposes APIs needed to create AVDECC entities on the local computer, and to interact with other entities on the network.
 
-## la_avdecc_controller Library
+## la_avdecc_controller library
 
 This is a simple library to create an AVDECC controller entity on the local computer. This controller automatically listens to and keeps track of the other entities on the network using the IEEE Std 1722.1 protocol.
 
@@ -53,7 +53,7 @@ The controller API has 2 interfaces:
 
 ### Windows
 - Windows 8.1
-- Visual Studio 2017 v15.7 or greater (using platform toolset v141)
+- Visual Studio 2017 v15.8 or greater (using platform toolset v141)
 - WinPcap 4.1.2 Developer's Pack (see [this file](externals/3rdparty/winpcap/README.md) for more details)
 - GitBash or cygwin
 
@@ -120,5 +120,9 @@ The controller API has 2 interfaces:
   * C (public APIs only)
   * Lua (public and private APIs)
 
-## Trademark Legal Notice
+## Contributing code
+
+[Please read this file](CONTRIBUTING.md)
+
+## Trademark legal notice
 All product names, logos, brands and trademarks are property of their respective owners. All company, product and service names used in this library are for identification purposes only. Use of these names, logos, and brands does not imply endorsement.

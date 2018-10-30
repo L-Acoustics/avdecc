@@ -29,7 +29,6 @@ namespace la
 {
 namespace avdecc
 {
-
 EndStationImpl::EndStationImpl(protocol::ProtocolInterface::UniquePointer&& protocolInterface) noexcept
 	: _protocolInterface(std::move(protocolInterface))
 {
@@ -49,7 +48,7 @@ entity::ControllerEntity* EndStationImpl::addControllerEntity(std::uint16_t cons
 	std::unique_ptr<entity::LocalEntityGuard<entity::ControllerEntityImpl>> controller{ nullptr };
 	try
 	{
-			controller = std::make_unique<entity::LocalEntityGuard<entity::ControllerEntityImpl>>(_protocolInterface.get(), progID, entityModelID, delegate);
+		controller = std::make_unique<entity::LocalEntityGuard<entity::ControllerEntityImpl>>(_protocolInterface.get(), progID, entityModelID, delegate);
 	}
 	catch (la::avdecc::Exception const& e) // Because entity::ControllerEntityImpl::ControllerEntityImpl might throw if an entityID cannot be generated
 	{

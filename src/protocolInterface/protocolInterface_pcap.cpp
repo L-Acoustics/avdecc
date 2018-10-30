@@ -44,7 +44,6 @@ namespace avdecc
 {
 namespace protocol
 {
-
 class ProtocolInterfacePcapImpl final : public ProtocolInterfacePcap, private stateMachine::ControllerStateMachine::Delegate
 {
 public:
@@ -82,53 +81,52 @@ public:
 				{
 					_pcapLibrary.close(pcap);
 				}
-			}
-		};
+			} };
 
 		// Start the capture thread
-		_captureThread = std::thread([this]
-		{
-			int res = 0;
-			struct pcap_pkthdr* header;
-			std::uint8_t const* pkt_data;
-
-			la::avdecc::setCurrentThreadName("avdecc::PCapInterface::Capture");
-			auto* const pcap = _pcap.get();
-
-			while (!_shouldTerminate && (res = _pcapLibrary.next_ex(pcap, &header, &pkt_data)) >= 0)
+		_captureThread = std::thread(
+			[this]
 			{
+				int res = 0;
+				struct pcap_pkthdr* header;
+				std::uint8_t const* pkt_data;
 
-				if (res == 0) /* Timeout elapsed */
-					continue;
+				la::avdecc::setCurrentThreadName("avdecc::PCapInterface::Capture");
+				auto* const pcap = _pcap.get();
 
-				// Packet received, process it
-				auto des = DeserializationBuffer(pkt_data, header->caplen);
-				EtherLayer2 etherLayer2;
-				deserialize<EtherLayer2>(&etherLayer2, des);
+				while (!_shouldTerminate && (res = _pcapLibrary.next_ex(pcap, &header, &pkt_data)) >= 0)
+				{
+					if (res == 0) /* Timeout elapsed */
+						continue;
 
-				// Don't ignore self mac, another entity might be on the computer
+					// Packet received, process it
+					auto des = DeserializationBuffer(pkt_data, header->caplen);
+					EtherLayer2 etherLayer2;
+					deserialize<EtherLayer2>(&etherLayer2, des);
 
-				// Check ether type (shouldn't be needed, pcap filter is active)
-				std::uint16_t etherType = AVDECC_UNPACK_TYPE(*((std::uint16_t*)(pkt_data + 12)), std::uint16_t);
-				if (etherType != AvtpEtherType)
-					continue;
+					// Don't ignore self mac, another entity might be on the computer
 
-				std::uint8_t const* avtpdu = &pkt_data[14]; // Start of AVB Transport Protocol
-				auto avtpdu_size = header->caplen - 14;
-				// Check AVTP control bit (meaning AVDECC packet)
-				std::uint8_t avtp_sub_type_control = avtpdu[0];
-				if ((avtp_sub_type_control & 0xF0) == 0)
-					continue;
+					// Check ether type (shouldn't be needed, pcap filter is active)
+					std::uint16_t etherType = AVDECC_UNPACK_TYPE(*((std::uint16_t*)(pkt_data + 12)), std::uint16_t);
+					if (etherType != AvtpEtherType)
+						continue;
 
-				dispatchAvdeccMessage(avtpdu, avtpdu_size, etherLayer2);
-			}
+					std::uint8_t const* avtpdu = &pkt_data[14]; // Start of AVB Transport Protocol
+					auto avtpdu_size = header->caplen - 14;
+					// Check AVTP control bit (meaning AVDECC packet)
+					std::uint8_t avtp_sub_type_control = avtpdu[0];
+					if ((avtp_sub_type_control & 0xF0) == 0)
+						continue;
 
-			// Notify observers if we exited the loop because of an error
-			if (!_shouldTerminate)
-			{
-				notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onTransportError, this);
-			}
-		});
+					dispatchAvdeccMessage(avtpdu, avtpdu_size, etherLayer2);
+				}
+
+				// Notify observers if we exited the loop because of an error
+				if (!_shouldTerminate)
+				{
+					notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onTransportError, this);
+				}
+			});
 	}
 
 	/** Destructor */
@@ -464,32 +462,28 @@ private:
 
 #pragma message("TODO: Handle other AECP message types")
 					static std::unordered_map<AecpMessageType, std::function<Aecpdu::UniquePointer(std::uint8_t const* const pkt_data, size_t const pkt_len)>, AecpMessageType::Hash> s_Dispatch{
-						{
-							AecpMessageType::AemCommand, [](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
+						{ AecpMessageType::AemCommand,
+							[](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
 							{
 								return AemAecpdu::create();
-							}
-						},
-						{
-							AecpMessageType::AemResponse, [](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
+							} },
+						{ AecpMessageType::AemResponse,
+							[](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
 							{
 								return AemAecpdu::create();
-							}
-						},
-						{
-							AecpMessageType::AddressAccessCommand, [](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
+							} },
+						{ AecpMessageType::AddressAccessCommand,
+							[](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
 							{
 								return AaAecpdu::create();
-							}
-						},
-						{
-							AecpMessageType::AddressAccessResponse, [](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
+							} },
+						{ AecpMessageType::AddressAccessResponse,
+							[](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
 							{
 								return AaAecpdu::create();
-							}
-						},
-						{
-							AecpMessageType::VendorUniqueResponse, [](std::uint8_t const* const pkt_data, size_t const pkt_len)
+							} },
+						{ AecpMessageType::VendorUniqueResponse,
+							[](std::uint8_t const* const pkt_data, size_t const pkt_len)
 							{
 								// We have to retrieve the ProtocolID to dispatch
 								auto const protocolIdentifierOffset = AvtpduControl::HeaderLength + Aecpdu::HeaderLength;
@@ -504,9 +498,8 @@ private:
 									}
 								}
 
-								return Aecpdu::UniquePointer{nullptr, nullptr};
-							}
-						},
+								return Aecpdu::UniquePointer{ nullptr, nullptr };
+							} },
 					};
 
 					auto const& it = s_Dispatch.find(messageType);

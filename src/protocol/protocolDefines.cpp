@@ -32,7 +32,6 @@ namespace avdecc
 {
 namespace protocol
 {
-
 /* Global protocol defines */
 std::uint16_t const AaAecpMaxSingleTlvMemoryDataLength{ Aecpdu::MaximumSendLength - Aecpdu::HeaderLength - AaAecpdu::HeaderLength - AaAecpdu::TlvHeaderLength }; /* Maximum individual TLV memory_data length in commands */
 

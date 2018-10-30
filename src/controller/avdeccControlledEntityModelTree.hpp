@@ -38,7 +38,6 @@ namespace controller
 {
 namespace model
 {
-
 struct ConfigurationDynamicTree
 {
 	// Children

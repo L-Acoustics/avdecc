@@ -40,7 +40,6 @@ namespace avdecc
 {
 namespace controller
 {
-
 /* ************************************************************************** */
 /* ControlledEntity                                                           */
 /* ************************************************************************** */
@@ -60,14 +59,23 @@ public:
 			EnumerationError, /**< Trying to get information from an Entity that got an error during descriptors enumeration. Only non-throwing methods can be called. */
 			Internal = 99, /**< Internal library error, please report */
 		};
-		Exception(Type const type, char const* const text) : la::avdecc::Exception(text), _type(type) {}
-		Type getType() const noexcept { return _type; }
+		Exception(Type const type, char const* const text)
+			: la::avdecc::Exception(text)
+			, _type(type)
+		{
+		}
+		Type getType() const noexcept
+		{
+			return _type;
+		}
+
 	private:
 		Type const _type{ Type::None };
 	};
 
 	enum class Compatibility
 	{
+		NotCompliant, /** Not fully IEEE1722.1 compliant entity */
 		IEEE17221, /** Classic IEEE1722.1 entity */
 		Milan, /** MILAN compatible entity */
 	};
@@ -173,9 +181,7 @@ public:
 	}
 
 	// Default constructor to allow creation of an empty Guard
-	ControlledEntityGuard() noexcept
-	{
-	}
+	ControlledEntityGuard() noexcept {}
 
 	// Destructor visibility required
 	~ControlledEntityGuard()

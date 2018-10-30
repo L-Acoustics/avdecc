@@ -34,7 +34,6 @@ namespace avdecc
 {
 namespace controller
 {
-
 /* ************************************************************ */
 /* Controller overrides                                         */
 /* ************************************************************ */
@@ -71,61 +70,62 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 	}
 
 	// Create the delayed query thread
-	_delayedQueryThread = std::thread([this]
-	{
-		setCurrentThreadName("avdecc::controller::DelayedQueries");
-		decltype(_delayedQueries) queriesToSend{};
-		while (!_shouldTerminate)
+	_delayedQueryThread = std::thread(
+		[this]
 		{
-			// Check all delayed queries if we need to send any of them, and copy them so we can send outside the loop
+			setCurrentThreadName("avdecc::controller::DelayedQueries");
+			decltype(_delayedQueries) queriesToSend{};
+			while (!_shouldTerminate)
 			{
-				// Lock to protect _delayedQueries
-				std::lock_guard<decltype(_lock)> const lg(_lock);
-
-				// Get current time
-				std::chrono::time_point<std::chrono::system_clock> currentTime = std::chrono::system_clock::now();
-
-				for (auto it = _delayedQueries.begin(); it != _delayedQueries.end(); /* Iterate inside the loop */)
+				// Check all delayed queries if we need to send any of them, and copy them so we can send outside the loop
 				{
-					auto const& query = *it;
-					if (currentTime > query.sendTime)
-					{
-						// Move the query to the "to process" list
-						queriesToSend.emplace_back(std::move(*it));
+					// Lock to protect _delayedQueries
+					std::lock_guard<decltype(_lock)> const lg(_lock);
 
-						// Remove the command from the list
-						it = _delayedQueries.erase(it);
-					}
-					else
+					// Get current time
+					std::chrono::time_point<std::chrono::system_clock> currentTime = std::chrono::system_clock::now();
+
+					for (auto it = _delayedQueries.begin(); it != _delayedQueries.end(); /* Iterate inside the loop */)
 					{
-						++it;
+						auto const& query = *it;
+						if (currentTime > query.sendTime)
+						{
+							// Move the query to the "to process" list
+							queriesToSend.emplace_back(std::move(*it));
+
+							// Remove the command from the list
+							it = _delayedQueries.erase(it);
+						}
+						else
+						{
+							++it;
+						}
 					}
 				}
-			}
 
-			// Now actually send queries, outside the lock
-			while (!queriesToSend.empty() && !_shouldTerminate)
-			{
-				// Get first query from the list
-				auto const& query = queriesToSend.front();
-
-				auto controlledEntity = getControlledEntityImpl(query.entityID);
-
-				// Entity still online
-				if (controlledEntity)
+				// Now actually send queries, outside the lock
+				while (!queriesToSend.empty() && !_shouldTerminate)
 				{
-					// Send the query
-					invokeProtectedHandler(query.queryHandler, _controller);
+					// Get first query from the list
+					auto const& query = queriesToSend.front();
+
+					auto controlledEntity = getControlledEntityImpl(query.entityID);
+
+					// Entity still online
+					if (controlledEntity)
+					{
+						// Send the query
+						invokeProtectedHandler(query.queryHandler, _controller);
+					}
+
+					// Remove the query from the list
+					queriesToSend.pop_front();
 				}
 
-				// Remove the query from the list
-				queriesToSend.pop_front();
+				// Wait a little bit so we don't burn the CPU
+				std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			}
-
-			// Wait a little bit so we don't burn the CPU
-			std::this_thread::sleep_for(std::chrono::milliseconds(10));
-		}
-	});
+		});
 }
 
 ControllerImpl::~ControllerImpl()
@@ -214,7 +214,7 @@ void ControllerImpl::disableEntityModelCache() noexcept
 void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, AcquireEntityHandler const& handler) const noexcept
 {
 	auto const descriptorType{ entity::model::DescriptorType::Entity };
-	auto const descriptorIndex{ entity::model::DescriptorIndex{0u} };
+	auto const descriptorIndex{ entity::model::DescriptorIndex{ 0u } };
 
 	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
 	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
@@ -230,40 +230,41 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 			return;
 		}
 		controlledEntity->setAcquireState(model::AcquireState::TryAcquire);
-		_controller->acquireEntity(targetEntityID, isPersistent, descriptorType, descriptorIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User acquireEntityResult (OwningController={} DescriptorType={} DescriptorIndex={}): {}", toHexString(owningEntity, true), to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->acquireEntity(targetEntityID, isPersistent, descriptorType, descriptorIndex,
+			[this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 			{
-				auto* const entity = controlledEntity.get();
-				switch (status)
+				LOG_CONTROLLER_TRACE(entityID, "User acquireEntityResult (OwningController={} DescriptorType={} DescriptorIndex={}): {}", toHexString(owningEntity, true), to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					case entity::ControllerEntity::AemCommandStatus::Success:
-						updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
-						break;
-					case entity::ControllerEntity::AemCommandStatus::AcquiredByOther:
-						updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
-						break;
-					case entity::ControllerEntity::AemCommandStatus::NotImplemented:
-					case entity::ControllerEntity::AemCommandStatus::NotSupported:
-						updateAcquiredState(*entity, UniqueIdentifier{}, descriptorType, descriptorIndex);
-						break;
-					default:
-						// In case of error, set the state to undefined
-						updateAcquiredState(*entity, UniqueIdentifier{}, descriptorType, descriptorIndex, true);
-						break;
+					auto* const entity = controlledEntity.get();
+					switch (status)
+					{
+						case entity::ControllerEntity::AemCommandStatus::Success:
+							updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
+							break;
+						case entity::ControllerEntity::AemCommandStatus::AcquiredByOther:
+							updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
+							break;
+						case entity::ControllerEntity::AemCommandStatus::NotImplemented:
+						case entity::ControllerEntity::AemCommandStatus::NotSupported:
+							updateAcquiredState(*entity, UniqueIdentifier{}, descriptorType, descriptorIndex);
+							break;
+						default:
+							// In case of error, set the state to undefined
+							updateAcquiredState(*entity, UniqueIdentifier{}, descriptorType, descriptorIndex, true);
+							break;
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, owningEntity);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, owningEntity);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status, owningEntity);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status, owningEntity);
+				}
+			});
 	}
 	else
 	{
@@ -282,27 +283,28 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User releaseEntity (DescriptorType={} DescriptorIndex={})", to_integral(descriptorType), descriptorIndex);
-		_controller->releaseEntity(targetEntityID, descriptorType, descriptorIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User releaseEntity (OwningController={} DescriptorType={} DescriptorIndex={}): {}", toHexString(owningEntity, true), to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->releaseEntity(targetEntityID, descriptorType, descriptorIndex,
+			[this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status) // Only change the acquire state in case of success
+				LOG_CONTROLLER_TRACE(entityID, "User releaseEntity (OwningController={} DescriptorType={} DescriptorIndex={}): {}", toHexString(owningEntity, true), to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
+					auto* const entity = controlledEntity.get();
+					if (!!status) // Only change the acquire state in case of success
+					{
+						updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, owningEntity);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, owningEntity);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status, owningEntity);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status, owningEntity);
+				}
+			});
 	}
 	else
 	{
@@ -318,27 +320,28 @@ void ControllerImpl::setConfiguration(UniqueIdentifier const targetEntityID, ent
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setConfiguration (ConfigurationIndex={})", configurationIndex);
-		_controller->setConfiguration(targetEntityID, configurationIndex, [this, handler](entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User setConfiguration (ConfigurationIndex={}): {}", configurationIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->setConfiguration(targetEntityID, configurationIndex,
+			[this, handler](entity::ControllerEntity const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status)
+				LOG_CONTROLLER_TRACE(entityID, "User setConfiguration (ConfigurationIndex={}): {}", configurationIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateConfiguration(controller, *entity, configurationIndex);
+					auto* const entity = controlledEntity.get();
+					if (!!status)
+					{
+						updateConfiguration(controller, *entity, configurationIndex);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -354,27 +357,28 @@ void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID,
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamInputFormat (StreamIndex={} streamFormat={})", streamIndex, streamFormat);
-		_controller->setStreamInputFormat(targetEntityID, streamIndex, streamFormat, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User setStreamInputFormat (StreamIndex={} streamFormat={}): {}", streamIndex, streamFormat, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->setStreamInputFormat(targetEntityID, streamIndex, streamFormat,
+			[this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status)
+				LOG_CONTROLLER_TRACE(entityID, "User setStreamInputFormat (StreamIndex={} streamFormat={}): {}", streamIndex, streamFormat, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateStreamInputFormat(*entity, streamIndex, streamFormat);
+					auto* const entity = controlledEntity.get();
+					if (!!status)
+					{
+						updateStreamInputFormat(*entity, streamIndex, streamFormat);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -390,27 +394,28 @@ void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamOutputFormat (StreamIndex={} streamFormat={})", streamIndex, streamFormat);
-		_controller->setStreamOutputFormat(targetEntityID, streamIndex, streamFormat, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User setStreamOutputFormat (StreamIndex={} streamFormat={}): {}", streamIndex, streamFormat, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->setStreamOutputFormat(targetEntityID, streamIndex, streamFormat,
+			[this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status)
+				LOG_CONTROLLER_TRACE(entityID, "User setStreamOutputFormat (StreamIndex={} streamFormat={}): {}", streamIndex, streamFormat, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateStreamOutputFormat(*entity, streamIndex, streamFormat);
+					auto* const entity = controlledEntity.get();
+					if (!!status)
+					{
+						updateStreamOutputFormat(*entity, streamIndex, streamFormat);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -426,27 +431,28 @@ void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setEntityName (Name={})", name.str());
-		_controller->setEntityName(targetEntityID, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User setEntityName (): {}", entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->setEntityName(targetEntityID, name,
+			[this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status) // Only change the name in case of success
+				LOG_CONTROLLER_TRACE(entityID, "User setEntityName (): {}", entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateEntityName(*entity, name);
+					auto* const entity = controlledEntity.get();
+					if (!!status) // Only change the name in case of success
+					{
+						updateEntityName(*entity, name);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -462,27 +468,28 @@ void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, e
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setEntityGroupName (Name={})", name.str());
-		_controller->setEntityGroupName(targetEntityID, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User setEntityGroupName (): {}", entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->setEntityGroupName(targetEntityID, name,
+			[this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status) // Only change the name in case of success
+				LOG_CONTROLLER_TRACE(entityID, "User setEntityGroupName (): {}", entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateEntityGroupName(*entity, name);
+					auto* const entity = controlledEntity.get();
+					if (!!status) // Only change the name in case of success
+					{
+						updateEntityGroupName(*entity, name);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -498,27 +505,28 @@ void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID,
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setConfigurationName (ConfigurationIndex={} Name={})", configurationIndex, name.str());
-		_controller->setConfigurationName(targetEntityID, configurationIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User setConfigurationName (ConfigurationIndex={}): {}", configurationIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->setConfigurationName(targetEntityID, configurationIndex, name,
+			[this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status) // Only change the name in case of success
+				LOG_CONTROLLER_TRACE(entityID, "User setConfigurationName (ConfigurationIndex={}): {}", configurationIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateConfigurationName(*entity, configurationIndex, name);
+					auto* const entity = controlledEntity.get();
+					if (!!status) // Only change the name in case of success
+					{
+						updateConfigurationName(*entity, configurationIndex, name);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -534,27 +542,28 @@ void ControllerImpl::setAudioUnitName(UniqueIdentifier const targetEntityID, ent
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioUnitName (ConfigurationIndex={} AudioUnitIndex={} Name={})", configurationIndex, audioUnitIndex, name.str());
-		_controller->setAudioUnitName(targetEntityID, configurationIndex, audioUnitIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User setAudioUnitName (ConfigurationIndex={} AudioUnitIndex={}): {}", configurationIndex, audioUnitIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->setAudioUnitName(targetEntityID, configurationIndex, audioUnitIndex, name,
+			[this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status) // Only change the name in case of success
+				LOG_CONTROLLER_TRACE(entityID, "User setAudioUnitName (ConfigurationIndex={} AudioUnitIndex={}): {}", configurationIndex, audioUnitIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateAudioUnitName(*entity, configurationIndex, audioUnitIndex, name);
+					auto* const entity = controlledEntity.get();
+					if (!!status) // Only change the name in case of success
+					{
+						updateAudioUnitName(*entity, configurationIndex, audioUnitIndex, name);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -570,27 +579,28 @@ void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, e
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamInputName (ConfigurationIndex={} StreamIndex={} Name={})", configurationIndex, streamIndex, name.str());
-		_controller->setStreamInputName(targetEntityID, configurationIndex, streamIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User setStreamInputName (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->setStreamInputName(targetEntityID, configurationIndex, streamIndex, name,
+			[this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status) // Only change the name in case of success
+				LOG_CONTROLLER_TRACE(entityID, "User setStreamInputName (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateStreamInputName(*entity, configurationIndex, streamIndex, name);
+					auto* const entity = controlledEntity.get();
+					if (!!status) // Only change the name in case of success
+					{
+						updateStreamInputName(*entity, configurationIndex, streamIndex, name);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -606,27 +616,28 @@ void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, 
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamOutputName (ConfigurationIndex={} StreamIndex={} Name={})", configurationIndex, streamIndex, name.str());
-		_controller->setStreamOutputName(targetEntityID, configurationIndex, streamIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User setStreamOutputName (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->setStreamOutputName(targetEntityID, configurationIndex, streamIndex, name,
+			[this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status) // Only change the name in case of success
+				LOG_CONTROLLER_TRACE(entityID, "User setStreamOutputName (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateStreamOutputName(*entity, configurationIndex, streamIndex, name);
+					auto* const entity = controlledEntity.get();
+					if (!!status) // Only change the name in case of success
+					{
+						updateStreamOutputName(*entity, configurationIndex, streamIndex, name);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -642,27 +653,28 @@ void ControllerImpl::setAvbInterfaceName(UniqueIdentifier const targetEntityID, 
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setAvbInterfaceName (ConfigurationIndex={} AvbInterfaceIndex={} Name={})", configurationIndex, avbInterfaceIndex, name.str());
-		_controller->setAvbInterfaceName(targetEntityID, configurationIndex, avbInterfaceIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User setAvbInterfaceName (ConfigurationIndex={} AvbInterfaceIndex={}): {}", configurationIndex, avbInterfaceIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->setAvbInterfaceName(targetEntityID, configurationIndex, avbInterfaceIndex, name,
+			[this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status) // Only change the name in case of success
+				LOG_CONTROLLER_TRACE(entityID, "User setAvbInterfaceName (ConfigurationIndex={} AvbInterfaceIndex={}): {}", configurationIndex, avbInterfaceIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateAvbInterfaceName(*entity, configurationIndex, avbInterfaceIndex, name);
+					auto* const entity = controlledEntity.get();
+					if (!!status) // Only change the name in case of success
+					{
+						updateAvbInterfaceName(*entity, configurationIndex, avbInterfaceIndex, name);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -678,27 +690,28 @@ void ControllerImpl::setClockSourceName(UniqueIdentifier const targetEntityID, e
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setClockSourceName (ConfigurationIndex={} ClockSourceIndex={} Name={})", configurationIndex, clockSourceIndex, name.str());
-		_controller->setClockSourceName(targetEntityID, configurationIndex, clockSourceIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User setClockSourceName (ConfigurationIndex={} ClockSourceIndex={}): {}", configurationIndex, clockSourceIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->setClockSourceName(targetEntityID, configurationIndex, clockSourceIndex, name,
+			[this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status) // Only change the name in case of success
+				LOG_CONTROLLER_TRACE(entityID, "User setClockSourceName (ConfigurationIndex={} ClockSourceIndex={}): {}", configurationIndex, clockSourceIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateClockSourceName(*entity, configurationIndex, clockSourceIndex, name);
+					auto* const entity = controlledEntity.get();
+					if (!!status) // Only change the name in case of success
+					{
+						updateClockSourceName(*entity, configurationIndex, clockSourceIndex, name);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -714,27 +727,28 @@ void ControllerImpl::setMemoryObjectName(UniqueIdentifier const targetEntityID, 
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setMemoryObjectName (ConfigurationIndex={} MemoryObjectIndex={} Name={})", configurationIndex, memoryObjectIndex, name.str());
-		_controller->setMemoryObjectName(targetEntityID, configurationIndex, memoryObjectIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User setMemoryObjectName (ConfigurationIndex={} MemoryObjectIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->setMemoryObjectName(targetEntityID, configurationIndex, memoryObjectIndex, name,
+			[this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status) // Only change the name in case of success
+				LOG_CONTROLLER_TRACE(entityID, "User setMemoryObjectName (ConfigurationIndex={} MemoryObjectIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateMemoryObjectName(*entity, configurationIndex, memoryObjectIndex, name);
+					auto* const entity = controlledEntity.get();
+					if (!!status) // Only change the name in case of success
+					{
+						updateMemoryObjectName(*entity, configurationIndex, memoryObjectIndex, name);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -750,27 +764,28 @@ void ControllerImpl::setAudioClusterName(UniqueIdentifier const targetEntityID, 
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioClusterName (ConfigurationIndex={} AudioClusterIndex={} Name={})", configurationIndex, audioClusterIndex, name.str());
-		_controller->setAudioClusterName(targetEntityID, configurationIndex, audioClusterIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User setAudioClusterName (ConfigurationIndex={} AudioClusterIndex={}): {}", configurationIndex, audioClusterIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->setAudioClusterName(targetEntityID, configurationIndex, audioClusterIndex, name,
+			[this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status) // Only change the name in case of success
+				LOG_CONTROLLER_TRACE(entityID, "User setAudioClusterName (ConfigurationIndex={} AudioClusterIndex={}): {}", configurationIndex, audioClusterIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateAudioClusterName(*entity, configurationIndex, audioClusterIndex, name);
+					auto* const entity = controlledEntity.get();
+					if (!!status) // Only change the name in case of success
+					{
+						updateAudioClusterName(*entity, configurationIndex, audioClusterIndex, name);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -786,27 +801,28 @@ void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, e
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setClockDomainName (ConfigurationIndex={} ClockDomainIndex={} Name={})", configurationIndex, clockDomainIndex, name.str());
-		_controller->setClockDomainName(targetEntityID, configurationIndex, clockDomainIndex, name, [this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User setClockDomainName (ConfigurationIndex={} ClockDomainIndex={}): {}", configurationIndex, clockDomainIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->setClockDomainName(targetEntityID, configurationIndex, clockDomainIndex, name,
+			[this, name, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status) // Only change the name in case of success
+				LOG_CONTROLLER_TRACE(entityID, "User setClockDomainName (ConfigurationIndex={} ClockDomainIndex={}): {}", configurationIndex, clockDomainIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateClockDomainName(*entity, configurationIndex, clockDomainIndex, name);
+					auto* const entity = controlledEntity.get();
+					if (!!status) // Only change the name in case of success
+					{
+						updateClockDomainName(*entity, configurationIndex, clockDomainIndex, name);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -822,27 +838,28 @@ void ControllerImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntit
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioUnitSamplingRate (AudioUnitIndex={} SamplingRate={})", audioUnitIndex, samplingRate);
-		_controller->setAudioUnitSamplingRate(targetEntityID, audioUnitIndex, samplingRate, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User setAudioUnitSamplingRate (AudioUnitIndex={} SamplingRate={}): {}", audioUnitIndex, samplingRate, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->setAudioUnitSamplingRate(targetEntityID, audioUnitIndex, samplingRate,
+			[this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status) // Only change the sampling rate in case of success
+				LOG_CONTROLLER_TRACE(entityID, "User setAudioUnitSamplingRate (AudioUnitIndex={} SamplingRate={}): {}", audioUnitIndex, samplingRate, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateAudioUnitSamplingRate(*entity, audioUnitIndex, samplingRate);
+					auto* const entity = controlledEntity.get();
+					if (!!status) // Only change the sampling rate in case of success
+					{
+						updateAudioUnitSamplingRate(*entity, audioUnitIndex, samplingRate);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -858,27 +875,28 @@ void ControllerImpl::setClockSource(UniqueIdentifier const targetEntityID, entit
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setClockSource (ClockDomainIndex={} ClockSourceIndex={})", clockDomainIndex, clockSourceIndex);
-		_controller->setClockSource(targetEntityID, clockDomainIndex, clockSourceIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User setClockSource (ClockDomainIndex={} ClockSourceIndex={}): {}", clockDomainIndex, clockSourceIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->setClockSource(targetEntityID, clockDomainIndex, clockSourceIndex,
+			[this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status) // Only change the clock source in case of success
+				LOG_CONTROLLER_TRACE(entityID, "User setClockSource (ClockDomainIndex={} ClockSourceIndex={}): {}", clockDomainIndex, clockSourceIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateClockSource(*entity, clockDomainIndex, clockSourceIndex);
+					auto* const entity = controlledEntity.get();
+					if (!!status) // Only change the clock source in case of success
+					{
+						updateClockSource(*entity, clockDomainIndex, clockSourceIndex);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -894,27 +912,28 @@ void ControllerImpl::startStreamInput(UniqueIdentifier const targetEntityID, ent
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User startStreamInput (StreamIndex={})", streamIndex);
-		_controller->startStreamInput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User startStreamInput (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->startStreamInput(targetEntityID, streamIndex,
+			[this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status) // Only change the running status in case of success
+				LOG_CONTROLLER_TRACE(entityID, "User startStreamInput (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateStreamInputRunningStatus(*entity, streamIndex, true);
+					auto* const entity = controlledEntity.get();
+					if (!!status) // Only change the running status in case of success
+					{
+						updateStreamInputRunningStatus(*entity, streamIndex, true);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -930,27 +949,28 @@ void ControllerImpl::stopStreamInput(UniqueIdentifier const targetEntityID, enti
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User stopStreamInput (StreamIndex={})", streamIndex);
-		_controller->stopStreamInput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User stopStreamInput (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->stopStreamInput(targetEntityID, streamIndex,
+			[this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status) // Only change the running status in case of success
+				LOG_CONTROLLER_TRACE(entityID, "User stopStreamInput (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateStreamInputRunningStatus(*entity, streamIndex, false);
+					auto* const entity = controlledEntity.get();
+					if (!!status) // Only change the running status in case of success
+					{
+						updateStreamInputRunningStatus(*entity, streamIndex, false);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -966,27 +986,28 @@ void ControllerImpl::startStreamOutput(UniqueIdentifier const targetEntityID, en
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User startStreamOutput (StreamIndex={})", streamIndex);
-		_controller->startStreamOutput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User startStreamOutput (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->startStreamOutput(targetEntityID, streamIndex,
+			[this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status) // Only change the running status in case of success
+				LOG_CONTROLLER_TRACE(entityID, "User startStreamOutput (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateStreamOutputRunningStatus(*entity, streamIndex, true);
+					auto* const entity = controlledEntity.get();
+					if (!!status) // Only change the running status in case of success
+					{
+						updateStreamOutputRunningStatus(*entity, streamIndex, true);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -1002,27 +1023,28 @@ void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, ent
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User stopStreamOutput (StreamIndex={})", streamIndex);
-		_controller->stopStreamOutput(targetEntityID, streamIndex, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User stopStreamOutput (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->stopStreamOutput(targetEntityID, streamIndex,
+			[this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status) // Only change the running status in case of success
+				LOG_CONTROLLER_TRACE(entityID, "User stopStreamOutput (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateStreamOutputRunningStatus(*entity, streamIndex, false);
+					auto* const entity = controlledEntity.get();
+					if (!!status) // Only change the running status in case of success
+					{
+						updateStreamOutputRunningStatus(*entity, streamIndex, false);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -1038,27 +1060,28 @@ void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targ
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User addStreamInputAudioMappings (StreamPortIndex={})", streamPortIndex); // TODO: Convert mappings to string and add to log
-		_controller->addStreamPortInputAudioMappings(targetEntityID, streamPortIndex, mappings, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User addStreamInputAudioMappings (StreamPortIndex={}): {}", streamPortIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->addStreamPortInputAudioMappings(targetEntityID, streamPortIndex, mappings,
+			[this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status)
+				LOG_CONTROLLER_TRACE(entityID, "User addStreamInputAudioMappings (StreamPortIndex={}): {}", streamPortIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateStreamPortInputAudioMappingsAdded(*entity, streamPortIndex, mappings);
+					auto* const entity = controlledEntity.get();
+					if (!!status)
+					{
+						updateStreamPortInputAudioMappingsAdded(*entity, streamPortIndex, mappings);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -1074,27 +1097,28 @@ void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const tar
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User addStreamOutputAudioMappings (StreamPortIndex={})", streamPortIndex);
-		_controller->addStreamPortOutputAudioMappings(targetEntityID, streamPortIndex, mappings, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User addStreamOutputAudioMappings (StreamPortIndex={}): {}", streamPortIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->addStreamPortOutputAudioMappings(targetEntityID, streamPortIndex, mappings,
+			[this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status)
+				LOG_CONTROLLER_TRACE(entityID, "User addStreamOutputAudioMappings (StreamPortIndex={}): {}", streamPortIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateStreamPortOutputAudioMappingsAdded(*entity, streamPortIndex, mappings);
+					auto* const entity = controlledEntity.get();
+					if (!!status)
+					{
+						updateStreamPortOutputAudioMappingsAdded(*entity, streamPortIndex, mappings);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -1110,27 +1134,28 @@ void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const t
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User removeStreamInputAudioMappings (StreamPortIndex={})", streamPortIndex);
-		_controller->removeStreamPortInputAudioMappings(targetEntityID, streamPortIndex, mappings, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User removeStreamInputAudioMappings (StreamPortIndex={}): {}", streamPortIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->removeStreamPortInputAudioMappings(targetEntityID, streamPortIndex, mappings,
+			[this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status)
+				LOG_CONTROLLER_TRACE(entityID, "User removeStreamInputAudioMappings (StreamPortIndex={}): {}", streamPortIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateStreamPortInputAudioMappingsRemoved(*entity, streamPortIndex, mappings);
+					auto* const entity = controlledEntity.get();
+					if (!!status)
+					{
+						updateStreamPortInputAudioMappingsRemoved(*entity, streamPortIndex, mappings);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -1146,27 +1171,28 @@ void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const 
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User removeStreamOutputAudioMappings (StreamPortIndex={})", streamPortIndex);
-		_controller->removeStreamPortOutputAudioMappings(targetEntityID, streamPortIndex, mappings, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User removeStreamOutputAudioMappings (StreamPortIndex={}): {}", streamPortIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->removeStreamPortOutputAudioMappings(targetEntityID, streamPortIndex, mappings,
+			[this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status)
+				LOG_CONTROLLER_TRACE(entityID, "User removeStreamOutputAudioMappings (StreamPortIndex={}): {}", streamPortIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateStreamPortOutputAudioMappingsRemoved(*entity, streamPortIndex, mappings);
+					auto* const entity = controlledEntity.get();
+					if (!!status)
+					{
+						updateStreamPortOutputAudioMappingsRemoved(*entity, streamPortIndex, mappings);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -1182,27 +1208,28 @@ void ControllerImpl::setMemoryObjectLength(UniqueIdentifier const targetEntityID
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setMemoryObjectLength (ConfigurationIndex={} MemoryObjectIndex={} Length={})", configurationIndex, memoryObjectIndex, length);
-		_controller->setMemoryObjectLength(targetEntityID, configurationIndex, memoryObjectIndex, length, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User setMemoryObjectLength (ConfigurationIndex={} MemoryObjectIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->setMemoryObjectLength(targetEntityID, configurationIndex, memoryObjectIndex, length,
+			[this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length)
 			{
-				auto* const entity = controlledEntity.get();
-				if (!!status)
+				LOG_CONTROLLER_TRACE(entityID, "User setMemoryObjectLength (ConfigurationIndex={} MemoryObjectIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
 				{
-					updateMemoryObjectLength(*entity, configurationIndex, memoryObjectIndex, length);
+					auto* const entity = controlledEntity.get();
+					if (!!status)
+					{
+						updateMemoryObjectLength(*entity, configurationIndex, memoryObjectIndex, length);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -1281,10 +1308,11 @@ void ControllerImpl::onUserReadDeviceMemoryResult(UniqueIdentifier const targetE
 			}
 			// Read next TLV
 			LOG_CONTROLLER_TRACE(targetEntityID, "User readDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", baseAddress, length, tlv.getAddress() - baseAddress, tlv.size());
-			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress, length, progressHandler = std::move(progressHandler), completionHandler = std::move(completionHandler), memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs) mutable
-			{
-				onUserReadDeviceMemoryResult(entityID, status, tlvs, baseAddress, length, std::move(progressHandler), std::move(completionHandler), std::move(memoryBuffer));
-			});
+			_controller->addressAccess(targetEntityID, { std::move(tlv) },
+				[this, baseAddress, length, progressHandler = std::move(progressHandler), completionHandler = std::move(completionHandler), memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs) mutable
+				{
+					onUserReadDeviceMemoryResult(entityID, status, tlvs, baseAddress, length, std::move(progressHandler), std::move(completionHandler), std::move(memoryBuffer));
+				});
 			return;
 		}
 	}
@@ -1328,10 +1356,11 @@ void ControllerImpl::onUserWriteDeviceMemoryResult(UniqueIdentifier const target
 			// We are moving the tlv, so we have to get its size before that
 			auto const newSentSize = sentSize + tlv.size();
 			// Write next TLV
-			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress, sentSize = newSentSize, progressHandler = std::move(progressHandler), completionHandler = std::move(completionHandler), memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& /*tlvs*/) mutable
-			{
-				onUserWriteDeviceMemoryResult(entityID, status, baseAddress, sentSize, std::move(progressHandler), std::move(completionHandler), std::move(memoryBuffer));
-			});
+			_controller->addressAccess(targetEntityID, { std::move(tlv) },
+				[this, baseAddress, sentSize = newSentSize, progressHandler = std::move(progressHandler), completionHandler = std::move(completionHandler), memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& /*tlvs*/) mutable
+				{
+					onUserWriteDeviceMemoryResult(entityID, status, baseAddress, sentSize, std::move(progressHandler), std::move(completionHandler), std::move(memoryBuffer));
+				});
 			return;
 		}
 	}
@@ -1355,10 +1384,11 @@ void ControllerImpl::readDeviceMemory(UniqueIdentifier const targetEntityID, std
 		if (tlv)
 		{
 			LOG_CONTROLLER_TRACE(targetEntityID, "User readDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", address, length, 0, tlv.size());
-			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress = address, length, progressHandlerCopy = progressHandler, completionHandlerCopy = completionHandler, memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs) mutable
-			{
-				onUserReadDeviceMemoryResult(entityID, status, tlvs, baseAddress, length, std::move(progressHandlerCopy), std::move(completionHandlerCopy), std::move(memoryBuffer));
-			});
+			_controller->addressAccess(targetEntityID, { std::move(tlv) },
+				[this, baseAddress = address, length, progressHandlerCopy = progressHandler, completionHandlerCopy = completionHandler, memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs) mutable
+				{
+					onUserReadDeviceMemoryResult(entityID, status, tlvs, baseAddress, length, std::move(progressHandlerCopy), std::move(completionHandlerCopy), std::move(memoryBuffer));
+				});
 		}
 		else
 		{
@@ -1380,23 +1410,24 @@ void ControllerImpl::startOperation(UniqueIdentifier const targetEntityID, entit
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User startOperation (DescriptorType={}, DescriptorIndex={}, OperationType={})", static_cast<std::uint16_t>(descriptorType), descriptorIndex, static_cast<std::uint16_t>(operationType));
 
-		_controller->startOperation(targetEntityID, descriptorType, descriptorIndex, operationType, memoryBuffer, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const /*descriptorType*/, la::avdecc::entity::model::DescriptorIndex const /*descriptorIndex*/, la::avdecc::entity::model::OperationID const operationID, la::avdecc::entity::model::MemoryObjectOperationType const /*operationType*/, la::avdecc::MemoryBuffer const& memoryBuffer)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User startOperation (OperationID={}): {}", operationID, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->startOperation(targetEntityID, descriptorType, descriptorIndex, operationType, memoryBuffer,
+			[this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const /*descriptorType*/, la::avdecc::entity::model::DescriptorIndex const /*descriptorIndex*/, la::avdecc::entity::model::OperationID const operationID, la::avdecc::entity::model::MemoryObjectOperationType const /*operationType*/, la::avdecc::MemoryBuffer const& memoryBuffer)
 			{
-				auto* const entity = controlledEntity.get();
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, operationID, memoryBuffer);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status, operationID, memoryBuffer);
-			}
-		});
+				LOG_CONTROLLER_TRACE(entityID, "User startOperation (OperationID={}): {}", operationID, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, operationID, memoryBuffer);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status, operationID, memoryBuffer);
+				}
+			});
 	}
 	else
 	{
@@ -1413,23 +1444,24 @@ void ControllerImpl::abortOperation(UniqueIdentifier const targetEntityID, entit
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User abortOperation (DescriptorType={}, DescriptorIndex={}, OperationID={})", static_cast<std::uint16_t>(descriptorType), descriptorIndex, operationID);
 
-		_controller->abortOperation(targetEntityID, descriptorType, descriptorIndex, operationID, [this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::DescriptorType const /*descriptorType*/, entity::model::DescriptorIndex const /*descriptorIndex*/, entity::model::OperationID const /*operationID*/)
-		{
-			LOG_CONTROLLER_TRACE(entityID, "User abortOperation (): {}", entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto controlledEntity = getControlledEntityImpl(entityID);
-
-			if (controlledEntity)
+		_controller->abortOperation(targetEntityID, descriptorType, descriptorIndex, operationID,
+			[this, handler](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::DescriptorType const /*descriptorType*/, entity::model::DescriptorIndex const /*descriptorIndex*/, entity::model::OperationID const /*operationID*/)
 			{
-				auto* const entity = controlledEntity.get();
-				invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-			}
-			else // The entity went offline right after we sent our message
-			{
-				invokeProtectedHandler(handler, nullptr, status);
-			}
-		});
+				LOG_CONTROLLER_TRACE(entityID, "User abortOperation (): {}", entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
 	}
 	else
 	{
@@ -1439,10 +1471,11 @@ void ControllerImpl::abortOperation(UniqueIdentifier const targetEntityID, entit
 
 void ControllerImpl::startMemoryObjectOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorIndex const descriptorIndex, entity::model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer, StartMemoryObjectOperationHandler const& handler) const noexcept
 {
-	startOperation(targetEntityID, entity::model::DescriptorType::MemoryObject, descriptorIndex, operationType, memoryBuffer, [handler](controller::ControlledEntity const* const entity, entity::ControllerEntity::AemCommandStatus const status, entity::model::OperationID const operationID, MemoryBuffer const& /*memoryBuffer*/)
-	{
-		invokeProtectedHandler(handler, entity, status, operationID);
-	});
+	startOperation(targetEntityID, entity::model::DescriptorType::MemoryObject, descriptorIndex, operationType, memoryBuffer,
+		[handler](controller::ControlledEntity const* const entity, entity::ControllerEntity::AemCommandStatus const status, entity::model::OperationID const operationID, MemoryBuffer const& /*memoryBuffer*/)
+		{
+			invokeProtectedHandler(handler, entity, status, operationID);
+		});
 }
 
 void ControllerImpl::startStoreMemoryObjectOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorIndex const descriptorIndex, StartMemoryObjectOperationHandler const& handler) const noexcept
@@ -1488,10 +1521,11 @@ void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, st
 		if (tlv)
 		{
 			LOG_CONTROLLER_TRACE(targetEntityID, "User writeDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", address, memoryBuffer.size(), 0, tlv.size());
-			_controller->addressAccess(targetEntityID, { std::move(tlv) }, [this, baseAddress = address, sentSize = tlv.size(), progressHandlerCopy = progressHandler, completionHandlerCopy = completionHandler, memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& /*tlvs*/) mutable
-			{
-				onUserWriteDeviceMemoryResult(entityID, status, baseAddress, sentSize, std::move(progressHandlerCopy), std::move(completionHandlerCopy), std::move(memoryBuffer));
-			});
+			_controller->addressAccess(targetEntityID, { std::move(tlv) },
+				[this, baseAddress = address, sentSize = tlv.size(), progressHandlerCopy = progressHandler, completionHandlerCopy = completionHandler, memoryBuffer = std::move(memoryBuffer)](entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& /*tlvs*/) mutable
+				{
+					onUserWriteDeviceMemoryResult(entityID, status, baseAddress, sentSize, std::move(progressHandlerCopy), std::move(completionHandlerCopy), std::move(memoryBuffer));
+				});
 		}
 		else
 		{
@@ -1512,21 +1546,22 @@ void ControllerImpl::connectStream(entity::model::StreamIdentification const& ta
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex);
-		_controller->connectStream(talkerStream, listenerStream, [this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
-		{
-			LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
-
-			if (!!status)
+		_controller->connectStream(talkerStream, listenerStream,
+			[this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 			{
-				// Do not trust the connectionCount value to determine if the listener is connected, but rather use the status code (SUCCESS means connection is established)
-				handleListenerStreamStateNotification(talkerStream, listenerStream, true, flags, false);
-			}
+				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto listener = getControlledEntityImpl(listenerStream.entityID);
-			auto talker = getControlledEntityImpl(talkerStream.entityID);
-			invokeProtectedHandler(handler, talker.get(), listener.get(), talkerStream.streamIndex, listenerStream.streamIndex, status);
-		});
+				if (!!status)
+				{
+					// Do not trust the connectionCount value to determine if the listener is connected, but rather use the status code (SUCCESS means connection is established)
+					handleListenerStreamStateNotification(talkerStream, listenerStream, true, flags, false);
+				}
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto listener = getControlledEntityImpl(listenerStream.entityID);
+				auto talker = getControlledEntityImpl(talkerStream.entityID);
+				invokeProtectedHandler(handler, talker.get(), listener.get(), talkerStream.streamIndex, listenerStream.streamIndex, status);
+			});
 	}
 	else
 	{
@@ -1542,51 +1577,53 @@ void ControllerImpl::disconnectStream(entity::model::StreamIdentification const&
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex);
-		_controller->disconnectStream(talkerStream, listenerStream, [this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
-		{
-			LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
-
-			bool shouldNotifyHandler{ true }; // Shall we notify the handler right now, or do we have to send another message before
-
-			if (!!status) // No error, update the connection state
+		_controller->disconnectStream(talkerStream, listenerStream,
+			[this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 			{
-				// Do not trust the connectionCount value to determine if the listener is disconnected, but rather use the status code (SUCCESS means disconnected)
-				handleListenerStreamStateNotification(talkerStream, listenerStream, false, flags, false);
-			}
-			else
-			{
-				// In case of a disconnect we might get an error (forwarded from the talker) but the stream is actually disconnected.
-				// In that case, we have to query the listener stream state in order to know the actual connection state
-				if (status != entity::ControllerEntity::ControlStatus::NotConnected)
+				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
+
+				bool shouldNotifyHandler{ true }; // Shall we notify the handler right now, or do we have to send another message before
+
+				if (!!status) // No error, update the connection state
 				{
-					shouldNotifyHandler = false; // Don't notify handler right now, wait for getListenerStreamState answer
-					_controller->getListenerStreamState(listenerStream, [this, handler, disconnectStatus = status](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
-					{
-						entity::ControllerEntity::ControlStatus controlStatus{ disconnectStatus };
-
-						if (!!status)
-						{
-							// In a GET_RX_STATE_RESPONSE message, the connectionCount is set to 1 if the stream is connected and 0 if not connected (See Marc Illouz clarification document, and hopefully someday as a corrigendum)
-							bool const isStillConnected = connectionCount != 0;
-							handleListenerStreamStateNotification(talkerStream, listenerStream, isStillConnected, flags, false);
-							// Status to return depends if we actually got disconnected (success in that case)
-							controlStatus = isStillConnected ? disconnectStatus : entity::ControllerEntity::ControlStatus::Success;
-						}
-
-						// Take a copy of the ControlledEntity so we don't have to keep the lock
-						auto listener = getControlledEntityImpl(listenerStream.entityID);
-						invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, controlStatus);
-					});
+					// Do not trust the connectionCount value to determine if the listener is disconnected, but rather use the status code (SUCCESS means disconnected)
+					handleListenerStreamStateNotification(talkerStream, listenerStream, false, flags, false);
 				}
-			}
+				else
+				{
+					// In case of a disconnect we might get an error (forwarded from the talker) but the stream is actually disconnected.
+					// In that case, we have to query the listener stream state in order to know the actual connection state
+					if (status != entity::ControllerEntity::ControlStatus::NotConnected)
+					{
+						shouldNotifyHandler = false; // Don't notify handler right now, wait for getListenerStreamState answer
+						_controller->getListenerStreamState(listenerStream,
+							[this, handler, disconnectStatus = status](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
+							{
+								entity::ControllerEntity::ControlStatus controlStatus{ disconnectStatus };
 
-			if (shouldNotifyHandler)
-			{
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto listener = getControlledEntityImpl(listenerStream.entityID);
-				invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, status);
-			}
-		});
+								if (!!status)
+								{
+									// In a GET_RX_STATE_RESPONSE message, the connectionCount is set to 1 if the stream is connected and 0 if not connected (See Marc Illouz clarification document, and hopefully someday as a corrigendum)
+									bool const isStillConnected = connectionCount != 0;
+									handleListenerStreamStateNotification(talkerStream, listenerStream, isStillConnected, flags, false);
+									// Status to return depends if we actually got disconnected (success in that case)
+									controlStatus = isStillConnected ? disconnectStatus : entity::ControllerEntity::ControlStatus::Success;
+								}
+
+								// Take a copy of the ControlledEntity so we don't have to keep the lock
+								auto listener = getControlledEntityImpl(listenerStream.entityID);
+								invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, controlStatus);
+							});
+					}
+				}
+
+				if (shouldNotifyHandler)
+				{
+					// Take a copy of the ControlledEntity so we don't have to keep the lock
+					auto listener = getControlledEntityImpl(listenerStream.entityID);
+					invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, status);
+				}
+			});
 	}
 	else
 	{
@@ -1602,23 +1639,24 @@ void ControllerImpl::disconnectTalkerStream(entity::model::StreamIdentification 
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectTalkerStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex);
-		_controller->disconnectTalkerStream(talkerStream, listenerStream, [this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
-		{
-			LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectTalkerStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
-
-			auto st = status;
-			if (st == entity::ControllerEntity::ControlStatus::NotConnected)
+		_controller->disconnectTalkerStream(talkerStream, listenerStream,
+			[this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 			{
-				st = entity::ControllerEntity::ControlStatus::Success;
-			}
-			if (!!status) // No error, update the connection state
-			{
-				// Do not trust the connectionCount value to determine if the listener is disconnected, but rather use the status code (SUCCESS means disconnected)
-				handleTalkerStreamStateNotification(talkerStream, listenerStream, false, flags, true);
-			}
+				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectTalkerStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
-			invokeProtectedHandler(handler, st);
-		});
+				auto st = status;
+				if (st == entity::ControllerEntity::ControlStatus::NotConnected)
+				{
+					st = entity::ControllerEntity::ControlStatus::Success;
+				}
+				if (!!status) // No error, update the connection state
+				{
+					// Do not trust the connectionCount value to determine if the listener is disconnected, but rather use the status code (SUCCESS means disconnected)
+					handleTalkerStreamStateNotification(talkerStream, listenerStream, false, flags, true);
+				}
+
+				invokeProtectedHandler(handler, st);
+			});
 	}
 	else
 	{
@@ -1634,22 +1672,23 @@ void ControllerImpl::getListenerStreamState(entity::model::StreamIdentification 
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User getListenerStreamState (ListenerID={} ListenerIndex={})", listenerStream.entityID.getValue(), listenerStream.streamIndex);
-		_controller->getListenerStreamState(listenerStream, [this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
-		{
-			LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User getListenerStreamState (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
-
-			// Take a copy of the ControlledEntity so we don't have to keep the lock
-			auto listener = getControlledEntityImpl(listenerStream.entityID);
-			auto talker = getControlledEntityImpl(talkerStream.entityID);
-
-			if (!!status)
+		_controller->getListenerStreamState(listenerStream,
+			[this, handler](entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 			{
-				// In a GET_RX_STATE_RESPONSE message, the connectionCount is set to 1 if the stream is connected and 0 if not connected (See Marc Illouz clarification document, and hopefully someday as a corrigendum)
-				handleListenerStreamStateNotification(talkerStream, listenerStream, connectionCount != 0, flags, false);
-			}
+				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User getListenerStreamState (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", talkerStream.entityID.getValue(), talkerStream.streamIndex, listenerStream.entityID.getValue(), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
-			invokeProtectedHandler(handler, talker.get(), listener.get(), talkerStream.streamIndex, listenerStream.streamIndex, connectionCount, flags, status);
-		});
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto listener = getControlledEntityImpl(listenerStream.entityID);
+				auto talker = getControlledEntityImpl(talkerStream.entityID);
+
+				if (!!status)
+				{
+					// In a GET_RX_STATE_RESPONSE message, the connectionCount is set to 1 if the stream is connected and 0 if not connected (See Marc Illouz clarification document, and hopefully someday as a corrigendum)
+					handleListenerStreamStateNotification(talkerStream, listenerStream, connectionCount != 0, flags, false);
+				}
+
+				invokeProtectedHandler(handler, talker.get(), listener.get(), talkerStream.streamIndex, listenerStream.streamIndex, connectionCount, flags, status);
+			});
 	}
 	else
 	{
@@ -1664,7 +1703,7 @@ ControlledEntityGuard ControllerImpl::getControlledEntity(UniqueIdentifier const
 	{
 		return ControlledEntityGuard{ std::move(entity) };
 	}
-	return{};
+	return {};
 }
 
 void ControllerImpl::lock() noexcept

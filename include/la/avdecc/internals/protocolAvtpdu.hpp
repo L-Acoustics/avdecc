@@ -39,7 +39,6 @@ namespace avdecc
 {
 namespace protocol
 {
-
 /** Ethernet frame payload minimum size */
 static constexpr size_t EthernetPayloadMinimumSize = 46;
 
@@ -54,7 +53,7 @@ class EtherLayer2
 {
 public:
 	static constexpr size_t HeaderLength = 14; /* DestMacAddress + SrcMacAddress + EtherType */
-	using UniquePointer = std::unique_ptr<EtherLayer2, void(*)(EtherLayer2*)>;
+	using UniquePointer = std::unique_ptr<EtherLayer2, void (*)(EtherLayer2*)>;
 
 	/** Constructor */
 	EtherLayer2() noexcept = default;

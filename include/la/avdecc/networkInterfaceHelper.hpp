@@ -39,17 +39,16 @@ namespace avdecc
 {
 namespace networkInterface
 {
-
 using MacAddress = std::array<std::uint8_t, 6>;
 
 struct Interface
 {
 	enum class Type
 	{
-		None = 0,			/**< Only used for initialization purpose. Never returned as a real Interface::Type */
-		Loopback = 1,	/**< Loopback interface */
-		Ethernet = 2,	/**< Ethernet interface */
-		WiFi = 3,			/**< 802.11 WiFi interface */
+		None = 0, /**< Only used for initialization purpose. Never returned as a real Interface::Type */
+		Loopback = 1, /**< Loopback interface */
+		Ethernet = 2, /**< Ethernet interface */
+		WiFi = 3, /**< 802.11 WiFi interface */
 	};
 
 	std::string name{}; /** Name of the interface (system chosen) */

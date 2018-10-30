@@ -40,7 +40,6 @@ namespace controller
 {
 namespace model
 {
-
 using AvbInterfaceCounters = std::map<entity::AvbInterfaceCounterValidFlag, entity::model::DescriptorCounter>;
 using ClockDomainCounters = std::map<entity::ClockDomainCounterValidFlag, entity::model::DescriptorCounter>;
 using StreamInputCounters = std::map<entity::StreamInputCounterValidFlag, entity::model::DescriptorCounter>;
@@ -123,7 +122,7 @@ struct ClockDomainNodeDynamicModel
 struct ConfigurationNodeDynamicModel
 {
 	entity::model::AvdeccFixedString objectName{};
-	entity::model::StringsIndex selectedLocaleBaseIndex{ entity::model::StringsIndex{0u} }; /** Base StringIndex for the selected locale */
+	entity::model::StringsIndex selectedLocaleBaseIndex{ entity::model::StringsIndex{ 0u } }; /** Base StringIndex for the selected locale */
 	std::unordered_map<entity::model::StringsIndex, entity::model::AvdeccFixedString> localizedStrings{}; /** Aggregated copy of all loaded localized strings */
 	bool isActiveConfiguration{ false };
 };

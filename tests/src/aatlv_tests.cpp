@@ -121,5 +121,4 @@ TEST(AddressAccessTlv, Contructor)
 		EXPECT_EQ(buffer[0], static_cast<char const*>(tlv.data())[0]);
 		EXPECT_EQ(buffer[0], tlv.getMemoryData().data()[0]);
 	}
-
 }

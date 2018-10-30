@@ -33,7 +33,6 @@ namespace protocol
 {
 namespace mvuPayload
 {
-
 /** GET_MILAN_INFO Command - Milan Clause 7.4.1 */
 Serializer<AecpMvuGetMilanInfoCommandPayloadSize> serializeGetMilanInfoCommand(entity::model::ConfigurationIndex const configurationIndex)
 {

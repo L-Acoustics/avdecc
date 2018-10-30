@@ -35,7 +35,6 @@ namespace avdecc
 {
 namespace protocol
 {
-
 /** Vendor Unique Aecpdu message */
 class VuAecpdu : public Aecpdu
 {

@@ -1,0 +1,249 @@
+diff --git a/include/clang/Format/Format.h b/include/clang/Format/Format.h
+index 85dda94..e4b9031 100644
+--- a/include/clang/Format/Format.h
++++ b/include/clang/Format/Format.h
+@@ -770,6 +770,23 @@ struct FormatStyle {
+     ///   }
+     /// \endcode
+     bool BeforeElse;
++    /// \brief Wrap lambda block inside function parameters list.
++    /// \code
++    ///   true:
++    ///   connect(
++    ///     []()
++    ///     {
++    ///       foo();
++    ///       bar();
++    ///     });
++    ///
++    ///   false:
++    ///   connect([]() {
++    ///     foo();
++    ///     bar();
++    ///   });
++    /// \endcode
++    bool BeforeLambdaBody;
+     /// Indent the wrapped braces themselves.
+     bool IndentBraces;
+     /// If ``false``, empty function body can be put on a single line.
+diff --git a/lib/Basic/Version.cpp b/lib/Basic/Version.cpp
+index 3fcdc56..deb4d1d 100644
+--- a/lib/Basic/Version.cpp
++++ b/lib/Basic/Version.cpp
+@@ -101,7 +101,7 @@ std::string getClangFullRepositoryVersion() {
+         OS << ' ';
+       OS << Revision;
+     }
+-    OS << ')';
++    OS << "/WithWrappingBeforeLambdaBodyPatch)";
+   }
+   // Support LLVM in a separate repository.
+   std::string LLVMRev = getLLVMRevision();
+diff --git a/lib/Format/ContinuationIndenter.cpp b/lib/Format/ContinuationIndenter.cpp
+index 7ca588a..c04a888 100644
+--- a/lib/Format/ContinuationIndenter.cpp
++++ b/lib/Format/ContinuationIndenter.cpp
+@@ -1143,8 +1143,10 @@ unsigned ContinuationIndenter::moveStateToNextToken(LineState &State,
+        Previous->isOneOf(TT_BinaryOperator, TT_ConditionalExpr)) &&
+       !Previous->isOneOf(TT_DictLiteral, TT_ObjCMethodExpr)) {
+     State.Stack.back().NestedBlockInlined =
+-        !Newline &&
+-        (Previous->isNot(tok::l_paren) || Previous->ParameterCount > 1);
++        !Newline && (Previous->isNot(tok::l_paren) ||
++                     (Previous->ParameterCount > 1 ||
++                      (Style.BraceWrapping.BeforeLambdaBody &&
++                       Current.is(TT_LambdaLSquare))));
+   }
+ 
+   moveStatePastFakeLParens(State, Newline);
+@@ -1379,6 +1381,19 @@ void ContinuationIndenter::moveStatePastScopeOpener(LineState &State,
+   State.Stack.back().NestedBlockIndent = NestedBlockIndent;
+   State.Stack.back().BreakBeforeParameter = BreakBeforeParameter;
+   State.Stack.back().HasMultipleNestedBlocks = Current.BlockParameterCount > 1;
++  if (Style.BraceWrapping.BeforeLambdaBody && Current.Next != nullptr &&
++      Current.Tok.getKind() == tok::TokenKind::l_paren &&
++      Current.BlockParameterCount >= 1) {
++		// Search for any parameter that is a lambda
++    auto const *nextTok = Current.Next;
++    while (nextTok != nullptr) {
++      if (nextTok->is(TT_LambdaLSquare)) {
++        State.Stack.back().HasMultipleNestedBlocks = true;
++        break;
++      }
++      nextTok = nextTok->Next;
++    }
++  }
+   State.Stack.back().IsInsideObjCArrayLiteral =
+       Current.is(TT_ArrayInitializerLSquare) && Current.Previous &&
+       Current.Previous->is(tok::at);
+diff --git a/lib/Format/Format.cpp b/lib/Format/Format.cpp
+index 9a2da69..145801f 100644
+--- a/lib/Format/Format.cpp
++++ b/lib/Format/Format.cpp
+@@ -487,6 +487,7 @@ template <> struct MappingTraits<FormatStyle::BraceWrappingFlags> {
+     IO.mapOptional("AfterExternBlock", Wrapping.AfterExternBlock);
+     IO.mapOptional("BeforeCatch", Wrapping.BeforeCatch);
+     IO.mapOptional("BeforeElse", Wrapping.BeforeElse);
++    IO.mapOptional("BeforeLambdaBody", Wrapping.BeforeLambdaBody);
+     IO.mapOptional("IndentBraces", Wrapping.IndentBraces);
+     IO.mapOptional("SplitEmptyFunction", Wrapping.SplitEmptyFunction);
+     IO.mapOptional("SplitEmptyRecord", Wrapping.SplitEmptyRecord);
+@@ -568,9 +569,9 @@ static FormatStyle expandPresets(const FormatStyle &Style) {
+   if (Style.BreakBeforeBraces == FormatStyle::BS_Custom)
+     return Style;
+   FormatStyle Expanded = Style;
+-  Expanded.BraceWrapping = {false, false, false, false, false,
+-                            false, false, false, false, false,
+-                            false, false, true,  true,  true};
++  Expanded.BraceWrapping = {false, false, false, false, false, false,
++                            false, false, false, false, false, false,
++                            false, true,  true,  true};
+   switch (Style.BreakBeforeBraces) {
+   case FormatStyle::BS_Linux:
+     Expanded.BraceWrapping.AfterClass = true;
+@@ -603,6 +604,7 @@ static FormatStyle expandPresets(const FormatStyle &Style) {
+     Expanded.BraceWrapping.AfterExternBlock = true;
+     Expanded.BraceWrapping.BeforeCatch = true;
+     Expanded.BraceWrapping.BeforeElse = true;
++    Expanded.BraceWrapping.BeforeLambdaBody = true;
+     break;
+   case FormatStyle::BS_GNU:
+     Expanded.BraceWrapping = {true, true, true, true, true, true, true, true,
+@@ -642,9 +644,9 @@ FormatStyle getLLVMStyle() {
+   LLVMStyle.BreakBeforeBinaryOperators = FormatStyle::BOS_None;
+   LLVMStyle.BreakBeforeTernaryOperators = true;
+   LLVMStyle.BreakBeforeBraces = FormatStyle::BS_Attach;
+-  LLVMStyle.BraceWrapping = {false, false, false, false, false,
+-                             false, false, false, false, false,
+-                             false, false, true,  true,  true};
++  LLVMStyle.BraceWrapping = {false, false, false, false, false, false,
++                             false, false, false, false, false, false,
++                             false, true,  true,  true};
+   LLVMStyle.BreakAfterJavaFieldAnnotations = false;
+   LLVMStyle.BreakConstructorInitializers = FormatStyle::BCIS_BeforeColon;
+   LLVMStyle.BreakInheritanceList = FormatStyle::BILS_BeforeColon;
+diff --git a/lib/Format/FormatToken.h b/lib/Format/FormatToken.h
+index 9094e76..fe83fc8 100644
+--- a/lib/Format/FormatToken.h
++++ b/lib/Format/FormatToken.h
+@@ -66,6 +66,7 @@ namespace format {
+   TYPE(JsTypeOptionalQuestion)                                                 \
+   TYPE(LambdaArrow)                                                            \
+   TYPE(LambdaLSquare)                                                          \
++  TYPE(LambdaLBrace)                                                           \
+   TYPE(LeadingJavaAnnotation)                                                  \
+   TYPE(LineComment)                                                            \
+   TYPE(MacroBlockBegin)                                                        \
+diff --git a/lib/Format/TokenAnnotator.cpp b/lib/Format/TokenAnnotator.cpp
+index 3a19215..bd7bbb4 100644
+--- a/lib/Format/TokenAnnotator.cpp
++++ b/lib/Format/TokenAnnotator.cpp
+@@ -1130,11 +1130,11 @@ private:
+ 
+     // Reset token type in case we have already looked at it and then
+     // recovered from an error (e.g. failure to find the matching >).
+-    if (!CurrentToken->isOneOf(TT_LambdaLSquare, TT_ForEachMacro,
+-                               TT_FunctionLBrace, TT_ImplicitStringLiteral,
+-                               TT_InlineASMBrace, TT_JsFatArrow, TT_LambdaArrow,
+-                               TT_OverloadedOperator, TT_RegexLiteral,
+-                               TT_TemplateString, TT_ObjCStringLiteral))
++    if (!CurrentToken->isOneOf(
++            TT_LambdaLSquare, TT_LambdaLBrace, TT_ForEachMacro,
++            TT_FunctionLBrace, TT_ImplicitStringLiteral, TT_InlineASMBrace,
++            TT_JsFatArrow, TT_LambdaArrow, TT_OverloadedOperator,
++            TT_RegexLiteral, TT_TemplateString, TT_ObjCStringLiteral))
+       CurrentToken->Type = TT_Unknown;
+     CurrentToken->Role.reset();
+     CurrentToken->MatchingParen = nullptr;
+@@ -2938,7 +2938,9 @@ bool TokenAnnotator::mustBreakBefore(const AnnotatedLine &Line,
+   if (Right.is(TT_InlineASMBrace))
+     return Right.HasUnescapedNewline;
+   if (isAllmanBrace(Left) || isAllmanBrace(Right))
+-    return (Line.startsWith(tok::kw_enum) && Style.BraceWrapping.AfterEnum) ||
++    return ((Left.is(TT_LambdaLBrace) || Right.is(TT_LambdaLBrace)) &&
++            Style.BraceWrapping.BeforeLambdaBody) ||
++           (Line.startsWith(tok::kw_enum) && Style.BraceWrapping.AfterEnum) ||
+            (Line.startsWith(tok::kw_typedef, tok::kw_enum) &&
+             Style.BraceWrapping.AfterEnum) ||
+            (Line.startsWith(tok::kw_class) && Style.BraceWrapping.AfterClass) ||
+diff --git a/lib/Format/UnwrappedLineParser.cpp b/lib/Format/UnwrappedLineParser.cpp
+index e5afa12..261fbe2 100644
+--- a/lib/Format/UnwrappedLineParser.cpp
++++ b/lib/Format/UnwrappedLineParser.cpp
+@@ -1397,6 +1397,7 @@ bool UnwrappedLineParser::tryToParseLambda() {
+     case tok::identifier:
+     case tok::numeric_constant:
+     case tok::coloncolon:
++    case tok::kw_noexcept:
+     case tok::kw_mutable:
+       nextToken();
+       break;
+@@ -1408,6 +1409,7 @@ bool UnwrappedLineParser::tryToParseLambda() {
+       return true;
+     }
+   }
++  FormatTok->Type = TT_LambdaLBrace;
+   LSquare.Type = TT_LambdaLSquare;
+   parseChildBlock();
+   return true;
+diff --git a/unittests/Format/FormatTest.cpp b/unittests/Format/FormatTest.cpp
+index f234e28..2b3009e 100644
+--- a/unittests/Format/FormatTest.cpp
++++ b/unittests/Format/FormatTest.cpp
+@@ -10643,6 +10643,7 @@ TEST_F(FormatTest, ParsesConfigurationBools) {
+   CHECK_PARSE_NESTED_BOOL(BraceWrapping, AfterExternBlock);
+   CHECK_PARSE_NESTED_BOOL(BraceWrapping, BeforeCatch);
+   CHECK_PARSE_NESTED_BOOL(BraceWrapping, BeforeElse);
++  CHECK_PARSE_NESTED_BOOL(BraceWrapping, BeforeLambdaBody);
+   CHECK_PARSE_NESTED_BOOL(BraceWrapping, IndentBraces);
+   CHECK_PARSE_NESTED_BOOL(BraceWrapping, SplitEmptyFunction);
+   CHECK_PARSE_NESTED_BOOL(BraceWrapping, SplitEmptyRecord);
+@@ -11611,6 +11612,48 @@ TEST_F(FormatTest, FormatsLambdas) {
+       "            aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa> {\n"
+       "      //\n"
+       "    });");
++
++  // Check option "BraceWrapping.BeforeLambdaBody"
++  FormatStyle LLVMWithBeforeLambdaBody = getLLVMStyle();
++  LLVMWithBeforeLambdaBody.BreakBeforeBraces = FormatStyle::BS_Custom;
++  LLVMWithBeforeLambdaBody.BraceWrapping.BeforeLambdaBody = true;
++  verifyFormat("FunctionWithOneParam(\n"
++               "    []()\n"
++               "    {\n"
++               "      // A cool function...\n"
++               "      return 43;\n"
++               "    });",
++               LLVMWithBeforeLambdaBody);
++  verifyFormat("FunctionWithTwoParams(\n"
++               "    []()\n"
++               "    {\n"
++               "      // A cool function...\n"
++               "      return 43;\n"
++               "    },\n"
++               "    87);",
++               LLVMWithBeforeLambdaBody);
++  verifyFormat("FunctionWithOneNestedLambdas(\n"
++               "    []()\n"
++               "    {\n"
++               "      return 17;\n"
++               "    });",
++               LLVMWithBeforeLambdaBody);
++  verifyFormat("TwoNestedLambdas(\n"
++               "    []()\n"
++               "    {\n"
++               "      return Call(\n"
++               "          []()\n"
++               "          {\n"
++               "            return 17;\n"
++               "          });\n"
++               "    });",
++               LLVMWithBeforeLambdaBody);
++  verifyFormat("auto array = {[]()\n"
++               "              {\n"
++               "                return 43;\n"
++               "              },\n"
++               "              MyFunctor};",
++               LLVMWithBeforeLambdaBody);
+ }
+ 
+ TEST_F(FormatTest, EmptyLinesInLambdas) {

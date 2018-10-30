@@ -33,7 +33,6 @@ namespace avdecc
 {
 namespace protocol
 {
-
 /***********************************************************/
 /* AemAecpdu class definition                              */
 /***********************************************************/
@@ -45,9 +44,7 @@ AemAecpdu::AemAecpdu() noexcept
 	Aecpdu::setAecpSpecificDataLength(AemAecpdu::HeaderLength);
 }
 
-AemAecpdu::~AemAecpdu() noexcept
-{
-}
+AemAecpdu::~AemAecpdu() noexcept {}
 
 void LA_AVDECC_CALL_CONVENTION AemAecpdu::setUnsolicited(bool const unsolicited) noexcept
 {

@@ -32,7 +32,6 @@ namespace avdecc
 {
 namespace controller
 {
-
 /* ************************************************************ */
 /* Private methods used to update AEM and notify observers      */
 /* ************************************************************ */
@@ -372,8 +371,7 @@ void ControllerImpl::updateAvbInfo(ControlledEntityImpl& controlledEntity, entit
 	{
 		auto entity{ ModifiableEntity(controlledEntity.getEntity()) }; // Copy the Entity so we can alter values
 		auto const caps = entity.getEntityCapabilities();
-		if (hasFlag(caps, entity::EntityCapabilities::GptpSupported) &&
-			(!hasFlag(caps, entity::EntityCapabilities::AemInterfaceIndexValid) || entity.getInterfaceIndex() == avbInterfaceIndex))
+		if (hasFlag(caps, entity::EntityCapabilities::GptpSupported) && (!hasFlag(caps, entity::EntityCapabilities::AemInterfaceIndexValid) || entity.getInterfaceIndex() == avbInterfaceIndex))
 		{
 			entity.setGptpGrandmasterID(info.gptpGrandmasterID);
 			entity.setGptpDomainNumber(info.gptpDomainNumber);
@@ -1148,101 +1146,99 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				chooseLocale(entity, configurationIndex);
 
 				// Get DynamicModel for each AudioUnit descriptors
+				{ { auto const count = configStaticTree.audioUnitStaticModels.size();
+				for (auto index = entity::model::AudioUnitIndex(0); index < count; ++index)
 				{
-					{
-						auto const count = configStaticTree.audioUnitStaticModels.size();
-						for (auto index = entity::model::AudioUnitIndex(0); index < count; ++index)
-						{
-							// Get AudioUnitName
-							queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName, index);
-							// Get AudioUnitSamplingRate
-							queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate, index);
-						}
-					}
-				}
-				// Get DynamicModel for each StreamInput descriptors
-				{
-					auto const count = configStaticTree.streamInputStaticModels.size();
-					for (auto index = entity::model::StreamIndex(0); index < count; ++index)
-					{
-						// Get InputStreamName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName, index);
-						// Get InputStreamFormat
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat, index);
-					}
-				}
-				// Get DynamicModel for each StreamOutput descriptors
-				{
-					auto const count = configStaticTree.streamOutputStaticModels.size();
-					for (auto index = entity::model::StreamIndex(0); index < count; ++index)
-					{
-						// Get OutputStreamName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName, index);
-						// Get OutputStreamFormat
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat, index);
-					}
-				}
-				// Get DynamicModel for each AvbInterface descriptors
-				{
-					auto const count = configStaticTree.avbInterfaceStaticModels.size();
-					for (auto index = entity::model::AvbInterfaceIndex(0); index < count; ++index)
-					{
-						// Get AvbInterfaceName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName, index);
-					}
-				}
-				// Get DynamicModel for each ClockSource descriptors
-				{
-					auto const count = configStaticTree.clockSourceStaticModels.size();
-					for (auto index = entity::model::ClockSourceIndex(0); index < count; ++index)
-					{
-						// Get ClockSourceName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName, index);
-					}
-				}
-				// Get DynamicModel for each MemoryObject descriptors
-				{
-					auto const count = configStaticTree.memoryObjectStaticModels.size();
-					for (auto index = entity::model::MemoryObjectIndex(0); index < count; ++index)
-					{
-						// Get MemoryObjectName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName, index);
-						// Get MemoryObjectLength
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength, index);
-					}
-				}
-				// Get DynamicModel for each AudioCluster descriptors
-				{
-					auto const count = configStaticTree.audioClusterStaticModels.size();
-					for (auto index = entity::model::ClusterIndex(0); index < count; ++index)
-					{
-						// Get AudioClusterName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, index);
-					}
-				}
-				// Get DynamicModel for each ClockDomain descriptors
-				{
-					auto const count = configStaticTree.clockDomainStaticModels.size();
-					for (auto index = entity::model::ClockDomainIndex(0); index < count; ++index)
-					{
-						// Get ClockDomainName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName, index);
-						// Get ClockDomainSourceIndex
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex, index);
-					}
+					// Get AudioUnitName
+					queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName, index);
+					// Get AudioUnitSamplingRate
+					queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate, index);
 				}
 			}
 		}
-	}
-
-	// Get all expected descriptor dynamic information
-	if (entity->gotAllExpectedDescriptorDynamicInfo())
-	{
-		// Clear this enumeration step and check for next one
-		entity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
-		checkEnumerationSteps(entity);
+		// Get DynamicModel for each StreamInput descriptors
+		{
+			auto const count = configStaticTree.streamInputStaticModels.size();
+			for (auto index = entity::model::StreamIndex(0); index < count; ++index)
+			{
+				// Get InputStreamName
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName, index);
+				// Get InputStreamFormat
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat, index);
+			}
+		}
+		// Get DynamicModel for each StreamOutput descriptors
+		{
+			auto const count = configStaticTree.streamOutputStaticModels.size();
+			for (auto index = entity::model::StreamIndex(0); index < count; ++index)
+			{
+				// Get OutputStreamName
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName, index);
+				// Get OutputStreamFormat
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat, index);
+			}
+		}
+		// Get DynamicModel for each AvbInterface descriptors
+		{
+			auto const count = configStaticTree.avbInterfaceStaticModels.size();
+			for (auto index = entity::model::AvbInterfaceIndex(0); index < count; ++index)
+			{
+				// Get AvbInterfaceName
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName, index);
+			}
+		}
+		// Get DynamicModel for each ClockSource descriptors
+		{
+			auto const count = configStaticTree.clockSourceStaticModels.size();
+			for (auto index = entity::model::ClockSourceIndex(0); index < count; ++index)
+			{
+				// Get ClockSourceName
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName, index);
+			}
+		}
+		// Get DynamicModel for each MemoryObject descriptors
+		{
+			auto const count = configStaticTree.memoryObjectStaticModels.size();
+			for (auto index = entity::model::MemoryObjectIndex(0); index < count; ++index)
+			{
+				// Get MemoryObjectName
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName, index);
+				// Get MemoryObjectLength
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength, index);
+			}
+		}
+		// Get DynamicModel for each AudioCluster descriptors
+		{
+			auto const count = configStaticTree.audioClusterStaticModels.size();
+			for (auto index = entity::model::ClusterIndex(0); index < count; ++index)
+			{
+				// Get AudioClusterName
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, index);
+			}
+		}
+		// Get DynamicModel for each ClockDomain descriptors
+		{
+			auto const count = configStaticTree.clockDomainStaticModels.size();
+			for (auto index = entity::model::ClockDomainIndex(0); index < count; ++index)
+			{
+				// Get ClockDomainName
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName, index);
+				// Get ClockDomainSourceIndex
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex, index);
+			}
+		}
 	}
 }
+} // namespace controller
+
+// Get all expected descriptor dynamic information
+if (entity->gotAllExpectedDescriptorDynamicInfo())
+{
+	// Clear this enumeration step and check for next one
+	entity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+	checkEnumerationSteps(entity);
+}
+} // namespace avdecc
 
 void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const entity) noexcept
 {
@@ -1311,15 +1307,21 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 		}
 
 		// Cases we want to ignore and continue enumeration
-		case entity::ControllerEntity::AemCommandStatus::NoSuchDescriptor:
-			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::NotAuthenticated:
 			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::AuthenticationDisabled:
+		{
+			return FailureAction::WarningIgnore;
+		}
+
+		// Cases we want to flag as error (possible non certified entity) but continue enumeration
+		case entity::ControllerEntity::AemCommandStatus::NoSuchDescriptor:
 			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::BadArguments:
+			[[fallthrough]];
+		case entity::ControllerEntity::AemCommandStatus::ProtocolError:
 		{
-			return FailureAction::Ignore;
+			return FailureAction::ErrorIgnore;
 		}
 
 		// Cases the caller should decide whether to continue enumeration or not
@@ -1336,8 +1338,6 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 		case entity::ControllerEntity::AemCommandStatus::EntityMisbehaving:
 			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::NetworkError:
-			[[fallthrough]];
-		case entity::ControllerEntity::AemCommandStatus::ProtocolError:
 			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::InternalError:
 			[[fallthrough]];
@@ -1383,7 +1383,7 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 			[[fallthrough]];
 		case entity::ControllerEntity::ControlStatus::IncompatibleRequest:
 		{
-			return FailureAction::Ignore;
+			return FailureAction::WarningIgnore;
 		}
 
 		// Cases the caller should decide whether to continue enumeration or not
@@ -1421,14 +1421,18 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 {
 	switch (getFailureAction(status))
 	{
-		case FailureAction::Ignore:
+		case FailureAction::ErrorIgnore:
+			// Flag the entity as "Not fully compliant"
+			entity->setCompatibility(ControlledEntity::Compatibility::NotCompliant);
+			[[fallthrough]];
+		case FailureAction::WarningIgnore:
 			[[fallthrough]];
 		case FailureAction::NotSupported:
 			return true;
 		case FailureAction::Retry:
 		{
 #ifdef __cpp_structured_bindings
-			auto const[shouldRetry, retryTimer] = entity->getQueryDescriptorRetryTimer();
+			auto const [shouldRetry, retryTimer] = entity->getQueryDescriptorRetryTimer();
 #else // !__cpp_structured_bindings
 			auto const result = entity->getQueryDescriptorRetryTimer();
 			auto const shouldRetry = std::get<0>(result);
@@ -1452,14 +1456,18 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 {
 	switch (getFailureAction(status))
 	{
-		case FailureAction::Ignore:
+		case FailureAction::ErrorIgnore:
+			// Flag the entity as "Not fully compliant"
+			entity->setCompatibility(ControlledEntity::Compatibility::NotCompliant);
+			[[fallthrough]];
+		case FailureAction::WarningIgnore:
 			[[fallthrough]];
 		case FailureAction::NotSupported:
 			return true;
 		case FailureAction::Retry:
 		{
 #ifdef __cpp_structured_bindings
-			auto const[shouldRetry, retryTimer] = entity->getQueryDynamicInfoRetryTimer();
+			auto const [shouldRetry, retryTimer] = entity->getQueryDynamicInfoRetryTimer();
 #else // !__cpp_structured_bindings
 			auto const result = entity->getQueryDynamicInfoRetryTimer();
 			auto const shouldRetry = std::get<0>(result);
@@ -1483,14 +1491,18 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 {
 	switch (getFailureAction(status))
 	{
-		case FailureAction::Ignore:
+		case FailureAction::ErrorIgnore:
+			// Flag the entity as "Not fully compliant"
+			entity->setCompatibility(ControlledEntity::Compatibility::NotCompliant);
+			[[fallthrough]];
+		case FailureAction::WarningIgnore:
 			[[fallthrough]];
 		case FailureAction::NotSupported:
 			return true;
 		case FailureAction::Retry:
 		{
 #ifdef __cpp_structured_bindings
-			auto const[shouldRetry, retryTimer] = entity->getQueryDynamicInfoRetryTimer();
+			auto const [shouldRetry, retryTimer] = entity->getQueryDynamicInfoRetryTimer();
 #else // !__cpp_structured_bindings
 			auto const result = entity->getQueryDynamicInfoRetryTimer();
 			auto const shouldRetry = std::get<0>(result);
@@ -1514,14 +1526,18 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 {
 	switch (getFailureAction(status))
 	{
-		case FailureAction::Ignore:
+		case FailureAction::ErrorIgnore:
+			// Flag the entity as "Not fully compliant"
+			entity->setCompatibility(ControlledEntity::Compatibility::NotCompliant);
+			[[fallthrough]];
+		case FailureAction::WarningIgnore:
 			[[fallthrough]];
 		case FailureAction::NotSupported:
 			return true;
 		case FailureAction::Retry:
 		{
 #ifdef __cpp_structured_bindings
-			auto const[shouldRetry, retryTimer] = entity->getQueryDynamicInfoRetryTimer();
+			auto const [shouldRetry, retryTimer] = entity->getQueryDynamicInfoRetryTimer();
 #else // !__cpp_structured_bindings
 			auto const result = entity->getQueryDynamicInfoRetryTimer();
 			auto const shouldRetry = std::get<0>(result);
@@ -1545,12 +1561,16 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 {
 	switch (getFailureAction(status))
 	{
-		case FailureAction::Ignore:
+		case FailureAction::ErrorIgnore:
+			// Flag the entity as "Not fully compliant"
+			entity->setCompatibility(ControlledEntity::Compatibility::NotCompliant);
+			[[fallthrough]];
+		case FailureAction::WarningIgnore:
 			return true;
 		case FailureAction::Retry:
 		{
 #ifdef __cpp_structured_bindings
-			auto const[shouldRetry, retryTimer] = entity->getQueryDescriptorDynamicInfoRetryTimer();
+			auto const [shouldRetry, retryTimer] = entity->getQueryDescriptorDynamicInfoRetryTimer();
 #else // !__cpp_structured_bindings
 			auto const result = entity->getQueryDescriptorDynamicInfoRetryTimer();
 			auto const shouldRetry = std::get<0>(result);
@@ -1781,6 +1801,6 @@ void ControllerImpl::delTalkerStreamConnection(ControlledEntityImpl* const talke
 	talkerEntity->delStreamOutputConnection(talkerStreamIndex, listenerStream);
 }
 
-} // namespace controller
+} // namespace la
 } // namespace avdecc
 } // namespace la

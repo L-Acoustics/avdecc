@@ -27,7 +27,6 @@ namespace avdecc
 {
 namespace protocol
 {
-
 class ProtocolInterfaceMacNative : public ProtocolInterface
 {
 public:
