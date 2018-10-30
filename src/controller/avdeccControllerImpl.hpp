@@ -328,7 +328,8 @@ private:
 	/* ************************************************************ */
 	enum class FailureAction
 	{
-		Ignore, /**< Ignore this query and continue to next one. */
+		WarningIgnore, /**< This query had a warning, but ignore and continue to next one. */
+		ErrorIgnore, /**< This query had an error, flag it, ignore and continue to next one. */
 		Retry, /**< Should retry this query. */
 		NotSupported, /**< This query is not supported by the entity. Caller should decide whether to continue or not. */
 		Fatal, /**< This query returned a fatal error, enumeration should be stopped immediately. */

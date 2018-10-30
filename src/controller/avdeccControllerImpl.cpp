@@ -1307,15 +1307,21 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 		}
 
 		// Cases we want to ignore and continue enumeration
-		case entity::ControllerEntity::AemCommandStatus::NoSuchDescriptor:
-			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::NotAuthenticated:
 			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::AuthenticationDisabled:
+		{
+			return FailureAction::WarningIgnore;
+		}
+
+		// Cases we want to flag as error (possible non certified entity) but continue enumeration
+		case entity::ControllerEntity::AemCommandStatus::NoSuchDescriptor:
 			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::BadArguments:
+			[[fallthrough]];
+		case entity::ControllerEntity::AemCommandStatus::ProtocolError:
 		{
-			return FailureAction::Ignore;
+			return FailureAction::ErrorIgnore;
 		}
 
 		// Cases the caller should decide whether to continue enumeration or not
@@ -1332,8 +1338,6 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 		case entity::ControllerEntity::AemCommandStatus::EntityMisbehaving:
 			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::NetworkError:
-			[[fallthrough]];
-		case entity::ControllerEntity::AemCommandStatus::ProtocolError:
 			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::InternalError:
 			[[fallthrough]];
@@ -1379,7 +1383,7 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 			[[fallthrough]];
 		case entity::ControllerEntity::ControlStatus::IncompatibleRequest:
 		{
-			return FailureAction::Ignore;
+			return FailureAction::WarningIgnore;
 		}
 
 		// Cases the caller should decide whether to continue enumeration or not
@@ -1417,7 +1421,11 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 {
 	switch (getFailureAction(status))
 	{
-		case FailureAction::Ignore:
+		case FailureAction::ErrorIgnore:
+			// Flag the entity as "Not fully compliant"
+			entity->setCompatibility(ControlledEntity::Compatibility::NotCompliant);
+			[[fallthrough]];
+		case FailureAction::WarningIgnore:
 			[[fallthrough]];
 		case FailureAction::NotSupported:
 			return true;
@@ -1448,7 +1456,11 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 {
 	switch (getFailureAction(status))
 	{
-		case FailureAction::Ignore:
+		case FailureAction::ErrorIgnore:
+			// Flag the entity as "Not fully compliant"
+			entity->setCompatibility(ControlledEntity::Compatibility::NotCompliant);
+			[[fallthrough]];
+		case FailureAction::WarningIgnore:
 			[[fallthrough]];
 		case FailureAction::NotSupported:
 			return true;
@@ -1479,7 +1491,11 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 {
 	switch (getFailureAction(status))
 	{
-		case FailureAction::Ignore:
+		case FailureAction::ErrorIgnore:
+			// Flag the entity as "Not fully compliant"
+			entity->setCompatibility(ControlledEntity::Compatibility::NotCompliant);
+			[[fallthrough]];
+		case FailureAction::WarningIgnore:
 			[[fallthrough]];
 		case FailureAction::NotSupported:
 			return true;
@@ -1510,7 +1526,11 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 {
 	switch (getFailureAction(status))
 	{
-		case FailureAction::Ignore:
+		case FailureAction::ErrorIgnore:
+			// Flag the entity as "Not fully compliant"
+			entity->setCompatibility(ControlledEntity::Compatibility::NotCompliant);
+			[[fallthrough]];
+		case FailureAction::WarningIgnore:
 			[[fallthrough]];
 		case FailureAction::NotSupported:
 			return true;
@@ -1541,7 +1561,11 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 {
 	switch (getFailureAction(status))
 	{
-		case FailureAction::Ignore:
+		case FailureAction::ErrorIgnore:
+			// Flag the entity as "Not fully compliant"
+			entity->setCompatibility(ControlledEntity::Compatibility::NotCompliant);
+			[[fallthrough]];
+		case FailureAction::WarningIgnore:
 			return true;
 		case FailureAction::Retry:
 		{
