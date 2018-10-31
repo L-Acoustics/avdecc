@@ -1,7 +1,7 @@
 # Avdecc Library
 
 # Minimum CMake version
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.12)
 
 ############ Versioning
 
@@ -164,8 +164,10 @@ if(BUILD_AVDECC_TESTS AND NOT VS_USE_CLANG)
 	message(STATUS "Building unit tests")
 	# Setup gtest options
 	set(gtest_force_shared_crt ON CACHE BOOL "For shared crt for gtest" FORCE)
+	set(BUILD_GMOCK OFF CACHE BOOL "Don't build the googlemock subproject" FORCE)
+	set(INSTALL_GTEST OFF CACHE BOOL "Disable installation of googletest. (Projects embedding googletest may want to turn this OFF.)" FORCE)
 	# Include gtest framework
-	add_subdirectory(externals/3rdparty/gtest/googletest)
+	add_subdirectory(externals/3rdparty/gtest)
 	# Include our unit tests
 	add_subdirectory(tests)
 endif()
