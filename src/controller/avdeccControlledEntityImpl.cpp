@@ -1578,6 +1578,10 @@ void ControlledEntityImpl::clearEnumerationSteps(EnumerationSteps const steps) n
 
 void ControlledEntityImpl::setCompatibility(Compatibility const compatibility) noexcept
 {
+	if (compatibility == Compatibility::NotCompliant)
+	{
+		LOG_CONTROLLER_INFO(_entity.getEntityID(), "Entity not fully IEEE1722.1 compliant");
+	}
 	_compatibility = compatibility;
 }
 
