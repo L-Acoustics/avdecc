@@ -75,7 +75,6 @@ public:
 
 	enum class Compatibility
 	{
-		NotCompliant, /** Not fully IEEE1722.1 compliant entity */
 		IEEE17221, /** Classic IEEE1722.1 entity */
 		Milan, /** MILAN compatible entity */
 	};

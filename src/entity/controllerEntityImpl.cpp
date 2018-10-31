@@ -1898,7 +1898,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 #endif // IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES
 			if (st == AemCommandStatus::ProtocolError)
 			{
-				LOG_CONTROLLER_ENTITY_ERROR(aem.getTargetEntityID(), "Failed to process {} AEM response: {}", std::string(aem.getCommandType()), what);
+				LOG_CONTROLLER_ENTITY_INFO(aem.getTargetEntityID(), "Failed to process {} AEM response: {}", std::string(aem.getCommandType()), what);
 			}
 			invokeProtectedHandler(onErrorCallback, st);
 		};
@@ -1919,7 +1919,7 @@ void ControllerEntityImpl::processAemAecpResponse(protocol::Aecpdu const* const 
 		}
 		catch ([[maybe_unused]] std::exception const& e) // Mainly unpacking errors
 		{
-			LOG_CONTROLLER_ENTITY_ERROR(aem.getTargetEntityID(), "Failed to process {} AEM response: {}", std::string(aem.getCommandType()), e.what());
+			LOG_CONTROLLER_ENTITY_INFO(aem.getTargetEntityID(), "Failed to process {} AEM response: {}", std::string(aem.getCommandType()), e.what());
 			invokeProtectedHandler(onErrorCallback, AemCommandStatus::ProtocolError);
 			return;
 		}
@@ -1977,19 +1977,19 @@ void ControllerEntityImpl::processMvuAecpResponse(protocol::Aecpdu const* const 
 		}
 		catch ([[maybe_unused]] protocol::mvuPayload::IncorrectPayloadSizeException const& e)
 		{
-			LOG_CONTROLLER_ENTITY_ERROR(mvu.getTargetEntityID(), "Failed to process {} MVU response: {}", std::string(mvu.getCommandType()), e.what());
+			LOG_CONTROLLER_ENTITY_INFO(mvu.getTargetEntityID(), "Failed to process {} MVU response: {}", std::string(mvu.getCommandType()), e.what());
 			invokeProtectedHandler(onErrorCallback, MvuCommandStatus::ProtocolError);
 			return;
 		}
 		catch ([[maybe_unused]] InvalidDescriptorTypeException const& e)
 		{
-			LOG_CONTROLLER_ENTITY_ERROR(mvu.getTargetEntityID(), "Failed to process {} MVU response: {}", std::string(mvu.getCommandType()), e.what());
+			LOG_CONTROLLER_ENTITY_INFO(mvu.getTargetEntityID(), "Failed to process {} MVU response: {}", std::string(mvu.getCommandType()), e.what());
 			invokeProtectedHandler(onErrorCallback, MvuCommandStatus::ProtocolError);
 			return;
 		}
 		catch ([[maybe_unused]] std::exception const& e) // Mainly unpacking errors
 		{
-			LOG_CONTROLLER_ENTITY_ERROR(mvu.getTargetEntityID(), "Failed to process {} MVU response: {}", std::string(mvu.getCommandType()), e.what());
+			LOG_CONTROLLER_ENTITY_INFO(mvu.getTargetEntityID(), "Failed to process {} MVU response: {}", std::string(mvu.getCommandType()), e.what());
 			invokeProtectedHandler(onErrorCallback, MvuCommandStatus::ProtocolError);
 			return;
 		}
@@ -2141,13 +2141,13 @@ void ControllerEntityImpl::processAcmpResponse(protocol::Acmpdu const* const res
 		catch (ControlException const& e)
 		{
 			auto st = e.getStatus();
-			LOG_CONTROLLER_ENTITY_ERROR(acmp.getTalkerEntityID(), "Failed to process ACMP response: {}", e.what());
+			LOG_CONTROLLER_ENTITY_INFO(acmp.getTalkerEntityID(), "Failed to process ACMP response: {}", e.what());
 			invokeProtectedHandler(onErrorCallback, st);
 			return;
 		}
 		catch ([[maybe_unused]] std::exception const& e) // Mainly unpacking errors
 		{
-			LOG_CONTROLLER_ENTITY_ERROR(acmp.getTalkerEntityID(), "Failed to process ACMP response: {}", e.what());
+			LOG_CONTROLLER_ENTITY_INFO(acmp.getTalkerEntityID(), "Failed to process ACMP response: {}", e.what());
 			invokeProtectedHandler(onErrorCallback, ControlStatus::ProtocolError);
 			return;
 		}
