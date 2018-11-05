@@ -153,12 +153,12 @@ public:
 	virtual Error registerLocalEntity(entity::LocalEntity& entity) noexcept = 0;
 	/** Unregisters a local entity from the interface. It won't be able to send or receive messages anymore. */
 	virtual Error unregisterLocalEntity(entity::LocalEntity& entity) noexcept = 0;
-	/** Flags the entity for re-announcement on specified interfaceIndex if set, otherwise on all interfaces. */
-	virtual Error setNeedsAdvertiseEntity(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept = 0;
 	/** Enables entity advertising on the network. */
 	virtual Error enableEntityAdvertising(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept = 0;
 	/** Disables entity advertising on the network. */
 	virtual Error disableEntityAdvertising(entity::LocalEntity& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept = 0;
+	/** Flags the entity for re-announcement on specified interfaceIndex if set, otherwise on all interfaces. */
+	virtual Error setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const flags, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept = 0;
 	/** Requests a remote entities discovery. */
 	virtual Error discoverRemoteEntities() const noexcept = 0;
 	/** Requests a targetted remote entity discovery. */

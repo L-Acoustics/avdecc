@@ -214,9 +214,9 @@ private:
 		return ProtocolInterface::Error::NoError;
 	}
 
-	virtual Error setNeedsAdvertiseEntity(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override
+	virtual Error setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const /*flags*/, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override
 	{
-		return _controllerStateMachine.setNeedsAdvertiseEntity(entity, interfaceIndex);
+		return _controllerStateMachine.setEntityNeedsAdvertise(entity, interfaceIndex);
 	}
 
 	virtual Error enableEntityAdvertising(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept override

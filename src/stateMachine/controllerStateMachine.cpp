@@ -548,7 +548,7 @@ ProtocolInterface::Error ControllerStateMachine::unregisterLocalEntity(entity::L
 	return ProtocolInterface::Error::NoError;
 }
 
-ProtocolInterface::Error ControllerStateMachine::setNeedsAdvertiseEntity(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept
+ProtocolInterface::Error ControllerStateMachine::setEntityNeedsAdvertise(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept
 {
 	// Lock self
 	std::lock_guard<ControllerStateMachine> const lg(getSelf());

@@ -291,7 +291,7 @@ private:
 	virtual void shutdown() noexcept override;
 	virtual Error registerLocalEntity(entity::LocalEntity& entity) noexcept override;
 	virtual Error unregisterLocalEntity(entity::LocalEntity& entity) noexcept override;
-	virtual Error setNeedsAdvertiseEntity(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override;
+	virtual Error setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const flags, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override;
 	virtual Error enableEntityAdvertising(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override;
 	virtual Error disableEntityAdvertising(entity::LocalEntity& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override;
 	virtual Error discoverRemoteEntities() const noexcept override;
@@ -542,9 +542,9 @@ ProtocolInterface::Error ProtocolInterfaceVirtualImpl::unregisterLocalEntity(ent
 	return ProtocolInterface::Error::NoError;
 }
 
-ProtocolInterface::Error ProtocolInterfaceVirtualImpl::setNeedsAdvertiseEntity(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept
+ProtocolInterface::Error ProtocolInterfaceVirtualImpl::setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const /*flags*/, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept
 {
-	return _controllerStateMachine.setNeedsAdvertiseEntity(entity, interfaceIndex);
+	return _controllerStateMachine.setEntityNeedsAdvertise(entity, interfaceIndex);
 }
 
 ProtocolInterface::Error ProtocolInterfaceVirtualImpl::enableEntityAdvertising(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept

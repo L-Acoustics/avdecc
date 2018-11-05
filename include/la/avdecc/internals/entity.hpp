@@ -72,12 +72,6 @@ public:
 	static constexpr model::AvbInterfaceIndex GlobalAvbInterfaceIndex{ 0xffff }; /** The AvbInterfaceIndex value used when EntityCapabilities::AemInterfaceIndexValid is not set */
 	using InterfacesInformation = std::map<model::AvbInterfaceIndex, InterfaceInformation>;
 
-	/** Sets (or replaces) the InterfaceInformation for the specified AvbInterfaceIndex. */
-	virtual void setInterfaceInformation(InterfaceInformation const& interfaceInformation, model::AvbInterfaceIndex const interfaceIndex) noexcept
-	{
-		_interfaceInformation[interfaceIndex] = interfaceInformation;
-	}
-
 	/** Removes the InterfaceInformation for the specified AvbInterfaceIndex. */
 	virtual void removeInterfaceInformation(model::AvbInterfaceIndex const interfaceIndex) noexcept
 	{
@@ -398,14 +392,24 @@ public:
 		InternalError = 999, /**< Internal library error. */
 	};
 
+	/** EntityAdvertise dirty flag */
+	enum class AdvertiseFlag
+	{
+		None = 0,
+		EntityCapabilities = 1u << 0, /**< EntityCapabilities field changed */
+		AssociationID = 1u << 1, /**< AssociationID field changed */
+		ValidTime = 1u << 2, /**< ValidTime field changed */
+		GptpGrandmasterID = 1u << 3, /**< gPTP GrandmasterID field changed */
+		GptpDomainNumber = 1u << 4, /**< gPTP DomainNumber field changed */
+	};
+
+	using AdvertiseFlags = la::avdecc::EnumBitfield<AdvertiseFlag>;
+
 	/** Enables entity advertising with available duration included between 2-62 seconds on the specified interfaceIndex if set, otherwise on all interfaces. Returns false if EntityID is already in use on the local computer, true otherwise. */
 	virtual bool enableEntityAdvertising(std::uint32_t const availableDuration, std::optional<model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept = 0;
 
 	/** Disables entity advertising on the specified interfaceIndex if set, otherwise on all interfaces. */
 	virtual void disableEntityAdvertising(std::optional<model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept = 0;
-
-	/** Gets the dirty state of the entity. If true, then it should be announced again using ENTITY_AVAILABLE message. The state is reset once retrieved. */
-	//virtual bool isDirty() noexcept = 0;
 
 	/** BasicLockable concept lock method */
 	virtual void lock() noexcept = 0;

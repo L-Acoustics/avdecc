@@ -79,7 +79,7 @@ public:
 	bool processAcmpdu(Acmpdu const& acmpdu) noexcept; // Returns true if processed
 	ProtocolInterface::Error registerLocalEntity(entity::LocalEntity& entity) noexcept;
 	ProtocolInterface::Error unregisterLocalEntity(entity::LocalEntity& entity) noexcept;
-	ProtocolInterface::Error setNeedsAdvertiseEntity(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept;
+	ProtocolInterface::Error setEntityNeedsAdvertise(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept;
 	ProtocolInterface::Error enableEntityAdvertising(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept;
 	ProtocolInterface::Error disableEntityAdvertising(entity::LocalEntity& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept;
 	ProtocolInterface::Error discoverRemoteEntities() noexcept;
