@@ -78,7 +78,7 @@ public:
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
 		SuperClass::setEntityCapabilities(entityCapabilities);
-		_protocolInterface->setEntityNeedsAdvertise(*this, SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::EntityCapabilities }, std::nullopt);
+		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::EntityCapabilities }, std::nullopt);
 	}
 
 	/** Sets the association unique identifier and flag for announcement */
@@ -86,7 +86,7 @@ public:
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
 		SuperClass::setAssociationID(associationID);
-		_protocolInterface->setEntityNeedsAdvertise(*this, SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::AssociationID }, std::nullopt);
+		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::AssociationID }, std::nullopt);
 	}
 
 	/** Sets the valid time value on the specified interfaceIndex if set, otherwise on all interfaces, and flag for announcement */
@@ -94,7 +94,7 @@ public:
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
 		SuperClass::setValidTime(validTime, interfaceIndex);
-		_protocolInterface->setEntityNeedsAdvertise(*this, SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::ValidTime }, interfaceIndex);
+		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::ValidTime }, interfaceIndex);
 	}
 
 	/** Sets the gptp grandmaster unique identifier and flag for announcement */
@@ -102,7 +102,7 @@ public:
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
 		SuperClass::setGptpGrandmasterID(gptpGrandmasterID, interfaceIndex);
-		_protocolInterface->setEntityNeedsAdvertise(*this, SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::GptpGrandmasterID }, interfaceIndex);
+		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::GptpGrandmasterID }, interfaceIndex);
 	}
 
 	/** Sets th gptp domain number and flag for announcement */
@@ -110,7 +110,7 @@ public:
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
 		SuperClass::setGptpDomainNumber(gptpDomainNumber, interfaceIndex);
-		_protocolInterface->setEntityNeedsAdvertise(*this, SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::GptpDomainNumber }, interfaceIndex);
+		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::GptpDomainNumber }, interfaceIndex);
 	}
 
 	/* ************************************************************************** */

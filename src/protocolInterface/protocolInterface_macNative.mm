@@ -76,7 +76,7 @@ struct EntityQueues
 /** NSString to std::string conversion */
 + (std::string)getStdString:(NSString*)nsString;
 + (la::avdecc::networkInterface::MacAddress)getMacAddress:(NSArray*)array;
-+ (AVB17221Entity*)makeAVB17221Entity:(la::avdecc::entity::Entity const&)entity;
++ (AVB17221Entity*)makeAVB17221Entity:(la::avdecc::entity::Entity const&)entity interfaceIndex:(la::avdecc::entity::model::AvbInterfaceIndex)interfaceIndex;
 + (la::avdecc::entity::Entity)makeEntity:(AVB17221Entity*)entity;
 + (AVB17221AECPAEMMessage*)makeAemCommand:(la::avdecc::protocol::AemAecpdu const&)command;
 + (la::avdecc::protocol::AemAecpdu::UniquePointer)makeAemResponse:(AVB17221AECPAEMMessage*)response;
@@ -104,8 +104,9 @@ struct EntityQueues
 - (void)removeLocalProcessEntityHandlers:(la::avdecc::entity::LocalEntity const&)entity;
 // Unregistration of a local process entity
 - (la::avdecc::protocol::ProtocolInterface::Error)unregisterLocalEntity:(la::avdecc::entity::LocalEntity const&)entity;
-- (la::avdecc::protocol::ProtocolInterface::Error)enableEntityAdvertising:(la::avdecc::entity::LocalEntity const&)entity;
-- (la::avdecc::protocol::ProtocolInterface::Error)disableEntityAdvertising:(la::avdecc::entity::LocalEntity const&)entity;
+- (la::avdecc::protocol::ProtocolInterface::Error)setEntityNeedsAdvertise:(la::avdecc::entity::LocalEntity const&)entity flags:(la::avdecc::entity::LocalEntity::AdvertiseFlags)flags interfaceIndex:(std::optional<la::avdecc::entity::model::AvbInterfaceIndex>)interfaceIndex;
+- (la::avdecc::protocol::ProtocolInterface::Error)enableEntityAdvertising:(la::avdecc::entity::LocalEntity const&)entity interfaceIndex:(std::optional<la::avdecc::entity::model::AvbInterfaceIndex>)interfaceIndex;
+- (la::avdecc::protocol::ProtocolInterface::Error)disableEntityAdvertising:(la::avdecc::entity::LocalEntity const&)entity interfaceIndex:(std::optional<la::avdecc::entity::model::AvbInterfaceIndex>)interfaceIndex;
 - (BOOL)discoverRemoteEntities;
 - (BOOL)discoverRemoteEntity:(la::avdecc::UniqueIdentifier)entityID;
 - (la::avdecc::protocol::ProtocolInterface::Error)sendAecpCommand:(la::avdecc::protocol::Aecpdu::UniquePointer&&)aecpdu macAddress:(la::avdecc::networkInterface::MacAddress const&)macAddress handler:(la::avdecc::protocol::ProtocolInterface::AecpCommandResultHandler const&)onResult;
@@ -201,14 +202,19 @@ private:
 		return [_bridge unregisterLocalEntity:entity];
 	}
 
-	virtual Error enableEntityAdvertising(entity::LocalEntity const& entity) noexcept override
+	virtual Error setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const flags, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override
 	{
-		return [_bridge enableEntityAdvertising:entity];
+		return [_bridge setEntityNeedsAdvertise:entity flags:flags interfaceIndex:interfaceIndex];
 	}
 
-	virtual Error disableEntityAdvertising(entity::LocalEntity& entity) noexcept override
+	virtual Error enableEntityAdvertising(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override
 	{
-		return [_bridge disableEntityAdvertising:entity];
+		return [_bridge enableEntityAdvertising:entity interfaceIndex:interfaceIndex];
+	}
+
+	virtual Error disableEntityAdvertising(entity::LocalEntity& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override
+	{
+		return [_bridge disableEntityAdvertising:entity interfaceIndex:interfaceIndex];
 	}
 
 	virtual Error discoverRemoteEntities() const noexcept override
@@ -347,31 +353,114 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	return mac;
 }
 
-+ (AVB17221Entity*)makeAVB17221Entity:(la::avdecc::entity::Entity const&)entity {
++ (AVB17221Entity*)makeAVB17221Entity:(la::avdecc::entity::Entity const&)entity interfaceIndex:(la::avdecc::entity::model::AvbInterfaceIndex)interfaceIndex {
+	auto& interfaceInfo = entity.getInterfaceInformation(interfaceIndex);
+	auto entityCaps{ entity.getEntityCapabilities() };
+	auto identifyControlIndex{ la::avdecc::entity::model::ControlIndex{ 0u } };
+	auto avbInterfaceIndex{ la::avdecc::entity::model::AvbInterfaceIndex{ 0u } };
+	auto associationID{ la::avdecc::UniqueIdentifier::getNullUniqueIdentifier() };
+	auto gptpGrandmasterID{ la::avdecc::UniqueIdentifier::getNullUniqueIdentifier() };
+	auto gptpDomainNumber{ std::uint8_t{ 0u } };
+
+	if (entity.getIdentifyControlIndex())
+	{
+		la::avdecc::addFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemIdentifyControlIndexValid);
+		identifyControlIndex = *entity.getIdentifyControlIndex();
+	}
+	else
+	{
+		// We don't have a valid IdentifyControlIndex, don't set the flag
+		la::avdecc::clearFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemIdentifyControlIndexValid);
+	}
+
+	if (interfaceIndex != la::avdecc::entity::Entity::GlobalAvbInterfaceIndex)
+	{
+		la::avdecc::addFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemInterfaceIndexValid);
+		avbInterfaceIndex = interfaceIndex;
+	}
+	else
+	{
+		// We don't have a valid AvbInterfaceIndex, don't set the flag
+		la::avdecc::clearFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemInterfaceIndexValid);
+	}
+
+	if (entity.getAssociationID())
+	{
+		la::avdecc::addFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AssociationIDValid);
+		associationID = *entity.getAssociationID();
+	}
+	else
+	{
+		// We don't have a valid AssociationID, don't set the flag
+		la::avdecc::clearFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AssociationIDValid);
+	}
+
+	if (interfaceInfo.gptpGrandmasterID)
+	{
+		la::avdecc::addFlag(entityCaps, la::avdecc::entity::EntityCapabilities::GptpSupported);
+		gptpGrandmasterID = *interfaceInfo.gptpGrandmasterID;
+		if (AVDECC_ASSERT_WITH_RET(interfaceInfo.gptpDomainNumber.has_value(), "gptpDomainNumber should be set when gptpGrandmasterID is set"))
+		{
+			gptpDomainNumber = *interfaceInfo.gptpDomainNumber;
+		}
+	}
+	else
+	{
+		// We don't have a valid gptpGrandmasterID value, don't set the flag
+		la::avdecc::clearFlag(entityCaps, la::avdecc::entity::EntityCapabilities::GptpSupported);
+	}
+
 	auto e = [[AVB17221Entity alloc] init];
 
 	e.entityID = entity.getEntityID();
 	e.entityModelID = entity.getEntityModelID();
-	e.entityCapabilities = static_cast<AVB17221ADPEntityCapabilities>(entity.getEntityCapabilities());
+	e.entityCapabilities = static_cast<AVB17221ADPEntityCapabilities>(entityCaps);
 	e.talkerStreamSources = entity.getTalkerStreamSources();
 	e.talkerCapabilities = static_cast<AVB17221ADPTalkerCapabilities>(entity.getTalkerCapabilities());
 	e.listenerStreamSinks = entity.getListenerStreamSinks();
 	e.listenerCapabilities = static_cast<AVB17221ADPListenerCapabilities>(entity.getListenerCapabilities());
 	e.controllerCapabilities = static_cast<AVB17221ADPControllerCapabilities>(entity.getControllerCapabilities());
-	e.identifyControlIndex = entity.getIdentifyControlIndex();
-	//e.interfaceIndex = entity.getInterfaceIndex();
-	e.associationID = entity.getAssociationID();
+	e.identifyControlIndex = identifyControlIndex;
+	e.interfaceIndex = avbInterfaceIndex;
+	e.associationID = associationID;
+	e.gPTPGrandmasterID = gptpGrandmasterID;
+	e.gPTPDomainNumber = gptpDomainNumber;
+	e.timeToLive = interfaceInfo.validTime * 2u;
 
-	e.gPTPGrandmasterID = entity.getGptpGrandmasterID();
-	e.gPTPDomainNumber = entity.getGptpDomainNumber();
-
-	e.timeToLive = entity.getValidTime() * 2u;
-	e.availableIndex = 0;
+	e.availableIndex = 0; // AvailableIndex is automatically handled by macOS APIs
 	return e;
 }
 
 + (la::avdecc::entity::Entity)makeEntity:(AVB17221Entity*)entity {
-	return { entity.entityID, [BridgeInterface getMacAddress:entity.macAddresses], static_cast<std::uint8_t>(entity.timeToLive / 2u), entity.entityModelID, static_cast<la::avdecc::entity::EntityCapabilities>(entity.entityCapabilities), entity.talkerStreamSources, static_cast<la::avdecc::entity::TalkerCapabilities>(entity.talkerCapabilities), entity.listenerStreamSinks, static_cast<la::avdecc::entity::ListenerCapabilities>(entity.listenerCapabilities), static_cast<la::avdecc::entity::ControllerCapabilities>(entity.controllerCapabilities), entity.availableIndex, entity.gPTPGrandmasterID, entity.gPTPDomainNumber, entity.identifyControlIndex, entity.interfaceIndex, entity.associationID };
+	auto const entityCaps = static_cast<la::avdecc::entity::EntityCapabilities>(entity.entityCapabilities);
+	auto controlIndex{ std::optional<la::avdecc::entity::model::ControlIndex>{} };
+	auto associationID{ std::optional<la::avdecc::UniqueIdentifier>{} };
+	auto avbInterfaceIndex{ la::avdecc::entity::Entity::GlobalAvbInterfaceIndex };
+	auto gptpGrandmasterID{ std::optional<la::avdecc::UniqueIdentifier>{} };
+	auto gptpDomainNumber{ std::optional<std::uint8_t>{} };
+
+	if (la::avdecc::hasFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemIdentifyControlIndexValid))
+	{
+		controlIndex = entity.identifyControlIndex;
+	}
+	if (la::avdecc::hasFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AssociationIDValid))
+	{
+		associationID = entity.associationID;
+	}
+	if (la::avdecc::hasFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemInterfaceIndexValid))
+	{
+		avbInterfaceIndex = entity.interfaceIndex;
+	}
+	if (la::avdecc::hasFlag(entityCaps, la::avdecc::entity::EntityCapabilities::GptpSupported))
+	{
+		gptpGrandmasterID = entity.gPTPGrandmasterID;
+		gptpDomainNumber = entity.gPTPDomainNumber;
+	}
+
+	auto const commonInfo{ la::avdecc::entity::Entity::CommonInformation{ entity.entityID, entity.entityModelID, entityCaps, entity.talkerStreamSources, static_cast<la::avdecc::entity::TalkerCapabilities>(entity.talkerCapabilities), entity.listenerStreamSinks, static_cast<la::avdecc::entity::ListenerCapabilities>(entity.listenerCapabilities), static_cast<la::avdecc::entity::ControllerCapabilities>(entity.controllerCapabilities), controlIndex, associationID } };
+	auto const interfaceInfo{ la::avdecc::entity::Entity::InterfaceInformation{ [BridgeInterface getMacAddress:entity.macAddresses], static_cast<std::uint8_t>(entity.timeToLive / 2u), entity.availableIndex, gptpGrandmasterID, gptpDomainNumber } };
+
+	return la::avdecc::entity::Entity{ commonInfo, { { avbInterfaceIndex, interfaceInfo } } };
 }
 
 + (AVB17221AECPAEMMessage*)makeAemCommand:(la::avdecc::protocol::AemAecpdu const&)command {
@@ -635,7 +724,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 		// Remove remaining handlers
 		[self removeLocalProcessEntityHandlers:entity];
 		// Disable advertising
-		[self disableEntityAdvertising:entity];
+		[self disableEntityAdvertising:entity interfaceIndex:std::nullopt];
 	}
 
 	// Remove ACMP handlers that were not removed
@@ -708,7 +797,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	[self removeLocalProcessEntityHandlers:entity];
 
 	// Disable advertising
-	[self disableEntityAdvertising:entity];
+	[self disableEntityAdvertising:entity interfaceIndex:std::nullopt];
 
 	// Lock entities now that we have removed the handlers
 	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
@@ -722,17 +811,51 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	return la::avdecc::protocol::ProtocolInterface::Error::NoError;
 }
 
-- (la::avdecc::protocol::ProtocolInterface::Error)enableEntityAdvertising:(la::avdecc::entity::LocalEntity const&)entity {
+- (la::avdecc::protocol::ProtocolInterface::Error)setEntityNeedsAdvertise:(const la::avdecc::entity::LocalEntity&)entity flags:(la::avdecc::entity::LocalEntity::AdvertiseFlags)flags interfaceIndex:(std::optional<la::avdecc::entity::model::AvbInterfaceIndex>)interfaceIndex {
+	if (flags.test(la::avdecc::entity::LocalEntity::AdvertiseFlag::GptpGrandmasterID))
+	{
+		NSError* error{ nullptr };
+		if (interfaceIndex)
+		{
+			auto const& interfaceInfo = entity.getInterfaceInformation(*interfaceIndex);
+			if (interfaceInfo.gptpGrandmasterID)
+			{
+				[self.interface.entityDiscovery changeEntityWithEntityID:entity.getEntityID() toNewGPTPGrandmasterID:*interfaceInfo.gptpGrandmasterID error:&error];
+			}
+		}
+	}
+	return la::avdecc::protocol::ProtocolInterface::Error::NoError;
+}
+
+- (la::avdecc::protocol::ProtocolInterface::Error)enableEntityAdvertising:(la::avdecc::entity::LocalEntity const&)entity interfaceIndex:(std::optional<la::avdecc::entity::model::AvbInterfaceIndex>)interfaceIndex {
 	NSError* error{ nullptr };
 
-	[self.interface.entityDiscovery addLocalEntity:[BridgeInterface makeAVB17221Entity:entity] error:&error];
-	if (error != nullptr)
-		return [BridgeInterface getProtocolError:error];
+	// If interfaceIndex is specified, only enable advertising for this interface
+	if (interfaceIndex)
+	{
+		[self.interface.entityDiscovery addLocalEntity:[BridgeInterface makeAVB17221Entity:entity interfaceIndex:*interfaceIndex] error:&error];
+		if (error != nullptr)
+			return [BridgeInterface getProtocolError:error];
+	}
+	else
+	{
+		auto err{ la::avdecc::protocol::ProtocolInterface::Error::NoError };
+
+		// Otherwise enable advertising for all interfaces on the entity
+		for (auto const& infoKV : entity.getInterfacesInformation())
+		{
+			auto const avbInterfaceIndex = infoKV.first;
+			[self.interface.entityDiscovery addLocalEntity:[BridgeInterface makeAVB17221Entity:entity interfaceIndex:avbInterfaceIndex] error:&error];
+			if (error != nullptr)
+				err |= [BridgeInterface getProtocolError:error];
+		}
+		return err;
+	}
 
 	return la::avdecc::protocol::ProtocolInterface::Error::NoError;
 }
 
-- (la::avdecc::protocol::ProtocolInterface::Error)disableEntityAdvertising:(la::avdecc::entity::LocalEntity const&)entity {
+- (la::avdecc::protocol::ProtocolInterface::Error)disableEntityAdvertising:(la::avdecc::entity::LocalEntity const&)entity interfaceIndex:(std::optional<la::avdecc::entity::model::AvbInterfaceIndex>)interfaceIndex {
 	NSError* error{ nullptr };
 
 	[self.interface.entityDiscovery removeLocalEntity:entity.getEntityID() error:&error];

@@ -68,15 +68,15 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 		{
 			auto const& information = infoKV.second;
 
-			if (information.gptpGrandmasterID.has_value())
+			if (information.gptpGrandmasterID)
 			{
 				// Build an AVBInfo and forward to updateAvbInfo (which will check for changes)
 				auto const& avbInterfaceDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), avbInterfaceIndex, &model::ConfigurationDynamicTree::avbInterfaceDynamicModels);
 
 				// Copy the AvbInfo and update it with the new values we got from the ADPDU
 				auto info = avbInterfaceDynamicModel.avbInfo;
-				info.gptpGrandmasterID = information.gptpGrandmasterID.value();
-				info.gptpDomainNumber = information.gptpDomainNumber.value();
+				info.gptpGrandmasterID = *information.gptpGrandmasterID;
+				info.gptpDomainNumber = *information.gptpDomainNumber;
 				setAvbInfoAndNotify(controlledEntity, avbInterfaceIndex, info);
 			}
 		}
@@ -84,7 +84,7 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 
 	// Set the new AssociationID and notify if it changed
 	auto const associationID = entity.getAssociationID();
-	setAssociationAndNotify(controlledEntity, associationID.has_value() ? associationID.value() : UniqueIdentifier::getNullUniqueIdentifier());
+	setAssociationAndNotify(controlledEntity, associationID ? *associationID : UniqueIdentifier::getNullUniqueIdentifier());
 }
 
 void ControllerImpl::updateAcquiredState(ControlledEntityImpl& controlledEntity, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const /*descriptorIndex*/, bool const undefined) const noexcept

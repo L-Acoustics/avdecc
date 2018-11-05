@@ -257,14 +257,14 @@ public:
 		// If interfaceIndex is specified, only set the value for this interface
 		if (interfaceIndex)
 		{
-			getInterfaceInformation(interfaceIndex.value()).validTime = value;
+			AVDECC_ASSERT(interfaceIndex.has_value(), "InterfaceIndex should be valid");
+			getInterfaceInformation(*interfaceIndex).validTime = value;
 		}
 		else
 		{
 			// Otherwise set the value for all interfaces on the entity
 			for (auto& infoKV : getInterfacesInformation())
 			{
-				auto const avbInterfaceIndex = infoKV.first;
 				auto& information = infoKV.second;
 				information.validTime = value;
 			}

@@ -566,11 +566,11 @@ ProtocolInterface::Error ControllerStateMachine::setEntityNeedsAdvertise(entity:
 		if (interfaceIndex)
 		{
 			// Only if advertising is enabled
-			auto advertiseIt = localEntity.nextAdvertiseTime.find(interfaceIndex.value());
+			auto advertiseIt = localEntity.nextAdvertiseTime.find(*interfaceIndex);
 			if (advertiseIt != localEntity.nextAdvertiseTime.end())
 			{
 				// Schedule EntityAvailable message
-				advertiseIt->second = computeDelayedAdvertiseTime(entity, interfaceIndex.value());
+				advertiseIt->second = computeDelayedAdvertiseTime(entity, *interfaceIndex);
 			}
 		}
 		else
@@ -609,7 +609,7 @@ ProtocolInterface::Error ControllerStateMachine::enableEntityAdvertising(entity:
 	// If interfaceIndex is specified, only enable advertising for this interface
 	if (interfaceIndex)
 	{
-		localEntity.nextAdvertiseTime[interfaceIndex.value()] = {}; // Set next advertise time to minimum value so we advertise ASAP
+		localEntity.nextAdvertiseTime[*interfaceIndex] = {}; // Set next advertise time to minimum value so we advertise ASAP
 	}
 	else
 	{
@@ -640,9 +640,9 @@ ProtocolInterface::Error ControllerStateMachine::disableEntityAdvertising(entity
 	if (interfaceIndex)
 	{
 		// Send a departing message, if advertising was enabled
-		if (localEntity.nextAdvertiseTime.erase(interfaceIndex.value()) != 0)
+		if (localEntity.nextAdvertiseTime.erase(*interfaceIndex) != 0)
 		{
-			auto frame = makeEntityDepartingMessage(entity, interfaceIndex.value());
+			auto frame = makeEntityDepartingMessage(entity, *interfaceIndex);
 			_delegate->sendMessage(frame);
 		}
 	}
@@ -720,10 +720,10 @@ Adpdu ControllerStateMachine::makeEntityAvailableMessage(entity::Entity& entity,
 	auto gptpGrandmasterID{ UniqueIdentifier::getNullUniqueIdentifier() };
 	auto gptpDomainNumber{ std::uint8_t{ 0u } };
 
-	if (entity.getIdentifyControlIndex().has_value())
+	if (entity.getIdentifyControlIndex())
 	{
 		addFlag(entityCaps, entity::EntityCapabilities::AemIdentifyControlIndexValid);
-		identifyControlIndex = entity.getIdentifyControlIndex().value();
+		identifyControlIndex = *entity.getIdentifyControlIndex();
 	}
 	else
 	{
@@ -742,10 +742,10 @@ Adpdu ControllerStateMachine::makeEntityAvailableMessage(entity::Entity& entity,
 		clearFlag(entityCaps, entity::EntityCapabilities::AemInterfaceIndexValid);
 	}
 
-	if (entity.getAssociationID().has_value())
+	if (entity.getAssociationID())
 	{
 		addFlag(entityCaps, entity::EntityCapabilities::AssociationIDValid);
-		associationID = entity.getAssociationID().value();
+		associationID = *entity.getAssociationID();
 	}
 	else
 	{
@@ -753,13 +753,13 @@ Adpdu ControllerStateMachine::makeEntityAvailableMessage(entity::Entity& entity,
 		clearFlag(entityCaps, entity::EntityCapabilities::AssociationIDValid);
 	}
 
-	if (interfaceInfo.gptpGrandmasterID.has_value())
+	if (interfaceInfo.gptpGrandmasterID)
 	{
 		addFlag(entityCaps, entity::EntityCapabilities::GptpSupported);
-		gptpGrandmasterID = interfaceInfo.gptpGrandmasterID.value();
+		gptpGrandmasterID = *interfaceInfo.gptpGrandmasterID;
 		if (AVDECC_ASSERT_WITH_RET(interfaceInfo.gptpDomainNumber.has_value(), "gptpDomainNumber should be set when gptpGrandmasterID is set"))
 		{
-			gptpDomainNumber = interfaceInfo.gptpDomainNumber.value();
+			gptpDomainNumber = *interfaceInfo.gptpDomainNumber;
 		}
 	}
 	else
