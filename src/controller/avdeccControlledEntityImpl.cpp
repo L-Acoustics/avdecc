@@ -192,6 +192,17 @@ model::AudioUnitNode const& ControlledEntityImpl::getAudioUnitNode(entity::model
 	return it->second;
 }
 
+model::AvbInterfaceNode const& ControlledEntityImpl::getAvbInterfaceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex) const
+{
+	auto const& configNode = getConfigurationNode(configurationIndex);
+
+	auto const it = configNode.avbInterfaces.find(avbInterfaceIndex);
+	if (it == configNode.avbInterfaces.end())
+		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid avb interface index");
+
+	return it->second;
+}
+
 model::ClockSourceNode const& ControlledEntityImpl::getClockSourceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex) const
 {
 	auto const& configNode = getConfigurationNode(configurationIndex);
