@@ -379,7 +379,7 @@ public:
 	* @return A new ControllerEntity as a Entity::UniquePointer.
 	* @note Might throw an Exception.
 	*/
-	static UniquePointer create(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, entity::controller::Delegate* const delegate)
+	static UniquePointer create(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, controller::Delegate* const delegate)
 	{
 		auto deleter = [](ControllerEntity* self)
 		{
@@ -412,7 +412,7 @@ protected:
 
 private:
 	/** Entry point */
-	static LA_AVDECC_API ControllerEntity* LA_AVDECC_CALL_CONVENTION createRawControllerEntity(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, entity::controller::Delegate* const delegate);
+	static LA_AVDECC_API ControllerEntity* LA_AVDECC_CALL_CONVENTION createRawControllerEntity(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, controller::Delegate* const delegate);
 
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept = 0;

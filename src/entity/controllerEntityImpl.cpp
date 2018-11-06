@@ -301,12 +301,12 @@ void ControllerEntityImpl::getEntityGroupName(UniqueIdentifier const targetEntit
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getEntityGroupName(targetEntityID, handler);
 }
 
-void ControllerEntityImpl::setConfigurationName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& entityGroupName, SetConfigurationNameHandler const& handler) const noexcept
+void ControllerEntityImpl::setConfigurationName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AvdeccFixedString const& entityGroupName, SetConfigurationNameHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setConfigurationName(targetEntityID, configurationIndex, entityGroupName, handler);
 }
 
-void ControllerEntityImpl::getConfigurationName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, GetConfigurationNameHandler const& handler) const noexcept
+void ControllerEntityImpl::getConfigurationName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, GetConfigurationNameHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getConfigurationName(targetEntityID, configurationIndex, handler);
 }
@@ -586,18 +586,18 @@ void ControllerEntityImpl::onRemoteEntityUpdated(protocol::ProtocolInterface* co
 }
 
 /* **** AECP notifications **** */
-void ControllerEntityImpl::onAecpUnsolicitedResponse(protocol::ProtocolInterface* const pi, entity::LocalEntity const& entity, protocol::Aecpdu const& aecpdu) noexcept
+void ControllerEntityImpl::onAecpUnsolicitedResponse(protocol::ProtocolInterface* const pi, LocalEntity const& entity, protocol::Aecpdu const& aecpdu) noexcept
 {
 	_controllerCapabilityDelegate->onAecpUnsolicitedResponse(pi, entity, aecpdu);
 }
 
 /* **** ACMP notifications **** */
-void ControllerEntityImpl::onAcmpSniffedCommand(protocol::ProtocolInterface* const pi, entity::LocalEntity const& entity, protocol::Acmpdu const& acmpdu) noexcept
+void ControllerEntityImpl::onAcmpSniffedCommand(protocol::ProtocolInterface* const pi, LocalEntity const& entity, protocol::Acmpdu const& acmpdu) noexcept
 {
 	_controllerCapabilityDelegate->onAcmpSniffedCommand(pi, entity, acmpdu);
 }
 
-void ControllerEntityImpl::onAcmpSniffedResponse(protocol::ProtocolInterface* const pi, entity::LocalEntity const& entity, protocol::Acmpdu const& acmpdu) noexcept
+void ControllerEntityImpl::onAcmpSniffedResponse(protocol::ProtocolInterface* const pi, LocalEntity const& entity, protocol::Acmpdu const& acmpdu) noexcept
 {
 	_controllerCapabilityDelegate->onAcmpSniffedResponse(pi, entity, acmpdu);
 }
@@ -614,9 +614,9 @@ bool ControllerEntityImpl::onUnhandledAecpCommand(protocol::ProtocolInterface* c
 /* ControllerEntity methods                                                   */
 /* ************************************************************************** */
 /** Entry point */
-ControllerEntity* LA_AVDECC_CALL_CONVENTION ControllerEntity::createRawControllerEntity(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, entity::controller::Delegate* const delegate)
+ControllerEntity* LA_AVDECC_CALL_CONVENTION ControllerEntity::createRawControllerEntity(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, controller::Delegate* const delegate)
 {
-	return new entity::LocalEntityGuard<entity::ControllerEntityImpl>(protocolInterface, commonInformation, interfacesInformation, delegate);
+	return new LocalEntityGuard<ControllerEntityImpl>(protocolInterface, commonInformation, interfacesInformation, delegate);
 }
 
 /** Constructor */

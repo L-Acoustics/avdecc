@@ -48,20 +48,20 @@ AggregateEntityImpl::AggregateEntityImpl(protocol::ProtocolInterface* const prot
 	auto const entityID = getEntityID();
 
 	// Entity is controller capable
-	if (la::avdecc::hasFlag(commonInformation.controllerCapabilities, entity::ControllerCapabilities::Implemented))
+	if (la::avdecc::hasFlag(commonInformation.controllerCapabilities, ControllerCapabilities::Implemented))
 	{
 		_controllerCapabilityDelegate = std::make_unique<controller::CapabilityDelegate>(getProtocolInterface(), controllerDelegate, *this, entityID);
 	}
 
 	// Entity is listener capable
-	if (la::avdecc::hasFlag(commonInformation.listenerCapabilities, entity::ListenerCapabilities::Implemented))
+	if (la::avdecc::hasFlag(commonInformation.listenerCapabilities, ListenerCapabilities::Implemented))
 	{
 		AVDECC_ASSERT(false, "TODO: AggregateEntityImpl: Handle listener capability");
 		//_listenerCapabilityDelegate = std::make_unique<listener::CapabilityDelegate>(entityID);
 	}
 
 	// Entity is talker capable
-	if (la::avdecc::hasFlag(commonInformation.talkerCapabilities, entity::TalkerCapabilities::Implemented))
+	if (la::avdecc::hasFlag(commonInformation.talkerCapabilities, TalkerCapabilities::Implemented))
 	{
 		AVDECC_ASSERT(false, "TODO: AggregateEntityImpl: Handle talker capability");
 		//_talkerCapabilityDelegate = std::make_unique<talker::CapabilityDelegate>(entityID);
@@ -461,7 +461,7 @@ void AggregateEntityImpl::getEntityGroupName(UniqueIdentifier const targetEntity
 	}
 }
 
-void AggregateEntityImpl::setConfigurationName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& entityGroupName, SetConfigurationNameHandler const& handler) const noexcept
+void AggregateEntityImpl::setConfigurationName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AvdeccFixedString const& entityGroupName, SetConfigurationNameHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{
@@ -469,7 +469,7 @@ void AggregateEntityImpl::setConfigurationName(UniqueIdentifier const targetEnti
 	}
 }
 
-void AggregateEntityImpl::getConfigurationName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, GetConfigurationNameHandler const& handler) const noexcept
+void AggregateEntityImpl::getConfigurationName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, GetConfigurationNameHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{
@@ -977,7 +977,7 @@ void AggregateEntityImpl::onRemoteEntityUpdated(protocol::ProtocolInterface* con
 }
 
 /* **** AECP notifications **** */
-void AggregateEntityImpl::onAecpUnsolicitedResponse(protocol::ProtocolInterface* const pi, entity::LocalEntity const& entity, protocol::Aecpdu const& aecpdu) noexcept
+void AggregateEntityImpl::onAecpUnsolicitedResponse(protocol::ProtocolInterface* const pi, LocalEntity const& entity, protocol::Aecpdu const& aecpdu) noexcept
 {
 	if (_controllerCapabilityDelegate != nullptr)
 	{
@@ -994,7 +994,7 @@ void AggregateEntityImpl::onAecpUnsolicitedResponse(protocol::ProtocolInterface*
 }
 
 /* **** ACMP notifications **** */
-void AggregateEntityImpl::onAcmpSniffedCommand(protocol::ProtocolInterface* const pi, entity::LocalEntity const& entity, protocol::Acmpdu const& acmpdu) noexcept
+void AggregateEntityImpl::onAcmpSniffedCommand(protocol::ProtocolInterface* const pi, LocalEntity const& entity, protocol::Acmpdu const& acmpdu) noexcept
 {
 	if (_controllerCapabilityDelegate != nullptr)
 	{
@@ -1010,7 +1010,7 @@ void AggregateEntityImpl::onAcmpSniffedCommand(protocol::ProtocolInterface* cons
 	}
 }
 
-void AggregateEntityImpl::onAcmpSniffedResponse(protocol::ProtocolInterface* const pi, entity::LocalEntity const& entity, protocol::Acmpdu const& acmpdu) noexcept
+void AggregateEntityImpl::onAcmpSniffedResponse(protocol::ProtocolInterface* const pi, LocalEntity const& entity, protocol::Acmpdu const& acmpdu) noexcept
 {
 	if (_controllerCapabilityDelegate != nullptr)
 	{
@@ -1053,9 +1053,9 @@ bool AggregateEntityImpl::onUnhandledAecpCommand(protocol::ProtocolInterface* co
 /* AggregateEntity methods                                                    */
 /* ************************************************************************** */
 /** Entry point */
-AggregateEntity* LA_AVDECC_CALL_CONVENTION AggregateEntity::createRawAggregateEntity(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, entity::controller::Delegate* const controllerDelegate)
+AggregateEntity* LA_AVDECC_CALL_CONVENTION AggregateEntity::createRawAggregateEntity(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, controller::Delegate* const controllerDelegate)
 {
-	return new entity::LocalEntityGuard<entity::AggregateEntityImpl>(protocolInterface, commonInformation, interfacesInformation, controllerDelegate);
+	return new LocalEntityGuard<AggregateEntityImpl>(protocolInterface, commonInformation, interfacesInformation, controllerDelegate);
 }
 
 /** Constructor */

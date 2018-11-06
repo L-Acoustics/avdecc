@@ -1520,13 +1520,12 @@ void CapabilityDelegate::onRemoteEntityUpdated(protocol::ProtocolInterface* cons
 /* **** AECP notifications **** */
 bool CapabilityDelegate::onUnhandledAecpCommand(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept
 {
-	// Ignore messages not for me
-	if (_controllerID != aecpdu.getControllerEntityID())
-		return false;
-
 	if (aecpdu.getMessageType() == protocol::AecpMessageType::AemCommand)
 	{
 		auto const& aem = static_cast<protocol::AemAecpdu const&>(aecpdu);
+
+		if (!AVDECC_ASSERT_WITH_RET(_controllerID != aecpdu.getControllerEntityID(), "Message from self should not pass through this function, or maybe if the same entity has Controller/Talker/Listener capabilities? (in that case allow the message to be processed, the ProtocolInterface will optimize the sending)"))
+			return true;
 
 		if (aem.getCommandType() == protocol::AemCommandType::ControllerAvailable)
 		{

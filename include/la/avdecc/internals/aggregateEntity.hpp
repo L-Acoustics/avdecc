@@ -58,7 +58,7 @@ public:
 	* @return A new AggregateEntity as a Entity::UniquePointer.
 	* @note Might throw an Exception.
 	*/
-	static UniquePointer create(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, entity::controller::Delegate* const controllerDelegate)
+	static UniquePointer create(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, controller::Delegate* const controllerDelegate)
 	{
 		auto deleter = [](AggregateEntity* self)
 		{
@@ -92,7 +92,7 @@ protected:
 
 private:
 	/** Entry point */
-	static LA_AVDECC_API AggregateEntity* LA_AVDECC_CALL_CONVENTION createRawAggregateEntity(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, entity::controller::Delegate* const controllerDelegate);
+	static LA_AVDECC_API AggregateEntity* LA_AVDECC_CALL_CONVENTION createRawAggregateEntity(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, controller::Delegate* const controllerDelegate);
 
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept = 0;

@@ -149,12 +149,6 @@ void LocalEntityImpl<SuperClass>::onAecpCommand(protocol::ProtocolInterface* con
 	{
 		auto const& aem = static_cast<protocol::AemAecpdu const&>(aecpdu);
 
-#pragma message("TODO: Code to be removed once checked it never happens (This is a LocalEntity, not a ControllerEntity, we should not check anything Controller specific here)")
-		auto const controllerID = aem.getControllerEntityID();
-		// Filter self messages
-		if (!AVDECC_ASSERT_WITH_RET(controllerID != SuperClass::getEntityID(), "Receiving a message from ourself?"))
-			return;
-
 		static std::unordered_map<protocol::AemCommandType::value_type, std::function<void(protocol::ProtocolInterface* const pi, LocalEntityImpl const* const entity, protocol::AemAecpdu const& aem)>> s_Dispatch{
 			// Entity Available
 			{ protocol::AemCommandType::EntityAvailable.getValue(),

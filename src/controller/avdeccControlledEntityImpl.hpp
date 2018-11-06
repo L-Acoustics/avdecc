@@ -385,7 +385,7 @@ private:
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DescriptorKey>> _expectedDescriptors{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DynamicInfoKey>> _expectedDynamicInfo{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DescriptorDynamicInfoKey>> _expectedDescriptorDynamicInfo{};
-	model::AcquireState _acquireState{ model::AcquireState::Undefined }; // TODO: Should be a graph of descriptors
+	model::AcquireState _acquireState{ model::AcquireState::Undefined };
 	UniqueIdentifier _owningControllerID{}; // EID of the controller currently owning (who acquired) this entity
 	// Entity variables
 	entity::Entity _entity; // No NSMI, Entity has no default constructor but it has to be passed to the only constructor of this class anyway
