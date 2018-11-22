@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Better detection of non IEEE1722.1 compliant entities, and toxic entities (sending correctly built messages but with incoherent values)
+
+### Fixed
+- Preventing a crash in upper layers caused by toxic entities (Motu Ultralite card sending a GET_RX_STATE_RESPONSE with a non-existant stream index)
 
 ## [2.7.2] - 2018-10-30
 ### Fixed

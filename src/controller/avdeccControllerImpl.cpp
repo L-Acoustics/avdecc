@@ -87,9 +87,95 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 	setAssociationAndNotify(controlledEntity, associationID ? *associationID : UniqueIdentifier::getNullUniqueIdentifier());
 }
 
+void ControllerImpl::addCompatibilityFlag(ControlledEntityImpl& controlledEntity, ControlledEntity::CompatibilityFlag const flag) const noexcept
+{
+	auto const oldFlags = controlledEntity.getCompatibilityFlags();
+	auto newFlags{ oldFlags };
+
+	switch (flag)
+	{
+		case ControlledEntity::CompatibilityFlag::IEEE17221:
+			if (!newFlags.test(ControlledEntity::CompatibilityFlag::Toxic))
+			{
+				newFlags.set(flag);
+			}
+			break;
+		case ControlledEntity::CompatibilityFlag::Milan:
+			if (!newFlags.test(ControlledEntity::CompatibilityFlag::Toxic))
+			{
+				newFlags.set(ControlledEntity::CompatibilityFlag::IEEE17221); // A Milan device is also an IEEE1722.1 compatible device
+				newFlags.set(flag);
+			}
+			break;
+		case ControlledEntity::CompatibilityFlag::Toxic:
+			newFlags.reset(ControlledEntity::CompatibilityFlag::IEEE17221); // A toxic device is not IEEE1722.1 compatible
+			newFlags.reset(ControlledEntity::CompatibilityFlag::Milan); // A toxic device is not Milan compatible
+			newFlags.set(flag);
+			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Entity might be toxic to the network");
+			break;
+		default:
+			AVDECC_ASSERT(false, "Unknown CompatibilityFlag");
+			return;
+	}
+
+	if (oldFlags != newFlags)
+	{
+		controlledEntity.setCompatibilityFlags(newFlags);
+
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onCompatibilityFlagsChanged, this, &controlledEntity, newFlags);
+		}
+	}
+}
+
+void ControllerImpl::removeCompatibilityFlag(ControlledEntityImpl& controlledEntity, ControlledEntity::CompatibilityFlag const flag) const noexcept
+{
+	auto const oldFlags = controlledEntity.getCompatibilityFlags();
+	auto newFlags{ oldFlags };
+
+	switch (flag)
+	{
+		case ControlledEntity::CompatibilityFlag::IEEE17221:
+			// If device was IEEE1722.1 compliant
+			if (newFlags.test(ControlledEntity::CompatibilityFlag::IEEE17221))
+			{
+				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Entity not fully IEEE1722.1 compliant");
+				newFlags.reset(ControlledEntity::CompatibilityFlag::Milan); // A non compliant IEEE1722.1 device is not Milan compliant either
+				newFlags.reset(flag);
+			}
+			break;
+		case ControlledEntity::CompatibilityFlag::Milan:
+			// If device was Milan compliant
+			if (newFlags.test(ControlledEntity::CompatibilityFlag::Milan))
+			{
+				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Entity not fully Milan compliant");
+				newFlags.reset(flag);
+			}
+			break;
+		case ControlledEntity::CompatibilityFlag::Toxic:
+			AVDECC_ASSERT(false, "Should not be possible to remove the Toxic flag");
+			break;
+		default:
+			AVDECC_ASSERT(false, "Unknown CompatibilityFlag");
+			return;
+	}
+
+	if (oldFlags != newFlags)
+	{
+		controlledEntity.setCompatibilityFlags(newFlags);
+
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onCompatibilityFlagsChanged, this, &controlledEntity, newFlags);
+		}
+	}
+}
+
 void ControllerImpl::updateAcquiredState(ControlledEntityImpl& controlledEntity, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const /*descriptorIndex*/, bool const undefined) const noexcept
 {
-#pragma message("TODO: Handle acquire state tree")
 	if (descriptorType == entity::model::DescriptorType::Entity)
 	{
 		auto owningController{ UniqueIdentifier{} };
@@ -1495,17 +1581,26 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 }
 
 /* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetStaticModel (AEM) */
-bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
+bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, bool const optionalForMilan) noexcept
 {
 	switch (getFailureAction(status))
 	{
 		case FailureAction::ErrorIgnore:
-			// Flag the entity as "Not fully compliant"
-			entity->setCompatibility(ControlledEntity::Compatibility::NotCompliant);
-			[[fallthrough]];
+			// Flag the entity as "Not fully IEEE1722.1 compliant"
+			removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			return true;
 		case FailureAction::WarningIgnore:
-			[[fallthrough]];
+			return true;
 		case FailureAction::NotSupported:
+			if (!optionalForMilan)
+			{
+				// Remove "Milan compatibility" as device do not support mandatory descriptor
+				if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+				{
+					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory descriptor not supported by the entity");
+					removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
+				}
+			}
 			return true;
 		case FailureAction::Retry:
 		{
@@ -1530,17 +1625,26 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 }
 
 /* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetDynamicInfo for AECP commands */
-bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex) noexcept
+bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex, bool const optionalForMilan) noexcept
 {
 	switch (getFailureAction(status))
 	{
 		case FailureAction::ErrorIgnore:
-			// Flag the entity as "Not fully compliant"
-			entity->setCompatibility(ControlledEntity::Compatibility::NotCompliant);
-			[[fallthrough]];
+			// Flag the entity as "Not fully IEEE1722.1 compliant"
+			removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			return true;
 		case FailureAction::WarningIgnore:
-			[[fallthrough]];
+			return true;
 		case FailureAction::NotSupported:
+			if (!optionalForMilan)
+			{
+				// Remove "Milan compatibility" as device do not support mandatory descriptor
+				if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+				{
+					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory dynamic info not supported by the entity");
+					removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
+				}
+			}
 			return true;
 		case FailureAction::Retry:
 		{
@@ -1565,17 +1669,26 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 }
 
 /* This method handles non-success ControlStatus returned while getting EnumerationSteps::GetDynamicInfo for ACMP commands */
-bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex) noexcept
+bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex, bool const optionalForMilan) noexcept
 {
 	switch (getFailureAction(status))
 	{
 		case FailureAction::ErrorIgnore:
-			// Flag the entity as "Not fully compliant"
-			entity->setCompatibility(ControlledEntity::Compatibility::NotCompliant);
-			[[fallthrough]];
+			// Flag the entity as "Not fully IEEE1722.1 compliant"
+			removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			return true;
 		case FailureAction::WarningIgnore:
-			[[fallthrough]];
+			return true;
 		case FailureAction::NotSupported:
+			if (!optionalForMilan)
+			{
+				// Remove "Milan compatibility" as device do not support mandatory descriptor
+				if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+				{
+					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory ACMP command not supported by the entity");
+					removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
+				}
+			}
 			return true;
 		case FailureAction::Retry:
 		{
@@ -1600,17 +1713,26 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 }
 
 /* This method handles non-success ControlStatus returned while getting EnumerationSteps::GetDynamicInfo for ACMP commands with a connection index */
-bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::StreamIdentification const& talkerStream, std::uint16_t const subIndex) noexcept
+bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::StreamIdentification const& talkerStream, std::uint16_t const subIndex, bool const optionalForMilan) noexcept
 {
 	switch (getFailureAction(status))
 	{
 		case FailureAction::ErrorIgnore:
-			// Flag the entity as "Not fully compliant"
-			entity->setCompatibility(ControlledEntity::Compatibility::NotCompliant);
-			[[fallthrough]];
+			// Flag the entity as "Not fully IEEE1722.1 compliant"
+			removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			return true;
 		case FailureAction::WarningIgnore:
-			[[fallthrough]];
+			return true;
 		case FailureAction::NotSupported:
+			if (!optionalForMilan)
+			{
+				// Remove "Milan compatibility" as device do not support mandatory descriptor
+				if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+				{
+					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory ACMP command not supported by the entity");
+					removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
+				}
+			}
 			return true;
 		case FailureAction::Retry:
 		{
@@ -1640,8 +1762,8 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 	switch (getFailureAction(status))
 	{
 		case FailureAction::ErrorIgnore:
-			// Flag the entity as "Not fully compliant"
-			entity->setCompatibility(ControlledEntity::Compatibility::NotCompliant);
+			// Flag the entity as "Not fully IEEE1722.1 compliant"
+			removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			[[fallthrough]];
 		case FailureAction::WarningIgnore:
 			return true;
@@ -1789,7 +1911,7 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 	{
 		if (!talkerStream.entityID)
 		{
-			LOG_CONTROLLER_WARN(UniqueIdentifier::getNullUniqueIdentifier(), "Listener StreamState notification advertises being connected but with no Talker Identification (ListenerID={} ListenerIndex={})", listenerStream.entityID.getValue(), listenerStream.streamIndex);
+			LOG_CONTROLLER_WARN(UniqueIdentifier::getNullUniqueIdentifier(), "Listener StreamState notification advertises being connected but with no Talker Identification (ListenerID={} ListenerIndex={})", toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
 			conState = model::StreamConnectionState::State::NotConnected;
 		}
 		else
@@ -1808,6 +1930,15 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 
 		if (listenerEntity)
 		{
+			// Check for invalid streamIndex
+			auto const maxSinks = listenerEntity->getEntity().getCommonInformation().listenerStreamSinks;
+			if (listenerStream.streamIndex >= maxSinks)
+			{
+				LOG_CONTROLLER_WARN(UniqueIdentifier::getNullUniqueIdentifier(), "Listener entity {} sent an invalid CONNECTION STATE (with status=SUCCESS) for StreamIndex={} although it only has {} sinks", toHexString(listenerStream.entityID, true), listenerStream.streamIndex, maxSinks);
+				// Flag the entity as "Toxic"
+				addCompatibilityFlag(*listenerEntity, ControlledEntity::CompatibilityFlag::Toxic);
+				return;
+			}
 			auto const previousState = listenerEntity->setStreamInputConnectionState(listenerStream.streamIndex, state);
 
 			// Entity was advertised to the user, notify observers
@@ -1880,5 +2011,5 @@ void ControllerImpl::delTalkerStreamConnection(ControlledEntityImpl* const talke
 }
 
 } // namespace la
-} // namespace avdecc
+} // namespace la
 } // namespace la

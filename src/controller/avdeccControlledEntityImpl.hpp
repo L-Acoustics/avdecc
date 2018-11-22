@@ -107,7 +107,7 @@ public:
 
 	// ControlledEntity overrides
 	// Getters
-	virtual Compatibility getCompatibility() const noexcept override;
+	virtual CompatibilityFlags getCompatibilityFlags() const noexcept override;
 	virtual bool gotFatalEnumerationError() const noexcept override;
 	virtual bool isAcquired() const noexcept override;
 	virtual bool isAcquiring() const noexcept override;
@@ -303,7 +303,7 @@ public:
 	EnumerationSteps getEnumerationSteps() const noexcept;
 	void addEnumerationSteps(EnumerationSteps const steps) noexcept;
 	void clearEnumerationSteps(EnumerationSteps const steps) noexcept;
-	void setCompatibility(Compatibility const compatibility) noexcept;
+	void setCompatibilityFlags(CompatibilityFlags const compatibilityFlags) noexcept;
 	void setGetFatalEnumerationError() noexcept;
 	bool wasAdvertised() const noexcept;
 	void setAdvertised(bool const wasAdvertised) noexcept;
@@ -379,7 +379,7 @@ private:
 	std::uint16_t _queryDynamicInfoRetryCount{ 0u };
 	std::uint16_t _queryDescriptorDynamicInfoRetryCount{ 0u };
 	EnumerationSteps _enumerationSteps{ EnumerationSteps::None };
-	Compatibility _compatibility{ Compatibility::IEEE17221 }; // Entity compatibility type
+	CompatibilityFlags _compatibilityFlags{ CompatibilityFlag::IEEE17221 }; // Entity is IEEE1722.1 compatible by default
 	bool _gotFatalEnumerateError{ false }; // Have we got a fatal error during entity enumeration
 	bool _advertised{ false }; // Has the entity been advertised to the observers
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DescriptorKey>> _expectedDescriptors{};

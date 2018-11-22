@@ -47,11 +47,11 @@ void ControllerImpl::onGetMilanVersionResult(entity::controller::Interface const
 	{
 		if (!!status)
 		{
-			controlledEntity->setCompatibility(ControlledEntity::Compatibility::Milan);
+			// Flag the entity as "Milan compatible" for now
+			addCompatibilityFlag(*controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
 		}
 		else
 		{
-			controlledEntity->setCompatibility(ControlledEntity::Compatibility::IEEE17221);
 			//if (!processFailureStatus(status, controlledEntity.get(), 0, entity::model::DescriptorType::Entity, 0)) // Utiliser un autre code, ce n'est pas Entity!!
 			//{
 			//	controlledEntity->setGetFatalEnumerationError();
@@ -81,7 +81,8 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 		}
 		else
 		{
-			controlledEntity->setCompatibility(ControlledEntity::Compatibility::IEEE17221);
+#pragma message("TODO: Handle errors here, we might have a timeout and want to retry, like all other commands. If the error is critical, we have to flag the entity somehow (maybe a CompatibilityFlag saying we cannot track Unsol")
+			removeCompatibilityFlag(*controlledEntity, ControlledEntity::CompatibilityFlag::Milan); // Right now, just clear the Milan flag, but it would be better to add a "processFailedStatus" like all other commands
 		}
 
 		// Clear this enumeration step and check for next one

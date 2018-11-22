@@ -51,9 +51,9 @@ ControlledEntityImpl::ControlledEntityImpl(entity::Entity const& entity) noexcep
 
 // ControlledEntity overrides
 // Getters
-ControlledEntity::Compatibility ControlledEntityImpl::getCompatibility() const noexcept
+ControlledEntity::CompatibilityFlags ControlledEntityImpl::getCompatibilityFlags() const noexcept
 {
-	return _compatibility;
+	return _compatibilityFlags;
 }
 
 bool ControlledEntityImpl::gotFatalEnumerationError() const noexcept
@@ -1587,13 +1587,9 @@ void ControlledEntityImpl::clearEnumerationSteps(EnumerationSteps const steps) n
 	clearFlag(_enumerationSteps, steps);
 }
 
-void ControlledEntityImpl::setCompatibility(Compatibility const compatibility) noexcept
+void ControlledEntityImpl::setCompatibilityFlags(CompatibilityFlags const compatibilityFlags) noexcept
 {
-	if (compatibility == Compatibility::NotCompliant)
-	{
-		LOG_CONTROLLER_INFO(_entity.getEntityID(), "Entity not fully IEEE1722.1 compliant");
-	}
-	_compatibility = compatibility;
+	_compatibilityFlags = compatibilityFlags;
 }
 
 void ControlledEntityImpl::setGetFatalEnumerationError() noexcept

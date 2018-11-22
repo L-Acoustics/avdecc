@@ -26,6 +26,7 @@
 #pragma once
 
 #include <la/avdecc/avdecc.hpp>
+#include <la/avdecc/utils.hpp>
 #include <la/avdecc/internals/exception.hpp>
 #include "avdeccControlledEntityModel.hpp"
 #include "exports.hpp"
@@ -73,15 +74,20 @@ public:
 		Type const _type{ Type::None };
 	};
 
-	enum class Compatibility
+	/** Compatibility for the Entity */
+	enum class CompatibilityFlag : std::uint8_t
 	{
-		NotCompliant, /** Not fully IEEE1722.1 compliant entity */
-		IEEE17221, /** Classic IEEE1722.1 entity */
-		Milan, /** MILAN compatible entity */
+		None = 0, /** Not fully IEEE1722.1 compliant entity */
+
+		IEEE17221 = 1u << 0, /** Classic IEEE1722.1 entity */
+		Milan = 1u << 1, /** MILAN compatible entity */
+
+		Toxic = 1u << 7, /** Entity is sending correctly formed messages but with incoherent values that can potentially lead to crashes. */
 	};
+	using CompatibilityFlags = EnumBitfield<CompatibilityFlag>;
 
 	// Getters
-	virtual Compatibility getCompatibility() const noexcept = 0;
+	virtual CompatibilityFlags getCompatibilityFlags() const noexcept = 0;
 	virtual bool gotFatalEnumerationError() const noexcept = 0; // True if the controller had a fatal error during entity information retrieval (leading to Exception::Type::EnumerationError if any throwing method is called).
 	virtual bool isAcquired() const noexcept = 0; // Is entity acquired by the controller it's attached to
 	virtual bool isAcquiring() const noexcept = 0; // Is the attached controller trying to acquire the entity
