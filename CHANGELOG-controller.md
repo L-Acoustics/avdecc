@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - Better detection of non IEEE1722.1 compliant entities, and toxic entities (sending correctly built messages but with incoherent values)
+- Detecting when the controller is being deregistered from unsolicited notifications (or if the entity does not support it)
 
 ### Fixed
 - Preventing a crash in upper layers caused by toxic entities (Motu Ultralite card sending a GET_RX_STATE_RESPONSE with a non-existant stream index)

@@ -89,6 +89,7 @@ public:
 	// Getters
 	virtual CompatibilityFlags getCompatibilityFlags() const noexcept = 0;
 	virtual bool gotFatalEnumerationError() const noexcept = 0; // True if the controller had a fatal error during entity information retrieval (leading to Exception::Type::EnumerationError if any throwing method is called).
+	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept = 0;
 	virtual bool isAcquired() const noexcept = 0; // Is entity acquired by the controller it's attached to
 	virtual bool isAcquiring() const noexcept = 0; // Is the attached controller trying to acquire the entity
 	virtual bool isAcquiredByOther() const noexcept = 0; // Is entity acquired by another controller

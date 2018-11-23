@@ -77,10 +77,11 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 	{
 		if (!!status)
 		{
-			// Nothing special to do right now
+			updateUnsolicitedNotificationsSubscription(*controlledEntity, true);
 		}
 		else
 		{
+			updateUnsolicitedNotificationsSubscription(*controlledEntity, false);
 #pragma message("TODO: Handle errors here, we might have a timeout and want to retry, like all other commands. If the error is critical, we have to flag the entity somehow (maybe a CompatibilityFlag saying we cannot track Unsol")
 			removeCompatibilityFlag(*controlledEntity, ControlledEntity::CompatibilityFlag::Milan); // Right now, just clear the Milan flag, but it would be better to add a "processFailedStatus" like all other commands
 		}

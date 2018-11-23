@@ -61,6 +61,11 @@ bool ControlledEntityImpl::gotFatalEnumerationError() const noexcept
 	return _gotFatalEnumerateError;
 }
 
+bool ControlledEntityImpl::isSubscribedToUnsolicitedNotifications() const noexcept
+{
+	return _isSubscribedToUnsolicitedNotifications;
+}
+
 bool ControlledEntityImpl::isAcquired() const noexcept
 {
 	return _acquireState == model::AcquireState::Acquired;
@@ -1596,6 +1601,11 @@ void ControlledEntityImpl::setGetFatalEnumerationError() noexcept
 {
 	LOG_CONTROLLER_ERROR(_entity.getEntityID(), "Got Fatal Enumeration Error");
 	_gotFatalEnumerateError = true;
+}
+
+void ControlledEntityImpl::setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept
+{
+	_isSubscribedToUnsolicitedNotifications = isSubscribed;
 }
 
 bool ControlledEntityImpl::wasAdvertised() const noexcept

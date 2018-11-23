@@ -174,6 +174,22 @@ void ControllerImpl::removeCompatibilityFlag(ControlledEntityImpl& controlledEnt
 	}
 }
 
+void ControllerImpl::updateUnsolicitedNotificationsSubscription(ControlledEntityImpl& controlledEntity, bool const isSubscribed) const noexcept
+{
+	auto const oldValue = controlledEntity.isSubscribedToUnsolicitedNotifications();
+
+	if (oldValue != isSubscribed)
+	{
+		controlledEntity.setSubscribedToUnsolicitedNotifications(isSubscribed);
+
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onUnsolicitedRegistrationChanged, this, &controlledEntity, isSubscribed);
+		}
+	}
+}
+
 void ControllerImpl::updateAcquiredState(ControlledEntityImpl& controlledEntity, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const /*descriptorIndex*/, bool const undefined) const noexcept
 {
 	if (descriptorType == entity::model::DescriptorType::Entity)

@@ -109,6 +109,7 @@ public:
 	// Getters
 	virtual CompatibilityFlags getCompatibilityFlags() const noexcept override;
 	virtual bool gotFatalEnumerationError() const noexcept override;
+	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept override;
 	virtual bool isAcquired() const noexcept override;
 	virtual bool isAcquiring() const noexcept override;
 	virtual bool isAcquiredByOther() const noexcept override;
@@ -305,6 +306,7 @@ public:
 	void clearEnumerationSteps(EnumerationSteps const steps) noexcept;
 	void setCompatibilityFlags(CompatibilityFlags const compatibilityFlags) noexcept;
 	void setGetFatalEnumerationError() noexcept;
+	void setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept;
 	bool wasAdvertised() const noexcept;
 	void setAdvertised(bool const wasAdvertised) noexcept;
 
@@ -381,6 +383,7 @@ private:
 	EnumerationSteps _enumerationSteps{ EnumerationSteps::None };
 	CompatibilityFlags _compatibilityFlags{ CompatibilityFlag::IEEE17221 }; // Entity is IEEE1722.1 compatible by default
 	bool _gotFatalEnumerateError{ false }; // Have we got a fatal error during entity enumeration
+	bool _isSubscribedToUnsolicitedNotifications{ false }; // Are we subscribed to unsolicited notifications
 	bool _advertised{ false }; // Has the entity been advertised to the observers
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DescriptorKey>> _expectedDescriptors{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DynamicInfoKey>> _expectedDynamicInfo{};
