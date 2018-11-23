@@ -201,9 +201,6 @@ private:
 	using AvtpduControl::setControlDataLength;
 	using AvtpduControl::getControlData;
 	using AvtpduControl::getControlDataLength;
-	// Hide EtherLayer2 const data
-	using EtherLayer2::setDestAddress;
-	using EtherLayer2::getDestAddress;
 	// Hide Avtpdu const data
 	using Avtpdu::setSubType;
 	using Avtpdu::getSubType;

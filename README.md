@@ -49,7 +49,7 @@ The controller API has 2 interfaces:
 ## Minimum requirements for compilation
 
 ### All platforms
-- CMake 3.9
+- CMake 3.12
 
 ### Windows
 - Windows 8.1
@@ -59,7 +59,7 @@ The controller API has 2 interfaces:
 
 ### macOS
 - macOS 10.12
-- Xcode 9.2
+- Xcode 10
 
 ### Linux
 - C++17 compliant compiler

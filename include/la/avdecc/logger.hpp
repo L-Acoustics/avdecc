@@ -41,9 +41,10 @@ enum class Layer
 	Serialization = 1,
 	ProtocolInterface = 2,
 	AemPayload = 3,
-	ControllerEntity = 4,
-	ControllerStateMachine = 5,
-	Controller = 6,
+	Entity = 4,
+	ControllerEntity = 5,
+	ControllerStateMachine = 6,
+	Controller = 7,
 	FirstUserLayer = 100,
 };
 
@@ -92,6 +93,7 @@ public:
 	class Observer
 	{
 	public:
+		virtual ~Observer() noexcept {}
 		virtual void onLogItem(la::avdecc::logger::Level const /*level*/, la::avdecc::logger::LogItem const* const /*item*/) noexcept {}
 	};
 

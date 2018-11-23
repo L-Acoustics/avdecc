@@ -214,14 +214,19 @@ private:
 		return ProtocolInterface::Error::NoError;
 	}
 
-	virtual Error enableEntityAdvertising(entity::LocalEntity const& entity) noexcept override
+	virtual Error setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const /*flags*/, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override
 	{
-		return _controllerStateMachine.enableEntityAdvertising(entity);
+		return _controllerStateMachine.setEntityNeedsAdvertise(entity, interfaceIndex);
 	}
 
-	virtual Error disableEntityAdvertising(entity::LocalEntity& entity) noexcept override
+	virtual Error enableEntityAdvertising(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept override
 	{
-		return _controllerStateMachine.disableEntityAdvertising(entity);
+		return _controllerStateMachine.enableEntityAdvertising(entity, interfaceIndex);
+	}
+
+	virtual Error disableEntityAdvertising(entity::LocalEntity& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept override
+	{
+		return _controllerStateMachine.disableEntityAdvertising(entity, interfaceIndex);
 	}
 
 	virtual Error discoverRemoteEntities() const noexcept override
@@ -234,22 +239,27 @@ private:
 		return _controllerStateMachine.discoverRemoteEntity(entityID);
 	}
 
-	virtual Error sendAdpMessage(Adpdu::UniquePointer&& adpdu) const noexcept override
+	virtual bool isDirectMessageSupported() const noexcept override
 	{
-		// Directly send the message on the network
-		return sendMessage(static_cast<Adpdu const&>(*adpdu));
+		return true;
 	}
 
-	virtual Error sendAecpMessage(Aecpdu::UniquePointer&& aecpdu) const noexcept override
+	virtual Error sendAdpMessage(Adpdu const& adpdu) const noexcept override
 	{
 		// Directly send the message on the network
-		return sendMessage(static_cast<Aecpdu const&>(*aecpdu));
+		return sendMessage(adpdu);
 	}
 
-	virtual Error sendAcmpMessage(Acmpdu::UniquePointer&& acmpdu) const noexcept override
+	virtual Error sendAecpMessage(Aecpdu const& aecpdu) const noexcept override
 	{
 		// Directly send the message on the network
-		return sendMessage(static_cast<Acmpdu const&>(*acmpdu));
+		return sendMessage(aecpdu);
+	}
+
+	virtual Error sendAcmpMessage(Acmpdu const& acmpdu) const noexcept override
+	{
+		// Directly send the message on the network
+		return sendMessage(acmpdu);
 	}
 
 	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& /*macAddress*/, AecpCommandResultHandler const& onResult) const noexcept override
@@ -290,7 +300,7 @@ private:
 
 private:
 	// stateMachine::ControllerStateMachine::Delegate overrides
-	virtual void onLocalEntityOnline(la::avdecc::entity::DiscoveredEntity const& entity) noexcept override
+	virtual void onLocalEntityOnline(la::avdecc::entity::Entity const& entity) noexcept override
 	{
 		// Notify observers
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onLocalEntityOnline, this, entity);
@@ -302,13 +312,13 @@ private:
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onLocalEntityOffline, this, entityID);
 	}
 
-	virtual void onLocalEntityUpdated(la::avdecc::entity::DiscoveredEntity const& entity) noexcept override
+	virtual void onLocalEntityUpdated(la::avdecc::entity::Entity const& entity) noexcept override
 	{
 		// Notify observers
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onLocalEntityUpdated, this, entity);
 	}
 
-	virtual void onRemoteEntityOnline(la::avdecc::entity::DiscoveredEntity const& entity) noexcept override
+	virtual void onRemoteEntityOnline(la::avdecc::entity::Entity const& entity) noexcept override
 	{
 		// Notify observers
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityOnline, this, entity);
@@ -320,7 +330,7 @@ private:
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityOffline, this, entityID);
 	}
 
-	virtual void onRemoteEntityUpdated(la::avdecc::entity::DiscoveredEntity const& entity) noexcept override
+	virtual void onRemoteEntityUpdated(la::avdecc::entity::Entity const& entity) noexcept override
 	{
 		// Notify observers
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityUpdated, this, entity);

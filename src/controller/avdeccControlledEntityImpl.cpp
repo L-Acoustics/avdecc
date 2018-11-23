@@ -192,6 +192,17 @@ model::AudioUnitNode const& ControlledEntityImpl::getAudioUnitNode(entity::model
 	return it->second;
 }
 
+model::AvbInterfaceNode const& ControlledEntityImpl::getAvbInterfaceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex) const
+{
+	auto const& configNode = getConfigurationNode(configurationIndex);
+
+	auto const it = configNode.avbInterfaces.find(avbInterfaceIndex);
+	if (it == configNode.avbInterfaces.end())
+		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid avb interface index");
+
+	return it->second;
+}
+
 model::ClockSourceNode const& ControlledEntityImpl::getClockSourceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex) const
 {
 	auto const& configNode = getConfigurationNode(configurationIndex);
@@ -1544,6 +1555,11 @@ std::pair<bool, std::chrono::milliseconds> ControlledEntityImpl::getQueryDescrip
 		return std::make_pair(false, std::chrono::milliseconds{ 0 });
 	}
 	return std::make_pair(true, std::chrono::milliseconds{ QueryRetryMillisecondDelay });
+}
+
+entity::Entity& ControlledEntityImpl::getEntity() noexcept
+{
+	return _entity;
 }
 
 bool ControlledEntityImpl::shouldIgnoreCachedEntityModel() const noexcept

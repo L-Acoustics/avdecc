@@ -122,6 +122,18 @@ constexpr void log(Ts&&... params)
 #define LOG_AEM_PAYLOAD_WARN(...) LOG_AEM_PAYLOAD(Warn, __VA_ARGS__)
 #define LOG_AEM_PAYLOAD_ERROR(...) LOG_AEM_PAYLOAD(Error, __VA_ARGS__)
 
+#define LOG_ENTITY(LogLevel, TargetID, ...) la::avdecc::logger::log<la::avdecc::logger::Level::LogLevel, la::avdecc::logger::LogItemEntity>(TargetID, FORMAT_ARGS(__VA_ARGS__))
+#ifdef DEBUG
+#	define LOG_ENTITY_TRACE(TargetID, ...) LOG_ENTITY(Trace, TargetID, __VA_ARGS__)
+#	define LOG_ENTITY_DEBUG(TargetID, ...) LOG_ENTITY(Debug, TargetID, __VA_ARGS__)
+#else // !DEBUG
+#	define LOG_ENTITY_TRACE(TargetID, ...)
+#	define LOG_ENTITY_DEBUG(TargetID, ...)
+#endif // DEBUG
+#define LOG_ENTITY_INFO(TargetID, ...) LOG_ENTITY(Info, TargetID, __VA_ARGS__)
+#define LOG_ENTITY_WARN(TargetID, ...) LOG_ENTITY(Warn, TargetID, __VA_ARGS__)
+#define LOG_ENTITY_ERROR(TargetID, ...) LOG_ENTITY(Error, TargetID, __VA_ARGS__)
+
 #define LOG_CONTROLLER_ENTITY(LogLevel, TargetID, ...) la::avdecc::logger::log<la::avdecc::logger::Level::LogLevel, la::avdecc::logger::LogItemControllerEntity>(TargetID, FORMAT_ARGS(__VA_ARGS__))
 #ifdef DEBUG
 #	define LOG_CONTROLLER_ENTITY_TRACE(TargetID, ...) LOG_CONTROLLER_ENTITY(Trace, TargetID, __VA_ARGS__)

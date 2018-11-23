@@ -42,6 +42,7 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/memoryBuffer.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/networkInterfaceHelper.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/utils.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/aggregateEntity.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/controllerEntity.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/endian.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/endStation.hpp
@@ -113,10 +114,16 @@ set (SOURCE_FILES_STATE_MACHINES
 # Entity
 set (HEADER_FILES_ENTITY
 	entity/entityImpl.hpp
+	entity/localEntityImpl.ipp
+	entity/aggregateEntityImpl.hpp
+	entity/controllerCapabilityDelegate.hpp
 	entity/controllerEntityImpl.hpp
 )
 
 set (SOURCE_FILES_ENTITY
+	entity/localEntityImpl.cpp
+	entity/aggregateEntityImpl.cpp
+	entity/controllerCapabilityDelegate.cpp
 	entity/controllerEntityImpl.cpp
 )
 
@@ -220,10 +227,10 @@ if(IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES)
 	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DIGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES")
 endif()
 if(ALLOW_SEND_BIG_AECP_PAYLOADS)
-	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DALLOW_SEND_BIG_AECP_PAYLOADS")
+	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DALLOW_SEND_BIG_AECP_PAYLOADS")
 endif()
 if(ALLOW_RECV_BIG_AECP_PAYLOADS)
-	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DALLOW_RECV_BIG_AECP_PAYLOADS")
+	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DALLOW_RECV_BIG_AECP_PAYLOADS")
 endif()
 
 # Group sources

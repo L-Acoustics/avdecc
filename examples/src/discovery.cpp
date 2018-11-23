@@ -53,7 +53,10 @@ class Discovery : public la::avdecc::controller::Controller::Observer, public la
 public:
 	/** Constructor/destructor/destroy */
 	Discovery(la::avdecc::protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, la::avdecc::UniqueIdentifier const entityModelID, std::string const& preferedLocale);
-	~Discovery() = default;
+	~Discovery() noexcept override
+	{
+		la::avdecc::logger::Logger::getInstance().unregisterObserver(this);
+	}
 
 	// Deleted compiler auto-generated methods
 	Discovery(Discovery&&) = delete;
@@ -192,7 +195,7 @@ int doJob()
 	{
 		outputText("Selected interface '" + intfc.alias + "' and protocol interface '" + la::avdecc::protocol::ProtocolInterface::typeToString(protocolInterfaceType) + "', discovery active:\n");
 
-		Discovery discovery(protocolInterfaceType, intfc.name, 0x0003, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), "en");
+		Discovery discovery(protocolInterfaceType, intfc.name, 0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), "en");
 
 		std::this_thread::sleep_for(std::chrono::seconds(30));
 	}

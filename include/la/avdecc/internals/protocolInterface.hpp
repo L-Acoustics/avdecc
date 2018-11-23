@@ -39,6 +39,7 @@
 #include <vector>
 #include <stdexcept>
 #include <functional>
+#include <optional>
 
 namespace la
 {
@@ -107,12 +108,12 @@ public:
 		/* **** Global notifications **** */
 		virtual void onTransportError(la::avdecc::protocol::ProtocolInterface* const /*pi*/) noexcept = 0;
 		/* **** Discovery notifications **** */
-		virtual void onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept {}
+		virtual void onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept {}
 		virtual void onLocalEntityOffline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const /*entityID*/) noexcept {}
-		virtual void onLocalEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept {}
-		virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept {}
+		virtual void onLocalEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept {}
+		virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept {}
 		virtual void onRemoteEntityOffline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const /*entityID*/) noexcept {}
-		virtual void onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept {}
+		virtual void onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept {}
 		/* **** AECP notifications **** */
 		/** Notification for when an AECP Command destined to *entity* is received. */
 		virtual void onAecpCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept {}
@@ -153,19 +154,23 @@ public:
 	/** Unregisters a local entity from the interface. It won't be able to send or receive messages anymore. */
 	virtual Error unregisterLocalEntity(entity::LocalEntity& entity) noexcept = 0;
 	/** Enables entity advertising on the network. */
-	virtual Error enableEntityAdvertising(entity::LocalEntity const& entity) noexcept = 0;
+	virtual Error enableEntityAdvertising(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept = 0;
 	/** Disables entity advertising on the network. */
-	virtual Error disableEntityAdvertising(entity::LocalEntity& entity) noexcept = 0;
+	virtual Error disableEntityAdvertising(entity::LocalEntity& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept = 0;
+	/** Flags the entity for re-announcement on specified interfaceIndex if set, otherwise on all interfaces. */
+	virtual Error setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const flags, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept = 0;
 	/** Requests a remote entities discovery. */
 	virtual Error discoverRemoteEntities() const noexcept = 0;
 	/** Requests a targetted remote entity discovery. */
 	virtual Error discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept = 0;
+	/** Returns true if the ProtocolInterface supports sending direct messages (sendXyzMessage APIs) */
+	virtual bool isDirectMessageSupported() const noexcept = 0;
 	/** Sends an ADP message directly on the network (not supported by all kinds of ProtocolInterface). */
-	virtual Error sendAdpMessage(Adpdu::UniquePointer&& adpdu) const noexcept = 0;
+	virtual Error sendAdpMessage(Adpdu const& adpdu) const noexcept = 0;
 	/** Sends an AECP message directly on the network (not supported by all kinds of ProtocolInterface). */
-	virtual Error sendAecpMessage(Aecpdu::UniquePointer&& aecpdu) const noexcept = 0;
+	virtual Error sendAecpMessage(Aecpdu const& aecpdu) const noexcept = 0;
 	/** Sends an ACMP message directly on the network (not supported by all kinds of ProtocolInterface). */
-	virtual Error sendAcmpMessage(Acmpdu::UniquePointer&& acmpdu) const noexcept = 0;
+	virtual Error sendAcmpMessage(Acmpdu const& acmpdu) const noexcept = 0;
 	/** Sends an AECP command message. */
 	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& macAddress, AecpCommandResultHandler const& onResult) const noexcept = 0;
 	/** Sends an AECP response message. */
@@ -179,6 +184,9 @@ public:
 	virtual void lock() noexcept = 0;
 	/** BasicLockable concept 'unlock' method for the whole ProtocolInterface */
 	virtual void unlock() noexcept = 0;
+
+	/** Gets an available Entity UniqueIdentifier that is valid for this ProtocolInterface (not supported by all kinds of ProtocolInterface). */
+	static LA_AVDECC_API UniqueIdentifier LA_AVDECC_CALL_CONVENTION getDynamicEID();
 
 	/** Returns true if the specified protocol interface type is supported on the local computer. */
 	static LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION isSupportedProtocolInterfaceType(Type const protocolInterfaceType) noexcept;

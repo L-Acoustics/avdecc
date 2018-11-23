@@ -101,6 +101,8 @@ public:
 					return "Protocol Interface";
 				case Layer::AemPayload:
 					return "Aem Payload";
+				case Layer::Entity:
+					return "Entity";
 				case Layer::ControllerEntity:
 					return "Controller Entity";
 				case Layer::ControllerStateMachine:

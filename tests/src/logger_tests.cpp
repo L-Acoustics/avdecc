@@ -32,8 +32,14 @@ namespace
 {
 class Observer : public la::avdecc::logger::Logger::Observer
 {
+public:
+	virtual ~Observer() noexcept override
+	{
+		la::avdecc::logger::Logger::getInstance().unregisterObserver(this);
+	}
+
 private:
-	virtual void onLogItem(la::avdecc::logger::Level const level, la::avdecc::logger::LogItem const* const item) noexcept
+	virtual void onLogItem(la::avdecc::logger::Level const level, la::avdecc::logger::LogItem const* const item) noexcept override
 	{
 		if (item->getLayer() == la::avdecc::logger::Layer::Serialization)
 		{

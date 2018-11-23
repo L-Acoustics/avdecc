@@ -18,22 +18,20 @@
 */
 
 /**
-* @file controllerEntityImpl.hpp
+* @file aggregateEntityImpl.hpp
 * @author Christophe Calmejane
 */
 
 #pragma once
 
-#include "la/avdecc/internals/controllerEntity.hpp"
+#include "la/avdecc/internals/aggregateEntity.hpp"
 #include "la/avdecc/internals/protocolInterface.hpp"
-#include "la/avdecc/internals/protocolAemAecpdu.hpp"
-#include "la/avdecc/internals/protocolAaAecpdu.hpp"
-#include "la/avdecc/internals/protocolMvuAecpdu.hpp"
 #include "entityImpl.hpp"
 #include <unordered_map>
 #include <functional>
 #include <thread>
 #include <mutex>
+#include <memory>
 
 namespace la
 {
@@ -42,18 +40,18 @@ namespace avdecc
 namespace entity
 {
 /* ************************************************************************** */
-/* ControllerEntityImpl                                                       */
+/* AggregateEntityImpl                                                        */
 /* ************************************************************************** */
-class ControllerEntityImpl : public LocalEntityImpl<ControllerEntity>
+class AggregateEntityImpl : public LocalEntityImpl<AggregateEntity>
 {
 private:
-	friend class LocalEntityGuard<ControllerEntityImpl>; // The only way to construct ControllerEntityImpl, through LocalEntityGuard
+	friend class LocalEntityGuard<AggregateEntityImpl>; // The only way to construct AggregateEntityImpl, through LocalEntityGuard
 
 	/* ************************************************************************** */
-	/* ControllerEntityImpl life cycle                                            */
+	/* AggregateEntityImpl life cycle                                             */
 	/* ************************************************************************** */
-	ControllerEntityImpl(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, controller::Delegate* const controllerDelegate);
-	virtual ~ControllerEntityImpl() noexcept;
+	AggregateEntityImpl(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, controller::Delegate* const controllerDelegate);
+	virtual ~AggregateEntityImpl() noexcept;
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept override;
 
@@ -158,9 +156,13 @@ private:
 	virtual void getTalkerStreamState(model::StreamIdentification const& talkerStream, GetTalkerStreamStateHandler const& handler) const noexcept override;
 	virtual void getListenerStreamState(model::StreamIdentification const& listenerStream, GetListenerStreamStateHandler const& handler) const noexcept override;
 	virtual void getTalkerStreamConnection(model::StreamIdentification const& talkerStream, uint16_t const connectionIndex, GetTalkerStreamConnectionHandler const& handler) const noexcept override;
-	/* Other methods */
+
+	/* ************************************************************************** */
+	/* AggregateEntity overrides                                                  */
+	/* ************************************************************************** */
 	virtual void setControllerDelegate(controller::Delegate* const delegate) noexcept override;
-	controller::Delegate* getControllerDelegate() const noexcept;
+	//virtual void setListenerDelegate(listener::Delegate* const delegate) noexcept override;
+	//virtual void setTalkerDelegate(talker::Delegate* const delegate) noexcept override;
 
 	/* ************************************************************************** */
 	/* protocol::ProtocolInterface::Observer overrides                            */
@@ -190,6 +192,8 @@ private:
 	/* Internal variables                                                         */
 	/* ************************************************************************** */
 	CapabilityDelegate::UniquePointer _controllerCapabilityDelegate{ nullptr };
+	CapabilityDelegate::UniquePointer _listenerCapabilityDelegate{ nullptr };
+	CapabilityDelegate::UniquePointer _talkerCapabilityDelegate{ nullptr };
 };
 
 } // namespace entity
