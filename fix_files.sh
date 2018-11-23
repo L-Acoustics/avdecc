@@ -76,7 +76,7 @@ if [ $do_clang_format -eq 1 ]; then
 			echo "Incorrect clang-format: Version 7.0.0 with WrappingBeforeLambdaBody patch required"
 			exit 1
 		fi
-		applyFormat "*.[ch]pp"
+		applyFormat "*.[chi]pp"
 		applyFormat "*.[ch]"
 		applyFormat "*.mm"
 	else
@@ -88,7 +88,7 @@ fi
 if [ $do_chmod -eq 1 ]; then
 	which dos2unix &> /dev/null
 	if [ $? -eq 0 ]; then
-		applyLineEndings "*.[ch]pp"
+		applyLineEndings "*.[chi]pp"
 		applyLineEndings "*.[ch]"
 		applyLineEndings "*.mm"
 		applyLineEndings "*.js"
@@ -107,7 +107,7 @@ if [ $do_line_endings -eq 1 ]; then
 	if [ $? -eq 0 ]; then
 		# Test files
 		chmod a-x .gitignore .gitmodules COPYING COPYING.LESSER
-		applyFileAttributes "*.[ch]pp" "a-x"
+		applyFileAttributes "*.[chi]pp" "a-x"
 		applyFileAttributes "*.[ch]" "a-x"
 		applyFileAttributes "*.mm" "a-x"
 		applyFileAttributes "*.js" "a-x"
