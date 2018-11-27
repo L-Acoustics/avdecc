@@ -8,7 +8,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Notification when a controller is being deregistered from unsolicited notifications
 - Notification when (some or all) audio mappings are added or removed
+- Notification when an entity is locked/unlocked by another controller
 - setStreamInputInfo, setStreamOutputInfo, getAsPath
+
+### Changed
+- lockEntity/unlockEntity signature and result handler changed to include the locking entity and descriptor type/index
 
 ## [2.7.2] - 2018-10-30
 

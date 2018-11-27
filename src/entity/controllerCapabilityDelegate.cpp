@@ -139,12 +139,12 @@ void CapabilityDelegate::releaseEntity(UniqueIdentifier const targetEntityID, mo
 	}
 }
 
-void CapabilityDelegate::lockEntity(UniqueIdentifier const targetEntityID, Interface::LockEntityHandler const& handler) const noexcept
+void CapabilityDelegate::lockEntity(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, Interface::LockEntityHandler const& handler) const noexcept
 {
 	try
 	{
-		auto const ser = protocol::aemPayload::serializeLockEntityCommand(protocol::AemLockEntityFlags::None, UniqueIdentifier::getNullUniqueIdentifier(), model::DescriptorType::Entity, 0);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, UniqueIdentifier::getNullUniqueIdentifier());
+		auto const ser = protocol::aemPayload::serializeLockEntityCommand(protocol::AemLockEntityFlags::None, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::LockEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -154,12 +154,12 @@ void CapabilityDelegate::lockEntity(UniqueIdentifier const targetEntityID, Inter
 	}
 }
 
-void CapabilityDelegate::unlockEntity(UniqueIdentifier const targetEntityID, Interface::UnlockEntityHandler const& handler) const noexcept
+void CapabilityDelegate::unlockEntity(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, Interface::UnlockEntityHandler const& handler) const noexcept
 {
 	try
 	{
-		auto const ser = protocol::aemPayload::serializeLockEntityCommand(protocol::AemLockEntityFlags::Unlock, UniqueIdentifier::getNullUniqueIdentifier(), model::DescriptorType::Entity, 0);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1);
+		auto const ser = protocol::aemPayload::serializeLockEntityCommand(protocol::AemLockEntityFlags::Unlock, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::LockEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1788,7 +1788,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 			}
 		},
 		// Lock Entity
-		{ protocol::AemCommandType::LockEntity.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::LockEntity.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -1797,27 +1797,27 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				auto const result = protocol::aemPayload::deserializeLockEntityResponse(aem.getPayload());
 				protocol::AemLockEntityFlags const flags = std::get<0>(result);
 				UniqueIdentifier const lockedID = std::get<1>(result);
-		//entity::model::DescriptorType const descriptorType = std::get<2>(result);
-		//entity::model::DescriptorIndex const descriptorIndex = std::get<3>(result);
+				entity::model::DescriptorType const descriptorType = std::get<2>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<3>(result);
 #endif // __cpp_structured_bindings
 
 				auto const targetID = aem.getTargetEntityID();
 
 				if ((flags & protocol::AemLockEntityFlags::Unlock) == protocol::AemLockEntityFlags::Unlock)
 				{
-					answerCallback.invoke<controller::Interface::UnlockEntityHandler>(controllerInterface, targetID, status);
-					/*if (aem.getUnsolicited() && delegate && !!status)
+					answerCallback.invoke<controller::Interface::UnlockEntityHandler>(controllerInterface, targetID, status, lockedID, descriptorType, descriptorIndex);
+					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&controller::Delegate::onEntityUnlocked, delegate, controllerInterface, targetID, lockedID);
-					}*/
+						invokeProtectedMethod(&controller::Delegate::onEntityUnlocked, delegate, controllerInterface, targetID, lockedID, descriptorType, descriptorIndex);
+					}
 				}
 				else
 				{
-					answerCallback.invoke<controller::Interface::LockEntityHandler>(controllerInterface, targetID, status, lockedID);
-					/*if (aem.getUnsolicited() && delegate && !!status)
+					answerCallback.invoke<controller::Interface::LockEntityHandler>(controllerInterface, targetID, status, lockedID, descriptorType, descriptorIndex);
+					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						invokeProtectedMethod(&controller::Delegate::onEntityLocked, delegate, controllerInterface, targetID, lockedID);
-					}*/
+						invokeProtectedMethod(&controller::Delegate::onEntityLocked, delegate, controllerInterface, targetID, lockedID, descriptorType, descriptorIndex);
+					}
 				}
 			}
 		},

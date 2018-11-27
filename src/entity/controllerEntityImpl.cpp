@@ -81,14 +81,14 @@ void ControllerEntityImpl::releaseEntity(UniqueIdentifier const targetEntityID, 
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).releaseEntity(targetEntityID, descriptorType, descriptorIndex, handler);
 }
 
-void ControllerEntityImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntityHandler const& handler) const noexcept
+void ControllerEntityImpl::lockEntity(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, LockEntityHandler const& handler) const noexcept
 {
-	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).lockEntity(targetEntityID, handler);
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).lockEntity(targetEntityID, descriptorType, descriptorIndex, handler);
 }
 
-void ControllerEntityImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockEntityHandler const& handler) const noexcept
+void ControllerEntityImpl::unlockEntity(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, UnlockEntityHandler const& handler) const noexcept
 {
-	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).unlockEntity(targetEntityID, handler);
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).unlockEntity(targetEntityID, descriptorType, descriptorIndex, handler);
 }
 
 void ControllerEntityImpl::queryEntityAvailable(UniqueIdentifier const targetEntityID, QueryEntityAvailableHandler const& handler) const noexcept

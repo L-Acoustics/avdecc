@@ -109,19 +109,19 @@ void AggregateEntityImpl::releaseEntity(UniqueIdentifier const targetEntityID, m
 	}
 }
 
-void AggregateEntityImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntityHandler const& handler) const noexcept
+void AggregateEntityImpl::lockEntity(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, LockEntityHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{
-		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).lockEntity(targetEntityID, handler);
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).lockEntity(targetEntityID, descriptorType, descriptorIndex, handler);
 	}
 }
 
-void AggregateEntityImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockEntityHandler const& handler) const noexcept
+void AggregateEntityImpl::unlockEntity(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, UnlockEntityHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{
-		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).unlockEntity(targetEntityID, handler);
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).unlockEntity(targetEntityID, descriptorType, descriptorIndex, handler);
 	}
 }
 
