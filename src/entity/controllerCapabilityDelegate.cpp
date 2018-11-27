@@ -46,9 +46,10 @@ constexpr int DISCOVER_SEND_DELAY = 10000; // Delay (in milliseconds) between 2 
 /* ************************************************************************** */
 /* Static variables used for bindings                                         */
 /* ************************************************************************** */
-static model::AudioMappings const s_emptyMappings{ 0 }; // Empty audio channel mappings used by timeout callback (needs a ref to an AudioMappings)
-static model::StreamInfo const s_emptyStreamInfo{}; // Empty stream info used by timeout callback (needs a ref to a StreamInfo)
-static model::AvbInfo const s_emptyAvbInfo{}; // Empty avb interface info used by timeout callback (needs a ref to an AvbInfo)
+static model::AudioMappings const s_emptyMappings{}; // Empty AudioMappings used by timeout callback (needs a ref to an AudioMappings)
+static model::StreamInfo const s_emptyStreamInfo{}; // Empty StreamInfo used by timeout callback (needs a ref to a StreamInfo)
+static model::AvbInfo const s_emptyAvbInfo{}; // Empty AvbInfo used by timeout callback (needs a ref to an AvbInfo)
+static model::AsPath const s_emptyAsPath{}; // Empty AsPath used by timeout callback (needs a ref to an AsPath)
 static model::AvdeccFixedString const s_emptyAvdeccFixedString{}; // Empty AvdeccFixedString used by timeout callback (needs a ref to a std::string)
 
 /* ************************************************************************** */
@@ -1258,6 +1259,21 @@ void CapabilityDelegate::getAvbInfo(UniqueIdentifier const targetEntityID, model
 	catch ([[maybe_unused]] std::exception const& e)
 	{
 		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getAvbInfo: {}", e.what());
+	}
+}
+
+void CapabilityDelegate::getAsPath(UniqueIdentifier const targetEntityID, model::AvbInterfaceIndex const avbInterfaceIndex, Interface::GetAsPathHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetAsPathCommand(avbInterfaceIndex);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, avbInterfaceIndex, s_emptyAsPath);
+
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetAsPath, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getAsPath: {}", e.what());
 	}
 }
 
@@ -2788,7 +2804,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				}
 			}
 		},
-		// GetAVBInfo
+		// GetAvbInfo
 		{ protocol::AemCommandType::GetAvbInfo.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
@@ -2816,8 +2832,28 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 					throw InvalidDescriptorTypeException();
 			}
 		},
-		// GetASPath
-			// Unsolicited triggered by change in the SRP domain (Clause 7.5.2)
+		// GetAsPath
+		{ protocol::AemCommandType::GetAsPath.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+			{
+	// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorIndex, asPath] = protocol::aemPayload::deserializeGetAsPathResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeGetAsPathResponse(aem.getPayload());
+				entity::model::DescriptorIndex const descriptorIndex = std::get<0>(result);
+				entity::model::AsPath const asPath = std::get<1>(result);
+#endif // __cpp_structured_bindings
+
+				auto const targetID = aem.getTargetEntityID();
+
+				// Notify handlers
+				answerCallback.invoke<controller::Interface::GetAsPathHandler>(controllerInterface, targetID, status, descriptorIndex, asPath);
+				if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (Clause 7.5.2)
+				{
+					invokeProtectedMethod(&controller::Delegate::onAsPathChanged, delegate, controllerInterface, targetID, descriptorIndex, asPath);
+				}
+			}
+		},
 		// GetCounters
 		{ protocol::AemCommandType::GetCounters.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{

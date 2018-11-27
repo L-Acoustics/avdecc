@@ -103,7 +103,7 @@ struct AvbInterfaceNodeStaticModel
 	entity::model::LocalizedStringReference localizedDescription{ entity::model::getNullLocalizedStringReference() };
 	networkInterface::MacAddress macAddress{};
 	entity::AvbInterfaceFlags interfaceFlags{ entity::AvbInterfaceFlags::None };
-	UniqueIdentifier clockIdentity{ 0u };
+	UniqueIdentifier clockIdentity{};
 	std::uint8_t priority1{ 0xff };
 	std::uint8_t clockClass{ 0xff };
 	std::uint16_t offsetScaledLogVariance{ 0x0000 };

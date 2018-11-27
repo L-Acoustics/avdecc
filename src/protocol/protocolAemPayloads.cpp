@@ -1670,7 +1670,91 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 }
 
 /** GET_AS_PATH Command - Clause 7.4.41.1 */
+Serializer<AecpAemGetAsPathCommandPayloadSize> serializeGetAsPathCommand(entity::model::DescriptorIndex const descriptorIndex)
+{
+	Serializer<AecpAemGetAsPathCommandPayloadSize> ser;
+	std::uint16_t const reserved{ 0u };
+
+	ser << descriptorIndex << reserved;
+
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorIndex> deserializeGetAsPathCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetAsPathCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+	std::uint16_t reserved{ 0u };
+
+	des >> descriptorIndex >> reserved;
+
+	AVDECC_ASSERT(des.usedBytes() == AecpAemGetAsPathCommandPayloadSize, "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(descriptorIndex);
+}
+
 /** GET_AS_PATH Response - Clause 7.4.41.2 */
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeGetAsPathResponse(entity::model::DescriptorIndex const descriptorIndex, entity::model::AsPath const& asPath)
+{
+	Serializer<AemAecpdu::MaximumSendPayloadBufferLength> ser;
+
+	ser << descriptorIndex << static_cast<std::uint16_t>(asPath.sequence.size());
+
+	// Serialize variable data
+	for (auto const& clockIdentity : asPath.sequence)
+	{
+		ser << clockIdentity;
+	}
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorIndex, entity::model::AsPath> deserializeGetAsPathResponse(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetAsPathResponsePayloadMinSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+	entity::model::AsPath asPath{};
+	std::uint16_t count{ 0u };
+
+	des >> descriptorIndex >> count;
+
+	// Check variable size
+	auto const sequenceSize = sizeof(UniqueIdentifier::value_type) * count;
+	if (des.remaining() < sequenceSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Unpack remaining data
+	for (auto index = 0u; index < count; ++index)
+	{
+		auto clockIdentity = decltype(asPath.sequence)::value_type{};
+		des >> clockIdentity;
+		asPath.sequence.push_back(clockIdentity);
+	}
+	AVDECC_ASSERT(des.usedBytes() == (protocol::aemPayload::AecpAemGetAsPathResponsePayloadMinSize + sequenceSize), "Used more bytes than specified in protocol constant");
+
+	if (des.remaining() != 0)
+	{
+		LOG_AEM_PAYLOAD_TRACE("GetAsPath Response deserialize warning: Remaining bytes in buffer");
+	}
+
+	return std::make_tuple(descriptorIndex, asPath);
+}
 
 /** GET_COUNTERS Command - Clause 7.4.42.1 */
 Serializer<AecpAemGetCountersCommandPayloadSize> serializeGetCountersCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)

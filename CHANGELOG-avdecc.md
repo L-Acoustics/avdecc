@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - Notification when a controller is being deregistered from unsolicited notifications
-- setStreamInputInfo, setStreamOutputInfo
+- setStreamInputInfo, setStreamOutputInfo, getAsPath
 
 ## [2.7.2] - 2018-10-30
 

@@ -466,6 +466,11 @@ void ControllerEntityImpl::getAvbInfo(UniqueIdentifier const targetEntityID, mod
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getAvbInfo(targetEntityID, avbInterfaceIndex, handler);
 }
 
+void ControllerEntityImpl::getAsPath(UniqueIdentifier const targetEntityID, model::AvbInterfaceIndex const avbInterfaceIndex, GetAsPathHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getAsPath(targetEntityID, avbInterfaceIndex, handler);
+}
+
 void ControllerEntityImpl::getAvbInterfaceCounters(UniqueIdentifier const targetEntityID, model::AvbInterfaceIndex const avbInterfaceIndex, GetAvbInterfaceCountersHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getAvbInterfaceCounters(targetEntityID, avbInterfaceIndex, handler);

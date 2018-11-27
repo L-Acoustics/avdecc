@@ -309,6 +309,9 @@ constexpr bool operator==(MsrpMapping const& lhs, MsrpMapping const& rhs) noexce
 
 using MsrpMappings = std::vector<MsrpMapping>;
 
+/** GET_AS_PATH Dynamic Information - Clause 7.4.41.2 */
+using PathSequence = std::vector<UniqueIdentifier>;
+
 /** GET_COUNTERS - Clause 7.4.42.2 */
 using DescriptorCounters = std::array<DescriptorCounter, 32>;
 

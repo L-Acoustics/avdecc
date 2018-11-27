@@ -184,7 +184,7 @@ struct AvbInterfaceDescriptor
 	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
 	networkInterface::MacAddress macAddress{};
 	AvbInterfaceFlags interfaceFlags{ AvbInterfaceFlags::None };
-	UniqueIdentifier clockIdentity{ 0u };
+	UniqueIdentifier clockIdentity{};
 	std::uint8_t priority1{ 0xff };
 	std::uint8_t clockClass{ 0xff };
 	std::uint16_t offsetScaledLogVariance{ 0x0000 };
@@ -375,6 +375,22 @@ constexpr bool operator==(AvbInfo const& lhs, AvbInfo const& rhs) noexcept
 }
 
 constexpr bool operator!=(AvbInfo const& lhs, AvbInfo const& rhs) noexcept
+{
+	return !(lhs == rhs);
+}
+
+/** GET_AS_PATH Dynamic Information - Clause 7.4.41.2 */
+struct AsPath
+{
+	entity::model::PathSequence sequence{};
+};
+
+inline bool operator==(AsPath const& lhs, AsPath const& rhs) noexcept
+{
+	return lhs.sequence == rhs.sequence;
+}
+
+inline bool operator!=(AsPath const& lhs, AsPath const& rhs) noexcept
 {
 	return !(lhs == rhs);
 }

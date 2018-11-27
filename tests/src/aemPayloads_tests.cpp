@@ -266,6 +266,18 @@ TEST(AemPayloads, GetAvbInfoResponse)
 	EXPECT_NO_THROW(auto const ser = la::avdecc::protocol::aemPayload::serializeGetAvbInfoResponse(la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), avbInfo); EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemGetAvbInfoResponsePayloadMinSize, ser.size()); auto result = la::avdecc::protocol::aemPayload::deserializeGetAvbInfoResponse({ ser.data(), ser.usedBytes() }); auto const& info = std::get<2>(result); EXPECT_EQ(avbInfo, info);) << "Serialization/deserialization should not throw anything";
 }
 
+TEST(AemPayloads, GetAsPathCommand)
+{
+	CHECK_PAYLOAD(GetAsPathCommand, la::avdecc::entity::model::DescriptorIndex(0));
+	CHECK_PAYLOAD(GetAsPathCommand, la::avdecc::entity::model::DescriptorIndex(5));
+}
+
+TEST(AemPayloads, GetAsPathResponse)
+{
+	la::avdecc::entity::model::AsPath asPath{ la::avdecc::entity::model::PathSequence{} };
+	EXPECT_NO_THROW(auto const ser = la::avdecc::protocol::aemPayload::serializeGetAsPathResponse(la::avdecc::entity::model::DescriptorIndex(0), asPath); EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemGetAsPathResponsePayloadMinSize, ser.size()); auto result = la::avdecc::protocol::aemPayload::deserializeGetAsPathResponse({ ser.data(), ser.usedBytes() }); auto const& path = std::get<1>(result); EXPECT_EQ(asPath, path);) << "Serialization/deserialization should not throw anything";
+}
+
 TEST(AemPayloads, GetAudioMapCommand)
 {
 	CHECK_PAYLOAD(GetAudioMapCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::MapIndex(0));
