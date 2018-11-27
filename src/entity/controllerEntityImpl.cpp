@@ -271,6 +271,16 @@ void ControllerEntityImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier 
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).removeStreamPortOutputAudioMappings(targetEntityID, streamPortIndex, mappings, handler);
 }
 
+void ControllerEntityImpl::setStreamInputInfo(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamInfo const& info, SetStreamInputInfoHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setStreamInputInfo(targetEntityID, streamIndex, info, handler);
+}
+
+void ControllerEntityImpl::setStreamOutputInfo(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamInfo const& info, SetStreamOutputInfoHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setStreamOutputInfo(targetEntityID, streamIndex, info, handler);
+}
+
 void ControllerEntityImpl::getStreamInputInfo(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, GetStreamInputInfoHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getStreamInputInfo(targetEntityID, streamIndex, handler);

@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - Notification when a controller is being deregistered from unsolicited notifications
+- setStreamInputInfo, setStreamOutputInfo
 
 ## [2.7.2] - 2018-10-30
 
@@ -22,7 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [2.7.0] - 2018-09-12
 ### Added
-- Support for MemoryObject Operations (Contributed by Florian Harmuth)
+- Support for MemoryObject Operations (Contributed by d&b)
 - Protocol and ProtocolInterface classes exposed in the public API
 - Removed InterfaceIndex field from ProtocolInterface (not its place)
 

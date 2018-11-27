@@ -413,6 +413,22 @@ void AggregateEntityImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier c
 	}
 }
 
+void AggregateEntityImpl::setStreamInputInfo(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamInfo const& info, SetStreamInputInfoHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setStreamInputInfo(targetEntityID, streamIndex, info, handler);
+	}
+}
+
+void AggregateEntityImpl::setStreamOutputInfo(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamInfo const& info, SetStreamOutputInfoHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setStreamOutputInfo(targetEntityID, streamIndex, info, handler);
+	}
+}
+
 void AggregateEntityImpl::getStreamInputInfo(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, GetStreamInputInfoHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))

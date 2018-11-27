@@ -676,6 +676,36 @@ void CapabilityDelegate::removeStreamPortOutputAudioMappings(UniqueIdentifier co
 	}
 }
 
+void CapabilityDelegate::setStreamInputInfo(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamInfo const& info, Interface::SetStreamInputInfoHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetStreamInfoCommand(model::DescriptorType::StreamInput, streamIndex, info);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex);
+
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetStreamInfo, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setStreamInputInfo: {}", e.what());
+	}
+}
+
+void CapabilityDelegate::setStreamOutputInfo(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamInfo const& info, Interface::SetStreamOutputInfoHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetStreamInfoCommand(model::DescriptorType::StreamOutput, streamIndex, info);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex);
+
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetStreamInfo, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setStreamOutputInfo: {}", e.what());
+	}
+}
+
 void CapabilityDelegate::getStreamInputInfo(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, Interface::GetStreamInputInfoHandler const& handler) const noexcept
 {
 	try
@@ -2092,6 +2122,41 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 			}
 		},
 		// Set Stream Info
+		{ protocol::AemCommandType::SetStreamInfo.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+			{
+	// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[descriptorType, descriptorIndex, streamInfo] = protocol::aemPayload::deserializeSetStreamInfoResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeSetStreamInfoResponse(aem.getPayload());
+				model::DescriptorType const descriptorType = std::get<0>(result);
+				model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				entity::model::StreamInfo const streamInfo = std::get<2>(result);
+#endif // __cpp_structured_bindings
+
+				auto const targetID = aem.getTargetEntityID();
+
+				// Notify handlers
+				if (descriptorType == model::DescriptorType::StreamInput)
+				{
+					answerCallback.invoke<controller::Interface::SetStreamInputInfoHandler>(controllerInterface, targetID, status, descriptorIndex);
+					if (aem.getUnsolicited() && delegate && !!status)
+					{
+						invokeProtectedMethod(&controller::Delegate::onStreamInputInfoChanged, delegate, controllerInterface, targetID, descriptorIndex, streamInfo);
+					}
+				}
+				else if (descriptorType == model::DescriptorType::StreamOutput)
+				{
+					answerCallback.invoke<controller::Interface::SetStreamOutputInfoHandler>(controllerInterface, targetID, status, descriptorIndex);
+					if (aem.getUnsolicited() && delegate && !!status)
+					{
+						invokeProtectedMethod(&controller::Delegate::onStreamOutputInfoChanged, delegate, controllerInterface, targetID, descriptorIndex, streamInfo);
+					}
+				}
+				else
+					throw InvalidDescriptorTypeException();
+			}
+		},
 		// Get Stream Info
 		{ protocol::AemCommandType::GetStreamInfo.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
@@ -2111,7 +2176,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				if (descriptorType == model::DescriptorType::StreamInput)
 				{
 					answerCallback.invoke<controller::Interface::GetStreamInputInfoHandler>(controllerInterface, targetID, status, descriptorIndex, streamInfo);
-					if (aem.getUnsolicited() && delegate && !!status)
+					if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (Clause 7.5.2)
 					{
 						invokeProtectedMethod(&controller::Delegate::onStreamInputInfoChanged, delegate, controllerInterface, targetID, descriptorIndex, streamInfo);
 					}
@@ -2119,7 +2184,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				else if (descriptorType == model::DescriptorType::StreamOutput)
 				{
 					answerCallback.invoke<controller::Interface::GetStreamOutputInfoHandler>(controllerInterface, targetID, status, descriptorIndex, streamInfo);
-					if (aem.getUnsolicited() && delegate && !!status)
+					if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (Clause 7.5.2)
 					{
 						invokeProtectedMethod(&controller::Delegate::onStreamOutputInfoChanged, delegate, controllerInterface, targetID, descriptorIndex, streamInfo);
 					}
@@ -2742,7 +2807,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				if (descriptorType == model::DescriptorType::AvbInterface)
 				{
 					answerCallback.invoke<controller::Interface::GetAvbInfoHandler>(controllerInterface, targetID, status, descriptorIndex, avbInfo);
-					if (aem.getUnsolicited() && delegate && !!status)
+					if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (Clause 7.5.2)
 					{
 						invokeProtectedMethod(&controller::Delegate::onAvbInfoChanged, delegate, controllerInterface, targetID, descriptorIndex, avbInfo);
 					}
@@ -2752,6 +2817,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 			}
 		},
 		// GetASPath
+			// Unsolicited triggered by change in the SRP domain (Clause 7.5.2)
 		// GetCounters
 		{ protocol::AemCommandType::GetCounters.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
