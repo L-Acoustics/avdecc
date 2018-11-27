@@ -360,8 +360,14 @@ public:
 	virtual void onClockDomainCountersChanged(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::model::ClockDomainIndex const /*clockDomainIndex*/, la::avdecc::entity::ClockDomainCounterValidFlags const /*validCounters*/, la::avdecc::entity::model::DescriptorCounters const& /*counters*/) noexcept {}
 	/** Called when the counters of a Stream Input changed. */
 	virtual void onStreamInputCountersChanged(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::model::StreamIndex const /*streamIndex*/, la::avdecc::entity::StreamInputCounterValidFlags const /*validCounters*/, la::avdecc::entity::model::DescriptorCounters const& /*counters*/) noexcept {}
-	// TODO: AddAudioMappings
-	// TODO: RemoveAudioMappings
+	/** Called when (some or all) audio mappings of a stream port input were added by another controller. */
+	virtual void onStreamPortInputAudioMappingsAdded(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::model::StreamPortIndex const /*streamPortIndex*/, la::avdecc::entity::model::AudioMappings const& /*mappings*/) noexcept {}
+	/** Called when (some or all) audio mappings of a stream port output were added by another controller. */
+	virtual void onStreamPortOutputAudioMappingsAdded(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::model::StreamPortIndex const /*streamPortIndex*/, la::avdecc::entity::model::AudioMappings const& /*mappings*/) noexcept {}
+	/** Called when (some or all) audio mappings of a stream port input were removed by another controller. */
+	virtual void onStreamPortInputAudioMappingsRemoved(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::model::StreamPortIndex const /*streamPortIndex*/, la::avdecc::entity::model::AudioMappings const& /*mappings*/) noexcept {}
+	/** Called when (some or all) audio mappings of a stream port output were removed by another controller. */
+	virtual void onStreamPortOutputAudioMappingsRemoved(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::model::StreamPortIndex const /*streamPortIndex*/, la::avdecc::entity::model::AudioMappings const& /*mappings*/) noexcept {}
 	/** Called when the length of a MemoryObject changed. */
 	virtual void onMemoryObjectLengthChanged(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::model::ConfigurationIndex const /*configurationIndex*/, la::avdecc::entity::model::MemoryObjectIndex const /*memoryObjectIndex*/, std::uint64_t const /*length*/) noexcept {}
 	/** Called when there is a status update on an ongoing Operation */

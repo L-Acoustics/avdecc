@@ -2951,7 +2951,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 			}
 		},
 		// Add Audio Mappings
-		{ protocol::AemCommandType::AddAudioMappings.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::AddAudioMappings.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -2966,21 +2966,28 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				auto const targetID = aem.getTargetEntityID();
 
 		// Notify handlers
-#pragma message("TODO: Handle unsolicited notification (add handler, and handle it in controller code)")
 				if (descriptorType == model::DescriptorType::StreamPortInput)
 				{
 					answerCallback.invoke<controller::Interface::AddStreamPortInputAudioMappingsHandler>(controllerInterface, targetID, status, descriptorIndex, mappings);
+					if (aem.getUnsolicited() && delegate && !!status)
+					{
+						invokeProtectedMethod(&controller::Delegate::onStreamPortInputAudioMappingsAdded, delegate, controllerInterface, targetID, descriptorIndex, mappings);
+					}
 				}
 				else if (descriptorType == model::DescriptorType::StreamPortOutput)
 				{
 					answerCallback.invoke<controller::Interface::AddStreamPortOutputAudioMappingsHandler>(controllerInterface, targetID, status, descriptorIndex, mappings);
+					if (aem.getUnsolicited() && delegate && !!status)
+					{
+						invokeProtectedMethod(&controller::Delegate::onStreamPortOutputAudioMappingsAdded, delegate, controllerInterface, targetID, descriptorIndex, mappings);
+					}
 				}
 				else
 					throw InvalidDescriptorTypeException();
 			}
 		},
 		// Remove Audio Mappings
-		{ protocol::AemCommandType::RemoveAudioMappings.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::RemoveAudioMappings.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -2995,14 +3002,21 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				auto const targetID = aem.getTargetEntityID();
 
 		// Notify handlers
-#pragma message("TODO: Handle unsolicited notification (add handler, and handle it in controller code)")
 				if (descriptorType == model::DescriptorType::StreamPortInput)
 				{
 					answerCallback.invoke<controller::Interface::RemoveStreamPortInputAudioMappingsHandler>(controllerInterface, targetID, status, descriptorIndex, mappings);
+					if (aem.getUnsolicited() && delegate && !!status)
+					{
+						invokeProtectedMethod(&controller::Delegate::onStreamPortInputAudioMappingsRemoved, delegate, controllerInterface, targetID, descriptorIndex, mappings);
+					}
 				}
 				else if (descriptorType == model::DescriptorType::StreamPortOutput)
 				{
 					answerCallback.invoke<controller::Interface::RemoveStreamPortOutputAudioMappingsHandler>(controllerInterface, targetID, status, descriptorIndex, mappings);
+					if (aem.getUnsolicited() && delegate && !!status)
+					{
+						invokeProtectedMethod(&controller::Delegate::onStreamPortOutputAudioMappingsRemoved, delegate, controllerInterface, targetID, descriptorIndex, mappings);
+					}
 				}
 				else
 					throw InvalidDescriptorTypeException();
