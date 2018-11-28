@@ -360,11 +360,12 @@ protected:
 	}
 
 	template<class NodeType, typename = std::enable_if_t<std::is_base_of<model::EntityModelNode, NodeType>::value>>
-	static void initNode(NodeType& node, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, model::AcquireState const acquireState) noexcept
+	static void initNode(NodeType& node, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, model::AcquireState const acquireState, model::LockState const lockState) noexcept
 	{
 		node.descriptorType = descriptorType;
 		node.descriptorIndex = descriptorIndex;
 		node.acquireState = acquireState;
+		node.lockState = lockState;
 	}
 
 	template<class NodeType, typename = std::enable_if_t<std::is_base_of<model::VirtualNode, NodeType>::value>>

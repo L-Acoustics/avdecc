@@ -80,7 +80,7 @@ struct EntityModelNode : public Node
 {
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
 	AcquireState acquireState{ AcquireState::Undefined };
-	// TODO: Add LockState
+	LockState lockState{ LockState::Undefined };
 };
 
 struct VirtualNode : public Node
