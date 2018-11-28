@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - Preventing a crash in upper layers caused by toxic entities (Motu Ultralite card sending a GET_RX_STATE_RESPONSE with a non-existant stream index)
+- Properly monitoring changes in dynamic mappings
 
 ## [2.7.2] - 2018-10-30
 ### Fixed

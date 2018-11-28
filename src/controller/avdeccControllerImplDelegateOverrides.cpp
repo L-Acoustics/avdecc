@@ -625,6 +625,54 @@ void ControllerImpl::onStreamInputCountersChanged(entity::controller::Interface 
 	}
 }
 
+void ControllerImpl::onStreamPortInputAudioMappingsAdded(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		auto* const entity = controlledEntity.get();
+		updateStreamPortInputAudioMappingsAdded(*entity, streamPortIndex, mappings);
+	}
+}
+
+void ControllerImpl::onStreamPortOutputAudioMappingsAdded(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		auto* const entity = controlledEntity.get();
+		updateStreamPortOutputAudioMappingsAdded(*entity, streamPortIndex, mappings);
+	}
+}
+
+void ControllerImpl::onStreamPortInputAudioMappingsRemoved(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		auto* const entity = controlledEntity.get();
+		updateStreamPortInputAudioMappingsRemoved(*entity, streamPortIndex, mappings);
+	}
+}
+
+void ControllerImpl::onStreamPortOutputAudioMappingsRemoved(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		auto* const entity = controlledEntity.get();
+		updateStreamPortOutputAudioMappingsRemoved(*entity, streamPortIndex, mappings);
+	}
+}
+
 void ControllerImpl::onMemoryObjectLengthChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) noexcept
 {
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
