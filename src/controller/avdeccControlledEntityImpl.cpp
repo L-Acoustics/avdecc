@@ -836,6 +836,19 @@ entity::model::AvbInfo ControlledEntityImpl::setAvbInfo(entity::model::AvbInterf
 	return previousInfo;
 }
 
+entity::model::AsPath ControlledEntityImpl::setAsPath(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath) noexcept
+{
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), avbInterfaceIndex, &model::ConfigurationDynamicTree::avbInterfaceDynamicModels);
+
+	// Save previous AsPath
+	auto previousPath = dynamicModel.asPath;
+
+	// Set AsPath
+	dynamicModel.asPath = asPath;
+
+	return previousPath;
+}
+
 void ControlledEntityImpl::setSelectedLocaleBaseIndex(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const baseIndex) noexcept
 {
 	auto& dynamicModel = getConfigurationNodeDynamicModel(configurationIndex);

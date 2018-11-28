@@ -73,7 +73,7 @@ struct AvbInterfaceNodeDynamicModel
 {
 	entity::model::AvdeccFixedString objectName{};
 	entity::model::AvbInfo avbInfo{};
-	//entity::model::AsPath asPath{};
+	entity::model::AsPath asPath{};
 	AvbInterfaceCounters counters{};
 };
 

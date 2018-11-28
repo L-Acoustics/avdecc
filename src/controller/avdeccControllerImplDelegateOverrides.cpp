@@ -577,6 +577,18 @@ void ControllerImpl::onAvbInfoChanged(entity::controller::Interface const* const
 	}
 }
 
+void ControllerImpl::onAsPathChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath) noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		auto* const entity = controlledEntity.get();
+		updateAsPath(*entity, avbInterfaceIndex, asPath);
+	}
+}
+
 void ControllerImpl::onAvbInterfaceCountersChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::AvbInterfaceCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) noexcept
 {
 	// Take a copy of the ControlledEntity so we don't have to keep the lock

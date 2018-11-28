@@ -70,7 +70,7 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 
 			if (information.gptpGrandmasterID)
 			{
-				// Build an AVBInfo and forward to updateAvbInfo (which will check for changes)
+				// Build an AvbInfo and forward to updateAvbInfo (which will check for changes)
 				auto const& avbInterfaceDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), avbInterfaceIndex, &model::ConfigurationDynamicTree::avbInterfaceDynamicModels);
 
 				// Copy the AvbInfo and update it with the new values we got from the ADPDU
@@ -608,6 +608,21 @@ void ControllerImpl::updateAvbInfo(ControlledEntityImpl& controlledEntity, entit
 			{
 				AVDECC_ASSERT(false, "Unhandled exception");
 			}
+		}
+	}
+}
+
+void ControllerImpl::updateAsPath(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath) const noexcept
+{
+	auto const previousPath = controlledEntity.setAsPath(avbInterfaceIndex, asPath);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		// Changed
+		if (previousPath != asPath)
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAsPathChanged, this, &controlledEntity, avbInterfaceIndex, asPath);
 		}
 	}
 }
