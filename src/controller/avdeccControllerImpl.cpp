@@ -1019,10 +1019,11 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 			};
 			break;
 		case ControlledEntityImpl::DynamicInfoType::GetAsPath:
-			//queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
-			//{
-			//};
-			assert(false && "Todo");
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getAsPath (AvbInterfaceIndex={})", descriptorIndex);
+				controller->getAsPath(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetAsPathResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
+			};
 			break;
 		case ControlledEntityImpl::DynamicInfoType::GetAvbInterfaceCounters:
 			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
@@ -1300,6 +1301,8 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			{
 				// AvbInfo
 				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInfo, index);
+				// AsPath
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAsPath, index);
 				// Counters
 				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInterfaceCounters, index);
 			}

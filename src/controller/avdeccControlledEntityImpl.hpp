@@ -70,7 +70,7 @@ public:
 		InputStreamInfo, // getStreamInputInfo (GET_STREAM_INFO)
 		OutputStreamInfo, // getStreamOutputInfo (GET_STREAM_INFO)
 		GetAvbInfo, // getAvbInfo (GET_AVB_INFO)
-		GetAsPath,
+		GetAsPath, // getAsPath (GET_AS_PATH)
 		GetAvbInterfaceCounters, // getAvbInterfaceCounters (GET_COUNTERS)
 		GetClockDomainCounters, // getClockDomainCounters (GET_COUNTERS)
 		GetStreamInputCounters, // getStreamInputCounters (GET_COUNTERS)

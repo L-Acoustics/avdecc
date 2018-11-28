@@ -1134,6 +1134,42 @@ void ControllerImpl::onGetAvbInfoResult(entity::controller::Interface const* con
 	}
 }
 
+void ControllerImpl::onGetAsPathResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath, entity::model::ConfigurationIndex const configurationIndex) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onGetAsPathResult (AvbInterfaceIndex={}): {}", avbInterfaceIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAsPath, avbInterfaceIndex))
+		{
+			if (!!status)
+			{
+				controlledEntity->setAsPath(avbInterfaceIndex, asPath);
+			}
+			else
+			{
+				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAsPath, avbInterfaceIndex))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AsPath);
+					return;
+				}
+			}
+		}
+
+		// Got all expected dynamic information
+		if (controlledEntity->gotAllExpectedDynamicInfo())
+		{
+			// Clear this enumeration step and check for next one
+			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			checkEnumerationSteps(controlledEntity.get());
+		}
+	}
+}
+
 void ControllerImpl::onGetAvbInterfaceCountersResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::AvbInterfaceCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetAvbInterfaceCountersResult (AvbInterfaceIndex={}): {}", avbInterfaceIndex, entity::ControllerEntity::statusToString(status));
