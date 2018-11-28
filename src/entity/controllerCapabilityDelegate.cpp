@@ -682,7 +682,7 @@ void CapabilityDelegate::setStreamInputInfo(UniqueIdentifier const targetEntityI
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetStreamInfoCommand(model::DescriptorType::StreamInput, streamIndex, info);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex, s_emptyStreamInfo);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetStreamInfo, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -697,7 +697,7 @@ void CapabilityDelegate::setStreamOutputInfo(UniqueIdentifier const targetEntity
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetStreamInfoCommand(model::DescriptorType::StreamOutput, streamIndex, info);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex, s_emptyStreamInfo);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetStreamInfo, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -2155,7 +2155,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::StreamInput)
 				{
-					answerCallback.invoke<controller::Interface::SetStreamInputInfoHandler>(controllerInterface, targetID, status, descriptorIndex);
+					answerCallback.invoke<controller::Interface::SetStreamInputInfoHandler>(controllerInterface, targetID, status, descriptorIndex, streamInfo);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
 						invokeProtectedMethod(&controller::Delegate::onStreamInputInfoChanged, delegate, controllerInterface, targetID, descriptorIndex, streamInfo);
@@ -2163,7 +2163,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				}
 				else if (descriptorType == model::DescriptorType::StreamOutput)
 				{
-					answerCallback.invoke<controller::Interface::SetStreamOutputInfoHandler>(controllerInterface, targetID, status, descriptorIndex);
+					answerCallback.invoke<controller::Interface::SetStreamOutputInfoHandler>(controllerInterface, targetID, status, descriptorIndex, streamInfo);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
 						invokeProtectedMethod(&controller::Delegate::onStreamOutputInfoChanged, delegate, controllerInterface, targetID, descriptorIndex, streamInfo);

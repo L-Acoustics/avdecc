@@ -524,6 +524,80 @@ void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID
 	}
 }
 
+void ControllerImpl::setStreamInputInfo(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, SetStreamInputInfoHandler const& handler) const noexcept
+{
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamInputInfo (StreamIndex={})", streamIndex);
+		_controller->setStreamInputInfo(targetEntityID, streamIndex, info,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User setStreamInputInfo (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+					if (!!status)
+					{
+						updateStreamInputInfo(*entity, streamIndex, info);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setStreamOutputInfo(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, SetStreamOutputInfoHandler const& handler) const noexcept
+{
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamOutputInfo (StreamIndex={})", streamIndex);
+		_controller->setStreamOutputInfo(targetEntityID, streamIndex, info,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User setStreamOutputInfo (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+					if (!!status)
+					{
+						updateStreamOutputInfo(*entity, streamIndex, info);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
 void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity::model::AvdeccFixedString const& name, SetEntityNameHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
