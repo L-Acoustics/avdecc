@@ -312,6 +312,107 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 	}
 }
 
+void ControllerImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntityHandler const& handler) const noexcept
+{
+	auto const descriptorType{ entity::model::DescriptorType::Entity };
+	auto const descriptorIndex{ entity::model::DescriptorIndex{ 0u } };
+
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User lockEntity (DescriptorType={} DescriptorIndex={})", to_integral(descriptorType), descriptorIndex);
+
+		// Already locked or locking, don't do anything (we want to try to lock if it's flagged as locked by another controller, in case it went offline without notice)
+		if (controlledEntity->isLocked() || controlledEntity->isLocking())
+		{
+			LOG_CONTROLLER_TRACE(targetEntityID, "User lockEntity not sent because entity is {}", (controlledEntity->isLocked() ? "already locked" : "being locked"));
+			return;
+		}
+		controlledEntity->setLockState(model::LockState::TryLock);
+		_controller->lockEntity(targetEntityID, descriptorType, descriptorIndex,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const lockingEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User lockEntityResult (LockingController={} DescriptorType={} DescriptorIndex={}): {}", toHexString(lockingEntity, true), to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+					switch (status)
+					{
+						case entity::ControllerEntity::AemCommandStatus::Success:
+							updateLockedState(*entity, lockingEntity, descriptorType, descriptorIndex);
+							break;
+						case entity::ControllerEntity::AemCommandStatus::LockedByOther:
+							updateLockedState(*entity, lockingEntity, descriptorType, descriptorIndex);
+							break;
+						case entity::ControllerEntity::AemCommandStatus::NotImplemented:
+						case entity::ControllerEntity::AemCommandStatus::NotSupported:
+							updateLockedState(*entity, UniqueIdentifier{}, descriptorType, descriptorIndex);
+							break;
+						default:
+							// In case of error, set the state to undefined
+							updateLockedState(*entity, UniqueIdentifier{}, descriptorType, descriptorIndex, true);
+							break;
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, lockingEntity);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status, lockingEntity);
+				}
+			});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, UniqueIdentifier::getNullUniqueIdentifier());
+	}
+}
+
+void ControllerImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockEntityHandler const& handler) const noexcept
+{
+	auto const descriptorType{ entity::model::DescriptorType::Entity };
+	auto const descriptorIndex{ entity::model::DescriptorIndex{ 0u } };
+
+	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
+	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User unlockEntity (DescriptorType={} DescriptorIndex={})", to_integral(descriptorType), descriptorIndex);
+		_controller->unlockEntity(targetEntityID, descriptorType, descriptorIndex,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const lockingEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User unlockEntity (LockingController={} DescriptorType={} DescriptorIndex={}): {}", toHexString(lockingEntity, true), to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a copy of the ControlledEntity so we don't have to keep the lock
+				auto controlledEntity = getControlledEntityImpl(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+					if (!!status) // Only change the lock state in case of success
+					{
+						updateLockedState(*entity, lockingEntity, descriptorType, descriptorIndex);
+					}
+					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, lockingEntity);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					invokeProtectedHandler(handler, nullptr, status, lockingEntity);
+				}
+			});
+	}
+	else
+	{
+		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, UniqueIdentifier::getNullUniqueIdentifier());
+	}
+}
+
 void ControllerImpl::setConfiguration(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, SetConfigurationHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)

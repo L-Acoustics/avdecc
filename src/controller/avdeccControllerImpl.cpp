@@ -229,6 +229,46 @@ void ControllerImpl::updateAcquiredState(ControlledEntityImpl& controlledEntity,
 	}
 }
 
+void ControllerImpl::updateLockedState(ControlledEntityImpl& controlledEntity, UniqueIdentifier const lockingEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const /*descriptorIndex*/, bool const undefined) const noexcept
+{
+	if (descriptorType == entity::model::DescriptorType::Entity)
+	{
+		auto lockingController{ UniqueIdentifier{} };
+		auto lockState{ model::LockState::Undefined };
+		if (undefined)
+		{
+			lockState = model::LockState::Undefined;
+		}
+		else
+		{
+			lockingController = lockingEntity;
+
+			if (!lockingEntity) // No more controller
+			{
+				lockState = model::LockState::NotLocked;
+			}
+			else if (lockingEntity == _controller->getEntityID()) // Controlled by myself
+			{
+				lockState = model::LockState::Locked;
+			}
+			else // Or locked by another controller
+			{
+				lockState = model::LockState::LockedByOther;
+			}
+		}
+
+		controlledEntity.setLockState(lockState);
+		controlledEntity.setLockingController(lockingController);
+
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onLockStateChanged, this, &controlledEntity, lockState, lockingController);
+		}
+	}
+}
+
+
 void ControllerImpl::updateConfiguration(entity::controller::Interface const* const controller, ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex) const noexcept
 {
 	controlledEntity.setCurrentConfiguration(configurationIndex);

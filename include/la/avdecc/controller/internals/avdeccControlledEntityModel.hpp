@@ -62,6 +62,15 @@ enum class AcquireState
 	AcquiredByOther,
 };
 
+enum class LockState
+{
+	Undefined,
+	NotLocked,
+	TryLock,
+	Locked,
+	LockedByOther,
+};
+
 struct Node
 {
 	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Entity };

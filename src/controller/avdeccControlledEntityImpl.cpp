@@ -81,6 +81,21 @@ bool ControlledEntityImpl::isAcquiredByOther() const noexcept
 	return _acquireState == model::AcquireState::AcquiredByOther;
 }
 
+bool ControlledEntityImpl::isLocked() const noexcept
+{
+	return _lockState == model::LockState::Locked;
+}
+
+bool ControlledEntityImpl::isLocking() const noexcept
+{
+	return _lockState == model::LockState::TryLock;
+}
+
+bool ControlledEntityImpl::isLockedByOther() const noexcept
+{
+	return _lockState == model::LockState::LockedByOther;
+}
+
 bool ControlledEntityImpl::isStreamInputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const
 {
 	auto const& dynamicModel = getNodeDynamicModel(configurationIndex, streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels);
@@ -96,6 +111,11 @@ bool ControlledEntityImpl::isStreamOutputRunning(entity::model::ConfigurationInd
 UniqueIdentifier ControlledEntityImpl::getOwningControllerID() const noexcept
 {
 	return _owningControllerID;
+}
+
+UniqueIdentifier ControlledEntityImpl::getLockingControllerID() const noexcept
+{
+	return _lockingControllerID;
 }
 
 entity::Entity const& ControlledEntityImpl::getEntity() const noexcept
@@ -977,6 +997,16 @@ void ControlledEntityImpl::setOwningController(UniqueIdentifier const controller
 {
 	_owningControllerID = controllerID;
 }
+
+void ControlledEntityImpl::setLockState(model::LockState const state) noexcept
+{
+	_lockState = state;
+}
+void ControlledEntityImpl::setLockingController(UniqueIdentifier const controllerID) noexcept
+{
+	_lockingControllerID = controllerID;
+}
+
 
 // Setters of the Model from AEM Descriptors (including DescriptorDynamic info)
 

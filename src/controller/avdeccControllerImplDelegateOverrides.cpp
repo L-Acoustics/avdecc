@@ -144,6 +144,7 @@ void ControllerImpl::onEntityOffline(entity::controller::Interface const* const 
 	if (controlledEntity)
 	{
 		updateAcquiredState(*controlledEntity, UniqueIdentifier{}, entity::model::DescriptorType::Entity, 0u, true);
+		updateLockedState(*controlledEntity, UniqueIdentifier{}, entity::model::DescriptorType::Entity, 0u, true);
 
 		// Entity was advertised to the user, notify observers
 		if (controlledEntity->wasAdvertised())
@@ -239,6 +240,30 @@ void ControllerImpl::onEntityReleased(entity::controller::Interface const* const
 	{
 		auto* const entity = controlledEntity.get();
 		updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
+	}
+}
+
+void ControllerImpl::onEntityLocked(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, UniqueIdentifier const lockingEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		auto* const entity = controlledEntity.get();
+		updateLockedState(*entity, lockingEntity, descriptorType, descriptorIndex);
+	}
+}
+
+void ControllerImpl::onEntityUnlocked(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, UniqueIdentifier const lockingEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
+{
+	// Take a copy of the ControlledEntity so we don't have to keep the lock
+	auto controlledEntity = getControlledEntityImpl(entityID);
+
+	if (controlledEntity)
+	{
+		auto* const entity = controlledEntity.get();
+		updateLockedState(*entity, lockingEntity, descriptorType, descriptorIndex);
 	}
 }
 

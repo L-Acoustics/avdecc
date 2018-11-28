@@ -93,9 +93,13 @@ public:
 	virtual bool isAcquired() const noexcept = 0; // Is entity acquired by the controller it's attached to
 	virtual bool isAcquiring() const noexcept = 0; // Is the attached controller trying to acquire the entity
 	virtual bool isAcquiredByOther() const noexcept = 0; // Is entity acquired by another controller
+	virtual bool isLocked() const noexcept = 0; // Is entity locked by the controller it's attached to
+	virtual bool isLocking() const noexcept = 0; // Is the attached controller trying to lock the entity
+	virtual bool isLockedByOther() const noexcept = 0; // Is entity locked by another controller
 	virtual bool isStreamInputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 	virtual bool isStreamOutputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 	virtual UniqueIdentifier getOwningControllerID() const noexcept = 0;
+	virtual UniqueIdentifier getLockingControllerID() const noexcept = 0;
 	virtual entity::Entity const& getEntity() const noexcept = 0;
 
 	virtual model::EntityNode const& getEntityNode() const = 0; // Throws Exception::NotSupported if EM not supported by the Entity

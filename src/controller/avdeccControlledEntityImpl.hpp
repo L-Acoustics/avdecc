@@ -113,9 +113,13 @@ public:
 	virtual bool isAcquired() const noexcept override;
 	virtual bool isAcquiring() const noexcept override;
 	virtual bool isAcquiredByOther() const noexcept override;
+	virtual bool isLocked() const noexcept override;
+	virtual bool isLocking() const noexcept override;
+	virtual bool isLockedByOther() const noexcept override;
 	virtual bool isStreamInputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const override;
 	virtual bool isStreamOutputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const override;
 	virtual UniqueIdentifier getOwningControllerID() const noexcept override;
+	virtual UniqueIdentifier getLockingControllerID() const noexcept override;
 	virtual entity::Entity const& getEntity() const noexcept override;
 
 	virtual model::EntityNode const& getEntityNode() const override;
@@ -258,6 +262,8 @@ public:
 	void setEntity(entity::Entity const& entity) noexcept;
 	void setAcquireState(model::AcquireState const state) noexcept;
 	void setOwningController(UniqueIdentifier const controllerID) noexcept;
+	void setLockState(model::LockState const state) noexcept;
+	void setLockingController(UniqueIdentifier const controllerID) noexcept;
 
 	// Setters of the Model from AEM Descriptors (including DescriptorDynamic info)
 	bool setCachedEntityStaticTree(model::EntityStaticTree const& cachedStaticTree, entity::model::EntityDescriptor const& descriptor) noexcept; // Returns true if the cached EntityStaticTree is accepted (and set) for this entity
@@ -390,6 +396,8 @@ private:
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DescriptorDynamicInfoKey>> _expectedDescriptorDynamicInfo{};
 	model::AcquireState _acquireState{ model::AcquireState::Undefined };
 	UniqueIdentifier _owningControllerID{}; // EID of the controller currently owning (who acquired) this entity
+	model::LockState _lockState{ model::LockState::Undefined };
+	UniqueIdentifier _lockingControllerID{}; // EID of the controller currently locking (who locked) this entity
 	// Entity variables
 	entity::Entity _entity; // No NSMI, Entity has no default constructor but it has to be passed to the only constructor of this class anyway
 	// Entity Model
