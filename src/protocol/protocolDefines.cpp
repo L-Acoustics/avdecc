@@ -288,7 +288,7 @@ AemAcquireEntityFlags const AemAcquireEntityFlags::Release{ 0x80000000 };
 
 /** AEM Lock Entity Flags - Clause 7.4.2.1 */
 AemLockEntityFlags const AemLockEntityFlags::None{ 0x00000000 };
-AemLockEntityFlags const AemLockEntityFlags::Unlock{ 0x80000000 };
+AemLockEntityFlags const AemLockEntityFlags::Unlock{ 0x00000001 };
 
 /** Address Access Mode - Clause 9.2.1.3.3 */
 AaMode const AaMode::Read{ 0x0 };

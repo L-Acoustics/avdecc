@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - lockEntity/unlockEntity signature and result handler changed to include the locking entity and descriptor type/index
 
+### Fixed
+- Incorrect value for AemLockEntityFlags::Unlock flag
+
 ## [2.7.2] - 2018-10-30
 
 ## [2.7.1] - 2018-10-02
