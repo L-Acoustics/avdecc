@@ -962,8 +962,17 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 			{
 				// Send an ACQUIRE command with the RELEASE flag to detect the current acquired state of the entity
 				// It won't change the current acquired state except if we were the acquiring controller, which doesn't matter anyway because having to enumerate the device again means we got interrupted in the middle of something and it's best to start over
-				LOG_CONTROLLER_TRACE(entityID, "releaseEntity (ReleaseFlag)");
+				LOG_CONTROLLER_TRACE(entityID, "acquireEntity (ReleaseFlag)");
 				controller->releaseEntity(entityID, entity::model::DescriptorType::Entity, 0u, std::bind(&ControllerImpl::onGetAcquiredStateResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+			};
+			break;
+		case ControlledEntityImpl::DynamicInfoType::LockedState:
+			queryFunc = [this, entityID](entity::ControllerEntity* const controller) noexcept
+			{
+				// Send a LOCK command with the RELEASE flag to detect the current locked state of the entity
+				// It won't change the current locked state except if we were the locking controller, which doesn't matter anyway because having to enumerate the device again means we got interrupted in the middle of something and it's best to start over
+				LOG_CONTROLLER_TRACE(entityID, "lockEntity (ReleaseFlag)");
+				controller->unlockEntity(entityID, entity::model::DescriptorType::Entity, 0u, std::bind(&ControllerImpl::onGetLockedStateResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 			};
 			break;
 		case ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings:
@@ -1229,10 +1238,10 @@ void ControllerImpl::getMilanVersion(ControlledEntityImpl* const entity) noexcep
 {
 	auto const entityID = entity->getEntity().getEntityID();
 
-	// TODO: Properly get Milan version, right now, let's assume all entities are Milan compatible
+	// TODO: Properly get Milan version, right now, let's assume no entity is Milan compatible
 	LOG_CONTROLLER_TRACE(entityID, "Getting MILAN version");
 	auto const tempFunc = std::bind(&ControllerImpl::onGetMilanVersionResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
-	tempFunc(_controller, entityID, entity::ControllerEntity::AemCommandStatus::Success);
+	tempFunc(_controller, entityID, entity::ControllerEntity::AemCommandStatus::NotImplemented);
 }
 
 void ControllerImpl::registerUnsol(ControlledEntityImpl* const entity) noexcept
@@ -1259,10 +1268,14 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 		auto const configurationIndex = entity->getCurrentConfigurationIndex();
 		auto const& configStaticTree = entity->getConfigurationStaticTree(configurationIndex);
 
-		// Get AcquiredState
+		// Get AcquiredState / LockedState (global entity information not related to current configuration)
 		{
-			// Global entity information (not related to current configuration)
-			queryInformation(entity, 0u, ControlledEntityImpl::DynamicInfoType::AcquiredState, 0u);
+			// Milan devices don't implement AcquireEntity, not need to query it's state
+			if (!entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+			{
+				queryInformation(entity, 0u, ControlledEntityImpl::DynamicInfoType::AcquiredState, 0u);
+			}
+			queryInformation(entity, 0u, ControlledEntityImpl::DynamicInfoType::LockedState, 0u);
 		}
 
 		// Get StreamInfo/Counters and RX_STATE for each StreamInput descriptors

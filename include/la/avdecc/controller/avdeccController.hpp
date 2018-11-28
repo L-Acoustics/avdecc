@@ -162,6 +162,7 @@ public:
 		AudioMapDescriptor,
 		ClockDomainDescriptor,
 		AcquiredState,
+		LockedState,
 		StreamInputAudioMap,
 		StreamOutputAudioMap,
 		TalkerStreamState,

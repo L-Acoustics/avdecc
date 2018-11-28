@@ -62,6 +62,7 @@ public:
 	enum class DynamicInfoType : std::uint16_t
 	{
 		AcquiredState, // acquireEntity(ReleasedFlag)
+		LockedState, // lockEntity(ReleasedFlag)
 		InputStreamAudioMappings, // getStreamPortInputAudioMap (GET_AUDIO_MAP)
 		OutputStreamAudioMappings, // getStreamPortOutputAudioMap (GET_AUDIO_MAP)
 		InputStreamState, // getListenerStreamState (GET_RX_STATE)

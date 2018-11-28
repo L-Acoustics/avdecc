@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support for lock/unlock commands
 - Support for AsPath (query during enumeration, and change notification)
 - Support for setStreamInfo command
+- [Retrieving entity current lock state upon enumeration](https://github.com/L-Acoustics/avdecc/issues/26)
 
 ### Fixed
 - Preventing a crash in upper layers caused by toxic entities (Motu Ultralite card sending a GET_RX_STATE_RESPONSE with a non-existant stream index)
@@ -22,6 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [2.7.1] - 2018-10-02
 ### Added
+- [Retrieving entity current acquired state upon enumeration](https://github.com/L-Acoustics/avdecc/issues/26)
 - [Support for GET_COUNTERS command and unsolicited notifications](https://github.com/L-Acoustics/avdecc/issues/12)
 
 ## [2.7.0] - 2018-09-12
