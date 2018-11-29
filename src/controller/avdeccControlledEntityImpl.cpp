@@ -108,9 +108,19 @@ bool ControlledEntityImpl::isStreamOutputRunning(entity::model::ConfigurationInd
 	return isStreamRunningFlag(dynamicModel.streamInfo.streamInfoFlags);
 }
 
+model::AcquireState ControlledEntityImpl::getAcquireState() const noexcept
+{
+	return _acquireState;
+}
+
 UniqueIdentifier ControlledEntityImpl::getOwningControllerID() const noexcept
 {
 	return _owningControllerID;
+}
+
+model::LockState ControlledEntityImpl::getLockState() const noexcept
+{
+	return _lockState;
 }
 
 UniqueIdentifier ControlledEntityImpl::getLockingControllerID() const noexcept
@@ -1670,7 +1680,7 @@ void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
 		if (_entityNode.configurations.size() == 0)
 		{
 			// Build root node (EntityNode)
-			initNode(_entityNode, entity::model::DescriptorType::Entity, 0, model::AcquireState::Undefined, model::LockState::Undefined);
+			initNode(_entityNode, entity::model::DescriptorType::Entity, 0);
 			_entityNode.staticModel = &_entityStaticTree.staticModel;
 			_entityNode.dynamicModel = &_entityDynamicTree.dynamicModel;
 
@@ -1682,7 +1692,7 @@ void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
 				auto& configDynamicTree = _entityDynamicTree.configurationDynamicTrees[configIndex];
 
 				auto& configNode = _entityNode.configurations[configIndex];
-				initNode(configNode, entity::model::DescriptorType::Configuration, configIndex, model::AcquireState::Undefined, model::LockState::Undefined);
+				initNode(configNode, entity::model::DescriptorType::Configuration, configIndex);
 				configNode.staticModel = &configStaticTree.staticModel;
 				configNode.dynamicModel = &configDynamicTree.dynamicModel;
 
@@ -1694,7 +1704,7 @@ void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
 					auto& audioUnitDynamicModel = configDynamicTree.audioUnitDynamicModels[audioUnitIndex];
 
 					auto& audioUnitNode = configNode.audioUnits[audioUnitIndex];
-					initNode(audioUnitNode, entity::model::DescriptorType::AudioUnit, audioUnitIndex, model::AcquireState::Undefined, model::LockState::Undefined);
+					initNode(audioUnitNode, entity::model::DescriptorType::AudioUnit, audioUnitIndex);
 					audioUnitNode.staticModel = &audioUnitStaticModel;
 					audioUnitNode.dynamicModel = &audioUnitDynamicModel;
 
@@ -1721,7 +1731,7 @@ void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
 								streamPortDynamicModel = &entity->getNodeDynamicModel(configIndex, streamPortIndex, &model::ConfigurationDynamicTree::streamPortOutputDynamicModels);
 							}
 
-							initNode(*streamPortNode, descriptorType, streamPortIndex, model::AcquireState::Undefined, model::LockState::Undefined);
+							initNode(*streamPortNode, descriptorType, streamPortIndex);
 							streamPortNode->staticModel = streamPortStaticModel;
 							streamPortNode->dynamicModel = streamPortDynamicModel;
 
@@ -1730,7 +1740,7 @@ void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
 							{
 								auto const clusterIndex = entity::model::ClusterIndex(clusterIndexCounter + streamPortStaticModel->baseCluster);
 								auto& audioClusterNode = streamPortNode->audioClusters[clusterIndex];
-								initNode(audioClusterNode, entity::model::DescriptorType::AudioCluster, clusterIndex, model::AcquireState::Undefined, model::LockState::Undefined);
+								initNode(audioClusterNode, entity::model::DescriptorType::AudioCluster, clusterIndex);
 
 								auto const& audioClusterStaticModel = entity->getNodeStaticModel(configIndex, clusterIndex, &model::ConfigurationStaticTree::audioClusterStaticModels);
 								auto& audioClusterDynamicModel = entity->getNodeDynamicModel(configIndex, clusterIndex, &model::ConfigurationDynamicTree::audioClusterDynamicModels);
@@ -1743,7 +1753,7 @@ void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
 							{
 								auto const mapIndex = entity::model::MapIndex(mapIndexCounter + streamPortStaticModel->baseMap);
 								auto& audioMapNode = streamPortNode->audioMaps[mapIndex];
-								initNode(audioMapNode, entity::model::DescriptorType::AudioMap, mapIndex, model::AcquireState::Undefined, model::LockState::Undefined);
+								initNode(audioMapNode, entity::model::DescriptorType::AudioMap, mapIndex);
 
 								auto const& audioMapStaticModel = entity->getNodeStaticModel(configIndex, mapIndex, &model::ConfigurationStaticTree::audioMapStaticModels);
 								audioMapNode.staticModel = &audioMapStaticModel;
@@ -1762,7 +1772,7 @@ void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
 					auto& streamDynamicModel = configDynamicTree.streamInputDynamicModels[streamIndex];
 
 					auto& streamNode = configNode.streamInputs[streamIndex];
-					initNode(streamNode, entity::model::DescriptorType::StreamInput, streamIndex, model::AcquireState::Undefined, model::LockState::Undefined);
+					initNode(streamNode, entity::model::DescriptorType::StreamInput, streamIndex);
 					streamNode.staticModel = &streamStaticModel;
 					streamNode.dynamicModel = &streamDynamicModel;
 				}
@@ -1775,7 +1785,7 @@ void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
 					auto& streamDynamicModel = configDynamicTree.streamOutputDynamicModels[streamIndex];
 
 					auto& streamNode = configNode.streamOutputs[streamIndex];
-					initNode(streamNode, entity::model::DescriptorType::StreamOutput, streamIndex, model::AcquireState::Undefined, model::LockState::Undefined);
+					initNode(streamNode, entity::model::DescriptorType::StreamOutput, streamIndex);
 					streamNode.staticModel = &streamStaticModel;
 					streamNode.dynamicModel = &streamDynamicModel;
 				}
@@ -1788,7 +1798,7 @@ void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
 					auto& interfaceDynamicModel = configDynamicTree.avbInterfaceDynamicModels[interfaceIndex];
 
 					auto& interfaceNode = configNode.avbInterfaces[interfaceIndex];
-					initNode(interfaceNode, entity::model::DescriptorType::AvbInterface, interfaceIndex, model::AcquireState::Undefined, model::LockState::Undefined);
+					initNode(interfaceNode, entity::model::DescriptorType::AvbInterface, interfaceIndex);
 					interfaceNode.staticModel = &interfaceStaticModel;
 					interfaceNode.dynamicModel = &interfaceDynamicModel;
 				}
@@ -1801,7 +1811,7 @@ void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
 					auto& sourceDynamicModel = configDynamicTree.clockSourceDynamicModels[sourceIndex];
 
 					auto& sourceNode = configNode.clockSources[sourceIndex];
-					initNode(sourceNode, entity::model::DescriptorType::ClockSource, sourceIndex, model::AcquireState::Undefined, model::LockState::Undefined);
+					initNode(sourceNode, entity::model::DescriptorType::ClockSource, sourceIndex);
 					sourceNode.staticModel = &sourceStaticModel;
 					sourceNode.dynamicModel = &sourceDynamicModel;
 				}
@@ -1814,7 +1824,7 @@ void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
 					auto& memoryObjectDynamicModel = configDynamicTree.memoryObjectDynamicModels[memoryObjectIndex];
 
 					auto& memoryObjectNode = configNode.memoryObjects[memoryObjectIndex];
-					initNode(memoryObjectNode, entity::model::DescriptorType::MemoryObject, memoryObjectIndex, model::AcquireState::Undefined, model::LockState::Undefined);
+					initNode(memoryObjectNode, entity::model::DescriptorType::MemoryObject, memoryObjectIndex);
 					memoryObjectNode.staticModel = &memoryObjectStaticModel;
 					memoryObjectNode.dynamicModel = &memoryObjectDynamicModel;
 				}
@@ -1826,7 +1836,7 @@ void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
 					auto const& localeStaticModel = localeKV.second;
 
 					auto& localeNode = configNode.locales[localeIndex];
-					initNode(localeNode, entity::model::DescriptorType::Locale, localeIndex, model::AcquireState::Undefined, model::LockState::Undefined);
+					initNode(localeNode, entity::model::DescriptorType::Locale, localeIndex);
 					localeNode.staticModel = &localeStaticModel;
 
 					// Build strings (StringsNode)
@@ -1841,7 +1851,7 @@ void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
 					auto& domainDynamicModel = configDynamicTree.clockDomainDynamicModels[domainIndex];
 
 					auto& domainNode = configNode.clockDomains[domainIndex];
-					initNode(domainNode, entity::model::DescriptorType::ClockDomain, domainIndex, model::AcquireState::Undefined, model::LockState::Undefined);
+					initNode(domainNode, entity::model::DescriptorType::ClockDomain, domainIndex);
 					domainNode.staticModel = &domainStaticModel;
 					domainNode.dynamicModel = &domainDynamicModel;
 

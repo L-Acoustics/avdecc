@@ -51,7 +51,7 @@ class ControlledEntity;
 
 namespace model
 {
-using VirtualIndex = entity::model::DescriptorIndex;
+using VirtualIndex = std::uint32_t;
 
 enum class AcquireState
 {
@@ -79,8 +79,6 @@ struct Node
 struct EntityModelNode : public Node
 {
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
-	AcquireState acquireState{ AcquireState::Undefined };
-	LockState lockState{ LockState::Undefined };
 };
 
 struct VirtualNode : public Node

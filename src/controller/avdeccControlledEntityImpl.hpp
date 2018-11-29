@@ -119,7 +119,9 @@ public:
 	virtual bool isLockedByOther() const noexcept override;
 	virtual bool isStreamInputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const override;
 	virtual bool isStreamOutputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const override;
+	virtual model::AcquireState getAcquireState() const noexcept override;
 	virtual UniqueIdentifier getOwningControllerID() const noexcept override;
+	virtual model::LockState getLockState() const noexcept override;
 	virtual UniqueIdentifier getLockingControllerID() const noexcept override;
 	virtual entity::Entity const& getEntity() const noexcept override;
 
@@ -360,12 +362,10 @@ protected:
 	}
 
 	template<class NodeType, typename = std::enable_if_t<std::is_base_of<model::EntityModelNode, NodeType>::value>>
-	static void initNode(NodeType& node, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, model::AcquireState const acquireState, model::LockState const lockState) noexcept
+	static void initNode(NodeType& node, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 	{
 		node.descriptorType = descriptorType;
 		node.descriptorIndex = descriptorIndex;
-		node.acquireState = acquireState;
-		node.lockState = lockState;
 	}
 
 	template<class NodeType, typename = std::enable_if_t<std::is_base_of<model::VirtualNode, NodeType>::value>>

@@ -98,7 +98,9 @@ public:
 	virtual bool isLockedByOther() const noexcept = 0; // Is entity locked by another controller
 	virtual bool isStreamInputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 	virtual bool isStreamOutputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
+	virtual model::AcquireState getAcquireState() const noexcept = 0;
 	virtual UniqueIdentifier getOwningControllerID() const noexcept = 0;
+	virtual model::LockState getLockState() const noexcept = 0;
 	virtual UniqueIdentifier getLockingControllerID() const noexcept = 0;
 	virtual entity::Entity const& getEntity() const noexcept = 0;
 
