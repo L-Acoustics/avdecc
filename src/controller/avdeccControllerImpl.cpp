@@ -174,6 +174,11 @@ void ControllerImpl::removeCompatibilityFlag(ControlledEntityImpl& controlledEnt
 	}
 }
 
+void ControllerImpl::updateMilanInfo(ControlledEntityImpl& controlledEntity, entity::model::MilanInfo const& info) const noexcept
+{
+	controlledEntity.setMilanInfo(info);
+}
+
 void ControllerImpl::updateUnsolicitedNotificationsSubscription(ControlledEntityImpl& controlledEntity, bool const isSubscribed) const noexcept
 {
 	auto const oldValue = controlledEntity.isSubscribedToUnsolicitedNotifications();
@@ -813,6 +818,42 @@ void ControllerImpl::chooseLocale(ControlledEntityImpl* const entity, entity::mo
 	}
 }
 
+void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, ControlledEntityImpl::MilanInfoType const milanInfoType, std::chrono::milliseconds const delayQuery) noexcept
+{
+	// Immediately set as expected
+	entity->setMilanInfoExpected(milanInfoType);
+
+	auto const entityID = entity->getEntity().getEntityID();
+	std::function<void(entity::ControllerEntity*)> queryFunc{};
+
+	switch (milanInfoType)
+	{
+		case ControlledEntityImpl::MilanInfoType::MilanInfo:
+			queryFunc = [this, entityID](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getMilanInfo ()");
+				controller->getMilanInfo(entityID, std::bind(&ControllerImpl::onGetMilanInfoResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+			};
+			break;
+		default:
+			AVDECC_ASSERT(false, "Unhandled MilanInfoType");
+			break;
+	}
+
+	// Not delayed, call now
+	if (delayQuery == std::chrono::milliseconds{ 0 })
+	{
+		if (queryFunc)
+		{
+			queryFunc(_controller);
+		}
+	}
+	else
+	{
+		addDelayedQuery(delayQuery, entityID, std::move(queryFunc));
+	}
+}
+
 void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::chrono::milliseconds const delayQuery) noexcept
 {
 	// Immediately set as expected
@@ -1234,14 +1275,24 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 	}
 }
 
-void ControllerImpl::getMilanVersion(ControlledEntityImpl* const entity) noexcept
+void ControllerImpl::getMilanInfo(ControlledEntityImpl* const entity) noexcept
 {
-	auto const entityID = entity->getEntity().getEntityID();
+	auto const caps = entity->getEntity().getEntityCapabilities();
 
-	// TODO: Properly get Milan version, right now, let's assume no entity is Milan compatible
-	LOG_CONTROLLER_TRACE(entityID, "Getting MILAN version");
-	auto const tempFunc = std::bind(&ControllerImpl::onGetMilanVersionResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
-	tempFunc(_controller, entityID, entity::ControllerEntity::AemCommandStatus::NotImplemented);
+	// Check if AEM and VendorUnique is supported by this entity
+	if (hasFlag(caps, entity::EntityCapabilities::AemSupported | entity::EntityCapabilities::VendorUniqueSupported))
+	{
+		// Get MilanInfo
+		queryInformation(entity, ControlledEntityImpl::MilanInfoType::MilanInfo);
+	}
+
+	// Got all expected Milan information
+	if (entity->gotAllExpectedMilanInfo())
+	{
+		// Clear this enumeration step and check for next one
+		entity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetMilanInfo);
+		checkEnumerationSteps(entity);
+	}
 }
 
 void ControllerImpl::registerUnsol(ControlledEntityImpl* const entity) noexcept
@@ -1495,26 +1546,31 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const entity) n
 {
 	auto const steps = entity->getEnumerationSteps();
 
-	if (hasFlag(steps, ControlledEntityImpl::EnumerationSteps::GetMilanVersion))
+	// Always start with retrieving MilanInfo from the device
+	if (hasFlag(steps, ControlledEntityImpl::EnumerationSteps::GetMilanInfo))
 	{
-		getMilanVersion(entity);
+		getMilanInfo(entity);
 		return;
 	}
+	// Then register to unsolicited notifications
 	if (hasFlag(steps, ControlledEntityImpl::EnumerationSteps::RegisterUnsol))
 	{
 		registerUnsol(entity);
 		return;
 	}
+	// Then get the static AEM
 	if (hasFlag(steps, ControlledEntityImpl::EnumerationSteps::GetStaticModel))
 	{
 		getStaticModel(entity);
 		return;
 	}
+	// Then get descriptors dynamic information, it AEM is cached
 	if (hasFlag(steps, ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo))
 	{
 		getDescriptorDynamicInfo(entity);
 		return;
 	}
+	// Finally retrieve all other dynamic information
 	if (hasFlag(steps, ControlledEntityImpl::EnumerationSteps::GetDynamicInfo))
 	{
 		getDynamicInfo(entity);
@@ -1536,6 +1592,45 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const entity) n
 	}
 }
 
+ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::ControllerEntity::MvuCommandStatus const status) const noexcept
+{
+	switch (status)
+	{
+		// Cases we want to schedule a retry
+		case entity::ControllerEntity::MvuCommandStatus::TimedOut:
+		{
+			return FailureAction::Retry;
+		}
+
+		// Cases we want to ignore and continue enumeration
+
+		// Cases we want to flag as error (possible non certified entity) but continue enumeration
+		case entity::ControllerEntity::MvuCommandStatus::BadArguments:
+			[[fallthrough]];
+		case entity::ControllerEntity::MvuCommandStatus::ProtocolError:
+		{
+			return FailureAction::ErrorIgnore;
+		}
+
+		// Cases the caller should decide whether to continue enumeration or not
+		case entity::ControllerEntity::MvuCommandStatus::NotImplemented:
+		{
+			return FailureAction::NotSupported;
+		}
+
+		// Cases that are errors and we want to discard this entity
+		case entity::ControllerEntity::MvuCommandStatus::UnknownEntity:
+			[[fallthrough]];
+		case entity::ControllerEntity::MvuCommandStatus::NetworkError:
+			[[fallthrough]];
+		case entity::ControllerEntity::MvuCommandStatus::InternalError:
+			[[fallthrough]];
+		default:
+		{
+			return FailureAction::Fatal;
+		}
+	}
+}
 
 ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::ControllerEntity::AemCommandStatus const status) const noexcept
 {
@@ -1667,6 +1762,54 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 	}
 }
 
+/* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetMilanModel (MVU) */
+bool ControllerImpl::processFailureStatus(entity::ControllerEntity::MvuCommandStatus const status, ControlledEntityImpl* const entity, ControlledEntityImpl::MilanInfoType const milanInfoType, bool const optionalForMilan) noexcept
+{
+	switch (getFailureAction(status))
+	{
+		case FailureAction::ErrorIgnore:
+			// Remove "Milan compatibility" as device does not properly implement mandatory MVU
+			if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+			{
+				LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory MVU command not properly implemented by the entity");
+				removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
+			}
+			return true;
+		case FailureAction::WarningIgnore:
+			return true;
+		case FailureAction::NotSupported:
+			if (!optionalForMilan)
+			{
+				// Remove "Milan compatibility" as device does not support mandatory MVU
+				if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+				{
+					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory MVU command not supported by the entity");
+					removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
+				}
+			}
+			return true;
+		case FailureAction::Retry:
+		{
+#ifdef __cpp_structured_bindings
+			auto const [shouldRetry, retryTimer] = entity->getQueryMilanInfoRetryTimer();
+#else // !__cpp_structured_bindings
+			auto const result = entity->getQueryMilanInfoRetryTimer();
+			auto const shouldRetry = std::get<0>(result);
+			auto const retryTimer = std::get<1>(result);
+#endif // __cpp_structured_bindings
+			if (shouldRetry)
+			{
+				queryInformation(entity, milanInfoType, retryTimer);
+			}
+			return true;
+		}
+		case FailureAction::Fatal:
+			return false;
+		default:
+			return false;
+	}
+}
+
 /* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetStaticModel (AEM) */
 bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, bool const optionalForMilan) noexcept
 {
@@ -1681,7 +1824,7 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 		case FailureAction::NotSupported:
 			if (!optionalForMilan)
 			{
-				// Remove "Milan compatibility" as device do not support mandatory descriptor
+				// Remove "Milan compatibility" as device does not support mandatory descriptor
 				if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 				{
 					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory descriptor not supported by the entity");
@@ -1725,7 +1868,7 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 		case FailureAction::NotSupported:
 			if (!optionalForMilan)
 			{
-				// Remove "Milan compatibility" as device do not support mandatory descriptor
+				// Remove "Milan compatibility" as device does not support mandatory descriptor
 				if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 				{
 					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory dynamic info not supported by the entity");
@@ -1769,7 +1912,7 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 		case FailureAction::NotSupported:
 			if (!optionalForMilan)
 			{
-				// Remove "Milan compatibility" as device do not support mandatory descriptor
+				// Remove "Milan compatibility" as device does not support mandatory descriptor
 				if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 				{
 					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory ACMP command not supported by the entity");
@@ -1813,7 +1956,7 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 		case FailureAction::NotSupported:
 			if (!optionalForMilan)
 			{
-				// Remove "Milan compatibility" as device do not support mandatory descriptor
+				// Remove "Milan compatibility" as device does not support mandatory descriptor
 				if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 				{
 					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory ACMP command not supported by the entity");

@@ -35,9 +35,10 @@ namespace avdecc
 {
 namespace controller
 {
-static constexpr std::uint16_t MaxQueryDescriptorRetryCount = 5;
-static constexpr std::uint16_t MaxQueryDynamicInfoRetryCount = 5;
-static constexpr std::uint16_t MaxQueryDescriptorDynamicInfoRetryCount = 5;
+static constexpr std::uint16_t MaxQueryMilanInfoRetryCount = 3;
+static constexpr std::uint16_t MaxQueryDescriptorRetryCount = 3;
+static constexpr std::uint16_t MaxQueryDynamicInfoRetryCount = 3;
+static constexpr std::uint16_t MaxQueryDescriptorDynamicInfoRetryCount = 3;
 static constexpr std::uint16_t QueryRetryMillisecondDelay = 500;
 
 /* ************************************************************************** */
@@ -131,6 +132,11 @@ UniqueIdentifier ControlledEntityImpl::getLockingControllerID() const noexcept
 entity::Entity const& ControlledEntityImpl::getEntity() const noexcept
 {
 	return _entity;
+}
+
+entity::model::MilanInfo const& ControlledEntityImpl::getMilanInfo() const noexcept
+{
+	return _milanInfo;
 }
 
 model::EntityNode const& ControlledEntityImpl::getEntityNode() const
@@ -1030,6 +1036,11 @@ void ControlledEntityImpl::setLockingController(UniqueIdentifier const controlle
 	_lockingControllerID = controllerID;
 }
 
+void ControlledEntityImpl::setMilanInfo(entity::model::MilanInfo const& info) noexcept
+{
+	_milanInfo = info;
+}
+
 
 // Setters of the Model from AEM Descriptors (including DescriptorDynamic info)
 
@@ -1442,6 +1453,48 @@ void ControlledEntityImpl::setClockDomainDescriptor(entity::model::ClockDomainDe
 	}
 }
 
+// Expected Milan info query methods
+static inline ControlledEntityImpl::MilanInfoKey makeMilanInfoKey(ControlledEntityImpl::MilanInfoType const milanInfoType)
+{
+	return static_cast<ControlledEntityImpl::MilanInfoKey>(la::avdecc::to_integral(milanInfoType));
+}
+
+bool ControlledEntityImpl::checkAndClearExpectedMilanInfo(MilanInfoType const milanInfoType) noexcept
+{
+	// Lock during access to the map
+	std::lock_guard<decltype(_lock)> const lg(_lock);
+
+	auto const key = makeMilanInfoKey(milanInfoType);
+	return _expectedMilanInfo.erase(key) == 1;
+}
+
+void ControlledEntityImpl::setMilanInfoExpected(MilanInfoType const milanInfoType) noexcept
+{
+	// Lock during access to the map
+	std::lock_guard<decltype(_lock)> const lg(_lock);
+
+	auto const key = makeMilanInfoKey(milanInfoType);
+	_expectedMilanInfo.insert(key);
+}
+
+bool ControlledEntityImpl::gotAllExpectedMilanInfo() const noexcept
+{
+	// Lock during access to the map
+	std::lock_guard<decltype(_lock)> const lg(_lock);
+
+	return _expectedMilanInfo.empty();
+}
+
+std::pair<bool, std::chrono::milliseconds> ControlledEntityImpl::getQueryMilanInfoRetryTimer() noexcept
+{
+	++_queryMilanInfoRetryCount;
+	if (_queryMilanInfoRetryCount >= MaxQueryMilanInfoRetryCount)
+	{
+		return std::make_pair(false, std::chrono::milliseconds{ 0 });
+	}
+	return std::make_pair(true, std::chrono::milliseconds{ QueryRetryMillisecondDelay });
+}
+
 // Expected descriptor query methods
 static inline ControlledEntityImpl::DescriptorKey makeDescriptorKey(entity::model::DescriptorType descriptorType, entity::model::DescriptorIndex descriptorIndex)
 {
@@ -1481,7 +1534,7 @@ bool ControlledEntityImpl::gotAllExpectedDescriptors() const noexcept
 
 	for (auto const& confKV : _expectedDescriptors)
 	{
-		if (confKV.second.size() != 0)
+		if (!confKV.second.empty())
 			return false;
 	}
 	return true;
@@ -1536,7 +1589,7 @@ bool ControlledEntityImpl::gotAllExpectedDynamicInfo() const noexcept
 
 	for (auto const& confKV : _expectedDynamicInfo)
 	{
-		if (confKV.second.size() != 0)
+		if (!confKV.second.empty())
 			return false;
 	}
 	return true;
@@ -1599,7 +1652,7 @@ bool ControlledEntityImpl::gotAllExpectedDescriptorDynamicInfo() const noexcept
 
 	for (auto const& confKV : _expectedDescriptorDynamicInfo)
 	{
-		if (confKV.second.size() != 0)
+		if (!confKV.second.empty())
 			return false;
 	}
 	return true;

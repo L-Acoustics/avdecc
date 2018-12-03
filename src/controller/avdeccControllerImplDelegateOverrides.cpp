@@ -84,8 +84,12 @@ void ControllerImpl::onEntityOnline(entity::controller::Interface const* const c
 		// The entity supports AEM, also get information related to AEM
 		if (hasFlag(caps, entity::EntityCapabilities::AemSupported))
 		{
-			// Only get MilanVersion if the Entity supports AEM (Milan requires AEM anyway)
-			steps |= ControlledEntityImpl::EnumerationSteps::GetMilanVersion | ControlledEntityImpl::EnumerationSteps::RegisterUnsol | ControlledEntityImpl::EnumerationSteps::GetStaticModel | ControlledEntityImpl::EnumerationSteps::GetDynamicInfo;
+			// Only get MilanInfo if the Entity supports VendorUnique
+			if (hasFlag(caps, entity::EntityCapabilities::VendorUniqueSupported))
+			{
+				steps |= ControlledEntityImpl::EnumerationSteps::GetMilanInfo;
+			}
+			steps |= ControlledEntityImpl::EnumerationSteps::RegisterUnsol | ControlledEntityImpl::EnumerationSteps::GetStaticModel | ControlledEntityImpl::EnumerationSteps::GetDynamicInfo;
 		}
 
 		// Currently, we have nothing more to get if the entity does not support AEM

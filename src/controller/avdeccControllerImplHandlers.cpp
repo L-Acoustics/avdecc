@@ -36,33 +36,41 @@ namespace controller
 /* Result handlers                                              */
 /* ************************************************************ */
 /* Enumeration and Control Protocol (AECP) handlers */
-void ControllerImpl::onGetMilanVersionResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status) noexcept
+void ControllerImpl::onGetMilanInfoResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, entity::model::MilanInfo const& info) noexcept
 {
-	LOG_CONTROLLER_TRACE(entityID, "onGetMilanVersionResult: {}", entity::ControllerEntity::statusToString(status));
+	LOG_CONTROLLER_TRACE(entityID, "onGetMilanInfoResult (ProtocolVersion={} FeaturesFlags={} CertificationVersion={}): {}", info.protocolVersion, info.featuresFlags.getValue(), info.certificationVersion, entity::ControllerEntity::statusToString(status));
 
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
 
 	if (controlledEntity)
 	{
-		if (!!status)
+		if (controlledEntity->checkAndClearExpectedMilanInfo(ControlledEntityImpl::MilanInfoType::MilanInfo))
 		{
-			// Flag the entity as "Milan compatible" for now
-			addCompatibilityFlag(*controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
-		}
-		else
-		{
-			//if (!processFailureStatus(status, controlledEntity.get(), 0, entity::model::DescriptorType::Entity, 0)) // Utiliser un autre code, ce n'est pas Entity!!
-			//{
-			//	controlledEntity->setGetFatalEnumerationError();
-			//	notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::EntityDescriptor);
-			//	return;
-			//}
+			if (!!status)
+			{
+				// Flag the entity as "Milan compatible"
+				addCompatibilityFlag(*controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+				updateMilanInfo(*controlledEntity, info);
+			}
+			else
+			{
+				if (!processFailureStatus(status, controlledEntity.get(), ControlledEntityImpl::MilanInfoType::MilanInfo))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::GetMilanInfo);
+					return;
+				}
+			}
 		}
 
-		// Clear this enumeration step and check for next one
-		controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetMilanVersion);
-		checkEnumerationSteps(controlledEntity.get());
+		// Got all expected milan information
+		if (controlledEntity->gotAllExpectedMilanInfo())
+		{
+			// Clear this enumeration step and check for next one
+			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetMilanInfo);
+			checkEnumerationSteps(controlledEntity.get());
+		}
 	}
 }
 

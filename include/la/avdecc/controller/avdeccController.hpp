@@ -146,6 +146,7 @@ public:
 
 	enum class QueryCommandError
 	{
+		GetMilanInfo,
 		EntityDescriptor,
 		ConfigurationDescriptor,
 		AudioUnitDescriptor,

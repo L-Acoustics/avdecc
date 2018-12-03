@@ -51,11 +51,17 @@ public:
 	enum class EnumerationSteps : std::uint16_t
 	{
 		None = 0,
-		GetMilanVersion = 1u << 0,
+		GetMilanInfo = 1u << 0,
 		RegisterUnsol = 1u << 1,
 		GetStaticModel = 1u << 2,
 		GetDescriptorDynamicInfo = 1u << 3, /** DescriptorDynamicInfoType */
 		GetDynamicInfo = 1u << 4, /** DynamicInfoType */
+	};
+
+	/** Milan Vendor Unique Information */
+	enum class MilanInfoType : std::uint16_t
+	{
+		MilanInfo, // GET_MILAN_INFO
 	};
 
 	/** Dynamic information to retrieve from entities. This is always required, either from a first enumeration or from recover from loss of unsolicited notification. */
@@ -96,6 +102,7 @@ public:
 		ClockDomainSourceIndex, // CLOCK_DOMAIN.clock_source_index -> GET_CLOCK_SOURCE (7.4.24)
 	};
 
+	using MilanInfoKey = std::underlying_type_t<MilanInfoType>;
 	using DescriptorKey = std::uint32_t;
 	static_assert(sizeof(DescriptorKey) >= sizeof(entity::model::DescriptorType) + sizeof(entity::model::DescriptorIndex), "DescriptorKey size must be greater or equal to DescriptorType + DescriptorIndex");
 	using DynamicInfoKey = std::uint64_t;
@@ -124,6 +131,7 @@ public:
 	virtual model::LockState getLockState() const noexcept override;
 	virtual UniqueIdentifier getLockingControllerID() const noexcept override;
 	virtual entity::Entity const& getEntity() const noexcept override;
+	virtual entity::model::MilanInfo const& getMilanInfo() const noexcept override;
 
 	virtual model::EntityNode const& getEntityNode() const override;
 	virtual model::ConfigurationNode const& getConfigurationNode(entity::model::ConfigurationIndex const configurationIndex) const override;
@@ -268,6 +276,7 @@ public:
 	void setOwningController(UniqueIdentifier const controllerID) noexcept;
 	void setLockState(model::LockState const state) noexcept;
 	void setLockingController(UniqueIdentifier const controllerID) noexcept;
+	void setMilanInfo(entity::model::MilanInfo const& info) noexcept;
 
 	// Setters of the Model from AEM Descriptors (including DescriptorDynamic info)
 	bool setCachedEntityStaticTree(model::EntityStaticTree const& cachedStaticTree, entity::model::EntityDescriptor const& descriptor) noexcept; // Returns true if the cached EntityStaticTree is accepted (and set) for this entity
@@ -287,6 +296,12 @@ public:
 	void setAudioClusterDescriptor(entity::model::AudioClusterDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex) noexcept;
 	void setAudioMapDescriptor(entity::model::AudioMapDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex) noexcept;
 	void setClockDomainDescriptor(entity::model::ClockDomainDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) noexcept;
+
+	// Expected Milan info query methods
+	bool checkAndClearExpectedMilanInfo(MilanInfoType const milanInfoType) noexcept;
+	void setMilanInfoExpected(MilanInfoType const milanInfoType) noexcept;
+	bool gotAllExpectedMilanInfo() const noexcept;
+	std::pair<bool, std::chrono::milliseconds> getQueryMilanInfoRetryTimer() noexcept;
 
 	// Expected descriptor query methods
 	bool checkAndClearExpectedDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept;
@@ -386,6 +401,7 @@ private:
 	std::uint32_t _lockedCount{ 0u }; // DEBUG status for _lock mutex
 	std::thread::id _lockingThreadID{}; // DEBUG status for _lock mutex
 	bool _ignoreCachedEntityModel{ false };
+	std::uint16_t _queryMilanInfoRetryCount{ 0u };
 	std::uint16_t _queryDescriptorRetryCount{ 0u };
 	std::uint16_t _queryDynamicInfoRetryCount{ 0u };
 	std::uint16_t _queryDescriptorDynamicInfoRetryCount{ 0u };
@@ -394,6 +410,7 @@ private:
 	bool _gotFatalEnumerateError{ false }; // Have we got a fatal error during entity enumeration
 	bool _isSubscribedToUnsolicitedNotifications{ false }; // Are we subscribed to unsolicited notifications
 	bool _advertised{ false }; // Has the entity been advertised to the observers
+	std::unordered_set<MilanInfoKey> _expectedMilanInfo{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DescriptorKey>> _expectedDescriptors{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DynamicInfoKey>> _expectedDynamicInfo{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DescriptorDynamicInfoKey>> _expectedDescriptorDynamicInfo{};
@@ -401,6 +418,8 @@ private:
 	UniqueIdentifier _owningControllerID{}; // EID of the controller currently owning (who acquired) this entity
 	model::LockState _lockState{ model::LockState::Undefined };
 	UniqueIdentifier _lockingControllerID{}; // EID of the controller currently locking (who locked) this entity
+	// Milan specific information
+	entity::model::MilanInfo _milanInfo{};
 	// Entity variables
 	entity::Entity _entity; // No NSMI, Entity has no default constructor but it has to be passed to the only constructor of this class anyway
 	// Entity Model
