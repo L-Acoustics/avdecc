@@ -51,6 +51,7 @@ static model::StreamInfo const s_emptyStreamInfo{}; // Empty StreamInfo used by 
 static model::AvbInfo const s_emptyAvbInfo{}; // Empty AvbInfo used by timeout callback (needs a ref to an AvbInfo)
 static model::AsPath const s_emptyAsPath{}; // Empty AsPath used by timeout callback (needs a ref to an AsPath)
 static model::AvdeccFixedString const s_emptyAvdeccFixedString{}; // Empty AvdeccFixedString used by timeout callback (needs a ref to a std::string)
+static model::MilanInfo const s_emptyMilanInfo{}; // Empty MilanInfo used by timeout callback (need a ref to a MilanInfo)
 
 /* ************************************************************************** */
 /* Exceptions                                                                 */
@@ -1398,12 +1399,12 @@ void CapabilityDelegate::addressAccess(la::avdecc::UniqueIdentifier const target
 }
 
 /* Enumeration and Control Protocol (AECP) MVU (Milan Vendor Unique) */
-void CapabilityDelegate::getMilanInfo(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, Interface::GetMilanInfoHandler const& handler) const noexcept
+void CapabilityDelegate::getMilanInfo(UniqueIdentifier const targetEntityID, Interface::GetMilanInfoHandler const& handler) const noexcept
 {
 	try
 	{
-		auto const ser = protocol::mvuPayload::serializeGetMilanInfoCommand(configurationIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeMvuAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, 0u, protocol::MvuFeaturesFlags::None, 0u);
+		auto const ser = protocol::mvuPayload::serializeGetMilanInfoCommand();
+		auto const errorCallback = LocalEntityImpl<>::makeMvuAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, s_emptyMilanInfo);
 
 		sendMvuAecpCommand(targetEntityID, protocol::MvuCommandType::GetMilanInfo, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -3208,18 +3209,15 @@ void CapabilityDelegate::processMvuAecpResponse(protocol::Aecpdu const* const re
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
-				auto const [configurationIndex, protocolVersion, featuresFlags, certificationVersion] = protocol::mvuPayload::deserializeGetMilanInfoResponse(mvu.getPayload());
+				auto const [milanInfo] = protocol::mvuPayload::deserializeGetMilanInfoResponse(mvu.getPayload());
 #else // !__cpp_structured_bindings
 				auto const result = protocol::mvuPayload::deserializeGetMilanInfoResponse(mvu.getPayload());
-				entity::model::ConfigurationIndex const configurationIndex = std::get<0>(result);
-				std::uint32_t const protocolVersion = std::get<1>(result);
-				protocol::MvuFeaturesFlags const featuresFlags = std::get<2>(result);
-				std::uint32_t const certificationVersion = std::get<3>(result);
+				entity::model::MilanInfo const milanInfo = std::get<0>(result);
 #endif // __cpp_structured_bindings
 
 				auto const targetID = mvu.getTargetEntityID();
 
-				answerCallback.invoke<controller::Interface::GetMilanInfoHandler>(controllerInterface, targetID, status, configurationIndex, protocolVersion, featuresFlags, certificationVersion);
+				answerCallback.invoke<controller::Interface::GetMilanInfoHandler>(controllerInterface, targetID, status, milanInfo);
 			} },
 	};
 

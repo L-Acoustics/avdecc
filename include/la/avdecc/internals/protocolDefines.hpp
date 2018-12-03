@@ -345,5 +345,12 @@ struct typed_define_traits<protocol::AemLockEntityFlags>
 	static constexpr bool is_bitfield = true;
 };
 
+// Define bitfield TypedDefine traits for MvuFeaturesFlags
+template<>
+struct typed_define_traits<protocol::MvuFeaturesFlags>
+{
+	static constexpr bool is_bitfield = true;
+};
+
 } // namespace avdecc
 } // namespace la

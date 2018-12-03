@@ -799,11 +799,11 @@ void AggregateEntityImpl::addressAccess(la::avdecc::UniqueIdentifier const targe
 }
 
 /* Enumeration and Control Protocol (AECP) MVU (Milan Vendor Unique) */
-void AggregateEntityImpl::getMilanInfo(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, GetMilanInfoHandler const& handler) const noexcept
+void AggregateEntityImpl::getMilanInfo(UniqueIdentifier const targetEntityID, GetMilanInfoHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{
-		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getMilanInfo(targetEntityID, configurationIndex, handler);
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getMilanInfo(targetEntityID, handler);
 	}
 }
 

@@ -513,9 +513,9 @@ void ControllerEntityImpl::addressAccess(la::avdecc::UniqueIdentifier const targ
 }
 
 /* Enumeration and Control Protocol (AECP) MVU (Milan Vendor Unique) */
-void ControllerEntityImpl::getMilanInfo(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, GetMilanInfoHandler const& handler) const noexcept
+void ControllerEntityImpl::getMilanInfo(UniqueIdentifier const targetEntityID, GetMilanInfoHandler const& handler) const noexcept
 {
-	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getMilanInfo(targetEntityID, configurationIndex, handler);
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getMilanInfo(targetEntityID, handler);
 }
 
 /* Connection Management Protocol (ACMP) */

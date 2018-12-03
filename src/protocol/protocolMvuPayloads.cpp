@@ -34,18 +34,19 @@ namespace protocol
 namespace mvuPayload
 {
 /** GET_MILAN_INFO Command - Milan Clause 7.4.1 */
-Serializer<AecpMvuGetMilanInfoCommandPayloadSize> serializeGetMilanInfoCommand(entity::model::ConfigurationIndex const configurationIndex)
+Serializer<AecpMvuGetMilanInfoCommandPayloadSize> serializeGetMilanInfoCommand()
 {
 	Serializer<AecpMvuGetMilanInfoCommandPayloadSize> ser;
+	std::uint16_t const reserved{ 0u };
 
-	ser << configurationIndex;
+	ser << reserved;
 
 	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
 
 	return ser;
 }
 
-std::tuple<entity::model::ConfigurationIndex> deserializeGetMilanInfoCommand(MvuAecpdu::Payload const& payload)
+void deserializeGetMilanInfoCommand(MvuAecpdu::Payload const& payload)
 {
 	auto* const commandPayload = payload.first;
 	auto const commandPayloadLength = payload.second;
@@ -55,29 +56,30 @@ std::tuple<entity::model::ConfigurationIndex> deserializeGetMilanInfoCommand(Mvu
 
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
-	entity::model::ConfigurationIndex configurationIndex{ 0u };
+	std::uint16_t reserved{ 0u };
 
-	des >> configurationIndex;
+	des >> reserved;
 
 	AVDECC_ASSERT(des.usedBytes() == AecpMvuGetMilanInfoCommandPayloadSize, "Used more bytes than specified in protocol constant");
 
-	return std::make_tuple(configurationIndex);
+	return;
 }
 
 /** GET_MILAN_INFO Response - Milan Clause 7.4.1 */
-Serializer<AecpMvuGetMilanInfoResponsePayloadSize> serializeGetMilanInfoResponse(entity::model::ConfigurationIndex const configurationIndex, std::uint32_t const protocolVersion, MvuFeaturesFlags const featuresFlags, std::uint32_t const certificationVersion)
+Serializer<AecpMvuGetMilanInfoResponsePayloadSize> serializeGetMilanInfoResponse(entity::model::MilanInfo const& info)
 {
 	Serializer<AecpMvuGetMilanInfoResponsePayloadSize> ser;
+	std::uint16_t const reserved{ 0u };
 
-	ser << configurationIndex;
-	ser << protocolVersion << featuresFlags << certificationVersion;
+	ser << reserved;
+	ser << info.protocolVersion << info.featuresFlags << info.certificationVersion;
 
 	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
 
 	return ser;
 }
 
-std::tuple<entity::model::ConfigurationIndex, std::uint32_t, MvuFeaturesFlags, std::uint32_t> deserializeGetMilanInfoResponse(MvuAecpdu::Payload const& payload)
+std::tuple<entity::model::MilanInfo> deserializeGetMilanInfoResponse(MvuAecpdu::Payload const& payload)
 {
 	auto* const commandPayload = payload.first;
 	auto const commandPayloadLength = payload.second;
@@ -87,17 +89,15 @@ std::tuple<entity::model::ConfigurationIndex, std::uint32_t, MvuFeaturesFlags, s
 
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
-	entity::model::ConfigurationIndex configurationIndex{ 0u };
-	std::uint32_t protocolVersion{ 0u };
-	MvuFeaturesFlags featuresFlags{ MvuFeaturesFlags::None };
-	std::uint32_t certificationVersion{ 0u };
+	std::uint16_t reserved{ 0u };
+	entity::model::MilanInfo info{};
 
-	des >> configurationIndex;
-	des >> protocolVersion >> featuresFlags >> certificationVersion;
+	des >> reserved;
+	des >> info.protocolVersion >> info.featuresFlags >> info.certificationVersion;
 
 	AVDECC_ASSERT(des.usedBytes() == AecpMvuGetMilanInfoResponsePayloadSize, "Used more bytes than specified in protocol constant");
 
-	return std::make_tuple(configurationIndex, protocolVersion, featuresFlags, certificationVersion);
+	return std::make_tuple(info);
 }
 
 

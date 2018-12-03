@@ -395,6 +395,15 @@ inline bool operator!=(AsPath const& lhs, AsPath const& rhs) noexcept
 	return !(lhs == rhs);
 }
 
+/** GET_MILAN_INFO - Milan Clause 7.4.1 */
+struct MilanInfo
+{
+	std::uint32_t protocolVersion{ 0u };
+	protocol::MvuFeaturesFlags featuresFlags{ protocol::MvuFeaturesFlags::None };
+	std::uint32_t certificationVersion{ 0u };
+};
+
+
 /**
 * @brief Make a UniqueIdentifier from vendorID, deviceID and modelID.
 * @details Helper method to construct a UniqueIdentifier from vendorID, deviceID and modelID to be used as EntityModelID.

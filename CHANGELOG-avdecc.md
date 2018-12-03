@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 - lockEntity/unlockEntity signature and result handler changed to include the locking entity and descriptor type/index
+- GetMilanInfo now return a struct instead of individual fields
+- Updated GetMilanInfo to Milan specification
 
 ### Fixed
 - Incorrect value for AemLockEntityFlags::Unlock flag

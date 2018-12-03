@@ -139,7 +139,7 @@ public:
 	/* Enumeration and Control Protocol (AECP) AA */
 	void addressAccess(la::avdecc::UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, Interface::AddressAccessHandler const& handler) const noexcept;
 	/* Enumeration and Control Protocol (AECP) MVU (Milan Vendor Unique) */
-	void getMilanInfo(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, Interface::GetMilanInfoHandler const& handler) const noexcept;
+	void getMilanInfo(UniqueIdentifier const targetEntityID, Interface::GetMilanInfoHandler const& handler) const noexcept;
 	/* Connection Management Protocol (ACMP) */
 	void connectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, Interface::ConnectStreamHandler const& handler) const noexcept;
 	void disconnectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, Interface::DisconnectStreamHandler const& handler) const noexcept;
