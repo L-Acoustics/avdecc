@@ -126,6 +126,7 @@ public:
 	virtual bool isLockedByOther() const noexcept override;
 	virtual bool isStreamInputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const override;
 	virtual bool isStreamOutputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const override;
+	virtual InterfaceLinkStatus getAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex) const override;
 	virtual model::AcquireState getAcquireState() const noexcept override;
 	virtual UniqueIdentifier getOwningControllerID() const noexcept override;
 	virtual model::LockState getLockState() const noexcept override;
@@ -272,6 +273,7 @@ public:
 
 	// Setters (of the model, not the physical entity)
 	void setEntity(entity::Entity const& entity) noexcept;
+	InterfaceLinkStatus setAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex, InterfaceLinkStatus const linkStatus) noexcept; // Returns previous link status
 	void setAcquireState(model::AcquireState const state) noexcept;
 	void setOwningController(UniqueIdentifier const controllerID) noexcept;
 	void setLockState(model::LockState const state) noexcept;
@@ -414,6 +416,7 @@ private:
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DescriptorKey>> _expectedDescriptors{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DynamicInfoKey>> _expectedDynamicInfo{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DescriptorDynamicInfoKey>> _expectedDescriptorDynamicInfo{};
+	std::unordered_map<entity::model::AvbInterfaceIndex, InterfaceLinkStatus> _avbInterfaceLinkStatus{}; // Link status for each AvbInterface (true = up or unknown, false = down)
 	model::AcquireState _acquireState{ model::AcquireState::Undefined };
 	UniqueIdentifier _owningControllerID{}; // EID of the controller currently owning (who acquired) this entity
 	model::LockState _lockState{ model::LockState::Undefined };

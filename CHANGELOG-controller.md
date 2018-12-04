@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support for AsPath (query during enumeration, and change notification)
 - Support for setStreamInfo command
 - [Retrieving entity current lock state upon enumeration](https://github.com/L-Acoustics/avdecc/issues/26)
+- AVB Interface link status (when available)
 
 ### Removed
 - Fully removed acquire/lock state from descriptors, the controller only support it at entity level (globally)

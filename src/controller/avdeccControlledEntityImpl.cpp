@@ -109,6 +109,21 @@ bool ControlledEntityImpl::isStreamOutputRunning(entity::model::ConfigurationInd
 	return isStreamRunningFlag(dynamicModel.streamInfo.streamInfoFlags);
 }
 
+ControlledEntity::InterfaceLinkStatus ControlledEntityImpl::getAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex) const
+{
+	// AEM not supported, unknown status
+	if (!hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+	{
+		return InterfaceLinkStatus::Unknown;
+	}
+
+	auto const it = _avbInterfaceLinkStatus.find(avbInterfaceIndex);
+	if (it == _avbInterfaceLinkStatus.end())
+		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid index");
+
+	return it->second;
+}
+
 model::AcquireState ControlledEntityImpl::getAcquireState() const noexcept
 {
 	return _acquireState;
@@ -1015,6 +1030,30 @@ model::StreamInputCounters& ControlledEntityImpl::getStreamInputCounters(entity:
 void ControlledEntityImpl::setEntity(entity::Entity const& entity) noexcept
 {
 	_entity = entity;
+}
+
+ControlledEntity::InterfaceLinkStatus ControlledEntityImpl::setAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex, InterfaceLinkStatus const linkStatus) noexcept
+{
+	// Previous link status (unknown by default)
+	auto previousStatus = InterfaceLinkStatus::Unknown;
+
+	auto it = _avbInterfaceLinkStatus.find(avbInterfaceIndex);
+
+	// Entry existed
+	if (it != _avbInterfaceLinkStatus.end())
+	{
+		// Get previous link status
+		previousStatus = it->second;
+
+		// Set new link status
+		it->second = linkStatus;
+	}
+	else
+	{
+		// Insert a new entry
+		_avbInterfaceLinkStatus.emplace(std::make_pair(avbInterfaceIndex, linkStatus));
+	}
+	return previousStatus;
 }
 
 void ControlledEntityImpl::setAcquireState(model::AcquireState const state) noexcept

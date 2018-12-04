@@ -51,7 +51,7 @@ void ControllerImpl::onGetMilanInfoResult(entity::controller::Interface const* c
 			{
 				// Flag the entity as "Milan compatible"
 				addCompatibilityFlag(*controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
-				updateMilanInfo(*controlledEntity, info);
+				controlledEntity->setMilanInfo(info);
 			}
 			else
 			{
@@ -85,11 +85,11 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 	{
 		if (!!status)
 		{
-			updateUnsolicitedNotificationsSubscription(*controlledEntity, true);
+			controlledEntity->setSubscribedToUnsolicitedNotifications(true);
 		}
 		else
 		{
-			updateUnsolicitedNotificationsSubscription(*controlledEntity, false);
+			controlledEntity->setSubscribedToUnsolicitedNotifications(false);
 #pragma message("TODO: Handle errors here, we might have a timeout and want to retry, like all other commands. If the error is critical, we have to flag the entity somehow (maybe a CompatibilityFlag saying we cannot track Unsol")
 			removeCompatibilityFlag(*controlledEntity, ControlledEntity::CompatibilityFlag::Milan); // Right now, just clear the Milan flag, but it would be better to add a "processFailedStatus" like all other commands
 		}
@@ -451,6 +451,8 @@ void ControllerImpl::onAvbInterfaceDescriptorResult(entity::controller::Interfac
 			if (!!status)
 			{
 				controlledEntity->setAvbInterfaceDescriptor(descriptor, configurationIndex, interfaceIndex);
+				// Initialize the InterfaceLinkStatus to unknown (until we get the counters)
+				updateAvbInterfaceLinkStatus(*controlledEntity, interfaceIndex, ControlledEntity::InterfaceLinkStatus::Unknown);
 			}
 			else
 			{
@@ -1271,14 +1273,8 @@ void ControllerImpl::onGetAvbInterfaceCountersResult(entity::controller::Interfa
 		{
 			if (!!status)
 			{
-				// Get previous counters
-				auto& avbInterfaceCounters = controlledEntity->getAvbInterfaceCounters(avbInterfaceIndex);
-
-				// Update (or set) counters
-				for (auto counter : validCounters)
-				{
-					avbInterfaceCounters[counter] = counters[validCounters.getPosition(counter)];
-				}
+				// Use the "update**" method, there are many things to do
+				updateAvbInterfaceCounters(*controlledEntity, avbInterfaceIndex, validCounters, counters);
 			}
 			else
 			{
@@ -1314,14 +1310,8 @@ void ControllerImpl::onGetClockDomainCountersResult(entity::controller::Interfac
 		{
 			if (!!status)
 			{
-				// Get previous counters
-				auto& clockDomainCounters = controlledEntity->getClockDomainCounters(clockDomainIndex);
-
-				// Update (or set) counters
-				for (auto counter : validCounters)
-				{
-					clockDomainCounters[counter] = counters[validCounters.getPosition(counter)];
-				}
+				// Use the "update**" method, there are many things to do
+				updateClockDomainCounters(*controlledEntity, clockDomainIndex, validCounters, counters);
 			}
 			else
 			{
@@ -1357,14 +1347,8 @@ void ControllerImpl::onGetStreamInputCountersResult(entity::controller::Interfac
 		{
 			if (!!status)
 			{
-				// Get previous counters
-				auto& streamCounters = controlledEntity->getStreamInputCounters(streamIndex);
-
-				// Update (or set) counters
-				for (auto counter : validCounters)
-				{
-					streamCounters[counter] = counters[validCounters.getPosition(counter)];
-				}
+				// Use the "update**" method, there are many things to do
+				updateStreamInputCounters(*controlledEntity, streamIndex, validCounters, counters);
 			}
 			else
 			{

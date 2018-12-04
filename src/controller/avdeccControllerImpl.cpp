@@ -632,6 +632,21 @@ void ControllerImpl::updateAsPath(ControlledEntityImpl& controlledEntity, entity
 	}
 }
 
+void ControllerImpl::updateAvbInterfaceLinkStatus(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, ControlledEntity::InterfaceLinkStatus const linkStatus) const noexcept
+{
+	auto const previousLinkStatus = controlledEntity.setAvbInterfaceLinkStatus(avbInterfaceIndex, linkStatus);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		// Changed
+		if (previousLinkStatus != linkStatus)
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAvbInterfaceLinkStatusChanged, this, &controlledEntity, avbInterfaceIndex, linkStatus);
+		}
+	}
+}
+
 void ControllerImpl::updateAvbInterfaceCounters(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::AvbInterfaceCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) const noexcept
 {
 	// Get previous counters
@@ -641,6 +656,15 @@ void ControllerImpl::updateAvbInterfaceCounters(ControlledEntityImpl& controlled
 	for (auto counter : validCounters)
 	{
 		avbInterfaceCounters[counter] = counters[validCounters.getPosition(counter)];
+	}
+
+	// Check for link status update
+	if (validCounters.test(entity::AvbInterfaceCounterValidFlag::LinkDown) && validCounters.test(entity::AvbInterfaceCounterValidFlag::LinkUp))
+	{
+		auto const downValue = counters[validCounters.getPosition(entity::AvbInterfaceCounterValidFlag::LinkDown)];
+		auto const upValue = counters[validCounters.getPosition(entity::AvbInterfaceCounterValidFlag::LinkUp)];
+		auto const isUp = upValue == (downValue + 1);
+		updateAvbInterfaceLinkStatus(controlledEntity, avbInterfaceIndex, isUp ? ControlledEntity::InterfaceLinkStatus::Up : ControlledEntity::InterfaceLinkStatus::Down);
 	}
 
 	// Entity was advertised to the user, notify observers

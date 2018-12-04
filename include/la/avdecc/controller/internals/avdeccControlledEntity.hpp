@@ -86,6 +86,14 @@ public:
 	};
 	using CompatibilityFlags = EnumBitfield<CompatibilityFlag>;
 
+	/** AVB Interface Link Status */
+	enum class InterfaceLinkStatus
+	{
+		Unknown = 0, /** Link status is unknown, might be Up or Down */
+		Down = 1, /** Interface is down */
+		Up = 2, /** Interface is Up */
+	};
+
 	// Getters
 	virtual CompatibilityFlags getCompatibilityFlags() const noexcept = 0;
 	virtual bool gotFatalEnumerationError() const noexcept = 0; // True if the controller had a fatal error during entity information retrieval (leading to Exception::Type::EnumerationError if any throwing method is called).
@@ -98,6 +106,7 @@ public:
 	virtual bool isLockedByOther() const noexcept = 0; // Is entity locked by another controller
 	virtual bool isStreamInputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 	virtual bool isStreamOutputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
+	virtual InterfaceLinkStatus getAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex) const = 0;
 	virtual model::AcquireState getAcquireState() const noexcept = 0;
 	virtual UniqueIdentifier getOwningControllerID() const noexcept = 0;
 	virtual model::LockState getLockState() const noexcept = 0;
