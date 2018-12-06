@@ -49,6 +49,11 @@ namespace entity
 {
 namespace model
 {
+constexpr DescriptorIndex getInvalidDescriptorIndex() noexcept
+{
+	return DescriptorIndex(0xFFFF);
+}
+
 constexpr StreamFormat getNullStreamFormat() noexcept
 {
 	return StreamFormat(0u);
