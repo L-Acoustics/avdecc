@@ -40,6 +40,7 @@
 #include <set>
 #include <tuple>
 #include <vector>
+#include <optional>
 
 namespace la
 {
@@ -352,11 +353,15 @@ struct StreamInfo
 	std::uint8_t msrpFailureCode{ 0u };
 	std::uint64_t msrpFailureBridgeID{ 0u };
 	std::uint16_t streamVlanID{ 0u };
+	// Milan additions
+	std::optional<StreamInfoFlagsEx> streamInfoFlagsEx{ std::nullopt };
+	std::optional<ProbingStatus> probingStatus{ std::nullopt };
+	std::optional<protocol::AcmpStatus> acmpStatus{ std::nullopt };
 };
 
 constexpr bool operator==(StreamInfo const& lhs, StreamInfo const& rhs) noexcept
 {
-	return (lhs.streamInfoFlags == rhs.streamInfoFlags) && (lhs.streamFormat == rhs.streamFormat) && (lhs.streamID == rhs.streamID) && (lhs.msrpAccumulatedLatency == rhs.msrpAccumulatedLatency) && (lhs.streamDestMac == rhs.streamDestMac) && (lhs.msrpFailureCode == rhs.msrpFailureCode) && (lhs.msrpFailureBridgeID == rhs.msrpFailureBridgeID) && (lhs.streamVlanID == rhs.streamVlanID);
+	return (lhs.streamInfoFlags == rhs.streamInfoFlags) && (lhs.streamFormat == rhs.streamFormat) && (lhs.streamID == rhs.streamID) && (lhs.msrpAccumulatedLatency == rhs.msrpAccumulatedLatency) && (lhs.streamDestMac == rhs.streamDestMac) && (lhs.msrpFailureCode == rhs.msrpFailureCode) && (lhs.msrpFailureBridgeID == rhs.msrpFailureBridgeID) && (lhs.streamVlanID == rhs.streamVlanID) && (lhs.streamInfoFlagsEx == rhs.streamInfoFlagsEx) && (lhs.probingStatus == rhs.probingStatus) && (lhs.acmpStatus == rhs.acmpStatus);
 }
 
 constexpr bool operator!=(StreamInfo const& lhs, StreamInfo const& rhs) noexcept

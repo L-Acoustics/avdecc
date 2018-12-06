@@ -189,6 +189,14 @@ enum class StreamInfoFlags : std::uint32_t
 	StreamFormatValid = 1u << 31, /**< The value in stream_format field is valid and is to be used to change the Stream format if it is a SET_STREAM_INFO command. */
 };
 
+/** StreamInfoEx Flags - Milan Clause 7.3.10 */
+enum class StreamInfoFlagsEx : std::uint32_t
+{
+	None = 0u,
+	Registering = 1u << 0, /**< StreamInput: Registering either a matching Talker Advertise or a matching Talker Failed attribute. StreamOutput: Declaring a Talker Advertise or a Talker Failed attribute and registering a matching Listener attribute. */
+	/* Bits 0 to 30 reserved for future use */
+};
+
 /** AvbInfo Flags - Clause 7.4.40.2 */
 enum class AvbInfoFlags : std::uint8_t
 {
