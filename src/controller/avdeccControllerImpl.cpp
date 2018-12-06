@@ -95,23 +95,23 @@ void ControllerImpl::addCompatibilityFlag(ControlledEntityImpl& controlledEntity
 	switch (flag)
 	{
 		case ControlledEntity::CompatibilityFlag::IEEE17221:
-			if (!newFlags.test(ControlledEntity::CompatibilityFlag::Toxic))
+			if (!newFlags.test(ControlledEntity::CompatibilityFlag::Misbehaving))
 			{
 				newFlags.set(flag);
 			}
 			break;
 		case ControlledEntity::CompatibilityFlag::Milan:
-			if (!newFlags.test(ControlledEntity::CompatibilityFlag::Toxic))
+			if (!newFlags.test(ControlledEntity::CompatibilityFlag::Misbehaving))
 			{
 				newFlags.set(ControlledEntity::CompatibilityFlag::IEEE17221); // A Milan device is also an IEEE1722.1 compatible device
 				newFlags.set(flag);
 			}
 			break;
-		case ControlledEntity::CompatibilityFlag::Toxic:
-			newFlags.reset(ControlledEntity::CompatibilityFlag::IEEE17221); // A toxic device is not IEEE1722.1 compatible
-			newFlags.reset(ControlledEntity::CompatibilityFlag::Milan); // A toxic device is not Milan compatible
+		case ControlledEntity::CompatibilityFlag::Misbehaving:
+			newFlags.reset(ControlledEntity::CompatibilityFlag::IEEE17221); // A misbehaving device is not IEEE1722.1 compatible
+			newFlags.reset(ControlledEntity::CompatibilityFlag::Milan); // A misbehaving is not Milan compatible
 			newFlags.set(flag);
-			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Entity might be toxic to the network");
+			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Entity is sending incoherent values (misbehaving)");
 			break;
 		default:
 			AVDECC_ASSERT(false, "Unknown CompatibilityFlag");
@@ -154,8 +154,8 @@ void ControllerImpl::removeCompatibilityFlag(ControlledEntityImpl& controlledEnt
 				newFlags.reset(flag);
 			}
 			break;
-		case ControlledEntity::CompatibilityFlag::Toxic:
-			AVDECC_ASSERT(false, "Should not be possible to remove the Toxic flag");
+		case ControlledEntity::CompatibilityFlag::Misbehaving:
+			AVDECC_ASSERT(false, "Should not be possible to remove the Misbehaving flag");
 			break;
 		default:
 			AVDECC_ASSERT(false, "Unknown CompatibilityFlag");
@@ -2189,8 +2189,8 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 			if (listenerStream.streamIndex >= maxSinks)
 			{
 				LOG_CONTROLLER_WARN(UniqueIdentifier::getNullUniqueIdentifier(), "Listener entity {} sent an invalid CONNECTION STATE (with status=SUCCESS) for StreamIndex={} although it only has {} sinks", toHexString(listenerStream.entityID, true), listenerStream.streamIndex, maxSinks);
-				// Flag the entity as "Toxic"
-				addCompatibilityFlag(*listenerEntity, ControlledEntity::CompatibilityFlag::Toxic);
+				// Flag the entity as "Misbehaving"
+				addCompatibilityFlag(*listenerEntity, ControlledEntity::CompatibilityFlag::Misbehaving);
 				return;
 			}
 			auto const previousState = listenerEntity->setStreamInputConnectionState(listenerStream.streamIndex, state);

@@ -82,7 +82,7 @@ public:
 		IEEE17221 = 1u << 0, /** Classic IEEE1722.1 entity */
 		Milan = 1u << 1, /** MILAN compatible entity */
 
-		Toxic = 1u << 7, /** Entity is sending correctly formed messages but with incoherent values that can potentially lead to crashes. */
+		Misbehaving = 1u << 7, /** Entity is sending correctly formed messages but with incoherent values that can cause undefined behavior. */
 	};
 	using CompatibilityFlags = EnumBitfield<CompatibilityFlag>;
 
