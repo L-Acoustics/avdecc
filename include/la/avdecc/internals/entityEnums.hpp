@@ -353,6 +353,13 @@ struct enum_traits<entity::StreamInfoFlags>
 	static constexpr bool is_bitfield = true;
 };
 
+// Define bitfield enum traits for StreamInfoFlagsEx
+template<>
+struct enum_traits<entity::StreamInfoFlagsEx>
+{
+	static constexpr bool is_bitfield = true;
+};
+
 // Define bitfield enum traits for AvbInfoFlags
 template<>
 struct enum_traits<entity::AvbInfoFlags>

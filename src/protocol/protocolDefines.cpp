@@ -404,6 +404,37 @@ AcmpStatus const AcmpStatus::IncompatibleRequest{ 17 };
 /* 18-30 reserved for future use */
 AcmpStatus const AcmpStatus::NotSupported{ 31 };
 
+AcmpStatus::operator std::string() const noexcept
+{
+	static std::unordered_map<AcmpStatus::value_type, std::string> s_AcmpStatusMapping = {
+		{ AcmpStatus::Success.getValue(), "SUCCESS" },
+		{ AcmpStatus::ListenerUnknownID.getValue(), "LISTENER_UNKNOWN_ID" },
+		{ AcmpStatus::TalkerUnknownID.getValue(), "TALKER_UNKNOWN_ID" },
+		{ AcmpStatus::TalkerDestMacFail.getValue(), "TALKER_DEST_MAC_FAIL" },
+		{ AcmpStatus::TalkerNoStreamIndex.getValue(), "TALKER_NO_STREAM_INDEX" },
+		{ AcmpStatus::TalkerNoBandwidth.getValue(), "TALKER_NO_BANDWIDTH" },
+		{ AcmpStatus::TalkerExclusive.getValue(), "TALKER_EXCLUSIVE" },
+		{ AcmpStatus::ListenerTalkerTimeout.getValue(), "LISTENER_TALKER_TIMEOUT" },
+		{ AcmpStatus::ListenerExclusive.getValue(), "LISTENER_EXCLUSIVE" },
+		{ AcmpStatus::StateUnavailable.getValue(), "STATE_UNAVAILABLE" },
+		{ AcmpStatus::NotConnected.getValue(), "NOT_CONNECTED" },
+		{ AcmpStatus::NoSuchConnection.getValue(), "NO_SUCH_CONNECTION" },
+		{ AcmpStatus::CouldNotSendMessage.getValue(), "COULD_NOT_SEND_MESSAGE" },
+		{ AcmpStatus::TalkerMisbehaving.getValue(), "TALKER_MISBEHAVING" },
+		{ AcmpStatus::ListenerMisbehaving.getValue(), "LISTENER_MISBEHAVING" },
+		/* 15 reserved for future use */
+		{ AcmpStatus::ControllerNotAuthorized.getValue(), "CONTROLLER_NOT_AUTHORIZED" },
+		{ AcmpStatus::IncompatibleRequest.getValue(), "INCOMPATIBLE_REQUEST" },
+		/* 18-30 reserved for future use */
+		{ AcmpStatus::NotSupported.getValue(), "NOT_SUPPORTED" },
+	};
+
+	auto const& it = s_AcmpStatusMapping.find(getValue());
+	if (it == s_AcmpStatusMapping.end())
+		return "INVALID_STATUS";
+	return it->second;
+}
+
 } // namespace protocol
 } // namespace avdecc
 } // namespace la
