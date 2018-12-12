@@ -147,9 +147,6 @@ void ControllerImpl::onEntityOffline(entity::controller::Interface const* const 
 
 	if (controlledEntity)
 	{
-		updateAcquiredState(*controlledEntity, UniqueIdentifier{}, entity::model::DescriptorType::Entity, 0u, true);
-		updateLockedState(*controlledEntity, UniqueIdentifier{}, entity::model::DescriptorType::Entity, 0u, true);
-
 		// Entity was advertised to the user, notify observers
 		if (controlledEntity->wasAdvertised())
 		{
@@ -218,56 +215,68 @@ void ControllerImpl::onDeregisteredFromUnsolicitedNotifications(entity::controll
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateUnsolicitedNotificationsSubscription(*entity, false);
+		auto& entity = *controlledEntity;
+		updateUnsolicitedNotificationsSubscription(entity, false);
 	}
 }
 
-void ControllerImpl::onEntityAcquired(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
+void ControllerImpl::onEntityAcquired(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const /*descriptorIndex*/) noexcept
 {
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
+		auto& entity = *controlledEntity;
+		if (descriptorType == entity::model::DescriptorType::Entity)
+		{
+			updateAcquiredState(entity, owningEntity ? (owningEntity == getControllerEID() ? model::AcquireState::Acquired : model::AcquireState::AcquiredByOther) : model::AcquireState::NotAcquired, owningEntity);
+		}
 	}
 }
 
-void ControllerImpl::onEntityReleased(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
+void ControllerImpl::onEntityReleased(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const /*descriptorIndex*/) noexcept
 {
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
+		auto& entity = *controlledEntity;
+		if (descriptorType == entity::model::DescriptorType::Entity)
+		{
+			updateAcquiredState(entity, owningEntity ? (owningEntity == getControllerEID() ? model::AcquireState::Acquired : model::AcquireState::AcquiredByOther) : model::AcquireState::NotAcquired, owningEntity);
+		}
 	}
 }
 
-void ControllerImpl::onEntityLocked(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, UniqueIdentifier const lockingEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
+void ControllerImpl::onEntityLocked(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, UniqueIdentifier const lockingEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const /*descriptorIndex*/) noexcept
 {
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateLockedState(*entity, lockingEntity, descriptorType, descriptorIndex);
+		auto& entity = *controlledEntity;
+		if (descriptorType == entity::model::DescriptorType::Entity)
+		{
+			updateLockedState(entity, lockingEntity ? (lockingEntity == getControllerEID() ? model::LockState::Locked : model::LockState::LockedByOther) : model::LockState::NotLocked, lockingEntity);
+		}
 	}
 }
 
-void ControllerImpl::onEntityUnlocked(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, UniqueIdentifier const lockingEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
+void ControllerImpl::onEntityUnlocked(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, UniqueIdentifier const lockingEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const /*descriptorIndex*/) noexcept
 {
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateLockedState(*entity, lockingEntity, descriptorType, descriptorIndex);
+		auto& entity = *controlledEntity;
+		if (descriptorType == entity::model::DescriptorType::Entity)
+		{
+			updateLockedState(entity, lockingEntity ? (lockingEntity == getControllerEID() ? model::LockState::Locked : model::LockState::LockedByOther) : model::LockState::NotLocked, lockingEntity);
+		}
 	}
 }
 
@@ -278,8 +287,8 @@ void ControllerImpl::onConfigurationChanged(entity::controller::Interface const*
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateConfiguration(controller, *entity, configurationIndex);
+		auto& entity = *controlledEntity;
+		updateConfiguration(controller, entity, configurationIndex);
 	}
 }
 
@@ -290,8 +299,8 @@ void ControllerImpl::onStreamInputFormatChanged(entity::controller::Interface co
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateStreamInputFormat(*entity, streamIndex, streamFormat);
+		auto& entity = *controlledEntity;
+		updateStreamInputFormat(entity, streamIndex, streamFormat);
 	}
 }
 
@@ -302,8 +311,8 @@ void ControllerImpl::onStreamOutputFormatChanged(entity::controller::Interface c
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateStreamOutputFormat(*entity, streamIndex, streamFormat);
+		auto& entity = *controlledEntity;
+		updateStreamOutputFormat(entity, streamIndex, streamFormat);
 	}
 }
 
@@ -314,13 +323,13 @@ void ControllerImpl::onStreamPortInputAudioMappingsChanged(entity::controller::I
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
+		auto& entity = *controlledEntity;
 		// Only support the case where numberOfMaps == 1
 		if (numberOfMaps != 1 || mapIndex != 0)
 			return;
 
 		controlledEntity->clearStreamPortInputAudioMappings(streamPortIndex);
-		updateStreamPortInputAudioMappingsAdded(*entity, streamPortIndex, mappings);
+		updateStreamPortInputAudioMappingsAdded(entity, streamPortIndex, mappings);
 	}
 }
 
@@ -331,13 +340,13 @@ void ControllerImpl::onStreamPortOutputAudioMappingsChanged(entity::controller::
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
+		auto& entity = *controlledEntity;
 		// Only support the case where numberOfMaps == 1
 		if (numberOfMaps != 1 || mapIndex != 0)
 			return;
 
 		controlledEntity->clearStreamPortOutputAudioMappings(streamPortIndex);
-		updateStreamPortOutputAudioMappingsAdded(*entity, streamPortIndex, mappings);
+		updateStreamPortOutputAudioMappingsAdded(entity, streamPortIndex, mappings);
 	}
 }
 
@@ -348,8 +357,8 @@ void ControllerImpl::onStreamInputInfoChanged(entity::controller::Interface cons
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateStreamInputInfo(*entity, streamIndex, info, fromGetStreamInfoResponse);
+		auto& entity = *controlledEntity;
+		updateStreamInputInfo(entity, streamIndex, info, fromGetStreamInfoResponse);
 	}
 }
 
@@ -360,8 +369,8 @@ void ControllerImpl::onStreamOutputInfoChanged(entity::controller::Interface con
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateStreamOutputInfo(*entity, streamIndex, info, fromGetStreamInfoResponse);
+		auto& entity = *controlledEntity;
+		updateStreamOutputInfo(entity, streamIndex, info, fromGetStreamInfoResponse);
 	}
 }
 
@@ -372,8 +381,8 @@ void ControllerImpl::onEntityNameChanged(entity::controller::Interface const* co
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateEntityName(*entity, entityName);
+		auto& entity = *controlledEntity;
+		updateEntityName(entity, entityName);
 	}
 }
 
@@ -384,8 +393,8 @@ void ControllerImpl::onEntityGroupNameChanged(entity::controller::Interface cons
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateEntityGroupName(*entity, entityGroupName);
+		auto& entity = *controlledEntity;
+		updateEntityGroupName(entity, entityGroupName);
 	}
 }
 
@@ -396,8 +405,8 @@ void ControllerImpl::onConfigurationNameChanged(entity::controller::Interface co
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateConfigurationName(*entity, configurationIndex, configurationName);
+		auto& entity = *controlledEntity;
+		updateConfigurationName(entity, configurationIndex, configurationName);
 	}
 }
 
@@ -408,8 +417,8 @@ void ControllerImpl::onAudioUnitNameChanged(entity::controller::Interface const*
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateAudioUnitName(*entity, configurationIndex, audioUnitIndex, audioUnitName);
+		auto& entity = *controlledEntity;
+		updateAudioUnitName(entity, configurationIndex, audioUnitIndex, audioUnitName);
 	}
 }
 
@@ -420,8 +429,8 @@ void ControllerImpl::onStreamInputNameChanged(entity::controller::Interface cons
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateStreamInputName(*entity, configurationIndex, streamIndex, streamName);
+		auto& entity = *controlledEntity;
+		updateStreamInputName(entity, configurationIndex, streamIndex, streamName);
 	}
 }
 
@@ -432,8 +441,8 @@ void ControllerImpl::onStreamOutputNameChanged(entity::controller::Interface con
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateStreamOutputName(*entity, configurationIndex, streamIndex, streamName);
+		auto& entity = *controlledEntity;
+		updateStreamOutputName(entity, configurationIndex, streamIndex, streamName);
 	}
 }
 
@@ -444,8 +453,8 @@ void ControllerImpl::onAvbInterfaceNameChanged(entity::controller::Interface con
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateAvbInterfaceName(*entity, configurationIndex, avbInterfaceIndex, avbInterfaceName);
+		auto& entity = *controlledEntity;
+		updateAvbInterfaceName(entity, configurationIndex, avbInterfaceIndex, avbInterfaceName);
 	}
 }
 
@@ -456,8 +465,8 @@ void ControllerImpl::onClockSourceNameChanged(entity::controller::Interface cons
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateClockSourceName(*entity, configurationIndex, clockSourceIndex, clockSourceName);
+		auto& entity = *controlledEntity;
+		updateClockSourceName(entity, configurationIndex, clockSourceIndex, clockSourceName);
 	}
 }
 
@@ -468,8 +477,8 @@ void ControllerImpl::onMemoryObjectNameChanged(entity::controller::Interface con
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateMemoryObjectName(*entity, configurationIndex, memoryObjectIndex, memoryObjectName);
+		auto& entity = *controlledEntity;
+		updateMemoryObjectName(entity, configurationIndex, memoryObjectIndex, memoryObjectName);
 	}
 }
 
@@ -480,8 +489,8 @@ void ControllerImpl::onAudioClusterNameChanged(entity::controller::Interface con
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateAudioClusterName(*entity, configurationIndex, audioClusterIndex, audioClusterName);
+		auto& entity = *controlledEntity;
+		updateAudioClusterName(entity, configurationIndex, audioClusterIndex, audioClusterName);
 	}
 }
 
@@ -492,8 +501,8 @@ void ControllerImpl::onClockDomainNameChanged(entity::controller::Interface cons
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateClockDomainName(*entity, configurationIndex, clockDomainIndex, clockDomainName);
+		auto& entity = *controlledEntity;
+		updateClockDomainName(entity, configurationIndex, clockDomainIndex, clockDomainName);
 	}
 }
 
@@ -504,8 +513,8 @@ void ControllerImpl::onAudioUnitSamplingRateChanged(entity::controller::Interfac
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateAudioUnitSamplingRate(*entity, audioUnitIndex, samplingRate);
+		auto& entity = *controlledEntity;
+		updateAudioUnitSamplingRate(entity, audioUnitIndex, samplingRate);
 	}
 }
 
@@ -516,8 +525,8 @@ void ControllerImpl::onClockSourceChanged(entity::controller::Interface const* c
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateClockSource(*entity, clockDomainIndex, clockSourceIndex);
+		auto& entity = *controlledEntity;
+		updateClockSource(entity, clockDomainIndex, clockSourceIndex);
 	}
 }
 
@@ -528,8 +537,8 @@ void ControllerImpl::onStreamInputStarted(entity::controller::Interface const* c
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateStreamInputRunningStatus(*entity, streamIndex, true);
+		auto& entity = *controlledEntity;
+		updateStreamInputRunningStatus(entity, streamIndex, true);
 	}
 }
 
@@ -540,8 +549,8 @@ void ControllerImpl::onStreamOutputStarted(entity::controller::Interface const* 
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateStreamOutputRunningStatus(*entity, streamIndex, true);
+		auto& entity = *controlledEntity;
+		updateStreamOutputRunningStatus(entity, streamIndex, true);
 	}
 }
 
@@ -552,8 +561,8 @@ void ControllerImpl::onStreamInputStopped(entity::controller::Interface const* c
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateStreamInputRunningStatus(*entity, streamIndex, false);
+		auto& entity = *controlledEntity;
+		updateStreamInputRunningStatus(entity, streamIndex, false);
 	}
 }
 
@@ -564,8 +573,8 @@ void ControllerImpl::onStreamOutputStopped(entity::controller::Interface const* 
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateStreamOutputRunningStatus(*entity, streamIndex, false);
+		auto& entity = *controlledEntity;
+		updateStreamOutputRunningStatus(entity, streamIndex, false);
 	}
 }
 
@@ -576,8 +585,8 @@ void ControllerImpl::onAvbInfoChanged(entity::controller::Interface const* const
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateAvbInfo(*entity, avbInterfaceIndex, info);
+		auto& entity = *controlledEntity;
+		updateAvbInfo(entity, avbInterfaceIndex, info);
 	}
 }
 
@@ -588,8 +597,8 @@ void ControllerImpl::onAsPathChanged(entity::controller::Interface const* const 
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateAsPath(*entity, avbInterfaceIndex, asPath);
+		auto& entity = *controlledEntity;
+		updateAsPath(entity, avbInterfaceIndex, asPath);
 	}
 }
 
@@ -600,8 +609,8 @@ void ControllerImpl::onAvbInterfaceCountersChanged(entity::controller::Interface
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateAvbInterfaceCounters(*entity, avbInterfaceIndex, validCounters, counters);
+		auto& entity = *controlledEntity;
+		updateAvbInterfaceCounters(entity, avbInterfaceIndex, validCounters, counters);
 	}
 }
 
@@ -612,8 +621,8 @@ void ControllerImpl::onClockDomainCountersChanged(entity::controller::Interface 
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateClockDomainCounters(*entity, clockDomainIndex, validCounters, counters);
+		auto& entity = *controlledEntity;
+		updateClockDomainCounters(entity, clockDomainIndex, validCounters, counters);
 	}
 }
 
@@ -624,8 +633,8 @@ void ControllerImpl::onStreamInputCountersChanged(entity::controller::Interface 
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateStreamInputCounters(*entity, streamIndex, validCounters, counters);
+		auto& entity = *controlledEntity;
+		updateStreamInputCounters(entity, streamIndex, validCounters, counters);
 	}
 }
 
@@ -636,8 +645,8 @@ void ControllerImpl::onStreamPortInputAudioMappingsAdded(entity::controller::Int
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateStreamPortInputAudioMappingsAdded(*entity, streamPortIndex, mappings);
+		auto& entity = *controlledEntity;
+		updateStreamPortInputAudioMappingsAdded(entity, streamPortIndex, mappings);
 	}
 }
 
@@ -648,8 +657,8 @@ void ControllerImpl::onStreamPortOutputAudioMappingsAdded(entity::controller::In
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateStreamPortOutputAudioMappingsAdded(*entity, streamPortIndex, mappings);
+		auto& entity = *controlledEntity;
+		updateStreamPortOutputAudioMappingsAdded(entity, streamPortIndex, mappings);
 	}
 }
 
@@ -660,8 +669,8 @@ void ControllerImpl::onStreamPortInputAudioMappingsRemoved(entity::controller::I
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateStreamPortInputAudioMappingsRemoved(*entity, streamPortIndex, mappings);
+		auto& entity = *controlledEntity;
+		updateStreamPortInputAudioMappingsRemoved(entity, streamPortIndex, mappings);
 	}
 }
 
@@ -672,8 +681,8 @@ void ControllerImpl::onStreamPortOutputAudioMappingsRemoved(entity::controller::
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateStreamPortOutputAudioMappingsRemoved(*entity, streamPortIndex, mappings);
+		auto& entity = *controlledEntity;
+		updateStreamPortOutputAudioMappingsRemoved(entity, streamPortIndex, mappings);
 	}
 }
 
@@ -684,8 +693,8 @@ void ControllerImpl::onMemoryObjectLengthChanged(entity::controller::Interface c
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateMemoryObjectLength(*entity, configurationIndex, memoryObjectIndex, length);
+		auto& entity = *controlledEntity;
+		updateMemoryObjectLength(entity, configurationIndex, memoryObjectIndex, length);
 	}
 }
 
@@ -696,8 +705,8 @@ void ControllerImpl::onOperationStatus(entity::controller::Interface const* cons
 
 	if (controlledEntity)
 	{
-		auto* const entity = controlledEntity.get();
-		updateOperationStatus(*entity, descriptorType, descriptorIndex, operationID, percentComplete);
+		auto& entity = *controlledEntity;
+		updateOperationStatus(entity, descriptorType, descriptorIndex, operationID, percentComplete);
 	}
 }
 

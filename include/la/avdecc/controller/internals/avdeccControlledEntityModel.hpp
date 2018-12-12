@@ -56,6 +56,7 @@ using VirtualIndex = std::uint32_t;
 enum class AcquireState
 {
 	Undefined,
+	NotSupported,
 	NotAcquired,
 	TryAcquire,
 	Acquired,
@@ -65,6 +66,7 @@ enum class AcquireState
 enum class LockState
 {
 	Undefined,
+	NotSupported,
 	NotLocked,
 	TryLock,
 	Locked,

@@ -195,84 +195,29 @@ void ControllerImpl::updateUnsolicitedNotificationsSubscription(ControlledEntity
 	}
 }
 
-void ControllerImpl::updateAcquiredState(ControlledEntityImpl& controlledEntity, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const /*descriptorIndex*/, bool const undefined) const noexcept
+void ControllerImpl::updateAcquiredState(ControlledEntityImpl& controlledEntity, model::AcquireState const acquireState, UniqueIdentifier const owningEntity) const noexcept
 {
-	if (descriptorType == entity::model::DescriptorType::Entity)
+	controlledEntity.setAcquireState(acquireState);
+	controlledEntity.setOwningController(owningEntity);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
 	{
-		auto owningController{ UniqueIdentifier{} };
-		auto acquireState{ model::AcquireState::Undefined };
-		if (undefined)
-		{
-			acquireState = model::AcquireState::Undefined;
-		}
-		else
-		{
-			owningController = owningEntity;
-
-			if (!owningEntity) // No more controller
-			{
-				acquireState = model::AcquireState::NotAcquired;
-			}
-			else if (owningEntity == _controller->getEntityID()) // Controlled by myself
-			{
-				acquireState = model::AcquireState::Acquired;
-			}
-			else // Or acquired by another controller
-			{
-				acquireState = model::AcquireState::AcquiredByOther;
-			}
-		}
-
-		controlledEntity.setAcquireState(acquireState);
-		controlledEntity.setOwningController(owningController);
-
-		// Entity was advertised to the user, notify observers
-		if (controlledEntity.wasAdvertised())
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAcquireStateChanged, this, &controlledEntity, acquireState, owningController);
-		}
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAcquireStateChanged, this, &controlledEntity, acquireState, owningEntity);
 	}
 }
 
-void ControllerImpl::updateLockedState(ControlledEntityImpl& controlledEntity, UniqueIdentifier const lockingEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const /*descriptorIndex*/, bool const undefined) const noexcept
+void ControllerImpl::updateLockedState(ControlledEntityImpl& controlledEntity, model::LockState const lockState, UniqueIdentifier const lockingEntity) const noexcept
 {
-	if (descriptorType == entity::model::DescriptorType::Entity)
+	controlledEntity.setLockState(lockState);
+	controlledEntity.setLockingController(lockingEntity);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
 	{
-		auto lockingController{ UniqueIdentifier{} };
-		auto lockState{ model::LockState::Undefined };
-		if (undefined)
-		{
-			lockState = model::LockState::Undefined;
-		}
-		else
-		{
-			lockingController = lockingEntity;
-
-			if (!lockingEntity) // No more controller
-			{
-				lockState = model::LockState::NotLocked;
-			}
-			else if (lockingEntity == _controller->getEntityID()) // Controlled by myself
-			{
-				lockState = model::LockState::Locked;
-			}
-			else // Or locked by another controller
-			{
-				lockState = model::LockState::LockedByOther;
-			}
-		}
-
-		controlledEntity.setLockState(lockState);
-		controlledEntity.setLockingController(lockingController);
-
-		// Entity was advertised to the user, notify observers
-		if (controlledEntity.wasAdvertised())
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onLockStateChanged, this, &controlledEntity, lockState, lockingController);
-		}
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onLockStateChanged, this, &controlledEntity, lockState, lockingEntity);
 	}
 }
-
 
 void ControllerImpl::updateConfiguration(entity::controller::Interface const* const controller, ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex) const noexcept
 {
@@ -821,6 +766,122 @@ void ControllerImpl::updateOperationStatus(ControlledEntityImpl& controlledEntit
 /* ************************************************************ */
 /* Private methods                                              */
 /* ************************************************************ */
+std::tuple<model::AcquireState, UniqueIdentifier> ControllerImpl::getAcquiredInfoFromStatus(ControlledEntityImpl& entity, UniqueIdentifier const owningEntity, entity::ControllerEntity::AemCommandStatus const status, bool const releaseEntityResult) const noexcept
+{
+	auto acquireState{ model::AcquireState::Undefined };
+	auto owningController{ UniqueIdentifier{} };
+
+	switch (status)
+	{
+		// Valid responses
+		case entity::ControllerEntity::AemCommandStatus::Success:
+			if (releaseEntityResult)
+			{
+				acquireState = model::AcquireState::NotAcquired;
+				if (owningEntity)
+				{
+					LOG_CONTROLLER_WARN(entity.getEntity().getEntityID(), "OwningEntity field is not set to 0 on a ReleaseEntity response");
+				}
+			}
+			else
+			{
+				// Full status check based on returned owningEntity, some devices return SUCCESS although the requesting controller is not the one currently owning the entity
+				acquireState = owningEntity ? (owningEntity == getControllerEID() ? model::AcquireState::Acquired : model::AcquireState::AcquiredByOther) : model::AcquireState::NotAcquired;
+				owningController = owningEntity;
+			}
+			// Remove "Milan compatibility" as device does support a forbidden command
+			if (entity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+			{
+				LOG_CONTROLLER_WARN(entity.getEntity().getEntityID(), "Milan must not implement ACQUIRE_ENTITY");
+				removeCompatibilityFlag(entity, ControlledEntity::CompatibilityFlag::Milan);
+			}
+			break;
+		case entity::ControllerEntity::AemCommandStatus::AcquiredByOther:
+			acquireState = model::AcquireState::AcquiredByOther;
+			owningController = owningEntity;
+			// Remove "Milan compatibility" as device does support a forbidden command
+			if (entity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+			{
+				LOG_CONTROLLER_WARN(entity.getEntity().getEntityID(), "Milan device must not implement ACQUIRE_ENTITY");
+				removeCompatibilityFlag(entity, ControlledEntity::CompatibilityFlag::Milan);
+			}
+			break;
+		case entity::ControllerEntity::AemCommandStatus::BadArguments:
+			// Interpret BadArguments (when releasing) as trying to Release an Entity that is Not Acquired at all
+			if (releaseEntityResult)
+			{
+				acquireState = model::AcquireState::NotAcquired;
+			}
+			break;
+		case entity::ControllerEntity::AemCommandStatus::NotImplemented:
+			[[fallthrough]];
+		case entity::ControllerEntity::AemCommandStatus::NotSupported:
+			acquireState = model::AcquireState::NotSupported;
+			break;
+
+		// All other cases, set to undefined
+		default:
+			break;
+	}
+
+	return std::make_tuple(acquireState, owningController);
+}
+
+std::tuple<model::LockState, UniqueIdentifier> ControllerImpl::getLockedInfoFromStatus(ControlledEntityImpl& entity, UniqueIdentifier const lockingEntity, entity::ControllerEntity::AemCommandStatus const status, bool const unlockEntityResult) const noexcept
+{
+	auto lockState{ model::LockState::Undefined };
+	auto lockingController{ UniqueIdentifier{} };
+
+	switch (status)
+	{
+		// Valid responses
+		case entity::ControllerEntity::AemCommandStatus::Success:
+			if (unlockEntityResult)
+			{
+				lockState = model::LockState::NotLocked;
+				if (lockingEntity)
+				{
+					LOG_CONTROLLER_WARN(entity.getEntity().getEntityID(), "LockingEntity field is not set to 0 on a UnlockEntity response");
+				}
+			}
+			else
+			{
+				// Full status check based on returned owningEntity, some devices return SUCCESS although the requesting controller is not the one currently owning the entity
+				lockState = lockingEntity ? (lockingEntity == getControllerEID() ? model::LockState::Locked : model::LockState::LockedByOther) : model::LockState::NotLocked;
+				lockingController = lockingEntity;
+			}
+			break;
+		case entity::ControllerEntity::AemCommandStatus::LockedByOther:
+			lockState = model::LockState::LockedByOther;
+			lockingController = lockingEntity;
+			break;
+		case entity::ControllerEntity::AemCommandStatus::BadArguments:
+			// Interpret BadArguments (when unlocking) as trying to Unlock an Entity that is Not Locked at all
+			if (unlockEntityResult)
+			{
+				lockState = model::LockState::NotLocked;
+			}
+			break;
+		case entity::ControllerEntity::AemCommandStatus::NotImplemented:
+			[[fallthrough]];
+		case entity::ControllerEntity::AemCommandStatus::NotSupported:
+			lockState = model::LockState::NotSupported;
+			// Remove "Milan compatibility" as device doesn't support a mandatory command
+			if (entity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+			{
+				LOG_CONTROLLER_WARN(entity.getEntity().getEntityID(), "Milan device must implement LOCK_ENTITY");
+				removeCompatibilityFlag(entity, ControlledEntity::CompatibilityFlag::Milan);
+			}
+			break;
+
+		// All other cases, set to undefined
+		default:
+			break;
+	}
+
+	return std::make_tuple(lockState, lockingController);
+}
+
 void ControllerImpl::addDelayedQuery(std::chrono::milliseconds const delay, UniqueIdentifier const entityID, DelayedQueryHandler&& queryHandler) noexcept
 {
 	// Lock to protect _delayedQueries
@@ -1365,8 +1426,12 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 
 		// Get AcquiredState / LockedState (global entity information not related to current configuration)
 		{
-			// Milan devices don't implement AcquireEntity, not need to query it's state
-			if (!entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+			// Milan devices don't implement AcquireEntity, no need to query its state
+			if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+			{
+				entity->setAcquireState(model::AcquireState::NotSupported);
+			}
+			else
 			{
 				queryInformation(entity, 0u, ControlledEntityImpl::DynamicInfoType::AcquiredState, 0u);
 			}

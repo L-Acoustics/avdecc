@@ -240,37 +240,14 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 
 				if (controlledEntity)
 				{
-					auto* const entity = controlledEntity.get();
-					switch (status)
-					{
-						case entity::ControllerEntity::AemCommandStatus::Success:
-							updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
-							// Remove "Milan compatibility" as device does support a forbidden command
-							if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
-							{
-								LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan must not implement ACQUIRE_ENTITY");
-								removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
-							}
-							break;
-						case entity::ControllerEntity::AemCommandStatus::AcquiredByOther:
-							updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
-							// Remove "Milan compatibility" as device does support a forbidden command
-							if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
-							{
-								LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan must not implement ACQUIRE_ENTITY");
-								removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
-							}
-							break;
-						case entity::ControllerEntity::AemCommandStatus::NotImplemented:
-						case entity::ControllerEntity::AemCommandStatus::NotSupported:
-							updateAcquiredState(*entity, UniqueIdentifier{}, descriptorType, descriptorIndex);
-							break;
-						default:
-							// In case of error, set the state to undefined
-							updateAcquiredState(*entity, UniqueIdentifier{}, descriptorType, descriptorIndex, true);
-							break;
-					}
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, owningEntity);
+					auto& entity = *controlledEntity;
+					auto const [acquireState, owningController] = getAcquiredInfoFromStatus(entity, owningEntity, status, false);
+
+					// Update acquired state
+					updateAcquiredState(entity, acquireState, owningController);
+
+					// Invoke result handler
+					invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, owningEntity);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -305,18 +282,14 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 
 				if (controlledEntity)
 				{
-					auto* const entity = controlledEntity.get();
-					if (!!status) // Only change the acquire state in case of success
-					{
-						updateAcquiredState(*entity, owningEntity, descriptorType, descriptorIndex);
-						// Remove "Milan compatibility" as device does support a forbidden command
-						if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
-						{
-							LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan must not implement ACQUIRE_ENTITY");
-							removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
-						}
-					}
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, owningEntity);
+					auto& entity = *controlledEntity;
+					auto const [acquireState, owningController] = getAcquiredInfoFromStatus(entity, owningEntity, status, true);
+
+					// Update acquired state
+					updateAcquiredState(entity, acquireState, owningController);
+
+					// Invoke result handler
+					invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, owningEntity);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -359,31 +332,14 @@ void ControllerImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntit
 
 				if (controlledEntity)
 				{
-					auto* const entity = controlledEntity.get();
-					switch (status)
-					{
-						case entity::ControllerEntity::AemCommandStatus::Success:
-							updateLockedState(*entity, lockingEntity, descriptorType, descriptorIndex);
-							break;
-						case entity::ControllerEntity::AemCommandStatus::LockedByOther:
-							updateLockedState(*entity, lockingEntity, descriptorType, descriptorIndex);
-							break;
-						case entity::ControllerEntity::AemCommandStatus::NotImplemented:
-						case entity::ControllerEntity::AemCommandStatus::NotSupported:
-							updateLockedState(*entity, UniqueIdentifier{}, descriptorType, descriptorIndex);
-							// Remove "Milan compatibility" as device doesn't support a mandatory command
-							if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
-							{
-								LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan must not implement LOCK_ENTITY");
-								removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
-							}
-							break;
-						default:
-							// In case of error, set the state to undefined
-							updateLockedState(*entity, UniqueIdentifier{}, descriptorType, descriptorIndex, true);
-							break;
-					}
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, lockingEntity);
+					auto& entity = *controlledEntity;
+					auto const [lockState, lockingController] = getLockedInfoFromStatus(entity, lockingEntity, status, false);
+
+					// Update locked state
+					updateLockedState(entity, lockState, lockingController);
+
+					// Invoke result handler
+					invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, lockingEntity);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -418,21 +374,14 @@ void ControllerImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockE
 
 				if (controlledEntity)
 				{
-					auto* const entity = controlledEntity.get();
-					if (!!status) // Only change the lock state in case of success
-					{
-						updateLockedState(*entity, lockingEntity, descriptorType, descriptorIndex);
-					}
-					else if (status == entity::ControllerEntity::AemCommandStatus::NotImplemented || status == entity::ControllerEntity::AemCommandStatus::NotSupported)
-					{
-						// Remove "Milan compatibility" as device doesn't support a mandatory command
-						if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
-						{
-							LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan must not implement LOCK_ENTITY");
-							removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
-						}
-					}
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, lockingEntity);
+					auto& entity = *controlledEntity;
+					auto const [lockState, lockingController] = getLockedInfoFromStatus(entity, lockingEntity, status, true);
+
+					// Update locked state
+					updateLockedState(entity, lockState, lockingController);
+
+					// Invoke result handler
+					invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, lockingEntity);
 				}
 				else // The entity went offline right after we sent our message
 				{

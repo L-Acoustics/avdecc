@@ -21,5 +21,17 @@
 // Internal API
 
 #include <gtest/gtest.h>
+#include <la/avdecc/internals/uniqueIdentifier.hpp>
 
-#pragma message("TODO: UniqueIdentifier unit tests")
+TEST(UniqueIdentifier, OperatorBool)
+{
+	auto const nullEid = la::avdecc::UniqueIdentifier::getNullUniqueIdentifier();
+	auto const uninitializedEid = la::avdecc::UniqueIdentifier::getUninitializedUniqueIdentifier();
+	auto const validEid = la::avdecc::UniqueIdentifier{ 0x0000000000000001 };
+
+	EXPECT_FALSE(nullEid);
+	EXPECT_FALSE(uninitializedEid);
+	EXPECT_TRUE(validEid);
+}
+
+#pragma message("TODO: Complete UniqueIdentifier unit tests")

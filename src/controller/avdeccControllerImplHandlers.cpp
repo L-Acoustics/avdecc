@@ -935,56 +935,22 @@ void ControllerImpl::onGetAcquiredStateResult(entity::controller::Interface cons
 	{
 		if (controlledEntity->checkAndClearExpectedDynamicInfo(0u, ControlledEntityImpl::DynamicInfoType::AcquiredState, 0u, 0u))
 		{
-			auto* const entity = controlledEntity.get();
-			auto acquireState{ model::AcquireState::Undefined };
-			auto owningController{ UniqueIdentifier{} };
-			// We have to manually check each status code (do not use processFailureStatus) because even an error allows AcquiredState detection
-			switch (status)
-			{
-				// Valid responses
-				case entity::ControllerEntity::AemCommandStatus::Success:
-					// Full status check based on returned owningEntity, some devices return SUCCESS although the requesting controller is not the one currently owning the entity
-					acquireState = owningEntity ? (owningEntity == getControllerEID() ? model::AcquireState::Acquired : model::AcquireState::AcquiredByOther) : model::AcquireState::NotAcquired;
-					owningController = owningEntity;
-					// Remove "Milan compatibility" as device does support a forbidden command
-					if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
-					{
-						LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan must not implement ACQUIRE_ENTITY");
-						removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
-					}
-					break;
-				case entity::ControllerEntity::AemCommandStatus::AcquiredByOther:
-					acquireState = model::AcquireState::AcquiredByOther;
-					owningController = owningEntity;
-					// Remove "Milan compatibility" as device does support a forbidden command
-					if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
-					{
-						LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan must not implement ACQUIRE_ENTITY");
-						removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
-					}
-					break;
-				case entity::ControllerEntity::AemCommandStatus::BadArguments: // Interpret BadArguments as trying to Release an Entity that is Not Acquired at all
-					[[fallthrough]];
-				case entity::ControllerEntity::AemCommandStatus::NotImplemented:
-					[[fallthrough]];
-				case entity::ControllerEntity::AemCommandStatus::NotSupported:
-					acquireState = model::AcquireState::NotAcquired;
-					break;
+			auto& entity = *controlledEntity;
+			auto const [acquireState, owningController] = getAcquiredInfoFromStatus(entity, owningEntity, status, true);
 
-				// All other cases, let processFailureStatus do its job
-				default:
-					if (!processFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::AcquiredState, 0u, 0u))
-					{
-						controlledEntity->setGetFatalEnumerationError();
-						notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AcquiredState);
-						return;
-					}
-					break;
+			// Could not determine the AcquiredState
+			if (acquireState == model::AcquireState::Undefined)
+			{
+				if (!processFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::AcquiredState, 0u, 0u))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AcquiredState);
+					return;
+				}
 			}
 
 			// Update acquired state
-			controlledEntity->setAcquireState(acquireState);
-			controlledEntity->setOwningController(owningController);
+			updateAcquiredState(entity, acquireState, owningController);
 		}
 
 		// Got all expected dynamic information
@@ -1008,50 +974,22 @@ void ControllerImpl::onGetLockedStateResult(entity::controller::Interface const*
 	{
 		if (controlledEntity->checkAndClearExpectedDynamicInfo(0u, ControlledEntityImpl::DynamicInfoType::LockedState, 0u, 0u))
 		{
-			auto* const entity = controlledEntity.get();
-			auto lockState{ model::LockState::Undefined };
-			auto lockingController{ UniqueIdentifier{} };
-			// We have to manually check each status code (do not use processFailureStatus) because even an error allows LockState detection
-			switch (status)
-			{
-				// Valid responses
-				case entity::ControllerEntity::AemCommandStatus::Success:
-					// Full status check based on returned owningEntity, some devices return SUCCESS although the requesting controller is not the one currently owning the entity
-					lockState = lockingEntity ? (lockingEntity == getControllerEID() ? model::LockState::Locked : model::LockState::LockedByOther) : model::LockState::NotLocked;
-					lockingController = lockingEntity;
-					break;
-				case entity::ControllerEntity::AemCommandStatus::LockedByOther:
-					lockState = model::LockState::LockedByOther;
-					lockingController = lockingEntity;
-					break;
-				case entity::ControllerEntity::AemCommandStatus::BadArguments: // Interpret BadArguments as trying to Release an Entity that is Not Locked at all
-					[[fallthrough]];
-				case entity::ControllerEntity::AemCommandStatus::NotImplemented:
-					[[fallthrough]];
-				case entity::ControllerEntity::AemCommandStatus::NotSupported:
-					lockState = model::LockState::NotLocked;
-					// Remove "Milan compatibility" as device doesn't support a mandatory command
-					if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
-					{
-						LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan must not implement LOCK_ENTITY");
-						removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
-					}
-					break;
+			auto& entity = *controlledEntity;
+			auto const [lockState, lockingController] = getLockedInfoFromStatus(entity, lockingEntity, status, true);
 
-				// All other cases, let processFailureStatus do its job
-				default:
-					if (!processFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::LockedState, 0u, 0u))
-					{
-						controlledEntity->setGetFatalEnumerationError();
-						notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::LockedState);
-						return;
-					}
-					break;
+			// Could not determine the AcquiredState
+			if (lockState == model::LockState::Undefined)
+			{
+				if (!processFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::LockedState, 0u, 0u))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::LockedState);
+					return;
+				}
 			}
 
 			// Update locked state
-			controlledEntity->setLockState(lockState);
-			controlledEntity->setLockingController(lockingController);
+			updateLockedState(entity, lockState, lockingController);
 		}
 
 		// Got all expected dynamic information
