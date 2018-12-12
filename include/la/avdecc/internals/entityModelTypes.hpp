@@ -465,6 +465,24 @@ constexpr bool operator<(StreamIdentification const& lhs, StreamIdentification c
 	return (lhs.entityID.getValue() < rhs.entityID.getValue()) || (lhs.entityID == rhs.entityID && lhs.streamIndex < rhs.streamIndex);
 }
 
+/** Probing Status - Milan Clause 6.8.6 */
+enum class ProbingStatus : std::uint8_t
+{
+	Disabled = 0x00, /** The sink is not probing because it is not bound. */
+	Passive = 0x01, /** The sink is probing passively. It waits until the bound talker has been discovered. */
+	Active = 0x02, /** The sink is probing actively. It is querying the stream parameters to the talker. */
+	Completed = 0x03, /** The sink is not probing because it is settled. */
+	/* 04 to 07 reserved for future use */
+};
+constexpr bool operator==(ProbingStatus const lhs, ProbingStatus const rhs)
+{
+	return static_cast<std::underlying_type_t<ProbingStatus>>(lhs) == static_cast<std::underlying_type_t<ProbingStatus>>(rhs);
+}
+
+constexpr bool operator==(ProbingStatus const lhs, std::underlying_type_t<ProbingStatus> const rhs)
+{
+	return static_cast<std::underlying_type_t<ProbingStatus>>(lhs) == rhs;
+}
 
 } // namespace model
 } // namespace entity

@@ -341,7 +341,7 @@ void ControllerImpl::onStreamPortOutputAudioMappingsChanged(entity::controller::
 	}
 }
 
-void ControllerImpl::onStreamInputInfoChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept
+void ControllerImpl::onStreamInputInfoChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const fromGetStreamInfoResponse) noexcept
 {
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
@@ -349,11 +349,11 @@ void ControllerImpl::onStreamInputInfoChanged(entity::controller::Interface cons
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		updateStreamInputInfo(*entity, streamIndex, info);
+		updateStreamInputInfo(*entity, streamIndex, info, fromGetStreamInfoResponse);
 	}
 }
 
-void ControllerImpl::onStreamOutputInfoChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept
+void ControllerImpl::onStreamOutputInfoChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const fromGetStreamInfoResponse) noexcept
 {
 	// Take a copy of the ControlledEntity so we don't have to keep the lock
 	auto controlledEntity = getControlledEntityImpl(entityID);
@@ -361,7 +361,7 @@ void ControllerImpl::onStreamOutputInfoChanged(entity::controller::Interface con
 	if (controlledEntity)
 	{
 		auto* const entity = controlledEntity.get();
-		updateStreamOutputInfo(*entity, streamIndex, info);
+		updateStreamOutputInfo(*entity, streamIndex, info, fromGetStreamInfoResponse);
 	}
 }
 

@@ -578,7 +578,7 @@ void ControllerImpl::setStreamInputInfo(UniqueIdentifier const targetEntityID, e
 					auto* const entity = controlledEntity.get();
 					if (!!status)
 					{
-						updateStreamInputInfo(*entity, streamIndex, info);
+						updateStreamInputInfo(*entity, streamIndex, info, false); // Milan Extended Information not set in SetStreamInfo
 					}
 					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
@@ -615,7 +615,7 @@ void ControllerImpl::setStreamOutputInfo(UniqueIdentifier const targetEntityID, 
 					auto* const entity = controlledEntity.get();
 					if (!!status)
 					{
-						updateStreamOutputInfo(*entity, streamIndex, info);
+						updateStreamOutputInfo(*entity, streamIndex, info, false); // Milan Extended Information not set in SetStreamInfo
 					}
 					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}

@@ -308,10 +308,20 @@ void ControllerImpl::updateStreamOutputFormat(ControlledEntityImpl& controlledEn
 	}
 }
 
-void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) const noexcept
+void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const milanExtendedRequired) const noexcept
 {
 	// Update StreamInfo
 	auto const previousInfo = controlledEntity.setStreamInputInfo(streamIndex, info);
+
+	// If Milan Extended Information is required (for GetStreamInfo, not SetStreamInfo) and entity is Milan compatible, check if it's present
+	if (milanExtendedRequired && controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+	{
+		if (!info.streamInfoFlagsEx.has_value() || !info.probingStatus.has_value() || !info.acmpStatus.has_value())
+		{
+			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Milan mandatory extended GetStreamInfo not found");
+			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+		}
+	}
 
 	// Entity was advertised to the user, notify observers (check if info actually changed, in case it's a change in StreamingWait and the entity sent both Unsol)
 	if (controlledEntity.wasAdvertised() && previousInfo != info)
@@ -333,10 +343,20 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 	}
 }
 
-void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) const noexcept
+void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const milanExtendedRequired) const noexcept
 {
 	// Update StreamInfo
 	auto const previousInfo = controlledEntity.setStreamOutputInfo(streamIndex, info);
+
+	// If Milan Extended Information is required (for GetStreamInfo, not SetStreamInfo) and entity is Milan compatible, check if it's present
+	if (milanExtendedRequired && controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+	{
+		if (!info.streamInfoFlagsEx.has_value() || !info.probingStatus.has_value() || !info.acmpStatus.has_value())
+		{
+			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Milan mandatory extended GetStreamInfo not found");
+			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+		}
+	}
 
 	// Entity was advertised to the user, notify observers (check if info actually changed, in case it's a change in StreamingWait and the entity sent both Unsol)
 	if (controlledEntity.wasAdvertised() && previousInfo != info)
@@ -550,7 +570,7 @@ void ControllerImpl::updateStreamInputRunningStatus(ControlledEntityImpl& contro
 	// Make a copy of current StreamInfo and simulate a change in it
 	auto newInfo = streamDynamicModel.streamInfo;
 	ControlledEntityImpl::setStreamRunningFlag(newInfo.streamInfoFlags, isRunning);
-	updateStreamInputInfo(controlledEntity, streamIndex, newInfo);
+	updateStreamInputInfo(controlledEntity, streamIndex, newInfo, false); // No need to check again for Milan Extended Information
 }
 
 void ControllerImpl::updateStreamOutputRunningStatus(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, bool const isRunning) const noexcept
@@ -562,7 +582,7 @@ void ControllerImpl::updateStreamOutputRunningStatus(ControlledEntityImpl& contr
 	// Make a copy of current StreamInfo and simulate a change in it
 	auto newInfo = streamDynamicModel.streamInfo;
 	ControlledEntityImpl::setStreamRunningFlag(newInfo.streamInfoFlags, isRunning);
-	updateStreamOutputInfo(controlledEntity, streamIndex, newInfo);
+	updateStreamOutputInfo(controlledEntity, streamIndex, newInfo, false); // No need to check again for Milan Extended Information
 }
 
 void ControllerImpl::setAvbInfoAndNotify(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) const noexcept

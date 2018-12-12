@@ -863,7 +863,8 @@ void ControllerImpl::onGetStreamInputInfoResult(entity::controller::Interface co
 		{
 			if (!!status)
 			{
-				controlledEntity->setStreamInputInfo(streamIndex, info);
+				// Use the "update**" method, there are many things to do
+				updateStreamInputInfo(*controlledEntity, streamIndex, info, true);
 			}
 			else
 			{
@@ -899,7 +900,8 @@ void ControllerImpl::onGetStreamOutputInfoResult(entity::controller::Interface c
 		{
 			if (!!status)
 			{
-				controlledEntity->setStreamOutputInfo(streamIndex, info);
+				// Use the "update**" method, there are many things to do
+				updateStreamOutputInfo(*controlledEntity, streamIndex, info, true);
 			}
 			else
 			{

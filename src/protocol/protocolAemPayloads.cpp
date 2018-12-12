@@ -1171,18 +1171,90 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 
 
 /** GET_STREAM_INFO Response - Clause 7.4.16.2 */
-Serializer<AecpAemGetStreamInfoResponsePayloadSize> serializeGetStreamInfoResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamInfo const& streamInfo)
+Serializer<AecpAemMilanGetStreamInfoResponsePayloadSize> serializeGetStreamInfoResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamInfo const& streamInfo)
 {
-	// Same as SET_STREAM_INFO Command
-	static_assert(AecpAemGetStreamInfoResponsePayloadSize == AecpAemSetStreamInfoCommandPayloadSize, "GET_STREAM_INFO Response no longer the same as SET_STREAM_INFO Command");
-	return serializeSetStreamInfoCommand(descriptorType, descriptorIndex, streamInfo);
+	Serializer<AecpAemMilanGetStreamInfoResponsePayloadSize> ser;
+	std::uint8_t const reserved{ 0u };
+	std::uint16_t const reserved2{ 0u };
+
+	ser << descriptorType << descriptorIndex;
+	ser << streamInfo.streamInfoFlags;
+	ser << streamInfo.streamFormat;
+	ser << streamInfo.streamID;
+	ser << streamInfo.msrpAccumulatedLatency;
+	ser.packBuffer(streamInfo.streamDestMac.data(), streamInfo.streamDestMac.size());
+	ser << streamInfo.msrpFailureCode;
+	ser << reserved;
+	ser << streamInfo.msrpFailureBridgeID;
+	ser << streamInfo.streamVlanID;
+	ser << reserved2;
+
+	if (streamInfo.streamInfoFlagsEx.has_value() && streamInfo.probingStatus.has_value() && streamInfo.acmpStatus.has_value())
+	{
+		auto reserved3 = std::uint8_t{ 0u };
+		auto reserved4 = std::uint16_t{ 0u };
+
+		ser << *streamInfo.streamInfoFlagsEx << static_cast<std::uint8_t>(((to_integral(*streamInfo.probingStatus) << 5) & 0xe0) | ((*streamInfo.acmpStatus).getValue() & 0x1f)) << reserved3 << reserved4;
+
+		AVDECC_ASSERT(ser.usedBytes() == AecpAemMilanGetStreamInfoResponsePayloadSize, "Used bytes do not match the protocol constant");
+	}
+	else
+	{
+		AVDECC_ASSERT(ser.usedBytes() == AecpAemGetStreamInfoResponsePayloadSize, "Used bytes do not match the protocol constant");
+	}
+
+	return ser;
 }
 
 std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::StreamInfo> deserializeGetStreamInfoResponse(AemAecpdu::Payload const& payload)
 {
-	// Same as SET_STREAM_INFO Command
-	static_assert(AecpAemGetStreamInfoResponsePayloadSize == AecpAemSetStreamInfoCommandPayloadSize, "GET_STREAM_INFO Response no longer the same as SET_STREAM_INFO Command");
-	return deserializeSetStreamInfoCommand(payload);
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetStreamInfoResponsePayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+	entity::model::StreamInfo streamInfo{};
+	std::uint8_t reserved{ 0u };
+	std::uint16_t reserved2{ 0u };
+
+	des >> descriptorType >> descriptorIndex;
+	des >> streamInfo.streamInfoFlags;
+	des >> streamInfo.streamFormat;
+	des >> streamInfo.streamID;
+	des >> streamInfo.msrpAccumulatedLatency;
+	des.unpackBuffer(streamInfo.streamDestMac.data(), streamInfo.streamDestMac.size());
+	des >> streamInfo.msrpFailureCode;
+	des >> reserved;
+	des >> streamInfo.msrpFailureBridgeID;
+	des >> streamInfo.streamVlanID;
+	des >> reserved2;
+
+	if (commandPayloadLength >= AecpAemMilanGetStreamInfoResponsePayloadSize)
+	{
+		auto streamInfoFlagsEx = entity::StreamInfoFlagsEx::None;
+		auto probing_acmp_status = std::uint8_t{ 0u };
+		auto reserved3 = std::uint8_t{ 0u };
+		auto reserved4 = std::uint16_t{ 0u };
+
+		des >> streamInfoFlagsEx >> probing_acmp_status >> reserved3 >> reserved4;
+
+		streamInfo.streamInfoFlagsEx = streamInfoFlagsEx;
+		streamInfo.probingStatus = static_cast<entity::model::ProbingStatus>((probing_acmp_status & 0xe0) >> 5);
+		streamInfo.acmpStatus = static_cast<AcmpStatus>(probing_acmp_status & 0x1f);
+
+		AVDECC_ASSERT(des.usedBytes() == AecpAemMilanGetStreamInfoResponsePayloadSize, "Used more bytes than specified in protocol constant");
+	}
+	else
+	{
+		AVDECC_ASSERT(des.usedBytes() == AecpAemGetStreamInfoResponsePayloadSize, "Used more bytes than specified in protocol constant");
+	}
+
+	return std::make_tuple(descriptorType, descriptorIndex, streamInfo);
 }
 
 /** GET_AUDIO_MAP Command  - Clause 7.4.44.1 */

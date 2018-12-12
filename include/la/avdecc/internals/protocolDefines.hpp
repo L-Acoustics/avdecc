@@ -321,6 +321,8 @@ public:
 	static LA_AVDECC_API AcmpStatus const ControllerNotAuthorized;
 	static LA_AVDECC_API AcmpStatus const IncompatibleRequest;
 	static LA_AVDECC_API AcmpStatus const NotSupported;
+
+	LA_AVDECC_API operator std::string() const noexcept;
 };
 
 /** ACMP UniqueID - Clause 8.2.1.12 and 8.2.1.13 */
