@@ -37,6 +37,7 @@
 #include <unordered_map>
 #include <functional>
 #include <memory>
+#include <chrono>
 
 namespace la
 {
@@ -118,7 +119,18 @@ public:
 					if ((avtp_sub_type_control & 0xF0) == 0)
 						continue;
 
-					dispatchAvdeccMessage(avtpdu, avtpdu_size, etherLayer2);
+					// Try to detect possible deadlock
+					{
+						auto const startTime = std::chrono::system_clock::now();
+
+						dispatchAvdeccMessage(avtpdu, avtpdu_size, etherLayer2);
+
+						auto const endTime = std::chrono::system_clock::now();
+						if (!AVDECC_ASSERT_WITH_RET(std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count() < 1000, "avdecc::PCapInterface::Capture thread loop took too much time. Deadlock?"))
+						{
+							LOG_PROTOCOL_INTERFACE_ERROR(la::avdecc::networkInterface::MacAddress{}, la::avdecc::networkInterface::MacAddress{}, "avdecc::PCapInterface::Capture thread loop took too much time. Deadlock?");
+						}
+					}
 				}
 
 				// Notify observers if we exited the loop because of an error

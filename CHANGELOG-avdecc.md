@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Notification when an entity is locked/unlocked by another controller
 - setStreamInputInfo, setStreamOutputInfo, getAsPath
 - Milan extended GetStreamInfo
+- Code to try to prevent deadlocks
 
 ### Changed
 - lockEntity/unlockEntity signature and result handler changed to include the locking entity and descriptor type/index

@@ -173,14 +173,25 @@ ControllerStateMachine::ControllerStateMachine(ProtocolInterface const* const pr
 			setCurrentThreadName("avdecc::ControllerStateMachine");
 			while (!_shouldTerminate)
 			{
-				// Check for local entities announcement
-				checkLocalEntitiesAnnouncement();
+				// Try to detect possible deadlock
+				{
+					auto const startTime = std::chrono::system_clock::now();
 
-				// Check for timeout expiracy on all entities
-				checkEntitiesTimeoutExpiracy();
+					// Check for local entities announcement
+					checkLocalEntitiesAnnouncement();
 
-				// Check for inflight commands expiracy
-				checkInflightCommandsTimeoutExpiracy();
+					// Check for timeout expiracy on all entities
+					checkEntitiesTimeoutExpiracy();
+
+					// Check for inflight commands expiracy
+					checkInflightCommandsTimeoutExpiracy();
+
+					auto const endTime = std::chrono::system_clock::now();
+					if (!AVDECC_ASSERT_WITH_RET(std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count() < 1000, "avdecc::ControllerStateMachine thread loop took too much time. Deadlock?"))
+					{
+						LOG_CONTROLLER_STATE_MACHINE_ERROR(UniqueIdentifier::getNullUniqueIdentifier(), "avdecc::ControllerStateMachine thread loop took too much time. Deadlock?");
+					}
+				}
 
 				// Wait a little bit so we don't burn the CPU
 				std::this_thread::sleep_for(std::chrono::milliseconds(10));

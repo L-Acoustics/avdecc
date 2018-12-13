@@ -936,7 +936,7 @@ void ControlledEntityImpl::removeStreamPortInputAudioMappings(entity::model::Str
 			{
 				return (map.clusterOffset == mapping.clusterOffset) && (map.clusterChannel == mapping.clusterChannel);
 			});
-		if (AVDECC_ASSERT_WITH_RET(foundIt != dynamicMap.end(), "Mapping not found"))
+		if (AVDECC_ASSERT_WITH_RET((_advertised == false) || (foundIt != dynamicMap.end()), "Mapping not found"))
 			dynamicMap.erase(foundIt);
 	}
 }
@@ -991,7 +991,7 @@ void ControlledEntityImpl::removeStreamPortOutputAudioMappings(entity::model::St
 			{
 				return (map.streamIndex == mapping.streamIndex) && (map.streamChannel == mapping.streamChannel);
 			});
-		if (AVDECC_ASSERT_WITH_RET(foundIt != dynamicMap.end(), "Mapping not found"))
+		if (AVDECC_ASSERT_WITH_RET((_advertised == false) || (foundIt != dynamicMap.end()), "Mapping not found"))
 			dynamicMap.erase(foundIt);
 	}
 }

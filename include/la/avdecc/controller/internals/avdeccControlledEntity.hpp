@@ -34,6 +34,8 @@
 #include <memory>
 #include <mutex>
 #include <vector>
+#include <chrono>
+#include <optional>
 
 namespace la
 {
@@ -171,6 +173,7 @@ protected:
 /* ************************************************************************** */
 /* ControlledEntityGuard                                                      */
 /* ************************************************************************** */
+/** A guard around a ControlledEntity that guarantees it won't be modified while the Guard is alive. WARNING: The guard should not be kept for more than a few milliseconds. */
 class ControlledEntityGuard final
 {
 public:
@@ -204,6 +207,12 @@ public:
 		return _controlledEntity != nullptr;
 	}
 
+	void reset() noexcept
+	{
+		unlock();
+		_controlledEntity = nullptr;
+	}
+
 	// Default constructor to allow creation of an empty Guard
 	ControlledEntityGuard() noexcept {}
 
@@ -228,16 +237,34 @@ private:
 		: _controlledEntity(std::move(entity))
 	{
 		if (_controlledEntity)
+		{
 			_controlledEntity->lock();
+#ifdef DEBUG
+			_lockTime = std::chrono::system_clock::now();
+#endif // DEBUG
+		}
 	}
 
 	void unlock() noexcept
 	{
 		if (_controlledEntity)
+		{
 			_controlledEntity->unlock();
+		}
+#ifdef DEBUG
+		if (_lockTime.has_value())
+		{
+			auto const endTime = std::chrono::system_clock::now();
+			AVDECC_ASSERT(std::chrono::duration_cast<std::chrono::milliseconds>(endTime - *_lockTime).count() < 500, "ControlledEntityGuard was kept for too long with a valid ControlledEntity (neither destructor nor reset was called in time). This class is not supposed to keep a valid ControlledEntity for more than a few milliseconds.");
+			_lockTime = std::nullopt;
+		}
+#endif // DEBUG
 	}
 
 	SharedControlledEntity _controlledEntity{ nullptr };
+#ifdef DEBUG
+	std::optional<std::chrono::time_point<std::chrono::system_clock>> _lockTime{ std::nullopt };
+#endif // DEBUG
 };
 
 } // namespace controller
