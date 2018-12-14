@@ -286,7 +286,16 @@ struct AudioMapping
 	{
 		return sizeof(streamIndex) + sizeof(streamChannel) + sizeof(clusterOffset) + sizeof(clusterChannel);
 	}
+	constexpr friend bool operator==(AudioMapping const& lhs, AudioMapping const& rhs) noexcept
+	{
+		return (lhs.streamIndex == rhs.streamIndex) && (lhs.streamChannel == rhs.streamChannel) && (lhs.clusterOffset == rhs.clusterOffset) && (lhs.clusterChannel == rhs.clusterChannel);
+	}
+	constexpr friend bool operator!=(AudioMapping const& lhs, AudioMapping const& rhs) noexcept
+	{
+		return !operator==(lhs, rhs);
+	}
 };
+
 using AudioMappings = std::vector<AudioMapping>;
 
 /** MSRP Mapping - Clause 7.4.40.2.1 */
@@ -300,12 +309,15 @@ struct MsrpMapping
 	{
 		return sizeof(trafficClass) + sizeof(priority) + sizeof(vlanID);
 	}
+	constexpr friend bool operator==(MsrpMapping const& lhs, MsrpMapping const& rhs) noexcept
+	{
+		return (lhs.trafficClass == rhs.trafficClass) && (lhs.priority == rhs.priority) && (lhs.vlanID == rhs.vlanID);
+	}
+	constexpr friend bool operator!=(MsrpMapping const& lhs, MsrpMapping const& rhs) noexcept
+	{
+		return !operator==(lhs, rhs);
+	}
 };
-
-constexpr bool operator==(MsrpMapping const& lhs, MsrpMapping const& rhs) noexcept
-{
-	return (lhs.trafficClass == rhs.trafficClass) && (lhs.priority == rhs.priority) && (lhs.vlanID == rhs.vlanID);
-}
 
 using MsrpMappings = std::vector<MsrpMapping>;
 
