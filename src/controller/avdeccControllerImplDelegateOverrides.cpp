@@ -57,7 +57,7 @@ void ControllerImpl::onEntityOnline(entity::controller::Interface const* const c
 		return;
 	}
 
-	OnlineControlledEntity controlledEntity{};
+	SharedControlledEntityImpl controlledEntity{};
 
 	// Create and add the entity
 	{
@@ -130,7 +130,7 @@ void ControllerImpl::onEntityOffline(entity::controller::Interface const* const 
 {
 	LOG_CONTROLLER_TRACE(entityID, "onEntityOffline");
 
-	OnlineControlledEntity controlledEntity{};
+	auto controlledEntity = SharedControlledEntityImpl{};
 
 	// Cleanup and remove the entity
 	{
@@ -140,6 +140,7 @@ void ControllerImpl::onEntityOffline(entity::controller::Interface const* const 
 		auto entityIt = _controlledEntities.find(entityID);
 		if (entityIt != _controlledEntities.end())
 		{
+			// Get a reference on the entity while locked, before removing it from the list
 			controlledEntity = entityIt->second;
 			_controlledEntities.erase(entityIt);
 		}

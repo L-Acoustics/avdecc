@@ -238,7 +238,10 @@ private:
 	{
 		if (_controlledEntity)
 		{
-			_controlledEntity->lock();
+			if (!_controlledEntity->isSelfLocked())
+			{
+				_controlledEntity->lock();
+			}
 #ifdef DEBUG
 			_lockTime = std::chrono::system_clock::now();
 #endif // DEBUG

@@ -1858,7 +1858,7 @@ ControlledEntityGuard ControllerImpl::getControlledEntity(UniqueIdentifier const
 	auto entity = getControlledEntityImpl(entityID);
 	if (entity && entity->wasAdvertised())
 	{
-		return ControlledEntityGuard{ std::move(entity) };
+		return ControlledEntityGuard{ entity.release() };
 	}
 	return {};
 }

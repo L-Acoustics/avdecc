@@ -48,7 +48,7 @@ public:
 	ControllerImpl(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale);
 
 private:
-	using OnlineControlledEntity = std::shared_ptr<ControlledEntityImpl>;
+	using SharedControlledEntityImpl = std::shared_ptr<ControlledEntityImpl>;
 
 	virtual ~ControllerImpl() override;
 
@@ -282,6 +282,103 @@ private:
 	/* ************************************************************ */
 	/* Private classes                                              */
 	/* ************************************************************ */
+	/** A ControlledEntityImpl that is automatically locked when retrieved. It should be used by the ControllerImpl when called from any of the network threads. */
+	class LockedControlledEntity final
+	{
+	public:
+		/** Returns a ControlledEntity const* */
+		ControlledEntityImpl const* get() const noexcept
+		{
+			if (_controlledEntity == nullptr)
+				return nullptr;
+			return _controlledEntity.get();
+		}
+
+		/** Returns a ControlledEntity* */
+		ControlledEntityImpl* get() noexcept
+		{
+			if (_controlledEntity == nullptr)
+				return nullptr;
+			return _controlledEntity.get();
+		}
+
+		/** Operator to access ControlledEntity */
+		ControlledEntityImpl const* operator->() const noexcept
+		{
+			if (_controlledEntity == nullptr)
+				return nullptr;
+			return _controlledEntity.operator->();
+		}
+
+		/** Operator to access ControlledEntity */
+		ControlledEntityImpl* operator->() noexcept
+		{
+			if (_controlledEntity == nullptr)
+				return nullptr;
+			return _controlledEntity.operator->();
+		}
+
+		/** Operator to access ControlledEntity */
+		ControlledEntityImpl const& operator*() const
+		{
+			if (_controlledEntity == nullptr)
+				throw la::avdecc::Exception("ControlledEntityImpl is nullptr");
+			return _controlledEntity.operator*();
+		}
+
+		/** Operator to access ControlledEntity */
+		ControlledEntityImpl& operator*()
+		{
+			if (_controlledEntity == nullptr)
+				throw la::avdecc::Exception("ControlledEntityImpl is nullptr");
+			return _controlledEntity.operator*();
+		}
+
+		/** Returns true if the entity is online (meaning a valid ControlledEntity can be retrieved using an operator overload) */
+		explicit operator bool() const noexcept
+		{
+			return _controlledEntity != nullptr;
+		}
+
+		SharedControlledEntityImpl release() noexcept
+		{
+			return std::move(_controlledEntity);
+		}
+
+		// Default constructor to allow creation of an empty Guard
+		LockedControlledEntity() noexcept {}
+
+		LockedControlledEntity(SharedControlledEntityImpl&& entity)
+			: _controlledEntity(std::move(entity))
+		{
+			if (_controlledEntity)
+			{
+				_controlledEntity->lock();
+			}
+		}
+
+		// Destructor
+		~LockedControlledEntity()
+		{
+			if (_controlledEntity)
+			{
+				_controlledEntity->unlock();
+			}
+		}
+
+		// Allow move semantics
+		LockedControlledEntity(LockedControlledEntity&&) = default;
+		LockedControlledEntity& operator=(LockedControlledEntity&&) = default;
+
+		// Disallow copy
+		LockedControlledEntity(LockedControlledEntity const&) = delete;
+		LockedControlledEntity& operator=(LockedControlledEntity const&) = delete;
+
+	private:
+		SharedControlledEntityImpl _controlledEntity{ nullptr };
+		bool const _wasLocked{ false };
+	};
+
 	/** A ControlledEntityImpl that is automatically unlocked then relocked, if locked when retrieved. It should be used by the ControllerImpl when called by a public API so the ControlledEntity is no longer locked when lower layers are called (deadlock prevention). */
 	class UnlockedControlledEntity final
 	{
@@ -319,7 +416,7 @@ private:
 		// Default constructor to allow creation of an empty Guard
 		UnlockedControlledEntity() noexcept {}
 
-		UnlockedControlledEntity(OnlineControlledEntity entity)
+		UnlockedControlledEntity(SharedControlledEntityImpl&& entity)
 			: _controlledEntity(std::move(entity))
 			, _wasLocked(_controlledEntity && _controlledEntity->isSelfLocked())
 		{
@@ -347,7 +444,7 @@ private:
 		UnlockedControlledEntity& operator=(UnlockedControlledEntity const&) = delete;
 
 	private:
-		OnlineControlledEntity _controlledEntity{ nullptr };
+		SharedControlledEntityImpl _controlledEntity{ nullptr };
 		bool const _wasLocked{ false };
 	};
 
@@ -421,34 +518,46 @@ private:
 	}
 	inline UnlockedControlledEntity getUnlockedControlledEntityImpl(UniqueIdentifier const entityID) const noexcept
 	{
-		// Lock to protect _controlledEntities
-		std::lock_guard<decltype(_lock)> const lg(_lock);
+		auto entity = SharedControlledEntityImpl{};
 
-		auto entityIt = _controlledEntities.find(entityID);
-		if (entityIt != _controlledEntities.end())
 		{
-			return entityIt->second;
+			// Lock to protect _controlledEntities
+			std::lock_guard<decltype(_lock)> const lg(_lock);
+
+			auto entityIt = _controlledEntities.find(entityID);
+			if (entityIt != _controlledEntities.end())
+			{
+				// Get a reference on the entity while locked
+				entity = entityIt->second;
+			}
 		}
-		return UnlockedControlledEntity{};
+
+		return UnlockedControlledEntity{ std::move(entity) };
 	}
-	inline OnlineControlledEntity getControlledEntityImpl(UniqueIdentifier const entityID) const noexcept
+	inline LockedControlledEntity getControlledEntityImpl(UniqueIdentifier const entityID) const noexcept
 	{
-		// Lock to protect _controlledEntities
-		std::lock_guard<decltype(_lock)> const lg(_lock);
+		auto entity = SharedControlledEntityImpl{};
 
-		auto entityIt = _controlledEntities.find(entityID);
-		if (entityIt != _controlledEntities.end())
 		{
-			return entityIt->second;
+			// Lock to protect _controlledEntities
+			std::lock_guard<decltype(_lock)> const lg(_lock);
+
+			auto entityIt = _controlledEntities.find(entityID);
+			if (entityIt != _controlledEntities.end())
+			{
+				// Get a reference on the entity while locked
+				entity = entityIt->second;
+			}
 		}
-		return OnlineControlledEntity{};
+
+		return LockedControlledEntity{ std::move(entity) };
 	}
 
 	/* ************************************************************ */
 	/* Private members                                              */
 	/* ************************************************************ */
 	mutable std::mutex _lock{}; // A mutex to protect _controlledEntities and _delayedQueries
-	std::unordered_map<UniqueIdentifier, OnlineControlledEntity, UniqueIdentifier::hash> _controlledEntities;
+	std::unordered_map<UniqueIdentifier, SharedControlledEntityImpl, UniqueIdentifier::hash> _controlledEntities;
 	EndStation::UniquePointer _endStation{ nullptr, nullptr };
 	entity::ControllerEntity* _controller{ nullptr };
 	std::string _preferedLocale{ "en-US" };

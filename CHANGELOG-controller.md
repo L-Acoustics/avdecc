@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Properly monitoring changes in dynamic mappings
 - Updated GetMilanInfo to match Milan specification
 - Dynamic mappings in redundancy mode not correctly set for StreamPortOutput
+- Concurrent access protection
 
 ## [2.7.2] - 2018-10-30
 ### Fixed
