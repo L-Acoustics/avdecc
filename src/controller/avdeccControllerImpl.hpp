@@ -376,7 +376,6 @@ private:
 
 	private:
 		SharedControlledEntityImpl _controlledEntity{ nullptr };
-		bool const _wasLocked{ false };
 	};
 
 	/** A ControlledEntityImpl that is automatically unlocked then relocked, if locked when retrieved. It should be used by the ControllerImpl when called by a public API so the ControlledEntity is no longer locked when lower layers are called (deadlock prevention). */
