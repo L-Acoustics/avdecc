@@ -233,12 +233,10 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 		_controller->acquireEntity(targetEntityID, isPersistent, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
 			{
-#pragma message("REMOVE THIS DEFINE WHEN maybe_unused is fixed in VS")
-#ifndef DEBUG
+#pragma message("REMOVE THIS WHEN maybe_unused is fixed in VS")
 				// Visual Studio 15.9 is bugged and (again) ignore the maybe_unused attribute in lambda
 				(void)descriptorType;
 				(void)descriptorIndex;
-#endif
 				LOG_CONTROLLER_TRACE(entityID, "User acquireEntityResult (OwningController={} DescriptorType={} DescriptorIndex={}): {}", toHexString(owningEntity, true), to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
 
 				// Take a copy of the ControlledEntity so we don't have to keep the lock
@@ -282,12 +280,10 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 		_controller->releaseEntity(targetEntityID, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
 			{
-#pragma message("REMOVE THIS DEFINE WHEN maybe_unused is fixed in VS")
-#ifndef DEBUG
+#pragma message("REMOVE THIS WHEN maybe_unused is fixed in VS")
 				// Visual Studio 15.9 is bugged and (again) ignore the maybe_unused attribute in lambda
 				(void)descriptorType;
 				(void)descriptorIndex;
-#endif
 				LOG_CONTROLLER_TRACE(entityID, "User releaseEntity (OwningController={} DescriptorType={} DescriptorIndex={}): {}", toHexString(owningEntity, true), to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
 
 				// Take a copy of the ControlledEntity so we don't have to keep the lock
@@ -338,12 +334,10 @@ void ControllerImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntit
 		_controller->lockEntity(targetEntityID, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const lockingEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
 			{
-#pragma message("REMOVE THIS DEFINE WHEN maybe_unused is fixed in VS")
-#ifndef DEBUG
+#pragma message("REMOVE THIS WHEN maybe_unused is fixed in VS")
 				// Visual Studio 15.9 is bugged and (again) ignore the maybe_unused attribute in lambda
 				(void)descriptorType;
 				(void)descriptorIndex;
-#endif
 				LOG_CONTROLLER_TRACE(entityID, "User lockEntityResult (LockingController={} DescriptorType={} DescriptorIndex={}): {}", toHexString(lockingEntity, true), to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
 
 				// Take a copy of the ControlledEntity so we don't have to keep the lock
@@ -386,12 +380,10 @@ void ControllerImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockE
 		_controller->unlockEntity(targetEntityID, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const lockingEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
 			{
-#pragma message("REMOVE THIS DEFINE WHEN maybe_unused is fixed in VS")
-#ifndef DEBUG
+#pragma message("REMOVE THIS WHEN maybe_unused is fixed in VS")
 				// Visual Studio 15.9 is bugged and (again) ignore the maybe_unused attribute in lambda
 				(void)descriptorType;
 				(void)descriptorIndex;
-#endif
 				LOG_CONTROLLER_TRACE(entityID, "User unlockEntity (LockingController={} DescriptorType={} DescriptorIndex={}): {}", toHexString(lockingEntity, true), to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
 
 				// Take a copy of the ControlledEntity so we don't have to keep the lock
