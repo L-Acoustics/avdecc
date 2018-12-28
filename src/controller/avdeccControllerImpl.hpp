@@ -114,7 +114,7 @@ private:
 	virtual void disconnectTalkerStream(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, DisconnectTalkerStreamHandler const& handler) const noexcept override;
 	virtual void getListenerStreamState(entity::model::StreamIdentification const& listenerStream, GetListenerStreamStateHandler const& handler) const noexcept override;
 
-	virtual ControlledEntityGuard getControlledEntity(UniqueIdentifier const entityID) const noexcept override;
+	virtual ControlledEntityGuard getControlledEntityGuard(UniqueIdentifier const entityID) const noexcept override;
 
 	virtual void lock() noexcept override;
 	virtual void unlock() noexcept override;
@@ -282,8 +282,8 @@ private:
 	/* ************************************************************ */
 	/* Private classes                                              */
 	/* ************************************************************ */
-	/** A ControlledEntityImpl that is automatically locked when retrieved. It should be used by the ControllerImpl when called from any of the network threads. */
-	class LockedControlledEntity final
+	/** A guard around a ControlledEntityImpl that guarantees it won't be destroyed while the Guard is alive. If 'locked' is passed during construction, it also guarantees it won't be modified by another thread while the guard is alive. */
+	class ControlledEntityImplGuard final
 	{
 	public:
 		/** Returns a ControlledEntity const* */
@@ -340,111 +340,99 @@ private:
 			return _controlledEntity != nullptr;
 		}
 
+		/** Releases the Guarded SharedControlledEntityImpl, transfering ownership and locked state */
 		SharedControlledEntityImpl release() noexcept
 		{
 			return std::move(_controlledEntity);
 		}
 
-		// Default constructor to allow creation of an empty Guard
-		LockedControlledEntity() noexcept {}
-
-		LockedControlledEntity(SharedControlledEntityImpl&& entity)
-			: _controlledEntity(std::move(entity))
+		/** Releases the Guarded SharedControlledEntityImpl, unlocking it if it was */
+		void reset() noexcept
 		{
-			if (_controlledEntity)
+			unlock();
+			_controlledEntity = nullptr;
+		}
+
+		// Default constructor to allow creation of an empty Guard
+		ControlledEntityImplGuard() noexcept {}
+
+		ControlledEntityImplGuard(SharedControlledEntityImpl&& entity, bool const locked)
+			: _controlledEntity(std::move(entity))
+			, _locked(locked)
+		{
+			if (_controlledEntity && _locked)
 			{
 				_controlledEntity->lock();
 			}
 		}
 
 		// Destructor
-		~LockedControlledEntity()
+		~ControlledEntityImplGuard()
 		{
-			if (_controlledEntity)
-			{
-				_controlledEntity->unlock();
-			}
+			unlock();
 		}
 
 		// Allow move semantics
-		LockedControlledEntity(LockedControlledEntity&&) = default;
-		LockedControlledEntity& operator=(LockedControlledEntity&&) = default;
+		ControlledEntityImplGuard(ControlledEntityImplGuard&&) = default;
+		ControlledEntityImplGuard& operator=(ControlledEntityImplGuard&&) = default;
 
 		// Disallow copy
-		LockedControlledEntity(LockedControlledEntity const&) = delete;
-		LockedControlledEntity& operator=(LockedControlledEntity const&) = delete;
+		ControlledEntityImplGuard(ControlledEntityImplGuard const&) = delete;
+		ControlledEntityImplGuard& operator=(ControlledEntityImplGuard const&) = delete;
 
 	private:
+		void unlock() noexcept
+		{
+			if (_controlledEntity && _locked)
+			{
+				_controlledEntity->unlock();
+				_locked = false;
+			}
+		}
+
 		SharedControlledEntityImpl _controlledEntity{ nullptr };
+		bool _locked{ false };
 	};
 
-	/** A ControlledEntityImpl that is automatically unlocked then relocked, if locked when retrieved. It should be used by the ControllerImpl when called by a public API so the ControlledEntity is no longer locked when lower layers are called (deadlock prevention). */
-	class UnlockedControlledEntity final
+	class SharedControlledEntityImplHolder final
 	{
 	public:
-		/** Returns a ControlledEntity const* */
-		ControlledEntityImpl const* get() const noexcept
+		// Default constructor to allow creation of an empty Guard
+		SharedControlledEntityImplHolder() noexcept {}
+
+		SharedControlledEntityImplHolder(SharedControlledEntityImpl const& entity)
+			: _controlledEntity(entity)
 		{
-			if (_controlledEntity == nullptr)
-				return nullptr;
-			return _controlledEntity.get();
 		}
 
-		/** Operator to access ControlledEntity */
-		ControlledEntityImpl* operator->() noexcept
-		{
-			if (_controlledEntity == nullptr)
-				return nullptr;
-			return _controlledEntity.operator->();
-		}
-
-		/** Operator to access ControlledEntity */
-		ControlledEntityImpl& operator*()
-		{
-			if (_controlledEntity == nullptr)
-				throw la::avdecc::Exception("ControlledEntityImpl is nullptr");
-			return _controlledEntity.operator*();
-		}
-
-		/** Returns true if the entity is online (meaning a valid ControlledEntity can be retrieved using an operator overload) */
+		/** Returns true if the entity is online */
 		explicit operator bool() const noexcept
 		{
 			return _controlledEntity != nullptr;
 		}
 
-		// Default constructor to allow creation of an empty Guard
-		UnlockedControlledEntity() noexcept {}
-
-		UnlockedControlledEntity(SharedControlledEntityImpl&& entity)
-			: _controlledEntity(std::move(entity))
-			, _wasLocked(_controlledEntity && _controlledEntity->isSelfLocked())
+		/** Releases the Guarded SharedControlledEntityImpl, transfering ownership */
+		SharedControlledEntityImpl release() noexcept
 		{
-			if (_wasLocked)
-			{
-				_controlledEntity->unlock();
-			}
+			return std::move(_controlledEntity);
 		}
 
-		// Destructor
-		~UnlockedControlledEntity()
+		/** Releases the Guarded SharedControlledEntityImpl */
+		void reset() noexcept
 		{
-			if (_wasLocked)
-			{
-				_controlledEntity->lock();
-			}
+			_controlledEntity = nullptr;
 		}
 
 		// Allow move semantics
-		UnlockedControlledEntity(UnlockedControlledEntity&&) = default;
-		UnlockedControlledEntity& operator=(UnlockedControlledEntity&&) = default;
+		SharedControlledEntityImplHolder(SharedControlledEntityImplHolder&&) = default;
+		SharedControlledEntityImplHolder& operator=(SharedControlledEntityImplHolder&&) = default;
 
 		// Disallow copy
-		UnlockedControlledEntity(UnlockedControlledEntity const&) = delete;
-		UnlockedControlledEntity& operator=(UnlockedControlledEntity const&) = delete;
+		SharedControlledEntityImplHolder(SharedControlledEntityImplHolder const&) = delete;
+		SharedControlledEntityImplHolder& operator=(SharedControlledEntityImplHolder const&) = delete;
 
 	private:
 		SharedControlledEntityImpl _controlledEntity{ nullptr };
-		bool const _wasLocked{ false };
 	};
 
 	/* ************************************************************ */
@@ -475,6 +463,7 @@ private:
 	/* ************************************************************ */
 	/* Private methods                                              */
 	/* ************************************************************ */
+	bool areControlledEntitiesSelfLocked() const noexcept;
 	std::tuple<model::AcquireState, UniqueIdentifier> getAcquiredInfoFromStatus(ControlledEntityImpl& entity, UniqueIdentifier const owningEntity, entity::ControllerEntity::AemCommandStatus const status, bool const releaseEntityResult) const noexcept;
 	std::tuple<model::LockState, UniqueIdentifier> getLockedInfoFromStatus(ControlledEntityImpl& entity, UniqueIdentifier const lockingEntity, entity::ControllerEntity::AemCommandStatus const status, bool const unlockEntityResult) const noexcept;
 	void addDelayedQuery(std::chrono::milliseconds const delay, UniqueIdentifier const entityID, DelayedQueryHandler&& queryHandler) noexcept;
@@ -515,25 +504,24 @@ private:
 	{
 		return *const_cast<Controller*>(static_cast<Controller const*>(this));
 	}
-	inline UnlockedControlledEntity getUnlockedControlledEntityImpl(UniqueIdentifier const entityID) const noexcept
+
+	/** Gets a scoped reference on a ControlledEntitiyImpl */
+	inline SharedControlledEntityImplHolder getSharedControlledEntityImplHolder(UniqueIdentifier const entityID) const noexcept
 	{
-		auto entity = SharedControlledEntityImpl{};
+		// Lock to protect _controlledEntities
+		std::lock_guard<decltype(_lock)> const lg(_lock);
 
+		auto const entityIt = _controlledEntities.find(entityID);
+		if (entityIt != _controlledEntities.end())
 		{
-			// Lock to protect _controlledEntities
-			std::lock_guard<decltype(_lock)> const lg(_lock);
-
-			auto entityIt = _controlledEntities.find(entityID);
-			if (entityIt != _controlledEntities.end())
-			{
-				// Get a reference on the entity while locked
-				entity = entityIt->second;
-			}
+			// Return a reference on the entity while locked
+			return SharedControlledEntityImplHolder{ entityIt->second };
 		}
 
-		return UnlockedControlledEntity{ std::move(entity) };
+		return {};
 	}
-	inline LockedControlledEntity getControlledEntityImpl(UniqueIdentifier const entityID) const noexcept
+
+	inline ControlledEntityImplGuard getControlledEntityImplGuard(UniqueIdentifier const entityID, bool const locked = true) const noexcept
 	{
 		auto entity = SharedControlledEntityImpl{};
 
@@ -541,7 +529,7 @@ private:
 			// Lock to protect _controlledEntities
 			std::lock_guard<decltype(_lock)> const lg(_lock);
 
-			auto entityIt = _controlledEntities.find(entityID);
+			auto const entityIt = _controlledEntities.find(entityID);
 			if (entityIt != _controlledEntities.end())
 			{
 				// Get a reference on the entity while locked
@@ -549,7 +537,7 @@ private:
 			}
 		}
 
-		return LockedControlledEntity{ std::move(entity) };
+		return ControlledEntityImplGuard{ std::move(entity), locked };
 	}
 
 	/* ************************************************************ */

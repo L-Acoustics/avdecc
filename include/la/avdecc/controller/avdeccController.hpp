@@ -386,7 +386,7 @@ public:
 	virtual void getListenerStreamState(entity::model::StreamIdentification const& listenerStream, GetListenerStreamStateHandler const& handler) const noexcept = 0;
 
 	/** Gets a lock guarded ControlledEntity. While the returned object is in the scope, you are guaranteed to have exclusive access on the ControlledEntity. The returned guard should not be kept or held for more than a few milliseconds. */
-	virtual ControlledEntityGuard getControlledEntity(UniqueIdentifier const entityID) const noexcept = 0;
+	virtual ControlledEntityGuard getControlledEntityGuard(UniqueIdentifier const entityID) const noexcept = 0;
 
 	/** BasicLockable concept 'lock' method for the whole Controller */
 	virtual void lock() noexcept = 0;

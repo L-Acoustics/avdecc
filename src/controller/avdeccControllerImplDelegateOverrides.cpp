@@ -112,8 +112,8 @@ void ControllerImpl::onEntityUpdate(entity::controller::Interface const* const c
 {
 	LOG_CONTROLLER_TRACE(entityID, "onEntityUpdate");
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -211,8 +211,8 @@ void ControllerImpl::onGetListenerStreamStateResponseSniffed(entity::controller:
 /* Unsolicited notifications (not triggered for our own commands, the command's 'result' method will be called in that case) and only if command has no error */
 void ControllerImpl::onDeregisteredFromUnsolicitedNotifications(entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -223,8 +223,8 @@ void ControllerImpl::onDeregisteredFromUnsolicitedNotifications(entity::controll
 
 void ControllerImpl::onEntityAcquired(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const /*descriptorIndex*/) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -238,8 +238,8 @@ void ControllerImpl::onEntityAcquired(entity::controller::Interface const* const
 
 void ControllerImpl::onEntityReleased(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, UniqueIdentifier const owningEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const /*descriptorIndex*/) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -253,8 +253,8 @@ void ControllerImpl::onEntityReleased(entity::controller::Interface const* const
 
 void ControllerImpl::onEntityLocked(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, UniqueIdentifier const lockingEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const /*descriptorIndex*/) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -268,8 +268,8 @@ void ControllerImpl::onEntityLocked(entity::controller::Interface const* const /
 
 void ControllerImpl::onEntityUnlocked(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, UniqueIdentifier const lockingEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const /*descriptorIndex*/) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -283,8 +283,8 @@ void ControllerImpl::onEntityUnlocked(entity::controller::Interface const* const
 
 void ControllerImpl::onConfigurationChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -295,8 +295,8 @@ void ControllerImpl::onConfigurationChanged(entity::controller::Interface const*
 
 void ControllerImpl::onStreamInputFormatChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -307,8 +307,8 @@ void ControllerImpl::onStreamInputFormatChanged(entity::controller::Interface co
 
 void ControllerImpl::onStreamOutputFormatChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -319,8 +319,8 @@ void ControllerImpl::onStreamOutputFormatChanged(entity::controller::Interface c
 
 void ControllerImpl::onStreamPortInputAudioMappingsChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -336,8 +336,8 @@ void ControllerImpl::onStreamPortInputAudioMappingsChanged(entity::controller::I
 
 void ControllerImpl::onStreamPortOutputAudioMappingsChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -353,8 +353,8 @@ void ControllerImpl::onStreamPortOutputAudioMappingsChanged(entity::controller::
 
 void ControllerImpl::onStreamInputInfoChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const fromGetStreamInfoResponse) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -365,8 +365,8 @@ void ControllerImpl::onStreamInputInfoChanged(entity::controller::Interface cons
 
 void ControllerImpl::onStreamOutputInfoChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const fromGetStreamInfoResponse) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -377,8 +377,8 @@ void ControllerImpl::onStreamOutputInfoChanged(entity::controller::Interface con
 
 void ControllerImpl::onEntityNameChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::AvdeccFixedString const& entityName) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -389,8 +389,8 @@ void ControllerImpl::onEntityNameChanged(entity::controller::Interface const* co
 
 void ControllerImpl::onEntityGroupNameChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::AvdeccFixedString const& entityGroupName) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -401,8 +401,8 @@ void ControllerImpl::onEntityGroupNameChanged(entity::controller::Interface cons
 
 void ControllerImpl::onConfigurationNameChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& configurationName) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -413,8 +413,8 @@ void ControllerImpl::onConfigurationNameChanged(entity::controller::Interface co
 
 void ControllerImpl::onAudioUnitNameChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::AvdeccFixedString const& audioUnitName) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -425,8 +425,8 @@ void ControllerImpl::onAudioUnitNameChanged(entity::controller::Interface const*
 
 void ControllerImpl::onStreamInputNameChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamName) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -437,8 +437,8 @@ void ControllerImpl::onStreamInputNameChanged(entity::controller::Interface cons
 
 void ControllerImpl::onStreamOutputNameChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamName) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -449,8 +449,8 @@ void ControllerImpl::onStreamOutputNameChanged(entity::controller::Interface con
 
 void ControllerImpl::onAvbInterfaceNameChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvdeccFixedString const& avbInterfaceName) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -461,8 +461,8 @@ void ControllerImpl::onAvbInterfaceNameChanged(entity::controller::Interface con
 
 void ControllerImpl::onClockSourceNameChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex, entity::model::AvdeccFixedString const& clockSourceName) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -473,8 +473,8 @@ void ControllerImpl::onClockSourceNameChanged(entity::controller::Interface cons
 
 void ControllerImpl::onMemoryObjectNameChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, entity::model::AvdeccFixedString const& memoryObjectName) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -485,8 +485,8 @@ void ControllerImpl::onMemoryObjectNameChanged(entity::controller::Interface con
 
 void ControllerImpl::onAudioClusterNameChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex, entity::model::AvdeccFixedString const& audioClusterName) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -497,8 +497,8 @@ void ControllerImpl::onAudioClusterNameChanged(entity::controller::Interface con
 
 void ControllerImpl::onClockDomainNameChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::AvdeccFixedString const& clockDomainName) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -509,8 +509,8 @@ void ControllerImpl::onClockDomainNameChanged(entity::controller::Interface cons
 
 void ControllerImpl::onAudioUnitSamplingRateChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -521,8 +521,8 @@ void ControllerImpl::onAudioUnitSamplingRateChanged(entity::controller::Interfac
 
 void ControllerImpl::onClockSourceChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -533,8 +533,8 @@ void ControllerImpl::onClockSourceChanged(entity::controller::Interface const* c
 
 void ControllerImpl::onStreamInputStarted(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -545,8 +545,8 @@ void ControllerImpl::onStreamInputStarted(entity::controller::Interface const* c
 
 void ControllerImpl::onStreamOutputStarted(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -557,8 +557,8 @@ void ControllerImpl::onStreamOutputStarted(entity::controller::Interface const* 
 
 void ControllerImpl::onStreamInputStopped(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -569,8 +569,8 @@ void ControllerImpl::onStreamInputStopped(entity::controller::Interface const* c
 
 void ControllerImpl::onStreamOutputStopped(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -581,8 +581,8 @@ void ControllerImpl::onStreamOutputStopped(entity::controller::Interface const* 
 
 void ControllerImpl::onAvbInfoChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -593,8 +593,8 @@ void ControllerImpl::onAvbInfoChanged(entity::controller::Interface const* const
 
 void ControllerImpl::onAsPathChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -605,8 +605,8 @@ void ControllerImpl::onAsPathChanged(entity::controller::Interface const* const 
 
 void ControllerImpl::onAvbInterfaceCountersChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::AvbInterfaceCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -617,8 +617,8 @@ void ControllerImpl::onAvbInterfaceCountersChanged(entity::controller::Interface
 
 void ControllerImpl::onClockDomainCountersChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ClockDomainIndex const clockDomainIndex, entity::ClockDomainCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -629,8 +629,8 @@ void ControllerImpl::onClockDomainCountersChanged(entity::controller::Interface 
 
 void ControllerImpl::onStreamInputCountersChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::StreamInputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -641,8 +641,8 @@ void ControllerImpl::onStreamInputCountersChanged(entity::controller::Interface 
 
 void ControllerImpl::onStreamPortInputAudioMappingsAdded(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -653,8 +653,8 @@ void ControllerImpl::onStreamPortInputAudioMappingsAdded(entity::controller::Int
 
 void ControllerImpl::onStreamPortOutputAudioMappingsAdded(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -665,8 +665,8 @@ void ControllerImpl::onStreamPortOutputAudioMappingsAdded(entity::controller::In
 
 void ControllerImpl::onStreamPortInputAudioMappingsRemoved(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -677,8 +677,8 @@ void ControllerImpl::onStreamPortInputAudioMappingsRemoved(entity::controller::I
 
 void ControllerImpl::onStreamPortOutputAudioMappingsRemoved(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -689,8 +689,8 @@ void ControllerImpl::onStreamPortOutputAudioMappingsRemoved(entity::controller::
 
 void ControllerImpl::onMemoryObjectLengthChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -701,8 +701,8 @@ void ControllerImpl::onMemoryObjectLengthChanged(entity::controller::Interface c
 
 void ControllerImpl::onOperationStatus(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, std::uint16_t const percentComplete) noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{

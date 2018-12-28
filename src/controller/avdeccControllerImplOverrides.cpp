@@ -109,7 +109,8 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 					// Get first query from the list
 					auto const& query = queriesToSend.front();
 
-					auto controlledEntity = getControlledEntityImpl(query.entityID);
+					// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+					auto controlledEntity = getSharedControlledEntityImplHolder(query.entityID);
 
 					// Entity still online
 					if (controlledEntity)
@@ -216,8 +217,8 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 	auto const descriptorType{ entity::model::DescriptorType::Entity };
 	auto const descriptorIndex{ entity::model::DescriptorIndex{ 0u } };
 
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -230,6 +231,7 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 			return;
 		}
 		controlledEntity->setAcquireState(model::AcquireState::TryAcquire);
+		controlledEntity.reset(); // We have to relinquish the ownership of the ControlledEntity before calling the controller
 		_controller->acquireEntity(targetEntityID, isPersistent, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
 			{
@@ -239,8 +241,8 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 				(void)descriptorIndex;
 				LOG_CONTROLLER_TRACE(entityID, "User acquireEntityResult (OwningController={} DescriptorType={} DescriptorIndex={}): {}", toHexString(owningEntity, true), to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -270,8 +272,8 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 	auto const descriptorType{ entity::model::DescriptorType::Entity };
 	auto const descriptorIndex{ entity::model::DescriptorIndex{ 0u } };
 
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -285,8 +287,8 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 				(void)descriptorIndex;
 				LOG_CONTROLLER_TRACE(entityID, "User releaseEntity (OwningController={} DescriptorType={} DescriptorIndex={}): {}", toHexString(owningEntity, true), to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -316,8 +318,8 @@ void ControllerImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntit
 	auto const descriptorType{ entity::model::DescriptorType::Entity };
 	auto const descriptorIndex{ entity::model::DescriptorIndex{ 0u } };
 
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -330,6 +332,7 @@ void ControllerImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntit
 			return;
 		}
 		controlledEntity->setLockState(model::LockState::TryLock);
+		controlledEntity.reset(); // We have to relinquish the ownership of the ControlledEntity before calling the controller
 		_controller->lockEntity(targetEntityID, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const lockingEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
 			{
@@ -339,8 +342,8 @@ void ControllerImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntit
 				(void)descriptorIndex;
 				LOG_CONTROLLER_TRACE(entityID, "User lockEntityResult (LockingController={} DescriptorType={} DescriptorIndex={}): {}", toHexString(lockingEntity, true), to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -370,8 +373,8 @@ void ControllerImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockE
 	auto const descriptorType{ entity::model::DescriptorType::Entity };
 	auto const descriptorIndex{ entity::model::DescriptorIndex{ 0u } };
 
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -385,8 +388,8 @@ void ControllerImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockE
 				(void)descriptorIndex;
 				LOG_CONTROLLER_TRACE(entityID, "User unlockEntity (LockingController={} DescriptorType={} DescriptorIndex={}): {}", toHexString(lockingEntity, true), to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -413,8 +416,8 @@ void ControllerImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockE
 
 void ControllerImpl::setConfiguration(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, SetConfigurationHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -424,8 +427,8 @@ void ControllerImpl::setConfiguration(UniqueIdentifier const targetEntityID, ent
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setConfiguration (ConfigurationIndex={}): {}", configurationIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -454,8 +457,8 @@ void ControllerImpl::setConfiguration(UniqueIdentifier const targetEntityID, ent
 
 void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat, SetStreamInputFormatHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -465,8 +468,8 @@ void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID,
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setStreamInputFormat (StreamIndex={} streamFormat={}): {}", streamIndex, toHexString(streamFormat, true), entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -495,8 +498,8 @@ void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID,
 
 void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat, SetStreamOutputFormatHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -506,8 +509,8 @@ void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setStreamOutputFormat (StreamIndex={} streamFormat={}): {}", streamIndex, toHexString(streamFormat, true), entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -536,8 +539,8 @@ void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID
 
 void ControllerImpl::setStreamInputInfo(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, SetStreamInputInfoHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -547,8 +550,8 @@ void ControllerImpl::setStreamInputInfo(UniqueIdentifier const targetEntityID, e
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setStreamInputInfo (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -577,8 +580,8 @@ void ControllerImpl::setStreamInputInfo(UniqueIdentifier const targetEntityID, e
 
 void ControllerImpl::setStreamOutputInfo(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, SetStreamOutputInfoHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -588,8 +591,8 @@ void ControllerImpl::setStreamOutputInfo(UniqueIdentifier const targetEntityID, 
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setStreamOutputInfo (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -618,8 +621,8 @@ void ControllerImpl::setStreamOutputInfo(UniqueIdentifier const targetEntityID, 
 
 void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity::model::AvdeccFixedString const& name, SetEntityNameHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -629,8 +632,8 @@ void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setEntityName (): {}", entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -659,8 +662,8 @@ void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity
 
 void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, entity::model::AvdeccFixedString const& name, SetEntityGroupNameHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -670,8 +673,8 @@ void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, e
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setEntityGroupName (): {}", entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -700,8 +703,8 @@ void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, e
 
 void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& name, SetConfigurationNameHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -711,8 +714,8 @@ void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID,
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setConfigurationName (ConfigurationIndex={}): {}", configurationIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -741,8 +744,8 @@ void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID,
 
 void ControllerImpl::setAudioUnitName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::AvdeccFixedString const& name, SetAudioUnitNameHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -752,8 +755,8 @@ void ControllerImpl::setAudioUnitName(UniqueIdentifier const targetEntityID, ent
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setAudioUnitName (ConfigurationIndex={} AudioUnitIndex={}): {}", configurationIndex, audioUnitIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -782,8 +785,8 @@ void ControllerImpl::setAudioUnitName(UniqueIdentifier const targetEntityID, ent
 
 void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& name, SetStreamInputNameHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -793,8 +796,8 @@ void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, e
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setStreamInputName (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -823,8 +826,8 @@ void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, e
 
 void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& name, SetStreamOutputNameHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -834,8 +837,8 @@ void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, 
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setStreamOutputName (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -864,8 +867,8 @@ void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, 
 
 void ControllerImpl::setAvbInterfaceName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvdeccFixedString const& name, SetAvbInterfaceNameHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -875,8 +878,8 @@ void ControllerImpl::setAvbInterfaceName(UniqueIdentifier const targetEntityID, 
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setAvbInterfaceName (ConfigurationIndex={} AvbInterfaceIndex={}): {}", configurationIndex, avbInterfaceIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -905,8 +908,8 @@ void ControllerImpl::setAvbInterfaceName(UniqueIdentifier const targetEntityID, 
 
 void ControllerImpl::setClockSourceName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex, entity::model::AvdeccFixedString const& name, SetClockSourceNameHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -916,8 +919,8 @@ void ControllerImpl::setClockSourceName(UniqueIdentifier const targetEntityID, e
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setClockSourceName (ConfigurationIndex={} ClockSourceIndex={}): {}", configurationIndex, clockSourceIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -946,8 +949,8 @@ void ControllerImpl::setClockSourceName(UniqueIdentifier const targetEntityID, e
 
 void ControllerImpl::setMemoryObjectName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, entity::model::AvdeccFixedString const& name, SetMemoryObjectNameHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -957,8 +960,8 @@ void ControllerImpl::setMemoryObjectName(UniqueIdentifier const targetEntityID, 
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setMemoryObjectName (ConfigurationIndex={} MemoryObjectIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -987,8 +990,8 @@ void ControllerImpl::setMemoryObjectName(UniqueIdentifier const targetEntityID, 
 
 void ControllerImpl::setAudioClusterName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex, entity::model::AvdeccFixedString const& name, SetAudioClusterNameHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -998,8 +1001,8 @@ void ControllerImpl::setAudioClusterName(UniqueIdentifier const targetEntityID, 
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setAudioClusterName (ConfigurationIndex={} AudioClusterIndex={}): {}", configurationIndex, audioClusterIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -1028,8 +1031,8 @@ void ControllerImpl::setAudioClusterName(UniqueIdentifier const targetEntityID, 
 
 void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::AvdeccFixedString const& name, SetClockDomainNameHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -1039,8 +1042,8 @@ void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, e
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setClockDomainName (ConfigurationIndex={} ClockDomainIndex={}): {}", configurationIndex, clockDomainIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -1069,8 +1072,8 @@ void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, e
 
 void ControllerImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntityID, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate, SetAudioUnitSamplingRateHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -1080,8 +1083,8 @@ void ControllerImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntit
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setAudioUnitSamplingRate (AudioUnitIndex={} SamplingRate={}): {}", audioUnitIndex, samplingRate, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -1110,8 +1113,8 @@ void ControllerImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntit
 
 void ControllerImpl::setClockSource(UniqueIdentifier const targetEntityID, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex, SetClockSourceHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -1121,8 +1124,8 @@ void ControllerImpl::setClockSource(UniqueIdentifier const targetEntityID, entit
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setClockSource (ClockDomainIndex={} ClockSourceIndex={}): {}", clockDomainIndex, clockSourceIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -1151,8 +1154,8 @@ void ControllerImpl::setClockSource(UniqueIdentifier const targetEntityID, entit
 
 void ControllerImpl::startStreamInput(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, StartStreamInputHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -1162,8 +1165,8 @@ void ControllerImpl::startStreamInput(UniqueIdentifier const targetEntityID, ent
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User startStreamInput (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -1192,8 +1195,8 @@ void ControllerImpl::startStreamInput(UniqueIdentifier const targetEntityID, ent
 
 void ControllerImpl::stopStreamInput(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, StopStreamInputHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -1203,8 +1206,8 @@ void ControllerImpl::stopStreamInput(UniqueIdentifier const targetEntityID, enti
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User stopStreamInput (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -1233,8 +1236,8 @@ void ControllerImpl::stopStreamInput(UniqueIdentifier const targetEntityID, enti
 
 void ControllerImpl::startStreamOutput(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, StartStreamOutputHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -1244,8 +1247,8 @@ void ControllerImpl::startStreamOutput(UniqueIdentifier const targetEntityID, en
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User startStreamOutput (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -1274,8 +1277,8 @@ void ControllerImpl::startStreamOutput(UniqueIdentifier const targetEntityID, en
 
 void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, StopStreamOutputHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -1285,8 +1288,8 @@ void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, ent
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User stopStreamOutput (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -1315,8 +1318,8 @@ void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, ent
 
 void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, AddStreamPortInputAudioMappingsHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -1326,8 +1329,8 @@ void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targ
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User addStreamInputAudioMappings (StreamPortIndex={}): {}", streamPortIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -1356,8 +1359,8 @@ void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targ
 
 void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, AddStreamPortOutputAudioMappingsHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -1367,8 +1370,8 @@ void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const tar
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User addStreamOutputAudioMappings (StreamPortIndex={}): {}", streamPortIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -1397,8 +1400,8 @@ void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const tar
 
 void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, RemoveStreamPortInputAudioMappingsHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -1408,8 +1411,8 @@ void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const t
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User removeStreamInputAudioMappings (StreamPortIndex={}): {}", streamPortIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -1438,8 +1441,8 @@ void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const t
 
 void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, RemoveStreamPortOutputAudioMappingsHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -1449,8 +1452,8 @@ void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const 
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User removeStreamOutputAudioMappings (StreamPortIndex={}): {}", streamPortIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -1479,8 +1482,8 @@ void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const 
 
 void ControllerImpl::setMemoryObjectLength(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length, SetMemoryObjectLengthHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -1490,8 +1493,8 @@ void ControllerImpl::setMemoryObjectLength(UniqueIdentifier const targetEntityID
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setMemoryObjectLength (ConfigurationIndex={} MemoryObjectIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -1555,8 +1558,8 @@ entity::addressAccess::Tlv ControllerImpl::makeNextWriteDeviceMemoryTlv(std::uin
 
 void ControllerImpl::onUserReadDeviceMemoryResult(UniqueIdentifier const targetEntityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs, std::uint64_t const baseAddress, std::uint64_t const length, ReadDeviceMemoryProgressHandler const& progressHandler, ReadDeviceMemoryCompletionHandler const& completionHandler, DeviceMemoryBuffer&& memoryBuffer) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
 	auto* const entity = controlledEntity ? (controlledEntity->wasAdvertised() ? controlledEntity.get() : nullptr) : nullptr;
 
 	LOG_CONTROLLER_TRACE(targetEntityID, "User readDeviceMemory chunk (BaseAddress={} Length={}): {}", toHexString(baseAddress, true), length, entity::ControllerEntity::statusToString(status));
@@ -1609,8 +1612,8 @@ void ControllerImpl::onUserReadDeviceMemoryResult(UniqueIdentifier const targetE
 
 void ControllerImpl::onUserWriteDeviceMemoryResult(UniqueIdentifier const targetEntityID, entity::ControllerEntity::AaCommandStatus const status, std::uint64_t const baseAddress, std::uint64_t const sentSize, WriteDeviceMemoryProgressHandler const& progressHandler, WriteDeviceMemoryCompletionHandler const& completionHandler, DeviceMemoryBuffer&& memoryBuffer) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
 	auto* const entity = controlledEntity ? (controlledEntity->wasAdvertised() ? controlledEntity.get() : nullptr) : nullptr;
 
 	LOG_CONTROLLER_TRACE(targetEntityID, "User writeDeviceMemory chunk (BaseAddress={} Length={}): {}", toHexString(baseAddress, true), memoryBuffer.size(), entity::ControllerEntity::statusToString(status));
@@ -1654,8 +1657,8 @@ void ControllerImpl::onUserWriteDeviceMemoryResult(UniqueIdentifier const target
 
 void ControllerImpl::readDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, std::uint64_t const length, ReadDeviceMemoryProgressHandler const& progressHandler, ReadDeviceMemoryCompletionHandler const& completionHandler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -1686,8 +1689,8 @@ void ControllerImpl::readDeviceMemory(UniqueIdentifier const targetEntityID, std
 
 void ControllerImpl::startOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer, StartOperationHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -1698,8 +1701,8 @@ void ControllerImpl::startOperation(UniqueIdentifier const targetEntityID, entit
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User startOperation (OperationID={}): {}", operationID, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -1721,8 +1724,8 @@ void ControllerImpl::startOperation(UniqueIdentifier const targetEntityID, entit
 
 void ControllerImpl::abortOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, AbortOperationHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(targetEntityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -1733,8 +1736,8 @@ void ControllerImpl::abortOperation(UniqueIdentifier const targetEntityID, entit
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User abortOperation (): {}", entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto controlledEntity = getControlledEntityImpl(entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 				if (controlledEntity)
 				{
@@ -1796,8 +1799,8 @@ void ControllerImpl::startUploadMemoryObjectOperation(UniqueIdentifier const tar
 
 void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, DeviceMemoryBuffer memoryBuffer, WriteDeviceMemoryProgressHandler const& progressHandler, WriteDeviceMemoryCompletionHandler const& completionHandler) const noexcept
 {
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(targetEntityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
 
 	if (controlledEntity)
 	{
@@ -1825,8 +1828,8 @@ void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, st
 
 void ControllerImpl::connectStream(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(listenerStream.entityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(listenerStream.entityID);
 
 	if (controlledEntity)
 	{
@@ -1836,9 +1839,9 @@ void ControllerImpl::connectStream(entity::model::StreamIdentification const& ta
 			{
 				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto listener = getControlledEntityImpl(listenerStream.entityID);
-				auto talker = getControlledEntityImpl(talkerStream.entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntities
+				auto listener = getControlledEntityImplGuard(listenerStream.entityID);
+				auto talker = getControlledEntityImplGuard(talkerStream.entityID);
 
 				// Invoke result handler
 				invokeProtectedHandler(handler, talker.get(), listener.get(), talkerStream.streamIndex, listenerStream.streamIndex, status);
@@ -1858,8 +1861,8 @@ void ControllerImpl::connectStream(entity::model::StreamIdentification const& ta
 
 void ControllerImpl::disconnectStream(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, DisconnectStreamHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(listenerStream.entityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(listenerStream.entityID);
 
 	if (controlledEntity)
 	{
@@ -1896,8 +1899,8 @@ void ControllerImpl::disconnectStream(entity::model::StreamIdentification const&
 									controlStatus = isStillConnected ? disconnectStatus : entity::ControllerEntity::ControlStatus::Success;
 								}
 
-								// Take a copy of the ControlledEntity so we don't have to keep the lock
-								auto listener = getControlledEntityImpl(listenerStream.entityID);
+								// Take a "scoped locked" shared copy of the ControlledEntity
+								auto listener = getControlledEntityImplGuard(listenerStream.entityID);
 
 								// Invoke result handler
 								invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, controlStatus);
@@ -1912,8 +1915,8 @@ void ControllerImpl::disconnectStream(entity::model::StreamIdentification const&
 
 				if (shouldNotifyHandler)
 				{
-					// Take a copy of the ControlledEntity so we don't have to keep the lock
-					auto listener = getControlledEntityImpl(listenerStream.entityID);
+					// Take a "scoped locked" shared copy of the ControlledEntity
+					auto listener = getControlledEntityImplGuard(listenerStream.entityID);
 
 					// Invoke result handler
 					invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, status);
@@ -1928,8 +1931,8 @@ void ControllerImpl::disconnectStream(entity::model::StreamIdentification const&
 
 void ControllerImpl::disconnectTalkerStream(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, DisconnectTalkerStreamHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(talkerStream.entityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(talkerStream.entityID);
 
 	if (controlledEntity)
 	{
@@ -1963,8 +1966,8 @@ void ControllerImpl::disconnectTalkerStream(entity::model::StreamIdentification 
 
 void ControllerImpl::getListenerStreamState(entity::model::StreamIdentification const& listenerStream, GetListenerStreamStateHandler const& handler) const noexcept
 {
-	// Get a shared copy of the ControlledEntity and unlock it if it was locked by the caller (so we don't deadlock by having it locked during _controller calls)
-	auto controlledEntity = getUnlockedControlledEntityImpl(listenerStream.entityID);
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(listenerStream.entityID);
 
 	if (controlledEntity)
 	{
@@ -1974,9 +1977,9 @@ void ControllerImpl::getListenerStreamState(entity::model::StreamIdentification 
 			{
 				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User getListenerStreamState (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
-				// Take a copy of the ControlledEntity so we don't have to keep the lock
-				auto listener = getControlledEntityImpl(listenerStream.entityID);
-				auto talker = getControlledEntityImpl(talkerStream.entityID);
+				// Take a "scoped locked" shared copy of the ControlledEntities
+				auto listener = getControlledEntityImplGuard(listenerStream.entityID);
+				auto talker = getControlledEntityImplGuard(talkerStream.entityID);
 
 				// Invoke result handler
 				invokeProtectedHandler(handler, talker.get(), listener.get(), talkerStream.streamIndex, listenerStream.streamIndex, connectionCount, flags, status);
@@ -1994,9 +1997,10 @@ void ControllerImpl::getListenerStreamState(entity::model::StreamIdentification 
 	}
 }
 
-ControlledEntityGuard ControllerImpl::getControlledEntity(UniqueIdentifier const entityID) const noexcept
+ControlledEntityGuard ControllerImpl::getControlledEntityGuard(UniqueIdentifier const entityID) const noexcept
 {
-	auto entity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto entity = getControlledEntityImplGuard(entityID);
 	if (entity && entity->wasAdvertised())
 	{
 		return ControlledEntityGuard{ entity.release() };

@@ -27,6 +27,7 @@
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
 #include "la/avdecc/internals/protocolMvuAecpdu.hpp"
 #include "la/avdecc/internals/watchDog.hpp"
+#include "la/avdecc/utils.hpp"
 #include "stateMachine/controllerStateMachine.hpp"
 #include "protocolInterface_pcap.hpp"
 #include "pcapInterface.hpp"
@@ -35,6 +36,7 @@
 #include <sstream>
 #include <array>
 #include <thread>
+#include <string>
 #include <unordered_map>
 #include <functional>
 #include <memory>
@@ -124,9 +126,9 @@ public:
 					{
 						auto& watchDog = la::avdecc::watchDog::WatchDog::getInstance();
 
-						watchDog.registerWatch("avdecc::PCapInterface::dispatchAvdeccMessage", std::chrono::milliseconds{ 1000u });
+						watchDog.registerWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + toHexString(reinterpret_cast<size_t>(this)), std::chrono::milliseconds{ 1000u });
 						dispatchAvdeccMessage(avtpdu, avtpdu_size, etherLayer2);
-						watchDog.unregisterWatch("avdecc::PCapInterface::dispatchAvdeccMessage");
+						watchDog.unregisterWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + toHexString(reinterpret_cast<size_t>(this)));
 					}
 				}
 

@@ -28,6 +28,7 @@
 #include <la/avdecc/avdecc.hpp>
 #include <la/avdecc/utils.hpp>
 #include <la/avdecc/internals/exception.hpp>
+#include <la/avdecc/internals/watchDog.hpp>
 #include "avdeccControlledEntityModel.hpp"
 #include "exports.hpp"
 #include <string>
@@ -154,8 +155,6 @@ public:
 	/** BasicLockable concept 'unlock' method for the whole ControlledEntity */
 	virtual void unlock() noexcept = 0;
 
-	virtual bool isSelfLocked() const noexcept = 0;
-
 	// Deleted compiler auto-generated methods
 	ControlledEntity(ControlledEntity&&) = delete;
 	ControlledEntity(ControlledEntity const&) = delete;
@@ -207,6 +206,7 @@ public:
 		return _controlledEntity != nullptr;
 	}
 
+	/** Releases the Guarded ControlledEntity (and the exclusive access to it). */
 	void reset() noexcept
 	{
 		unlock();
@@ -233,18 +233,13 @@ public:
 private:
 	friend class ControllerImpl;
 	using SharedControlledEntity = std::shared_ptr<ControlledEntity>;
-	ControlledEntityGuard(SharedControlledEntity entity)
+	// Ownership (and locked state) is transfered during construction
+	ControlledEntityGuard(SharedControlledEntity&& entity)
 		: _controlledEntity(std::move(entity))
 	{
 		if (_controlledEntity)
 		{
-			if (!_controlledEntity->isSelfLocked())
-			{
-				_controlledEntity->lock();
-			}
-#ifdef DEBUG
-			_lockTime = std::chrono::system_clock::now();
-#endif // DEBUG
+			la::avdecc::watchDog::WatchDog::getInstance().registerWatch("avdecc::controller::ControlledEntityGuard::" + toHexString(reinterpret_cast<size_t>(this)), std::chrono::milliseconds{ 500u });
 		}
 	}
 
@@ -252,22 +247,13 @@ private:
 	{
 		if (_controlledEntity)
 		{
+			la::avdecc::watchDog::WatchDog::getInstance().unregisterWatch("avdecc::controller::ControlledEntityGuard::" + toHexString(reinterpret_cast<size_t>(this)));
+			// We can unlock, we got ownership (and locked state) during construction
 			_controlledEntity->unlock();
 		}
-#ifdef DEBUG
-		if (_lockTime.has_value())
-		{
-			auto const endTime = std::chrono::system_clock::now();
-			AVDECC_ASSERT(std::chrono::duration_cast<std::chrono::milliseconds>(endTime - *_lockTime).count() < 500, "ControlledEntityGuard was kept for too long with a valid ControlledEntity (neither destructor nor reset was called in time). This class is not supposed to keep a valid ControlledEntity for more than a few milliseconds.");
-			_lockTime = std::nullopt;
-		}
-#endif // DEBUG
 	}
 
 	SharedControlledEntity _controlledEntity{ nullptr };
-#ifdef DEBUG
-	std::optional<std::chrono::time_point<std::chrono::system_clock>> _lockTime{ std::nullopt };
-#endif // DEBUG
 };
 
 } // namespace controller

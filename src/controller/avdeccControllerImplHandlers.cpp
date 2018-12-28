@@ -40,8 +40,8 @@ void ControllerImpl::onGetMilanInfoResult(entity::controller::Interface const* c
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetMilanInfoResult (ProtocolVersion={} FeaturesFlags={} CertificationVersion={}): {}", info.protocolVersion, info.featuresFlags.getValue(), info.certificationVersion, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -78,8 +78,8 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 {
 	LOG_CONTROLLER_TRACE(entityID, "onRegisterUnsolicitedNotificationsResult: {}", entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -104,8 +104,8 @@ void ControllerImpl::onEntityDescriptorResult(entity::controller::Interface cons
 {
 	LOG_CONTROLLER_TRACE(entityID, "onEntityDescriptorStaticResult: {}", entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -155,8 +155,8 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::controller::Interfa
 {
 	LOG_CONTROLLER_TRACE(entityID, "onConfigurationDescriptorResult (ConfigurationIndex={}): {}", configurationIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -312,8 +312,8 @@ void ControllerImpl::onAudioUnitDescriptorResult(entity::controller::Interface c
 {
 	LOG_CONTROLLER_TRACE(entityID, "onAudioUnitDescriptorResult (ConfigurationIndex={} AudioUnitIndex={}): {}", configurationIndex, audioUnitIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -369,8 +369,8 @@ void ControllerImpl::onStreamInputDescriptorResult(entity::controller::Interface
 {
 	LOG_CONTROLLER_TRACE(entityID, "onStreamInputDescriptorResult (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -405,8 +405,8 @@ void ControllerImpl::onStreamOutputDescriptorResult(entity::controller::Interfac
 {
 	LOG_CONTROLLER_TRACE(entityID, "onStreamOutputDescriptorResult (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -441,8 +441,8 @@ void ControllerImpl::onAvbInterfaceDescriptorResult(entity::controller::Interfac
 {
 	LOG_CONTROLLER_TRACE(entityID, "onAvbInterfaceDescriptorResult (ConfigurationIndex={} InterfaceIndex={}): {}", configurationIndex, interfaceIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -479,8 +479,8 @@ void ControllerImpl::onClockSourceDescriptorResult(entity::controller::Interface
 {
 	LOG_CONTROLLER_TRACE(entityID, "onClockSourceDescriptorResult (ConfigurationIndex={} ClockIndex={}): {}", configurationIndex, clockIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -515,8 +515,8 @@ void ControllerImpl::onMemoryObjectDescriptorResult(entity::controller::Interfac
 {
 	LOG_CONTROLLER_TRACE(entityID, "onMemoryObjectDescriptorResult (ConfigurationIndex={} ClockDomainIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -551,8 +551,8 @@ void ControllerImpl::onLocaleDescriptorResult(entity::controller::Interface cons
 {
 	LOG_CONTROLLER_TRACE(entityID, "onLocaleDescriptorResult (ConfigurationIndex={} LocaleIndex={}): {}", configurationIndex, localeIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -600,8 +600,8 @@ void ControllerImpl::onStringsDescriptorResult(entity::controller::Interface con
 {
 	LOG_CONTROLLER_TRACE(entityID, "onStringsDescriptorResult (ConfigurationIndex={} StringsIndex={}): {}", configurationIndex, stringsIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -636,8 +636,8 @@ void ControllerImpl::onStreamPortInputDescriptorResult(entity::controller::Inter
 {
 	LOG_CONTROLLER_TRACE(entityID, "onStreamPortInputDescriptorResult (ConfigurationIndex={} StreamPortIndex={}): {}", configurationIndex, streamPortIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -691,8 +691,8 @@ void ControllerImpl::onStreamPortOutputDescriptorResult(entity::controller::Inte
 {
 	LOG_CONTROLLER_TRACE(entityID, "onStreamPortOutputDescriptorResult (ConfigurationIndex={} StreamPortIndex={}): {}", configurationIndex, streamPortIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -746,8 +746,8 @@ void ControllerImpl::onAudioClusterDescriptorResult(entity::controller::Interfac
 {
 	LOG_CONTROLLER_TRACE(entityID, "onAudioClusterDescriptorResult (ConfigurationIndex={} ClusterIndex={}): {}", configurationIndex, clusterIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -782,8 +782,8 @@ void ControllerImpl::onAudioMapDescriptorResult(entity::controller::Interface co
 {
 	LOG_CONTROLLER_TRACE(entityID, "onAudioMapDescriptorResult (ConfigurationIndex={} MapIndex={}): {}", configurationIndex, mapIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -818,8 +818,8 @@ void ControllerImpl::onClockDomainDescriptorResult(entity::controller::Interface
 {
 	LOG_CONTROLLER_TRACE(entityID, "onClockDomainDescriptorResult (ConfigurationIndex={} ClockDomainIndex={}): {}", configurationIndex, clockDomainIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -854,8 +854,8 @@ void ControllerImpl::onGetStreamInputInfoResult(entity::controller::Interface co
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetStreamInputInfoResult (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -891,8 +891,8 @@ void ControllerImpl::onGetStreamOutputInfoResult(entity::controller::Interface c
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetStreamOutputInfoResult (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -928,8 +928,8 @@ void ControllerImpl::onGetAcquiredStateResult(entity::controller::Interface cons
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetAcquiredStateResult (OwningEntity={}): {}", owningEntity, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -967,8 +967,8 @@ void ControllerImpl::onGetLockedStateResult(entity::controller::Interface const*
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetLockedStateResult (LockingEntity={}): {}", lockingEntity, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1006,8 +1006,8 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::controller::Inte
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetStreamPortInputAudioMapResult (StreamPortIndex={} NumberMaps={} MapIndex={}): {}", streamPortIndex, numberOfMaps, mapIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1069,8 +1069,8 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::controller::Int
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetStreamPortOutputAudioMapResult (StreamPortIndex={} NumberMaps={} MapIndex={}): {}", streamPortIndex, numberOfMaps, mapIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1132,8 +1132,8 @@ void ControllerImpl::onGetAvbInfoResult(entity::controller::Interface const* con
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetAvbInfoResult (AvbInterfaceIndex={}): {}", avbInterfaceIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1168,8 +1168,8 @@ void ControllerImpl::onGetAsPathResult(entity::controller::Interface const* cons
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetAsPathResult (AvbInterfaceIndex={}): {}", avbInterfaceIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1204,8 +1204,8 @@ void ControllerImpl::onGetAvbInterfaceCountersResult(entity::controller::Interfa
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetAvbInterfaceCountersResult (AvbInterfaceIndex={}): {}", avbInterfaceIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1241,8 +1241,8 @@ void ControllerImpl::onGetClockDomainCountersResult(entity::controller::Interfac
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetClockDomainCountersResult (ClockDomainIndex={}): {}", clockDomainIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1278,8 +1278,8 @@ void ControllerImpl::onGetStreamInputCountersResult(entity::controller::Interfac
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetStreamInputCountersResult (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1315,8 +1315,8 @@ void ControllerImpl::onConfigurationNameResult(entity::controller::Interface con
 {
 	LOG_CONTROLLER_TRACE(entityID, "onConfigurationNameResult (ConfigurationIndex={}): {}", configurationIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1351,8 +1351,8 @@ void ControllerImpl::onAudioUnitNameResult(entity::controller::Interface const* 
 {
 	LOG_CONTROLLER_TRACE(entityID, "onAudioUnitNameResult (ConfigurationIndex={} AudioUnitIndex={}): {}", configurationIndex, audioUnitIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1387,8 +1387,8 @@ void ControllerImpl::onAudioUnitSamplingRateResult(entity::controller::Interface
 {
 	LOG_CONTROLLER_TRACE(entityID, "onAudioUnitSamplingRateResult (ConfigurationIndex={} AudioUnitIndex={}): {}", configurationIndex, audioUnitIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1423,8 +1423,8 @@ void ControllerImpl::onInputStreamNameResult(entity::controller::Interface const
 {
 	LOG_CONTROLLER_TRACE(entityID, "onInputStreamNameResult (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1459,8 +1459,8 @@ void ControllerImpl::onInputStreamFormatResult(entity::controller::Interface con
 {
 	LOG_CONTROLLER_TRACE(entityID, "onInputStreamFormatResult (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1495,8 +1495,8 @@ void ControllerImpl::onOutputStreamNameResult(entity::controller::Interface cons
 {
 	LOG_CONTROLLER_TRACE(entityID, "onOutputStreamNameResult (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1531,8 +1531,8 @@ void ControllerImpl::onOutputStreamFormatResult(entity::controller::Interface co
 {
 	LOG_CONTROLLER_TRACE(entityID, "onOutputStreamFormatResult (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1567,8 +1567,8 @@ void ControllerImpl::onAvbInterfaceNameResult(entity::controller::Interface cons
 {
 	LOG_CONTROLLER_TRACE(entityID, "onAvbInterfaceNameResult (ConfigurationIndex={} AvbInterfaceIndex={}): {}", configurationIndex, avbInterfaceIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1603,8 +1603,8 @@ void ControllerImpl::onClockSourceNameResult(entity::controller::Interface const
 {
 	LOG_CONTROLLER_TRACE(entityID, "onClockSourceNameResult (ConfigurationIndex={} ClockSourceIndex={}): {}", configurationIndex, clockSourceIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1639,8 +1639,8 @@ void ControllerImpl::onMemoryObjectNameResult(entity::controller::Interface cons
 {
 	LOG_CONTROLLER_TRACE(entityID, "onMemoryObjectNameResult (ConfigurationIndex={} MemoryObjectIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1675,8 +1675,8 @@ void ControllerImpl::onMemoryObjectLengthResult(entity::controller::Interface co
 {
 	LOG_CONTROLLER_TRACE(entityID, "onMemoryObjectLengthResult (ConfigurationIndex={} MemoryObjectIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1711,8 +1711,8 @@ void ControllerImpl::onAudioClusterNameResult(entity::controller::Interface cons
 {
 	LOG_CONTROLLER_TRACE(entityID, "onAudioClusterNameResult (ConfigurationIndex={} AudioClusterIndex={}): {}", configurationIndex, audioClusterIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1747,8 +1747,8 @@ void ControllerImpl::onClockDomainNameResult(entity::controller::Interface const
 {
 	LOG_CONTROLLER_TRACE(entityID, "onClockDomainNameResult (ConfigurationIndex={} ClockDomainIndex={}): {}", configurationIndex, clockDomainIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1783,8 +1783,8 @@ void ControllerImpl::onClockDomainSourceIndexResult(entity::controller::Interfac
 {
 	LOG_CONTROLLER_TRACE(entityID, "onClockDomainSourceIndexResult (ConfigurationIndex={} ClockDomainIndex={}): {}", configurationIndex, clockDomainIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1830,8 +1830,8 @@ void ControllerImpl::onGetTalkerStreamStateResult(entity::controller::Interface 
 {
 	LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "onGetTalkerStreamStateResult (TalkerID={} TalkerIndex={} ConnectionCount={} ConfigurationIndex={}): {}", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, connectionCount, configurationIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto talker = getControlledEntityImpl(talkerStream.entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto talker = getControlledEntityImplGuard(talkerStream.entityID);
 
 	if (talker)
 	{
@@ -1877,8 +1877,8 @@ void ControllerImpl::onGetListenerStreamStateResult(entity::controller::Interfac
 		handleListenerStreamStateNotification(talkerStream, listenerStream, connectionCount != 0, flags, false);
 	}
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto listener = getControlledEntityImpl(listenerStream.entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto listener = getControlledEntityImplGuard(listenerStream.entityID);
 
 	if (listener)
 	{
@@ -1913,8 +1913,8 @@ void ControllerImpl::onGetTalkerStreamConnectionResult(entity::controller::Inter
 {
 	LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "onGetTalkerStreamConnectionResult (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={} ConnectionCount={} ConfigurationIndex={} ConnectionIndex={}): {}", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, toHexString(listenerStream.entityID, true), listenerStream.streamIndex, connectionCount, configurationIndex, connectionIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto talker = getControlledEntityImpl(talkerStream.entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto talker = getControlledEntityImplGuard(talkerStream.entityID);
 
 	if (talker)
 	{

@@ -37,6 +37,8 @@ namespace controller
 /* ************************************************************ */
 void ControllerImpl::setEntityAndNotify(ControlledEntityImpl& controlledEntity, entity::Entity const& entity) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	// Get previous entity info, so we can check what changed
 	auto oldEntity = controlledEntity.getEntity();
 
@@ -89,6 +91,8 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 
 void ControllerImpl::addCompatibilityFlag(ControlledEntityImpl& controlledEntity, ControlledEntity::CompatibilityFlag const flag) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	auto const oldFlags = controlledEntity.getCompatibilityFlags();
 	auto newFlags{ oldFlags };
 
@@ -132,6 +136,8 @@ void ControllerImpl::addCompatibilityFlag(ControlledEntityImpl& controlledEntity
 
 void ControllerImpl::removeCompatibilityFlag(ControlledEntityImpl& controlledEntity, ControlledEntity::CompatibilityFlag const flag) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	auto const oldFlags = controlledEntity.getCompatibilityFlags();
 	auto newFlags{ oldFlags };
 
@@ -181,6 +187,8 @@ void ControllerImpl::updateMilanInfo(ControlledEntityImpl& controlledEntity, ent
 
 void ControllerImpl::updateUnsolicitedNotificationsSubscription(ControlledEntityImpl& controlledEntity, bool const isSubscribed) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	auto const oldValue = controlledEntity.isSubscribedToUnsolicitedNotifications();
 
 	if (oldValue != isSubscribed)
@@ -197,6 +205,8 @@ void ControllerImpl::updateUnsolicitedNotificationsSubscription(ControlledEntity
 
 void ControllerImpl::updateAcquiredState(ControlledEntityImpl& controlledEntity, model::AcquireState const acquireState, UniqueIdentifier const owningEntity) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	controlledEntity.setAcquireState(acquireState);
 	controlledEntity.setOwningController(owningEntity);
 
@@ -209,6 +219,8 @@ void ControllerImpl::updateAcquiredState(ControlledEntityImpl& controlledEntity,
 
 void ControllerImpl::updateLockedState(ControlledEntityImpl& controlledEntity, model::LockState const lockState, UniqueIdentifier const lockingEntity) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	controlledEntity.setLockState(lockState);
 	controlledEntity.setLockingController(lockingEntity);
 
@@ -233,6 +245,8 @@ void ControllerImpl::updateConfiguration(entity::controller::Interface const* co
 
 void ControllerImpl::updateStreamInputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	controlledEntity.setStreamInputFormat(streamIndex, streamFormat);
 
 	// Entity was advertised to the user, notify observers
@@ -244,6 +258,8 @@ void ControllerImpl::updateStreamInputFormat(ControlledEntityImpl& controlledEnt
 
 void ControllerImpl::updateStreamOutputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	controlledEntity.setStreamOutputFormat(streamIndex, streamFormat);
 
 	// Entity was advertised to the user, notify observers
@@ -255,6 +271,8 @@ void ControllerImpl::updateStreamOutputFormat(ControlledEntityImpl& controlledEn
 
 void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const milanExtendedRequired) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	// Update StreamInfo
 	auto const previousInfo = controlledEntity.setStreamInputInfo(streamIndex, info);
 
@@ -290,6 +308,8 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 
 void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const milanExtendedRequired) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	// Update StreamInfo
 	auto const previousInfo = controlledEntity.setStreamOutputInfo(streamIndex, info);
 
@@ -325,6 +345,8 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 
 void ControllerImpl::updateEntityName(ControlledEntityImpl& controlledEntity, entity::model::AvdeccFixedString const& entityName) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	controlledEntity.setEntityName(entityName);
 
 	// Entity was advertised to the user, notify observers
@@ -336,6 +358,8 @@ void ControllerImpl::updateEntityName(ControlledEntityImpl& controlledEntity, en
 
 void ControllerImpl::updateEntityGroupName(ControlledEntityImpl& controlledEntity, entity::model::AvdeccFixedString const& entityGroupName) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	controlledEntity.setEntityGroupName(entityGroupName);
 
 	// Entity was advertised to the user, notify observers
@@ -347,6 +371,8 @@ void ControllerImpl::updateEntityGroupName(ControlledEntityImpl& controlledEntit
 
 void ControllerImpl::updateConfigurationName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& configurationName) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	controlledEntity.setConfigurationName(configurationIndex, configurationName);
 
 	// Entity was advertised to the user, notify observers
@@ -358,6 +384,8 @@ void ControllerImpl::updateConfigurationName(ControlledEntityImpl& controlledEnt
 
 void ControllerImpl::updateAudioUnitName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::AvdeccFixedString const& audioUnitName) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	controlledEntity.setObjectName(configurationIndex, audioUnitIndex, &model::ConfigurationDynamicTree::audioUnitDynamicModels, audioUnitName);
 
 	// Entity was advertised to the user, notify observers
@@ -369,6 +397,8 @@ void ControllerImpl::updateAudioUnitName(ControlledEntityImpl& controlledEntity,
 
 void ControllerImpl::updateStreamInputName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamInputName) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	controlledEntity.setObjectName(configurationIndex, streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels, streamInputName);
 
 	// Entity was advertised to the user, notify observers
@@ -380,6 +410,8 @@ void ControllerImpl::updateStreamInputName(ControlledEntityImpl& controlledEntit
 
 void ControllerImpl::updateStreamOutputName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamOutputName) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	controlledEntity.setObjectName(configurationIndex, streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels, streamOutputName);
 
 	// Entity was advertised to the user, notify observers
@@ -391,6 +423,8 @@ void ControllerImpl::updateStreamOutputName(ControlledEntityImpl& controlledEnti
 
 void ControllerImpl::updateAvbInterfaceName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvdeccFixedString const& avbInterfaceName) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	controlledEntity.setObjectName(configurationIndex, avbInterfaceIndex, &model::ConfigurationDynamicTree::avbInterfaceDynamicModels, avbInterfaceName);
 
 	// Entity was advertised to the user, notify observers
@@ -402,6 +436,8 @@ void ControllerImpl::updateAvbInterfaceName(ControlledEntityImpl& controlledEnti
 
 void ControllerImpl::updateClockSourceName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex, entity::model::AvdeccFixedString const& clockSourceName) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	controlledEntity.setObjectName(configurationIndex, clockSourceIndex, &model::ConfigurationDynamicTree::clockSourceDynamicModels, clockSourceName);
 
 	// Entity was advertised to the user, notify observers
@@ -413,6 +449,8 @@ void ControllerImpl::updateClockSourceName(ControlledEntityImpl& controlledEntit
 
 void ControllerImpl::updateMemoryObjectName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, entity::model::AvdeccFixedString const& memoryObjectName) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	controlledEntity.setObjectName(configurationIndex, memoryObjectIndex, &model::ConfigurationDynamicTree::memoryObjectDynamicModels, memoryObjectName);
 
 	// Entity was advertised to the user, notify observers
@@ -424,6 +462,8 @@ void ControllerImpl::updateMemoryObjectName(ControlledEntityImpl& controlledEnti
 
 void ControllerImpl::updateAudioClusterName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex, entity::model::AvdeccFixedString const& audioClusterName) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	controlledEntity.setObjectName(configurationIndex, audioClusterIndex, &model::ConfigurationDynamicTree::audioClusterDynamicModels, audioClusterName);
 
 	// Entity was advertised to the user, notify observers
@@ -435,6 +475,8 @@ void ControllerImpl::updateAudioClusterName(ControlledEntityImpl& controlledEnti
 
 void ControllerImpl::updateClockDomainName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::AvdeccFixedString const& clockDomainName) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	controlledEntity.setObjectName(configurationIndex, clockDomainIndex, &model::ConfigurationDynamicTree::clockDomainDynamicModels, clockDomainName);
 
 	// Entity was advertised to the user, notify observers
@@ -446,6 +488,8 @@ void ControllerImpl::updateClockDomainName(ControlledEntityImpl& controlledEntit
 
 void ControllerImpl::setAssociationAndNotify(ControlledEntityImpl& controlledEntity, UniqueIdentifier const associationID) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	auto& entity = controlledEntity.getEntity();
 	auto const previousAssociationID = entity.getAssociationID();
 	entity.setAssociationID(associationID);
@@ -486,6 +530,8 @@ void ControllerImpl::updateAssociationID(ControlledEntityImpl& controlledEntity,
 
 void ControllerImpl::updateAudioUnitSamplingRate(ControlledEntityImpl& controlledEntity, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	controlledEntity.setSamplingRate(audioUnitIndex, samplingRate);
 
 	// Entity was advertised to the user, notify observers
@@ -497,6 +543,8 @@ void ControllerImpl::updateAudioUnitSamplingRate(ControlledEntityImpl& controlle
 
 void ControllerImpl::updateClockSource(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	controlledEntity.setClockSource(clockDomainIndex, clockSourceIndex);
 
 	// Entity was advertised to the user, notify observers
@@ -532,6 +580,8 @@ void ControllerImpl::updateStreamOutputRunningStatus(ControlledEntityImpl& contr
 
 void ControllerImpl::setAvbInfoAndNotify(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	// Update AvbInfo
 	auto const previousInfo = controlledEntity.setAvbInfo(avbInterfaceIndex, info);
 
@@ -584,6 +634,8 @@ void ControllerImpl::updateAvbInfo(ControlledEntityImpl& controlledEntity, entit
 
 void ControllerImpl::updateAsPath(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	auto const previousPath = controlledEntity.setAsPath(avbInterfaceIndex, asPath);
 
 	// Entity was advertised to the user, notify observers
@@ -599,6 +651,8 @@ void ControllerImpl::updateAsPath(ControlledEntityImpl& controlledEntity, entity
 
 void ControllerImpl::updateAvbInterfaceLinkStatus(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, ControlledEntity::InterfaceLinkStatus const linkStatus) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	auto const previousLinkStatus = controlledEntity.setAvbInterfaceLinkStatus(avbInterfaceIndex, linkStatus);
 
 	// Entity was advertised to the user, notify observers
@@ -614,6 +668,8 @@ void ControllerImpl::updateAvbInterfaceLinkStatus(ControlledEntityImpl& controll
 
 void ControllerImpl::updateAvbInterfaceCounters(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::AvbInterfaceCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	// Get previous counters
 	auto& avbInterfaceCounters = controlledEntity.getAvbInterfaceCounters(avbInterfaceIndex);
 
@@ -641,6 +697,8 @@ void ControllerImpl::updateAvbInterfaceCounters(ControlledEntityImpl& controlled
 
 void ControllerImpl::updateClockDomainCounters(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::ClockDomainCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	// Get previous counters
 	auto& clockDomainCounters = controlledEntity.getClockDomainCounters(clockDomainIndex);
 
@@ -659,6 +717,8 @@ void ControllerImpl::updateClockDomainCounters(ControlledEntityImpl& controlledE
 
 void ControllerImpl::updateStreamInputCounters(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::StreamInputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	// Get previous counters
 	auto& streamCounters = controlledEntity.getStreamInputCounters(streamIndex);
 
@@ -677,6 +737,8 @@ void ControllerImpl::updateStreamInputCounters(ControlledEntityImpl& controlledE
 
 void ControllerImpl::updateMemoryObjectLength(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	controlledEntity.setMemoryObjectLength(configurationIndex, memoryObjectIndex, length);
 
 	// Entity was advertised to the user, notify observers
@@ -688,6 +750,8 @@ void ControllerImpl::updateMemoryObjectLength(ControlledEntityImpl& controlledEn
 
 void ControllerImpl::updateStreamPortInputAudioMappingsAdded(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	controlledEntity.addStreamPortInputAudioMappings(streamPortIndex, mappings);
 
 	// Entity was advertised to the user, notify observers
@@ -699,6 +763,8 @@ void ControllerImpl::updateStreamPortInputAudioMappingsAdded(ControlledEntityImp
 
 void ControllerImpl::updateStreamPortInputAudioMappingsRemoved(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	controlledEntity.removeStreamPortInputAudioMappings(streamPortIndex, mappings);
 
 	// Entity was advertised to the user, notify observers
@@ -710,6 +776,8 @@ void ControllerImpl::updateStreamPortInputAudioMappingsRemoved(ControlledEntityI
 
 void ControllerImpl::updateStreamPortOutputAudioMappingsAdded(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	controlledEntity.addStreamPortOutputAudioMappings(streamPortIndex, mappings);
 
 	// Entity was advertised to the user, notify observers
@@ -721,6 +789,8 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsAdded(ControlledEntityIm
 
 void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	controlledEntity.removeStreamPortOutputAudioMappings(streamPortIndex, mappings);
 
 	// Entity was advertised to the user, notify observers
@@ -732,6 +802,8 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntity
 
 void ControllerImpl::updateOperationStatus(ControlledEntityImpl& controlledEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, std::uint16_t const percentComplete) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
 	{
@@ -766,6 +838,11 @@ void ControllerImpl::updateOperationStatus(ControlledEntityImpl& controlledEntit
 /* ************************************************************ */
 /* Private methods                                              */
 /* ************************************************************ */
+bool ControllerImpl::areControlledEntitiesSelfLocked() const noexcept
+{
+	return _entitiesSharedLockInformation->lockingThreadID == std::this_thread::get_id();
+}
+
 std::tuple<model::AcquireState, UniqueIdentifier> ControllerImpl::getAcquiredInfoFromStatus(ControlledEntityImpl& entity, UniqueIdentifier const owningEntity, entity::ControllerEntity::AemCommandStatus const status, bool const releaseEntityResult) const noexcept
 {
 	auto acquireState{ model::AcquireState::Undefined };
@@ -2233,6 +2310,8 @@ bool ControllerImpl::fetchCorrespondingDescriptor(ControlledEntityImpl* const en
 
 void ControllerImpl::handleListenerStreamStateNotification(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, bool const isConnected, entity::ConnectionFlags const flags, bool const changedByOther) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	// Build StreamConnectionState::State
 	auto conState{ model::StreamConnectionState::State::NotConnected };
 	if (isConnected)
@@ -2264,8 +2343,8 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 
 	// Check if Listener is online so we can update the StreamState
 	{
-		// Take a copy of the ControlledEntity so we don't have to keep the lock
-		auto listenerEntity = getControlledEntityImpl(listenerStream.entityID);
+		// Take a "scoped locked" shared copy of the ControlledEntity
+		auto listenerEntity = getControlledEntityImplGuard(listenerStream.entityID);
 
 		if (listenerEntity)
 		{
@@ -2291,6 +2370,8 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 
 void ControllerImpl::handleTalkerStreamStateNotification(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, bool const isConnected, entity::ConnectionFlags const flags, bool const changedByOther) const noexcept
 {
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
 	// Build Talker StreamIdentification
 	auto const isFastConnect = avdecc::hasFlag(flags, entity::ConnectionFlags::FastConnect);
 	auto talkerStreamIdentification{ entity::model::StreamIdentification{} };
@@ -2308,8 +2389,8 @@ void ControllerImpl::handleTalkerStreamStateNotification(entity::model::StreamId
 	// Check if Talker is valid and online so we can update the StreamConnections
 	if (talkerStream.entityID)
 	{
-		// Take a copy of the ControlledEntity so we don't have to keep the lock
-		auto talkerEntity = getControlledEntityImpl(talkerStream.entityID);
+		// Take a "scoped locked" shared copy of the ControlledEntity
+		auto talkerEntity = getControlledEntityImplGuard(talkerStream.entityID);
 
 		if (talkerEntity)
 		{

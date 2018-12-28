@@ -171,7 +171,6 @@ public:
 
 	virtual void lock() noexcept override;
 	virtual void unlock() noexcept override;
-	virtual bool isSelfLocked() const noexcept override;
 
 	/** Get connected information about a listener's stream (TalkerID and StreamIndex might be filled even if isConnected is not true, in case of FastConnect) */
 	virtual model::StreamConnectionState const& getConnectedSinkState(entity::model::StreamIndex const streamIndex) const override; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist

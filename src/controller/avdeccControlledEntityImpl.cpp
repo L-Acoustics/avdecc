@@ -630,11 +630,6 @@ void ControlledEntityImpl::unlock() noexcept
 	_sharedLock->lock.unlock();
 }
 
-bool ControlledEntityImpl::isSelfLocked() const noexcept
-{
-	return _sharedLock->lockingThreadID == std::this_thread::get_id();
-}
-
 // Const Tree getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist
 model::EntityStaticTree const& ControlledEntityImpl::getEntityStaticTree() const
 {
