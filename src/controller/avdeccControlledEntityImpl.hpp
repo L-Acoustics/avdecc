@@ -48,6 +48,16 @@ namespace controller
 class ControlledEntityImpl : public ControlledEntity
 {
 public:
+	/** Lock Information that is shared among all ControlledEntities */
+	struct LockInformation
+	{
+		using SharedPointer = std::shared_ptr<LockInformation>;
+
+		std::recursive_mutex lock{};
+		std::uint32_t lockedCount{ 0u };
+		std::thread::id lockingThreadID{};
+	};
+
 	enum class EnumerationSteps : std::uint16_t
 	{
 		None = 0,
@@ -111,7 +121,7 @@ public:
 	static_assert(sizeof(DescriptorDynamicInfoKey) >= sizeof(DescriptorDynamicInfoType) + sizeof(entity::model::DescriptorIndex), "DescriptorDynamicInfoKey size must be greater or equal to DescriptorDynamicInfoType + DescriptorIndex");
 
 	/** Constructor */
-	ControlledEntityImpl(la::avdecc::entity::Entity const& entity) noexcept;
+	ControlledEntityImpl(la::avdecc::entity::Entity const& entity, LockInformation::SharedPointer const& sharedLock) noexcept;
 
 	// ControlledEntity overrides
 	// Getters
@@ -220,8 +230,7 @@ public:
 	template<typename FieldPointer, typename DescriptorIndexType>
 	typename std::remove_pointer_t<FieldPointer>::mapped_type& getNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer model::ConfigurationStaticTree::*Field) noexcept
 	{
-		// Lock during possible modification of the map
-		std::lock_guard<decltype(_lock)> const lg(_lock);
+		AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
 
 		auto& configStaticTree = getConfigurationStaticTree(configurationIndex);
 		return (configStaticTree.*Field)[index];
@@ -229,8 +238,7 @@ public:
 	template<typename FieldPointer, typename DescriptorIndexType>
 	typename std::remove_pointer_t<FieldPointer>::mapped_type& getNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer model::ConfigurationDynamicTree::*Field) noexcept
 	{
-		// Lock during possible modification of the map
-		std::lock_guard<decltype(_lock)> const lg(_lock);
+		AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
 
 		auto& configDynamicTree = getConfigurationDynamicTree(configurationIndex);
 		return (configDynamicTree.*Field)[index];
@@ -399,9 +407,7 @@ private:
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 	// Private variables
-	mutable std::recursive_mutex _lock{};
-	std::uint32_t _lockedCount{ 0u }; // DEBUG status for _lock mutex
-	std::thread::id _lockingThreadID{}; // DEBUG status for _lock mutex
+	LockInformation::SharedPointer _sharedLock{ nullptr };
 	bool _ignoreCachedEntityModel{ false };
 	std::uint16_t _queryMilanInfoRetryCount{ 0u };
 	std::uint16_t _queryDescriptorRetryCount{ 0u };

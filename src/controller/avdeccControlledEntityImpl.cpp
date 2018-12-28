@@ -45,8 +45,9 @@ static constexpr std::uint16_t QueryRetryMillisecondDelay = 500;
 /* ControlledEntityImpl                                                       */
 /* ************************************************************************** */
 /** Constructor */
-ControlledEntityImpl::ControlledEntityImpl(entity::Entity const& entity) noexcept
+ControlledEntityImpl::ControlledEntityImpl(entity::Entity const& entity, LockInformation::SharedPointer const& sharedLock) noexcept
 	: _entity(entity)
+	, _sharedLock(sharedLock)
 {
 }
 
@@ -611,27 +612,27 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 
 void ControlledEntityImpl::lock() noexcept
 {
-	_lock.lock();
-	if (_lockedCount == 0)
+	_sharedLock->lock.lock();
+	if (_sharedLock->lockedCount == 0)
 	{
-		_lockingThreadID = std::this_thread::get_id();
+		_sharedLock->lockingThreadID = std::this_thread::get_id();
 	}
-	++_lockedCount;
+	++_sharedLock->lockedCount;
 }
 
 void ControlledEntityImpl::unlock() noexcept
 {
-	--_lockedCount;
-	if (_lockedCount == 0)
+	--_sharedLock->lockedCount;
+	if (_sharedLock->lockedCount == 0)
 	{
-		_lockingThreadID = {};
+		_sharedLock->lockingThreadID = {};
 	}
-	_lock.unlock();
+	_sharedLock->lock.unlock();
 }
 
 bool ControlledEntityImpl::isSelfLocked() const noexcept
 {
-	return _lockingThreadID == std::this_thread::get_id();
+	return _sharedLock->lockingThreadID == std::this_thread::get_id();
 }
 
 // Const Tree getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist
@@ -1536,8 +1537,7 @@ static inline ControlledEntityImpl::MilanInfoKey makeMilanInfoKey(ControlledEnti
 
 bool ControlledEntityImpl::checkAndClearExpectedMilanInfo(MilanInfoType const milanInfoType) noexcept
 {
-	// Lock during access to the map
-	std::lock_guard<decltype(_lock)> const lg(_lock);
+	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
 
 	auto const key = makeMilanInfoKey(milanInfoType);
 	return _expectedMilanInfo.erase(key) == 1;
@@ -1545,8 +1545,7 @@ bool ControlledEntityImpl::checkAndClearExpectedMilanInfo(MilanInfoType const mi
 
 void ControlledEntityImpl::setMilanInfoExpected(MilanInfoType const milanInfoType) noexcept
 {
-	// Lock during access to the map
-	std::lock_guard<decltype(_lock)> const lg(_lock);
+	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
 
 	auto const key = makeMilanInfoKey(milanInfoType);
 	_expectedMilanInfo.insert(key);
@@ -1554,8 +1553,7 @@ void ControlledEntityImpl::setMilanInfoExpected(MilanInfoType const milanInfoTyp
 
 bool ControlledEntityImpl::gotAllExpectedMilanInfo() const noexcept
 {
-	// Lock during access to the map
-	std::lock_guard<decltype(_lock)> const lg(_lock);
+	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
 
 	return _expectedMilanInfo.empty();
 }
@@ -1578,8 +1576,7 @@ static inline ControlledEntityImpl::DescriptorKey makeDescriptorKey(entity::mode
 
 bool ControlledEntityImpl::checkAndClearExpectedDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
-	// Lock during access to the map
-	std::lock_guard<decltype(_lock)> const lg(_lock);
+	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
 
 	auto const confIt = _expectedDescriptors.find(configurationIndex);
 
@@ -1593,8 +1590,7 @@ bool ControlledEntityImpl::checkAndClearExpectedDescriptor(entity::model::Config
 
 void ControlledEntityImpl::setDescriptorExpected(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
-	// Lock during access to the map
-	std::lock_guard<decltype(_lock)> const lg(_lock);
+	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
 
 	auto& conf = _expectedDescriptors[configurationIndex];
 
@@ -1604,8 +1600,7 @@ void ControlledEntityImpl::setDescriptorExpected(entity::model::ConfigurationInd
 
 bool ControlledEntityImpl::gotAllExpectedDescriptors() const noexcept
 {
-	// Lock during access to the map
-	std::lock_guard<decltype(_lock)> const lg(_lock);
+	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
 
 	for (auto const& confKV : _expectedDescriptors)
 	{
@@ -1633,8 +1628,7 @@ static inline ControlledEntityImpl::DynamicInfoKey makeDynamicInfoKey(Controlled
 
 bool ControlledEntityImpl::checkAndClearExpectedDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex) noexcept
 {
-	// Lock during access to the map
-	std::lock_guard<decltype(_lock)> const lg(_lock);
+	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
 
 	auto const confIt = _expectedDynamicInfo.find(configurationIndex);
 
@@ -1648,8 +1642,7 @@ bool ControlledEntityImpl::checkAndClearExpectedDynamicInfo(entity::model::Confi
 
 void ControlledEntityImpl::setDynamicInfoExpected(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex) noexcept
 {
-	// Lock during access to the map
-	std::lock_guard<decltype(_lock)> const lg(_lock);
+	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
 
 	auto& conf = _expectedDynamicInfo[configurationIndex];
 
@@ -1659,8 +1652,7 @@ void ControlledEntityImpl::setDynamicInfoExpected(entity::model::ConfigurationIn
 
 bool ControlledEntityImpl::gotAllExpectedDynamicInfo() const noexcept
 {
-	// Lock during access to the map
-	std::lock_guard<decltype(_lock)> const lg(_lock);
+	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
 
 	for (auto const& confKV : _expectedDynamicInfo)
 	{
@@ -1688,8 +1680,7 @@ static inline ControlledEntityImpl::DescriptorDynamicInfoKey makeDescriptorDynam
 
 bool ControlledEntityImpl::checkAndClearExpectedDescriptorDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
-	// Lock during access to the map
-	std::lock_guard<decltype(_lock)> const lg(_lock);
+	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
 
 	auto const confIt = _expectedDescriptorDynamicInfo.find(configurationIndex);
 
@@ -1703,8 +1694,7 @@ bool ControlledEntityImpl::checkAndClearExpectedDescriptorDynamicInfo(entity::mo
 
 void ControlledEntityImpl::setDescriptorDynamicInfoExpected(entity::model::ConfigurationIndex const configurationIndex, DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
-	// Lock during access to the map
-	std::lock_guard<decltype(_lock)> const lg(_lock);
+	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
 
 	auto& conf = _expectedDescriptorDynamicInfo[configurationIndex];
 
@@ -1714,16 +1704,14 @@ void ControlledEntityImpl::setDescriptorDynamicInfoExpected(entity::model::Confi
 
 void ControlledEntityImpl::clearAllExpectedDescriptorDynamicInfo() noexcept
 {
-	// Lock during access to the map
-	std::lock_guard<decltype(_lock)> const lg(_lock);
+	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
 
 	_expectedDescriptorDynamicInfo.clear();
 }
 
 bool ControlledEntityImpl::gotAllExpectedDescriptorDynamicInfo() const noexcept
 {
-	// Lock during access to the map
-	std::lock_guard<decltype(_lock)> const lg(_lock);
+	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
 
 	for (auto const& confKV : _expectedDescriptorDynamicInfo)
 	{
