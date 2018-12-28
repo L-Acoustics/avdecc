@@ -69,6 +69,7 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/internals/serialization.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/streamFormat.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/uniqueIdentifier.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/watchDog.hpp
 )
 
 # Low level Protocol
@@ -140,6 +141,7 @@ set (SOURCE_FILES_COMMON
 	logger.cpp
 	streamFormat.cpp
 	utils.cpp
+	watchDog.cpp
 )
 
 # Pcap Protocol interface

@@ -26,6 +26,7 @@
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
 #include "la/avdecc/internals/protocolMvuAecpdu.hpp"
+#include "la/avdecc/internals/watchDog.hpp"
 #include "stateMachine/controllerStateMachine.hpp"
 #include "protocolInterface_pcap.hpp"
 #include "pcapInterface.hpp"
@@ -121,15 +122,11 @@ public:
 
 					// Try to detect possible deadlock
 					{
-						auto const startTime = std::chrono::system_clock::now();
+						auto& watchDog = la::avdecc::watchDog::WatchDog::getInstance();
 
+						watchDog.registerWatch("avdecc::PCapInterface::dispatchAvdeccMessage", std::chrono::milliseconds{ 1000u });
 						dispatchAvdeccMessage(avtpdu, avtpdu_size, etherLayer2);
-
-						auto const endTime = std::chrono::system_clock::now();
-						if (!AVDECC_ASSERT_WITH_RET(std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count() < 1000, "avdecc::PCapInterface::Capture thread loop took too much time. Deadlock?"))
-						{
-							LOG_PROTOCOL_INTERFACE_ERROR(la::avdecc::networkInterface::MacAddress{}, la::avdecc::networkInterface::MacAddress{}, "avdecc::PCapInterface::Capture thread loop took too much time. Deadlock?");
-						}
+						watchDog.unregisterWatch("avdecc::PCapInterface::dispatchAvdeccMessage");
 					}
 				}
 

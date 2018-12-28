@@ -252,7 +252,6 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 					// Update acquired state
 					auto const [acquireState, owningController] = getAcquiredInfoFromStatus(entity, owningEntity, status, false);
 					updateAcquiredState(entity, acquireState, owningController);
-
 				}
 				else // The entity went offline right after we sent our message
 				{
