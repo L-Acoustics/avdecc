@@ -423,6 +423,10 @@ public:
 	static LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION statusToString(MvuCommandStatus const status);
 	static LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION statusToString(ControlStatus const status);
 
+	/* Debug methods */
+	/** Returns true if the class is already locked by the calling thread */
+	virtual bool isSelfLocked() const noexcept = 0;
+
 protected:
 	/** Constructor */
 	LocalEntity(CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation)

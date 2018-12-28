@@ -184,6 +184,8 @@ public:
 	virtual void lock() noexcept = 0;
 	/** BasicLockable concept 'unlock' method for the whole ProtocolInterface */
 	virtual void unlock() noexcept = 0;
+	/** Debug method: Returns true if the whole ProtocolInterface is locked by the calling thread */
+	virtual bool isSelfLocked() const noexcept = 0;
 
 	/** Gets an available Entity UniqueIdentifier that is valid for this ProtocolInterface (not supported by all kinds of ProtocolInterface). */
 	static LA_AVDECC_API UniqueIdentifier LA_AVDECC_CALL_CONVENTION getDynamicEID();

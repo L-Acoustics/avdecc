@@ -89,6 +89,8 @@ public:
 	void lock() noexcept;
 	/** BasicLockable concept 'unlock' method for the whole ControllerStateMachine */
 	void unlock() noexcept;
+	/** Debug method: Returns true if the whole ProtocolInterface is locked by the calling thread */
+	bool isSelfLocked() const noexcept;
 
 private:
 	struct DiscoveredEntityInfo
@@ -228,6 +230,8 @@ private:
 
 	// Common variables
 	mutable std::recursive_mutex _lock{}; /** Lock to protect the whole class */
+	std::uint32_t _lockedCount{ 0u }; // DEBUG status for BasicLockable concept
+	std::thread::id _lockingThreadID{}; // DEBUG status for BasicLockable concept
 	ProtocolInterface const* const _protocolInterface{ nullptr };
 	Delegate* const _delegate{ nullptr };
 	size_t _maxInflightAecpMessages{ 0 };

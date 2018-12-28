@@ -24,6 +24,7 @@
 
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "la/avdecc/internals/watchDog.hpp"
+#include "la/avdecc/internals/instrumentationNotifier.hpp"
 #include "controllerStateMachine.hpp"
 #include "logHelper.hpp"
 #include <utility>
@@ -31,6 +32,13 @@
 #include <chrono>
 #include <algorithm>
 #include <cstdlib>
+
+// Only enable instrumentation in static library and in debug (for unit testing mainly)
+#if defined(DEBUG) && defined(la_avdecc_cxx_STATICS)
+#	define SEND_INSTRUMENTATION_NOTIFICATION(eventName) la::avdecc::InstrumentationNotifier::getInstance().triggerEvent(eventName)
+#else // !DEBUG || !la_avdecc_cxx_STATICS
+#	define SEND_INSTRUMENTATION_NOTIFICATION(eventName)
+#endif // DEBUG && la_avdecc_cxx_STATICS
 
 namespace la
 {
@@ -681,12 +689,32 @@ ProtocolInterface::Error ControllerStateMachine::discoverRemoteEntity(UniqueIden
 
 void ControllerStateMachine::lock() noexcept
 {
+	SEND_INSTRUMENTATION_NOTIFICATION("ControllerStateMachine::lock::PreLock");
 	_lock.lock();
+	if (_lockedCount == 0)
+	{
+		_lockingThreadID = std::this_thread::get_id();
+	}
+	++_lockedCount;
+	SEND_INSTRUMENTATION_NOTIFICATION("ControllerStateMachine::lock::PostLock");
 }
 
 void ControllerStateMachine::unlock() noexcept
 {
+	SEND_INSTRUMENTATION_NOTIFICATION("ControllerStateMachine::unlock::PreUnlock");
+	--_lockedCount;
+	if (_lockedCount == 0)
+	{
+		_lockingThreadID = {};
+	}
 	_lock.unlock();
+	SEND_INSTRUMENTATION_NOTIFICATION("ControllerStateMachine::unlock::PostUnlock");
+}
+
+/** Debug method: Returns true if the whole ProtocolInterface is locked by the calling thread */
+bool ControllerStateMachine::isSelfLocked() const noexcept
+{
+	return _lockingThreadID == std::this_thread::get_id();
 }
 
 Adpdu ControllerStateMachine::makeDiscoveryMessage(UniqueIdentifier const entityID) const noexcept

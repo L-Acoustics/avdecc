@@ -297,14 +297,19 @@ private:
 		return sendMessage(static_cast<Acmpdu const&>(*acmpdu));
 	}
 
-	void lock() noexcept override
+	virtual void lock() noexcept override
 	{
 		_controllerStateMachine.lock();
 	}
 
-	void unlock() noexcept override
+	virtual void unlock() noexcept override
 	{
 		_controllerStateMachine.unlock();
+	}
+
+	virtual bool isSelfLocked() const noexcept override
+	{
+		return _controllerStateMachine.isSelfLocked();
 	}
 
 private:

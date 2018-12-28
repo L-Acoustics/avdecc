@@ -127,15 +127,21 @@ public:
 	}
 
 	// BasicLockable concept lock method
-	void lock() noexcept override
+	virtual void lock() noexcept override
 	{
+		// We are using the underlying ProtocolInterface's lock, we don't need another lock that might cause deadlocks (the drawback is having to lock the whole ProtocolInterface when accessing the Entity, but it's a small price to pay and almost no performance loss)
 		_protocolInterface->lock();
 	}
 
 	// BasicLockable concept unlock method
-	void unlock() noexcept override
+	virtual void unlock() noexcept override
 	{
 		_protocolInterface->unlock();
+	}
+
+	virtual bool isSelfLocked() const noexcept override
+	{
+		return _protocolInterface->isSelfLocked();
 	}
 
 	struct AnswerCallback
@@ -487,7 +493,7 @@ private:
 	virtual void onAecpCommand(protocol::ProtocolInterface* const /*pi*/, LocalEntity const& /*entity*/, protocol::Aecpdu const& aecpdu) noexcept override;
 
 	// Internal variables
-	std::recursive_mutex _lock{}; // Lock to protect writable fields
+	std::recursive_mutex _lock{}; // Lock to protect writable fields (not used for the BasicLockable concept of the class itself)
 	protocol::ProtocolInterface* const _protocolInterface{ nullptr }; // Weak reference to the protocolInterface
 };
 

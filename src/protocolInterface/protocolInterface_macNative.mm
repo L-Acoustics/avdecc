@@ -113,6 +113,7 @@ struct EntityQueues
 - (la::avdecc::protocol::ProtocolInterface::Error)sendAcmpCommand:(la::avdecc::protocol::Acmpdu::UniquePointer&&)acmpdu handler:(la::avdecc::protocol::ProtocolInterface::AcmpCommandResultHandler const&)onResult;
 - (void)lock;
 - (void)unlock;
+- (BOOL)isSelfLocked;
 
 // Variables
 @property (retain) AVBInterface* interface;
@@ -283,6 +284,11 @@ private:
 	virtual void unlock() noexcept override
 	{
 		[_bridge unlock];
+	}
+
+	virtual bool isSelfLocked() const noexcept override
+	{
+		return [_bridge isSelfLocked];
 	}
 
 private:
@@ -1006,6 +1012,11 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 
 - (void)unlock {
 	_lockEntities.unlock();
+}
+
+- (BOOL)isSelfLocked {
+	// Right now, don't handle this method and always return NO
+	return NO;
 }
 
 #pragma mark AVB17221EntityDiscoveryDelegate delegate

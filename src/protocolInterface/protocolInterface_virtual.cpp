@@ -306,6 +306,7 @@ private:
 	virtual Error sendAcmpResponse(Acmpdu::UniquePointer&& acmpdu) const noexcept override;
 	virtual void lock() noexcept override;
 	virtual void unlock() noexcept override;
+	virtual bool isSelfLocked() const noexcept override;
 
 	// ProtocolInterfaceVirtual overrides
 	virtual void forceTransportError() const noexcept override;
@@ -624,6 +625,11 @@ void ProtocolInterfaceVirtualImpl::lock() noexcept
 void ProtocolInterfaceVirtualImpl::unlock() noexcept
 {
 	_controllerStateMachine.unlock();
+}
+
+bool ProtocolInterfaceVirtualImpl::isSelfLocked() const noexcept
+{
+	return _controllerStateMachine.isSelfLocked();
 }
 
 // ProtocolInterfaceVirtual overrides
