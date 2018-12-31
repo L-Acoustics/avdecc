@@ -27,8 +27,8 @@
 
 #include <la/avdecc/avdecc.hpp>
 #include <la/avdecc/utils.hpp>
+#include <la/avdecc/watchDog.hpp>
 #include <la/avdecc/internals/exception.hpp>
-#include <la/avdecc/internals/watchDog.hpp>
 #include "avdeccControlledEntityModel.hpp"
 #include "exports.hpp"
 #include <string>
@@ -239,7 +239,7 @@ private:
 	{
 		if (_controlledEntity)
 		{
-			la::avdecc::watchDog::WatchDog::getInstance().registerWatch("avdecc::controller::ControlledEntityGuard::" + toHexString(reinterpret_cast<size_t>(this)), std::chrono::milliseconds{ 500u });
+			_watchDog.registerWatch("avdecc::controller::ControlledEntityGuard::" + toHexString(reinterpret_cast<size_t>(this)), std::chrono::milliseconds{ 500u });
 		}
 	}
 
@@ -247,13 +247,15 @@ private:
 	{
 		if (_controlledEntity)
 		{
-			la::avdecc::watchDog::WatchDog::getInstance().unregisterWatch("avdecc::controller::ControlledEntityGuard::" + toHexString(reinterpret_cast<size_t>(this)));
+			_watchDog.unregisterWatch("avdecc::controller::ControlledEntityGuard::" + toHexString(reinterpret_cast<size_t>(this)));
 			// We can unlock, we got ownership (and locked state) during construction
 			_controlledEntity->unlock();
 		}
 	}
 
 	SharedControlledEntity _controlledEntity{ nullptr };
+	watchDog::WatchDog::SharedPointer _watchDogSharedPointer{ watchDog::WatchDog::getInstance() };
+	watchDog::WatchDog& _watchDog{ *_watchDogSharedPointer };
 };
 
 } // namespace controller

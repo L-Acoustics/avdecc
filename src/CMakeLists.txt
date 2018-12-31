@@ -42,6 +42,7 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/memoryBuffer.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/networkInterfaceHelper.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/utils.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/watchDog.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/aggregateEntity.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/controllerEntity.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/endian.hpp
@@ -69,7 +70,6 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/internals/serialization.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/streamFormat.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/uniqueIdentifier.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/watchDog.hpp
 )
 
 # Low level Protocol

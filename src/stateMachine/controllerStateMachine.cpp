@@ -23,8 +23,8 @@
 */
 
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
-#include "la/avdecc/internals/watchDog.hpp"
 #include "la/avdecc/internals/instrumentationNotifier.hpp"
+#include "la/avdecc/watchDog.hpp"
 #include "controllerStateMachine.hpp"
 #include "logHelper.hpp"
 #include <utility>
@@ -180,8 +180,11 @@ ControllerStateMachine::ControllerStateMachine(ProtocolInterface const* const pr
 		[this]
 		{
 			setCurrentThreadName("avdecc::ControllerStateMachine");
-			auto& watchDog = la::avdecc::watchDog::WatchDog::getInstance();
+
+			auto watchDogSharedPointer = watchDog::WatchDog::getInstance();
+			auto& watchDog = *watchDogSharedPointer;
 			watchDog.registerWatch("avdecc::ControllerStateMachine", std::chrono::milliseconds{ 1000u });
+
 			while (!_shouldTerminate)
 			{
 				// Check for local entities announcement

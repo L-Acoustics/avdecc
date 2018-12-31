@@ -22,10 +22,8 @@
 * @author Christophe Calmejane
 */
 
-#include "la/avdecc/internals/watchDog.hpp"
-#include "la/avdecc/utils.hpp"
+#include "la/avdecc/watchDog.hpp"
 #include <unordered_map>
-#include <mutex>
 #include <thread>
 #ifdef _WIN32
 #	include <Windows.h>
@@ -75,8 +73,9 @@ public:
 							// Check if we timed out
 							if (!watchInfo.ignore && std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - watchInfo.lastAlive).count() > watchInfo.maximumInterval.count())
 							{
-								watchInfo.ignore = true;
+								_observers.notifyObserversMethod<Observer>(&Observer::onIntervalExceeded, name, watchInfo.maximumInterval);
 								AVDECC_ASSERT(false, "WatchDog event '" + name + "' exceeded the maximum allowed time. Deadlock?");
+								watchInfo.ignore = true;
 							}
 						}
 					}
@@ -103,6 +102,16 @@ public:
 
 private:
 	// WatchDog overrides
+	virtual void registerObserver(Observer* const observer) noexcept override
+	{
+		_observers.registerObserver(observer);
+	}
+
+	virtual void unregisterObserver(Observer* const observer) noexcept override
+	{
+		_observers.unregisterObserver(observer);
+	}
+
 	virtual void registerWatch(std::string const& name, std::chrono::milliseconds const maximumInterval) noexcept override
 	{
 		auto const lg = std::lock_guard{ _lock };
@@ -130,11 +139,12 @@ private:
 	std::unordered_map<std::string, WatchInfo> _watched{};
 	bool _shouldTerminate{ false };
 	std::thread _watchThread{};
+	Subject _observers{};
 };
 
-WatchDog& LA_AVDECC_CALL_CONVENTION WatchDog::getInstance() noexcept
+WatchDog::SharedPointer LA_AVDECC_CALL_CONVENTION WatchDog::getInstance() noexcept
 {
-	static WatchDogImpl s_Instance{};
+	static auto s_Instance{ std::make_shared<WatchDogImpl>() };
 
 	return s_Instance;
 }

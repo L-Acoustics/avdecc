@@ -25,7 +25,9 @@
 
 #pragma once
 
-#include "exports.hpp"
+#include "utils.hpp"
+#include "internals/exports.hpp"
+#include <mutex>
 #include <string>
 #include <chrono>
 
@@ -35,10 +37,32 @@ namespace avdecc
 {
 namespace watchDog
 {
+/**
+* @details Class to detect (dead)locked threads, or operations that took longer than expected.
+*          Used as debugging purpose.
+*          The class is implemented as a shared_ptr singleton, so it does not get deleted immediately when the program ends
+*          (any pending async operation that hold a reference on the WatchDog can still use it).
+*/
 class WatchDog
 {
+protected:
+	using Subject = TypedSubject<struct SubjectTag, std::mutex>;
+
 public:
-	static LA_AVDECC_API WatchDog& LA_AVDECC_CALL_CONVENTION getInstance() noexcept;
+	/** Observer interface for the WatchDog */
+	class Observer : public la::avdecc::Observer<Subject>
+	{
+	public:
+		virtual ~Observer() noexcept {}
+		virtual void onIntervalExceeded(std::string const& /*name*/, std::chrono::milliseconds const /*maximumInterval*/) noexcept {}
+	};
+
+	using SharedPointer = std::shared_ptr<WatchDog>; /**< Alias for a shared pointer on the class */
+
+	static LA_AVDECC_API SharedPointer LA_AVDECC_CALL_CONVENTION getInstance() noexcept;
+
+	virtual void registerObserver(Observer* const observer) noexcept = 0;
+	virtual void unregisterObserver(Observer* const observer) noexcept = 0;
 
 	virtual void registerWatch(std::string const& name, std::chrono::milliseconds const maximumInterval) noexcept = 0;
 	virtual void unregisterWatch(std::string const& name) noexcept = 0;

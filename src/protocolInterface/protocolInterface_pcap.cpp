@@ -26,7 +26,7 @@
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
 #include "la/avdecc/internals/protocolMvuAecpdu.hpp"
-#include "la/avdecc/internals/watchDog.hpp"
+#include "la/avdecc/watchDog.hpp"
 #include "la/avdecc/utils.hpp"
 #include "stateMachine/controllerStateMachine.hpp"
 #include "protocolInterface_pcap.hpp"
@@ -124,11 +124,9 @@ public:
 
 					// Try to detect possible deadlock
 					{
-						auto& watchDog = la::avdecc::watchDog::WatchDog::getInstance();
-
-						watchDog.registerWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + toHexString(reinterpret_cast<size_t>(this)), std::chrono::milliseconds{ 1000u });
+						_watchDog.registerWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + toHexString(reinterpret_cast<size_t>(this)), std::chrono::milliseconds{ 1000u });
 						dispatchAvdeccMessage(avtpdu, avtpdu_size, etherLayer2);
-						watchDog.unregisterWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + toHexString(reinterpret_cast<size_t>(this)));
+						_watchDog.unregisterWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + toHexString(reinterpret_cast<size_t>(this)));
 					}
 				}
 
@@ -595,6 +593,8 @@ private:
 	}
 
 	// Private variables
+	watchDog::WatchDog::SharedPointer _watchDogSharedPointer{ watchDog::WatchDog::getInstance() };
+	watchDog::WatchDog& _watchDog{ *_watchDogSharedPointer };
 	PcapInterface _pcapLibrary;
 	std::unique_ptr<pcap_t, std::function<void(pcap_t*)>> _pcap{ nullptr, nullptr };
 	int _fd{ -1 };
