@@ -46,8 +46,8 @@ static constexpr std::uint16_t QueryRetryMillisecondDelay = 500;
 /* ************************************************************************** */
 /** Constructor */
 ControlledEntityImpl::ControlledEntityImpl(entity::Entity const& entity, LockInformation::SharedPointer const& sharedLock) noexcept
-	: _entity(entity)
-	, _sharedLock(sharedLock)
+	: _sharedLock(sharedLock)
+	, _entity(entity)
 {
 }
 

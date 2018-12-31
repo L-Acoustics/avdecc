@@ -51,13 +51,45 @@ struct EntityQueues
 	dispatch_semaphore_t aecpLimiter;
 };
 
+struct LockInformation
+{
+	std::recursive_mutex _lock{};
+	std::uint32_t _lockedCount{ 0u };
+	std::thread::id _lockingThreadID{};
+
+	void lock() noexcept
+	{
+		_lock.lock();
+		if (_lockedCount == 0)
+		{
+			_lockingThreadID = std::this_thread::get_id();
+		}
+		++_lockedCount;
+	}
+
+	void unlock() noexcept
+	{
+		--_lockedCount;
+		if (_lockedCount == 0)
+		{
+			_lockingThreadID = {};
+		}
+		_lock.unlock();
+	}
+
+	bool isSelfLocked() const noexcept
+	{
+		return _lockingThreadID == std::this_thread::get_id();
+	}
+};
+
 @interface BridgeInterface : NSObject <AVB17221EntityDiscoveryDelegate, AVB17221AECPClient, AVB17221ACMPClient>
 // Private variables
 {
 	BOOL _primedDiscovery;
 	la::avdecc::protocol::ProtocolInterfaceMacNativeImpl* _protocolInterface;
 
-	std::recursive_mutex _lockEntities; /** Lock to protect _localProcessEntities and _registeredAcmpHandlers fields */
+	LockInformation _lock; /** Lock to protect the ProtocolInterface */
 	std::unordered_map<la::avdecc::UniqueIdentifier, std::uint32_t, la::avdecc::UniqueIdentifier::hash> _lastAvailableIndex; /** Last received AvailableIndex for each entity */
 	std::unordered_map<la::avdecc::UniqueIdentifier, la::avdecc::entity::LocalEntity&, la::avdecc::UniqueIdentifier::hash> _localProcessEntities; /** Local entities declared by the running process */
 	std::unordered_set<la::avdecc::UniqueIdentifier, la::avdecc::UniqueIdentifier::hash> _registeredAcmpHandlers; /** List of ACMP handlers that have been registered (that must be removed upon destruction, since there is no removeAllHandlers method) */
@@ -113,7 +145,7 @@ struct EntityQueues
 - (la::avdecc::protocol::ProtocolInterface::Error)sendAcmpCommand:(la::avdecc::protocol::Acmpdu::UniquePointer&&)acmpdu handler:(la::avdecc::protocol::ProtocolInterface::AcmpCommandResultHandler const&)onResult;
 - (void)lock;
 - (void)unlock;
-- (BOOL)isSelfLocked;
+- (bool)isSelfLocked;
 
 // Variables
 @property (retain) AVBInterface* interface;
@@ -718,7 +750,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	// Move internal lists to temporary objects while locking, so we can safely cleanup outside of the lock
 	{
 		// Lock self
-		std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+		std::lock_guard const lg{ _lock };
 		localProcessEntities = std::move(_localProcessEntities);
 		registeredAcmpHandlers = std::move(_registeredAcmpHandlers);
 	}
@@ -758,7 +790,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 // Registration of a local process entity (an entity declared inside this process, not all local computer entities)
 - (la::avdecc::protocol::ProtocolInterface::Error)registerLocalEntity:(la::avdecc::entity::LocalEntity&)entity {
 	// Lock entities now, so we don't get interrupted during registration
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	std::lock_guard const lg{ _lock };
 
 	auto const entityID = entity.getEntityID();
 
@@ -806,7 +838,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	[self disableEntityAdvertising:entity interfaceIndex:std::nullopt];
 
 	// Lock entities now that we have removed the handlers
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	std::lock_guard const lg{ _lock };
 
 	// Remove the entity from our cache of local entities declared by the running program
 	_localProcessEntities.erase(entityID);
@@ -936,14 +968,18 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 												 LOG_PROTOCOL_INTERFACE_DEBUG(la::avdecc::networkInterface::MacAddress{}, la::avdecc::networkInterface::MacAddress{}, "AECP completionHandler called again with same result message, ignoring this call.");
 												 return;
 											 }
-											 if (kIOReturnSuccess == (IOReturn)error.code)
 											 {
-												 auto aecpdu = [BridgeInterface makeAecpResponse:message];
-												 la::avdecc::invokeProtectedHandler(resultHandler, aecpdu.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
-											 }
-											 else
-											 {
-												 la::avdecc::invokeProtectedHandler(resultHandler, nullptr, [BridgeInterface getProtocolError:error]);
+												 // Lock Self before calling a handler, we come from a network thread
+												 std::lock_guard const lg{ _lock };
+												 if (kIOReturnSuccess == (IOReturn)error.code)
+												 {
+													 auto aecpdu = [BridgeInterface makeAecpResponse:message];
+													 la::avdecc::invokeProtectedHandler(resultHandler, aecpdu.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
+												 }
+												 else
+												 {
+													 la::avdecc::invokeProtectedHandler(resultHandler, nullptr, [BridgeInterface getProtocolError:error]);
+												 }
 											 }
 											 resultHandler = {}; // Clear resultHandler in case this completionHandler is called twice (bug in macOS)
 											 [self stopAsyncOperation];
@@ -991,14 +1027,18 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 																LOG_PROTOCOL_INTERFACE_DEBUG(la::avdecc::networkInterface::MacAddress{}, la::avdecc::networkInterface::MacAddress{}, "ACMP completionHandler called again with same result message, ignoring this call.");
 																return;
 															}
-															if (kIOReturnSuccess == (IOReturn)error.code)
 															{
-																auto acmp = [BridgeInterface makeAcmpMessage:message];
-																la::avdecc::invokeProtectedHandler(resultHandler, acmp.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
-															}
-															else
-															{
-																la::avdecc::invokeProtectedHandler(resultHandler, nullptr, [BridgeInterface getProtocolError:error]);
+																// Lock Self before calling a handler, we come from a network thread
+																std::lock_guard const lg{ _lock };
+																if (kIOReturnSuccess == (IOReturn)error.code)
+																{
+																	auto acmp = [BridgeInterface makeAcmpMessage:message];
+																	la::avdecc::invokeProtectedHandler(resultHandler, acmp.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
+																}
+																else
+																{
+																	la::avdecc::invokeProtectedHandler(resultHandler, nullptr, [BridgeInterface getProtocolError:error]);
+																}
 															}
 															resultHandler = {}; // Clear resultHandler in case this completionHandler is called twice (bug in macOS)
 															[self stopAsyncOperation];
@@ -1007,16 +1047,15 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 }
 
 - (void)lock {
-	_lockEntities.lock();
+	_lock.lock();
 }
 
 - (void)unlock {
-	_lockEntities.unlock();
+	_lock.unlock();
 }
 
-- (BOOL)isSelfLocked {
-	// Right now, don't handle this method and always return NO
-	return NO;
+- (bool)isSelfLocked {
+	return _lock.isSelfLocked();
 }
 
 #pragma mark AVB17221EntityDiscoveryDelegate delegate
@@ -1025,7 +1064,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	if ([self.interface.acmp setHandler:self forEntityID:entityID])
 	{
 		// Register the entity for handler removal upon shutdown
-		std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+		std::lock_guard const lg{ _lock };
 		_registeredAcmpHandlers.insert(entityID);
 	}
 
@@ -1041,7 +1080,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 
 - (void)deinitEntity:(la::avdecc::UniqueIdentifier)entityID {
 	{
-		std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+		std::lock_guard const lg{ _lock };
 
 		// Unregister ACMP handler
 		_registeredAcmpHandlers.erase(entityID);
@@ -1089,7 +1128,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	[self initEntity:newEntity.entityID];
 
 	// Lock self
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	std::lock_guard const lg{ _lock };
 
 	// Notify observers
 	auto e = [BridgeInterface makeEntity:newEntity];
@@ -1101,7 +1140,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	[self deinitEntity:oldEntity.entityID];
 
 	// Lock self
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	std::lock_guard const lg{ _lock };
 
 	// Notify observers
 	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOffline, _protocolInterface, oldEntity.entityID);
@@ -1110,7 +1149,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 - (void)didRediscoverLocalEntity:(AVB17221Entity*)entity on17221EntityDiscovery:(AVB17221EntityDiscovery*)entityDiscovery {
 	// Check if Entity already in the list
 	{
-		std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+		std::lock_guard const lg{ _lock };
 		if (_registeredAcmpHandlers.find(entity.entityID) == _registeredAcmpHandlers.end())
 		{
 			AVDECC_ASSERT(false, "didRediscoverLocalEntity: Entity not registered... I thought Rediscover was called when an entity announces itself again without any change in it's ADP info... Maybe simply call didAddLocalEntity");
@@ -1129,7 +1168,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	auto e = [BridgeInterface makeEntity:entity];
 
 	// Lock self
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	std::lock_guard const lg{ _lock };
 
 	// If a change occured in a forbidden flag, simulate offline/online for this entity
 	if ((changedProperties & kAVB17221EntityPropertyChangedShouldntChangeMask) != 0)
@@ -1147,7 +1186,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	[self initEntity:newEntity.entityID];
 
 	// Lock self
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	std::lock_guard const lg{ _lock };
 
 	// Add entity to available index list
 	auto previousResult = _lastAvailableIndex.insert(std::make_pair(newEntity.entityID, newEntity.availableIndex));
@@ -1165,7 +1204,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	[self deinitEntity:oldEntity.entityID];
 
 	// Lock self
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	std::lock_guard const lg{ _lock };
 
 	// Clear entity from available index list
 	_lastAvailableIndex.erase(oldEntity.entityID);
@@ -1177,7 +1216,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 - (void)didRediscoverRemoteEntity:(AVB17221Entity*)entity on17221EntityDiscovery:(AVB17221EntityDiscovery*)entityDiscovery {
 	// Check if Entity already in the list
 	{
-		std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+		std::lock_guard const lg{ _lock };
 		if (_registeredAcmpHandlers.find(entity.entityID) == _registeredAcmpHandlers.end())
 		{
 			AVDECC_ASSERT(false, "didRediscoverRemoteEntity: Entity not registered... I thought Rediscover was called when an entity announces itself again without any change in it's ADP info... Maybe simply call didAddRemoteEntity");
@@ -1189,7 +1228,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 
 - (void)didUpdateRemoteEntity:(AVB17221Entity*)entity changedProperties:(AVB17221EntityPropertyChanged)changedProperties on17221EntityDiscovery:(AVB17221EntityDiscovery*)entityDiscovery {
 	// Lock self
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	std::lock_guard const lg{ _lock };
 
 	// Check for an invalid change in AvailableIndex
 	if ((changedProperties & AVB17221EntityPropertyChangedAvailableIndex) != 0)
@@ -1243,7 +1282,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	// This handler is called for all AECP messages to our ControllerID, even the messages that are solicited responses and which will be handled by the block of aecp.sendCommand() method
 
 	// Lock self
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	std::lock_guard const lg{ _lock };
 
 	// Search our controller entity, which should be found!
 	auto it = _localProcessEntities.find([message controllerEntityID]);
@@ -1279,7 +1318,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	auto acmpdu = [BridgeInterface makeAcmpMessage:message];
 
 	// Lock self
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	std::lock_guard const lg{ _lock };
 
 	// Dispatch sniffed message to registered controllers
 	for (auto& localEntityIt : _localProcessEntities)
@@ -1304,7 +1343,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	auto acmpdu = [BridgeInterface makeAcmpMessage:message];
 
 	// Lock self
-	std::lock_guard<decltype(_lockEntities)> const lg(_lockEntities);
+	std::lock_guard const lg{ _lock };
 
 	// Dispatch sniffed message to registered controllers
 	for (auto& localEntityIt : _localProcessEntities)
