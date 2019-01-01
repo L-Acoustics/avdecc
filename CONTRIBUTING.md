@@ -1,12 +1,7 @@
 # Contributing code
 
 ## Coding style
-- Use the provided clang-format file to correctly format the code
-  - A patched version of clang-format should be used (until [this patch has been integrated into clang-format](https://reviews.llvm.org/D44609))
-  - clang-format version 7.0.0 (with the patch applied: [clang-7.0.0-BraceWrappingBeforeLambdaBody.patch](clang-7.0.0-BraceWrappingBeforeLambdaBody.patch))
-  - Precompiled clang-format can be provided for windows and macOS, on demand
-- Always declare function parameters as const (so they cannot be changed inside the function). Except for references, movable objects and pointers that are mutable
-- Always put const to the right of the type
+Read and follow the coding style and guidelines [from this file](CODING_STYLE_GUIDELINES.md).
 
 ## Submit code
 - Create a new branch starting from '*dev*' branch

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-FIX_FILES_VERSION="1.2"
+FIX_FILES_VERSION="1.3"
 
 echo "Fix-Files version $FIX_FILES_VERSION"
 echo ""
@@ -80,8 +80,9 @@ if [[ $do_clang_format -eq 1 && -f ./.clang-format ]]; then
 	which clang-format &> /dev/null
 	if [ $? -eq 0 ]; then
 		cf_version="$(clang-format --version)"
-		if [ "$cf_version" != "clang-format version 7.0.0 (tags/RELEASE_700/final/WithWrappingBeforeLambdaBodyPatch)" ]; then
-			echo "Incorrect clang-format: Version 7.0.0 with WrappingBeforeLambdaBody patch required"
+		regex="clang-format version 7\.0\.0 \(tags\/RELEASE_700\/final[ 0-9]*\/WithWrappingBeforeLambdaBodyPatch\)"
+		if [[ ! "$cf_version" =~ $regex ]]; then
+			echo "Incorrect clang-format: Version 7.0.0 with WrappingBeforeLambdaBody patch required (found: $cf_version)"
 			exit 1
 		fi
 		applyFormat "*.[chi]pp"
