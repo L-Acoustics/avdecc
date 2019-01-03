@@ -189,6 +189,19 @@ private:
 		EXPECT_EQ(sizeof(std::underlying_type_t<TestBitfieldClass>) * 8, TestBitfieldClasses::value_size);
 	}
 
+	void testHash() const
+	{
+		std::unordered_map<TestBitfieldClasses, char const*, typename TestBitfieldClasses::Hash> myBitfieldToStringMap{
+			{ TestBitfieldClasses{}, "None" },
+			{ TestBitfieldClasses{ TestBitfieldClass::Implemented }, "Implemented" },
+			{ TestBitfieldClasses{ TestBitfieldClass::Other }, "Other" },
+		};
+
+		EXPECT_NO_THROW(EXPECT_STREQ("Implemented", myBitfieldToStringMap.at(TestBitfieldClasses{ TestBitfieldClass::Implemented })););
+		EXPECT_THROW((void)myBitfieldToStringMap.at(TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Other });, std::out_of_range);
+		EXPECT_THROW((void)myBitfieldToStringMap.at(TestBitfieldClasses{ static_cast<TestBitfieldClass>(2) });, std::out_of_range);
+	}
+
 	void testConstructionAndValue() const
 	{
 		TestBitfieldClasses const v1{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
@@ -197,8 +210,7 @@ private:
 		TestBitfieldClasses const v4{ TestBitfieldClass::Implemented };
 		TestBitfieldClasses const v5{ TestBitfieldClass::Supported };
 		TestBitfieldClasses const v6{};
-		TestBitfieldClasses const v7{ TestBitfieldClass::None };
-		TestBitfieldClasses const v8{ TestBitfieldClass::Supported, TestBitfieldClass::Supported, TestBitfieldClass::Supported };
+		TestBitfieldClasses const v7{ TestBitfieldClass::Supported, TestBitfieldClass::Supported, TestBitfieldClass::Supported };
 
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v1.value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported), v2.value());
@@ -206,8 +218,7 @@ private:
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented), v4.value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Supported), v5.value());
 		EXPECT_EQ(0u, v6.value());
-		EXPECT_EQ(0u, v7.value());
-		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Supported), v8.value());
+		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Supported), v7.value());
 	}
 
 	void testAssign() const
@@ -217,35 +228,43 @@ private:
 		TestBitfieldClasses v1_3{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
 		TestBitfieldClasses v2_1{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
 		TestBitfieldClasses v2_2{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
-		TestBitfieldClasses v2_3{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
 		TestBitfieldClasses v3_1{};
-		TestBitfieldClasses v3_2{};
-		TestBitfieldClasses v4_1{ TestBitfieldClass::None };
-		TestBitfieldClasses v4_2{ TestBitfieldClass::None };
 
 		v1_1.assign(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented));
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented), v1_1.value());
 		v1_2.assign(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported));
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v1_2.value());
-		v1_3.assign(la::avdecc::utils::to_integral(TestBitfieldClass::None));
-		EXPECT_EQ(0u, v1_3.value());
 
 		v2_1.assign(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented));
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented), v2_1.value());
 		v2_2.assign(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported));
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v2_2.value());
-		v2_3.assign(la::avdecc::utils::to_integral(TestBitfieldClass::None));
-		EXPECT_EQ(0u, v2_3.value());
 
 		v3_1.assign(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented));
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented), v3_1.value());
-		v3_2.assign(la::avdecc::utils::to_integral(TestBitfieldClass::None));
-		EXPECT_EQ(0u, v3_2.value());
+	}
 
-		v4_1.assign(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented));
-		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented), v4_1.value());
-		v4_2.assign(la::avdecc::utils::to_integral(TestBitfieldClass::None));
-		EXPECT_EQ(0u, v4_2.value());
+	void testClear() const
+	{
+		TestBitfieldClasses v1{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported, TestBitfieldClass::Other };
+		TestBitfieldClasses v2{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
+		TestBitfieldClasses v3{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
+		TestBitfieldClasses v4{ TestBitfieldClass::Supported };
+		TestBitfieldClasses v5{ TestBitfieldClass::Other };
+		TestBitfieldClasses v6{};
+
+		v1.clear();
+		EXPECT_TRUE(v1.empty());
+		v2.clear();
+		EXPECT_TRUE(v2.empty());
+		v3.clear();
+		EXPECT_TRUE(v3.empty());
+		v4.clear();
+		EXPECT_TRUE(v4.empty());
+		v5.clear();
+		EXPECT_TRUE(v5.empty());
+		v6.clear();
+		EXPECT_TRUE(v6.empty());
 	}
 
 	void testEqualityOperator() const
@@ -254,7 +273,7 @@ private:
 		TestBitfieldClasses const v2{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
 		TestBitfieldClasses const v3{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
 		TestBitfieldClasses const v4{ TestBitfieldClass::Implemented };
-		TestBitfieldClasses const v5{ TestBitfieldClass::None, TestBitfieldClass::Supported };
+		TestBitfieldClasses const v5{ TestBitfieldClass::Supported };
 		TestBitfieldClasses const v6{};
 
 		EXPECT_TRUE((v1 == TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported }));
@@ -500,7 +519,7 @@ private:
 		{
 			auto v = v3;
 			v &= v4;
-			EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::None), v.value());
+			EXPECT_TRUE(v.empty());
 		}
 		{
 			auto v = v1;
@@ -509,7 +528,7 @@ private:
 			v &= v5;
 			EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Supported), v.value());
 			v &= v4;
-			EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::None), v.value());
+			EXPECT_TRUE(v.empty());
 		}
 	}
 
@@ -544,10 +563,10 @@ private:
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported), (v2 & v1).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Supported), (v2 & v3).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented), (v2 & v4).value());
-		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::None), (v3 & v4).value());
+		EXPECT_TRUE((v3 & v4).empty());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported), (v1 & v3).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Supported), (v1 & v3 & v5).value());
-		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::None), (v1 & v3 & v5 & v4).value());
+		EXPECT_TRUE((v1 & v3 & v5 & v4).empty());
 	}
 
 	void testTestBit() const
@@ -558,7 +577,6 @@ private:
 		TestBitfieldClasses const v4{ TestBitfieldClass::Implemented };
 		TestBitfieldClasses const v5{ TestBitfieldClass::Supported };
 		TestBitfieldClasses const v6{};
-		TestBitfieldClasses const v7{ TestBitfieldClass::None };
 
 		EXPECT_TRUE(v1.test(TestBitfieldClass::Implemented));
 		EXPECT_TRUE(v1.test(TestBitfieldClass::Supported));
@@ -583,10 +601,6 @@ private:
 		EXPECT_FALSE(v6.test(TestBitfieldClass::Implemented));
 		EXPECT_FALSE(v6.test(TestBitfieldClass::Supported));
 		EXPECT_FALSE(v6.test(TestBitfieldClass::NotSupported));
-
-		EXPECT_FALSE(v7.test(TestBitfieldClass::Implemented));
-		EXPECT_FALSE(v7.test(TestBitfieldClass::Supported));
-		EXPECT_FALSE(v7.test(TestBitfieldClass::NotSupported));
 	}
 
 	void testSetBit() const
@@ -598,32 +612,26 @@ private:
 		TestBitfieldClasses v5{ TestBitfieldClass::Supported };
 		TestBitfieldClasses v6{};
 
-		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v1.set(TestBitfieldClass::None).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v1.set(TestBitfieldClass::Implemented).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v1.set(TestBitfieldClass::Supported).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v1.set(TestBitfieldClass::NotSupported).value());
 
-		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported), v2.set(TestBitfieldClass::None).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported), v2.set(TestBitfieldClass::Implemented).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported), v2.set(TestBitfieldClass::Supported).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v2.set(TestBitfieldClass::NotSupported).value());
 
-		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v3.set(TestBitfieldClass::None).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v3.set(TestBitfieldClass::Implemented).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v3.set(TestBitfieldClass::Supported).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v3.set(TestBitfieldClass::NotSupported).value());
 
-		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented), v4.set(TestBitfieldClass::None).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented), v4.set(TestBitfieldClass::Implemented).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported), v4.set(TestBitfieldClass::Supported).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v4.set(TestBitfieldClass::NotSupported).value());
 
-		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Supported), v5.set(TestBitfieldClass::None).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported), v5.set(TestBitfieldClass::Implemented).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported), v5.set(TestBitfieldClass::Supported).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v5.set(TestBitfieldClass::NotSupported).value());
 
-		EXPECT_EQ(0u, v6.set(TestBitfieldClass::None).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented), v6.set(TestBitfieldClass::Implemented).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported), v6.set(TestBitfieldClass::Supported).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v6.set(TestBitfieldClass::NotSupported).value());
@@ -637,7 +645,6 @@ private:
 		TestBitfieldClasses v4{ TestBitfieldClass::Implemented, TestBitfieldClass::Other };
 		TestBitfieldClasses v5{ TestBitfieldClass::Supported };
 		TestBitfieldClasses v6{};
-		TestBitfieldClasses v7{ TestBitfieldClass::None };
 
 		EXPECT_EQ(3u, v1.count());
 		EXPECT_EQ(3u, v2.count());
@@ -645,7 +652,6 @@ private:
 		EXPECT_EQ(2u, v4.count());
 		EXPECT_EQ(1u, v5.count());
 		EXPECT_EQ(0u, v6.count());
-		EXPECT_EQ(0u, v7.count());
 	}
 
 	void testSize() const
@@ -656,7 +662,6 @@ private:
 		TestBitfieldClasses v4{ TestBitfieldClass::Implemented };
 		TestBitfieldClasses v5{ TestBitfieldClass::Supported };
 		TestBitfieldClasses v6{};
-		TestBitfieldClasses v7{ TestBitfieldClass::None };
 
 		EXPECT_EQ(sizeof(std::underlying_type_t<TestBitfieldClass>) * 8u, v1.size());
 		EXPECT_EQ(sizeof(std::underlying_type_t<TestBitfieldClass>) * 8u, v2.size());
@@ -664,7 +669,6 @@ private:
 		EXPECT_EQ(sizeof(std::underlying_type_t<TestBitfieldClass>) * 8u, v4.size());
 		EXPECT_EQ(sizeof(std::underlying_type_t<TestBitfieldClass>) * 8u, v5.size());
 		EXPECT_EQ(sizeof(std::underlying_type_t<TestBitfieldClass>) * 8u, v6.size());
-		EXPECT_EQ(sizeof(std::underlying_type_t<TestBitfieldClass>) * 8u, v7.size());
 	}
 
 	void testEmpty() const
@@ -675,7 +679,6 @@ private:
 		TestBitfieldClasses v4{ TestBitfieldClass::Implemented };
 		TestBitfieldClasses v5{ TestBitfieldClass::Supported };
 		TestBitfieldClasses v6{};
-		TestBitfieldClasses v7{ TestBitfieldClass::None };
 
 		EXPECT_FALSE(v1.empty());
 		EXPECT_FALSE(v2.empty());
@@ -683,7 +686,6 @@ private:
 		EXPECT_FALSE(v4.empty());
 		EXPECT_FALSE(v5.empty());
 		EXPECT_TRUE(v6.empty());
-		EXPECT_TRUE(v7.empty());
 	}
 
 	void testResetBit() const
@@ -695,32 +697,26 @@ private:
 		TestBitfieldClasses v5{ TestBitfieldClass::Supported };
 		TestBitfieldClasses v6{};
 
-		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v1.reset(TestBitfieldClass::None).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v1.reset(TestBitfieldClass::Implemented).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v1.reset(TestBitfieldClass::Supported).value());
 		EXPECT_EQ(0u, v1.reset(TestBitfieldClass::NotSupported).value());
 
-		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported), v2.reset(TestBitfieldClass::None).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Supported), v2.reset(TestBitfieldClass::Implemented).value());
 		EXPECT_EQ(0u, v2.reset(TestBitfieldClass::Supported).value());
 		EXPECT_EQ(0u, v2.reset(TestBitfieldClass::NotSupported).value());
 
-		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v3.reset(TestBitfieldClass::None).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v3.reset(TestBitfieldClass::Implemented).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v3.reset(TestBitfieldClass::Supported).value());
 		EXPECT_EQ(0u, v3.reset(TestBitfieldClass::NotSupported).value());
 
-		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented), v4.reset(TestBitfieldClass::None).value());
 		EXPECT_EQ(0u, v4.reset(TestBitfieldClass::Implemented).value());
 		EXPECT_EQ(0u, v4.reset(TestBitfieldClass::Supported).value());
 		EXPECT_EQ(0u, v4.reset(TestBitfieldClass::NotSupported).value());
 
-		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Supported), v5.reset(TestBitfieldClass::None).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Supported), v5.reset(TestBitfieldClass::Implemented).value());
 		EXPECT_EQ(0u, v5.reset(TestBitfieldClass::Supported).value());
 		EXPECT_EQ(0u, v5.reset(TestBitfieldClass::NotSupported).value());
 
-		EXPECT_EQ(0u, v6.reset(TestBitfieldClass::None).value());
 		EXPECT_EQ(0u, v6.reset(TestBitfieldClass::Implemented).value());
 		EXPECT_EQ(0u, v6.reset(TestBitfieldClass::Supported).value());
 		EXPECT_EQ(0u, v6.reset(TestBitfieldClass::NotSupported).value());
@@ -833,7 +829,7 @@ private:
 
 	void testGetPosition() const
 	{
-		EXPECT_THROW(TestBitfieldClasses::getPosition(TestBitfieldClass::None), std::out_of_range);
+		EXPECT_THROW(TestBitfieldClasses::getPosition(static_cast<TestBitfieldClass>(3)), std::out_of_range);
 		EXPECT_EQ(0u, TestBitfieldClasses::getPosition(TestBitfieldClass::Implemented));
 		EXPECT_EQ(3u, TestBitfieldClasses::getPosition(TestBitfieldClass::Supported));
 		EXPECT_EQ(5u, TestBitfieldClasses::getPosition(TestBitfieldClass::NotSupported));
@@ -931,8 +927,10 @@ public:
 	void runAllTests() const
 	{
 		testTypes();
+		testHash();
 		testConstructionAndValue();
 		testAssign();
+		testClear();
 		testEqualityOperator();
 		testDifferenceOperator();
 		testOrEqualOperator();
@@ -971,7 +969,6 @@ TEST(EnumBitfieldClass, uint16)
 {
 	enum class TestBitfieldClass : std::uint16_t
 	{
-		None = 0u,
 		Implemented = 1u << 0, // 1
 		Supported = 1u << 3, // 8
 		NotSupported = 1u << 5, // 32
@@ -985,7 +982,6 @@ TEST(EnumBitfieldClass, uint32)
 {
 	enum class TestBitfieldClass : std::uint32_t
 	{
-		None = 0u,
 		Implemented = 1u << 0, // 1
 		Supported = 1u << 3, // 8
 		NotSupported = 1u << 5, // 32
@@ -999,7 +995,6 @@ TEST(EnumBitfieldClass, uint64)
 {
 	enum class TestBitfieldClass : std::uint64_t
 	{
-		None = 0ull,
 		Implemented = 1ull << 0, // 1
 		Supported = 1ull << 3, // 8
 		NotSupported = 1ull << 5, // 32

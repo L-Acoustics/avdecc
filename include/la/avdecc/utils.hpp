@@ -337,7 +337,7 @@ public:
 		underlying_value_type _currentValue{ static_cast<underlying_value_type>(0) }; /** Value the iterator is currently pointing to */
 	};
 
-	/** Construct a bitfield using individual bits passed as variadic parameters. If passed value is not valid (contains more than 1 bit set), this leads to undefined behavior. */
+	/** Construct a bitfield using individual bits passed as variadic parameters. If passed value is not valid (not exactly one bit set), this leads to undefined behavior. */
 	template<typename... Values>
 	explicit EnumBitfield(value_type const value, Values const... values) noexcept
 		: _value(to_integral(value))
@@ -348,7 +348,7 @@ public:
 	}
 
 	/** Assigns the entire underlying bitfield with the passed value */
-	constexpr void assign(underlying_value_type const value) noexcept
+	void assign(underlying_value_type const value) noexcept
 	{
 		_value = value;
 	}
@@ -359,20 +359,26 @@ public:
 		return (_value & to_integral(flag)) != static_cast<underlying_value_type>(0);
 	}
 
-	/** Sets the specified flag. If passed value is not valid (contains more than 1 bit set), this leads to undefined behavior. */
-	constexpr EnumBitfield& set(value_type const flag) noexcept
+	/** Sets the specified flag. If passed value is not valid (not exactly one bit set), this leads to undefined behavior. */
+	EnumBitfield& set(value_type const flag) noexcept
 	{
 		checkInvalidValue(flag);
 		_value |= to_integral(flag);
 		return *this;
 	}
 
-	/** Clears the specified flag. If passed value is not valid (contains more than 1 bit set), this leads to undefined behavior. */
-	constexpr EnumBitfield& reset(value_type const flag) noexcept
+	/** Clears the specified flag. If passed value is not valid (not exactly one bit set), this leads to undefined behavior. */
+	EnumBitfield& reset(value_type const flag) noexcept
 	{
 		checkInvalidValue(flag);
 		_value &= ~to_integral(flag);
 		return *this;
+	}
+
+	/** Clears all the flags. */
+	void clear() noexcept
+	{
+		_value = {};
 	}
 
 	/** Returns true if no bit is set */
@@ -412,21 +418,21 @@ public:
 	}
 
 	/** OR EQUAL operator (sets the bits that are present in this or the other EnumBitfield, clears all other bits) */
-	constexpr EnumBitfield& operator|=(EnumBitfield const other) noexcept
+	EnumBitfield& operator|=(EnumBitfield const other) noexcept
 	{
 		_value |= other._value;
 		return *this;
 	}
 
 	/** AND EQUAL operator (sets the bits that are present in this and the other EnumBitfield, clears all other bits) */
-	constexpr EnumBitfield& operator&=(EnumBitfield const other) noexcept
+	EnumBitfield& operator&=(EnumBitfield const other) noexcept
 	{
 		_value &= other._value;
 		return *this;
 	}
 
 	/** OR operator (sets the bits that are present in either lhs or rhs, clears all other bits) */
-	friend constexpr EnumBitfield operator|(EnumBitfield const lhs, EnumBitfield const rhs) noexcept
+	friend EnumBitfield operator|(EnumBitfield const lhs, EnumBitfield const rhs) noexcept
 	{
 		auto result = EnumBitfield{};
 		result._value = lhs._value | rhs._value;
@@ -434,7 +440,7 @@ public:
 	}
 
 	/** AND operator (sets the bits that are present in both lhs and rhs, clears all other bits) */
-	friend constexpr EnumBitfield operator&(EnumBitfield const lhs, EnumBitfield const rhs) noexcept
+	friend EnumBitfield operator&(EnumBitfield const lhs, EnumBitfield const rhs) noexcept
 	{
 		auto result = EnumBitfield{};
 		result._value = lhs._value & rhs._value;
@@ -486,6 +492,14 @@ public:
 		return iterator(_value, value_size);
 	}
 
+	struct Hash
+	{
+		std::size_t operator()(EnumBitfield t) const
+		{
+			return std::hash<underlying_value_type>()(t._value);
+		}
+	};
+
 	// Defaulted compiler auto-generated methods
 	EnumBitfield() noexcept = default;
 	EnumBitfield(EnumBitfield&&) noexcept = default;
@@ -496,7 +510,7 @@ public:
 private:
 	static inline void checkInvalidValue([[maybe_unused]] value_type const value)
 	{
-		AVDECC_ASSERT(countBits(to_integral(value)) <= 1, "Invalid value: more than 1 bit set");
+		AVDECC_ASSERT(countBits(to_integral(value)) == 1, "Invalid value: not exactly one 1 bit set");
 	}
 	static constexpr size_t countBits(underlying_value_type const value) noexcept
 	{
