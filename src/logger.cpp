@@ -66,7 +66,7 @@ public:
 		std::lock_guard<decltype(_lock)> const lg(_lock);
 		for (auto* o : _observers)
 		{
-			invokeProtectedMethod(&Observer::onLogItem, o, level, item);
+			utils::invokeProtectedMethod(&Observer::onLogItem, o, level, item);
 		}
 	}
 

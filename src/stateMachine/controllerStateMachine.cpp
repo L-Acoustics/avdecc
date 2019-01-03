@@ -143,19 +143,19 @@ static entity::Entity makeEntity(Adpdu const& adpdu) noexcept
 	auto gptpGrandmasterID{ std::optional<UniqueIdentifier>{} };
 	auto gptpDomainNumber{ std::optional<std::uint8_t>{} };
 
-	if (hasFlag(entityCaps, entity::EntityCapabilities::AemIdentifyControlIndexValid))
+	if (utils::hasFlag(entityCaps, entity::EntityCapabilities::AemIdentifyControlIndexValid))
 	{
 		controlIndex = adpdu.getIdentifyControlIndex();
 	}
-	if (hasFlag(entityCaps, entity::EntityCapabilities::AssociationIDValid))
+	if (utils::hasFlag(entityCaps, entity::EntityCapabilities::AssociationIDValid))
 	{
 		associationID = adpdu.getAssociationID();
 	}
-	if (hasFlag(entityCaps, entity::EntityCapabilities::AemInterfaceIndexValid))
+	if (utils::hasFlag(entityCaps, entity::EntityCapabilities::AemInterfaceIndexValid))
 	{
 		avbInterfaceIndex = adpdu.getInterfaceIndex();
 	}
-	if (hasFlag(entityCaps, entity::EntityCapabilities::GptpSupported))
+	if (utils::hasFlag(entityCaps, entity::EntityCapabilities::GptpSupported))
 	{
 		gptpGrandmasterID = adpdu.getGptpGrandmasterID();
 		gptpDomainNumber = adpdu.getGptpDomainNumber();
@@ -179,7 +179,7 @@ ControllerStateMachine::ControllerStateMachine(ProtocolInterface const* const pr
 	_stateMachineThread = std::thread(
 		[this]
 		{
-			setCurrentThreadName("avdecc::ControllerStateMachine");
+			utils::setCurrentThreadName("avdecc::ControllerStateMachine");
 
 			auto watchDogSharedPointer = watchDog::WatchDog::getInstance();
 			auto& watchDog = *watchDogSharedPointer;
@@ -231,7 +231,7 @@ ProtocolInterface::Error ControllerStateMachine::sendAecpCommand(Aecpdu::UniqueP
 	auto& localEntity = localEntityIt->second;
 
 	// Check entity has controller capabilities
-	if (!hasFlag(localEntity.entity.getControllerCapabilities(), entity::ControllerCapabilities::Implemented))
+	if (!utils::hasFlag(localEntity.entity.getControllerCapabilities(), entity::ControllerCapabilities::Implemented))
 		return ProtocolInterface::Error::InvalidEntityType;
 
 	// Get next available sequenceID and update the aecpdu with it
@@ -279,7 +279,7 @@ ProtocolInterface::Error ControllerStateMachine::sendAcmpCommand(Acmpdu::UniqueP
 	auto& localEntity = localEntityIt->second;
 
 	// Check entity has controller capabilities
-	if (!hasFlag(localEntity.entity.getControllerCapabilities(), entity::ControllerCapabilities::Implemented))
+	if (!utils::hasFlag(localEntity.entity.getControllerCapabilities(), entity::ControllerCapabilities::Implemented))
 		return ProtocolInterface::Error::InvalidEntityType;
 
 	// Get next available sequenceID and update the acmpdu with it
@@ -336,7 +336,7 @@ bool ControllerStateMachine::processAdpdu(Adpdu const& adpdu) noexcept
 	auto const& it = s_Dispatch.find(messageType);
 	if (it != s_Dispatch.end())
 	{
-		invokeProtectedHandler(it->second, this, adpdu);
+		utils::invokeProtectedHandler(it->second, this, adpdu);
 		return true;
 	}
 	return false;
@@ -396,7 +396,7 @@ bool ControllerStateMachine::processAecpdu(Aecpdu const& aecpdu) noexcept
 		{
 			processedBySomeone = true;
 			// Notify the delegate
-			invokeProtectedMethod(&Delegate::onAecpCommand, _delegate, entity, aecpdu);
+			utils::invokeProtectedMethod(&Delegate::onAecpCommand, _delegate, entity, aecpdu);
 			break;
 		}
 		// It's a response for us
@@ -405,7 +405,7 @@ bool ControllerStateMachine::processAecpdu(Aecpdu const& aecpdu) noexcept
 			// Check if it's an AEM unsolicited response
 			if (isAEMUnsolicitedResponse(aecpdu))
 			{
-				invokeProtectedMethod(&Delegate::onAecpUnsolicitedResponse, _delegate, entity, aecpdu);
+				utils::invokeProtectedMethod(&Delegate::onAecpUnsolicitedResponse, _delegate, entity, aecpdu);
 			}
 			else
 			{
@@ -438,7 +438,7 @@ bool ControllerStateMachine::processAecpdu(Aecpdu const& aecpdu) noexcept
 						removeInflight(localEntity, targetID, inflight, commandIt);
 
 						// Call completion handler
-						invokeProtectedHandler(aecpQuery.resultHandler, &aecpdu, ProtocolInterface::Error::NoError);
+						utils::invokeProtectedHandler(aecpQuery.resultHandler, &aecpdu, ProtocolInterface::Error::NoError);
 					}
 					else
 						LOG_CONTROLLER_STATE_MACHINE_DEBUG(targetID, std::string("AECP command with sequenceID ") + std::to_string(sequenceID) + " unexpected (timed out already?)");
@@ -497,14 +497,14 @@ bool ControllerStateMachine::processAcmpdu(Acmpdu const& acmpdu) noexcept
 						localEntity.inflightAcmpCommands.erase(sequenceID);
 
 						// Call completion handler
-						invokeProtectedHandler(acmpQuery.resultHandler, &acmpdu, ProtocolInterface::Error::NoError);
+						utils::invokeProtectedHandler(acmpQuery.resultHandler, &acmpdu, ProtocolInterface::Error::NoError);
 					}
 				}
 			}
 			if (!processed)
 			{
 				// Notify delegate of a sniffed message
-				invokeProtectedMethod(&Delegate::onAcmpSniffedResponse, _delegate, entity, acmpdu);
+				utils::invokeProtectedMethod(&Delegate::onAcmpSniffedResponse, _delegate, entity, acmpdu);
 			}
 			processedBySomeone |= processed;
 		}
@@ -512,7 +512,7 @@ bool ControllerStateMachine::processAcmpdu(Acmpdu const& acmpdu) noexcept
 		else
 		{
 			// Notify delegate of a sniffed message
-			invokeProtectedMethod(&Delegate::onAcmpSniffedCommand, _delegate, entity, acmpdu);
+			utils::invokeProtectedMethod(&Delegate::onAcmpSniffedCommand, _delegate, entity, acmpdu);
 		}
 	}
 
@@ -536,7 +536,7 @@ ProtocolInterface::Error ControllerStateMachine::registerLocalEntity(entity::Loc
 	_localEntities.insert(std::make_pair(entityID, LocalEntityInfo(entity)));
 
 	// Notify delegate
-	invokeProtectedMethod(&Delegate::onLocalEntityOnline, _delegate, entity);
+	utils::invokeProtectedMethod(&Delegate::onLocalEntityOnline, _delegate, entity);
 
 	return ProtocolInterface::Error::NoError;
 }
@@ -561,7 +561,7 @@ ProtocolInterface::Error ControllerStateMachine::unregisterLocalEntity(entity::L
 	}
 
 	// Notify delegate
-	invokeProtectedMethod(&Delegate::onLocalEntityOffline, _delegate, entity.getEntityID());
+	utils::invokeProtectedMethod(&Delegate::onLocalEntityOffline, _delegate, entity.getEntityID());
 
 	return ProtocolInterface::Error::NoError;
 }
@@ -760,40 +760,40 @@ Adpdu ControllerStateMachine::makeEntityAvailableMessage(entity::Entity& entity,
 
 	if (entity.getIdentifyControlIndex())
 	{
-		addFlag(entityCaps, entity::EntityCapabilities::AemIdentifyControlIndexValid);
+		utils::addFlag(entityCaps, entity::EntityCapabilities::AemIdentifyControlIndexValid);
 		identifyControlIndex = *entity.getIdentifyControlIndex();
 	}
 	else
 	{
 		// We don't have a valid IdentifyControlIndex, don't set the flag
-		clearFlag(entityCaps, entity::EntityCapabilities::AemIdentifyControlIndexValid);
+		utils::clearFlag(entityCaps, entity::EntityCapabilities::AemIdentifyControlIndexValid);
 	}
 
 	if (interfaceIndex != entity::Entity::GlobalAvbInterfaceIndex)
 	{
-		addFlag(entityCaps, entity::EntityCapabilities::AemInterfaceIndexValid);
+		utils::addFlag(entityCaps, entity::EntityCapabilities::AemInterfaceIndexValid);
 		avbInterfaceIndex = interfaceIndex;
 	}
 	else
 	{
 		// We don't have a valid AvbInterfaceIndex, don't set the flag
-		clearFlag(entityCaps, entity::EntityCapabilities::AemInterfaceIndexValid);
+		utils::clearFlag(entityCaps, entity::EntityCapabilities::AemInterfaceIndexValid);
 	}
 
 	if (entity.getAssociationID())
 	{
-		addFlag(entityCaps, entity::EntityCapabilities::AssociationIDValid);
+		utils::addFlag(entityCaps, entity::EntityCapabilities::AssociationIDValid);
 		associationID = *entity.getAssociationID();
 	}
 	else
 	{
 		// We don't have a valid AssociationID, don't set the flag
-		clearFlag(entityCaps, entity::EntityCapabilities::AssociationIDValid);
+		utils::clearFlag(entityCaps, entity::EntityCapabilities::AssociationIDValid);
 	}
 
 	if (interfaceInfo.gptpGrandmasterID)
 	{
-		addFlag(entityCaps, entity::EntityCapabilities::GptpSupported);
+		utils::addFlag(entityCaps, entity::EntityCapabilities::GptpSupported);
 		gptpGrandmasterID = *interfaceInfo.gptpGrandmasterID;
 		if (AVDECC_ASSERT_WITH_RET(interfaceInfo.gptpDomainNumber.has_value(), "gptpDomainNumber should be set when gptpGrandmasterID is set"))
 		{
@@ -803,7 +803,7 @@ Adpdu ControllerStateMachine::makeEntityAvailableMessage(entity::Entity& entity,
 	else
 	{
 		// We don't have a valid gptpGrandmasterID value, don't set the flag
-		clearFlag(entityCaps, entity::EntityCapabilities::GptpSupported);
+		utils::clearFlag(entityCaps, entity::EntityCapabilities::GptpSupported);
 	}
 
 	Adpdu frame;
@@ -839,7 +839,7 @@ Adpdu ControllerStateMachine::makeEntityDepartingMessage(entity::Entity& entity,
 
 	if (interfaceIndex != entity::Entity::GlobalAvbInterfaceIndex)
 	{
-		addFlag(entityCaps, entity::EntityCapabilities::AemInterfaceIndexValid);
+		utils::addFlag(entityCaps, entity::EntityCapabilities::AemInterfaceIndexValid);
 		avbInterfaceIndex = interfaceIndex;
 	}
 
@@ -1022,14 +1022,14 @@ void ControllerStateMachine::checkEntitiesTimeoutExpiracy() noexcept
 			if (entity.entity.getInterfacesInformation().empty())
 			{
 				// Notify this entity is offline
-				invokeProtectedMethod(&Delegate::onRemoteEntityOffline, _delegate, discoveredEntityKV->first);
+				utils::invokeProtectedMethod(&Delegate::onRemoteEntityOffline, _delegate, discoveredEntityKV->first);
 				shouldRemoveEntity = true;
 			}
 			// Otherwise just notify an update
 			else
 			{
 				// Notify this entity has been updated
-				invokeProtectedMethod(&Delegate::onRemoteEntityUpdated, _delegate, entity.entity);
+				utils::invokeProtectedMethod(&Delegate::onRemoteEntityUpdated, _delegate, entity.entity);
 			}
 		}
 
@@ -1086,7 +1086,7 @@ void ControllerStateMachine::checkInflightCommandsTimeoutExpiracy() noexcept
 					if (!!error)
 					{
 						// Already retried, the command has been lost
-						invokeProtectedHandler(command.resultHandler, nullptr, error);
+						utils::invokeProtectedHandler(command.resultHandler, nullptr, error);
 						it = removeInflight(localEntity, entityID, inflight, it);
 					}
 				}
@@ -1117,7 +1117,7 @@ void ControllerStateMachine::checkInflightCommandsTimeoutExpiracy() noexcept
 				if (!!error)
 				{
 					// Already retried, the command has been lost
-					invokeProtectedHandler(command.resultHandler, nullptr, error);
+					utils::invokeProtectedHandler(command.resultHandler, nullptr, error);
 					it = localEntity.inflightAcmpCommands.erase(it);
 				}
 			}
@@ -1127,7 +1127,7 @@ void ControllerStateMachine::checkInflightCommandsTimeoutExpiracy() noexcept
 		// Notify scheduled errors
 		for (auto const& e : localEntity.scheduledAecpErrors)
 		{
-			invokeProtectedHandler(e.second, nullptr, e.first);
+			utils::invokeProtectedHandler(e.second, nullptr, e.first);
 		}
 		localEntity.scheduledAecpErrors.clear();
 	}
@@ -1142,7 +1142,7 @@ void ControllerStateMachine::handleAdpEntityAvailable(Adpdu const& adpdu) noexce
 	}
 
 	// If entity is not ready
-	if (hasFlag(adpdu.getEntityCapabilities(), entity::EntityCapabilities::EntityNotReady))
+	if (utils::hasFlag(adpdu.getEntityCapabilities(), entity::EntityCapabilities::EntityNotReady))
 	{
 		return;
 	}
@@ -1192,16 +1192,16 @@ void ControllerStateMachine::handleAdpEntityAvailable(Adpdu const& adpdu) noexce
 		if (simulateOffline)
 		{
 			AVDECC_ASSERT(!update, "When simulateOffline is set, update should not be");
-			invokeProtectedMethod(&Delegate::onRemoteEntityOffline, _delegate, entityID);
+			utils::invokeProtectedMethod(&Delegate::onRemoteEntityOffline, _delegate, entityID);
 		}
 
 		if (update)
 		{
-			invokeProtectedMethod(&Delegate::onRemoteEntityUpdated, _delegate, discoveredInfo->entity);
+			utils::invokeProtectedMethod(&Delegate::onRemoteEntityUpdated, _delegate, discoveredInfo->entity);
 		}
 		else
 		{
-			invokeProtectedMethod(&Delegate::onRemoteEntityOnline, _delegate, discoveredInfo->entity);
+			utils::invokeProtectedMethod(&Delegate::onRemoteEntityOnline, _delegate, discoveredInfo->entity);
 		}
 	}
 }
@@ -1228,7 +1228,7 @@ void ControllerStateMachine::handleAdpEntityDeparting(Adpdu const& adpdu) noexce
 	_discoveredEntities.erase(entityIt);
 
 	// Notify delegate
-	invokeProtectedMethod(&Delegate::onRemoteEntityOffline, _delegate, entityID);
+	utils::invokeProtectedMethod(&Delegate::onRemoteEntityOffline, _delegate, entityID);
 }
 
 void ControllerStateMachine::handleAdpEntityDiscover(Adpdu const& adpdu) noexcept

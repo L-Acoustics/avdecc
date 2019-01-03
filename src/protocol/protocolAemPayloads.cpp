@@ -1194,7 +1194,7 @@ Serializer<AecpAemMilanGetStreamInfoResponsePayloadSize> serializeGetStreamInfoR
 		auto reserved3 = std::uint8_t{ 0u };
 		auto reserved4 = std::uint16_t{ 0u };
 
-		ser << *streamInfo.streamInfoFlagsEx << static_cast<std::uint8_t>(((to_integral(*streamInfo.probingStatus) << 5) & 0xe0) | ((*streamInfo.acmpStatus).getValue() & 0x1f)) << reserved3 << reserved4;
+		ser << *streamInfo.streamInfoFlagsEx << static_cast<std::uint8_t>(((utils::to_integral(*streamInfo.probingStatus) << 5) & 0xe0) | ((*streamInfo.acmpStatus).getValue() & 0x1f)) << reserved3 << reserved4;
 
 		AVDECC_ASSERT(ser.usedBytes() == AecpAemMilanGetStreamInfoResponsePayloadSize, "Used bytes do not match the protocol constant");
 	}

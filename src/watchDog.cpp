@@ -52,7 +52,7 @@ public:
 		_watchThread = std::thread(
 			[this]
 			{
-				setCurrentThreadName("avdecc::watchDog");
+				utils::setCurrentThreadName("avdecc::watchDog");
 				while (!_shouldTerminate)
 				{
 					// Check all watch

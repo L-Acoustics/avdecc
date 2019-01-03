@@ -75,7 +75,7 @@ using RedundantStreams = std::set<entity::model::StreamIndex>;
 using SamplingRates = std::set<entity::model::SamplingRate>;
 using AvdeccFixedStrings = std::array<entity::model::AvdeccFixedString, 7>;
 using ClockSources = std::vector<entity::model::ClockSourceIndex>;
-using DescriptorCounts = std::unordered_map<entity::model::DescriptorType, std::uint16_t, la::avdecc::EnumClassHash>;
+using DescriptorCounts = std::unordered_map<entity::model::DescriptorType, std::uint16_t, utils::EnumClassHash>;
 
 } // namespace model
 } // namespace controller

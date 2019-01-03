@@ -47,7 +47,7 @@ namespace avdecc
 {
 namespace protocol
 {
-class ProtocolInterface : public la::avdecc::Subject<ProtocolInterface, std::recursive_mutex>
+class ProtocolInterface : public la::avdecc::utils::Subject<ProtocolInterface, std::recursive_mutex>
 {
 public:
 	/** The existing types of ProtocolInterface */
@@ -97,12 +97,12 @@ public:
 	};
 
 	using UniquePointer = std::unique_ptr<ProtocolInterface, void (*)(ProtocolInterface*)>;
-	using SupportedProtocolInterfaceTypes = la::avdecc::EnumBitfield<Type>;
+	using SupportedProtocolInterfaceTypes = la::avdecc::utils::EnumBitfield<Type>;
 	using AecpCommandResultHandler = std::function<void(la::avdecc::protocol::Aecpdu const* const response, la::avdecc::protocol::ProtocolInterface::Error const error)>;
 	using AcmpCommandResultHandler = std::function<void(la::avdecc::protocol::Acmpdu const* const response, la::avdecc::protocol::ProtocolInterface::Error const error)>;
 
 	/** Interface definition for ProtocolInterface events observation */
-	class Observer : public la::avdecc::Observer<ProtocolInterface>
+	class Observer : public la::avdecc::utils::Observer<ProtocolInterface>
 	{
 	public:
 		/* **** Global notifications **** */

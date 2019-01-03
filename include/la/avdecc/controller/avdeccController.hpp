@@ -83,7 +83,7 @@ enum class CompileOption : std::uint32_t
 	EnableRedundancy = 1u << 15,
 	Strict2018Redundancy = 1u << 16,
 };
-using CompileOptions = EnumBitfield<CompileOption>;
+using CompileOptions = utils::EnumBitfield<CompileOption>;
 
 struct CompileOptionInfo
 {
@@ -109,7 +109,7 @@ LA_AVDECC_CONTROLLER_API std::vector<CompileOptionInfo> LA_AVDECC_CONTROLLER_CAL
 /* ************************************************************************** */
 /* Controller                                                                 */
 /* ************************************************************************** */
-class Controller : public la::avdecc::Subject<Controller, std::recursive_mutex>
+class Controller : public la::avdecc::utils::Subject<Controller, std::recursive_mutex>
 {
 public:
 	using UniquePointer = std::unique_ptr<Controller, void (*)(Controller*)>;
@@ -198,7 +198,7 @@ public:
 	*          is no guaranty it will still be valid upon return (although it's guaranteed to be valid for the duration of
 	*          the handler). If you later need to get a new temporary pointer to it call the getControlledEntity method.
 	*/
-	class Observer : public la::avdecc::Observer<Controller>
+	class Observer : public la::avdecc::utils::Observer<Controller>
 	{
 	public:
 		// Global controller notifications

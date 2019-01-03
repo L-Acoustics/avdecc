@@ -62,8 +62,8 @@ int doJob()
 			try
 			{
 				std::stringstream ss;
-				ss << std::hex << "### Unit online (" << la::avdecc::toHexString(entityID, true) << ")";
-				if (la::avdecc::hasFlag(entity.getEntityCapabilities(), la::avdecc::entity::EntityCapabilities::AemSupported))
+				ss << std::hex << "### Unit online (" << la::avdecc::utils::toHexString(entityID, true) << ")";
+				if (la::avdecc::utils::hasFlag(entity.getEntityCapabilities(), la::avdecc::entity::EntityCapabilities::AemSupported))
 				{
 					//controller->getMilanInfo(entityID, 0, nullptr);
 					ss << std::hex << ", querying EntityModel" << std::endl;
@@ -85,7 +85,7 @@ int doJob()
 			try
 			{
 				std::stringstream ss;
-				ss << std::hex << "### Unit offline (" << la::avdecc::toHexString(entityID, true) << ")" << std::endl;
+				ss << std::hex << "### Unit offline (" << la::avdecc::utils::toHexString(entityID, true) << ")" << std::endl;
 				outputText(ss.str());
 			}
 			catch (...)
@@ -98,7 +98,7 @@ int doJob()
 			try
 			{
 				std::stringstream ss;
-				ss << std::hex << "### Unit updated (" << la::avdecc::toHexString(entityID, true) << ")" << std::endl;
+				ss << std::hex << "### Unit updated (" << la::avdecc::utils::toHexString(entityID, true) << ")" << std::endl;
 				outputText(ss.str());
 			}
 			catch (...)
@@ -114,7 +114,7 @@ int doJob()
 			try
 			{
 				std::stringstream ss;
-				ss << std::hex << "Unit available status (" << la::avdecc::toHexString(entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
+				ss << std::hex << "Unit available status (" << la::avdecc::utils::toHexString(entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
 				outputText(ss.str());
 			}
 			catch (...)
@@ -127,7 +127,7 @@ int doJob()
 			try
 			{
 				std::stringstream ss;
-				ss << std::hex << "Unit acquire status (" << la::avdecc::toHexString(entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
+				ss << std::hex << "Unit acquire status (" << la::avdecc::utils::toHexString(entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
 				if (!!status)
 				{
 					if (entityID == _talker)
@@ -147,7 +147,7 @@ int doJob()
 			try
 			{
 				std::stringstream ss;
-				ss << std::hex << "Unit release status (" << la::avdecc::toHexString(entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
+				ss << std::hex << "Unit release status (" << la::avdecc::utils::toHexString(entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
 				outputText(ss.str());
 			}
 			catch (...)
@@ -160,7 +160,7 @@ int doJob()
 			try
 			{
 				std::stringstream ss;
-				ss << std::hex << "Entity descriptor status (" << la::avdecc::toHexString(entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
+				ss << std::hex << "Entity descriptor status (" << la::avdecc::utils::toHexString(entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
 				if (!!status)
 				{
 					ss << "Unit name: " << descriptor.entityName << std::endl;
@@ -193,7 +193,7 @@ int doJob()
 			try
 			{
 				std::stringstream ss;
-				ss << std::hex << "Configuration descriptor status (" << la::avdecc::toHexString(entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
+				ss << std::hex << "Configuration descriptor status (" << la::avdecc::utils::toHexString(entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
 				if (!!status)
 				{
 					if (entityID == _talker)
@@ -240,7 +240,7 @@ int doJob()
 														}
 														else
 														{
-															ss << "Error getting strings descriptor " << stringsIndex << ": " << la::avdecc::to_integral(status) << std::endl;
+															ss << "Error getting strings descriptor " << stringsIndex << ": " << la::avdecc::utils::to_integral(status) << std::endl;
 														}
 														outputText(ss.str());
 													});
@@ -305,7 +305,7 @@ int doJob()
 			try
 			{
 				std::stringstream ss;
-				ss << std::hex << "Stream connect status (" << la::avdecc::toHexString(listenerStream.entityID, true) << " -> " << la::avdecc::toHexString(talkerStream.entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
+				ss << std::hex << "Stream connect status (" << la::avdecc::utils::toHexString(listenerStream.entityID, true) << " -> " << la::avdecc::utils::toHexString(talkerStream.entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
 				outputText(ss.str());
 			}
 			catch (...)
@@ -318,7 +318,7 @@ int doJob()
 			try
 			{
 				std::stringstream ss;
-				ss << std::hex << "Stream disconnect status (" << la::avdecc::toHexString(listenerStream.entityID, true) << " -> " << la::avdecc::toHexString(talkerStream.entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
+				ss << std::hex << "Stream disconnect status (" << la::avdecc::utils::toHexString(listenerStream.entityID, true) << " -> " << la::avdecc::utils::toHexString(talkerStream.entityID, true) << "): " << la::avdecc::entity::ControllerEntity::statusToString(status) << std::endl;
 				outputText(ss.str());
 			}
 			catch (...)

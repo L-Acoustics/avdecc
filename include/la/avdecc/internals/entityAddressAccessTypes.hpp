@@ -42,7 +42,7 @@ namespace addressAccess
 class Tlv final
 {
 public:
-	static constexpr size_t MaxLength = pow(2, 12); // Actually a lot less since the TLV must be embedded inside an AECP message
+	static constexpr size_t MaxLength = utils::pow(2, 12); // Actually a lot less since the TLV must be embedded inside an AECP message
 	using value_type = std::uint8_t;
 	using memory_data_type = std::vector<value_type>;
 

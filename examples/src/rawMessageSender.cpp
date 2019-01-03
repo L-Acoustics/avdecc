@@ -156,11 +156,11 @@ void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 			[&commandResultPromise](la::avdecc::protocol::Acmpdu const* const /*response*/, la::avdecc::protocol::ProtocolInterface::Error const error)
 			{
 				commandResultPromise.set_value();
-				outputText("Got ACMP response with status: " + std::to_string(la::avdecc::to_integral(error)) + "\n");
+				outputText("Got ACMP response with status: " + std::to_string(la::avdecc::utils::to_integral(error)) + "\n");
 			});
 		if (!!error)
 		{
-			outputText("Error sending ACMP command: " + std::to_string(la::avdecc::to_integral(error)) + "\n");
+			outputText("Error sending ACMP command: " + std::to_string(la::avdecc::utils::to_integral(error)) + "\n");
 		}
 		else
 		{

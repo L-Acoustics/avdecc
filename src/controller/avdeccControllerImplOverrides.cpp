@@ -73,7 +73,7 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 	_delayedQueryThread = std::thread(
 		[this]
 		{
-			setCurrentThreadName("avdecc::controller::DelayedQueries");
+			utils::setCurrentThreadName("avdecc::controller::DelayedQueries");
 			decltype(_delayedQueries) queriesToSend{};
 			while (!_shouldTerminate)
 			{
@@ -116,7 +116,7 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 					if (controlledEntity)
 					{
 						// Send the query
-						invokeProtectedHandler(query.queryHandler, _controller);
+						utils::invokeProtectedHandler(query.queryHandler, _controller);
 					}
 
 					// Remove the query from the list
@@ -222,7 +222,7 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(targetEntityID, "User acquireEntity (isPersistent={} DescriptorType={} DescriptorIndex={})", isPersistent, to_integral(descriptorType), descriptorIndex);
+		LOG_CONTROLLER_TRACE(targetEntityID, "User acquireEntity (isPersistent={} DescriptorType={} DescriptorIndex={})", isPersistent, utils::to_integral(descriptorType), descriptorIndex);
 
 		// Already acquired or acquiring, don't do anything (we want to try to acquire if it's flagged as acquired by another controller, in case it went offline without notice)
 		if (controlledEntity->isAcquired() || controlledEntity->isAcquiring())
@@ -239,7 +239,7 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 				// Visual Studio 15.9 is bugged and (again) ignore the maybe_unused attribute in lambda
 				(void)descriptorType;
 				(void)descriptorIndex;
-				LOG_CONTROLLER_TRACE(entityID, "User acquireEntityResult (OwningController={} DescriptorType={} DescriptorIndex={}): {}", toHexString(owningEntity, true), to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
+				LOG_CONTROLLER_TRACE(entityID, "User acquireEntityResult (OwningController={} DescriptorType={} DescriptorIndex={}): {}", utils::toHexString(owningEntity, true), utils::to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntity
 				auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -249,7 +249,7 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 					auto& entity = *controlledEntity;
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, owningEntity);
+					utils::invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, owningEntity);
 
 					// Update acquired state
 					auto const [acquireState, owningController] = getAcquiredInfoFromStatus(entity, owningEntity, status, false);
@@ -257,13 +257,13 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status, owningEntity);
+					utils::invokeProtectedHandler(handler, nullptr, status, owningEntity);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, UniqueIdentifier::getNullUniqueIdentifier());
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, UniqueIdentifier::getNullUniqueIdentifier());
 	}
 }
 
@@ -277,7 +277,7 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(targetEntityID, "User releaseEntity (DescriptorType={} DescriptorIndex={})", to_integral(descriptorType), descriptorIndex);
+		LOG_CONTROLLER_TRACE(targetEntityID, "User releaseEntity (DescriptorType={} DescriptorIndex={})", utils::to_integral(descriptorType), descriptorIndex);
 		_controller->releaseEntity(targetEntityID, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
 			{
@@ -285,7 +285,7 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 				// Visual Studio 15.9 is bugged and (again) ignore the maybe_unused attribute in lambda
 				(void)descriptorType;
 				(void)descriptorIndex;
-				LOG_CONTROLLER_TRACE(entityID, "User releaseEntity (OwningController={} DescriptorType={} DescriptorIndex={}): {}", toHexString(owningEntity, true), to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
+				LOG_CONTROLLER_TRACE(entityID, "User releaseEntity (OwningController={} DescriptorType={} DescriptorIndex={}): {}", utils::toHexString(owningEntity, true), utils::to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntity
 				auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -295,7 +295,7 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 					auto& entity = *controlledEntity;
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, owningEntity);
+					utils::invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, owningEntity);
 
 					// Update acquired state
 					auto const [acquireState, owningController] = getAcquiredInfoFromStatus(entity, owningEntity, status, true);
@@ -303,13 +303,13 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status, owningEntity);
+					utils::invokeProtectedHandler(handler, nullptr, status, owningEntity);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, UniqueIdentifier::getNullUniqueIdentifier());
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, UniqueIdentifier::getNullUniqueIdentifier());
 	}
 }
 
@@ -323,7 +323,7 @@ void ControllerImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntit
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(targetEntityID, "User lockEntity (DescriptorType={} DescriptorIndex={})", to_integral(descriptorType), descriptorIndex);
+		LOG_CONTROLLER_TRACE(targetEntityID, "User lockEntity (DescriptorType={} DescriptorIndex={})", utils::to_integral(descriptorType), descriptorIndex);
 
 		// Already locked or locking, don't do anything (we want to try to lock if it's flagged as locked by another controller, in case it went offline without notice)
 		if (controlledEntity->isLocked() || controlledEntity->isLocking())
@@ -340,7 +340,7 @@ void ControllerImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntit
 				// Visual Studio 15.9 is bugged and (again) ignore the maybe_unused attribute in lambda
 				(void)descriptorType;
 				(void)descriptorIndex;
-				LOG_CONTROLLER_TRACE(entityID, "User lockEntityResult (LockingController={} DescriptorType={} DescriptorIndex={}): {}", toHexString(lockingEntity, true), to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
+				LOG_CONTROLLER_TRACE(entityID, "User lockEntityResult (LockingController={} DescriptorType={} DescriptorIndex={}): {}", utils::toHexString(lockingEntity, true), utils::to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntity
 				auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -350,7 +350,7 @@ void ControllerImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntit
 					auto& entity = *controlledEntity;
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, lockingEntity);
+					utils::invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, lockingEntity);
 
 					// Update locked state
 					auto const [lockState, lockingController] = getLockedInfoFromStatus(entity, lockingEntity, status, false);
@@ -358,13 +358,13 @@ void ControllerImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntit
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status, lockingEntity);
+					utils::invokeProtectedHandler(handler, nullptr, status, lockingEntity);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, UniqueIdentifier::getNullUniqueIdentifier());
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, UniqueIdentifier::getNullUniqueIdentifier());
 	}
 }
 
@@ -378,7 +378,7 @@ void ControllerImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockE
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(targetEntityID, "User unlockEntity (DescriptorType={} DescriptorIndex={})", to_integral(descriptorType), descriptorIndex);
+		LOG_CONTROLLER_TRACE(targetEntityID, "User unlockEntity (DescriptorType={} DescriptorIndex={})", utils::to_integral(descriptorType), descriptorIndex);
 		_controller->unlockEntity(targetEntityID, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const lockingEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
 			{
@@ -386,7 +386,7 @@ void ControllerImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockE
 				// Visual Studio 15.9 is bugged and (again) ignore the maybe_unused attribute in lambda
 				(void)descriptorType;
 				(void)descriptorIndex;
-				LOG_CONTROLLER_TRACE(entityID, "User unlockEntity (LockingController={} DescriptorType={} DescriptorIndex={}): {}", toHexString(lockingEntity, true), to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
+				LOG_CONTROLLER_TRACE(entityID, "User unlockEntity (LockingController={} DescriptorType={} DescriptorIndex={}): {}", utils::toHexString(lockingEntity, true), utils::to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntity
 				auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -396,7 +396,7 @@ void ControllerImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockE
 					auto& entity = *controlledEntity;
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, lockingEntity);
+					utils::invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, lockingEntity);
 
 					// Update locked state
 					auto const [lockState, lockingController] = getLockedInfoFromStatus(entity, lockingEntity, status, true);
@@ -404,13 +404,13 @@ void ControllerImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockE
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status, lockingEntity);
+					utils::invokeProtectedHandler(handler, nullptr, status, lockingEntity);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, UniqueIdentifier::getNullUniqueIdentifier());
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, UniqueIdentifier::getNullUniqueIdentifier());
 	}
 }
 
@@ -435,7 +435,7 @@ void ControllerImpl::setConfiguration(UniqueIdentifier const targetEntityID, ent
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update configuration
 					if (!!status)
@@ -445,13 +445,13 @@ void ControllerImpl::setConfiguration(UniqueIdentifier const targetEntityID, ent
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -462,11 +462,11 @@ void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID,
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamInputFormat (StreamIndex={} streamFormat={})", streamIndex, toHexString(streamFormat, true));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamInputFormat (StreamIndex={} streamFormat={})", streamIndex, utils::toHexString(streamFormat, true));
 		_controller->setStreamInputFormat(targetEntityID, streamIndex, streamFormat,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat)
 			{
-				LOG_CONTROLLER_TRACE(entityID, "User setStreamInputFormat (StreamIndex={} streamFormat={}): {}", streamIndex, toHexString(streamFormat, true), entity::ControllerEntity::statusToString(status));
+				LOG_CONTROLLER_TRACE(entityID, "User setStreamInputFormat (StreamIndex={} streamFormat={}): {}", streamIndex, utils::toHexString(streamFormat, true), entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntity
 				auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -476,7 +476,7 @@ void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID,
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update format
 					if (!!status)
@@ -486,13 +486,13 @@ void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID,
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -503,11 +503,11 @@ void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamOutputFormat (StreamIndex={} streamFormat={})", streamIndex, toHexString(streamFormat, true));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamOutputFormat (StreamIndex={} streamFormat={})", streamIndex, utils::toHexString(streamFormat, true));
 		_controller->setStreamOutputFormat(targetEntityID, streamIndex, streamFormat,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat)
 			{
-				LOG_CONTROLLER_TRACE(entityID, "User setStreamOutputFormat (StreamIndex={} streamFormat={}): {}", streamIndex, toHexString(streamFormat, true), entity::ControllerEntity::statusToString(status));
+				LOG_CONTROLLER_TRACE(entityID, "User setStreamOutputFormat (StreamIndex={} streamFormat={}): {}", streamIndex, utils::toHexString(streamFormat, true), entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntity
 				auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -517,7 +517,7 @@ void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update format
 					if (!!status)
@@ -527,13 +527,13 @@ void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -558,7 +558,7 @@ void ControllerImpl::setStreamInputInfo(UniqueIdentifier const targetEntityID, e
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update info
 					if (!!status)
@@ -568,13 +568,13 @@ void ControllerImpl::setStreamInputInfo(UniqueIdentifier const targetEntityID, e
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -599,7 +599,7 @@ void ControllerImpl::setStreamOutputInfo(UniqueIdentifier const targetEntityID, 
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update info
 					if (!!status)
@@ -609,13 +609,13 @@ void ControllerImpl::setStreamOutputInfo(UniqueIdentifier const targetEntityID, 
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -640,7 +640,7 @@ void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update name
 					if (!!status) // Only change the name in case of success
@@ -650,13 +650,13 @@ void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -681,7 +681,7 @@ void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, e
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update name
 					if (!!status) // Only change the name in case of success
@@ -691,13 +691,13 @@ void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, e
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -722,7 +722,7 @@ void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID,
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update name
 					if (!!status) // Only change the name in case of success
@@ -732,13 +732,13 @@ void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID,
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -763,7 +763,7 @@ void ControllerImpl::setAudioUnitName(UniqueIdentifier const targetEntityID, ent
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update name
 					if (!!status) // Only change the name in case of success
@@ -773,13 +773,13 @@ void ControllerImpl::setAudioUnitName(UniqueIdentifier const targetEntityID, ent
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -804,7 +804,7 @@ void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, e
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update name
 					if (!!status) // Only change the name in case of success
@@ -814,13 +814,13 @@ void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, e
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -845,7 +845,7 @@ void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, 
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update name
 					if (!!status) // Only change the name in case of success
@@ -855,13 +855,13 @@ void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, 
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -886,7 +886,7 @@ void ControllerImpl::setAvbInterfaceName(UniqueIdentifier const targetEntityID, 
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update name
 					if (!!status) // Only change the name in case of success
@@ -896,13 +896,13 @@ void ControllerImpl::setAvbInterfaceName(UniqueIdentifier const targetEntityID, 
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -927,7 +927,7 @@ void ControllerImpl::setClockSourceName(UniqueIdentifier const targetEntityID, e
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update name
 					if (!!status) // Only change the name in case of success
@@ -937,13 +937,13 @@ void ControllerImpl::setClockSourceName(UniqueIdentifier const targetEntityID, e
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -968,7 +968,7 @@ void ControllerImpl::setMemoryObjectName(UniqueIdentifier const targetEntityID, 
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update name
 					if (!!status) // Only change the name in case of success
@@ -978,13 +978,13 @@ void ControllerImpl::setMemoryObjectName(UniqueIdentifier const targetEntityID, 
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1009,7 +1009,7 @@ void ControllerImpl::setAudioClusterName(UniqueIdentifier const targetEntityID, 
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update name
 					if (!!status) // Only change the name in case of success
@@ -1019,13 +1019,13 @@ void ControllerImpl::setAudioClusterName(UniqueIdentifier const targetEntityID, 
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1050,7 +1050,7 @@ void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, e
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update name
 					if (!!status) // Only change the name in case of success
@@ -1060,13 +1060,13 @@ void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, e
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1091,7 +1091,7 @@ void ControllerImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntit
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update rate
 					if (!!status) // Only change the sampling rate in case of success
@@ -1101,13 +1101,13 @@ void ControllerImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntit
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1132,7 +1132,7 @@ void ControllerImpl::setClockSource(UniqueIdentifier const targetEntityID, entit
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update source
 					if (!!status) // Only change the clock source in case of success
@@ -1142,13 +1142,13 @@ void ControllerImpl::setClockSource(UniqueIdentifier const targetEntityID, entit
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1173,7 +1173,7 @@ void ControllerImpl::startStreamInput(UniqueIdentifier const targetEntityID, ent
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update status
 					if (!!status) // Only change the running status in case of success
@@ -1183,13 +1183,13 @@ void ControllerImpl::startStreamInput(UniqueIdentifier const targetEntityID, ent
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1214,7 +1214,7 @@ void ControllerImpl::stopStreamInput(UniqueIdentifier const targetEntityID, enti
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update status
 					if (!!status) // Only change the running status in case of success
@@ -1224,13 +1224,13 @@ void ControllerImpl::stopStreamInput(UniqueIdentifier const targetEntityID, enti
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1255,7 +1255,7 @@ void ControllerImpl::startStreamOutput(UniqueIdentifier const targetEntityID, en
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update status
 					if (!!status) // Only change the running status in case of success
@@ -1265,13 +1265,13 @@ void ControllerImpl::startStreamOutput(UniqueIdentifier const targetEntityID, en
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1296,7 +1296,7 @@ void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, ent
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update status
 					if (!!status) // Only change the running status in case of success
@@ -1306,13 +1306,13 @@ void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, ent
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1337,7 +1337,7 @@ void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targ
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update mappings
 					if (!!status)
@@ -1347,13 +1347,13 @@ void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targ
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1378,7 +1378,7 @@ void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const tar
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update mappings
 					if (!!status)
@@ -1388,13 +1388,13 @@ void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const tar
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1419,7 +1419,7 @@ void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const t
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update mappings
 					if (!!status)
@@ -1429,13 +1429,13 @@ void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const t
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1460,7 +1460,7 @@ void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const 
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update mappings
 					if (!!status)
@@ -1470,13 +1470,13 @@ void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const 
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1501,7 +1501,7 @@ void ControllerImpl::setMemoryObjectLength(UniqueIdentifier const targetEntityID
 					auto* const entity = controlledEntity.get();
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 
 					// Update length
 					if (!!status)
@@ -1511,13 +1511,13 @@ void ControllerImpl::setMemoryObjectLength(UniqueIdentifier const targetEntityID
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1562,7 +1562,7 @@ void ControllerImpl::onUserReadDeviceMemoryResult(UniqueIdentifier const targetE
 	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
 	auto* const entity = controlledEntity ? (controlledEntity->wasAdvertised() ? controlledEntity.get() : nullptr) : nullptr;
 
-	LOG_CONTROLLER_TRACE(targetEntityID, "User readDeviceMemory chunk (BaseAddress={} Length={}): {}", toHexString(baseAddress, true), length, entity::ControllerEntity::statusToString(status));
+	LOG_CONTROLLER_TRACE(targetEntityID, "User readDeviceMemory chunk (BaseAddress={} Length={}): {}", utils::toHexString(baseAddress, true), length, entity::ControllerEntity::statusToString(status));
 	if (!!status)
 	{
 		// Copy the TLV data to the memory buffer
@@ -1583,7 +1583,7 @@ void ControllerImpl::onUserReadDeviceMemoryResult(UniqueIdentifier const targetE
 				if (progressHandler && progressHandler(entity, progress))
 				{
 					// Invoke result handler
-					invokeProtectedHandler(completionHandler, entity, entity::ControllerEntity::AaCommandStatus::Aborted, memoryBuffer);
+					utils::invokeProtectedHandler(completionHandler, entity, entity::ControllerEntity::AaCommandStatus::Aborted, memoryBuffer);
 					return;
 				}
 			}
@@ -1592,7 +1592,7 @@ void ControllerImpl::onUserReadDeviceMemoryResult(UniqueIdentifier const targetE
 				// Ignore exceptions in user handler
 			}
 			// Read next TLV
-			LOG_CONTROLLER_TRACE(targetEntityID, "User readDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", toHexString(baseAddress, true), length, tlv.getAddress() - baseAddress, tlv.size());
+			LOG_CONTROLLER_TRACE(targetEntityID, "User readDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", utils::toHexString(baseAddress, true), length, tlv.getAddress() - baseAddress, tlv.size());
 			_controller->addressAccess(targetEntityID, { std::move(tlv) },
 				[this, baseAddress, length, progressHandler = std::move(progressHandler), completionHandler = std::move(completionHandler), memoryBuffer = std::move(memoryBuffer)](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs) mutable
 				{
@@ -1607,7 +1607,7 @@ void ControllerImpl::onUserReadDeviceMemoryResult(UniqueIdentifier const targetE
 	}
 
 	// Notify of completion (either error or all TLVs processed)
-	invokeProtectedHandler(completionHandler, entity, status, memoryBuffer);
+	utils::invokeProtectedHandler(completionHandler, entity, status, memoryBuffer);
 }
 
 void ControllerImpl::onUserWriteDeviceMemoryResult(UniqueIdentifier const targetEntityID, entity::ControllerEntity::AaCommandStatus const status, std::uint64_t const baseAddress, std::uint64_t const sentSize, WriteDeviceMemoryProgressHandler const& progressHandler, WriteDeviceMemoryCompletionHandler const& completionHandler, DeviceMemoryBuffer&& memoryBuffer) const noexcept
@@ -1616,7 +1616,7 @@ void ControllerImpl::onUserWriteDeviceMemoryResult(UniqueIdentifier const target
 	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
 	auto* const entity = controlledEntity ? (controlledEntity->wasAdvertised() ? controlledEntity.get() : nullptr) : nullptr;
 
-	LOG_CONTROLLER_TRACE(targetEntityID, "User writeDeviceMemory chunk (BaseAddress={} Length={}): {}", toHexString(baseAddress, true), memoryBuffer.size(), entity::ControllerEntity::statusToString(status));
+	LOG_CONTROLLER_TRACE(targetEntityID, "User writeDeviceMemory chunk (BaseAddress={} Length={}): {}", utils::toHexString(baseAddress, true), memoryBuffer.size(), entity::ControllerEntity::statusToString(status));
 	if (!!status)
 	{
 		// Check if we need to send another portion of the device memory
@@ -1630,7 +1630,7 @@ void ControllerImpl::onUserWriteDeviceMemoryResult(UniqueIdentifier const target
 				if (progressHandler && progressHandler(entity, progress))
 				{
 					// Invoke result handler
-					invokeProtectedHandler(completionHandler, entity, entity::ControllerEntity::AaCommandStatus::Aborted);
+					utils::invokeProtectedHandler(completionHandler, entity, entity::ControllerEntity::AaCommandStatus::Aborted);
 					return;
 				}
 			}
@@ -1638,7 +1638,7 @@ void ControllerImpl::onUserWriteDeviceMemoryResult(UniqueIdentifier const target
 			{
 				// Ignore exceptions in user handler
 			}
-			LOG_CONTROLLER_TRACE(targetEntityID, "User writeDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", toHexString(baseAddress, true), memoryBuffer.size(), tlv.getAddress() - baseAddress, tlv.size());
+			LOG_CONTROLLER_TRACE(targetEntityID, "User writeDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", utils::toHexString(baseAddress, true), memoryBuffer.size(), tlv.getAddress() - baseAddress, tlv.size());
 			// We are moving the tlv, so we have to get its size before that
 			auto const newSentSize = sentSize + tlv.size();
 			// Write next TLV
@@ -1652,7 +1652,7 @@ void ControllerImpl::onUserWriteDeviceMemoryResult(UniqueIdentifier const target
 	}
 
 	// Notify of completion (either error or all TLVs processed)
-	invokeProtectedHandler(completionHandler, entity, status);
+	utils::invokeProtectedHandler(completionHandler, entity, status);
 }
 
 void ControllerImpl::readDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, std::uint64_t const length, ReadDeviceMemoryProgressHandler const& progressHandler, ReadDeviceMemoryCompletionHandler const& completionHandler) const noexcept
@@ -1669,7 +1669,7 @@ void ControllerImpl::readDeviceMemory(UniqueIdentifier const targetEntityID, std
 		auto tlv = makeNextReadDeviceMemoryTlv(address, length, 0u);
 		if (tlv)
 		{
-			LOG_CONTROLLER_TRACE(targetEntityID, "User readDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", toHexString(address, true), length, 0, tlv.size());
+			LOG_CONTROLLER_TRACE(targetEntityID, "User readDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", utils::toHexString(address, true), length, 0, tlv.size());
 			_controller->addressAccess(targetEntityID, { std::move(tlv) },
 				[this, baseAddress = address, length, progressHandlerCopy = progressHandler, completionHandlerCopy = completionHandler, memoryBuffer = std::move(memoryBuffer)](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs) mutable
 				{
@@ -1678,12 +1678,12 @@ void ControllerImpl::readDeviceMemory(UniqueIdentifier const targetEntityID, std
 		}
 		else
 		{
-			invokeProtectedHandler(completionHandler, nullptr, entity::ControllerEntity::AaCommandStatus::TlvInvalid, DeviceMemoryBuffer{});
+			utils::invokeProtectedHandler(completionHandler, nullptr, entity::ControllerEntity::AaCommandStatus::TlvInvalid, DeviceMemoryBuffer{});
 		}
 	}
 	else
 	{
-		invokeProtectedHandler(completionHandler, nullptr, entity::ControllerEntity::AaCommandStatus::UnknownEntity, DeviceMemoryBuffer{});
+		utils::invokeProtectedHandler(completionHandler, nullptr, entity::ControllerEntity::AaCommandStatus::UnknownEntity, DeviceMemoryBuffer{});
 	}
 }
 
@@ -1708,17 +1708,17 @@ void ControllerImpl::startOperation(UniqueIdentifier const targetEntityID, entit
 				{
 					auto* const entity = controlledEntity.get();
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, operationID, memoryBuffer);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status, operationID, memoryBuffer);
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status, operationID, memoryBuffer);
+					utils::invokeProtectedHandler(handler, nullptr, status, operationID, memoryBuffer);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, entity::model::OperationID{ 0u }, MemoryBuffer{});
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity, entity::model::OperationID{ 0u }, MemoryBuffer{});
 	}
 }
 
@@ -1743,17 +1743,17 @@ void ControllerImpl::abortOperation(UniqueIdentifier const targetEntityID, entit
 				{
 					auto* const entity = controlledEntity.get();
 					// Invoke result handler
-					invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
-					invokeProtectedHandler(handler, nullptr, status);
+					utils::invokeProtectedHandler(handler, nullptr, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1762,7 +1762,7 @@ void ControllerImpl::startMemoryObjectOperation(UniqueIdentifier const targetEnt
 	startOperation(targetEntityID, entity::model::DescriptorType::MemoryObject, descriptorIndex, operationType, memoryBuffer,
 		[handler](controller::ControlledEntity const* const entity, entity::ControllerEntity::AemCommandStatus const status, entity::model::OperationID const operationID, MemoryBuffer const& /*memoryBuffer*/)
 		{
-			invokeProtectedHandler(handler, entity, status, operationID);
+			utils::invokeProtectedHandler(handler, entity, status, operationID);
 		});
 }
 
@@ -1808,7 +1808,7 @@ void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, st
 		auto tlv = makeNextWriteDeviceMemoryTlv(address, memoryBuffer, 0u);
 		if (tlv)
 		{
-			LOG_CONTROLLER_TRACE(targetEntityID, "User writeDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", toHexString(address, true), memoryBuffer.size(), 0, tlv.size());
+			LOG_CONTROLLER_TRACE(targetEntityID, "User writeDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", utils::toHexString(address, true), memoryBuffer.size(), 0, tlv.size());
 			_controller->addressAccess(targetEntityID, { std::move(tlv) },
 				[this, baseAddress = address, sentSize = tlv.size(), progressHandlerCopy = progressHandler, completionHandlerCopy = completionHandler, memoryBuffer = std::move(memoryBuffer)](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& /*tlvs*/) mutable
 				{
@@ -1817,12 +1817,12 @@ void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, st
 		}
 		else
 		{
-			invokeProtectedHandler(completionHandler, nullptr, entity::ControllerEntity::AaCommandStatus::TlvInvalid);
+			utils::invokeProtectedHandler(completionHandler, nullptr, entity::ControllerEntity::AaCommandStatus::TlvInvalid);
 		}
 	}
 	else
 	{
-		invokeProtectedHandler(completionHandler, nullptr, entity::ControllerEntity::AaCommandStatus::UnknownEntity);
+		utils::invokeProtectedHandler(completionHandler, nullptr, entity::ControllerEntity::AaCommandStatus::UnknownEntity);
 	}
 }
 
@@ -1833,18 +1833,18 @@ void ControllerImpl::connectStream(entity::model::StreamIdentification const& ta
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
+		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
 		_controller->connectStream(talkerStream, listenerStream,
 			[this, handler](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 			{
-				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
+				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntities
 				auto listener = getControlledEntityImplGuard(listenerStream.entityID);
 				auto talker = getControlledEntityImplGuard(talkerStream.entityID);
 
 				// Invoke result handler
-				invokeProtectedHandler(handler, talker.get(), listener.get(), talkerStream.streamIndex, listenerStream.streamIndex, status);
+				utils::invokeProtectedHandler(handler, talker.get(), listener.get(), talkerStream.streamIndex, listenerStream.streamIndex, status);
 
 				if (!!status)
 				{
@@ -1855,7 +1855,7 @@ void ControllerImpl::connectStream(entity::model::StreamIdentification const& ta
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, nullptr, entity::model::StreamIndex(0), entity::model::StreamIndex(0), entity::ControllerEntity::ControlStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, nullptr, entity::model::StreamIndex(0), entity::model::StreamIndex(0), entity::ControllerEntity::ControlStatus::UnknownEntity);
 	}
 }
 
@@ -1866,11 +1866,11 @@ void ControllerImpl::disconnectStream(entity::model::StreamIdentification const&
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
+		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
 		_controller->disconnectStream(talkerStream, listenerStream,
 			[this, handler](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 			{
-				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
+				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
 				bool shouldNotifyHandler{ true }; // Shall we notify the handler right now, or do we have to send another message before
 
@@ -1903,7 +1903,7 @@ void ControllerImpl::disconnectStream(entity::model::StreamIdentification const&
 								auto listener = getControlledEntityImplGuard(listenerStream.entityID);
 
 								// Invoke result handler
-								invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, controlStatus);
+								utils::invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, controlStatus);
 
 								if (!!status)
 								{
@@ -1919,13 +1919,13 @@ void ControllerImpl::disconnectStream(entity::model::StreamIdentification const&
 					auto listener = getControlledEntityImplGuard(listenerStream.entityID);
 
 					// Invoke result handler
-					invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, status);
+					utils::invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, status);
 				}
 			});
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, entity::model::StreamIndex(0), entity::ControllerEntity::ControlStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, entity::model::StreamIndex(0), entity::ControllerEntity::ControlStatus::UnknownEntity);
 	}
 }
 
@@ -1936,11 +1936,11 @@ void ControllerImpl::disconnectTalkerStream(entity::model::StreamIdentification 
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectTalkerStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
+		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectTalkerStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
 		_controller->disconnectTalkerStream(talkerStream, listenerStream,
 			[this, handler](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 			{
-				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectTalkerStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
+				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectTalkerStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
 				auto st = status;
 				if (st == entity::ControllerEntity::ControlStatus::NotConnected)
@@ -1949,7 +1949,7 @@ void ControllerImpl::disconnectTalkerStream(entity::model::StreamIdentification 
 				}
 
 				// Invoke result handler
-				invokeProtectedHandler(handler, st);
+				utils::invokeProtectedHandler(handler, st);
 
 				if (!!status) // No error, update the connection state
 				{
@@ -1960,7 +1960,7 @@ void ControllerImpl::disconnectTalkerStream(entity::model::StreamIdentification 
 	}
 	else
 	{
-		invokeProtectedHandler(handler, entity::ControllerEntity::ControlStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, entity::ControllerEntity::ControlStatus::UnknownEntity);
 	}
 }
 
@@ -1971,18 +1971,18 @@ void ControllerImpl::getListenerStreamState(entity::model::StreamIdentification 
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User getListenerStreamState (ListenerID={} ListenerIndex={})", toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
+		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User getListenerStreamState (ListenerID={} ListenerIndex={})", utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
 		_controller->getListenerStreamState(listenerStream,
 			[this, handler](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 			{
-				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User getListenerStreamState (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
+				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User getListenerStreamState (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntities
 				auto listener = getControlledEntityImplGuard(listenerStream.entityID);
 				auto talker = getControlledEntityImplGuard(talkerStream.entityID);
 
 				// Invoke result handler
-				invokeProtectedHandler(handler, talker.get(), listener.get(), talkerStream.streamIndex, listenerStream.streamIndex, connectionCount, flags, status);
+				utils::invokeProtectedHandler(handler, talker.get(), listener.get(), talkerStream.streamIndex, listenerStream.streamIndex, connectionCount, flags, status);
 
 				if (!!status)
 				{
@@ -1993,7 +1993,7 @@ void ControllerImpl::getListenerStreamState(entity::model::StreamIdentification 
 	}
 	else
 	{
-		invokeProtectedHandler(handler, nullptr, nullptr, entity::model::StreamIndex(0), entity::model::StreamIndex(0), uint16_t(0), entity::ConnectionFlags::None, entity::ControllerEntity::ControlStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, nullptr, entity::model::StreamIndex(0), entity::model::StreamIndex(0), uint16_t(0), entity::ConnectionFlags::None, entity::ControllerEntity::ControlStatus::UnknownEntity);
 	}
 }
 

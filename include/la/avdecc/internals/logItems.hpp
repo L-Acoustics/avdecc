@@ -141,7 +141,7 @@ public:
 
 	virtual std::string getMessage() const noexcept override
 	{
-		return std::string("[") + la::avdecc::toHexString(_targetID, true, false) + "] " + _message;
+		return std::string("[") + la::avdecc::utils::toHexString(_targetID, true, false) + "] " + _message;
 	}
 
 	la::avdecc::UniqueIdentifier const& getTargetID() const noexcept
@@ -166,7 +166,7 @@ public:
 
 	virtual std::string getMessage() const noexcept override
 	{
-		return std::string("[") + la::avdecc::toHexString(_targetID, true, false) + "] " + _message;
+		return std::string("[") + la::avdecc::utils::toHexString(_targetID, true, false) + "] " + _message;
 	}
 
 	la::avdecc::UniqueIdentifier const& getTargetID() const noexcept
@@ -191,7 +191,7 @@ public:
 
 	virtual std::string getMessage() const noexcept override
 	{
-		return std::string("[") + la::avdecc::toHexString(_targetID, true, false) + "] " + _message;
+		return std::string("[") + la::avdecc::utils::toHexString(_targetID, true, false) + "] " + _message;
 	}
 
 	la::avdecc::UniqueIdentifier const& getTargetID() const noexcept

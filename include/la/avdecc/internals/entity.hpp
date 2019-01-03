@@ -403,7 +403,7 @@ public:
 		GptpDomainNumber = 1u << 4, /**< gPTP DomainNumber field changed */
 	};
 
-	using AdvertiseFlags = la::avdecc::EnumBitfield<AdvertiseFlag>;
+	using AdvertiseFlags = la::avdecc::utils::EnumBitfield<AdvertiseFlag>;
 
 	/** Enables entity advertising with available duration included between 2-62 seconds on the specified interfaceIndex if set, otherwise on all interfaces. Returns false if EntityID is already in use on the local computer, true otherwise. */
 	virtual bool enableEntityAdvertising(std::uint32_t const availableDuration, std::optional<model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept = 0;

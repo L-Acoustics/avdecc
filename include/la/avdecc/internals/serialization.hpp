@@ -83,8 +83,8 @@ public:
 	}
 
 	/** Serializes any TypedDefine type */
-	template<typename T>
-	Serializer& operator<<(TypedDefine<T> const& v)
+	template<class Typed, typename T = Typed::value_type>
+	Serializer& operator<<(utils::TypedDefine<Typed, T> const& v)
 	{
 		// Check enough room in buffer
 		if (remaining() < sizeof(v))
@@ -200,8 +200,8 @@ public:
 	}
 
 	/** Unpacks any TypedDefine type */
-	template<typename T>
-	Deserializer& operator>>(TypedDefine<T>& v)
+	template<class Typed, typename T = Typed::value_type>
+	Deserializer& operator>>(utils::TypedDefine<Typed, T>& v)
 	{
 		// Check enough remaining data in buffer
 		if (remaining() < sizeof(v))

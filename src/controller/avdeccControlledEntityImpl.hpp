@@ -347,17 +347,17 @@ public:
 	// Other usefull manipulation methods
 	constexpr static bool isStreamRunningFlag(entity::StreamInfoFlags const flags) noexcept
 	{
-		return !hasFlag(flags, entity::StreamInfoFlags::StreamingWait);
+		return !utils::hasFlag(flags, entity::StreamInfoFlags::StreamingWait);
 	}
 	constexpr static void setStreamRunningFlag(entity::StreamInfoFlags& flags, bool const isRunning) noexcept
 	{
 		if (isRunning)
 		{
-			clearFlag(flags, entity::StreamInfoFlags::StreamingWait);
+			utils::clearFlag(flags, entity::StreamInfoFlags::StreamingWait);
 		}
 		else
 		{
-			addFlag(flags, entity::StreamInfoFlags::StreamingWait);
+			utils::addFlag(flags, entity::StreamInfoFlags::StreamingWait);
 		}
 	}
 
@@ -440,7 +440,7 @@ private:
 
 // Define bitfield enum traits for controller::ControlledEntityImpl::EnumerationSteps
 template<>
-struct enum_traits<controller::ControlledEntityImpl::EnumerationSteps>
+struct utils::enum_traits<controller::ControlledEntityImpl::EnumerationSteps>
 {
 	static constexpr bool is_bitfield = true;
 };

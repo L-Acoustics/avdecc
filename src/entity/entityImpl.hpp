@@ -249,20 +249,20 @@ public:
 			auto const error = pi->sendAecpCommand(std::move(frame), targetMacAddress,
 				[onResult](la::avdecc::protocol::Aecpdu const* response, protocol::ProtocolInterface::Error const error) noexcept
 				{
-					invokeProtectedHandler(onResult, response, convertErrorToAemCommandStatus(error));
+					utils::invokeProtectedHandler(onResult, response, convertErrorToAemCommandStatus(error));
 				});
 			if (!!error)
 			{
-				invokeProtectedHandler(onResult, nullptr, convertErrorToAemCommandStatus(error));
+				utils::invokeProtectedHandler(onResult, nullptr, convertErrorToAemCommandStatus(error));
 			}
 		}
 		catch (std::invalid_argument const&)
 		{
-			invokeProtectedHandler(onResult, nullptr, LocalEntity::AemCommandStatus::ProtocolError);
+			utils::invokeProtectedHandler(onResult, nullptr, LocalEntity::AemCommandStatus::ProtocolError);
 		}
 		catch (...)
 		{
-			invokeProtectedHandler(onResult, nullptr, LocalEntity::AemCommandStatus::InternalError);
+			utils::invokeProtectedHandler(onResult, nullptr, LocalEntity::AemCommandStatus::InternalError);
 		}
 	}
 
@@ -292,20 +292,20 @@ public:
 			auto const error = pi->sendAecpCommand(std::move(frame), targetMacAddress,
 				[onResult](la::avdecc::protocol::Aecpdu const* response, protocol::ProtocolInterface::Error const error) noexcept
 				{
-					invokeProtectedHandler(onResult, response, convertErrorToAaCommandStatus(error));
+					utils::invokeProtectedHandler(onResult, response, convertErrorToAaCommandStatus(error));
 				});
 			if (!!error)
 			{
-				invokeProtectedHandler(onResult, nullptr, convertErrorToAaCommandStatus(error));
+				utils::invokeProtectedHandler(onResult, nullptr, convertErrorToAaCommandStatus(error));
 			}
 		}
 		catch (std::invalid_argument const&)
 		{
-			invokeProtectedHandler(onResult, nullptr, LocalEntity::AaCommandStatus::ProtocolError);
+			utils::invokeProtectedHandler(onResult, nullptr, LocalEntity::AaCommandStatus::ProtocolError);
 		}
 		catch (...)
 		{
-			invokeProtectedHandler(onResult, nullptr, LocalEntity::AaCommandStatus::InternalError);
+			utils::invokeProtectedHandler(onResult, nullptr, LocalEntity::AaCommandStatus::InternalError);
 		}
 	}
 
@@ -333,20 +333,20 @@ public:
 			auto const error = pi->sendAecpCommand(std::move(frame), targetMacAddress,
 				[onResult](la::avdecc::protocol::Aecpdu const* response, protocol::ProtocolInterface::Error const error) noexcept
 				{
-					invokeProtectedHandler(onResult, response, convertErrorToMvuCommandStatus(error));
+					utils::invokeProtectedHandler(onResult, response, convertErrorToMvuCommandStatus(error));
 				});
 			if (!!error)
 			{
-				invokeProtectedHandler(onResult, nullptr, convertErrorToMvuCommandStatus(error));
+				utils::invokeProtectedHandler(onResult, nullptr, convertErrorToMvuCommandStatus(error));
 			}
 		}
 		catch (std::invalid_argument const&)
 		{
-			invokeProtectedHandler(onResult, nullptr, LocalEntity::MvuCommandStatus::ProtocolError);
+			utils::invokeProtectedHandler(onResult, nullptr, LocalEntity::MvuCommandStatus::ProtocolError);
 		}
 		catch (...)
 		{
-			invokeProtectedHandler(onResult, nullptr, LocalEntity::MvuCommandStatus::InternalError);
+			utils::invokeProtectedHandler(onResult, nullptr, LocalEntity::MvuCommandStatus::InternalError);
 		}
 	}
 
@@ -380,21 +380,21 @@ public:
 			auto const error = pi->sendAcmpCommand(std::move(frame),
 				[onResult](protocol::Acmpdu const* const response, protocol::ProtocolInterface::Error const error) noexcept
 				{
-					invokeProtectedHandler(onResult, response, convertErrorToControlStatus(error));
+					utils::invokeProtectedHandler(onResult, response, convertErrorToControlStatus(error));
 				});
 			if (!!error)
 			{
-				invokeProtectedHandler(onResult, nullptr, convertErrorToControlStatus(error));
+				utils::invokeProtectedHandler(onResult, nullptr, convertErrorToControlStatus(error));
 			}
 		}
 
 		catch (std::invalid_argument const&)
 		{
-			invokeProtectedHandler(onResult, nullptr, LocalEntity::ControlStatus::ProtocolError);
+			utils::invokeProtectedHandler(onResult, nullptr, LocalEntity::ControlStatus::ProtocolError);
 		}
 		catch (...)
 		{
-			invokeProtectedHandler(onResult, nullptr, LocalEntity::ControlStatus::InternalError);
+			utils::invokeProtectedHandler(onResult, nullptr, LocalEntity::ControlStatus::InternalError);
 		}
 	}
 

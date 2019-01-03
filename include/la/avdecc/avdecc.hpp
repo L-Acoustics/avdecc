@@ -101,7 +101,7 @@ enum class CompileOption : std::uint32_t
 	AllowRecvBigAecpPayloads = 1u << 3,
 	EnableRedundancy = 1u << 15,
 };
-using CompileOptions = EnumBitfield<CompileOption>;
+using CompileOptions = utils::EnumBitfield<CompileOption>;
 
 struct CompileOptionInfo
 {

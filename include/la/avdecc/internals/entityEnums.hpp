@@ -226,7 +226,7 @@ enum class AvbInterfaceCounterValidFlag : model::DescriptorCounterValidFlag
 	EntitySpecific2 = 1u << 30, /**< Entity Specific counter 2. */
 	EntitySpecific1 = 1u << 31, /**< Entity Specific counter 1. */
 };
-using AvbInterfaceCounterValidFlags = EnumBitfield<AvbInterfaceCounterValidFlag>;
+using AvbInterfaceCounterValidFlags = utils::EnumBitfield<AvbInterfaceCounterValidFlag>;
 
 /* CLOCK_DOMAIN Counters - Clause 7.4.42.2.3 */
 enum class ClockDomainCounterValidFlag : model::DescriptorCounterValidFlag
@@ -244,7 +244,7 @@ enum class ClockDomainCounterValidFlag : model::DescriptorCounterValidFlag
 	EntitySpecific2 = 1u << 30, /**< Entity Specific counter 2. */
 	EntitySpecific1 = 1u << 31, /**< Entity Specific counter 1. */
 };
-using ClockDomainCounterValidFlags = EnumBitfield<ClockDomainCounterValidFlag>;
+using ClockDomainCounterValidFlags = utils::EnumBitfield<ClockDomainCounterValidFlag>;
 
 /* STREAM_INPUT Counters - Clause 7.4.42.2.4 */
 enum class StreamInputCounterValidFlag : model::DescriptorCounterValidFlag
@@ -272,97 +272,97 @@ enum class StreamInputCounterValidFlag : model::DescriptorCounterValidFlag
 	EntitySpecific2 = 1u << 30, /**< Entity Specific counter 2. */
 	EntitySpecific1 = 1u << 31, /**< Entity Specific counter 1. */
 };
-using StreamInputCounterValidFlags = EnumBitfield<StreamInputCounterValidFlag>;
+using StreamInputCounterValidFlags = utils::EnumBitfield<StreamInputCounterValidFlag>;
 
 } // namespace entity
 
 // Define bitfield enum traits for EntityCapabilities
 template<>
-struct enum_traits<entity::EntityCapabilities>
+struct utils::enum_traits<entity::EntityCapabilities>
 {
 	static constexpr bool is_bitfield = true;
 };
 
 // Define bitfield enum traits for TalkerCapabilities
 template<>
-struct enum_traits<entity::TalkerCapabilities>
+struct utils::enum_traits<entity::TalkerCapabilities>
 {
 	static constexpr bool is_bitfield = true;
 };
 
 // Define bitfield enum traits for ListenerCapabilities
 template<>
-struct enum_traits<entity::ListenerCapabilities>
+struct utils::enum_traits<entity::ListenerCapabilities>
 {
 	static constexpr bool is_bitfield = true;
 };
 
 // Define bitfield enum traits for ControllerCapabilities
 template<>
-struct enum_traits<entity::ControllerCapabilities>
+struct utils::enum_traits<entity::ControllerCapabilities>
 {
 	static constexpr bool is_bitfield = true;
 };
 
 // Define bitfield enum traits for ConnectionFlags
 template<>
-struct enum_traits<entity::ConnectionFlags>
+struct utils::enum_traits<entity::ConnectionFlags>
 {
 	static constexpr bool is_bitfield = true;
 };
 
 // Define bitfield enum traits for StreamFlags
 template<>
-struct enum_traits<entity::StreamFlags>
+struct utils::enum_traits<entity::StreamFlags>
 {
 	static constexpr bool is_bitfield = true;
 };
 
 // Define bitfield enum traits for JackFlags
 template<>
-struct enum_traits<entity::JackFlags>
+struct utils::enum_traits<entity::JackFlags>
 {
 	static constexpr bool is_bitfield = true;
 };
 
 // Define bitfield enum traits for AvbInterfaceFlags
 template<>
-struct enum_traits<entity::AvbInterfaceFlags>
+struct utils::enum_traits<entity::AvbInterfaceFlags>
 {
 	static constexpr bool is_bitfield = true;
 };
 
 // Define bitfield enum traits for ClockSourceFlags
 template<>
-struct enum_traits<entity::ClockSourceFlags>
+struct utils::enum_traits<entity::ClockSourceFlags>
 {
 	static constexpr bool is_bitfield = true;
 };
 
 // Define bitfield enum traits for PortFlags
 template<>
-struct enum_traits<entity::PortFlags>
+struct utils::enum_traits<entity::PortFlags>
 {
 	static constexpr bool is_bitfield = true;
 };
 
 // Define bitfield enum traits for StreamInfoFlags
 template<>
-struct enum_traits<entity::StreamInfoFlags>
+struct utils::enum_traits<entity::StreamInfoFlags>
 {
 	static constexpr bool is_bitfield = true;
 };
 
 // Define bitfield enum traits for StreamInfoFlagsEx
 template<>
-struct enum_traits<entity::StreamInfoFlagsEx>
+struct utils::enum_traits<entity::StreamInfoFlagsEx>
 {
 	static constexpr bool is_bitfield = true;
 };
 
 // Define bitfield enum traits for AvbInfoFlags
 template<>
-struct enum_traits<entity::AvbInfoFlags>
+struct utils::enum_traits<entity::AvbInfoFlags>
 {
 	static constexpr bool is_bitfield = true;
 };

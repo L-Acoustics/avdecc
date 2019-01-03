@@ -103,35 +103,35 @@ void Discovery::onTransportError(la::avdecc::controller::Controller const* const
 void Discovery::onEntityQueryError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* entity, la::avdecc::controller::Controller::QueryCommandError const error) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
-	outputText("Query error on entity " + la::avdecc::toHexString(entityID, true) + ": " + std::to_string(static_cast<std::underlying_type_t<decltype(error)>>(error)) + "\n");
+	outputText("Query error on entity " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(static_cast<std::underlying_type_t<decltype(error)>>(error)) + "\n");
 }
 
 void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
-	if (la::avdecc::hasFlag(entity->getEntity().getEntityCapabilities(), la::avdecc::entity::EntityCapabilities::AemSupported))
+	if (la::avdecc::utils::hasFlag(entity->getEntity().getEntityCapabilities(), la::avdecc::entity::EntityCapabilities::AemSupported))
 	{
 		std::uint32_t const vendorID = std::get<0>(la::avdecc::entity::model::splitEntityModelID(entity->getEntity().getEntityModelID()));
 		// Filter entities from the same vendor as this controller
 		if (vendorID == VENDOR_ID)
 		{
-			outputText("New LA unit online: " + la::avdecc::toHexString(entityID, true) + "\n");
+			outputText("New LA unit online: " + la::avdecc::utils::toHexString(entityID, true) + "\n");
 			_controller->acquireEntity(entity->getEntity().getEntityID(), false,
 				[](la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const /*owningEntity*/) noexcept
 				{
 					if (!!status)
 					{
-						outputText("Unit acquired: " + la::avdecc::toHexString(entity->getEntity().getEntityID(), true) + "\n");
+						outputText("Unit acquired: " + la::avdecc::utils::toHexString(entity->getEntity().getEntityID(), true) + "\n");
 					}
 				});
 		}
-		else if (la::avdecc::hasFlag(entity->getEntity().getTalkerCapabilities(), la::avdecc::entity::TalkerCapabilities::Implemented))
+		else if (la::avdecc::utils::hasFlag(entity->getEntity().getTalkerCapabilities(), la::avdecc::entity::TalkerCapabilities::Implemented))
 		{
-			outputText("New talker online: " + la::avdecc::toHexString(entityID, true) + "\n");
+			outputText("New talker online: " + la::avdecc::utils::toHexString(entityID, true) + "\n");
 		}
 		else
 		{
-			outputText("New unknown entity online: " + la::avdecc::toHexString(entityID, true) + "\n");
+			outputText("New unknown entity online: " + la::avdecc::utils::toHexString(entityID, true) + "\n");
 		}
 
 		// Get PNG Manufacturer image
@@ -166,14 +166,14 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 	}
 	else
 	{
-		outputText("New NON-AEM entity online: " + la::avdecc::toHexString(entityID, true) + "\n");
+		outputText("New NON-AEM entity online: " + la::avdecc::utils::toHexString(entityID, true) + "\n");
 	}
 }
 
 void Discovery::onEntityOffline(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
-	outputText("Unit going offline: " + la::avdecc::toHexString(entityID, true) + "\n");
+	outputText("Unit going offline: " + la::avdecc::utils::toHexString(entityID, true) + "\n");
 }
 
 

@@ -87,7 +87,7 @@ public:
 
 		Misbehaving = 1u << 7, /** Entity is sending correctly formed messages but with incoherent values that can cause undefined behavior. */
 	};
-	using CompatibilityFlags = EnumBitfield<CompatibilityFlag>;
+	using CompatibilityFlags = utils::EnumBitfield<CompatibilityFlag>;
 
 	/** AVB Interface Link Status */
 	enum class InterfaceLinkStatus
@@ -239,7 +239,7 @@ private:
 	{
 		if (_controlledEntity)
 		{
-			_watchDog.registerWatch("avdecc::controller::ControlledEntityGuard::" + toHexString(reinterpret_cast<size_t>(this)), std::chrono::milliseconds{ 500u });
+			_watchDog.registerWatch("avdecc::controller::ControlledEntityGuard::" + utils::toHexString(reinterpret_cast<size_t>(this)), std::chrono::milliseconds{ 500u });
 		}
 	}
 
@@ -247,7 +247,7 @@ private:
 	{
 		if (_controlledEntity)
 		{
-			_watchDog.unregisterWatch("avdecc::controller::ControlledEntityGuard::" + toHexString(reinterpret_cast<size_t>(this)));
+			_watchDog.unregisterWatch("avdecc::controller::ControlledEntityGuard::" + utils::toHexString(reinterpret_cast<size_t>(this)));
 			// We can unlock, we got ownership (and locked state) during construction
 			_controlledEntity->unlock();
 		}

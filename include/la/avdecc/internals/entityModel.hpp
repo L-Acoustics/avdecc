@@ -99,7 +99,7 @@ struct ConfigurationDescriptor
 {
 	AvdeccFixedString objectName{};
 	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
-	std::unordered_map<DescriptorType, std::uint16_t, la::avdecc::EnumClassHash> descriptorCounts{};
+	std::unordered_map<DescriptorType, std::uint16_t, la::avdecc::utils::EnumClassHash> descriptorCounts{};
 };
 
 /** AUDIO_UNIT Descriptor - Clause 7.2.3 */

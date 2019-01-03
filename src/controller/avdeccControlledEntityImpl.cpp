@@ -113,7 +113,7 @@ bool ControlledEntityImpl::isStreamOutputRunning(entity::model::ConfigurationInd
 ControlledEntity::InterfaceLinkStatus ControlledEntityImpl::getAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex) const
 {
 	// AEM not supported, unknown status
-	if (!hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+	if (!utils::hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
 	{
 		return InterfaceLinkStatus::Unknown;
 	}
@@ -160,7 +160,7 @@ model::EntityNode const& ControlledEntityImpl::getEntityNode() const
 	if (gotFatalEnumerationError())
 		throw Exception(Exception::Type::EnumerationError, "Entity had an enumeration error");
 
-	if (!hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+	if (!utils::hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
 		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
 
 	checkAndBuildEntityModelGraph();
@@ -438,7 +438,7 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 	if (visitor == nullptr)
 		return;
 
-	if (!hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+	if (!utils::hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
 		return;
 
 	try
@@ -636,7 +636,7 @@ model::EntityStaticTree const& ControlledEntityImpl::getEntityStaticTree() const
 	if (gotFatalEnumerationError())
 		throw Exception(Exception::Type::EnumerationError, "Entity had a fatal enumeration error");
 
-	if (!hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+	if (!utils::hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
 		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
 
 	return _entityStaticTree;
@@ -647,7 +647,7 @@ model::EntityDynamicTree const& ControlledEntityImpl::getEntityDynamicTree() con
 	if (gotFatalEnumerationError())
 		throw Exception(Exception::Type::EnumerationError, "Entity had a fatal enumeration error");
 
-	if (!hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+	if (!utils::hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
 		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
 
 	return _entityDynamicTree;
@@ -1527,7 +1527,7 @@ void ControlledEntityImpl::setClockDomainDescriptor(entity::model::ClockDomainDe
 // Expected Milan info query methods
 static inline ControlledEntityImpl::MilanInfoKey makeMilanInfoKey(ControlledEntityImpl::MilanInfoType const milanInfoType)
 {
-	return static_cast<ControlledEntityImpl::MilanInfoKey>(la::avdecc::to_integral(milanInfoType));
+	return static_cast<ControlledEntityImpl::MilanInfoKey>(utils::to_integral(milanInfoType));
 }
 
 bool ControlledEntityImpl::checkAndClearExpectedMilanInfo(MilanInfoType const milanInfoType) noexcept
@@ -1566,7 +1566,7 @@ std::pair<bool, std::chrono::milliseconds> ControlledEntityImpl::getQueryMilanIn
 // Expected descriptor query methods
 static inline ControlledEntityImpl::DescriptorKey makeDescriptorKey(entity::model::DescriptorType descriptorType, entity::model::DescriptorIndex descriptorIndex)
 {
-	return (la::avdecc::to_integral(descriptorType) << (sizeof(descriptorIndex) * 8)) + descriptorIndex;
+	return (utils::to_integral(descriptorType) << (sizeof(descriptorIndex) * 8)) + descriptorIndex;
 }
 
 bool ControlledEntityImpl::checkAndClearExpectedDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
@@ -1618,7 +1618,7 @@ std::pair<bool, std::chrono::milliseconds> ControlledEntityImpl::getQueryDescrip
 // Expected dynamic info query methods
 static inline ControlledEntityImpl::DynamicInfoKey makeDynamicInfoKey(ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex descriptorIndex, std::uint16_t const subIndex)
 {
-	return (static_cast<ControlledEntityImpl::DynamicInfoKey>(la::avdecc::to_integral(dynamicInfoType)) << ((sizeof(descriptorIndex) + sizeof(subIndex)) * 8)) + (descriptorIndex << (sizeof(subIndex) * 8)) + subIndex;
+	return (static_cast<ControlledEntityImpl::DynamicInfoKey>(utils::to_integral(dynamicInfoType)) << ((sizeof(descriptorIndex) + sizeof(subIndex)) * 8)) + (descriptorIndex << (sizeof(subIndex) * 8)) + subIndex;
 }
 
 bool ControlledEntityImpl::checkAndClearExpectedDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex) noexcept
@@ -1670,7 +1670,7 @@ std::pair<bool, std::chrono::milliseconds> ControlledEntityImpl::getQueryDynamic
 // Expected descriptor dynamic info query methods
 static inline ControlledEntityImpl::DescriptorDynamicInfoKey makeDescriptorDynamicInfoKey(ControlledEntityImpl::DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex descriptorIndex)
 {
-	return (static_cast<ControlledEntityImpl::DescriptorDynamicInfoKey>(la::avdecc::to_integral(descriptorDynamicInfoType)) << (sizeof(descriptorIndex) * 8)) + descriptorIndex;
+	return (static_cast<ControlledEntityImpl::DescriptorDynamicInfoKey>(utils::to_integral(descriptorDynamicInfoType)) << (sizeof(descriptorIndex) * 8)) + descriptorIndex;
 }
 
 bool ControlledEntityImpl::checkAndClearExpectedDescriptorDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept
@@ -1748,12 +1748,12 @@ ControlledEntityImpl::EnumerationSteps ControlledEntityImpl::getEnumerationSteps
 
 void ControlledEntityImpl::addEnumerationSteps(EnumerationSteps const steps) noexcept
 {
-	addFlag(_enumerationSteps, steps);
+	utils::addFlag(_enumerationSteps, steps);
 }
 
 void ControlledEntityImpl::clearEnumerationSteps(EnumerationSteps const steps) noexcept
 {
-	clearFlag(_enumerationSteps, steps);
+	utils::clearFlag(_enumerationSteps, steps);
 }
 
 void ControlledEntityImpl::setCompatibilityFlags(CompatibilityFlags const compatibilityFlags) noexcept

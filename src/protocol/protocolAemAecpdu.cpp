@@ -102,7 +102,7 @@ void LA_AVDECC_CALL_CONVENTION AemAecpdu::serialize(SerializationBuffer& buffer)
 	// Clamp command specific buffer in case ControlDataLength exceeds maximum allowed value
 	if (payloadLength > MaximumSendPayloadBufferLength)
 	{
-		LOG_SERIALIZATION_WARN(_destAddress, "AemAecpdu::serialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumSendPayloadBufferLength) + " for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + "),  clamping buffer down from " + std::to_string(payloadLength));
+		LOG_SERIALIZATION_WARN(_destAddress, "AemAecpdu::serialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumSendPayloadBufferLength) + " for AemCommandType " + std::string(_commandType) + " (" + utils::toHexString(_commandType.getValue()) + "),  clamping buffer down from " + std::to_string(payloadLength));
 		payloadLength = std::min(payloadLength, MaximumSendPayloadBufferLength); // Clamping
 	}
 
@@ -142,7 +142,7 @@ void LA_AVDECC_CALL_CONVENTION AemAecpdu::deserialize(DeserializationBuffer& buf
 #if defined(IGNORE_INVALID_CONTROL_DATA_LENGTH)
 		// Allow this packet to go through, the ControlData specific unpacker will trap any error if the message is further ill-formed
 		_commandSpecificDataLength = remainingBytes;
-		LOG_SERIALIZATION_DEBUG(_srcAddress, "AemAecpdu::deserialize error: ControlDataLength field advertises more bytes than remaining bytes in buffer for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + ")");
+		LOG_SERIALIZATION_DEBUG(_srcAddress, "AemAecpdu::deserialize error: ControlDataLength field advertises more bytes than remaining bytes in buffer for AemCommandType " + std::string(_commandType) + " (" + utils::toHexString(_commandType.getValue()) + ")");
 #else // !IGNORE_INVALID_CONTROL_DATA_LENGTH
 		LOG_SERIALIZATION_WARN(_srcAddress, "AemAecpdu::deserialize error: ControlDataLength field advertises more bytes than remaining bytes in buffer for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + ")");
 #endif // IGNORE_INVALID_CONTROL_DATA_LENGTH
@@ -151,7 +151,7 @@ void LA_AVDECC_CALL_CONVENTION AemAecpdu::deserialize(DeserializationBuffer& buf
 	// Clamp command specific buffer in case ControlDataLength exceeds maximum allowed value, the ControlData specific unpacker will trap any error if the message is further ill-formed
 	if (_commandSpecificDataLength > MaximumRecvPayloadBufferLength)
 	{
-		LOG_SERIALIZATION_WARN(_srcAddress, "AemAecpdu::deserialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumRecvPayloadBufferLength) + " for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + "),  clamping buffer down from " + std::to_string(_commandSpecificDataLength));
+		LOG_SERIALIZATION_WARN(_srcAddress, "AemAecpdu::deserialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumRecvPayloadBufferLength) + " for AemCommandType " + std::string(_commandType) + " (" + utils::toHexString(_commandType.getValue()) + "),  clamping buffer down from " + std::to_string(_commandSpecificDataLength));
 		_commandSpecificDataLength = std::min(_commandSpecificDataLength, MaximumRecvPayloadBufferLength); // Clamping
 	}
 
@@ -160,7 +160,7 @@ void LA_AVDECC_CALL_CONVENTION AemAecpdu::deserialize(DeserializationBuffer& buf
 #ifdef DEBUG
 	// Do not log this error in release, it might happen too often if an entity is bugged or if the message contains data this version of the library do not unpack
 	if (buffer.remaining() != 0 && buffer.usedBytes() >= EthernetPayloadMinimumSize)
-		LOG_SERIALIZATION_TRACE(_srcAddress, "AemAecpdu::deserialize warning: Remaining bytes in buffer for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + ")");
+		LOG_SERIALIZATION_TRACE(_srcAddress, "AemAecpdu::deserialize warning: Remaining bytes in buffer for AemCommandType " + std::string(_commandType) + " (" + utils::toHexString(_commandType.getValue()) + ")");
 #endif // DEBUG
 }
 

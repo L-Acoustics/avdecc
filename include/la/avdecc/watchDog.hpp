@@ -46,11 +46,11 @@ namespace watchDog
 class WatchDog
 {
 protected:
-	using Subject = TypedSubject<struct SubjectTag, std::mutex>;
+	using Subject = utils::TypedSubject<struct SubjectTag, std::mutex>;
 
 public:
 	/** Observer interface for the WatchDog */
-	class Observer : public la::avdecc::Observer<Subject>
+	class Observer : public la::avdecc::utils::Observer<Subject>
 	{
 	public:
 		virtual ~Observer() noexcept {}

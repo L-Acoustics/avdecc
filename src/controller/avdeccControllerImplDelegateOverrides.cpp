@@ -46,12 +46,12 @@ void ControllerImpl::onEntityOnline(entity::controller::Interface const* const c
 	LOG_CONTROLLER_TRACE(entityID, "onEntityOnline");
 
 	auto const caps = entity.getEntityCapabilities();
-	if (hasFlag(caps, entity::EntityCapabilities::EntityNotReady))
+	if (utils::hasFlag(caps, entity::EntityCapabilities::EntityNotReady))
 	{
 		LOG_CONTROLLER_TRACE(entityID, "Entity is declared as 'Not Ready', ignoring it right now");
 		return;
 	}
-	if (hasFlag(caps, entity::EntityCapabilities::GeneralControllerIgnore))
+	if (utils::hasFlag(caps, entity::EntityCapabilities::GeneralControllerIgnore))
 	{
 		LOG_CONTROLLER_TRACE(entityID, "Entity is declared as 'General Controller Ignore', ignoring it");
 		return;
@@ -82,10 +82,10 @@ void ControllerImpl::onEntityOnline(entity::controller::Interface const* const c
 		auto steps{ ControlledEntityImpl::EnumerationSteps::None };
 
 		// The entity supports AEM, also get information related to AEM
-		if (hasFlag(caps, entity::EntityCapabilities::AemSupported))
+		if (utils::hasFlag(caps, entity::EntityCapabilities::AemSupported))
 		{
 			// Only get MilanInfo if the Entity supports VendorUnique
-			if (hasFlag(caps, entity::EntityCapabilities::VendorUniqueSupported))
+			if (utils::hasFlag(caps, entity::EntityCapabilities::VendorUniqueSupported))
 			{
 				steps |= ControlledEntityImpl::EnumerationSteps::GetMilanInfo;
 			}

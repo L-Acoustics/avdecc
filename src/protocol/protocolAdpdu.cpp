@@ -104,7 +104,7 @@ void LA_AVDECC_CALL_CONVENTION Adpdu::deserialize(DeserializationBuffer& buffer)
 #ifdef DEBUG
 	// Do not log this error in release, it might happen too often if an entity is bugged or if the message contains data this version of the library do not unpack
 	if (buffer.remaining() != 0 && buffer.usedBytes() >= EthernetPayloadMinimumSize)
-		LOG_SERIALIZATION_TRACE(_srcAddress, "Adpdu::deserialize warning: Remaining bytes in buffer for AdpMessageType " + std::string(getMessageType()) + " (" + la::avdecc::toHexString(getMessageType().getValue()) + ")");
+		LOG_SERIALIZATION_TRACE(_srcAddress, "Adpdu::deserialize warning: Remaining bytes in buffer for AdpMessageType " + std::string(getMessageType()) + " (" + utils::toHexString(getMessageType().getValue()) + ")");
 #endif // DEBUG
 }
 

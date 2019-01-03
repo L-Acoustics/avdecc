@@ -514,14 +514,14 @@ void ControllerImpl::updateAssociationID(ControlledEntityImpl& controlledEntity,
 	auto entity = controlledEntity.getEntity(); // Copy the entity so we can alter values in the copy and not the original
 	auto const caps = entity.getEntityCapabilities();
 
-	if (!hasFlag(caps, entity::EntityCapabilities::AssociationIDSupported))
+	if (!utils::hasFlag(caps, entity::EntityCapabilities::AssociationIDSupported))
 	{
 		LOG_CONTROLLER_WARN(entity.getEntityID(), "Entity changed its ASSOCIATION_ID but it said ASSOCIATION_ID_NOT_SUPPORTED in ADPDU");
 		return;
 	}
 
 	// Only update the Entity if AssociationIDValid flag was not set in ADPDU
-	if (hasFlag(caps, entity::EntityCapabilities::AssociationIDValid))
+	if (utils::hasFlag(caps, entity::EntityCapabilities::AssociationIDValid))
 	{
 		entity.setAssociationID(associationID);
 		setEntityAndNotify(controlledEntity, entity);
@@ -608,11 +608,11 @@ void ControllerImpl::updateAvbInfo(ControlledEntityImpl& controlledEntity, entit
 	setAvbInfoAndNotify(controlledEntity, avbInterfaceIndex, info);
 
 	// Only update if we have valid gPTP information
-	if (hasFlag(info.flags, entity::AvbInfoFlags::GptpEnabled))
+	if (utils::hasFlag(info.flags, entity::AvbInfoFlags::GptpEnabled))
 	{
 		auto entity = controlledEntity.getEntity(); // Copy the entity so we can alter values in the copy and not the original
 		auto const caps = entity.getEntityCapabilities();
-		if (hasFlag(caps, entity::EntityCapabilities::GptpSupported))
+		if (utils::hasFlag(caps, entity::EntityCapabilities::GptpSupported))
 		{
 			try
 			{
@@ -1312,7 +1312,7 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 
 	queryFunc = [this, configurationIndex, talkerStream, subIndex](entity::ControllerEntity* const controller) noexcept
 	{
-		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "getTalkerStreamConnection (TalkerID={} TalkerIndex={} SubIndex={})", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, subIndex);
+		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "getTalkerStreamConnection (TalkerID={} TalkerIndex={} SubIndex={})", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, subIndex);
 		controller->getTalkerStreamConnection(talkerStream, subIndex, std::bind(&ControllerImpl::onGetTalkerStreamConnectionResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex, subIndex));
 	};
 
@@ -1462,7 +1462,7 @@ void ControllerImpl::getMilanInfo(ControlledEntityImpl* const entity) noexcept
 	auto const caps = entity->getEntity().getEntityCapabilities();
 
 	// Check if AEM and VendorUnique is supported by this entity
-	if (hasFlag(caps, entity::EntityCapabilities::AemSupported | entity::EntityCapabilities::VendorUniqueSupported))
+	if (utils::hasFlag(caps, entity::EntityCapabilities::AemSupported | entity::EntityCapabilities::VendorUniqueSupported))
 	{
 		// Get MilanInfo
 		queryInformation(entity, ControlledEntityImpl::MilanInfoType::MilanInfo);
@@ -1496,7 +1496,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 {
 	auto const caps = entity->getEntity().getEntityCapabilities();
 	// Check if AEM is supported by this entity
-	if (hasFlag(caps, entity::EntityCapabilities::AemSupported))
+	if (utils::hasFlag(caps, entity::EntityCapabilities::AemSupported))
 	{
 		auto const configurationIndex = entity->getCurrentConfigurationIndex();
 		auto const& configStaticTree = entity->getConfigurationStaticTree(configurationIndex);
@@ -1610,7 +1610,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 {
 	auto const caps = entity->getEntity().getEntityCapabilities();
 	// Check if AEM is supported by this entity
-	if (hasFlag(caps, entity::EntityCapabilities::AemSupported))
+	if (utils::hasFlag(caps, entity::EntityCapabilities::AemSupported))
 	{
 		auto const& entityStaticTree = entity->getEntityStaticTree();
 		auto const currentConfigurationIndex = entity->getCurrentConfigurationIndex();
@@ -1733,31 +1733,31 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const entity) n
 	auto const steps = entity->getEnumerationSteps();
 
 	// Always start with retrieving MilanInfo from the device
-	if (hasFlag(steps, ControlledEntityImpl::EnumerationSteps::GetMilanInfo))
+	if (utils::hasFlag(steps, ControlledEntityImpl::EnumerationSteps::GetMilanInfo))
 	{
 		getMilanInfo(entity);
 		return;
 	}
 	// Then register to unsolicited notifications
-	if (hasFlag(steps, ControlledEntityImpl::EnumerationSteps::RegisterUnsol))
+	if (utils::hasFlag(steps, ControlledEntityImpl::EnumerationSteps::RegisterUnsol))
 	{
 		registerUnsol(entity);
 		return;
 	}
 	// Then get the static AEM
-	if (hasFlag(steps, ControlledEntityImpl::EnumerationSteps::GetStaticModel))
+	if (utils::hasFlag(steps, ControlledEntityImpl::EnumerationSteps::GetStaticModel))
 	{
 		getStaticModel(entity);
 		return;
 	}
 	// Then get descriptors dynamic information, it AEM is cached
-	if (hasFlag(steps, ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo))
+	if (utils::hasFlag(steps, ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo))
 	{
 		getDescriptorDynamicInfo(entity);
 		return;
 	}
 	// Finally retrieve all other dynamic information
-	if (hasFlag(steps, ControlledEntityImpl::EnumerationSteps::GetDynamicInfo))
+	if (utils::hasFlag(steps, ControlledEntityImpl::EnumerationSteps::GetDynamicInfo))
 	{
 		getDynamicInfo(entity);
 		return;
@@ -2318,7 +2318,7 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 	{
 		conState = model::StreamConnectionState::State::Connected;
 	}
-	else if (avdecc::hasFlag(flags, entity::ConnectionFlags::FastConnect))
+	else if (utils::hasFlag(flags, entity::ConnectionFlags::FastConnect))
 	{
 		conState = model::StreamConnectionState::State::FastConnecting;
 	}
@@ -2329,7 +2329,7 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 	{
 		if (!talkerStream.entityID)
 		{
-			LOG_CONTROLLER_WARN(UniqueIdentifier::getNullUniqueIdentifier(), "Listener StreamState notification advertises being connected but with no Talker Identification (ListenerID={} ListenerIndex={})", toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
+			LOG_CONTROLLER_WARN(UniqueIdentifier::getNullUniqueIdentifier(), "Listener StreamState notification advertises being connected but with no Talker Identification (ListenerID={} ListenerIndex={})", utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
 			conState = model::StreamConnectionState::State::NotConnected;
 		}
 		else
@@ -2352,7 +2352,7 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 			auto const maxSinks = listenerEntity->getEntity().getCommonInformation().listenerStreamSinks;
 			if (listenerStream.streamIndex >= maxSinks)
 			{
-				LOG_CONTROLLER_WARN(UniqueIdentifier::getNullUniqueIdentifier(), "Listener entity {} sent an invalid CONNECTION STATE (with status=SUCCESS) for StreamIndex={} although it only has {} sinks", toHexString(listenerStream.entityID, true), listenerStream.streamIndex, maxSinks);
+				LOG_CONTROLLER_WARN(UniqueIdentifier::getNullUniqueIdentifier(), "Listener entity {} sent an invalid CONNECTION STATE (with status=SUCCESS) for StreamIndex={} although it only has {} sinks", utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, maxSinks);
 				// Flag the entity as "Misbehaving"
 				addCompatibilityFlag(*listenerEntity, ControlledEntity::CompatibilityFlag::Misbehaving);
 				return;
@@ -2373,7 +2373,7 @@ void ControllerImpl::handleTalkerStreamStateNotification(entity::model::StreamId
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	// Build Talker StreamIdentification
-	auto const isFastConnect = avdecc::hasFlag(flags, entity::ConnectionFlags::FastConnect);
+	auto const isFastConnect = utils::hasFlag(flags, entity::ConnectionFlags::FastConnect);
 	auto talkerStreamIdentification{ entity::model::StreamIdentification{} };
 	if (isConnected || isFastConnect)
 	{

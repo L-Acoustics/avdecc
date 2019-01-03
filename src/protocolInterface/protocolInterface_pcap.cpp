@@ -95,7 +95,7 @@ public:
 				struct pcap_pkthdr* header;
 				std::uint8_t const* pkt_data;
 
-				la::avdecc::setCurrentThreadName("avdecc::PCapInterface::Capture");
+				utils::setCurrentThreadName("avdecc::PCapInterface::Capture");
 				auto* const pcap = _pcap.get();
 
 				while (!_shouldTerminate && (res = _pcapLibrary.next_ex(pcap, &header, &pkt_data)) >= 0)
@@ -124,9 +124,9 @@ public:
 
 					// Try to detect possible deadlock
 					{
-						_watchDog.registerWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + toHexString(reinterpret_cast<size_t>(this)), std::chrono::milliseconds{ 1000u });
+						_watchDog.registerWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + utils::toHexString(reinterpret_cast<size_t>(this)), std::chrono::milliseconds{ 1000u });
 						dispatchAvdeccMessage(avtpdu, avtpdu_size, etherLayer2);
-						_watchDog.unregisterWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + toHexString(reinterpret_cast<size_t>(this)));
+						_watchDog.unregisterWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + utils::toHexString(reinterpret_cast<size_t>(this)));
 					}
 				}
 
@@ -200,16 +200,16 @@ private:
 		auto error{ ProtocolInterface::Error::NoError };
 
 		// Entity is controller capable
-		if (la::avdecc::hasFlag(entity.getControllerCapabilities(), entity::ControllerCapabilities::Implemented))
+		if (utils::hasFlag(entity.getControllerCapabilities(), entity::ControllerCapabilities::Implemented))
 			error |= _controllerStateMachine.registerLocalEntity(entity);
 
 #pragma message("TODO: Handle talker/listener types")
 		// Entity is listener capable
-		if (la::avdecc::hasFlag(entity.getListenerCapabilities(), entity::ListenerCapabilities::Implemented))
+		if (utils::hasFlag(entity.getListenerCapabilities(), entity::ListenerCapabilities::Implemented))
 			return ProtocolInterface::Error::InvalidEntityType; // Not supported right now
 
 		// Entity is talker capable
-		if (la::avdecc::hasFlag(entity.getTalkerCapabilities(), entity::TalkerCapabilities::Implemented))
+		if (utils::hasFlag(entity.getTalkerCapabilities(), entity::TalkerCapabilities::Implemented))
 			return ProtocolInterface::Error::InvalidEntityType; // Not supported right now
 
 		return error;

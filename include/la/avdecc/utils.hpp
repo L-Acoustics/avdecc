@@ -44,6 +44,8 @@ namespace la
 {
 namespace avdecc
 {
+namespace utils
+{
 LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION setCurrentThreadName(std::string const& name);
 LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION enableAssert() noexcept;
 LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION disableAssert() noexcept;
@@ -80,20 +82,23 @@ bool avdeccAssertRelease(Cond const condition) noexcept
 	return result;
 }
 
+} // namespace utils
 } // namespace avdecc
 } // namespace la
 
 #if defined(DEBUG) || defined(COMPILE_AVDECC_ASSERT)
-#	define AVDECC_ASSERT(cond, msg, ...) (void)la::avdecc::avdeccAssert(__FILE__, __LINE__, cond, msg, ##__VA_ARGS__)
-#	define AVDECC_ASSERT_WITH_RET(cond, msg, ...) la::avdecc::avdeccAssert(__FILE__, __LINE__, cond, msg, ##__VA_ARGS__)
+#	define AVDECC_ASSERT(cond, msg, ...) (void)la::avdecc::utils::avdeccAssert(__FILE__, __LINE__, cond, msg, ##__VA_ARGS__)
+#	define AVDECC_ASSERT_WITH_RET(cond, msg, ...) la::avdecc::utils::avdeccAssert(__FILE__, __LINE__, cond, msg, ##__VA_ARGS__)
 #else // !DEBUG && !COMPILE_AVDECC_ASSERT
 #	define AVDECC_ASSERT(cond, msg, ...)
-#	define AVDECC_ASSERT_WITH_RET(cond, msg, ...) la::avdecc::avdeccAssertRelease(cond)
+#	define AVDECC_ASSERT_WITH_RET(cond, msg, ...) la::avdecc::utils::avdeccAssertRelease(cond)
 #endif // DEBUG || COMPILE_AVDECC_ASSERT
 
 namespace la
 {
 namespace avdecc
+{
+namespace utils
 {
 /**
 * @brief Constexpr to compute a pow(x,y) at compile-time.
@@ -216,7 +221,7 @@ struct function_traits<std::function<Ret(Args...)>>
 
 /** Class to easily manipulate an enum that represents a bitfield (strongly typed alternative to traits). */
 template<typename EnumType, typename = std::enable_if_t<std::is_enum<EnumType>::value>>
-class EnumBitfield
+class EnumBitfield final
 {
 public:
 	using value_type = EnumType;
@@ -224,13 +229,14 @@ public:
 	static constexpr size_t value_size = sizeof(underlying_value_type) * 8;
 
 	/** Iterator allowing quick enumeration of all the bits that are set in the bitfield */
-	class iterator
+	class iterator final
 	{
 		using self_name = iterator;
 		static constexpr auto EndBit = value_size;
 
 	public:
 		using value_type = value_type;
+		using underlying_value_type = underlying_value_type;
 		using difference_type = size_t;
 		using iterator_category = std::forward_iterator_tag;
 		using reference = value_type&;
@@ -238,16 +244,16 @@ public:
 		using pointer = value_type*;
 		using const_pointer = value_type const*;
 
-		iterator(value_type const value, std::uint8_t const currentBit) noexcept
+		iterator(underlying_value_type const value, std::uint8_t const currentBitPosition) noexcept
 			: _value(value)
-			, _currentBit(currentBit)
+			, _currentBitPosition(currentBitPosition)
 		{
 			findNextBitSet();
 		}
 		// Pre-increment operator
 		self_name& operator++() noexcept
 		{
-			++_currentBit;
+			++_currentBitPosition;
 			findNextBitSet();
 			return *this;
 		}
@@ -259,38 +265,45 @@ public:
 			return tmp;
 		}
 		// Addition operator
-		self_name operator+(size_t count) const noexcept
+		self_name operator+(size_t const count) const noexcept
 		{
 			auto tmp(*this);
 			tmp.operator+=(count);
 			return tmp;
 		}
 		// Addition assignment operator
-		self_name& operator+=(size_t count) noexcept
+		self_name& operator+=(size_t const count) noexcept
 		{
-			_currentBit += static_cast<decltype(_currentBit)>(count);
-			findNextBitSet();
+			for (auto c = 0u; c < count; ++c)
+			{
+				if (_currentBitPosition == EndBit)
+				{
+					break;
+				}
+				++_currentBitPosition;
+				findNextBitSet();
+			}
 			return *this;
 		}
 		reference operator*() noexcept
 		{
-			return _currentValue;
+			return *reinterpret_cast<pointer>(&_currentValue);
 		}
 		const_reference operator*() const noexcept
 		{
-			return _currentValue;
+			return *reinterpret_cast<const_pointer>(&_currentValue);
 		}
 		pointer operator->() noexcept
 		{
-			return &_currentValue;
+			return static_cast<pointer>(&_currentValue);
 		}
 		const_pointer operator->() const noexcept
 		{
-			return &_currentValue;
+			return static_cast<const_pointer>(&_currentValue);
 		}
 		bool operator==(self_name const& other) const noexcept
 		{
-			return _currentBit == other._currentBit;
+			return _currentBitPosition == other._currentBitPosition;
 		}
 		bool operator!=(self_name const& other) const noexcept
 		{
@@ -301,50 +314,56 @@ public:
 		void updateCurrentValue() noexcept
 		{
 			// Make a mask for current bit
-			auto mask = static_cast<value_type>(pow(std::underlying_type_t<value_type>(2), _currentBit));
+			auto mask = pow(underlying_value_type(2), _currentBitPosition);
 
 			// Extract the current bit
-			_currentValue = EnumBitfield::operator_and(_value, mask);
+			_currentValue = _value & mask;
 		}
 		void findNextBitSet() noexcept
 		{
-			while (_currentBit < EndBit)
+			while (_currentBitPosition < EndBit)
 			{
 				updateCurrentValue();
-				if (_currentValue != static_cast<value_type>(0))
+				if (_currentValue != static_cast<underlying_value_type>(0))
 				{
 					break;
 				}
-				++_currentBit;
+				++_currentBitPosition;
 			}
 		}
 
-		value_type const _value{ static_cast<value_type>(0) };
-		std::uint8_t _currentBit{ 0u };
-		value_type _currentValue{ static_cast<value_type>(0) };
+		underlying_value_type const _value{ static_cast<underlying_value_type>(0) }; /** All possible Values this iterator can point to */
+		std::uint8_t _currentBitPosition{ 0u }; /** Bit position the iterator is currently pointing to */
+		underlying_value_type _currentValue{ static_cast<underlying_value_type>(0) }; /** Value the iterator is currently pointing to */
 	};
 
 	/** Construct a bitfield using individual bits passed as variadic parameters. If passed value is not valid (contains more than 1 bit set), this leads to undefined behavior. */
 	template<typename... Values>
 	explicit EnumBitfield(value_type const value, Values const... values) noexcept
-		: _value(value)
+		: _value(to_integral(value))
 	{
 		checkInvalidValue(value);
 		(checkInvalidValue(values), ...);
-		(operator_or_equal(values), ...);
+		((_value |= to_integral(values)), ...);
+	}
+
+	/** Assigns the entire underlying bitfield with the passed value */
+	constexpr void assign(underlying_value_type const value) noexcept
+	{
+		_value = value;
 	}
 
 	/** Returns true if the specified flag is set in the bitfield */
 	constexpr bool test(value_type const flag) const noexcept
 	{
-		return operator_and(_value, flag) != static_cast<value_type>(0);
+		return (_value & to_integral(flag)) != static_cast<underlying_value_type>(0);
 	}
 
 	/** Sets the specified flag. If passed value is not valid (contains more than 1 bit set), this leads to undefined behavior. */
 	constexpr EnumBitfield& set(value_type const flag) noexcept
 	{
 		checkInvalidValue(flag);
-		operator_or_equal(flag);
+		_value |= to_integral(flag);
 		return *this;
 	}
 
@@ -352,14 +371,14 @@ public:
 	constexpr EnumBitfield& reset(value_type const flag) noexcept
 	{
 		checkInvalidValue(flag);
-		operator_and_equal(operator_not(flag));
+		_value &= ~to_integral(flag);
 		return *this;
 	}
 
 	/** Returns true if no bit is set */
 	constexpr bool empty() const noexcept
 	{
-		return _value == static_cast<value_type>(0u);
+		return _value == static_cast<underlying_value_type>(0);
 	}
 
 	/** Returns the size number of bits the bitfield can hold */
@@ -371,19 +390,13 @@ public:
 	/** Returns the number of bits that are set */
 	constexpr size_t count() const noexcept
 	{
-		return countBits(to_integral(_value));
+		return countBits(_value);
 	}
 
 	/** Returns the underlying value of the bitfield */
 	constexpr underlying_value_type value() const noexcept
 	{
-		return to_integral(_value);
-	}
-
-	/** Sets the underlying value of the bitfield */
-	constexpr void setValue(underlying_value_type const value) noexcept
-	{
-		_value = static_cast<value_type>(value);
+		return _value;
 	}
 
 	/** Comparison operator (equality) */
@@ -396,6 +409,36 @@ public:
 	constexpr bool operator!=(EnumBitfield const other) const noexcept
 	{
 		return !operator==(other);
+	}
+
+	/** OR EQUAL operator (sets the bits that are present in this or the other EnumBitfield, clears all other bits) */
+	constexpr EnumBitfield& operator|=(EnumBitfield const other) noexcept
+	{
+		_value |= other._value;
+		return *this;
+	}
+
+	/** AND EQUAL operator (sets the bits that are present in this and the other EnumBitfield, clears all other bits) */
+	constexpr EnumBitfield& operator&=(EnumBitfield const other) noexcept
+	{
+		_value &= other._value;
+		return *this;
+	}
+
+	/** OR operator (sets the bits that are present in either lhs or rhs, clears all other bits) */
+	friend constexpr EnumBitfield operator|(EnumBitfield const lhs, EnumBitfield const rhs) noexcept
+	{
+		auto result = EnumBitfield{};
+		result._value = lhs._value | rhs._value;
+		return result;
+	}
+
+	/** AND operator (sets the bits that are present in both lhs and rhs, clears all other bits) */
+	friend constexpr EnumBitfield operator&(EnumBitfield const lhs, EnumBitfield const rhs) noexcept
+	{
+		auto result = EnumBitfield{};
+		result._value = lhs._value & rhs._value;
+		return result;
 	}
 
 	/** Returns the value at the specified position. Specified position must be inclusively comprised btw 0 and (count() - 1) or an out_of_range exception will be thrown. */
@@ -455,39 +498,19 @@ private:
 	{
 		AVDECC_ASSERT(countBits(to_integral(value)) <= 1, "Invalid value: more than 1 bit set");
 	}
-	static constexpr size_t countBits(std::underlying_type_t<value_type> const value) noexcept
+	static constexpr size_t countBits(underlying_value_type const value) noexcept
 	{
 		return (value == 0u) ? 0u : 1u + countBits(value & (value - 1u));
 	}
-	static constexpr size_t getBitPosition(std::underlying_type_t<value_type> const value) noexcept
+	static constexpr size_t getBitPosition(underlying_value_type const value) noexcept
 	{
 		return (value == 1u) ? 0u : 1u + getBitPosition(value >> 1);
 	}
-	// Have to redefine "custom" operators or the compiler might want to use global overload operators in that same file
-	static constexpr value_type operator_and(value_type const lhs, value_type const rhs) noexcept
-	{
-		return static_cast<value_type>(static_cast<std::underlying_type_t<value_type>>(lhs) & static_cast<std::underlying_type_t<value_type>>(rhs));
-	}
-	static constexpr value_type operator_or(value_type const lhs, value_type const rhs) noexcept
-	{
-		return static_cast<value_type>(static_cast<std::underlying_type_t<value_type>>(lhs) | static_cast<std::underlying_type_t<value_type>>(rhs));
-	}
-	static constexpr value_type operator_not(value_type const other) noexcept
-	{
-		return static_cast<value_type>(~static_cast<std::underlying_type_t<value_type>>(other));
-	}
-	constexpr void operator_and_equal(value_type const other) noexcept
-	{
-		_value = operator_and(_value, other);
-	}
-	constexpr void operator_or_equal(value_type const other) noexcept
-	{
-		_value = operator_or(_value, other);
-	}
 
-	value_type _value{};
+	underlying_value_type _value{};
 };
 
+} // namespace utils
 } // namespace avdecc
 } // namespace la
 
@@ -498,7 +521,7 @@ private:
 * @details The is_bitfield trait must be defined to true.
 */
 template<typename EnumType>
-constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, EnumType> operator&(EnumType const lhs, EnumType const rhs)
+constexpr std::enable_if_t<la::avdecc::utils::enum_traits<EnumType>::is_bitfield, EnumType> operator&(EnumType const lhs, EnumType const rhs)
 {
 	return static_cast<EnumType>(static_cast<std::underlying_type_t<EnumType>>(lhs) & static_cast<std::underlying_type_t<EnumType>>(rhs));
 }
@@ -508,7 +531,7 @@ constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, EnumT
 * @details The is_bitfield trait must be defined to true.
 */
 template<typename EnumType>
-constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, EnumType> operator|(EnumType const lhs, EnumType const rhs)
+constexpr std::enable_if_t<la::avdecc::utils::enum_traits<EnumType>::is_bitfield, EnumType> operator|(EnumType const lhs, EnumType const rhs)
 {
 	return static_cast<EnumType>(static_cast<std::underlying_type_t<EnumType>>(lhs) | static_cast<std::underlying_type_t<EnumType>>(rhs));
 }
@@ -518,7 +541,7 @@ constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, EnumT
 * @details The is_bitfield trait must be defined to true.
 */
 template<typename EnumType>
-constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, EnumType>& operator|=(EnumType& lhs, EnumType const rhs)
+constexpr std::enable_if_t<la::avdecc::utils::enum_traits<EnumType>::is_bitfield, EnumType>& operator|=(EnumType& lhs, EnumType const rhs)
 {
 	lhs = lhs | rhs;
 	return lhs;
@@ -529,7 +552,7 @@ constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, EnumT
 * @details The is_bitfield trait must be defined to true.
 */
 template<typename EnumType>
-constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, EnumType>& operator&=(EnumType& lhs, EnumType const rhs)
+constexpr std::enable_if_t<la::avdecc::utils::enum_traits<EnumType>::is_bitfield, EnumType>& operator&=(EnumType& lhs, EnumType const rhs)
 {
 	lhs = lhs & rhs;
 	return lhs;
@@ -540,7 +563,7 @@ constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, EnumT
 * @details The is_bitfield trait must be defined to true.
 */
 template<typename EnumType>
-constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, EnumType> operator~(EnumType e)
+constexpr std::enable_if_t<la::avdecc::utils::enum_traits<EnumType>::is_bitfield, EnumType> operator~(EnumType e)
 {
 	return static_cast<EnumType>(~static_cast<std::underlying_type_t<EnumType>>(e));
 }
@@ -548,6 +571,8 @@ constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, EnumT
 namespace la
 {
 namespace avdecc
+{
+namespace utils
 {
 /**
 * @brief Test method for a bitfield enum to check if the specified flag is set.
@@ -557,9 +582,9 @@ namespace avdecc
 * @return Returns true if the specified flag is set in the specified value.
 */
 template<typename EnumType>
-constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, bool> hasFlag(EnumType const value, EnumType const flag)
+constexpr std::enable_if_t<la::avdecc::utils::enum_traits<EnumType>::is_bitfield, bool> hasFlag(EnumType const value, EnumType const flag)
 {
-	return (value & flag) != static_cast<EnumType>(0);
+	return ::operator&(value, flag) != static_cast<EnumType>(0);
 }
 
 /**
@@ -569,7 +594,7 @@ constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, bool>
 * @return Returns true if any flag is set in the specified value.
 */
 template<typename EnumType>
-constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, bool> hasAnyFlag(EnumType const value)
+constexpr std::enable_if_t<la::avdecc::utils::enum_traits<EnumType>::is_bitfield, bool> hasAnyFlag(EnumType const value)
 {
 	return value != static_cast<EnumType>(0);
 }
@@ -583,7 +608,7 @@ constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, bool>
 * @return Returns a copy of the modified value.
 */
 template<typename EnumType>
-constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, EnumType> addFlag(EnumType& value, EnumType const flag)
+constexpr std::enable_if_t<la::avdecc::utils::enum_traits<EnumType>::is_bitfield, EnumType> addFlag(EnumType& value, EnumType const flag)
 {
 	value |= flag;
 
@@ -599,7 +624,7 @@ constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, EnumT
 * @return Returns a copy of the modified value.
 */
 template<typename EnumType>
-constexpr std::enable_if_t<la::avdecc::enum_traits<EnumType>::is_bitfield, EnumType> clearFlag(EnumType& value, EnumType const flag)
+constexpr std::enable_if_t<la::avdecc::utils::enum_traits<EnumType>::is_bitfield, EnumType> clearFlag(EnumType& value, EnumType const flag)
 {
 	value &= ~flag;
 
@@ -659,7 +684,7 @@ void invokeProtectedMethod(Method&& method, Object* const object, Parameters&&..
 }
 
 /** Useful template to create strongly typed defines that can be extended using inheritance */
-template<typename DataType, typename = std::enable_if_t<std::is_arithmetic<DataType>::value || std::is_enum<DataType>::value>>
+template<class Derived, typename DataType, typename = std::enable_if_t<std::is_arithmetic<DataType>::value || std::is_enum<DataType>::value>>
 class TypedDefine
 {
 public:
@@ -695,6 +720,16 @@ public:
 		return !operator==(v);
 	}
 
+	friend auto operator&(TypedDefine const& lhs, TypedDefine const& rhs)
+	{
+		return static_cast<Derived>(lhs._value & rhs._value);
+	}
+
+	friend auto operator|(TypedDefine const& lhs, TypedDefine const& rhs)
+	{
+		return static_cast<Derived>(lhs._value | rhs._value);
+	}
+
 	struct Hash
 	{
 		std::size_t operator()(TypedDefine t) const
@@ -713,44 +748,15 @@ private:
 	value_type _value{};
 };
 
-/**
-* @brief Traits to easily handle TypedDefine.
-* @details Available traits for TypedDefine:
-*  - is_bitfield: Enables operators and methods to manipulate a TypedDefine that represents a bitfield.
-*/
-template<typename TypedDefineType, typename = std::enable_if_t<std::is_base_of<TypedDefine<typename TypedDefineType::value_type>, TypedDefineType>::value>>
-struct typed_define_traits
-{
-};
-
+} // namespace utils
 } // namespace avdecc
 } // namespace la
-
-/* The following operator overloads are declared in the global namespace, so they can easily be accessed (as long as the traits are enabled for the desired enum) */
-
-/**
-* @brief operator& for a bitfield TypedDefine.
-* @details The is_bitfield trait must be defined to true.
-*/
-template<typename TypedDefineType>
-constexpr std::enable_if_t<la::avdecc::typed_define_traits<TypedDefineType>::is_bitfield, TypedDefineType> operator&(TypedDefineType const& lhs, TypedDefineType const& rhs)
-{
-	return TypedDefineType(lhs.getValue() & rhs.getValue());
-}
-
-/**
-* @brief operator| for a bitfield TypedDefine.
-* @details The is_bitfield trait must be defined to true.
-*/
-template<typename TypedDefineType>
-constexpr std::enable_if_t<la::avdecc::typed_define_traits<TypedDefineType>::is_bitfield, TypedDefineType> operator|(TypedDefineType const& lhs, TypedDefineType const& rhs)
-{
-	return TypedDefineType(lhs.getValue() | rhs.getValue());
-}
 
 namespace la
 {
 namespace avdecc
+{
+namespace utils
 {
 /** EmptyLock implementing the BasicLockable concept. Can be used as template parameter for Observer and Subject classes in this file. */
 class EmptyLock
@@ -1252,18 +1258,19 @@ public:
 };
 
 #define DECLARE_AVDECC_OBSERVER_GUARD_NAME(selfClassType, variableName) \
-	friend class la::avdecc::ObserverGuard<selfClassType>; \
-	la::avdecc::ObserverGuard<selfClassType> variableName \
+	friend class la::avdecc::utils::ObserverGuard<selfClassType>; \
+	la::avdecc::utils::ObserverGuard<selfClassType> variableName \
 	{ \
 		*this \
 	}
 
 #define DECLARE_AVDECC_OBSERVER_GUARD(selfClassType) \
-	friend class la::avdecc::ObserverGuard<selfClassType>; \
-	la::avdecc::ObserverGuard<selfClassType> _observer_guard_ \
+	friend class la::avdecc::utils::ObserverGuard<selfClassType>; \
+	la::avdecc::utils::ObserverGuard<selfClassType> _observer_guard_ \
 	{ \
 		*this \
 	}
 
+} // namespace utils
 } // namespace avdecc
 } // namespace la

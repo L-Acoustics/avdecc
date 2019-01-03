@@ -33,10 +33,10 @@ namespace la
 {
 namespace avdecc
 {
-class InstrumentationNotifier final : public la::avdecc::Subject<InstrumentationNotifier, la::avdecc::EmptyLock>
+class InstrumentationNotifier final : public la::avdecc::utils::Subject<InstrumentationNotifier, la::avdecc::utils::EmptyLock>
 {
 public:
-	class Observer : public la::avdecc::Observer<InstrumentationNotifier>
+	class Observer : public la::avdecc::utils::Observer<InstrumentationNotifier>
 	{
 	public:
 		virtual void onEvent(std::string const& eventName) noexcept = 0;

@@ -48,20 +48,20 @@ AggregateEntityImpl::AggregateEntityImpl(protocol::ProtocolInterface* const prot
 	auto const entityID = getEntityID();
 
 	// Entity is controller capable
-	if (la::avdecc::hasFlag(commonInformation.controllerCapabilities, ControllerCapabilities::Implemented))
+	if (la::avdecc::utils::hasFlag(commonInformation.controllerCapabilities, ControllerCapabilities::Implemented))
 	{
 		_controllerCapabilityDelegate = std::make_unique<controller::CapabilityDelegate>(getProtocolInterface(), controllerDelegate, *this, entityID);
 	}
 
 	// Entity is listener capable
-	if (la::avdecc::hasFlag(commonInformation.listenerCapabilities, ListenerCapabilities::Implemented))
+	if (la::avdecc::utils::hasFlag(commonInformation.listenerCapabilities, ListenerCapabilities::Implemented))
 	{
 		AVDECC_ASSERT(false, "TODO: AggregateEntityImpl: Handle listener capability");
 		//_listenerCapabilityDelegate = std::make_unique<listener::CapabilityDelegate>(entityID);
 	}
 
 	// Entity is talker capable
-	if (la::avdecc::hasFlag(commonInformation.talkerCapabilities, TalkerCapabilities::Implemented))
+	if (la::avdecc::utils::hasFlag(commonInformation.talkerCapabilities, TalkerCapabilities::Implemented))
 	{
 		AVDECC_ASSERT(false, "TODO: AggregateEntityImpl: Handle talker capability");
 		//_talkerCapabilityDelegate = std::make_unique<talker::CapabilityDelegate>(entityID);

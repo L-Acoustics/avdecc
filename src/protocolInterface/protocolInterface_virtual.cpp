@@ -74,7 +74,7 @@ namespace protocol
 {
 class MessageDispatcher final
 {
-	using Subject = la::avdecc::TypedSubject<struct SubjectTag, std::mutex>;
+	using Subject = utils::TypedSubject<struct SubjectTag, std::mutex>;
 	using MessagesList = std::list<SerializationBuffer>;
 	struct Interface
 	{
@@ -98,7 +98,7 @@ class MessageDispatcher final
 	};
 
 public:
-	class Observer : public la::avdecc::Observer<Subject>
+	class Observer : public utils::Observer<Subject>
 	{
 	public:
 		virtual void onMessage(SerializationBuffer const& message) noexcept = 0;
@@ -124,7 +124,7 @@ public:
 			intfc->dispatchThread = std::thread(
 				[networkInterfaceName, intfc = intfc.get()]()
 				{
-					la::avdecc::setCurrentThreadName("avdecc::VirtualInterface." + networkInterfaceName + "::Capture");
+					utils::setCurrentThreadName("avdecc::VirtualInterface." + networkInterfaceName + "::Capture");
 					while (!intfc->shouldTerminate)
 					{
 						MessagesList messagesToSend{};
@@ -520,16 +520,16 @@ ProtocolInterface::Error ProtocolInterfaceVirtualImpl::registerLocalEntity(entit
 	auto error{ ProtocolInterface::Error::NoError };
 
 	// Entity is controller capable
-	if (la::avdecc::hasFlag(entity.getControllerCapabilities(), entity::ControllerCapabilities::Implemented))
+	if (utils::hasFlag(entity.getControllerCapabilities(), entity::ControllerCapabilities::Implemented))
 		error |= _controllerStateMachine.registerLocalEntity(entity);
 
 #pragma message("TODO: Handle talker/listener types")
 	// Entity is listener capable
-	if (la::avdecc::hasFlag(entity.getListenerCapabilities(), entity::ListenerCapabilities::Implemented))
+	if (utils::hasFlag(entity.getListenerCapabilities(), entity::ListenerCapabilities::Implemented))
 		return ProtocolInterface::Error::InvalidEntityType; // Not supported right now
 
 	// Entity is talker capable
-	if (la::avdecc::hasFlag(entity.getTalkerCapabilities(), entity::TalkerCapabilities::Implemented))
+	if (utils::hasFlag(entity.getTalkerCapabilities(), entity::TalkerCapabilities::Implemented))
 		return ProtocolInterface::Error::InvalidEntityType; // Not supported right now
 
 	return error;

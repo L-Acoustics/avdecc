@@ -39,6 +39,8 @@ namespace la
 {
 namespace avdecc
 {
+namespace utils
+{
 bool LA_AVDECC_CALL_CONVENTION setCurrentThreadName(std::string const& name)
 {
 #if defined(_WIN32)
@@ -155,5 +157,6 @@ void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsig
 	}
 }
 
+} // namespace utils
 } // namespace avdecc
 } // namespace la
