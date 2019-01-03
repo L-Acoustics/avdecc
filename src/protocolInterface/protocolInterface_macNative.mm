@@ -402,40 +402,40 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 
 	if (entity.getIdentifyControlIndex())
 	{
-		la::avdecc::addFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemIdentifyControlIndexValid);
+		la::avdecc::utils::addFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemIdentifyControlIndexValid);
 		identifyControlIndex = *entity.getIdentifyControlIndex();
 	}
 	else
 	{
 		// We don't have a valid IdentifyControlIndex, don't set the flag
-		la::avdecc::clearFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemIdentifyControlIndexValid);
+		la::avdecc::utils::clearFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemIdentifyControlIndexValid);
 	}
 
 	if (interfaceIndex != la::avdecc::entity::Entity::GlobalAvbInterfaceIndex)
 	{
-		la::avdecc::addFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemInterfaceIndexValid);
+		la::avdecc::utils::addFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemInterfaceIndexValid);
 		avbInterfaceIndex = interfaceIndex;
 	}
 	else
 	{
 		// We don't have a valid AvbInterfaceIndex, don't set the flag
-		la::avdecc::clearFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemInterfaceIndexValid);
+		la::avdecc::utils::clearFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemInterfaceIndexValid);
 	}
 
 	if (entity.getAssociationID())
 	{
-		la::avdecc::addFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AssociationIDValid);
+		la::avdecc::utils::addFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AssociationIDValid);
 		associationID = *entity.getAssociationID();
 	}
 	else
 	{
 		// We don't have a valid AssociationID, don't set the flag
-		la::avdecc::clearFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AssociationIDValid);
+		la::avdecc::utils::clearFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AssociationIDValid);
 	}
 
 	if (interfaceInfo.gptpGrandmasterID)
 	{
-		la::avdecc::addFlag(entityCaps, la::avdecc::entity::EntityCapabilities::GptpSupported);
+		la::avdecc::utils::addFlag(entityCaps, la::avdecc::entity::EntityCapabilities::GptpSupported);
 		gptpGrandmasterID = *interfaceInfo.gptpGrandmasterID;
 		if (AVDECC_ASSERT_WITH_RET(interfaceInfo.gptpDomainNumber.has_value(), "gptpDomainNumber should be set when gptpGrandmasterID is set"))
 		{
@@ -445,7 +445,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	else
 	{
 		// We don't have a valid gptpGrandmasterID value, don't set the flag
-		la::avdecc::clearFlag(entityCaps, la::avdecc::entity::EntityCapabilities::GptpSupported);
+		la::avdecc::utils::clearFlag(entityCaps, la::avdecc::entity::EntityCapabilities::GptpSupported);
 	}
 
 	auto e = [[AVB17221Entity alloc] init];
@@ -477,19 +477,19 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	auto gptpGrandmasterID{ std::optional<la::avdecc::UniqueIdentifier>{} };
 	auto gptpDomainNumber{ std::optional<std::uint8_t>{} };
 
-	if (la::avdecc::hasFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemIdentifyControlIndexValid))
+	if (la::avdecc::utils::hasFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemIdentifyControlIndexValid))
 	{
 		controlIndex = entity.identifyControlIndex;
 	}
-	if (la::avdecc::hasFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AssociationIDValid))
+	if (la::avdecc::utils::hasFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AssociationIDValid))
 	{
 		associationID = entity.associationID;
 	}
-	if (la::avdecc::hasFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemInterfaceIndexValid))
+	if (la::avdecc::utils::hasFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemInterfaceIndexValid))
 	{
 		avbInterfaceIndex = entity.interfaceIndex;
 	}
-	if (la::avdecc::hasFlag(entityCaps, la::avdecc::entity::EntityCapabilities::GptpSupported))
+	if (la::avdecc::utils::hasFlag(entityCaps, la::avdecc::entity::EntityCapabilities::GptpSupported))
 	{
 		gptpGrandmasterID = entity.gPTPGrandmasterID;
 		gptpDomainNumber = entity.gPTPDomainNumber;
@@ -795,7 +795,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	auto const entityID = entity.getEntityID();
 
 	// Entity is controller capable
-	if (la::avdecc::hasFlag(entity.getControllerCapabilities(), la::avdecc::entity::ControllerCapabilities::Implemented))
+	if (la::avdecc::utils::hasFlag(entity.getControllerCapabilities(), la::avdecc::entity::ControllerCapabilities::Implemented))
 	{
 		// Set a handler to monitor AECP Response messages, we are interested in unsolicited notifications
 		[self.interface.aecp setResponseHandler:self forControllerEntityID:entityID];
@@ -820,7 +820,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	auto const entityID = entity.getEntityID();
 
 	// Entity is controller capable
-	if (la::avdecc::hasFlag(entity.getControllerCapabilities(), la::avdecc::entity::ControllerCapabilities::Implemented))
+	if (la::avdecc::utils::hasFlag(entity.getControllerCapabilities(), la::avdecc::entity::ControllerCapabilities::Implemented))
 	{
 		// Remove handler
 		[self.interface.aecp removeResponseHandlerForControllerEntityID:entityID];
@@ -974,11 +974,11 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 												 if (kIOReturnSuccess == (IOReturn)error.code)
 												 {
 													 auto aecpdu = [BridgeInterface makeAecpResponse:message];
-													 la::avdecc::invokeProtectedHandler(resultHandler, aecpdu.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
+													 la::avdecc::utils::invokeProtectedHandler(resultHandler, aecpdu.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
 												 }
 												 else
 												 {
-													 la::avdecc::invokeProtectedHandler(resultHandler, nullptr, [BridgeInterface getProtocolError:error]);
+													 la::avdecc::utils::invokeProtectedHandler(resultHandler, nullptr, [BridgeInterface getProtocolError:error]);
 												 }
 											 }
 											 resultHandler = {}; // Clear resultHandler in case this completionHandler is called twice (bug in macOS)
@@ -1033,11 +1033,11 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 																if (kIOReturnSuccess == (IOReturn)error.code)
 																{
 																	auto acmp = [BridgeInterface makeAcmpMessage:message];
-																	la::avdecc::invokeProtectedHandler(resultHandler, acmp.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
+																	la::avdecc::utils::invokeProtectedHandler(resultHandler, acmp.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
 																}
 																else
 																{
-																	la::avdecc::invokeProtectedHandler(resultHandler, nullptr, [BridgeInterface getProtocolError:error]);
+																	la::avdecc::utils::invokeProtectedHandler(resultHandler, nullptr, [BridgeInterface getProtocolError:error]);
 																}
 															}
 															resultHandler = {}; // Clear resultHandler in case this completionHandler is called twice (bug in macOS)
@@ -1326,7 +1326,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 		auto const& entity = localEntityIt.second;
 
 		// Entity is controller capable
-		if (la::avdecc::hasFlag(entity.getControllerCapabilities(), la::avdecc::entity::ControllerCapabilities::Implemented))
+		if (la::avdecc::utils::hasFlag(entity.getControllerCapabilities(), la::avdecc::entity::ControllerCapabilities::Implemented))
 		{
 			_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onAcmpSniffedCommand, _protocolInterface, entity, *acmpdu);
 			processedBySomeone = YES;
@@ -1351,7 +1351,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 		auto const& entity = localEntityIt.second;
 
 		// Entity is controller capable
-		if (la::avdecc::hasFlag(entity.getControllerCapabilities(), la::avdecc::entity::ControllerCapabilities::Implemented))
+		if (la::avdecc::utils::hasFlag(entity.getControllerCapabilities(), la::avdecc::entity::ControllerCapabilities::Implemented))
 		{
 			_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onAcmpSniffedResponse, _protocolInterface, entity, *acmpdu);
 			processedBySomeone = YES;

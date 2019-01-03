@@ -476,7 +476,6 @@ private:
 		TestBitfieldClasses const v3{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
 		TestBitfieldClasses const v4{ TestBitfieldClass::Implemented };
 		TestBitfieldClasses const v5{ TestBitfieldClass::Supported };
-		TestBitfieldClasses const v6{};
 
 		{
 			auto v = v1;
@@ -540,7 +539,6 @@ private:
 		TestBitfieldClasses const v3{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
 		TestBitfieldClasses const v4{ TestBitfieldClass::Implemented };
 		TestBitfieldClasses const v5{ TestBitfieldClass::Supported };
-		TestBitfieldClasses const v6{};
 
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported), (v1 & v2).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported), (v2 & v1).value());
