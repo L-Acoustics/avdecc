@@ -141,7 +141,7 @@ std::string LA_AVDECC_CALL_CONVENTION ProtocolInterface::typeToString(Type const
 
 ProtocolInterface::SupportedProtocolInterfaceTypes LA_AVDECC_CALL_CONVENTION ProtocolInterface::getSupportedProtocolInterfaceTypes() noexcept
 {
-	static SupportedProtocolInterfaceTypes s_supportedProtocolInterfaceTypes{ Type::None };
+	static SupportedProtocolInterfaceTypes s_supportedProtocolInterfaceTypes{};
 
 	if (s_supportedProtocolInterfaceTypes.empty())
 	{

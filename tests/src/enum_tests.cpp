@@ -955,7 +955,6 @@ TEST(EnumBitfieldClass, uint8)
 {
 	enum class TestBitfieldClass : std::uint8_t
 	{
-		None = 0u,
 		Implemented = 1u << 0, // 1
 		Supported = 1u << 3, // 8
 		NotSupported = 1u << 5, // 32
