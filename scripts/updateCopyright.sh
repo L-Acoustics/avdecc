@@ -12,11 +12,12 @@ function updateCopyrightYear()
 	local newYear="$2"
 	
 	echo "Updating Copyright for all $filePattern files"
-	find . -iname "$filePattern" -not -path "./3rdparty/*" -not -path "./externals/*" -not -path "./_*" -exec sed -i {} -r -e "s/Copyright \(C\) 2016-([0-9]+), L-Acoustics and its contributors/Copyright \(C\) 2016-$newYear, L-Acoustics and its contributors/" \;
+	find . -iname "$filePattern" -not -path "./3rdparty/*" -not -path "./externals/*" -not -path "./_*" -exec sed -i {} -r -e "s/Copyright \(C\) ([0-9]+)-([0-9]+),/Copyright \(C\) \1-$newYear,/" \;
 }
 
-updateCopyrightYear "*.[chi]pp" "2019"
-updateCopyrightYear "*.[ch]" "2019"
-updateCopyrightYear "*.mm" "2019"
-updateCopyrightYear "*.in" "2019"
-updateCopyrightYear "*.md" "2019"
+year="2019"
+updateCopyrightYear "*.[chi]pp" "$year"
+updateCopyrightYear "*.[ch]" "$year"
+updateCopyrightYear "*.mm" "$year"
+updateCopyrightYear "*.in" "$year"
+updateCopyrightYear "*.md" "$year"
