@@ -834,14 +834,12 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 
 /** std::string to NSString conversion */
 + (NSString*)getNSString:(std::string const&)cString {
-	//return [NSString stringWithCString:cString.c_str() encoding:NSWindowsCP1252StringEncoding];
 	return [NSString stringWithCString:cString.c_str() encoding:NSUTF8StringEncoding];
 }
 
 /** NSString to std::string conversion */
 + (std::string)getStdString:(NSString*)nsString {
-	//return std::string([nsString cStringUsingEncoding:NSWindowsCP1252StringEncoding]);
-	return std::string([nsString cStringUsingEncoding:NSUTF8StringEncoding]);
+	return std::string{ [nsString UTF8String] };
 }
 
 + (NSString*)getEntityCapabilities:(AVB17221Entity*)entity {

@@ -43,6 +43,9 @@
 #include <string>
 #include <cstring> // memcpy
 
+#import <SystemConfiguration/SystemConfiguration.h>
+#import <Foundation/Foundation.h>
+
 namespace la
 {
 namespace avdecc
@@ -51,6 +54,10 @@ namespace networkInterface
 {
 Interface::Type getInterfaceType(struct ifaddrs const* const ifa, int const ifm_options)
 {
+	// Check for AWDL
+	if (strncmp(ifa->ifa_name, "awdl", 4) == 0)
+		return Interface::Type::AWDL;
+
 	// Check for loopback
 	if ((ifa->ifa_flags & IFF_LOOPBACK) != 0)
 		return Interface::Type::Loopback;
@@ -157,6 +164,43 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 
 	// Release the socket
 	close(sck);
+
+	// Get alias name for registered interfaces (using macOS native API)
+	auto const* const interfacesArrayRef = SCNetworkInterfaceCopyAll();
+
+	if (interfacesArrayRef)
+	{
+		auto const count = CFArrayGetCount(interfacesArrayRef);
+
+		for (auto index = CFIndex{ 0 }; index < count; ++index)
+		{
+			auto const* const interfaceRef = static_cast<SCNetworkInterfaceRef>(CFArrayGetValueAtIndex(interfacesArrayRef, index));
+
+			auto const* const bsdName = static_cast<CFStringRef>(SCNetworkInterfaceGetBSDName(interfaceRef));
+			if (!bsdName)
+			{
+				continue;
+			}
+
+			// Only process interfaces that has been recorded from AF_LINK
+			auto const intName = [(__bridge NSString*)bsdName UTF8String];
+			auto const intfcIt = interfaces.find(intName);
+			if (intfcIt == interfaces.end())
+			{
+				continue;
+			}
+			auto& interface = intfcIt->second;
+
+			// Get alias/description
+			auto const* const localizedRef = static_cast<CFStringRef>(SCNetworkInterfaceGetLocalizedDisplayName(interfaceRef));
+			if (localizedRef)
+			{
+				interface.description = [(__bridge NSString*)localizedRef UTF8String];
+				interface.alias = interface.description + " (" + interface.name + ")";
+			}
+		}
+		CFRelease(interfacesArrayRef);
+	}
 }
 
 } // namespace networkInterface

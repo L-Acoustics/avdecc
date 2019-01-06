@@ -30,7 +30,7 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
 	)
 elseif(CMAKE_HOST_APPLE)
 	set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER
-		networkInterfaceHelper/networkInterfaceHelper_mac.cpp
+		networkInterfaceHelper/networkInterfaceHelper_mac.mm
 	)
 endif()
 set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER ${SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER} networkInterfaceHelper/networkInterfaceHelper_common.cpp)
@@ -213,7 +213,7 @@ endif()
 
 # Set other required base libraries
 if(CMAKE_HOST_APPLE)
-	list(APPEND ADD_LINK_LIBS "-framework Foundation")
+	list(APPEND ADD_LINK_LIBS "-framework Foundation -framework SystemConfiguration")
 endif()
 
 # Features
