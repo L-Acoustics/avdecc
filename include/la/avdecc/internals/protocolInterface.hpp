@@ -53,6 +53,7 @@ public:
 	/** The existing types of ProtocolInterface */
 	enum class Type
 	{
+		None = 0u, /**< No protocol interface (not a valid protocol interface type, should only be used to initialize variables). */
 		PCap = 1u << 0, /**< Packet Capture protocol interface. */
 		MacOSNative = 1u << 1, /**< macOS native API protocol interface - Only usable on macOS. */
 		Proxy = 1u << 2, /**< IEEE Std 1722.1 Proxy protocol interface. */
