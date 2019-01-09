@@ -248,12 +248,12 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 				{
 					auto& entity = *controlledEntity;
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, owningEntity);
-
 					// Update acquired state
 					auto const [acquireState, owningController] = getAcquiredInfoFromStatus(entity, owningEntity, status, false);
 					updateAcquiredState(entity, acquireState, owningController);
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, owningEntity);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -294,12 +294,12 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 				{
 					auto& entity = *controlledEntity;
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, owningEntity);
-
 					// Update acquired state
 					auto const [acquireState, owningController] = getAcquiredInfoFromStatus(entity, owningEntity, status, true);
 					updateAcquiredState(entity, acquireState, owningController);
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, owningEntity);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -349,12 +349,12 @@ void ControllerImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntit
 				{
 					auto& entity = *controlledEntity;
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, lockingEntity);
-
 					// Update locked state
 					auto const [lockState, lockingController] = getLockedInfoFromStatus(entity, lockingEntity, status, false);
 					updateLockedState(entity, lockState, lockingController);
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, lockingEntity);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -395,12 +395,12 @@ void ControllerImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockE
 				{
 					auto& entity = *controlledEntity;
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, lockingEntity);
-
 					// Update locked state
 					auto const [lockState, lockingController] = getLockedInfoFromStatus(entity, lockingEntity, status, true);
 					updateLockedState(entity, lockState, lockingController);
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, lockingEntity);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -434,14 +434,14 @@ void ControllerImpl::setConfiguration(UniqueIdentifier const targetEntityID, ent
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update configuration
 					if (!!status)
 					{
 						updateConfiguration(controller, *entity, configurationIndex);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -475,14 +475,14 @@ void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID,
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update format
 					if (!!status)
 					{
 						updateStreamInputFormat(*entity, streamIndex, streamFormat);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -516,14 +516,14 @@ void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update format
 					if (!!status)
 					{
 						updateStreamOutputFormat(*entity, streamIndex, streamFormat);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -557,14 +557,14 @@ void ControllerImpl::setStreamInputInfo(UniqueIdentifier const targetEntityID, e
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update info
 					if (!!status)
 					{
 						updateStreamInputInfo(*entity, streamIndex, info, false); // Milan Extended Information not set in SetStreamInfo
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -598,14 +598,14 @@ void ControllerImpl::setStreamOutputInfo(UniqueIdentifier const targetEntityID, 
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update info
 					if (!!status)
 					{
 						updateStreamOutputInfo(*entity, streamIndex, info, false); // Milan Extended Information not set in SetStreamInfo
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -639,14 +639,14 @@ void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
 						updateEntityName(*entity, name);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -680,14 +680,14 @@ void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, e
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
 						updateEntityGroupName(*entity, name);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -721,14 +721,14 @@ void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID,
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
 						updateConfigurationName(*entity, configurationIndex, name);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -762,14 +762,14 @@ void ControllerImpl::setAudioUnitName(UniqueIdentifier const targetEntityID, ent
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
 						updateAudioUnitName(*entity, configurationIndex, audioUnitIndex, name);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -803,14 +803,14 @@ void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, e
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
 						updateStreamInputName(*entity, configurationIndex, streamIndex, name);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -844,14 +844,14 @@ void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, 
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
 						updateStreamOutputName(*entity, configurationIndex, streamIndex, name);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -885,14 +885,14 @@ void ControllerImpl::setAvbInterfaceName(UniqueIdentifier const targetEntityID, 
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
 						updateAvbInterfaceName(*entity, configurationIndex, avbInterfaceIndex, name);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -926,14 +926,14 @@ void ControllerImpl::setClockSourceName(UniqueIdentifier const targetEntityID, e
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
 						updateClockSourceName(*entity, configurationIndex, clockSourceIndex, name);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -967,14 +967,14 @@ void ControllerImpl::setMemoryObjectName(UniqueIdentifier const targetEntityID, 
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
 						updateMemoryObjectName(*entity, configurationIndex, memoryObjectIndex, name);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -1008,14 +1008,14 @@ void ControllerImpl::setAudioClusterName(UniqueIdentifier const targetEntityID, 
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
 						updateAudioClusterName(*entity, configurationIndex, audioClusterIndex, name);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -1049,14 +1049,14 @@ void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, e
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
 						updateClockDomainName(*entity, configurationIndex, clockDomainIndex, name);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -1090,14 +1090,14 @@ void ControllerImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntit
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update rate
 					if (!!status) // Only change the sampling rate in case of success
 					{
 						updateAudioUnitSamplingRate(*entity, audioUnitIndex, samplingRate);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -1131,14 +1131,14 @@ void ControllerImpl::setClockSource(UniqueIdentifier const targetEntityID, entit
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update source
 					if (!!status) // Only change the clock source in case of success
 					{
 						updateClockSource(*entity, clockDomainIndex, clockSourceIndex);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -1172,14 +1172,14 @@ void ControllerImpl::startStreamInput(UniqueIdentifier const targetEntityID, ent
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update status
 					if (!!status) // Only change the running status in case of success
 					{
 						updateStreamInputRunningStatus(*entity, streamIndex, true);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -1213,14 +1213,14 @@ void ControllerImpl::stopStreamInput(UniqueIdentifier const targetEntityID, enti
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update status
 					if (!!status) // Only change the running status in case of success
 					{
 						updateStreamInputRunningStatus(*entity, streamIndex, false);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -1254,14 +1254,14 @@ void ControllerImpl::startStreamOutput(UniqueIdentifier const targetEntityID, en
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update status
 					if (!!status) // Only change the running status in case of success
 					{
 						updateStreamOutputRunningStatus(*entity, streamIndex, true);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -1295,14 +1295,14 @@ void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, ent
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update status
 					if (!!status) // Only change the running status in case of success
 					{
 						updateStreamOutputRunningStatus(*entity, streamIndex, false);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -1336,14 +1336,14 @@ void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targ
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update mappings
 					if (!!status)
 					{
 						updateStreamPortInputAudioMappingsAdded(*entity, streamPortIndex, mappings);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -1377,14 +1377,14 @@ void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const tar
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update mappings
 					if (!!status)
 					{
 						updateStreamPortOutputAudioMappingsAdded(*entity, streamPortIndex, mappings);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -1418,14 +1418,14 @@ void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const t
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update mappings
 					if (!!status)
 					{
 						updateStreamPortInputAudioMappingsRemoved(*entity, streamPortIndex, mappings);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -1459,14 +1459,14 @@ void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const 
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update mappings
 					if (!!status)
 					{
 						updateStreamPortOutputAudioMappingsRemoved(*entity, streamPortIndex, mappings);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -1500,14 +1500,14 @@ void ControllerImpl::setMemoryObjectLength(UniqueIdentifier const targetEntityID
 				{
 					auto* const entity = controlledEntity.get();
 
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
-
 					// Update length
 					if (!!status)
 					{
 						updateMemoryObjectLength(*entity, configurationIndex, memoryObjectIndex, length);
 					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -1843,14 +1843,14 @@ void ControllerImpl::connectStream(entity::model::StreamIdentification const& ta
 				auto listener = getControlledEntityImplGuard(listenerStream.entityID);
 				auto talker = getControlledEntityImplGuard(talkerStream.entityID);
 
-				// Invoke result handler
-				utils::invokeProtectedHandler(handler, talker.get(), listener.get(), talkerStream.streamIndex, listenerStream.streamIndex, status);
-
 				if (!!status)
 				{
 					// Do not trust the connectionCount value to determine if the listener is connected, but rather use the status code (SUCCESS means connection is established)
 					handleListenerStreamStateNotification(talkerStream, listenerStream, true, flags, false);
 				}
+
+				// Invoke result handler
+				utils::invokeProtectedHandler(handler, talker.get(), listener.get(), talkerStream.streamIndex, listenerStream.streamIndex, status);
 			});
 	}
 	else
@@ -1902,13 +1902,13 @@ void ControllerImpl::disconnectStream(entity::model::StreamIdentification const&
 								// Take a "scoped locked" shared copy of the ControlledEntity
 								auto listener = getControlledEntityImplGuard(listenerStream.entityID);
 
-								// Invoke result handler
-								utils::invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, controlStatus);
-
 								if (!!status)
 								{
 									handleListenerStreamStateNotification(talkerStream, listenerStream, isStillConnected, flags, false);
 								}
+
+								// Invoke result handler
+								utils::invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, controlStatus);
 							});
 					}
 				}
@@ -1948,14 +1948,14 @@ void ControllerImpl::disconnectTalkerStream(entity::model::StreamIdentification 
 					st = entity::ControllerEntity::ControlStatus::Success;
 				}
 
-				// Invoke result handler
-				utils::invokeProtectedHandler(handler, st);
-
 				if (!!status) // No error, update the connection state
 				{
 					// Do not trust the connectionCount value to determine if the listener is disconnected, but rather use the status code (SUCCESS means disconnected)
 					handleTalkerStreamStateNotification(talkerStream, listenerStream, false, flags, true);
 				}
+
+				// Invoke result handler
+				utils::invokeProtectedHandler(handler, st);
 			});
 	}
 	else
@@ -1981,14 +1981,14 @@ void ControllerImpl::getListenerStreamState(entity::model::StreamIdentification 
 				auto listener = getControlledEntityImplGuard(listenerStream.entityID);
 				auto talker = getControlledEntityImplGuard(talkerStream.entityID);
 
-				// Invoke result handler
-				utils::invokeProtectedHandler(handler, talker.get(), listener.get(), talkerStream.streamIndex, listenerStream.streamIndex, connectionCount, flags, status);
-
 				if (!!status)
 				{
 					// In a GET_RX_STATE_RESPONSE message, the connectionCount is set to 1 if the stream is connected and 0 if not connected (See Marc Illouz clarification document, and hopefully someday as a corrigendum)
 					handleListenerStreamStateNotification(talkerStream, listenerStream, connectionCount != 0, flags, false);
 				}
+
+				// Invoke result handler
+				utils::invokeProtectedHandler(handler, talker.get(), listener.get(), talkerStream.streamIndex, listenerStream.streamIndex, connectionCount, flags, status);
 			});
 	}
 	else

@@ -19,9 +19,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Removed
 - Fully removed acquire/lock state from descriptors, the controller only support it at entity level (globally)
 
-### Changed
-- Inverted the call order between result handlers and change notifications for AEM (result handlers called first)
-
 ### Fixed
 - Preventing a crash in upper layers caused by toxic entities (Motu Ultralite card sending a GET_RX_STATE_RESPONSE with a non-existant stream index)
 - Properly monitoring changes in dynamic mappings
