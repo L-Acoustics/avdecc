@@ -359,7 +359,7 @@ void ControllerImpl::onStreamInputInfoChanged(entity::controller::Interface cons
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-		updateStreamInputInfo(entity, streamIndex, info, fromGetStreamInfoResponse);
+		updateStreamInputInfo(entity, streamIndex, info, fromGetStreamInfoResponse, fromGetStreamInfoResponse);
 	}
 }
 
@@ -371,7 +371,7 @@ void ControllerImpl::onStreamOutputInfoChanged(entity::controller::Interface con
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-		updateStreamOutputInfo(entity, streamIndex, info, fromGetStreamInfoResponse);
+		updateStreamOutputInfo(entity, streamIndex, info, fromGetStreamInfoResponse, fromGetStreamInfoResponse);
 	}
 }
 

@@ -255,14 +255,12 @@ public:
 		dynamicModel.objectName = name;
 	}
 	void setSamplingRate(entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate) noexcept;
-	void setStreamInputFormat(entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) noexcept;
 	model::StreamConnectionState setStreamInputConnectionState(entity::model::StreamIndex const streamIndex, model::StreamConnectionState const& state) noexcept;
-	entity::model::StreamInfo setStreamInputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept; // Returns previous StreamInfo
-	void setStreamOutputFormat(entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) noexcept;
+	std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> setStreamInputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept; // Returns previous StreamInfo and the new one
 	void clearStreamOutputConnections(entity::model::StreamIndex const streamIndex) noexcept;
 	bool addStreamOutputConnection(entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream) noexcept; // Returns true if effectively added
 	bool delStreamOutputConnection(entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream) noexcept; // Returns true if effectively removed
-	entity::model::StreamInfo setStreamOutputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept; // Returns previous StreamInfo
+	std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> setStreamOutputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept; // Returns previous StreamInfo and the new one
 	entity::model::AvbInfo setAvbInfo(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) noexcept; // Returns previous AvbInfo
 	entity::model::AsPath setAsPath(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath) noexcept; // Returns previous AsPath
 	void setSelectedLocaleBaseIndex(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const baseIndex) noexcept;

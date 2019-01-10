@@ -247,35 +247,52 @@ void ControllerImpl::updateStreamInputFormat(ControlledEntityImpl& controlledEnt
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setStreamInputFormat(streamIndex, streamFormat);
+	auto const& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels);
 
-	// Entity was advertised to the user, notify observers
-	if (controlledEntity.wasAdvertised())
-	{
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputFormatChanged, this, &controlledEntity, streamIndex, streamFormat);
-	}
+	// Make a copy of current StreamInfo, change affected field and notify changes
+	auto newInfo = streamDynamicModel.streamInfo;
+	newInfo.streamFormat = streamFormat;
+	utils::addFlag(newInfo.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid);
+	updateStreamInputInfo(controlledEntity, streamIndex, newInfo, false, false); // No need to check again for StreamFormat or Milan Extended Information
 }
 
 void ControllerImpl::updateStreamOutputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setStreamOutputFormat(streamIndex, streamFormat);
+	auto const& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels);
 
-	// Entity was advertised to the user, notify observers
-	if (controlledEntity.wasAdvertised())
-	{
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputFormatChanged, this, &controlledEntity, streamIndex, streamFormat);
-	}
+	// Make a copy of current StreamInfo, change affected field and notify changes
+	auto newInfo = streamDynamicModel.streamInfo;
+	newInfo.streamFormat = streamFormat;
+	utils::addFlag(newInfo.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid);
+	updateStreamOutputInfo(controlledEntity, streamIndex, newInfo, false, false); // No need to check again for StreamFormat or Milan Extended Information
 }
 
-void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const milanExtendedRequired) const noexcept
+void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const streamFormatRequired, bool const milanExtendedRequired) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	// Update StreamInfo
-	auto const previousInfo = controlledEntity.setStreamInputInfo(streamIndex, info);
-
+	// Try to detect non compliant entities
+	if (streamFormatRequired)
+	{
+		auto streamFormat = utils::hasFlag(info.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid) ? std::optional{ info.streamFormat } : std::nullopt;
+		if (!streamFormat)
+		{
+			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit not set in GET_STREAM_INFO response");
+			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			// But if we have a valid streamFormat in the field, use it
+			if (info.streamFormat != entity::model::getNullStreamFormat())
+			{
+				streamFormat = info.streamFormat;
+			}
+		}
+		if (info.streamFormat == entity::model::getNullStreamFormat())
+		{
+			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "stream_format field not set in GET_STREAM_INFO response");
+			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+		}
+	}
 	// If Milan Extended Information is required (for GetStreamInfo, not SetStreamInfo) and entity is Milan compatible, check if it's present
 	if (milanExtendedRequired && controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 	{
@@ -286,33 +303,62 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 		}
 	}
 
-	// Entity was advertised to the user, notify observers (check if info actually changed, in case it's a change in StreamingWait and the entity sent both Unsol)
-	if (controlledEntity.wasAdvertised() && previousInfo != info)
+	// Update StreamInfo
+	auto const [previousInfo, newInfo] = controlledEntity.setStreamInputInfo(streamIndex, info);
+
+	// Entity was advertised to the user, notify observers (check if info actually changed)
+	if (controlledEntity.wasAdvertised() && previousInfo != newInfo)
 	{
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputInfoChanged, this, &controlledEntity, streamIndex, info);
-
 		// Check if Running Status changed (since it's a separate Controller event)
-		auto const previousRunning = ControlledEntityImpl::isStreamRunningFlag(previousInfo.streamInfoFlags);
-		auto const isRunning = ControlledEntityImpl::isStreamRunningFlag(info.streamInfoFlags);
-
-		// Running status changed, notify observers
-		if (previousRunning != isRunning)
 		{
-			if (isRunning)
-				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputStarted, this, &controlledEntity, streamIndex);
-			else
-				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputStopped, this, &controlledEntity, streamIndex);
+			auto const previousRunning = ControlledEntityImpl::isStreamRunningFlag(previousInfo.streamInfoFlags);
+			auto const isRunning = ControlledEntityImpl::isStreamRunningFlag(newInfo.streamInfoFlags);
+
+			// Running status changed, notify observers
+			if (previousRunning != isRunning)
+			{
+				if (isRunning)
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputStarted, this, &controlledEntity, streamIndex);
+				else
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputStopped, this, &controlledEntity, streamIndex);
+			}
 		}
+
+		// Check if StreamFormat changed (since it's a separate Controller event)
+		if (previousInfo.streamFormat != newInfo.streamFormat)
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputFormatChanged, this, &controlledEntity, streamIndex, newInfo.streamFormat);
+		}
+
+		// Notify global StreamInfo change
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputInfoChanged, this, &controlledEntity, streamIndex, newInfo);
 	}
 }
 
-void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const milanExtendedRequired) const noexcept
+void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const streamFormatRequired, bool const milanExtendedRequired) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	// Update StreamInfo
-	auto const previousInfo = controlledEntity.setStreamOutputInfo(streamIndex, info);
-
+	// Try to detect non compliant entities
+	if (streamFormatRequired)
+	{
+		auto streamFormat = utils::hasFlag(info.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid) ? std::optional{ info.streamFormat } : std::nullopt;
+		if (!streamFormat)
+		{
+			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit not set in GET_STREAM_INFO response");
+			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			// But if we have a valid streamFormat in the field, use it
+			if (info.streamFormat != entity::model::getNullStreamFormat())
+			{
+				streamFormat = info.streamFormat;
+			}
+		}
+		if (info.streamFormat == entity::model::getNullStreamFormat())
+		{
+			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "stream_format field not set in GET_STREAM_INFO response");
+			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+		}
+	}
 	// If Milan Extended Information is required (for GetStreamInfo, not SetStreamInfo) and entity is Milan compatible, check if it's present
 	if (milanExtendedRequired && controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 	{
@@ -323,23 +369,35 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 		}
 	}
 
-	// Entity was advertised to the user, notify observers (check if info actually changed, in case it's a change in StreamingWait and the entity sent both Unsol)
-	if (controlledEntity.wasAdvertised() && previousInfo != info)
+	// Update StreamInfo
+	auto const [previousInfo, newInfo] = controlledEntity.setStreamOutputInfo(streamIndex, info);
+
+	// Entity was advertised to the user, notify observers (check if info actually changed)
+	if (controlledEntity.wasAdvertised() && previousInfo != newInfo)
 	{
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputInfoChanged, this, &controlledEntity, streamIndex, info);
-
 		// Check if Running Status changed (since it's a separate Controller event)
-		auto const previousRunning = ControlledEntityImpl::isStreamRunningFlag(previousInfo.streamInfoFlags);
-		auto const isRunning = ControlledEntityImpl::isStreamRunningFlag(info.streamInfoFlags);
-
-		// Running status changed, notify observers
-		if (previousRunning != isRunning)
 		{
-			if (isRunning)
-				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputStarted, this, &controlledEntity, streamIndex);
-			else
-				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputStopped, this, &controlledEntity, streamIndex);
+			auto const previousRunning = ControlledEntityImpl::isStreamRunningFlag(previousInfo.streamInfoFlags);
+			auto const isRunning = ControlledEntityImpl::isStreamRunningFlag(newInfo.streamInfoFlags);
+
+			// Running status changed, notify observers
+			if (previousRunning != isRunning)
+			{
+				if (isRunning)
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputStarted, this, &controlledEntity, streamIndex);
+				else
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputStopped, this, &controlledEntity, streamIndex);
+			}
 		}
+
+		// Check if StreamFormat changed (since it's a separate Controller event)
+		if (previousInfo.streamFormat != newInfo.streamFormat)
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputFormatChanged, this, &controlledEntity, streamIndex, newInfo.streamFormat);
+		}
+
+		// Notify global StreamInfo change
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputInfoChanged, this, &controlledEntity, streamIndex, newInfo);
 	}
 }
 
@@ -556,26 +614,26 @@ void ControllerImpl::updateClockSource(ControlledEntityImpl& controlledEntity, e
 
 void ControllerImpl::updateStreamInputRunningStatus(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, bool const isRunning) const noexcept
 {
-	// Some entities do not send an Unsolicited when they start/stop streaming, so we have to manually update the StreamInfo flags
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto const& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels);
 
-	// Make a copy of current StreamInfo and simulate a change in it
+	// Make a copy of current StreamInfo, change affected field and notify changes
 	auto newInfo = streamDynamicModel.streamInfo;
 	ControlledEntityImpl::setStreamRunningFlag(newInfo.streamInfoFlags, isRunning);
-	updateStreamInputInfo(controlledEntity, streamIndex, newInfo, false); // No need to check again for Milan Extended Information
+	updateStreamInputInfo(controlledEntity, streamIndex, newInfo, false, false); // No need to check again for StreamFormat or Milan Extended Information
 }
 
 void ControllerImpl::updateStreamOutputRunningStatus(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, bool const isRunning) const noexcept
 {
-	// Some entities do not send an Unsolicited when they start/stop streaming, so we have to manually update the StreamInfo flags
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto const& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels);
 
-	// Make a copy of current StreamInfo and simulate a change in it
+	// Make a copy of current StreamInfo, change affected field and notify changes
 	auto newInfo = streamDynamicModel.streamInfo;
 	ControlledEntityImpl::setStreamRunningFlag(newInfo.streamInfoFlags, isRunning);
-	updateStreamOutputInfo(controlledEntity, streamIndex, newInfo, false); // No need to check again for Milan Extended Information
+	updateStreamOutputInfo(controlledEntity, streamIndex, newInfo, false, false); // No need to check again for StreamFormat or Milan Extended Information
 }
 
 void ControllerImpl::setAvbInfoAndNotify(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) const noexcept

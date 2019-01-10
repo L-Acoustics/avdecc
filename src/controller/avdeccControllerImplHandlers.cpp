@@ -864,7 +864,7 @@ void ControllerImpl::onGetStreamInputInfoResult(entity::controller::Interface co
 			if (!!status)
 			{
 				// Use the "update**" method, there are many things to do
-				updateStreamInputInfo(*controlledEntity, streamIndex, info, true);
+				updateStreamInputInfo(*controlledEntity, streamIndex, info, true, true);
 			}
 			else
 			{
@@ -901,7 +901,7 @@ void ControllerImpl::onGetStreamOutputInfoResult(entity::controller::Interface c
 			if (!!status)
 			{
 				// Use the "update**" method, there are many things to do
-				updateStreamOutputInfo(*controlledEntity, streamIndex, info, true);
+				updateStreamOutputInfo(*controlledEntity, streamIndex, info, true, true);
 			}
 			else
 			{
@@ -1468,7 +1468,8 @@ void ControllerImpl::onInputStreamFormatResult(entity::controller::Interface con
 		{
 			if (!!status)
 			{
-				controlledEntity->setStreamInputFormat(streamIndex, streamFormat);
+				// Use the "update**" method, there are many things to do
+				updateStreamInputFormat(*controlledEntity, streamIndex, streamFormat);
 			}
 			else
 			{
@@ -1540,7 +1541,8 @@ void ControllerImpl::onOutputStreamFormatResult(entity::controller::Interface co
 		{
 			if (!!status)
 			{
-				controlledEntity->setStreamOutputFormat(streamIndex, streamFormat);
+				// Use the "update**" method, there are many things to do
+				updateStreamOutputFormat(*controlledEntity, streamIndex, streamFormat);
 			}
 			else
 			{

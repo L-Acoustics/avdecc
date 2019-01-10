@@ -560,7 +560,7 @@ void ControllerImpl::setStreamInputInfo(UniqueIdentifier const targetEntityID, e
 					// Update info
 					if (!!status)
 					{
-						updateStreamInputInfo(*entity, streamIndex, info, false); // Milan Extended Information not set in SetStreamInfo
+						updateStreamInputInfo(*entity, streamIndex, info, false, false); // StreamFormat not required to be set in SetStreamInfo / Milan Extended Information not set in SetStreamInfo
 					}
 
 					// Invoke result handler
@@ -601,7 +601,7 @@ void ControllerImpl::setStreamOutputInfo(UniqueIdentifier const targetEntityID, 
 					// Update info
 					if (!!status)
 					{
-						updateStreamOutputInfo(*entity, streamIndex, info, false); // Milan Extended Information not set in SetStreamInfo
+						updateStreamOutputInfo(*entity, streamIndex, info, false, false); // StreamFormat not required to be set in SetStreamInfo / Milan Extended Information not set in SetStreamInfo
 					}
 
 					// Invoke result handler

@@ -53,8 +53,6 @@ struct AudioUnitNodeDynamicModel
 struct StreamNodeDynamicModel
 {
 	entity::model::AvdeccFixedString objectName{};
-	entity::model::StreamFormat currentFormat{ entity::model::getNullStreamFormat() };
-
 	entity::model::StreamInfo streamInfo{};
 };
 

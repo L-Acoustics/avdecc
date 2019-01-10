@@ -777,12 +777,6 @@ void ControlledEntityImpl::setSamplingRate(entity::model::AudioUnitIndex const a
 	dynamicModel.currentSamplingRate = samplingRate;
 }
 
-void ControlledEntityImpl::setStreamInputFormat(entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) noexcept
-{
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels);
-	dynamicModel.currentFormat = streamFormat;
-}
-
 model::StreamConnectionState ControlledEntityImpl::setStreamInputConnectionState(entity::model::StreamIndex const streamIndex, model::StreamConnectionState const& state) noexcept
 {
 	AVDECC_ASSERT(_entity.getEntityID() == state.listenerStream.entityID, "EntityID not correctly initialized");
@@ -799,7 +793,7 @@ model::StreamConnectionState ControlledEntityImpl::setStreamInputConnectionState
 	return previousState;
 }
 
-entity::model::StreamInfo ControlledEntityImpl::setStreamInputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept
+std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> ControlledEntityImpl::setStreamInputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels);
 
@@ -809,13 +803,14 @@ entity::model::StreamInfo ControlledEntityImpl::setStreamInputInfo(entity::model
 	// Set StreamInfo
 	dynamicModel.streamInfo = info;
 
-	return previousInfo;
-}
+	// We should always have a valid value in the StreamFormat (was properly initialized), so don't overwrite it if it's not valid in the new info
+	if (dynamicModel.streamInfo.streamFormat == entity::model::getNullStreamFormat())
+	{
+		dynamicModel.streamInfo.streamFormat = previousInfo.streamFormat;
+		utils::addFlag(dynamicModel.streamInfo.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid); // Force the flag as well
+	}
 
-void ControlledEntityImpl::setStreamOutputFormat(entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) noexcept
-{
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels);
-	dynamicModel.currentFormat = streamFormat;
+	return { previousInfo, dynamicModel.streamInfo };
 }
 
 void ControlledEntityImpl::clearStreamOutputConnections(entity::model::StreamIndex const streamIndex) noexcept
@@ -837,7 +832,7 @@ bool ControlledEntityImpl::delStreamOutputConnection(entity::model::StreamIndex 
 	return dynamicModel.connections.erase(listenerStream) > 0;
 }
 
-entity::model::StreamInfo ControlledEntityImpl::setStreamOutputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept
+std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> ControlledEntityImpl::setStreamOutputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels);
 
@@ -847,7 +842,14 @@ entity::model::StreamInfo ControlledEntityImpl::setStreamOutputInfo(entity::mode
 	// Set StreamInfo
 	dynamicModel.streamInfo = info;
 
-	return previousInfo;
+	// We should always have a valid value in the StreamFormat (was properly initialized), so don't overwrite it if it's not valid in the new info
+	if (dynamicModel.streamInfo.streamFormat == entity::model::getNullStreamFormat())
+	{
+		dynamicModel.streamInfo.streamFormat = previousInfo.streamFormat;
+		utils::addFlag(dynamicModel.streamInfo.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid); // Force the flag as well
+	}
+
+	return { previousInfo, dynamicModel.streamInfo };
 }
 
 entity::model::AvbInfo ControlledEntityImpl::setAvbInfo(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) noexcept
@@ -1275,7 +1277,8 @@ void ControlledEntityImpl::setStreamInputDescriptor(entity::model::StreamDescrip
 		m.connectionState.listenerStream = entity::model::StreamIdentification{ _entity.getEntityID(), streamIndex }; // We always are the other endpoint of a connection, initialize this now
 		// Changeable fields through commands
 		m.objectName = descriptor.objectName;
-		m.currentFormat = descriptor.currentFormat;
+		m.streamInfo.streamFormat = descriptor.currentFormat; // Copy the streamFormat, but we should get the complete StreamInfo soon
+		utils::addFlag(m.streamInfo.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid);
 	}
 }
 
@@ -1310,7 +1313,8 @@ void ControlledEntityImpl::setStreamOutputDescriptor(entity::model::StreamDescri
 		auto& m = getNodeDynamicModel(configurationIndex, streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels);
 		// Changeable fields through commands
 		m.objectName = descriptor.objectName;
-		m.currentFormat = descriptor.currentFormat;
+		m.streamInfo.streamFormat = descriptor.currentFormat; // Copy the streamFormat, but we should get the complete StreamInfo soon
+		utils::addFlag(m.streamInfo.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid);
 	}
 }
 
