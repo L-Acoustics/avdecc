@@ -6,8 +6,10 @@ cmake_minimum_required(VERSION 3.12)
 ############ Versioning
 
 # Using Semantic Versioning (http://semver.org/spec/v2.0.0.html)
-# Project version number x.y.z on main branch, x.y.z.w on dev and task branches
-# Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task)
+# This variable defines the project version number.
+# It should have 3 digits (x.y.z) on main branch, and 4 digits (x.y.z.w) on dev and task branches. The last digit being used as beta label.
+# As soon as an API change occurs, update the version number by following SemVer rules.
+# Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task) which will be labelled 1.5.0-beta3
 set(LA_AVDECC_VERSION 2.8.0.9)
 set(LA_AVDECC_CONTROLLER_VERSION 2.8.0.12)
 
