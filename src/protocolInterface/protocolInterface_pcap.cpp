@@ -217,10 +217,22 @@ private:
 
 	virtual Error unregisterLocalEntity(entity::LocalEntity& entity) noexcept override
 	{
-		// Remove from all state machines, without checking the type (will be done by the StateMachine)
-		_controllerStateMachine.unregisterLocalEntity(entity);
-#pragma message("TODO: Remove from talker/listener state machines too")
-		return ProtocolInterface::Error::NoError;
+		auto error{ ProtocolInterface::Error::NoError };
+
+		// Entity is controller capable
+		if (utils::hasFlag(entity.getControllerCapabilities(), entity::ControllerCapabilities::Implemented))
+			error |= _controllerStateMachine.unregisterLocalEntity(entity);
+
+#pragma message("TODO: Handle talker/listener types")
+		// Entity is listener capable
+		if (utils::hasFlag(entity.getListenerCapabilities(), entity::ListenerCapabilities::Implemented))
+			return ProtocolInterface::Error::InvalidEntityType; // Not supported right now
+
+		// Entity is talker capable
+		if (utils::hasFlag(entity.getTalkerCapabilities(), entity::TalkerCapabilities::Implemented))
+			return ProtocolInterface::Error::InvalidEntityType; // Not supported right now
+
+		return error;
 	}
 
 	virtual Error setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const /*flags*/, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override

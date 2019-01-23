@@ -545,6 +545,7 @@ ProtocolInterface::Error ControllerStateMachine::unregisterLocalEntity(entity::L
 {
 	// Lock self
 	std::lock_guard<ControllerStateMachine> const lg(getSelf());
+	auto removed = false;
 
 	for (auto it = std::begin(_localEntities); it != std::end(_localEntities); /* Iterate inside the loop */)
 	{
@@ -555,9 +556,16 @@ ProtocolInterface::Error ControllerStateMachine::unregisterLocalEntity(entity::L
 			disableEntityAdvertising(entity, std::nullopt);
 			// Remove from the list
 			it = _localEntities.erase(it);
+			removed = true;
 		}
 		else
 			++it;
+	}
+
+	// Not found
+	if (!removed)
+	{
+		return ProtocolInterface::Error::UnknownLocalEntity;
 	}
 
 	// Notify delegate
