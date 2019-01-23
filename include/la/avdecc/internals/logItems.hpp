@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2019, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -129,6 +129,31 @@ private:
 	std::string _message{};
 };
 
+class LogItemEntity : public la::avdecc::logger::LogItem
+{
+public:
+	LogItemEntity(la::avdecc::UniqueIdentifier const& targetID, std::string message)
+		: LogItem(Layer::Entity)
+		, _targetID(targetID)
+		, _message(message)
+	{
+	}
+
+	virtual std::string getMessage() const noexcept override
+	{
+		return std::string("[") + la::avdecc::utils::toHexString(_targetID, true, false) + "] " + _message;
+	}
+
+	la::avdecc::UniqueIdentifier const& getTargetID() const noexcept
+	{
+		return _targetID;
+	}
+
+private:
+	la::avdecc::UniqueIdentifier const& _targetID;
+	std::string _message{};
+};
+
 class LogItemControllerEntity : public la::avdecc::logger::LogItem
 {
 public:
@@ -141,7 +166,7 @@ public:
 
 	virtual std::string getMessage() const noexcept override
 	{
-		return std::string("[") + la::avdecc::toHexString(_targetID, true, false) + "] " + _message;
+		return std::string("[") + la::avdecc::utils::toHexString(_targetID, true, false) + "] " + _message;
 	}
 
 	la::avdecc::UniqueIdentifier const& getTargetID() const noexcept
@@ -166,7 +191,7 @@ public:
 
 	virtual std::string getMessage() const noexcept override
 	{
-		return std::string("[") + la::avdecc::toHexString(_targetID, true, false) + "] " + _message;
+		return std::string("[") + la::avdecc::utils::toHexString(_targetID, true, false) + "] " + _message;
 	}
 
 	la::avdecc::UniqueIdentifier const& getTargetID() const noexcept

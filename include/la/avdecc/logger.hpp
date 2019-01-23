@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2019, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -41,9 +41,10 @@ enum class Layer
 	Serialization = 1,
 	ProtocolInterface = 2,
 	AemPayload = 3,
-	ControllerEntity = 4,
-	ControllerStateMachine = 5,
-	Controller = 6,
+	Entity = 4,
+	ControllerEntity = 5,
+	ControllerStateMachine = 6,
+	Controller = 7,
 	FirstUserLayer = 100,
 };
 
@@ -92,6 +93,7 @@ public:
 	class Observer
 	{
 	public:
+		virtual ~Observer() noexcept {}
 		virtual void onLogItem(la::avdecc::logger::Level const /*level*/, la::avdecc::logger::LogItem const* const /*item*/) noexcept {}
 	};
 

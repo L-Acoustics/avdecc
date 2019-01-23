@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2019, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -288,7 +288,7 @@ AemAcquireEntityFlags const AemAcquireEntityFlags::Release{ 0x80000000 };
 
 /** AEM Lock Entity Flags - Clause 7.4.2.1 */
 AemLockEntityFlags const AemLockEntityFlags::None{ 0x00000000 };
-AemLockEntityFlags const AemLockEntityFlags::Unlock{ 0x80000000 };
+AemLockEntityFlags const AemLockEntityFlags::Unlock{ 0x00000001 };
 
 /** Address Access Mode - Clause 9.2.1.3.3 */
 AaMode const AaMode::Read{ 0x0 };
@@ -403,6 +403,37 @@ AcmpStatus const AcmpStatus::ControllerNotAuthorized{ 16 };
 AcmpStatus const AcmpStatus::IncompatibleRequest{ 17 };
 /* 18-30 reserved for future use */
 AcmpStatus const AcmpStatus::NotSupported{ 31 };
+
+AcmpStatus::operator std::string() const noexcept
+{
+	static std::unordered_map<AcmpStatus::value_type, std::string> s_AcmpStatusMapping = {
+		{ AcmpStatus::Success.getValue(), "SUCCESS" },
+		{ AcmpStatus::ListenerUnknownID.getValue(), "LISTENER_UNKNOWN_ID" },
+		{ AcmpStatus::TalkerUnknownID.getValue(), "TALKER_UNKNOWN_ID" },
+		{ AcmpStatus::TalkerDestMacFail.getValue(), "TALKER_DEST_MAC_FAIL" },
+		{ AcmpStatus::TalkerNoStreamIndex.getValue(), "TALKER_NO_STREAM_INDEX" },
+		{ AcmpStatus::TalkerNoBandwidth.getValue(), "TALKER_NO_BANDWIDTH" },
+		{ AcmpStatus::TalkerExclusive.getValue(), "TALKER_EXCLUSIVE" },
+		{ AcmpStatus::ListenerTalkerTimeout.getValue(), "LISTENER_TALKER_TIMEOUT" },
+		{ AcmpStatus::ListenerExclusive.getValue(), "LISTENER_EXCLUSIVE" },
+		{ AcmpStatus::StateUnavailable.getValue(), "STATE_UNAVAILABLE" },
+		{ AcmpStatus::NotConnected.getValue(), "NOT_CONNECTED" },
+		{ AcmpStatus::NoSuchConnection.getValue(), "NO_SUCH_CONNECTION" },
+		{ AcmpStatus::CouldNotSendMessage.getValue(), "COULD_NOT_SEND_MESSAGE" },
+		{ AcmpStatus::TalkerMisbehaving.getValue(), "TALKER_MISBEHAVING" },
+		{ AcmpStatus::ListenerMisbehaving.getValue(), "LISTENER_MISBEHAVING" },
+		/* 15 reserved for future use */
+		{ AcmpStatus::ControllerNotAuthorized.getValue(), "CONTROLLER_NOT_AUTHORIZED" },
+		{ AcmpStatus::IncompatibleRequest.getValue(), "INCOMPATIBLE_REQUEST" },
+		/* 18-30 reserved for future use */
+		{ AcmpStatus::NotSupported.getValue(), "NOT_SUPPORTED" },
+	};
+
+	auto const& it = s_AcmpStatusMapping.find(getValue());
+	if (it == s_AcmpStatusMapping.end())
+		return "INVALID_STATUS";
+	return it->second;
+}
 
 } // namespace protocol
 } // namespace avdecc

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2019, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -286,7 +286,16 @@ struct AudioMapping
 	{
 		return sizeof(streamIndex) + sizeof(streamChannel) + sizeof(clusterOffset) + sizeof(clusterChannel);
 	}
+	constexpr friend bool operator==(AudioMapping const& lhs, AudioMapping const& rhs) noexcept
+	{
+		return (lhs.streamIndex == rhs.streamIndex) && (lhs.streamChannel == rhs.streamChannel) && (lhs.clusterOffset == rhs.clusterOffset) && (lhs.clusterChannel == rhs.clusterChannel);
+	}
+	constexpr friend bool operator!=(AudioMapping const& lhs, AudioMapping const& rhs) noexcept
+	{
+		return !operator==(lhs, rhs);
+	}
 };
+
 using AudioMappings = std::vector<AudioMapping>;
 
 /** MSRP Mapping - Clause 7.4.40.2.1 */
@@ -300,14 +309,20 @@ struct MsrpMapping
 	{
 		return sizeof(trafficClass) + sizeof(priority) + sizeof(vlanID);
 	}
+	constexpr friend bool operator==(MsrpMapping const& lhs, MsrpMapping const& rhs) noexcept
+	{
+		return (lhs.trafficClass == rhs.trafficClass) && (lhs.priority == rhs.priority) && (lhs.vlanID == rhs.vlanID);
+	}
+	constexpr friend bool operator!=(MsrpMapping const& lhs, MsrpMapping const& rhs) noexcept
+	{
+		return !operator==(lhs, rhs);
+	}
 };
 
-constexpr bool operator==(MsrpMapping const& lhs, MsrpMapping const& rhs) noexcept
-{
-	return (lhs.trafficClass == rhs.trafficClass) && (lhs.priority == rhs.priority) && (lhs.vlanID == rhs.vlanID);
-}
-
 using MsrpMappings = std::vector<MsrpMapping>;
+
+/** GET_AS_PATH Dynamic Information - Clause 7.4.41.2 */
+using PathSequence = std::vector<UniqueIdentifier>;
 
 /** GET_COUNTERS - Clause 7.4.42.2 */
 using DescriptorCounters = std::array<DescriptorCounter, 32>;
@@ -462,6 +477,24 @@ constexpr bool operator<(StreamIdentification const& lhs, StreamIdentification c
 	return (lhs.entityID.getValue() < rhs.entityID.getValue()) || (lhs.entityID == rhs.entityID && lhs.streamIndex < rhs.streamIndex);
 }
 
+/** Probing Status - Milan Clause 6.8.6 */
+enum class ProbingStatus : std::uint8_t
+{
+	Disabled = 0x00, /** The sink is not probing because it is not bound. */
+	Passive = 0x01, /** The sink is probing passively. It waits until the bound talker has been discovered. */
+	Active = 0x02, /** The sink is probing actively. It is querying the stream parameters to the talker. */
+	Completed = 0x03, /** The sink is not probing because it is settled. */
+	/* 04 to 07 reserved for future use */
+};
+constexpr bool operator==(ProbingStatus const lhs, ProbingStatus const rhs)
+{
+	return static_cast<std::underlying_type_t<ProbingStatus>>(lhs) == static_cast<std::underlying_type_t<ProbingStatus>>(rhs);
+}
+
+constexpr bool operator==(ProbingStatus const lhs, std::underlying_type_t<ProbingStatus> const rhs)
+{
+	return static_cast<std::underlying_type_t<ProbingStatus>>(lhs) == rhs;
+}
 
 } // namespace model
 } // namespace entity

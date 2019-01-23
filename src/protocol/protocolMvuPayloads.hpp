@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2019, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -57,12 +57,12 @@ public:
 // All deserialization methods might throw a la::avdecc:Exception if deserialization goes wrong
 
 /** GET_MILAN_INFO Command - Milan Clause 7.4.1 */
-Serializer<AecpMvuGetMilanInfoCommandPayloadSize> serializeGetMilanInfoCommand(entity::model::ConfigurationIndex const configurationIndex);
-std::tuple<entity::model::ConfigurationIndex> deserializeGetMilanInfoCommand(MvuAecpdu::Payload const& payload);
+Serializer<AecpMvuGetMilanInfoCommandPayloadSize> serializeGetMilanInfoCommand();
+void deserializeGetMilanInfoCommand(MvuAecpdu::Payload const& payload);
 
 /** GET_MILAN_INFO Response - Milan Clause 7.4.1 */
-Serializer<AecpMvuGetMilanInfoResponsePayloadSize> serializeGetMilanInfoResponse(entity::model::ConfigurationIndex const configurationIndex, std::uint32_t const protocolVersion, MvuFeaturesFlags const featuresFlags, std::uint32_t const certificationVersion);
-std::tuple<entity::model::ConfigurationIndex, std::uint32_t, MvuFeaturesFlags, std::uint32_t> deserializeGetMilanInfoResponse(MvuAecpdu::Payload const& payload);
+Serializer<AecpMvuGetMilanInfoResponsePayloadSize> serializeGetMilanInfoResponse(entity::model::MilanInfo const& info);
+std::tuple<entity::model::MilanInfo> deserializeGetMilanInfoResponse(MvuAecpdu::Payload const& payload);
 
 
 } // namespace mvuPayload

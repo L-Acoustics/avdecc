@@ -4,11 +4,28 @@ All notable changes to the Avdecc Library will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2019-01-23
+### Added
+- Notification when a controller is being deregistered from unsolicited notifications
+- Notification when (some or all) audio mappings are added or removed
+- Notification when an entity is locked/unlocked by another controller
+- setStreamInputInfo, setStreamOutputInfo, getAsPath
+- Milan extended GetStreamInfo
+- Code to try to prevent deadlocks
+- Watch dog thread
+
+### Changed
+- lockEntity/unlockEntity signature and result handler changed to include the locking entity and descriptor type/index
+- GetMilanInfo now return a struct instead of individual fields
+- Updated GetMilanInfo to match Milan specification
+
+### Fixed
+- Incorrect value for AemLockEntityFlags::Unlock flag
+
 ## [2.7.2] - 2018-10-30
 
 ## [2.7.1] - 2018-10-02
 ### Added
-- [Retrieving entity current acquired state upon enumeration](https://github.com/L-Acoustics/avdecc/issues/26)
 - [Support for GET_COUNTERS command and unsolicited notifications](https://github.com/L-Acoustics/avdecc/issues/12)
 - Support for VendorUnique AECP messages
 - Support for 500Hz CRF stream format
@@ -18,7 +35,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [2.7.0] - 2018-09-12
 ### Added
-- Support for MemoryObject Operations (Contributed by Florian Harmuth)
+- Support for MemoryObject Operations (Contributed by d&b)
 - Protocol and ProtocolInterface classes exposed in the public API
 - Removed InterfaceIndex field from ProtocolInterface (not its place)
 

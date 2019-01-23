@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2019, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -42,41 +42,43 @@ namespace avdecc
 {
 namespace controller
 {
-/* ************************************************************ */
-/* Private entity::Entity modifiable inherited class            */
-/* ************************************************************ */
-class ModifiableEntity : public entity::Entity
-{
-public:
-	ModifiableEntity(entity::Entity const& entity)
-		: Entity(entity)
-	{
-	}
-
-	using Entity::setGptpGrandmasterID;
-	using Entity::setGptpDomainNumber;
-};
-
 /* ************************************************************************** */
 /* ControlledEntityImpl                                                       */
 /* ************************************************************************** */
 class ControlledEntityImpl : public ControlledEntity
 {
 public:
+	/** Lock Information that is shared among all ControlledEntities */
+	struct LockInformation
+	{
+		using SharedPointer = std::shared_ptr<LockInformation>;
+
+		std::recursive_mutex lock{};
+		std::uint32_t lockedCount{ 0u };
+		std::thread::id lockingThreadID{};
+	};
+
 	enum class EnumerationSteps : std::uint16_t
 	{
 		None = 0,
-		GetMilanVersion = 1u << 0,
+		GetMilanInfo = 1u << 0,
 		RegisterUnsol = 1u << 1,
 		GetStaticModel = 1u << 2,
 		GetDescriptorDynamicInfo = 1u << 3, /** DescriptorDynamicInfoType */
 		GetDynamicInfo = 1u << 4, /** DynamicInfoType */
 	};
 
+	/** Milan Vendor Unique Information */
+	enum class MilanInfoType : std::uint16_t
+	{
+		MilanInfo, // GET_MILAN_INFO
+	};
+
 	/** Dynamic information to retrieve from entities. This is always required, either from a first enumeration or from recover from loss of unsolicited notification. */
 	enum class DynamicInfoType : std::uint16_t
 	{
 		AcquiredState, // acquireEntity(ReleasedFlag)
+		LockedState, // lockEntity(ReleasedFlag)
 		InputStreamAudioMappings, // getStreamPortInputAudioMap (GET_AUDIO_MAP)
 		OutputStreamAudioMappings, // getStreamPortOutputAudioMap (GET_AUDIO_MAP)
 		InputStreamState, // getListenerStreamState (GET_RX_STATE)
@@ -85,7 +87,7 @@ public:
 		InputStreamInfo, // getStreamInputInfo (GET_STREAM_INFO)
 		OutputStreamInfo, // getStreamOutputInfo (GET_STREAM_INFO)
 		GetAvbInfo, // getAvbInfo (GET_AVB_INFO)
-		GetAsPath,
+		GetAsPath, // getAsPath (GET_AS_PATH)
 		GetAvbInterfaceCounters, // getAvbInterfaceCounters (GET_COUNTERS)
 		GetClockDomainCounters, // getClockDomainCounters (GET_COUNTERS)
 		GetStreamInputCounters, // getStreamInputCounters (GET_COUNTERS)
@@ -110,6 +112,7 @@ public:
 		ClockDomainSourceIndex, // CLOCK_DOMAIN.clock_source_index -> GET_CLOCK_SOURCE (7.4.24)
 	};
 
+	using MilanInfoKey = std::underlying_type_t<MilanInfoType>;
 	using DescriptorKey = std::uint32_t;
 	static_assert(sizeof(DescriptorKey) >= sizeof(entity::model::DescriptorType) + sizeof(entity::model::DescriptorIndex), "DescriptorKey size must be greater or equal to DescriptorType + DescriptorIndex");
 	using DynamicInfoKey = std::uint64_t;
@@ -118,19 +121,28 @@ public:
 	static_assert(sizeof(DescriptorDynamicInfoKey) >= sizeof(DescriptorDynamicInfoType) + sizeof(entity::model::DescriptorIndex), "DescriptorDynamicInfoKey size must be greater or equal to DescriptorDynamicInfoType + DescriptorIndex");
 
 	/** Constructor */
-	ControlledEntityImpl(la::avdecc::entity::Entity const& entity) noexcept;
+	ControlledEntityImpl(la::avdecc::entity::Entity const& entity, LockInformation::SharedPointer const& sharedLock) noexcept;
 
 	// ControlledEntity overrides
 	// Getters
-	virtual Compatibility getCompatibility() const noexcept override;
+	virtual CompatibilityFlags getCompatibilityFlags() const noexcept override;
 	virtual bool gotFatalEnumerationError() const noexcept override;
+	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept override;
 	virtual bool isAcquired() const noexcept override;
 	virtual bool isAcquiring() const noexcept override;
 	virtual bool isAcquiredByOther() const noexcept override;
+	virtual bool isLocked() const noexcept override;
+	virtual bool isLocking() const noexcept override;
+	virtual bool isLockedByOther() const noexcept override;
 	virtual bool isStreamInputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const override;
 	virtual bool isStreamOutputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const override;
+	virtual InterfaceLinkStatus getAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex) const override;
+	virtual model::AcquireState getAcquireState() const noexcept override;
 	virtual UniqueIdentifier getOwningControllerID() const noexcept override;
+	virtual model::LockState getLockState() const noexcept override;
+	virtual UniqueIdentifier getLockingControllerID() const noexcept override;
 	virtual entity::Entity const& getEntity() const noexcept override;
+	virtual entity::model::MilanInfo const& getMilanInfo() const noexcept override;
 
 	virtual model::EntityNode const& getEntityNode() const override;
 	virtual model::ConfigurationNode const& getConfigurationNode(entity::model::ConfigurationIndex const configurationIndex) const override;
@@ -142,6 +154,7 @@ public:
 	virtual model::RedundantStreamNode const& getRedundantStreamOutputNode(entity::model::ConfigurationIndex const configurationIndex, model::VirtualIndex const redundantStreamIndex) const override;
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 	virtual model::AudioUnitNode const& getAudioUnitNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex) const override;
+	virtual model::AvbInterfaceNode const& getAvbInterfaceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex) const override;
 	virtual model::ClockSourceNode const& getClockSourceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex) const override;
 	virtual model::StreamPortNode const& getStreamPortInputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) const override;
 	virtual model::StreamPortNode const& getStreamPortOutputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) const override;
@@ -158,7 +171,6 @@ public:
 
 	virtual void lock() noexcept override;
 	virtual void unlock() noexcept override;
-	virtual bool isSelfLocked() const noexcept override;
 
 	/** Get connected information about a listener's stream (TalkerID and StreamIndex might be filled even if isConnected is not true, in case of FastConnect) */
 	virtual model::StreamConnectionState const& getConnectedSinkState(entity::model::StreamIndex const streamIndex) const override; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
@@ -217,8 +229,7 @@ public:
 	template<typename FieldPointer, typename DescriptorIndexType>
 	typename std::remove_pointer_t<FieldPointer>::mapped_type& getNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer model::ConfigurationStaticTree::*Field) noexcept
 	{
-		// Lock during possible modification of the map
-		std::lock_guard<decltype(_lock)> const lg(_lock);
+		AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
 
 		auto& configStaticTree = getConfigurationStaticTree(configurationIndex);
 		return (configStaticTree.*Field)[index];
@@ -226,8 +237,7 @@ public:
 	template<typename FieldPointer, typename DescriptorIndexType>
 	typename std::remove_pointer_t<FieldPointer>::mapped_type& getNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer model::ConfigurationDynamicTree::*Field) noexcept
 	{
-		// Lock during possible modification of the map
-		std::lock_guard<decltype(_lock)> const lg(_lock);
+		AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
 
 		auto& configDynamicTree = getConfigurationDynamicTree(configurationIndex);
 		return (configDynamicTree.*Field)[index];
@@ -245,15 +255,14 @@ public:
 		dynamicModel.objectName = name;
 	}
 	void setSamplingRate(entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate) noexcept;
-	void setStreamInputFormat(entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) noexcept;
 	model::StreamConnectionState setStreamInputConnectionState(entity::model::StreamIndex const streamIndex, model::StreamConnectionState const& state) noexcept;
-	entity::model::StreamInfo setStreamInputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept; // Returns previous StreamInfo
-	void setStreamOutputFormat(entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) noexcept;
+	std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> setStreamInputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept; // Returns previous StreamInfo and the new one
 	void clearStreamOutputConnections(entity::model::StreamIndex const streamIndex) noexcept;
 	bool addStreamOutputConnection(entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream) noexcept; // Returns true if effectively added
 	bool delStreamOutputConnection(entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream) noexcept; // Returns true if effectively removed
-	entity::model::StreamInfo setStreamOutputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept; // Returns previous StreamInfo
+	std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> setStreamOutputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept; // Returns previous StreamInfo and the new one
 	entity::model::AvbInfo setAvbInfo(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) noexcept; // Returns previous AvbInfo
+	entity::model::AsPath setAsPath(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath) noexcept; // Returns previous AsPath
 	void setSelectedLocaleBaseIndex(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const baseIndex) noexcept;
 	void clearStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) noexcept;
 	void addStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept;
@@ -269,8 +278,12 @@ public:
 
 	// Setters (of the model, not the physical entity)
 	void setEntity(entity::Entity const& entity) noexcept;
+	InterfaceLinkStatus setAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex, InterfaceLinkStatus const linkStatus) noexcept; // Returns previous link status
 	void setAcquireState(model::AcquireState const state) noexcept;
 	void setOwningController(UniqueIdentifier const controllerID) noexcept;
+	void setLockState(model::LockState const state) noexcept;
+	void setLockingController(UniqueIdentifier const controllerID) noexcept;
+	void setMilanInfo(entity::model::MilanInfo const& info) noexcept;
 
 	// Setters of the Model from AEM Descriptors (including DescriptorDynamic info)
 	bool setCachedEntityStaticTree(model::EntityStaticTree const& cachedStaticTree, entity::model::EntityDescriptor const& descriptor) noexcept; // Returns true if the cached EntityStaticTree is accepted (and set) for this entity
@@ -290,6 +303,12 @@ public:
 	void setAudioClusterDescriptor(entity::model::AudioClusterDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex) noexcept;
 	void setAudioMapDescriptor(entity::model::AudioMapDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex) noexcept;
 	void setClockDomainDescriptor(entity::model::ClockDomainDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) noexcept;
+
+	// Expected Milan info query methods
+	bool checkAndClearExpectedMilanInfo(MilanInfoType const milanInfoType) noexcept;
+	void setMilanInfoExpected(MilanInfoType const milanInfoType) noexcept;
+	bool gotAllExpectedMilanInfo() const noexcept;
+	std::pair<bool, std::chrono::milliseconds> getQueryMilanInfoRetryTimer() noexcept;
 
 	// Expected descriptor query methods
 	bool checkAndClearExpectedDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept;
@@ -311,30 +330,32 @@ public:
 	std::pair<bool, std::chrono::milliseconds> getQueryDescriptorDynamicInfoRetryTimer() noexcept;
 
 	// Other getters/setters
+	entity::Entity& getEntity() noexcept;
 	bool shouldIgnoreCachedEntityModel() const noexcept;
 	void setIgnoreCachedEntityModel() noexcept;
 	EnumerationSteps getEnumerationSteps() const noexcept;
 	void addEnumerationSteps(EnumerationSteps const steps) noexcept;
 	void clearEnumerationSteps(EnumerationSteps const steps) noexcept;
-	void setCompatibility(Compatibility const compatibility) noexcept;
+	void setCompatibilityFlags(CompatibilityFlags const compatibilityFlags) noexcept;
 	void setGetFatalEnumerationError() noexcept;
+	void setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept;
 	bool wasAdvertised() const noexcept;
 	void setAdvertised(bool const wasAdvertised) noexcept;
 
 	// Other usefull manipulation methods
 	constexpr static bool isStreamRunningFlag(entity::StreamInfoFlags const flags) noexcept
 	{
-		return !hasFlag(flags, entity::StreamInfoFlags::StreamingWait);
+		return !utils::hasFlag(flags, entity::StreamInfoFlags::StreamingWait);
 	}
 	constexpr static void setStreamRunningFlag(entity::StreamInfoFlags& flags, bool const isRunning) noexcept
 	{
 		if (isRunning)
 		{
-			clearFlag(flags, entity::StreamInfoFlags::StreamingWait);
+			utils::clearFlag(flags, entity::StreamInfoFlags::StreamingWait);
 		}
 		else
 		{
-			addFlag(flags, entity::StreamInfoFlags::StreamingWait);
+			utils::addFlag(flags, entity::StreamInfoFlags::StreamingWait);
 		}
 	}
 
@@ -363,11 +384,10 @@ protected:
 	}
 
 	template<class NodeType, typename = std::enable_if_t<std::is_base_of<model::EntityModelNode, NodeType>::value>>
-	static void initNode(NodeType& node, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, model::AcquireState const acquireState) noexcept
+	static void initNode(NodeType& node, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 	{
 		node.descriptorType = descriptorType;
 		node.descriptorIndex = descriptorIndex;
-		node.acquireState = acquireState;
 	}
 
 	template<class NodeType, typename = std::enable_if_t<std::is_base_of<model::VirtualNode, NodeType>::value>>
@@ -384,24 +404,30 @@ private:
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 	// Private variables
-	mutable std::recursive_mutex _lock{};
-	std::uint32_t _lockedCount{ 0u }; // DEBUG status for _lock mutex
-	std::thread::id _lockingThreadID{}; // DEBUG status for _lock mutex
+	LockInformation::SharedPointer _sharedLock{ nullptr };
 	bool _ignoreCachedEntityModel{ false };
+	std::uint16_t _queryMilanInfoRetryCount{ 0u };
 	std::uint16_t _queryDescriptorRetryCount{ 0u };
 	std::uint16_t _queryDynamicInfoRetryCount{ 0u };
 	std::uint16_t _queryDescriptorDynamicInfoRetryCount{ 0u };
 	EnumerationSteps _enumerationSteps{ EnumerationSteps::None };
-	Compatibility _compatibility{ Compatibility::IEEE17221 }; // Entity compatibility type
+	CompatibilityFlags _compatibilityFlags{ CompatibilityFlag::IEEE17221 }; // Entity is IEEE1722.1 compatible by default
 	bool _gotFatalEnumerateError{ false }; // Have we got a fatal error during entity enumeration
+	bool _isSubscribedToUnsolicitedNotifications{ false }; // Are we subscribed to unsolicited notifications
 	bool _advertised{ false }; // Has the entity been advertised to the observers
+	std::unordered_set<MilanInfoKey> _expectedMilanInfo{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DescriptorKey>> _expectedDescriptors{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DynamicInfoKey>> _expectedDynamicInfo{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DescriptorDynamicInfoKey>> _expectedDescriptorDynamicInfo{};
-	model::AcquireState _acquireState{ model::AcquireState::Undefined }; // TODO: Should be a graph of descriptors
+	std::unordered_map<entity::model::AvbInterfaceIndex, InterfaceLinkStatus> _avbInterfaceLinkStatus{}; // Link status for each AvbInterface (true = up or unknown, false = down)
+	model::AcquireState _acquireState{ model::AcquireState::Undefined };
 	UniqueIdentifier _owningControllerID{}; // EID of the controller currently owning (who acquired) this entity
+	model::LockState _lockState{ model::LockState::Undefined };
+	UniqueIdentifier _lockingControllerID{}; // EID of the controller currently locking (who locked) this entity
+	// Milan specific information
+	entity::model::MilanInfo _milanInfo{};
 	// Entity variables
-	ModifiableEntity _entity; // No NSMI, Entity has no default constructor but it has to be passed to the only constructor of this class anyway
+	entity::Entity _entity; // No NSMI, Entity has no default constructor but it has to be passed to the only constructor of this class anyway
 	// Entity Model
 	mutable model::EntityStaticTree _entityStaticTree{}; // Static part of the model as represented by the AVDECC protocol
 	mutable model::EntityDynamicTree _entityDynamicTree{}; // Dynamic part of the model as represented by the AVDECC protocol
@@ -412,7 +438,7 @@ private:
 
 // Define bitfield enum traits for controller::ControlledEntityImpl::EnumerationSteps
 template<>
-struct enum_traits<controller::ControlledEntityImpl::EnumerationSteps>
+struct utils::enum_traits<controller::ControlledEntityImpl::EnumerationSteps>
 {
 	static constexpr bool is_bitfield = true;
 };

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2019, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -67,7 +67,7 @@ namespace avdecc
 * (either added, removed or signature modification).
 * Any other change (including templates, inline methods, defines, typedefs, ...) are considered a modification of the interface.
 */
-constexpr std::uint32_t InterfaceVersion = 207;
+constexpr std::uint32_t InterfaceVersion = 208;
 
 /**
 * @brief Checks if the library is compatible with specified interface version.
@@ -101,7 +101,7 @@ enum class CompileOption : std::uint32_t
 	AllowRecvBigAecpPayloads = 1u << 3,
 	EnableRedundancy = 1u << 15,
 };
-using CompileOptions = EnumBitfield<CompileOption>;
+using CompileOptions = utils::EnumBitfield<CompileOption>;
 
 struct CompileOptionInfo
 {

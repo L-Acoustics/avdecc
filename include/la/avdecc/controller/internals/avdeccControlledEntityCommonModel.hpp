@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2019, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -75,7 +75,7 @@ using RedundantStreams = std::set<entity::model::StreamIndex>;
 using SamplingRates = std::set<entity::model::SamplingRate>;
 using AvdeccFixedStrings = std::array<entity::model::AvdeccFixedString, 7>;
 using ClockSources = std::vector<entity::model::ClockSourceIndex>;
-using DescriptorCounts = std::unordered_map<entity::model::DescriptorType, std::uint16_t, la::avdecc::EnumClassHash>;
+using DescriptorCounts = std::unordered_map<entity::model::DescriptorType, std::uint16_t, utils::EnumClassHash>;
 
 } // namespace model
 } // namespace controller

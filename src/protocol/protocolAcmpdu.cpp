@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2019, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -93,7 +93,7 @@ void LA_AVDECC_CALL_CONVENTION Acmpdu::deserialize(DeserializationBuffer& buffer
 #ifdef DEBUG
 	// Do not log this error in release, it might happen too often if an entity is bugged or if the message contains data this version of the library do not unpack
 	if (buffer.remaining() != 0 && buffer.usedBytes() >= EthernetPayloadMinimumSize)
-		LOG_SERIALIZATION_TRACE(_srcAddress, "Acmpdu::deserialize warning: Remaining bytes in buffer for AcmpMessageType " + std::string(getMessageType()) + " (" + la::avdecc::toHexString(getMessageType().getValue()) + ")");
+		LOG_SERIALIZATION_TRACE(_srcAddress, "Acmpdu::deserialize warning: Remaining bytes in buffer for AcmpMessageType " + std::string(getMessageType()) + " (" + utils::toHexString(getMessageType().getValue()) + ")");
 #endif // DEBUG
 }
 

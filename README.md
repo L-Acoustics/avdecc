@@ -1,7 +1,7 @@
 # LA AVDECC
 [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/14038.svg)](https://scan.coverity.com/projects/l-acoustics-avdecc)
 
-Copyright (C) 2016-2018, L-Acoustics and its contributors
+Copyright (C) 2016-2019, L-Acoustics and its contributors
 
 ## What is LA_avdecc
 LA_avdecc is a set of open source libraries for controlling and monitoring AVB entities using the AVDECC protocol (IEEE 1722.1) compliant to Avnu Milan.
@@ -49,7 +49,7 @@ The controller API has 2 interfaces:
 ## Minimum requirements for compilation
 
 ### All platforms
-- CMake 3.9
+- CMake 3.12
 
 ### Windows
 - Windows 8.1
@@ -59,7 +59,7 @@ The controller API has 2 interfaces:
 
 ### macOS
 - macOS 10.12
-- Xcode 9.2
+- Xcode 10
 
 ### Linux
 - C++17 compliant compiler

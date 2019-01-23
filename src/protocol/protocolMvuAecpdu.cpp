@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2019, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -94,7 +94,7 @@ void LA_AVDECC_CALL_CONVENTION MvuAecpdu::serialize(SerializationBuffer& buffer)
 	// Clamp command specific buffer in case ControlDataLength exceeds maximum allowed value
 	if (payloadLength > MaximumSendPayloadBufferLength)
 	{
-		LOG_SERIALIZATION_WARN(_destAddress, "MvuAecpdu::serialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumSendPayloadBufferLength) + " for MvuCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + "),  clamping buffer down from " + std::to_string(payloadLength));
+		LOG_SERIALIZATION_WARN(_destAddress, "MvuAecpdu::serialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumSendPayloadBufferLength) + " for MvuCommandType " + std::string(_commandType) + " (" + utils::toHexString(_commandType.getValue()) + "),  clamping buffer down from " + std::to_string(payloadLength));
 		payloadLength = std::min(payloadLength, MaximumSendPayloadBufferLength); // Clamping
 	}
 
@@ -131,7 +131,7 @@ void LA_AVDECC_CALL_CONVENTION MvuAecpdu::deserialize(DeserializationBuffer& buf
 	// Check reserved bit
 	if (reserved != 0)
 	{
-		LOG_SERIALIZATION_WARN(_srcAddress, "MvuAecpdu::deserialize error: Reserved bit is not set to 0 for MvuCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + ")");
+		LOG_SERIALIZATION_WARN(_srcAddress, "MvuAecpdu::deserialize error: Reserved bit is not set to 0 for MvuCommandType " + std::string(_commandType) + " (" + utils::toHexString(_commandType.getValue()) + ")");
 	}
 
 	// Check if there is more advertised data than actual bytes in the buffer (not checking earlier since we want to get as much information as possible from the packet to display a proper log message)
@@ -141,16 +141,16 @@ void LA_AVDECC_CALL_CONVENTION MvuAecpdu::deserialize(DeserializationBuffer& buf
 #if defined(IGNORE_INVALID_CONTROL_DATA_LENGTH)
 		// Allow this packet to go through, the ControlData specific unpacker will trap any error if the message is further ill-formed
 		_commandSpecificDataLength = remainingBytes;
-		LOG_SERIALIZATION_DEBUG(_srcAddress, "MvuAecpdu::deserialize error: ControlDataLength field advertises more bytes than remaining bytes in buffer for MvuCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + ")");
+		LOG_SERIALIZATION_DEBUG(_srcAddress, "MvuAecpdu::deserialize error: ControlDataLength field advertises more bytes than remaining bytes in buffer for MvuCommandType " + std::string(_commandType) + " (" + utils::toHexString(_commandType.getValue()) + ")");
 #else // !IGNORE_INVALID_CONTROL_DATA_LENGTH
-		LOG_SERIALIZATION_WARN(_srcAddress, "MvuAecpdu::deserialize error: ControlDataLength field advertises more bytes than remaining bytes in buffer for MvuCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + ")");
+		LOG_SERIALIZATION_WARN(_srcAddress, "MvuAecpdu::deserialize error: ControlDataLength field advertises more bytes than remaining bytes in buffer for MvuCommandType " + std::string(_commandType) + " (" + utils::toHexString(_commandType.getValue()) + ")");
 #endif // IGNORE_INVALID_CONTROL_DATA_LENGTH
 	}
 
 	// Clamp command specific buffer in case ControlDataLength exceeds maximum allowed value, the ControlData specific unpacker will trap any error if the message is further ill-formed
 	if (_commandSpecificDataLength > MaximumRecvPayloadBufferLength)
 	{
-		LOG_SERIALIZATION_WARN(_srcAddress, "MvuAecpdu::deserialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumRecvPayloadBufferLength) + " for MvuCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + "),  clamping buffer down from " + std::to_string(_commandSpecificDataLength));
+		LOG_SERIALIZATION_WARN(_srcAddress, "MvuAecpdu::deserialize error: Payload size exceeds maximum protocol value of " + std::to_string(MaximumRecvPayloadBufferLength) + " for MvuCommandType " + std::string(_commandType) + " (" + utils::toHexString(_commandType.getValue()) + "),  clamping buffer down from " + std::to_string(_commandSpecificDataLength));
 		_commandSpecificDataLength = std::min(_commandSpecificDataLength, MaximumRecvPayloadBufferLength); // Clamping
 	}
 
@@ -159,7 +159,7 @@ void LA_AVDECC_CALL_CONVENTION MvuAecpdu::deserialize(DeserializationBuffer& buf
 #ifdef DEBUG
 	// Do not log this error in release, it might happen too often if an entity is bugged or if the message contains data this version of the library do not unpack
 	if (buffer.remaining() != 0 && buffer.usedBytes() >= EthernetPayloadMinimumSize)
-		LOG_SERIALIZATION_TRACE(_srcAddress, "MvuAecpdu::deserialize warning: Remaining bytes in buffer for MvuCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + ")");
+		LOG_SERIALIZATION_TRACE(_srcAddress, "MvuAecpdu::deserialize warning: Remaining bytes in buffer for MvuCommandType " + std::string(_commandType) + " (" + utils::toHexString(_commandType.getValue()) + ")");
 #endif // DEBUG
 }
 

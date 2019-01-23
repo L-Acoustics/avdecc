@@ -4,12 +4,35 @@ All notable changes to the Avdecc Controller Library will be documented in this 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2019-01-23
+### Added
+- Better detection of non IEEE1722.1 compliant entities, and misbehaving entities (sending correctly built messages but with incoherent values)
+- Detecting when the controller is being deregistered from unsolicited notifications (or if the entity does not support it)
+- Support for lock/unlock commands
+- Support for AsPath (query during enumeration, and change notification)
+- Support for setStreamInfo command
+- [Retrieving entity current lock state upon enumeration](https://github.com/L-Acoustics/avdecc/issues/26)
+- AVB Interface link status (when available)
+- New enum value for AcquireState and LockState: Unsupported (if the entity does not support the command)
+- Code to try to prevent deadlocks
+
+### Removed
+- Fully removed acquire/lock state from descriptors, the controller only support it at entity level (globally)
+
+### Fixed
+- Preventing a crash in upper layers caused by toxic entities (Motu Ultralite card sending a GET_RX_STATE_RESPONSE with a non-existant stream index)
+- Properly monitoring changes in dynamic mappings
+- Updated GetMilanInfo to match Milan specification
+- Dynamic mappings in redundancy mode not correctly set for StreamPortOutput
+- Concurrent access protection
+
 ## [2.7.2] - 2018-10-30
 ### Fixed
 - [Flagging not fully compliant entities as so, instead of discarding them](https://github.com/L-Acoustics/avdecc/issues/42)
 
 ## [2.7.1] - 2018-10-02
 ### Added
+- [Retrieving entity current acquired state upon enumeration](https://github.com/L-Acoustics/avdecc/issues/26)
 - [Support for GET_COUNTERS command and unsolicited notifications](https://github.com/L-Acoustics/avdecc/issues/12)
 
 ## [2.7.0] - 2018-09-12

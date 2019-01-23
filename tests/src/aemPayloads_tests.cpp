@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2019, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -35,8 +35,9 @@
 // Test disable on clang/gcc because of a compilation error in the checkPayload template caused by the UniqueIdentifier class (was fine when it was a simple type). TODO: Fix this
 #ifdef _WIN32
 
-#	define CHECK_PAYLOAD(MessageName, ...) checkPayload<la::avdecc::protocol::aemPayload::AecpAem##MessageName##PayloadSize>(la::avdecc::protocol::aemPayload::serialize##MessageName, la::avdecc::protocol::aemPayload::deserialize##MessageName, __VA_ARGS__);
-template<size_t PayloadSize, typename SerializeMethod, typename DeserializeMethod, typename... Parameters>
+#	define CHECK_PAYLOAD(MessageName, ...) checkPayload<true, true, la::avdecc::protocol::aemPayload::AecpAem##MessageName##PayloadSize>(la::avdecc::protocol::aemPayload::serialize##MessageName, la::avdecc::protocol::aemPayload::deserialize##MessageName, __VA_ARGS__);
+#	define CHECK_PAYLOAD_SIZED(PayloadSize, checkSerializePastBuffer, checkDeserializePastBuffer, MessageName, ...) checkPayload<checkSerializePastBuffer, checkDeserializePastBuffer, PayloadSize>(la::avdecc::protocol::aemPayload::serialize##MessageName, la::avdecc::protocol::aemPayload::deserialize##MessageName, __VA_ARGS__);
+template<bool CheckSerializePastBuffer, bool CheckDeserializePastBuffer, size_t PayloadSize, typename SerializeMethod, typename DeserializeMethod, typename... Parameters>
 void checkPayload(SerializeMethod&& serializeMethod, DeserializeMethod&& deserializeMethod, Parameters&&... params)
 {
 	EXPECT_NO_THROW(auto const ser = serializeMethod(std::forward<Parameters>(params)...); EXPECT_EQ(PayloadSize, ser.size());
@@ -46,11 +47,13 @@ void checkPayload(SerializeMethod&& serializeMethod, DeserializeMethod&& deseria
 									EXPECT_EQ(inputTuple, result);)
 		<< "Serialization/deserialization should not throw anything";
 
+	if constexpr (CheckSerializePastBuffer)
 	{
 		auto ser = serializeMethod(std::forward<Parameters>(params)...);
 		EXPECT_THROW(ser << std::uint8_t(0u);, std::invalid_argument) << "Trying to serialize past the buffer should throw";
 	}
 
+	if constexpr (CheckDeserializePastBuffer)
 	{
 		std::array<std::uint8_t, PayloadSize - 1> const buf{ 0u };
 		EXPECT_THROW(deserializeMethod({ buf.data(), buf.size() });, la::avdecc::protocol::aemPayload::IncorrectPayloadSizeException) << "Trying to deserialize past the buffer should throw";
@@ -146,8 +149,10 @@ TEST(AemPayloads, GetStreamInfoCommand)
 TEST(AemPayloads, GetStreamInfoResponse)
 {
 	la::avdecc::entity::model::StreamInfo streamInfo{ la::avdecc::entity::StreamInfoFlags::Connected | la::avdecc::entity::StreamInfoFlags::SavedState, la::avdecc::entity::model::StreamFormat(16132), la::avdecc::UniqueIdentifier(5), std::uint32_t(52), la::avdecc::networkInterface::MacAddress{ 1, 2, 3, 4, 5, 6 }, std::uint8_t(8), la::avdecc::UniqueIdentifier(99), std::uint16_t(1) };
-	CHECK_PAYLOAD(GetStreamInfoResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::StreamInfo{});
-	CHECK_PAYLOAD(GetStreamInfoResponse, la::avdecc::entity::model::DescriptorType::StreamInput, la::avdecc::entity::model::DescriptorIndex(5), streamInfo);
+	la::avdecc::entity::model::StreamInfo streamInfoMilan{ la::avdecc::entity::StreamInfoFlags::Connected | la::avdecc::entity::StreamInfoFlags::SavedState, la::avdecc::entity::model::StreamFormat(16132), la::avdecc::UniqueIdentifier(5), std::uint32_t(52), la::avdecc::networkInterface::MacAddress{ 1, 2, 3, 4, 5, 6 }, std::uint8_t(8), la::avdecc::UniqueIdentifier(99), std::uint16_t(1), la::avdecc::entity::StreamInfoFlagsEx::Registering, la::avdecc::entity::model::ProbingStatus::Active, la::avdecc::protocol::AcmpStatus::ListenerMisbehaving };
+	//CHECK_PAYLOAD_SIZED(la::avdecc::protocol::aemPayload::AecpAemGetStreamInfoResponsePayloadSize, false, true, GetStreamInfoResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::StreamInfo{});
+	//CHECK_PAYLOAD_SIZED(la::avdecc::protocol::aemPayload::AecpAemGetStreamInfoResponsePayloadSize, false, true, GetStreamInfoResponse, la::avdecc::entity::model::DescriptorType::StreamInput, la::avdecc::entity::model::DescriptorIndex(5), streamInfo);
+	CHECK_PAYLOAD_SIZED(la::avdecc::protocol::aemPayload::AecpAemMilanGetStreamInfoResponsePayloadSize, true, false, GetStreamInfoResponse, la::avdecc::entity::model::DescriptorType::StreamOutput, la::avdecc::entity::model::DescriptorIndex(66), streamInfoMilan);
 }
 
 TEST(AemPayloads, SetNameCommand)
@@ -264,6 +269,18 @@ TEST(AemPayloads, GetAvbInfoResponse)
 {
 	la::avdecc::entity::model::AvbInfo avbInfo{ la::avdecc::UniqueIdentifier::getUninitializedUniqueIdentifier(), std::uint32_t(5), std::uint8_t(2), la::avdecc::entity::AvbInfoFlags::AsCapable, la::avdecc::entity::model::MsrpMappings{} };
 	EXPECT_NO_THROW(auto const ser = la::avdecc::protocol::aemPayload::serializeGetAvbInfoResponse(la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), avbInfo); EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemGetAvbInfoResponsePayloadMinSize, ser.size()); auto result = la::avdecc::protocol::aemPayload::deserializeGetAvbInfoResponse({ ser.data(), ser.usedBytes() }); auto const& info = std::get<2>(result); EXPECT_EQ(avbInfo, info);) << "Serialization/deserialization should not throw anything";
+}
+
+TEST(AemPayloads, GetAsPathCommand)
+{
+	CHECK_PAYLOAD(GetAsPathCommand, la::avdecc::entity::model::DescriptorIndex(0));
+	CHECK_PAYLOAD(GetAsPathCommand, la::avdecc::entity::model::DescriptorIndex(5));
+}
+
+TEST(AemPayloads, GetAsPathResponse)
+{
+	la::avdecc::entity::model::AsPath asPath{ la::avdecc::entity::model::PathSequence{} };
+	EXPECT_NO_THROW(auto const ser = la::avdecc::protocol::aemPayload::serializeGetAsPathResponse(la::avdecc::entity::model::DescriptorIndex(0), asPath); EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemGetAsPathResponsePayloadMinSize, ser.size()); auto result = la::avdecc::protocol::aemPayload::deserializeGetAsPathResponse({ ser.data(), ser.usedBytes() }); auto const& path = std::get<1>(result); EXPECT_EQ(asPath, path);) << "Serialization/deserialization should not throw anything";
 }
 
 TEST(AemPayloads, GetAudioMapCommand)

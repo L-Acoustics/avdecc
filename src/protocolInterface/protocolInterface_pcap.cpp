@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2019, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -26,6 +26,8 @@
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
 #include "la/avdecc/internals/protocolMvuAecpdu.hpp"
+#include "la/avdecc/watchDog.hpp"
+#include "la/avdecc/utils.hpp"
 #include "stateMachine/controllerStateMachine.hpp"
 #include "protocolInterface_pcap.hpp"
 #include "pcapInterface.hpp"
@@ -34,9 +36,11 @@
 #include <sstream>
 #include <array>
 #include <thread>
+#include <string>
 #include <unordered_map>
 #include <functional>
 #include <memory>
+#include <chrono>
 
 namespace la
 {
@@ -91,7 +95,7 @@ public:
 				struct pcap_pkthdr* header;
 				std::uint8_t const* pkt_data;
 
-				la::avdecc::setCurrentThreadName("avdecc::PCapInterface::Capture");
+				utils::setCurrentThreadName("avdecc::PCapInterface::Capture");
 				auto* const pcap = _pcap.get();
 
 				while (!_shouldTerminate && (res = _pcapLibrary.next_ex(pcap, &header, &pkt_data)) >= 0)
@@ -118,7 +122,12 @@ public:
 					if ((avtp_sub_type_control & 0xF0) == 0)
 						continue;
 
-					dispatchAvdeccMessage(avtpdu, avtpdu_size, etherLayer2);
+					// Try to detect possible deadlock
+					{
+						_watchDog.registerWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + utils::toHexString(reinterpret_cast<size_t>(this)), std::chrono::milliseconds{ 1000u });
+						dispatchAvdeccMessage(avtpdu, avtpdu_size, etherLayer2);
+						_watchDog.unregisterWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + utils::toHexString(reinterpret_cast<size_t>(this)));
+					}
 				}
 
 				// Notify observers if we exited the loop because of an error
@@ -191,16 +200,16 @@ private:
 		auto error{ ProtocolInterface::Error::NoError };
 
 		// Entity is controller capable
-		if (la::avdecc::hasFlag(entity.getControllerCapabilities(), entity::ControllerCapabilities::Implemented))
+		if (utils::hasFlag(entity.getControllerCapabilities(), entity::ControllerCapabilities::Implemented))
 			error |= _controllerStateMachine.registerLocalEntity(entity);
 
 #pragma message("TODO: Handle talker/listener types")
 		// Entity is listener capable
-		if (la::avdecc::hasFlag(entity.getListenerCapabilities(), entity::ListenerCapabilities::Implemented))
+		if (utils::hasFlag(entity.getListenerCapabilities(), entity::ListenerCapabilities::Implemented))
 			return ProtocolInterface::Error::InvalidEntityType; // Not supported right now
 
 		// Entity is talker capable
-		if (la::avdecc::hasFlag(entity.getTalkerCapabilities(), entity::TalkerCapabilities::Implemented))
+		if (utils::hasFlag(entity.getTalkerCapabilities(), entity::TalkerCapabilities::Implemented))
 			return ProtocolInterface::Error::InvalidEntityType; // Not supported right now
 
 		return error;
@@ -214,14 +223,19 @@ private:
 		return ProtocolInterface::Error::NoError;
 	}
 
-	virtual Error enableEntityAdvertising(entity::LocalEntity const& entity) noexcept override
+	virtual Error setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const /*flags*/, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override
 	{
-		return _controllerStateMachine.enableEntityAdvertising(entity);
+		return _controllerStateMachine.setEntityNeedsAdvertise(entity, interfaceIndex);
 	}
 
-	virtual Error disableEntityAdvertising(entity::LocalEntity& entity) noexcept override
+	virtual Error enableEntityAdvertising(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept override
 	{
-		return _controllerStateMachine.disableEntityAdvertising(entity);
+		return _controllerStateMachine.enableEntityAdvertising(entity, interfaceIndex);
+	}
+
+	virtual Error disableEntityAdvertising(entity::LocalEntity& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept override
+	{
+		return _controllerStateMachine.disableEntityAdvertising(entity, interfaceIndex);
 	}
 
 	virtual Error discoverRemoteEntities() const noexcept override
@@ -234,22 +248,27 @@ private:
 		return _controllerStateMachine.discoverRemoteEntity(entityID);
 	}
 
-	virtual Error sendAdpMessage(Adpdu::UniquePointer&& adpdu) const noexcept override
+	virtual bool isDirectMessageSupported() const noexcept override
 	{
-		// Directly send the message on the network
-		return sendMessage(static_cast<Adpdu const&>(*adpdu));
+		return true;
 	}
 
-	virtual Error sendAecpMessage(Aecpdu::UniquePointer&& aecpdu) const noexcept override
+	virtual Error sendAdpMessage(Adpdu const& adpdu) const noexcept override
 	{
 		// Directly send the message on the network
-		return sendMessage(static_cast<Aecpdu const&>(*aecpdu));
+		return sendMessage(adpdu);
 	}
 
-	virtual Error sendAcmpMessage(Acmpdu::UniquePointer&& acmpdu) const noexcept override
+	virtual Error sendAecpMessage(Aecpdu const& aecpdu) const noexcept override
 	{
 		// Directly send the message on the network
-		return sendMessage(static_cast<Acmpdu const&>(*acmpdu));
+		return sendMessage(aecpdu);
+	}
+
+	virtual Error sendAcmpMessage(Acmpdu const& acmpdu) const noexcept override
+	{
+		// Directly send the message on the network
+		return sendMessage(acmpdu);
 	}
 
 	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& /*macAddress*/, AecpCommandResultHandler const& onResult) const noexcept override
@@ -278,19 +297,24 @@ private:
 		return sendMessage(static_cast<Acmpdu const&>(*acmpdu));
 	}
 
-	void lock() noexcept override
+	virtual void lock() noexcept override
 	{
 		_controllerStateMachine.lock();
 	}
 
-	void unlock() noexcept override
+	virtual void unlock() noexcept override
 	{
 		_controllerStateMachine.unlock();
 	}
 
+	virtual bool isSelfLocked() const noexcept override
+	{
+		return _controllerStateMachine.isSelfLocked();
+	}
+
 private:
 	// stateMachine::ControllerStateMachine::Delegate overrides
-	virtual void onLocalEntityOnline(la::avdecc::entity::DiscoveredEntity const& entity) noexcept override
+	virtual void onLocalEntityOnline(la::avdecc::entity::Entity const& entity) noexcept override
 	{
 		// Notify observers
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onLocalEntityOnline, this, entity);
@@ -302,13 +326,13 @@ private:
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onLocalEntityOffline, this, entityID);
 	}
 
-	virtual void onLocalEntityUpdated(la::avdecc::entity::DiscoveredEntity const& entity) noexcept override
+	virtual void onLocalEntityUpdated(la::avdecc::entity::Entity const& entity) noexcept override
 	{
 		// Notify observers
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onLocalEntityUpdated, this, entity);
 	}
 
-	virtual void onRemoteEntityOnline(la::avdecc::entity::DiscoveredEntity const& entity) noexcept override
+	virtual void onRemoteEntityOnline(la::avdecc::entity::Entity const& entity) noexcept override
 	{
 		// Notify observers
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityOnline, this, entity);
@@ -320,7 +344,7 @@ private:
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityOffline, this, entityID);
 	}
 
-	virtual void onRemoteEntityUpdated(la::avdecc::entity::DiscoveredEntity const& entity) noexcept override
+	virtual void onRemoteEntityUpdated(la::avdecc::entity::Entity const& entity) noexcept override
 	{
 		// Notify observers
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityUpdated, this, entity);
@@ -569,6 +593,8 @@ private:
 	}
 
 	// Private variables
+	watchDog::WatchDog::SharedPointer _watchDogSharedPointer{ watchDog::WatchDog::getInstance() };
+	watchDog::WatchDog& _watchDog{ *_watchDogSharedPointer };
 	PcapInterface _pcapLibrary;
 	std::unique_ptr<pcap_t, std::function<void(pcap_t*)>> _pcap{ nullptr, nullptr };
 	int _fd{ -1 };

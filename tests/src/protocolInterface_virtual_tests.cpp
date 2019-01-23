@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2019, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -70,15 +70,15 @@ TEST(ProtocolInterfaceVirtual, SendMessage)
 	{
 	public:
 		virtual void onTransportError(la::avdecc::protocol::ProtocolInterface* const /*pi*/) noexcept override {}
-		virtual void onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept override {}
+		virtual void onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override {}
 		virtual void onLocalEntityOffline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const /*entityID*/) noexcept override {}
-		virtual void onLocalEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept override {}
-		virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept override
+		virtual void onLocalEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override {}
+		virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override
 		{
 			entityOnlinePromise.set_value();
 		}
 		virtual void onRemoteEntityOffline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const /*entityID*/) noexcept override {}
-		virtual void onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept override {}
+		virtual void onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override {}
 		virtual void onAecpCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept override {}
 		virtual void onAecpUnsolicitedResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept override {}
 		virtual void onAcmpSniffedCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept override {}
@@ -93,30 +93,30 @@ TEST(ProtocolInterfaceVirtual, SendMessage)
 	intfc2->registerObserver(&obs);
 
 	// Build adpdu frame
-	auto adpdu = la::avdecc::protocol::Adpdu::create();
+	auto adpdu = la::avdecc::protocol::Adpdu{};
 	// Set Ether2 fields
-	adpdu->setSrcAddress(intfc1->getMacAddress());
-	adpdu->setDestAddress(la::avdecc::protocol::Adpdu::Multicast_Mac_Address);
+	adpdu.setSrcAddress(intfc1->getMacAddress());
+	adpdu.setDestAddress(la::avdecc::protocol::Adpdu::Multicast_Mac_Address);
 	// Set ADP fields
-	adpdu->setMessageType(la::avdecc::protocol::AdpMessageType::EntityAvailable);
-	adpdu->setValidTime(2);
-	adpdu->setEntityID(la::avdecc::UniqueIdentifier{ 0x0001020304050607 });
-	adpdu->setEntityModelID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
-	adpdu->setEntityCapabilities(la::avdecc::entity::EntityCapabilities::None);
-	adpdu->setTalkerStreamSources(0);
-	adpdu->setTalkerCapabilities(la::avdecc::entity::TalkerCapabilities::None);
-	adpdu->setListenerStreamSinks(0);
-	adpdu->setListenerCapabilities(la::avdecc::entity::ListenerCapabilities::None);
-	adpdu->setControllerCapabilities(la::avdecc::entity::ControllerCapabilities::Implemented);
-	adpdu->setAvailableIndex(1);
-	adpdu->setGptpGrandmasterID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
-	adpdu->setGptpDomainNumber(0);
-	adpdu->setIdentifyControlIndex(0);
-	adpdu->setInterfaceIndex(0);
-	adpdu->setAssociationID(la::avdecc::UniqueIdentifier{});
+	adpdu.setMessageType(la::avdecc::protocol::AdpMessageType::EntityAvailable);
+	adpdu.setValidTime(2);
+	adpdu.setEntityID(la::avdecc::UniqueIdentifier{ 0x0001020304050607 });
+	adpdu.setEntityModelID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
+	adpdu.setEntityCapabilities(la::avdecc::entity::EntityCapabilities::None);
+	adpdu.setTalkerStreamSources(0);
+	adpdu.setTalkerCapabilities(la::avdecc::entity::TalkerCapabilities::None);
+	adpdu.setListenerStreamSinks(0);
+	adpdu.setListenerCapabilities(la::avdecc::entity::ListenerCapabilities::None);
+	adpdu.setControllerCapabilities(la::avdecc::entity::ControllerCapabilities::Implemented);
+	adpdu.setAvailableIndex(1);
+	adpdu.setGptpGrandmasterID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
+	adpdu.setGptpDomainNumber(0);
+	adpdu.setIdentifyControlIndex(0);
+	adpdu.setInterfaceIndex(0);
+	adpdu.setAssociationID(la::avdecc::UniqueIdentifier{});
 
 	// Send the adp message
-	intfc1->sendAdpMessage(std::move(adpdu));
+	intfc1->sendAdpMessage(adpdu);
 
 	// Message is synchroneous, timeout should never trigger
 	auto const status = entityOnlinePromise.get_future().wait_for(std::chrono::milliseconds(10));
@@ -146,15 +146,15 @@ TEST(ProtocolInterfaceVirtual, TransportError)
 			pi->lock(); // This will use CSM's lock
 			pi->unlock();
 		}
-		virtual void onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept override {}
+		virtual void onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override {}
 		virtual void onLocalEntityOffline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const /*entityID*/) noexcept override {}
-		virtual void onLocalEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept override {}
-		virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept override
+		virtual void onLocalEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override {}
+		virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override
 		{
 			entityOnlinePromise.set_value();
 		}
 		virtual void onRemoteEntityOffline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const /*entityID*/) noexcept override {}
-		virtual void onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept override {}
+		virtual void onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override {}
 		virtual void onAecpCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept override {}
 		virtual void onAecpUnsolicitedResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept override {}
 		virtual void onAcmpSniffedCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept override {}
@@ -184,30 +184,30 @@ TEST(ProtocolInterfaceVirtual, TransportError)
 	intfc->registerObserver(&obs);
 
 	// Build adpdu frame
-	auto adpdu = la::avdecc::protocol::Adpdu::create();
+	auto adpdu = la::avdecc::protocol::Adpdu{};
 	// Set Ether2 fields
-	adpdu->setSrcAddress(intfc->getMacAddress());
-	adpdu->setDestAddress(la::avdecc::protocol::Adpdu::Multicast_Mac_Address);
+	adpdu.setSrcAddress(intfc->getMacAddress());
+	adpdu.setDestAddress(la::avdecc::protocol::Adpdu::Multicast_Mac_Address);
 	// Set ADP fields
-	adpdu->setMessageType(la::avdecc::protocol::AdpMessageType::EntityAvailable);
-	adpdu->setValidTime(0);
-	adpdu->setEntityID(la::avdecc::UniqueIdentifier{ 0x0001020304050607 });
-	adpdu->setEntityModelID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
-	adpdu->setEntityCapabilities(la::avdecc::entity::EntityCapabilities::None);
-	adpdu->setTalkerStreamSources(0);
-	adpdu->setTalkerCapabilities(la::avdecc::entity::TalkerCapabilities::None);
-	adpdu->setListenerStreamSinks(0);
-	adpdu->setListenerCapabilities(la::avdecc::entity::ListenerCapabilities::None);
-	adpdu->setControllerCapabilities(la::avdecc::entity::ControllerCapabilities::Implemented);
-	adpdu->setAvailableIndex(0);
-	adpdu->setGptpGrandmasterID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
-	adpdu->setGptpDomainNumber(0);
-	adpdu->setIdentifyControlIndex(0);
-	adpdu->setInterfaceIndex(0);
-	adpdu->setAssociationID(la::avdecc::UniqueIdentifier{});
+	adpdu.setMessageType(la::avdecc::protocol::AdpMessageType::EntityAvailable);
+	adpdu.setValidTime(0);
+	adpdu.setEntityID(la::avdecc::UniqueIdentifier{ 0x0001020304050607 });
+	adpdu.setEntityModelID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
+	adpdu.setEntityCapabilities(la::avdecc::entity::EntityCapabilities::None);
+	adpdu.setTalkerStreamSources(0);
+	adpdu.setTalkerCapabilities(la::avdecc::entity::TalkerCapabilities::None);
+	adpdu.setListenerStreamSinks(0);
+	adpdu.setListenerCapabilities(la::avdecc::entity::ListenerCapabilities::None);
+	adpdu.setControllerCapabilities(la::avdecc::entity::ControllerCapabilities::Implemented);
+	adpdu.setAvailableIndex(0);
+	adpdu.setGptpGrandmasterID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
+	adpdu.setGptpDomainNumber(0);
+	adpdu.setIdentifyControlIndex(0);
+	adpdu.setInterfaceIndex(0);
+	adpdu.setAssociationID(la::avdecc::UniqueIdentifier{});
 
 	// Send the adp message
-	intfc->sendAdpMessage(std::move(adpdu));
+	intfc->sendAdpMessage(adpdu);
 
 	auto status = entityOnlinePromise.get_future().wait_for(std::chrono::milliseconds(50));
 	ASSERT_NE(std::future_status::timeout, status);

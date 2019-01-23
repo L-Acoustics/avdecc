@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2019, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -26,6 +26,8 @@
 #pragma once
 
 #include <la/avdecc/avdecc.hpp>
+#include <la/avdecc/utils.hpp>
+#include <la/avdecc/watchDog.hpp>
 #include <la/avdecc/internals/exception.hpp>
 #include "avdeccControlledEntityModel.hpp"
 #include "exports.hpp"
@@ -33,6 +35,8 @@
 #include <memory>
 #include <mutex>
 #include <vector>
+#include <chrono>
+#include <optional>
 
 namespace la
 {
@@ -73,23 +77,45 @@ public:
 		Type const _type{ Type::None };
 	};
 
-	enum class Compatibility
+	/** Compatibility for the Entity */
+	enum class CompatibilityFlag : std::uint8_t
 	{
-		NotCompliant, /** Not fully IEEE1722.1 compliant entity */
-		IEEE17221, /** Classic IEEE1722.1 entity */
-		Milan, /** MILAN compatible entity */
+		None = 0, /** Not fully IEEE1722.1 compliant entity */
+
+		IEEE17221 = 1u << 0, /** Classic IEEE1722.1 entity */
+		Milan = 1u << 1, /** MILAN compatible entity */
+
+		Misbehaving = 1u << 7, /** Entity is sending correctly formed messages but with incoherent values that can cause undefined behavior. */
+	};
+	using CompatibilityFlags = utils::EnumBitfield<CompatibilityFlag>;
+
+	/** AVB Interface Link Status */
+	enum class InterfaceLinkStatus
+	{
+		Unknown = 0, /** Link status is unknown, might be Up or Down */
+		Down = 1, /** Interface is down */
+		Up = 2, /** Interface is Up */
 	};
 
 	// Getters
-	virtual Compatibility getCompatibility() const noexcept = 0;
+	virtual CompatibilityFlags getCompatibilityFlags() const noexcept = 0;
 	virtual bool gotFatalEnumerationError() const noexcept = 0; // True if the controller had a fatal error during entity information retrieval (leading to Exception::Type::EnumerationError if any throwing method is called).
+	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept = 0;
 	virtual bool isAcquired() const noexcept = 0; // Is entity acquired by the controller it's attached to
 	virtual bool isAcquiring() const noexcept = 0; // Is the attached controller trying to acquire the entity
 	virtual bool isAcquiredByOther() const noexcept = 0; // Is entity acquired by another controller
+	virtual bool isLocked() const noexcept = 0; // Is entity locked by the controller it's attached to
+	virtual bool isLocking() const noexcept = 0; // Is the attached controller trying to lock the entity
+	virtual bool isLockedByOther() const noexcept = 0; // Is entity locked by another controller
 	virtual bool isStreamInputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 	virtual bool isStreamOutputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
+	virtual InterfaceLinkStatus getAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex) const = 0;
+	virtual model::AcquireState getAcquireState() const noexcept = 0;
 	virtual UniqueIdentifier getOwningControllerID() const noexcept = 0;
+	virtual model::LockState getLockState() const noexcept = 0;
+	virtual UniqueIdentifier getLockingControllerID() const noexcept = 0;
 	virtual entity::Entity const& getEntity() const noexcept = 0;
+	virtual entity::model::MilanInfo const& getMilanInfo() const noexcept = 0;
 
 	virtual model::EntityNode const& getEntityNode() const = 0; // Throws Exception::NotSupported if EM not supported by the Entity
 	virtual model::ConfigurationNode const& getConfigurationNode(entity::model::ConfigurationIndex const configurationIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
@@ -101,6 +127,7 @@ public:
 	virtual model::RedundantStreamNode const& getRedundantStreamOutputNode(entity::model::ConfigurationIndex const configurationIndex, model::VirtualIndex const redundantStreamIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if redundantStreamIndex do not exist
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 	virtual model::AudioUnitNode const& getAudioUnitNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if audioUnitIndex do not exist
+	virtual model::AvbInterfaceNode const& getAvbInterfaceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if avbInterfaceIndex do not exist
 	virtual model::ClockSourceNode const& getClockSourceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if clockSourceIndex do not exist
 	virtual model::StreamPortNode const& getStreamPortInputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if audioUnitIndex or streamPortIndex do not exist
 	virtual model::StreamPortNode const& getStreamPortOutputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if audioUnitIndex or streamPortIndex do not exist
@@ -128,8 +155,6 @@ public:
 	/** BasicLockable concept 'unlock' method for the whole ControlledEntity */
 	virtual void unlock() noexcept = 0;
 
-	virtual bool isSelfLocked() const noexcept = 0;
-
 	// Deleted compiler auto-generated methods
 	ControlledEntity(ControlledEntity&&) = delete;
 	ControlledEntity(ControlledEntity const&) = delete;
@@ -147,6 +172,7 @@ protected:
 /* ************************************************************************** */
 /* ControlledEntityGuard                                                      */
 /* ************************************************************************** */
+/** A guard around a ControlledEntity that guarantees it won't be modified while the Guard is alive. WARNING: The guard should not be kept for more than a few milliseconds. */
 class ControlledEntityGuard final
 {
 public:
@@ -180,6 +206,13 @@ public:
 		return _controlledEntity != nullptr;
 	}
 
+	/** Releases the Guarded ControlledEntity (and the exclusive access to it). */
+	void reset() noexcept
+	{
+		unlock();
+		_controlledEntity = nullptr;
+	}
+
 	// Default constructor to allow creation of an empty Guard
 	ControlledEntityGuard() noexcept {}
 
@@ -200,20 +233,29 @@ public:
 private:
 	friend class ControllerImpl;
 	using SharedControlledEntity = std::shared_ptr<ControlledEntity>;
-	ControlledEntityGuard(SharedControlledEntity entity)
+	// Ownership (and locked state) is transfered during construction
+	ControlledEntityGuard(SharedControlledEntity&& entity)
 		: _controlledEntity(std::move(entity))
 	{
 		if (_controlledEntity)
-			_controlledEntity->lock();
+		{
+			_watchDog.registerWatch("avdecc::controller::ControlledEntityGuard::" + utils::toHexString(reinterpret_cast<size_t>(this)), std::chrono::milliseconds{ 500u });
+		}
 	}
 
 	void unlock() noexcept
 	{
 		if (_controlledEntity)
+		{
+			_watchDog.unregisterWatch("avdecc::controller::ControlledEntityGuard::" + utils::toHexString(reinterpret_cast<size_t>(this)));
+			// We can unlock, we got ownership (and locked state) during construction
 			_controlledEntity->unlock();
+		}
 	}
 
 	SharedControlledEntity _controlledEntity{ nullptr };
+	watchDog::WatchDog::SharedPointer _watchDogSharedPointer{ watchDog::WatchDog::getInstance() };
+	watchDog::WatchDog& _watchDog{ *_watchDogSharedPointer };
 };
 
 } // namespace controller

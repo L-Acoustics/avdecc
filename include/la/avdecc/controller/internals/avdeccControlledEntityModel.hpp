@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2019, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -51,15 +51,26 @@ class ControlledEntity;
 
 namespace model
 {
-using VirtualIndex = entity::model::DescriptorIndex;
+using VirtualIndex = std::uint32_t;
 
 enum class AcquireState
 {
 	Undefined,
+	NotSupported,
 	NotAcquired,
 	TryAcquire,
 	Acquired,
 	AcquiredByOther,
+};
+
+enum class LockState
+{
+	Undefined,
+	NotSupported,
+	NotLocked,
+	TryLock,
+	Locked,
+	LockedByOther,
 };
 
 struct Node
@@ -70,8 +81,6 @@ struct Node
 struct EntityModelNode : public Node
 {
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
-	AcquireState acquireState{ AcquireState::Undefined };
-	// TODO: Add LockState
 };
 
 struct VirtualNode : public Node

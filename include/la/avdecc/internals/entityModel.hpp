@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2019, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -40,6 +40,7 @@
 #include <set>
 #include <tuple>
 #include <vector>
+#include <optional>
 
 namespace la
 {
@@ -49,6 +50,11 @@ namespace entity
 {
 namespace model
 {
+constexpr DescriptorIndex getInvalidDescriptorIndex() noexcept
+{
+	return DescriptorIndex(0xFFFF);
+}
+
 constexpr StreamFormat getNullStreamFormat() noexcept
 {
 	return StreamFormat(0u);
@@ -93,7 +99,7 @@ struct ConfigurationDescriptor
 {
 	AvdeccFixedString objectName{};
 	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
-	std::unordered_map<DescriptorType, std::uint16_t, la::avdecc::EnumClassHash> descriptorCounts{};
+	std::unordered_map<DescriptorType, std::uint16_t, la::avdecc::utils::EnumClassHash> descriptorCounts{};
 };
 
 /** AUDIO_UNIT Descriptor - Clause 7.2.3 */
@@ -184,7 +190,7 @@ struct AvbInterfaceDescriptor
 	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
 	networkInterface::MacAddress macAddress{};
 	AvbInterfaceFlags interfaceFlags{ AvbInterfaceFlags::None };
-	UniqueIdentifier clockIdentity{ 0u };
+	UniqueIdentifier clockIdentity{};
 	std::uint8_t priority1{ 0xff };
 	std::uint8_t clockClass{ 0xff };
 	std::uint16_t offsetScaledLogVariance{ 0x0000 };
@@ -347,11 +353,15 @@ struct StreamInfo
 	std::uint8_t msrpFailureCode{ 0u };
 	std::uint64_t msrpFailureBridgeID{ 0u };
 	std::uint16_t streamVlanID{ 0u };
+	// Milan additions
+	std::optional<StreamInfoFlagsEx> streamInfoFlagsEx{ std::nullopt };
+	std::optional<ProbingStatus> probingStatus{ std::nullopt };
+	std::optional<protocol::AcmpStatus> acmpStatus{ std::nullopt };
 };
 
 constexpr bool operator==(StreamInfo const& lhs, StreamInfo const& rhs) noexcept
 {
-	return (lhs.streamInfoFlags == rhs.streamInfoFlags) && (lhs.streamFormat == rhs.streamFormat) && (lhs.streamID == rhs.streamID) && (lhs.msrpAccumulatedLatency == rhs.msrpAccumulatedLatency) && (lhs.streamDestMac == rhs.streamDestMac) && (lhs.msrpFailureCode == rhs.msrpFailureCode) && (lhs.msrpFailureBridgeID == rhs.msrpFailureBridgeID) && (lhs.streamVlanID == rhs.streamVlanID);
+	return (lhs.streamInfoFlags == rhs.streamInfoFlags) && (lhs.streamFormat == rhs.streamFormat) && (lhs.streamID == rhs.streamID) && (lhs.msrpAccumulatedLatency == rhs.msrpAccumulatedLatency) && (lhs.streamDestMac == rhs.streamDestMac) && (lhs.msrpFailureCode == rhs.msrpFailureCode) && (lhs.msrpFailureBridgeID == rhs.msrpFailureBridgeID) && (lhs.streamVlanID == rhs.streamVlanID) && (lhs.streamInfoFlagsEx == rhs.streamInfoFlagsEx) && (lhs.probingStatus == rhs.probingStatus) && (lhs.acmpStatus == rhs.acmpStatus);
 }
 
 constexpr bool operator!=(StreamInfo const& lhs, StreamInfo const& rhs) noexcept
@@ -378,6 +388,31 @@ constexpr bool operator!=(AvbInfo const& lhs, AvbInfo const& rhs) noexcept
 {
 	return !(lhs == rhs);
 }
+
+/** GET_AS_PATH Dynamic Information - Clause 7.4.41.2 */
+struct AsPath
+{
+	entity::model::PathSequence sequence{};
+};
+
+inline bool operator==(AsPath const& lhs, AsPath const& rhs) noexcept
+{
+	return lhs.sequence == rhs.sequence;
+}
+
+inline bool operator!=(AsPath const& lhs, AsPath const& rhs) noexcept
+{
+	return !(lhs == rhs);
+}
+
+/** GET_MILAN_INFO - Milan Clause 7.4.1 */
+struct MilanInfo
+{
+	std::uint32_t protocolVersion{ 0u };
+	protocol::MvuFeaturesFlags featuresFlags{ protocol::MvuFeaturesFlags::None };
+	std::uint32_t certificationVersion{ 0u };
+};
+
 
 /**
 * @brief Make a UniqueIdentifier from vendorID, deviceID and modelID.

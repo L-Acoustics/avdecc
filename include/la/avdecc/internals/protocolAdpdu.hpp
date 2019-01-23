@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2019, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -114,11 +114,11 @@ public:
 	{
 		_gptpDomainNumber = gptpDomainNumber;
 	}
-	void LA_AVDECC_CALL_CONVENTION setIdentifyControlIndex(std::uint16_t const identifyControlIndex) noexcept
+	void LA_AVDECC_CALL_CONVENTION setIdentifyControlIndex(entity::model::ControlIndex const identifyControlIndex) noexcept
 	{
 		_identifyControlIndex = identifyControlIndex;
 	}
-	void LA_AVDECC_CALL_CONVENTION setInterfaceIndex(std::uint16_t const interfaceIndex) noexcept
+	void LA_AVDECC_CALL_CONVENTION setInterfaceIndex(entity::model::AvbInterfaceIndex const interfaceIndex) noexcept
 	{
 		_interfaceIndex = interfaceIndex;
 	}
@@ -180,11 +180,11 @@ public:
 	{
 		return _gptpDomainNumber;
 	}
-	std::uint16_t LA_AVDECC_CALL_CONVENTION getIdentifyControlIndex() const noexcept
+	entity::model::ControlIndex LA_AVDECC_CALL_CONVENTION getIdentifyControlIndex() const noexcept
 	{
 		return _identifyControlIndex;
 	}
-	std::uint16_t LA_AVDECC_CALL_CONVENTION getInterfaceIndex() const noexcept
+	entity::model::AvbInterfaceIndex LA_AVDECC_CALL_CONVENTION getInterfaceIndex() const noexcept
 	{
 		return _interfaceIndex;
 	}
@@ -227,8 +227,8 @@ private:
 	UniqueIdentifier _gptpGrandmasterID{};
 	std::uint8_t _gptpDomainNumber{ 0u };
 	// Reserved 24bits
-	std::uint16_t _identifyControlIndex{ 0u };
-	std::uint16_t _interfaceIndex{ 0u };
+	entity::model::ControlIndex _identifyControlIndex{ 0u };
+	entity::model::AvbInterfaceIndex _interfaceIndex{ 0u };
 	UniqueIdentifier _associationID{};
 	// Reserved 32bits
 
