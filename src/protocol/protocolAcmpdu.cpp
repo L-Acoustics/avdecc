@@ -108,7 +108,7 @@ Acmpdu::UniquePointer LA_AVDECC_CALL_CONVENTION Acmpdu::copy() const
 }
 
 /** Entry point */
-Acmpdu* LA_AVDECC_CALL_CONVENTION Acmpdu::createRawAcmpdu()
+Acmpdu* LA_AVDECC_CALL_CONVENTION Acmpdu::createRawAcmpdu() noexcept
 {
 	return new Acmpdu();
 }

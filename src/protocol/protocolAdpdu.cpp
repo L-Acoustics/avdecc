@@ -119,7 +119,7 @@ Adpdu::UniquePointer LA_AVDECC_CALL_CONVENTION Adpdu::copy() const
 }
 
 /** Entry point */
-Adpdu* LA_AVDECC_CALL_CONVENTION Adpdu::createRawAdpdu()
+Adpdu* LA_AVDECC_CALL_CONVENTION Adpdu::createRawAdpdu() noexcept
 {
 	return new Adpdu();
 }

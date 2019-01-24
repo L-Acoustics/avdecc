@@ -199,14 +199,12 @@ public:
 		return _commonInformation.associationID;
 	}
 
-	/** Generates an EID from a MacAddress (OUI-36) and a ProgID. This method is provided for backward compatibility, ProtocolInterface::getDynamicEID */
+	/** Generates an EID from a MacAddress (OUI-36) and a ProgID. This method is provided for backward compatibility, use ProtocolInterface::getDynamicEID instead. */
 	static UniqueIdentifier generateEID(la::avdecc::networkInterface::MacAddress const& macAddress, std::uint16_t const progID)
 	{
 		UniqueIdentifier::value_type eid{ 0u };
 		if (macAddress.size() != 6)
 			throw Exception("Invalid MAC address size");
-		if (progID == 0 || progID == 0xFFFF || progID == 0xFFFE)
-			throw Exception("Reserved value for Entity's progID value: " + std::to_string(progID));
 		eid += macAddress[0];
 		eid <<= 8;
 		eid += macAddress[1];

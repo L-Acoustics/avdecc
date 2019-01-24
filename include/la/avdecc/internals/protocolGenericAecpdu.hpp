@@ -52,7 +52,7 @@ public:
 	* @details Creates a new GenericAecpdu as a unique pointer.
 	* @return A new GenericAecpdu as a Aecpdu::UniquePointer.
 	*/
-	static UniquePointer create()
+	static UniquePointer create() noexcept
 	{
 		auto deleter = [](Aecpdu* self)
 		{
@@ -90,7 +90,7 @@ public:
 
 private:
 	/** Entry point */
-	static LA_AVDECC_API GenericAecpdu* LA_AVDECC_CALL_CONVENTION createRawGenericAecpdu();
+	static LA_AVDECC_API GenericAecpdu* LA_AVDECC_CALL_CONVENTION createRawGenericAecpdu() noexcept;
 
 	/** Destroy method for COM-like interface */
 	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION destroy() noexcept override;
