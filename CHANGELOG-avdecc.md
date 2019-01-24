@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Changed
 - Removed macAddress parameter from sendAecpCommand and sendAecpResponse (automatically getting it from the AECPDU)
+- Returning ProtocolInterface::Error::InvalidParameters when trying to enable/disable advertising on a non-existent InterfaceIndex
 
 ### Fixed
 - Incorrect error returned by EndStation's LocalEntity creation code
+- No longer sending ADP DEPARTING message twice when destroying a LocalEntity
 
 ## [2.8.0] - 2019-01-23
 ### Added

@@ -90,6 +90,12 @@ public:
 		return _commonInformation;
 	}
 
+	/** Returns true if the specified interfaceIndex exists, false otherwise */
+	bool hasInterfaceIndex(model::AvbInterfaceIndex const interfaceIndex) const noexcept
+	{
+		return _interfaceInformation.count(interfaceIndex) > 0;
+	}
+
 	/** Gets non-modifiable InterfaceInformation */
 	InterfaceInformation const& getInterfaceInformation(model::AvbInterfaceIndex const interfaceIndex) const
 	{

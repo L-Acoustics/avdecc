@@ -71,7 +71,7 @@ public:
 		InvalidEntityType = 5, /**< Invalid entity type for the operation. */
 		DuplicateLocalEntityID = 6, /**< The EntityID specified in a LocalEntity is already in use by another local entity. */
 		InterfaceNotFound = 7, /**< Specified interfaceName not found. */
-		InvalidParameters = 8, /**< Specified parameters are invalid (either interfaceName and/or macAddress). */
+		InvalidParameters = 8, /**< Specified parameters are invalid. */
 		InterfaceNotSupported = 9, /**< This protocol interface is not in the list of supported protocol interfaces. */
 		MessageNotSupported = 10, /**< This type of message is not supported by this protocol interface. */
 		InternalError = 99, /**< Internal error, please report the issue. */

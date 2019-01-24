@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Fully removed acquire/lock state from descriptors, the controller only support it at entity level (globally)
 
 ### Fixed
-- Preventing a crash in upper layers caused by toxic entities (Motu Ultralite card sending a GET_RX_STATE_RESPONSE with a non-existant stream index)
+- Preventing a crash in upper layers caused by toxic entities (Motu Ultralite card sending a GET_RX_STATE_RESPONSE with a non-existent stream index)
 - Properly monitoring changes in dynamic mappings
 - Updated GetMilanInfo to match Milan specification
 - Dynamic mappings in redundancy mode not correctly set for StreamPortOutput

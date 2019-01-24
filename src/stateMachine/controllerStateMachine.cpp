@@ -635,7 +635,12 @@ ProtocolInterface::Error ControllerStateMachine::enableEntityAdvertising(entity:
 	// If interfaceIndex is specified, only enable advertising for this interface
 	if (interfaceIndex)
 	{
-		localEntity.nextAdvertiseTime[*interfaceIndex] = {}; // Set next advertise time to minimum value so we advertise ASAP
+		auto const idx = *interfaceIndex;
+		if (!entity.hasInterfaceIndex(idx))
+		{
+			return ProtocolInterface::Error::InvalidParameters;
+		}
+		localEntity.nextAdvertiseTime[idx] = {}; // Set next advertise time to minimum value so we advertise ASAP
 	}
 	else
 	{
@@ -665,10 +670,15 @@ ProtocolInterface::Error ControllerStateMachine::disableEntityAdvertising(entity
 	// If interfaceIndex is specified
 	if (interfaceIndex)
 	{
-		// Send a departing message, if advertising was enabled
-		if (localEntity.nextAdvertiseTime.erase(*interfaceIndex) != 0)
+		auto const idx = *interfaceIndex;
+		if (!entity.hasInterfaceIndex(idx))
 		{
-			auto frame = makeEntityDepartingMessage(entity, *interfaceIndex);
+			return ProtocolInterface::Error::InvalidParameters;
+		}
+		// Send a departing message, if advertising was enabled
+		if (localEntity.nextAdvertiseTime.erase(idx) != 0)
+		{
+			auto frame = makeEntityDepartingMessage(entity, idx);
 			_delegate->sendMessage(frame);
 		}
 	}
@@ -682,6 +692,7 @@ ProtocolInterface::Error ControllerStateMachine::disableEntityAdvertising(entity
 			auto frame = makeEntityDepartingMessage(entity, avbInterfaceIndex);
 			_delegate->sendMessage(frame);
 		}
+		localEntity.nextAdvertiseTime.clear();
 	}
 
 	return ProtocolInterface::Error::NoError;

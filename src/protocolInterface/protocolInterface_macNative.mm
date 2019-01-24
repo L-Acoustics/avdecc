@@ -871,7 +871,13 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	// If interfaceIndex is specified, only enable advertising for this interface
 	if (interfaceIndex)
 	{
-		[self.interface.entityDiscovery addLocalEntity:[BridgeInterface makeAVB17221Entity:entity interfaceIndex:*interfaceIndex] error:&error];
+		auto const idx = *interfaceIndex;
+		if (!entity.hasInterfaceIndex(idx))
+		{
+			return la::avdecc::protocol::ProtocolInterface::Error::InvalidParameters;
+		}
+
+		[self.interface.entityDiscovery addLocalEntity:[BridgeInterface makeAVB17221Entity:entity interfaceIndex:idx] error:&error];
 		if (error != nullptr)
 			return [BridgeInterface getProtocolError:error];
 	}
@@ -895,6 +901,16 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 
 - (la::avdecc::protocol::ProtocolInterface::Error)disableEntityAdvertising:(la::avdecc::entity::LocalEntity const&)entity interfaceIndex:(std::optional<la::avdecc::entity::model::AvbInterfaceIndex>)interfaceIndex {
 	NSError* error{ nullptr };
+
+	// If interfaceIndex is specified
+	if (interfaceIndex)
+	{
+		auto const idx = *interfaceIndex;
+		if (!entity.hasInterfaceIndex(idx))
+		{
+			return la::avdecc::protocol::ProtocolInterface::Error::InvalidParameters;
+		}
+	}
 
 	[self.interface.entityDiscovery removeLocalEntity:entity.getEntityID() error:&error];
 	if (error != nullptr)

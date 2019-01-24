@@ -33,6 +33,19 @@ function(remove_vs_deprecated_warnings TARGET_NAME)
 endfunction(remove_vs_deprecated_warnings)
 
 ###############################################################################
+# Returns TRUE if TARGET is a macOS bundle application
+function(is_macos_bundle TARGET_NAME IS_BUNDLE)
+	if(APPLE)
+		get_target_property(isBundle ${TARGET_NAME} MACOSX_BUNDLE)
+		if(${isBundle})
+			set(${IS_BUNDLE} TRUE PARENT_SCOPE)
+			return()
+		endif()
+	endif()
+	set(${IS_BUNDLE} FALSE PARENT_SCOPE)
+endfunction(is_macos_bundle)
+
+###############################################################################
 # Force symbols file generation for build configs (pdb or dSYM)
 # Applies on a target, must be called after target has been defined with
 # 'add_library' or 'add_executable'.
@@ -90,7 +103,7 @@ function(copy_symbols TARGET_NAME)
 		if(${targetType} STREQUAL "SHARED_LIBRARY")
 			install(FILES "$<TARGET_FILE:${TARGET_NAME}>.dSYM" DESTINATION "${SYMBOLS_DEST_PATH}" CONFIGURATIONS Release Debug)
 		elseif(${targetType} STREQUAL "EXECUTABLE")
-			get_target_property(isBundle ${TARGET_NAME} MACOSX_BUNDLE)
+			is_macos_bundle(${TARGET_NAME} isBundle)
 			if(${isBundle})
 				install(FILES "${CMAKE_CURRENT_BINARY_DIR}/\${CMAKE_INSTALL_CONFIG_NAME}/$<TARGET_FILE_NAME:${TARGET_NAME}>.app.dSYM" DESTINATION "${SYMBOLS_DEST_PATH}" CONFIGURATIONS Release Debug)
 			else()
@@ -256,7 +269,7 @@ function(setup_executable_options TARGET_NAME)
 
 	# Set rpath for macOS
 	if(APPLE)
-		get_target_property(isBundle ${TARGET_NAME} MACOSX_BUNDLE)
+		is_macos_bundle(${TARGET_NAME} isBundle)
 		if(${isBundle})
 			set_target_properties(${TARGET_NAME} PROPERTIES INSTALL_RPATH "@executable_path/../Frameworks")
 			# Directly use install rpath for app bundles, since we copy dylibs into the bundle during post build
@@ -315,7 +328,7 @@ function(sign_target TARGET_NAME)
 		if(NOT LA_TEAM_IDENTIFIER)
 			message(FATAL_ERROR "LA_TEAM_IDENTIFIER variable must be set before trying to sign a binary with sign_target().")
 		endif()
-		get_target_property(isBundle ${TARGET_NAME} MACOSX_BUNDLE)
+		is_macos_bundle(${TARGET_NAME} isBundle)
 		if(${isBundle})
 			set(addTargetPath ".app/Contents/MacOS/${TARGET_NAME}")
 		else()
@@ -344,7 +357,7 @@ function(copy_runtime TARGET_NAME MODULE_NAME)
 		return()
 	endif()
 
-	get_target_property(isBundle ${TARGET_NAME} MACOSX_BUNDLE)
+	is_macos_bundle(${TARGET_NAME} isBundle)
 	# For mac non-bundle apps, we copy the dylibs to the lib sub folder, so it matches the same rpath than when installing (since we use install_rpath)
 	if(APPLE AND NOT ${isBundle})
 		set(addSubDestPath "/../lib")
