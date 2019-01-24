@@ -276,7 +276,7 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 	// Try to detect non compliant entities
 	if (streamFormatRequired)
 	{
-		auto streamFormat = utils::hasFlag(info.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid) ? std::optional{ info.streamFormat } : std::nullopt;
+		auto streamFormat = utils::hasFlag(info.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid) ? std::optional<entity::model::StreamFormat>{ info.streamFormat } : std::nullopt;
 		if (!streamFormat)
 		{
 			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit not set in GET_STREAM_INFO response");
@@ -342,7 +342,7 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 	// Try to detect non compliant entities
 	if (streamFormatRequired)
 	{
-		auto streamFormat = utils::hasFlag(info.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid) ? std::optional{ info.streamFormat } : std::nullopt;
+		auto streamFormat = utils::hasFlag(info.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid) ? std::optional<entity::model::StreamFormat>{ info.streamFormat } : std::nullopt;
 		if (!streamFormat)
 		{
 			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit not set in GET_STREAM_INFO response");
