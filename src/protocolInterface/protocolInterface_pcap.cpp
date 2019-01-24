@@ -283,16 +283,14 @@ private:
 		return sendMessage(acmpdu);
 	}
 
-	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& /*macAddress*/, AecpCommandResultHandler const& onResult) const noexcept override
+	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, AecpCommandResultHandler const& onResult) const noexcept override
 	{
-		// PCap protocol interface do not need the macAddress parameter, it will be retrieved from the Aecpdu when sending it
 		// Command goes through the state machine to handle timeout, retry and response
 		return _controllerStateMachine.sendAecpCommand(std::move(aecpdu), onResult);
 	}
 
-	virtual Error sendAecpResponse(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& /*macAddress*/) const noexcept override
+	virtual Error sendAecpResponse(Aecpdu::UniquePointer&& aecpdu) const noexcept override
 	{
-		// PCap protocol interface do not need the macAddress parameter, it will be retrieved from the Aecpdu when sending it
 		// Response can be directly sent
 		return sendMessage(static_cast<Aecpdu const&>(*aecpdu));
 	}

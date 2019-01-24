@@ -246,7 +246,7 @@ public:
 			aem->setCommandType(commandType);
 			aem->setCommandSpecificData(payload, payloadLength);
 
-			auto const error = pi->sendAecpCommand(std::move(frame), targetMacAddress,
+			auto const error = pi->sendAecpCommand(std::move(frame),
 				[onResult](la::avdecc::protocol::Aecpdu const* response, protocol::ProtocolInterface::Error const error) noexcept
 				{
 					utils::invokeProtectedHandler(onResult, response, convertErrorToAemCommandStatus(error));
@@ -289,7 +289,7 @@ public:
 				aa->addTlv(tlv);
 			}
 
-			auto const error = pi->sendAecpCommand(std::move(frame), targetMacAddress,
+			auto const error = pi->sendAecpCommand(std::move(frame),
 				[onResult](la::avdecc::protocol::Aecpdu const* response, protocol::ProtocolInterface::Error const error) noexcept
 				{
 					utils::invokeProtectedHandler(onResult, response, convertErrorToAaCommandStatus(error));
@@ -330,7 +330,7 @@ public:
 			mvu->setCommandType(commandType);
 			mvu->setCommandSpecificData(payload, payloadLength);
 
-			auto const error = pi->sendAecpCommand(std::move(frame), targetMacAddress,
+			auto const error = pi->sendAecpCommand(std::move(frame),
 				[onResult](la::avdecc::protocol::Aecpdu const* response, protocol::ProtocolInterface::Error const error) noexcept
 				{
 					utils::invokeProtectedHandler(onResult, response, convertErrorToMvuCommandStatus(error));
@@ -422,7 +422,7 @@ public:
 			}
 
 			// We don't care about the send errors
-			pi->sendAecpResponse(std::move(response), command.getSrcAddress());
+			pi->sendAecpResponse(std::move(response));
 		}
 		catch (...)
 		{
@@ -456,7 +456,7 @@ public:
 			aem->setCommandSpecificData(payload, payloadLength);
 
 			// We don't care about the send errors
-			pi->sendAecpResponse(std::move(frame), commandAem.getSrcAddress());
+			pi->sendAecpResponse(std::move(frame));
 		}
 		catch (...)
 		{

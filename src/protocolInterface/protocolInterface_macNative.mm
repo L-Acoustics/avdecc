@@ -141,7 +141,7 @@ struct LockInformation
 - (la::avdecc::protocol::ProtocolInterface::Error)disableEntityAdvertising:(la::avdecc::entity::LocalEntity const&)entity interfaceIndex:(std::optional<la::avdecc::entity::model::AvbInterfaceIndex>)interfaceIndex;
 - (BOOL)discoverRemoteEntities;
 - (BOOL)discoverRemoteEntity:(la::avdecc::UniqueIdentifier)entityID;
-- (la::avdecc::protocol::ProtocolInterface::Error)sendAecpCommand:(la::avdecc::protocol::Aecpdu::UniquePointer&&)aecpdu macAddress:(la::avdecc::networkInterface::MacAddress const&)macAddress handler:(la::avdecc::protocol::ProtocolInterface::AecpCommandResultHandler const&)onResult;
+- (la::avdecc::protocol::ProtocolInterface::Error)sendAecpCommand:(la::avdecc::protocol::Aecpdu::UniquePointer&&)aecpdu handler:(la::avdecc::protocol::ProtocolInterface::AecpCommandResultHandler const&)onResult;
 - (la::avdecc::protocol::ProtocolInterface::Error)sendAcmpCommand:(la::avdecc::protocol::Acmpdu::UniquePointer&&)acmpdu handler:(la::avdecc::protocol::ProtocolInterface::AcmpCommandResultHandler const&)onResult;
 - (void)lock;
 - (void)unlock;
@@ -284,12 +284,12 @@ private:
 		return Error::MessageNotSupported;
 	}
 
-	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& macAddress, AecpCommandResultHandler const& onResult) const noexcept override
+	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, AecpCommandResultHandler const& onResult) const noexcept override
 	{
-		return [_bridge sendAecpCommand:std::move(aecpdu) macAddress:macAddress handler:onResult];
+		return [_bridge sendAecpCommand:std::move(aecpdu) handler:onResult];
 	}
 
-	virtual Error sendAecpResponse(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& /*macAddress*/) const noexcept override
+	virtual Error sendAecpResponse(Aecpdu::UniquePointer&& aecpdu) const noexcept override
 	{
 		AVDECC_ASSERT(false, "TBD: To be implemented");
 		return ProtocolInterface::Error::InternalError;
@@ -923,8 +923,8 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	return [self.interface.entityDiscovery discoverEntity:entityID];
 }
 
-- (la::avdecc::protocol::ProtocolInterface::Error)sendAecpCommand:(la::avdecc::protocol::Aecpdu::UniquePointer&&)aecpdu macAddress:(la::avdecc::networkInterface::MacAddress const&)macAddress handler:(la::avdecc::protocol::ProtocolInterface::AecpCommandResultHandler const&)onResult {
-	auto const macAddr = macAddress; // Make a copy of the macAddress so it can safely be used inside the objC block
+- (la::avdecc::protocol::ProtocolInterface::Error)sendAecpCommand:(la::avdecc::protocol::Aecpdu::UniquePointer&&)aecpdu handler:(la::avdecc::protocol::ProtocolInterface::AecpCommandResultHandler const&)onResult {
+	auto const macAddr = aecpdu->getDestAddress(); // Make a copy of the target macAddress so it can safely be used inside the objC block
 	__block auto resultHandler = onResult; // Make a copy of the handler so it can safely be used inside the objC block. Declare it as __block so we can modify it from the block (to fix a bug that macOS sometimes call the completionHandler twice)
 
 	auto message = [BridgeInterface makeAecpCommand:*aecpdu];

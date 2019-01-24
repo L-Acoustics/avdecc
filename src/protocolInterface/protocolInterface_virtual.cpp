@@ -300,8 +300,8 @@ private:
 	virtual Error sendAdpMessage(Adpdu const& adpdu) const noexcept override;
 	virtual Error sendAecpMessage(Aecpdu const& aecpdu) const noexcept override;
 	virtual Error sendAcmpMessage(Acmpdu const& acmpdu) const noexcept override;
-	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& macAddress, AecpCommandResultHandler const& onResult) const noexcept override;
-	virtual Error sendAecpResponse(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& macAddress) const noexcept override;
+	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, AecpCommandResultHandler const& onResult) const noexcept override;
+	virtual Error sendAecpResponse(Aecpdu::UniquePointer&& aecpdu) const noexcept override;
 	virtual Error sendAcmpCommand(Acmpdu::UniquePointer&& acmpdu, AcmpCommandResultHandler const& onResult) const noexcept override;
 	virtual Error sendAcmpResponse(Acmpdu::UniquePointer&& acmpdu) const noexcept override;
 	virtual void lock() noexcept override;
@@ -603,16 +603,14 @@ ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendAcmpMessage(Acmpdu co
 	return sendMessage(acmpdu);
 }
 
-ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& /*macAddress*/, AecpCommandResultHandler const& onResult) const noexcept
+ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, AecpCommandResultHandler const& onResult) const noexcept
 {
-	// Virtual protocol interface do not need the macAddress parameter, it will be retrieved from the Aecpdu when sending it
 	// Command goes through the state machine to handle timeout, retry and response
 	return _controllerStateMachine.sendAecpCommand(std::move(aecpdu), onResult);
 }
 
-ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendAecpResponse(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& /*macAddress*/) const noexcept
+ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendAecpResponse(Aecpdu::UniquePointer&& aecpdu) const noexcept
 {
-	// Virtual protocol interface do not need the macAddress parameter, it will be retrieved from the Aecpdu when sending it
 	// Response can be directly sent
 	return sendMessage(static_cast<Aecpdu const&>(*aecpdu));
 }

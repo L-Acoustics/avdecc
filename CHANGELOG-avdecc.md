@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Removed macAddress parameter from sendAecpCommand and sendAecpResponse (automatically getting it from the AECPDU)
+
+### Fixed
+- Incorrect error returned by EndStation's LocalEntity creation code
 
 ## [2.8.0] - 2019-01-23
 ### Added

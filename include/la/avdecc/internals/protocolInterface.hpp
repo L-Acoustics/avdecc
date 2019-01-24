@@ -172,9 +172,9 @@ public:
 	/** Sends an ACMP message directly on the network (not supported by all kinds of ProtocolInterface). */
 	virtual Error sendAcmpMessage(Acmpdu const& acmpdu) const noexcept = 0;
 	/** Sends an AECP command message. */
-	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& macAddress, AecpCommandResultHandler const& onResult) const noexcept = 0;
+	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, AecpCommandResultHandler const& onResult) const noexcept = 0;
 	/** Sends an AECP response message. */
-	virtual Error sendAecpResponse(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& macAddress) const noexcept = 0;
+	virtual Error sendAecpResponse(Aecpdu::UniquePointer&& aecpdu) const noexcept = 0;
 	/** Sends an ACMP command message. */
 	virtual Error sendAcmpCommand(Acmpdu::UniquePointer&& acmpdu, AcmpCommandResultHandler const& onResult) const noexcept = 0;
 	/** Sends an ACMP response message. */
