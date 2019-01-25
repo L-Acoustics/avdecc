@@ -814,7 +814,7 @@ Adpdu ControllerStateMachine::makeEntityAvailableMessage(entity::Entity& entity,
 	{
 		utils::addFlag(entityCaps, entity::EntityCapabilities::GptpSupported);
 		gptpGrandmasterID = *interfaceInfo.gptpGrandmasterID;
-		if (AVDECC_ASSERT_WITH_RET(interfaceInfo.gptpDomainNumber.has_value(), "gptpDomainNumber should be set when gptpGrandmasterID is set"))
+		if (AVDECC_ASSERT_WITH_RET(interfaceInfo.gptpDomainNumber, "gptpDomainNumber should be set when gptpGrandmasterID is set"))
 		{
 			gptpDomainNumber = *interfaceInfo.gptpDomainNumber;
 		}

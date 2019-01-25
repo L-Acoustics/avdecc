@@ -261,7 +261,7 @@ public:
 		// If interfaceIndex is specified, only set the value for this interface
 		if (interfaceIndex)
 		{
-			AVDECC_ASSERT(interfaceIndex.has_value(), "InterfaceIndex should be valid");
+			AVDECC_ASSERT(interfaceIndex, "InterfaceIndex should be valid");
 			getInterfaceInformation(*interfaceIndex).validTime = value;
 		}
 		else

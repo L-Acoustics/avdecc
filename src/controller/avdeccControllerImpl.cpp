@@ -296,7 +296,7 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 	// If Milan Extended Information is required (for GetStreamInfo, not SetStreamInfo) and entity is Milan compatible, check if it's present
 	if (milanExtendedRequired && controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 	{
-		if (!info.streamInfoFlagsEx.has_value() || !info.probingStatus.has_value() || !info.acmpStatus.has_value())
+		if (!info.streamInfoFlagsEx || !info.probingStatus || !info.acmpStatus)
 		{
 			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Milan mandatory extended GetStreamInfo not found");
 			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
@@ -362,7 +362,7 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 	// If Milan Extended Information is required (for GetStreamInfo, not SetStreamInfo) and entity is Milan compatible, check if it's present
 	if (milanExtendedRequired && controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 	{
-		if (!info.streamInfoFlagsEx.has_value() || !info.probingStatus.has_value() || !info.acmpStatus.has_value())
+		if (!info.streamInfoFlagsEx || !info.probingStatus || !info.acmpStatus)
 		{
 			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Milan mandatory extended GetStreamInfo not found");
 			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::Milan);

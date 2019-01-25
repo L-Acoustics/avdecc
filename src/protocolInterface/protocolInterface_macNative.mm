@@ -449,7 +449,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	{
 		la::avdecc::utils::addFlag(entityCaps, la::avdecc::entity::EntityCapabilities::GptpSupported);
 		gptpGrandmasterID = *interfaceInfo.gptpGrandmasterID;
-		if (AVDECC_ASSERT_WITH_RET(interfaceInfo.gptpDomainNumber.has_value(), "gptpDomainNumber should be set when gptpGrandmasterID is set"))
+		if (AVDECC_ASSERT_WITH_RET(interfaceInfo.gptpDomainNumber, "gptpDomainNumber should be set when gptpGrandmasterID is set"))
 		{
 			gptpDomainNumber = *interfaceInfo.gptpDomainNumber;
 		}
