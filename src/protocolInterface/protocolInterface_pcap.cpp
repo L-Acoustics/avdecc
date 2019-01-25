@@ -41,6 +41,7 @@
 #include <functional>
 #include <memory>
 #include <chrono>
+#include <cstdlib>
 
 namespace la
 {
@@ -193,6 +194,34 @@ private:
 
 		// Release the pcapLibrary
 		_pcap.reset();
+	}
+
+	virtual UniqueIdentifier getDynamicEID() const noexcept override
+	{
+		UniqueIdentifier::value_type eid{ 0u };
+		auto const& macAddress = getMacAddress();
+
+		eid += macAddress[0];
+		eid <<= 8;
+		eid += macAddress[1];
+		eid <<= 8;
+		eid += macAddress[2];
+		eid <<= 16;
+		std::srand(static_cast<unsigned int>(std::time(0)));
+		eid += static_cast<std::uint16_t>((std::rand() % 0xFFFD) + 1);
+		eid <<= 8;
+		eid += macAddress[3];
+		eid <<= 8;
+		eid += macAddress[4];
+		eid <<= 8;
+		eid += macAddress[5];
+
+		return UniqueIdentifier{ eid };
+	}
+
+	virtual void releaseDynamicEID(UniqueIdentifier const /*entityID*/) const noexcept override
+	{
+		// Nothing to do
 	}
 
 	virtual Error registerLocalEntity(entity::LocalEntity& entity) noexcept override

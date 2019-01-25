@@ -149,6 +149,10 @@ public:
 	// Virtual interface
 	/** Shuts down the interface, stopping all active communications. This method blocks the current thread until all pending messages are processed. This is automatically called during destructor. */
 	virtual void shutdown() noexcept = 0;
+	/** Gets an available Entity UniqueIdentifier that is valid for this ProtocolInterface (not supported by all kinds of ProtocolInterface). Call releaseDynamicEID when the returned entityID is no longer used. */
+	virtual UniqueIdentifier getDynamicEID() const noexcept = 0;
+	/** Releases a dynamic Entity UniqueIdentifier previously returned by getDynamicEID. */
+	virtual void releaseDynamicEID(UniqueIdentifier const entityID) const noexcept = 0;
 	/** Registers a local entity to the interface, allowing it to send and receive messages. */
 	virtual Error registerLocalEntity(entity::LocalEntity& entity) noexcept = 0;
 	/** Unregisters a local entity from the interface. It won't be able to send or receive messages anymore. */
@@ -163,7 +167,7 @@ public:
 	virtual Error discoverRemoteEntities() const noexcept = 0;
 	/** Requests a targetted remote entity discovery. */
 	virtual Error discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept = 0;
-	/** Returns true if the ProtocolInterface supports sending direct messages (sendXyzMessage APIs) */
+	/** Returns true if the ProtocolInterface supports sending direct messages (send*Message APIs) */
 	virtual bool isDirectMessageSupported() const noexcept = 0;
 	/** Sends an ADP message directly on the network (not supported by all kinds of ProtocolInterface). */
 	virtual Error sendAdpMessage(Adpdu const& adpdu) const noexcept = 0;
@@ -186,9 +190,6 @@ public:
 	virtual void unlock() noexcept = 0;
 	/** Debug method: Returns true if the whole ProtocolInterface is locked by the calling thread */
 	virtual bool isSelfLocked() const noexcept = 0;
-
-	/** Gets an available Entity UniqueIdentifier that is valid for this ProtocolInterface (not supported by all kinds of ProtocolInterface). */
-	static LA_AVDECC_API UniqueIdentifier LA_AVDECC_CALL_CONVENTION getDynamicEID();
 
 	/** Returns true if the specified protocol interface type is supported on the local computer. */
 	static LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION isSupportedProtocolInterfaceType(Type const protocolInterfaceType) noexcept;

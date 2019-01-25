@@ -289,6 +289,8 @@ private:
 
 	// ProtocolInterface overrides
 	virtual void shutdown() noexcept override;
+	virtual UniqueIdentifier getDynamicEID() const noexcept override;
+	virtual void releaseDynamicEID(UniqueIdentifier const entityID) const noexcept override;
 	virtual Error registerLocalEntity(entity::LocalEntity& entity) noexcept override;
 	virtual Error unregisterLocalEntity(entity::LocalEntity& entity) noexcept override;
 	virtual Error setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const flags, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override;
@@ -513,6 +515,34 @@ void ProtocolInterfaceVirtualImpl::shutdown() noexcept
 	// Unregister from the message dispatcher
 	auto& dispatcher = MessageDispatcher::getInstance();
 	dispatcher.unregisterObserver(_networkInterfaceName, this);
+}
+
+UniqueIdentifier ProtocolInterfaceVirtualImpl::getDynamicEID() const noexcept
+{
+	UniqueIdentifier::value_type eid{ 0u };
+	auto const& macAddress = getMacAddress();
+	static auto s_CurrentProgID = std::uint16_t{ 0u };
+
+	eid += macAddress[0];
+	eid <<= 8;
+	eid += macAddress[1];
+	eid <<= 8;
+	eid += macAddress[2];
+	eid <<= 16;
+	eid += ++s_CurrentProgID;
+	eid <<= 8;
+	eid += macAddress[3];
+	eid <<= 8;
+	eid += macAddress[4];
+	eid <<= 8;
+	eid += macAddress[5];
+
+	return UniqueIdentifier{ eid };
+}
+
+void ProtocolInterfaceVirtualImpl::releaseDynamicEID(UniqueIdentifier const /*entityID*/) const noexcept
+{
+	// Nothing to do
 }
 
 ProtocolInterface::Error ProtocolInterfaceVirtualImpl::registerLocalEntity(entity::LocalEntity& entity) noexcept

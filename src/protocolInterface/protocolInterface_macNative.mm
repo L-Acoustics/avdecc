@@ -130,6 +130,8 @@ struct LockInformation
 - (void)dealloc;
 
 // la::avdecc::protocol::ProtocolInterface bridge methods
+- (la::avdecc::UniqueIdentifier)getDynamicEID;
+- (void)releaseDynamicEID:(la::avdecc::UniqueIdentifier)entityID;
 // Registration of a local process entity (an entity declared inside this process, not all local computer entities)
 - (la::avdecc::protocol::ProtocolInterface::Error)registerLocalEntity:(la::avdecc::entity::LocalEntity&)entity;
 // Remove handlers for a local process entity
@@ -223,6 +225,16 @@ private:
 #endif
 			_bridge = nullptr;
 		}
+	}
+
+	virtual UniqueIdentifier getDynamicEID() const noexcept override
+	{
+		return [_bridge getDynamicEID];
+	}
+
+	virtual void releaseDynamicEID(UniqueIdentifier const entityID) const noexcept override
+	{
+		[_bridge releaseDynamicEID:entityID];
 	}
 
 	virtual Error registerLocalEntity(entity::LocalEntity& entity) noexcept override
@@ -787,6 +799,14 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 }
 
 #pragma mark la::avdecc::protocol::ProtocolInterface bridge methods
+- (la::avdecc::UniqueIdentifier)getDynamicEID {
+	return [AVBCentralManager nextAvailableDynamicEntityID];
+}
+
+- (void)releaseDynamicEID:(la::avdecc::UniqueIdentifier)entityID {
+	[AVBCentralManager releaseDynamicEntityID:entityID];
+}
+
 // Registration of a local process entity (an entity declared inside this process, not all local computer entities)
 - (la::avdecc::protocol::ProtocolInterface::Error)registerLocalEntity:(la::avdecc::entity::LocalEntity&)entity {
 	// Lock entities now, so we don't get interrupted during registration
