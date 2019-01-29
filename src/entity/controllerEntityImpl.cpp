@@ -606,20 +606,20 @@ void ControllerEntityImpl::onRemoteEntityUpdated(protocol::ProtocolInterface* co
 }
 
 /* **** AECP notifications **** */
-void ControllerEntityImpl::onAecpUnsolicitedResponse(protocol::ProtocolInterface* const pi, LocalEntity const& entity, protocol::Aecpdu const& aecpdu) noexcept
+void ControllerEntityImpl::onAecpAemUnsolicitedResponse(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept
 {
-	_controllerCapabilityDelegate->onAecpUnsolicitedResponse(pi, entity, aecpdu);
+	_controllerCapabilityDelegate->onAecpAemUnsolicitedResponse(pi, aecpdu);
 }
 
 /* **** ACMP notifications **** */
-void ControllerEntityImpl::onAcmpSniffedCommand(protocol::ProtocolInterface* const pi, LocalEntity const& entity, protocol::Acmpdu const& acmpdu) noexcept
+void ControllerEntityImpl::onAcmpCommand(protocol::ProtocolInterface* const pi, protocol::Acmpdu const& acmpdu) noexcept
 {
-	_controllerCapabilityDelegate->onAcmpSniffedCommand(pi, entity, acmpdu);
+	_controllerCapabilityDelegate->onAcmpCommand(pi, acmpdu);
 }
 
-void ControllerEntityImpl::onAcmpSniffedResponse(protocol::ProtocolInterface* const pi, LocalEntity const& entity, protocol::Acmpdu const& acmpdu) noexcept
+void ControllerEntityImpl::onAcmpResponse(protocol::ProtocolInterface* const pi, protocol::Acmpdu const& acmpdu) noexcept
 {
-	_controllerCapabilityDelegate->onAcmpSniffedResponse(pi, entity, acmpdu);
+	_controllerCapabilityDelegate->onAcmpResponse(pi, acmpdu);
 }
 
 /* ************************************************************************** */

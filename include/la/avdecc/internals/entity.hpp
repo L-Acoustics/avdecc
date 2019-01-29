@@ -409,7 +409,7 @@ public:
 
 	using AdvertiseFlags = la::avdecc::utils::EnumBitfield<AdvertiseFlag>;
 
-	/** Enables entity advertising with available duration included between 2-62 seconds on the specified interfaceIndex if set, otherwise on all interfaces. Returns false if EntityID is already in use on the local computer, true otherwise. */
+	/** Enables entity advertising with available duration included between 2-62 seconds on the specified interfaceIndex if set, otherwise on all interfaces. Returns false if any of the specified parameter is invalid, true otherwise. */
 	virtual bool enableEntityAdvertising(std::uint32_t const availableDuration, std::optional<model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept = 0;
 
 	/** Disables entity advertising on the specified interfaceIndex if set, otherwise on all interfaces. */

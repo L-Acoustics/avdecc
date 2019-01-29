@@ -17,7 +17,7 @@ set(TESTS_SOURCE
 	any_tests.cpp
 	avdeccFixedString_tests.cpp
 	controllerEntity_tests.cpp
-	controllerStateMachine_tests.cpp
+	commandStateMachine_tests.cpp
 	enum_tests.cpp
 	instrumentationObserver.hpp
 	logger_tests.cpp

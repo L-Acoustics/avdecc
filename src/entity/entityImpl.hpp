@@ -65,12 +65,17 @@ public:
 	{
 		std::uint8_t const validTime = static_cast<decltype(validTime)>(availableDuration / 2);
 		SuperClass::setValidTime(validTime, interfaceIndex);
-		return !_protocolInterface->enableEntityAdvertising(*this, interfaceIndex);
+
+		// TODO: When Entity will support multiple ProtocolInterfaces, call the correct one, based on interfaceIndex
+		// If interfaceIndex is not set, disable it for all interfaces
+		return !_protocolInterface->enableEntityAdvertising(*this);
 	}
 
-	virtual void disableEntityAdvertising(std::optional<model::AvbInterfaceIndex> const interfaceIndex) noexcept override
+	virtual void disableEntityAdvertising(std::optional<model::AvbInterfaceIndex> const /*interfaceIndex*/) noexcept override
 	{
-		_protocolInterface->disableEntityAdvertising(*this, interfaceIndex);
+		// TODO: When Entity will support multiple ProtocolInterfaces, call the correct one, based on interfaceIndex
+		// If interfaceIndex is not set, disable it for all interfaces
+		_protocolInterface->disableEntityAdvertising(*this);
 	}
 
 	/** Sets the entity capabilities and flag for announcement */
@@ -78,7 +83,7 @@ public:
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
 		SuperClass::setEntityCapabilities(entityCapabilities);
-		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::EntityCapabilities }, std::nullopt);
+		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::EntityCapabilities });
 	}
 
 	/** Sets the association unique identifier and flag for announcement */
@@ -86,7 +91,7 @@ public:
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
 		SuperClass::setAssociationID(associationID);
-		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::AssociationID }, std::nullopt);
+		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::AssociationID });
 	}
 
 	/** Sets the valid time value on the specified interfaceIndex if set, otherwise on all interfaces, and flag for announcement */
@@ -94,7 +99,8 @@ public:
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
 		SuperClass::setValidTime(validTime, interfaceIndex);
-		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::ValidTime }, interfaceIndex);
+		// TODO: When Entity will support multiple ProtocolInterfaces, call the correct one, based on interfaceIndex
+		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::ValidTime });
 	}
 
 	/** Sets the gptp grandmaster unique identifier and flag for announcement */
@@ -102,7 +108,8 @@ public:
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
 		SuperClass::setGptpGrandmasterID(gptpGrandmasterID, interfaceIndex);
-		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::GptpGrandmasterID }, interfaceIndex);
+		// TODO: When Entity will support multiple ProtocolInterfaces, call the correct one, based on interfaceIndex
+		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::GptpGrandmasterID });
 	}
 
 	/** Sets th gptp domain number and flag for announcement */
@@ -110,7 +117,8 @@ public:
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
 		SuperClass::setGptpDomainNumber(gptpDomainNumber, interfaceIndex);
-		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::GptpDomainNumber }, interfaceIndex);
+		// TODO: When Entity will support multiple ProtocolInterfaces, call the correct one, based on interfaceIndex
+		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::GptpDomainNumber });
 	}
 
 	/* ************************************************************************** */
@@ -490,7 +498,7 @@ private:
 	/* protocol::ProtocolInterface::Observer overrides                            */
 	/* ************************************************************************** */
 	/* **** AECP notifications **** */
-	virtual void onAecpCommand(protocol::ProtocolInterface* const /*pi*/, LocalEntity const& /*entity*/, protocol::Aecpdu const& aecpdu) noexcept override;
+	virtual void onAecpCommand(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept override;
 
 	// Internal variables
 	std::recursive_mutex _lock{}; // Lock to protect writable fields (not used for the BasicLockable concept of the class itself)
@@ -539,10 +547,10 @@ public:
 	{
 		return false;
 	}
-	virtual void onAecpUnsolicitedResponse(protocol::ProtocolInterface* const /*pi*/, LocalEntity const& /*entity*/, protocol::Aecpdu const& /*aecpdu*/) noexcept {}
+	virtual void onAecpAemUnsolicitedResponse(protocol::ProtocolInterface* const /*pi*/, protocol::Aecpdu const& /*aecpdu*/) noexcept {}
 	/* **** ACMP notifications **** */
-	virtual void onAcmpSniffedCommand(protocol::ProtocolInterface* const /*pi*/, LocalEntity const& /*entity*/, protocol::Acmpdu const& /*acmpdu*/) noexcept {}
-	virtual void onAcmpSniffedResponse(protocol::ProtocolInterface* const /*pi*/, LocalEntity const& /*entity*/, protocol::Acmpdu const& /*acmpdu*/) noexcept {}
+	virtual void onAcmpCommand(protocol::ProtocolInterface* const /*pi*/, protocol::Acmpdu const& /*acmpdu*/) noexcept {}
+	virtual void onAcmpResponse(protocol::ProtocolInterface* const /*pi*/, protocol::Acmpdu const& /*acmpdu*/) noexcept {}
 };
 
 } // namespace entity

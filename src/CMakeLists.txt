@@ -105,11 +105,18 @@ set (SOURCE_FILES_PROTOCOL_INTERFACE
 
 # State machines
 set (HEADER_FILES_STATE_MACHINES
-	stateMachine/controllerStateMachine.hpp
+	stateMachine/advertiseStateMachine.hpp
+	stateMachine/commandStateMachine.hpp
+	stateMachine/discoveryStateMachine.hpp
+	stateMachine/protocolInterfaceDelegate.hpp
+	stateMachine/stateMachineManager.hpp
 )
 
 set (SOURCE_FILES_STATE_MACHINES
-	stateMachine/controllerStateMachine.cpp
+	stateMachine/advertiseStateMachine.cpp
+	stateMachine/commandStateMachine.cpp
+	stateMachine/discoveryStateMachine.cpp
+	stateMachine/stateMachineManager.cpp
 )
 
 # Entity

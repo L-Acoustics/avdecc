@@ -29,7 +29,10 @@
 #include <la/avdecc/avdecc.hpp>
 #include <la/avdecc/utils.hpp>
 #include <la/avdecc/networkInterfaceHelper.hpp>
+#include <la/avdecc/internals/protocolMvuAecpdu.hpp>
+
 #include "utils.hpp"
+
 #include <iostream>
 #include <iomanip>
 #include <string>
@@ -38,6 +41,11 @@
 #include <thread>
 #include <chrono>
 #include <future>
+
+static auto const s_TargetEntityID = la::avdecc::UniqueIdentifier{ 0x001b92fffe01b930 };
+static auto const s_ListenerEntityID = la::avdecc::UniqueIdentifier{ 0x001b92fffe01b930 };
+static auto const s_TalkerEntityID = la::avdecc::UniqueIdentifier{ 0x1b92fffe02233b };
+static auto const s_TargetMacAddress = la::avdecc::networkInterface::MacAddress{ 0x00, 0x1b, 0x92, 0x01, 0xb9, 0x30 };
 
 void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 {
@@ -81,8 +89,8 @@ void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 		acmpdu.setMessageType(la::avdecc::protocol::AcmpMessageType::ConnectRxCommand);
 		acmpdu.setStatus(la::avdecc::protocol::AcmpStatus::Success);
 		acmpdu.setControllerEntityID(0x0af700048902f1);
-		acmpdu.setTalkerEntityID(0x1b92fffe02233b);
-		acmpdu.setListenerEntityID(0x1b92fffe01bb79);
+		acmpdu.setTalkerEntityID(s_TalkerEntityID);
+		acmpdu.setListenerEntityID(s_ListenerEntityID);
 		acmpdu.setTalkerUniqueID(0u);
 		acmpdu.setListenerUniqueID(0u);
 		acmpdu.setStreamDestAddress(la::avdecc::networkInterface::MacAddress{});
@@ -106,11 +114,11 @@ void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 
 		// Set Ether2 fields
 		aecpdu.setSrcAddress(pi.getMacAddress());
-		aecpdu.setDestAddress(la::avdecc::networkInterface::MacAddress{ 0x00, 0x1b, 0x92, 0x01, 0xbb, 0x79 });
+		aecpdu.setDestAddress(s_TargetMacAddress);
 		// Set AECP fields
 		aecpdu.setMessageType(la::avdecc::protocol::AecpMessageType::AemCommand);
 		aecpdu.setStatus(la::avdecc::protocol::AemAecpStatus::Success);
-		aecpdu.setTargetEntityID(0x1b92fffe01bb79);
+		aecpdu.setTargetEntityID(s_TargetEntityID);
 		aecpdu.setControllerEntityID(0x0af700048902f1);
 		aecpdu.setSequenceID(0u);
 		aecpdu.setPayload(buffer.data(), buffer.size());
@@ -140,13 +148,13 @@ void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 		acmpdu->setMessageType(la::avdecc::protocol::AcmpMessageType::DisconnectRxCommand);
 		acmpdu->setStatus(la::avdecc::protocol::AcmpStatus::Success);
 		acmpdu->setControllerEntityID(entity->getEntityID());
-		acmpdu->setTalkerEntityID(0x1b92fffe02233b);
-		acmpdu->setListenerEntityID(0x1b92fffe01bb79);
+		acmpdu->setTalkerEntityID(s_TalkerEntityID);
+		acmpdu->setListenerEntityID(s_ListenerEntityID);
 		acmpdu->setTalkerUniqueID(0u);
 		acmpdu->setListenerUniqueID(0u);
 		acmpdu->setStreamDestAddress(la::avdecc::networkInterface::MacAddress{});
 		acmpdu->setConnectionCount(0u);
-		acmpdu->setSequenceID(0u);
+		acmpdu->setSequenceID(666); // Not necessary, it's set by the ProtocolInterface layer
 		acmpdu->setFlags(la::avdecc::entity::ConnectionFlags::None);
 		acmpdu->setStreamVlanID(0u);
 
@@ -169,6 +177,93 @@ void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 			if (status == std::future_status::timeout)
 			{
 				outputText("ACMP command timed out\n");
+			}
+		}
+	}
+
+	// Send AEM-AECP command (Acquire Command)
+	{
+		auto aecpdu = la::avdecc::protocol::GenericAecpdu::create();
+		la::avdecc::protocol::SerializationBuffer buffer;
+
+		// Manually fill the AECP payload
+		buffer << static_cast<std::uint16_t>(((0u /* Not Unsolicited */ << 15) & 0x8000) | (0u /* Acquire */ & 0x7fff)); // AEM header
+		buffer << static_cast<std::uint32_t>(0u /* Acquire Flags */) << static_cast<std::uint64_t>(0u /* Owner */) << static_cast<std::uint16_t>(0u /* DescriptorType */) << static_cast<std::uint16_t>(0u /* DescriptorIndex */); // Acquire payload
+
+		// Set Ether2 fields
+		aecpdu->setSrcAddress(pi.getMacAddress());
+		aecpdu->setDestAddress(s_TargetMacAddress);
+		// Set AECP fields
+		aecpdu->setMessageType(la::avdecc::protocol::AecpMessageType::AemCommand);
+		aecpdu->setStatus(la::avdecc::protocol::AemAecpStatus::Success);
+		aecpdu->setTargetEntityID(s_TargetEntityID);
+		aecpdu->setControllerEntityID(entity->getEntityID());
+		aecpdu->setSequenceID(666); // Not necessary, it's set by the ProtocolInterface layer
+		// Set Generic fields
+		auto& generic = static_cast<la::avdecc::protocol::GenericAecpdu&>(*aecpdu);
+		generic.setPayload(buffer.data(), buffer.size());
+
+		// Send the message
+		std::promise<void> commandResultPromise{};
+		auto const error = pi.sendAecpCommand(std::move(aecpdu),
+			[&commandResultPromise](la::avdecc::protocol::Aecpdu const* const /*response*/, la::avdecc::protocol::ProtocolInterface::Error const error)
+			{
+				commandResultPromise.set_value();
+				outputText("Got AECP response with status: " + std::to_string(la::avdecc::utils::to_integral(error)) + "\n");
+			});
+		if (!!error)
+		{
+			outputText("Error sending AECP command: " + std::to_string(la::avdecc::utils::to_integral(error)) + "\n");
+		}
+		else
+		{
+			// Wait for the command result
+			auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(20));
+			if (status == std::future_status::timeout)
+			{
+				outputText("AECP command timed out\n");
+			}
+		}
+	}
+
+	// Send MVU-AECP command (Get Milan Info)
+	{
+		auto aecpdu = la::avdecc::protocol::MvuAecpdu::create();
+
+		// Set Ether2 fields
+		aecpdu->setSrcAddress(pi.getMacAddress());
+		aecpdu->setDestAddress(s_TargetMacAddress);
+		// Set AECP fields
+		aecpdu->setMessageType(la::avdecc::protocol::AecpMessageType::VendorUniqueCommand);
+		aecpdu->setStatus(la::avdecc::protocol::AecpStatus::Success);
+		aecpdu->setTargetEntityID(s_TargetEntityID);
+		aecpdu->setControllerEntityID(entity->getEntityID());
+		aecpdu->setSequenceID(666); // Not necessary, it's set by the ProtocolInterface layer
+		// Set MVU fields
+		auto& mvu = static_cast<la::avdecc::protocol::MvuAecpdu&>(*aecpdu);
+		mvu.setCommandType(la::avdecc::protocol::MvuCommandType::GetMilanInfo);
+		auto const reserved = std::uint16_t{ 0u };
+		mvu.setCommandSpecificData(&reserved, sizeof(reserved));
+
+		// Send the message
+		std::promise<void> commandResultPromise{};
+		auto const error = pi.sendAecpCommand(std::move(aecpdu),
+			[&commandResultPromise](la::avdecc::protocol::Aecpdu const* const /*response*/, la::avdecc::protocol::ProtocolInterface::Error const error)
+			{
+				commandResultPromise.set_value();
+				outputText("Got AECP response with status: " + std::to_string(la::avdecc::utils::to_integral(error)) + "\n");
+			});
+		if (!!error)
+		{
+			outputText("Error sending AECP command: " + std::to_string(la::avdecc::utils::to_integral(error)) + "\n");
+		}
+		else
+		{
+			// Wait for the command result
+			auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(20));
+			if (status == std::future_status::timeout)
+			{
+				outputText("AECP command timed out\n");
 			}
 		}
 	}
