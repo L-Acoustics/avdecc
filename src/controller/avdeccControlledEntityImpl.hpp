@@ -91,6 +91,7 @@ public:
 		GetAvbInterfaceCounters, // getAvbInterfaceCounters (GET_COUNTERS)
 		GetClockDomainCounters, // getClockDomainCounters (GET_COUNTERS)
 		GetStreamInputCounters, // getStreamInputCounters (GET_COUNTERS)
+		GetStreamOutputCounters, // getStreamOutputCounters (GET_COUNTERS)
 	};
 
 	/** Dynamic information stored in descriptors. Only required to retrieve from entities when the static model is known (because it was in EntityModelID cache).  */
@@ -275,6 +276,7 @@ public:
 	model::AvbInterfaceCounters& getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept;
 	model::ClockDomainCounters& getClockDomainCounters(entity::model::ClockDomainIndex const clockDomainIndex) noexcept;
 	model::StreamInputCounters& getStreamInputCounters(entity::model::StreamIndex const streamIndex) noexcept;
+	model::StreamOutputCounters& getStreamOutputCounters(entity::model::StreamIndex const streamIndex) noexcept;
 
 	// Setters (of the model, not the physical entity)
 	void setEntity(entity::Entity const& entity) noexcept;
@@ -341,6 +343,10 @@ public:
 	void setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept;
 	bool wasAdvertised() const noexcept;
 	void setAdvertised(bool const wasAdvertised) noexcept;
+
+	// Static methods
+	static std::string dynamicInfoTypeToString(DynamicInfoType const dynamicInfoType) noexcept;
+	static std::string descriptorDynamicInfoTypeToString(DescriptorDynamicInfoType const descriptorDynamicInfoType) noexcept;
 
 	// Other usefull manipulation methods
 	constexpr static bool isStreamRunningFlag(entity::StreamInfoFlags const flags) noexcept

@@ -793,6 +793,26 @@ void ControllerImpl::updateStreamInputCounters(ControlledEntityImpl& controlledE
 	}
 }
 
+void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::StreamOutputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) const noexcept
+{
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+	// Get previous counters
+	auto& streamCounters = controlledEntity.getStreamOutputCounters(streamIndex);
+
+	// Update (or set) counters
+	for (auto counter : validCounters)
+	{
+		streamCounters[counter] = counters[validCounters.getPosition(counter)];
+	}
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputCountersChanged, this, &controlledEntity, streamIndex, streamCounters);
+	}
+}
+
 void ControllerImpl::updateMemoryObjectLength(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
@@ -1336,6 +1356,13 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 				controller->getStreamInputCounters(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetStreamInputCountersResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
 			};
 			break;
+		case ControlledEntityImpl::DynamicInfoType::GetStreamOutputCounters:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getStreamOutputCounters (StreamIndex={})", descriptorIndex);
+				controller->getStreamOutputCounters(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetStreamOutputCountersResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, configurationIndex));
+			};
+			break;
 		default:
 			AVDECC_ASSERT(false, "Unhandled DynamicInfoType");
 			break;
@@ -1596,6 +1623,9 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			{
 				// StreamInfo
 				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamInfo, index);
+
+				// Counters
+				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamOutputCounters, index);
 
 				// TX_STATE
 				queryInformation(entity, configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, index);
@@ -2071,7 +2101,7 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 				// Remove "Milan compatibility" as device does not support mandatory descriptor
 				if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 				{
-					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory descriptor not supported by the entity");
+					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory descriptor not supported by the entity: {}", entity::model::descriptorTypeToString(descriptorType));
 					removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
 				}
 			}
@@ -2115,7 +2145,7 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 				// Remove "Milan compatibility" as device does not support mandatory descriptor
 				if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 				{
-					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory dynamic info not supported by the entity");
+					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory dynamic info not supported by the entity: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
 					removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
 				}
 			}
@@ -2159,7 +2189,7 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 				// Remove "Milan compatibility" as device does not support mandatory descriptor
 				if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 				{
-					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory ACMP command not supported by the entity");
+					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory ACMP command not supported by the entity: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
 					removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
 				}
 			}
@@ -2203,7 +2233,7 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 				// Remove "Milan compatibility" as device does not support mandatory descriptor
 				if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 				{
-					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory ACMP command not supported by the entity");
+					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory ACMP command not supported by the entity: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
 					removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
 				}
 			}

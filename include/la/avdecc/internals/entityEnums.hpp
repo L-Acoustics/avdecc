@@ -246,13 +246,14 @@ enum class ClockDomainCounterValidFlag : model::DescriptorCounterValidFlag
 };
 using ClockDomainCounterValidFlags = utils::EnumBitfield<ClockDomainCounterValidFlag>;
 
-/* STREAM_INPUT Counters - Clause 7.4.42.2.4 */
+/* STREAM_INPUT Counters - Clause 7.4.42.2.4 / Milan Clause 6.8.10 */
 enum class StreamInputCounterValidFlag : model::DescriptorCounterValidFlag
 {
 	None = 0u,
 	MediaLocked = 1u << 0, /**< Increments on a Stream media clock locking. */
 	MediaUnlocked = 1u << 1, /**< Increments on a Stream media clock unlocking. */
-	StreamReset = 1u << 2, /**< Increments whenever the Stream playback is reset. */
+	StreamReset = 1u << 2, /**< IEEE1722.1 - Increments whenever the Stream playback is reset. */
+	StreamInterrupted = 1u << 2, /**< Milan - Incremented each time the stream playback is interrupted for any reason other than a Controller Unbind operation. */
 	SeqNumMismatch = 1u << 3, /**< Increments when a Stream data AVTPDU is received with a nonsequential sequence_num field. */
 	MediaReset = 1u << 4, /**< Increments on a toggle of the mr bit in the Stream data AVTPDU. */
 	TimestampUncertain = 1u << 5, /**< Increments on a toggle of the tu bit in the Stream data AVTPDU. */
@@ -273,6 +274,18 @@ enum class StreamInputCounterValidFlag : model::DescriptorCounterValidFlag
 	EntitySpecific1 = 1u << 31, /**< Entity Specific counter 1. */
 };
 using StreamInputCounterValidFlags = utils::EnumBitfield<StreamInputCounterValidFlag>;
+
+/* STREAM_OUTPUT Counters - Milan Clause 6.7.7/7.3.25 */
+enum class StreamOutputCounterValidFlag : model::DescriptorCounterValidFlag
+{
+	None = 0u,
+	StreamStart = 1u << 0, /**< Incremented each time the Talker starts streaming. */
+	StreamStop = 1u << 1, /**< Incremented each time the Talker stops streaming. At any time, the PAAD-AE shall ensure that either STREAM_START=STREAM_STOP+1 (in this case, the Talker is currently streaming), or STREAM_START=STREAM_STOP (in this case, the Talker is not currently streaming). */
+	MediaReset = 1u << 2, /**< Incremented at the end of every observation interval during which the "mr" bit has been toggled in any of the transmitted Stream Data AVTPDUs. The duration of the observation interval is implementation-specific and shall be less than or equal to 1 second. */
+	TimestampUncertain = 1u << 3, /**< Incremented at the end of every observation interval during which the "tu" bit has been set in any of the transmitted Stream Data AVTPDUs. The duration of the observation interval is implementation-specific and shall be less than or equal to 1 second. */
+	FramesTx = 1u << 4, /**< Incremented at the end of every observation interval during which at least one Stream Data AVTPDU has been transmitted on this STREAM_OUTPUT. The duration of the observation interval is implementation-specific and shall be less than or equal to 1 second. */
+};
+using StreamOutputCounterValidFlags = utils::EnumBitfield<StreamOutputCounterValidFlag>;
 
 } // namespace entity
 

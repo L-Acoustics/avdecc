@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Support for Milan STREAM_OUTPUT counters
+
 ### Changed
 - Removed macAddress parameter from sendAecpCommand and sendAecpResponse (automatically getting it from the AECPDU)
 - Returning ProtocolInterface::Error::InvalidParameters when trying to enable/disable advertising on a non-existent InterfaceIndex

@@ -32,6 +32,11 @@ namespace avdecc
 {
 namespace controller
 {
+static auto const s_MilanMandatoryStreamInputCounters = entity::StreamInputCounterValidFlags{ entity::StreamInputCounterValidFlag::MediaLocked, entity::StreamInputCounterValidFlag::MediaUnlocked, entity::StreamInputCounterValidFlag::StreamInterrupted, entity::StreamInputCounterValidFlag::SeqNumMismatch, entity::StreamInputCounterValidFlag::MediaReset, entity::StreamInputCounterValidFlag::TimestampUncertain, entity::StreamInputCounterValidFlag::UnsupportedFormat, entity::StreamInputCounterValidFlag::LateTimestamp, entity::StreamInputCounterValidFlag::EarlyTimestamp, entity::StreamInputCounterValidFlag::FramesRx }; // Milan Clause 6.8.10
+static auto const s_MilanMandatoryStreamOutputCounters = entity::StreamOutputCounterValidFlags{ entity::StreamOutputCounterValidFlag::StreamStart, entity::StreamOutputCounterValidFlag::StreamStop, entity::StreamOutputCounterValidFlag::MediaReset, entity::StreamOutputCounterValidFlag::TimestampUncertain, entity::StreamOutputCounterValidFlag::FramesTx }; // Milan Clause 6.7.7
+static auto const s_MilanMandatoryAvbInterfaceCounters = entity::AvbInterfaceCounterValidFlags{ entity::AvbInterfaceCounterValidFlag::LinkUp, entity::AvbInterfaceCounterValidFlag::LinkDown, entity::AvbInterfaceCounterValidFlag::GptpGmChanged }; // Milan Clause 6.6.3
+static auto const s_MilanMandatoryClockDomainCounters = entity::ClockDomainCounterValidFlags{ entity::ClockDomainCounterValidFlag::Locked, entity::ClockDomainCounterValidFlag::Unlocked }; // Milan Clause 6.11.2
+
 /* ************************************************************ */
 /* Result handlers                                              */
 /* ************************************************************ */
@@ -1213,8 +1218,20 @@ void ControllerImpl::onGetAvbInterfaceCountersResult(entity::controller::Interfa
 		{
 			if (!!status)
 			{
+				auto& entity = *controlledEntity;
+
+				// If Milan device, validate mandatory counters are present
+				if (entity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+				{
+					if ((validCounters & s_MilanMandatoryAvbInterfaceCounters) != s_MilanMandatoryAvbInterfaceCounters)
+					{
+						LOG_CONTROLLER_WARN(entityID, "Milan mandatory counters missing for AVB_INTERFACE descriptor");
+						removeCompatibilityFlag(entity, ControlledEntity::CompatibilityFlag::Milan);
+					}
+				}
+
 				// Use the "update**" method, there are many things to do
-				updateAvbInterfaceCounters(*controlledEntity, avbInterfaceIndex, validCounters, counters);
+				updateAvbInterfaceCounters(entity, avbInterfaceIndex, validCounters, counters);
 			}
 			else
 			{
@@ -1250,8 +1267,20 @@ void ControllerImpl::onGetClockDomainCountersResult(entity::controller::Interfac
 		{
 			if (!!status)
 			{
+				auto& entity = *controlledEntity;
+
+				// If Milan device, validate mandatory counters are present
+				if (entity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+				{
+					if ((validCounters & s_MilanMandatoryClockDomainCounters) != s_MilanMandatoryClockDomainCounters)
+					{
+						LOG_CONTROLLER_WARN(entityID, "Milan mandatory counters missing for CLOCK_DOMAIN descriptor");
+						removeCompatibilityFlag(entity, ControlledEntity::CompatibilityFlag::Milan);
+					}
+				}
+
 				// Use the "update**" method, there are many things to do
-				updateClockDomainCounters(*controlledEntity, clockDomainIndex, validCounters, counters);
+				updateClockDomainCounters(entity, clockDomainIndex, validCounters, counters);
 			}
 			else
 			{
@@ -1287,8 +1316,20 @@ void ControllerImpl::onGetStreamInputCountersResult(entity::controller::Interfac
 		{
 			if (!!status)
 			{
+				auto& entity = *controlledEntity;
+
+				// If Milan device, validate mandatory counters are present
+				if (entity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+				{
+					if ((validCounters & s_MilanMandatoryStreamInputCounters) != s_MilanMandatoryStreamInputCounters)
+					{
+						LOG_CONTROLLER_WARN(entityID, "Milan mandatory counters missing for STREAM_INPUT descriptor");
+						removeCompatibilityFlag(entity, ControlledEntity::CompatibilityFlag::Milan);
+					}
+				}
+
 				// Use the "update**" method, there are many things to do
-				updateStreamInputCounters(*controlledEntity, streamIndex, validCounters, counters);
+				updateStreamInputCounters(entity, streamIndex, validCounters, counters);
 			}
 			else
 			{
@@ -1296,6 +1337,55 @@ void ControllerImpl::onGetStreamInputCountersResult(entity::controller::Interfac
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamInputCounters);
+					return;
+				}
+			}
+		}
+
+		// Got all expected dynamic information
+		if (controlledEntity->gotAllExpectedDynamicInfo())
+		{
+			// Clear this enumeration step and check for next one
+			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			checkEnumerationSteps(controlledEntity.get());
+		}
+	}
+}
+
+void ControllerImpl::onGetStreamOutputCountersResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::StreamOutputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, entity::model::ConfigurationIndex const configurationIndex) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onGetStreamOutputCountersResult (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamOutputCounters, streamIndex))
+		{
+			if (!!status)
+			{
+				auto& entity = *controlledEntity;
+
+				// If Milan device, validate mandatory counters are present
+				if (entity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+				{
+					if ((validCounters & s_MilanMandatoryStreamOutputCounters) != s_MilanMandatoryStreamOutputCounters)
+					{
+						LOG_CONTROLLER_WARN(entityID, "Milan mandatory counters missing for STREAM_OUTPUT descriptor");
+						removeCompatibilityFlag(entity, ControlledEntity::CompatibilityFlag::Milan);
+					}
+				}
+
+				// Use the "update**" method, there are many things to do
+				updateStreamOutputCounters(entity, streamIndex, validCounters, counters);
+			}
+			else
+			{
+				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamOutputCounters, streamIndex))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamOutputCounters);
 					return;
 				}
 			}

@@ -122,6 +122,7 @@ set (HEADER_FILES_ENTITY
 )
 
 set (SOURCE_FILES_ENTITY
+	entity/entityModelTypes.cpp
 	entity/localEntityImpl.cpp
 	entity/aggregateEntityImpl.cpp
 	entity/controllerCapabilityDelegate.cpp

@@ -1323,6 +1323,21 @@ void CapabilityDelegate::getStreamInputCounters(UniqueIdentifier const targetEnt
 	}
 }
 
+void CapabilityDelegate::getStreamOutputCounters(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, Interface::GetStreamOutputCountersHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetCountersCommand(model::DescriptorType::StreamOutput, streamIndex);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex, StreamOutputCounterValidFlags{}, model::DescriptorCounters{});
+
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetCounters, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getStreamOutputCounters: {}", e.what());
+	}
+}
+
 void CapabilityDelegate::startOperation(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer, Interface::StartOperationHandler const& handler) const noexcept
 {
 	try
@@ -2904,6 +2919,17 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						if (aem.getUnsolicited() && delegate && !!status)
 						{
 							utils::invokeProtectedMethod(&controller::Delegate::onStreamInputCountersChanged, delegate, controllerInterface, targetID, descriptorIndex, flags, counters);
+						}
+						break;
+					}
+					case model::DescriptorType::StreamOutput:
+					{
+						StreamOutputCounterValidFlags flags;
+						flags.assign(validFlags);
+						answerCallback.invoke<controller::Interface::GetStreamOutputCountersHandler>(controllerInterface, targetID, status, descriptorIndex, flags, counters);
+						if (aem.getUnsolicited() && delegate && !!status)
+						{
+							utils::invokeProtectedMethod(&controller::Delegate::onStreamOutputCountersChanged, delegate, controllerInterface, targetID, descriptorIndex, flags, counters);
 						}
 						break;
 					}

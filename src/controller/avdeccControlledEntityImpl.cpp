@@ -1060,6 +1060,12 @@ model::StreamInputCounters& ControlledEntityImpl::getStreamInputCounters(entity:
 	return dynamicModel.counters;
 }
 
+model::StreamOutputCounters& ControlledEntityImpl::getStreamOutputCounters(entity::model::StreamIndex const streamIndex) noexcept
+{
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels);
+	return dynamicModel.counters;
+}
+
 // Setters (of the model, not the physical entity)
 void ControlledEntityImpl::setEntity(entity::Entity const& entity) noexcept
 {
@@ -1784,6 +1790,83 @@ bool ControlledEntityImpl::wasAdvertised() const noexcept
 void ControlledEntityImpl::setAdvertised(bool const wasAdvertised) noexcept
 {
 	_advertised = wasAdvertised;
+}
+
+// Static methods
+std::string ControlledEntityImpl::dynamicInfoTypeToString(DynamicInfoType const dynamicInfoType) noexcept
+{
+	switch (dynamicInfoType)
+	{
+		case DynamicInfoType::AcquiredState:
+			return protocol::AemCommandType::AcquireEntity;
+		case DynamicInfoType::LockedState:
+			return protocol::AemCommandType::LockEntity;
+		case DynamicInfoType::InputStreamAudioMappings:
+			return static_cast<std::string>(protocol::AemCommandType::GetAudioMap) + " (STREAM_INPUT)";
+		case DynamicInfoType::OutputStreamAudioMappings:
+			return static_cast<std::string>(protocol::AemCommandType::GetAudioMap) + " (STREAM_OUTPUT)";
+		case DynamicInfoType::InputStreamState:
+			return protocol::AcmpMessageType::GetRxStateCommand;
+		case DynamicInfoType::OutputStreamState:
+			return protocol::AcmpMessageType::GetTxStateCommand;
+		case DynamicInfoType::OutputStreamConnection:
+			return protocol::AcmpMessageType::GetTxConnectionCommand;
+		case DynamicInfoType::InputStreamInfo:
+			return static_cast<std::string>(protocol::AemCommandType::GetStreamInfo) + " (STREAM_INPUT)";
+		case DynamicInfoType::OutputStreamInfo:
+			return static_cast<std::string>(protocol::AemCommandType::GetStreamInfo) + " (STREAM_OUTPUT)";
+		case DynamicInfoType::GetAvbInfo:
+			return protocol::AemCommandType::GetAvbInfo;
+		case DynamicInfoType::GetAsPath:
+			return protocol::AemCommandType::GetAsPath;
+		case DynamicInfoType::GetAvbInterfaceCounters:
+			return static_cast<std::string>(protocol::AemCommandType::GetCounters) + " (AVB_INTERFACE)";
+		case DynamicInfoType::GetClockDomainCounters:
+			return static_cast<std::string>(protocol::AemCommandType::GetCounters) + " (CLOCK_DOMAIN)";
+		case DynamicInfoType::GetStreamInputCounters:
+			return static_cast<std::string>(protocol::AemCommandType::GetCounters) + " (STREAM_INPUT)";
+		case DynamicInfoType::GetStreamOutputCounters:
+			return static_cast<std::string>(protocol::AemCommandType::GetCounters) + " (STREAM_OUTPUT)";
+		default:
+			return "Unknown DynamicInfoType";
+	}
+}
+
+std::string ControlledEntityImpl::descriptorDynamicInfoTypeToString(DescriptorDynamicInfoType const descriptorDynamicInfoType) noexcept
+{
+	switch (descriptorDynamicInfoType)
+	{
+		case DescriptorDynamicInfoType::ConfigurationName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (CONFIGURATION)";
+		case DescriptorDynamicInfoType::AudioUnitName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (AUDIO_UNIT)";
+		case DescriptorDynamicInfoType::AudioUnitSamplingRate:
+			return static_cast<std::string>(protocol::AemCommandType::GetSamplingRate) + " (AUDIO_UNIT)";
+		case DescriptorDynamicInfoType::InputStreamName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (STREAM_INPUT)";
+		case DescriptorDynamicInfoType::InputStreamFormat:
+			return static_cast<std::string>(protocol::AemCommandType::GetStreamFormat) + " (STREAM_INPUT)";
+		case DescriptorDynamicInfoType::OutputStreamName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (STREAM_OUTPUT)";
+		case DescriptorDynamicInfoType::OutputStreamFormat:
+			return static_cast<std::string>(protocol::AemCommandType::GetStreamFormat) + " (STREAM_OUTPUT)";
+		case DescriptorDynamicInfoType::AvbInterfaceName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (AVB_INTERFACE)";
+		case DescriptorDynamicInfoType::ClockSourceName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (CLOCK_SOURCE)";
+		case DescriptorDynamicInfoType::MemoryObjectName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (MEMORY_OBJECT)";
+		case DescriptorDynamicInfoType::MemoryObjectLength:
+			return protocol::AemCommandType::GetMemoryObjectLength;
+		case DescriptorDynamicInfoType::AudioClusterName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (AUDIO_CLUSTER)";
+		case DescriptorDynamicInfoType::ClockDomainName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (CLOCK_DOMAIN)";
+		case DescriptorDynamicInfoType::ClockDomainSourceIndex:
+			return protocol::AemCommandType::GetClockSource;
+		default:
+			return "Unknown DescriptorDynamicInfoType";
+	}
 }
 
 // Private methods

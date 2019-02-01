@@ -43,6 +43,7 @@ namespace model
 using AvbInterfaceCounters = std::map<entity::AvbInterfaceCounterValidFlag, entity::model::DescriptorCounter>;
 using ClockDomainCounters = std::map<entity::ClockDomainCounterValidFlag, entity::model::DescriptorCounter>;
 using StreamInputCounters = std::map<entity::StreamInputCounterValidFlag, entity::model::DescriptorCounter>;
+using StreamOutputCounters = std::map<entity::StreamOutputCounterValidFlag, entity::model::DescriptorCounter>;
 
 struct AudioUnitNodeDynamicModel
 {
@@ -65,6 +66,7 @@ struct StreamInputNodeDynamicModel : public StreamNodeDynamicModel
 struct StreamOutputNodeDynamicModel : public StreamNodeDynamicModel
 {
 	model::StreamConnections connections{};
+	StreamOutputCounters counters{};
 };
 
 struct AvbInterfaceNodeDynamicModel
