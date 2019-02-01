@@ -738,12 +738,29 @@ void ControllerImpl::updateAvbInterfaceCounters(ControlledEntityImpl& controlled
 	}
 
 	// Check for link status update
-	if (validCounters.test(entity::AvbInterfaceCounterValidFlag::LinkDown) && validCounters.test(entity::AvbInterfaceCounterValidFlag::LinkUp))
+	// We must not access avbInterfaceCounters through operator[] or it will create a value if it does not exist. We want the LinkStatus update to be available even for non Milan devices
+	auto const upIt = avbInterfaceCounters.find(entity::AvbInterfaceCounterValidFlag::LinkUp);
+	auto const downIt = avbInterfaceCounters.find(entity::AvbInterfaceCounterValidFlag::LinkDown);
+	if (upIt != avbInterfaceCounters.end() && downIt != avbInterfaceCounters.end())
 	{
-		auto const downValue = counters[validCounters.getPosition(entity::AvbInterfaceCounterValidFlag::LinkDown)];
-		auto const upValue = counters[validCounters.getPosition(entity::AvbInterfaceCounterValidFlag::LinkUp)];
+		auto const upValue = upIt->second;
+		auto const downValue = downIt->second;
 		auto const isUp = upValue == (downValue + 1);
 		updateAvbInterfaceLinkStatus(controlledEntity, avbInterfaceIndex, isUp ? ControlledEntity::InterfaceLinkStatus::Up : ControlledEntity::InterfaceLinkStatus::Down);
+	}
+
+	// If Milan device, validate counters values
+	if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+	{
+		// LinkDown should either be equal to LinkUp or be one more (Milan Clause 6.6.3)
+		// We are safe to get those counters, check for their presence during first enumeration has already been done
+		auto const upValue = counters[validCounters.getPosition(entity::AvbInterfaceCounterValidFlag::LinkUp)];
+		auto const downValue = counters[validCounters.getPosition(entity::AvbInterfaceCounterValidFlag::LinkDown)];
+		if (upValue != downValue && upValue != (downValue + 1))
+		{
+			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid LINK_UP / LINK_DOWN counters value on AVB_INTERFACE:{} ({} / {})", avbInterfaceIndex, upValue, downValue);
+			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+		}
 	}
 
 	// Entity was advertised to the user, notify observers
@@ -766,6 +783,20 @@ void ControllerImpl::updateClockDomainCounters(ControlledEntityImpl& controlledE
 		clockDomainCounters[counter] = counters[validCounters.getPosition(counter)];
 	}
 
+	// If Milan device, validate counters values
+	if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+	{
+		// Unlocked should either be equal to Locked or be one more (Milan Clause 6.11.2)
+		// We are safe to get those counters, check for their presence during first enumeration has already been done
+		auto const lockedValue = clockDomainCounters[entity::ClockDomainCounterValidFlag::Locked];
+		auto const unlockedValue = clockDomainCounters[entity::ClockDomainCounterValidFlag::Unlocked];
+		if (lockedValue != unlockedValue && lockedValue != (unlockedValue + 1))
+		{
+			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid LOCKED / UNLOCKED counters value on CLOCK_DOMAIN:{} ({} / {})", clockDomainIndex, lockedValue, unlockedValue);
+			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+		}
+	}
+
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
 	{
@@ -786,6 +817,20 @@ void ControllerImpl::updateStreamInputCounters(ControlledEntityImpl& controlledE
 		streamCounters[counter] = counters[validCounters.getPosition(counter)];
 	}
 
+	// If Milan device, validate counters values
+	if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+	{
+		// MediaUnlocked should either be equal to MediaLocked or be one more (Milan Clause 6.8.10)
+		// We are safe to get those counters, check for their presence during first enumeration has already been done
+		auto const lockedValue = streamCounters[entity::StreamInputCounterValidFlag::MediaLocked];
+		auto const unlockedValue = streamCounters[entity::StreamInputCounterValidFlag::MediaUnlocked];
+		if (lockedValue != unlockedValue && lockedValue != (unlockedValue + 1))
+		{
+			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid MEDIA_LOCKED / MEDIA_UNLOCKED counters value on STREAM_INPUT:{} ({} / {})", streamIndex, lockedValue, unlockedValue);
+			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+		}
+	}
+
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
 	{
@@ -804,6 +849,20 @@ void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlled
 	for (auto counter : validCounters)
 	{
 		streamCounters[counter] = counters[validCounters.getPosition(counter)];
+	}
+
+	// If Milan device, validate counters values
+	if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+	{
+		// StreamStop should either be equal to StreamStart or be one more (Milan Clause 6.7.7)
+		// We are safe to get those counters, check for their presence during first enumeration has already been done
+		auto const startValue = streamCounters[entity::StreamOutputCounterValidFlag::StreamStart];
+		auto const stopValue = streamCounters[entity::StreamOutputCounterValidFlag::StreamStop];
+		if (startValue != stopValue && startValue != (stopValue + 1))
+		{
+			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid STREAM_START / STREAM_STOP counters value on STREAM_OUTPUT:{} ({} / {})", streamIndex, startValue, stopValue);
+			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+		}
 	}
 
 	// Entity was advertised to the user, notify observers

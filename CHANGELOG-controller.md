@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - Support for Milan STREAM_OUTPUT counters
-- More Milan compatibility detection
+- More Milan compatibility detection (Counters)
 
 ## [2.8.0] - 2019-01-23
 ### Added
