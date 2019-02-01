@@ -330,7 +330,7 @@ function(sign_target TARGET_NAME)
 		endif()
 		is_macos_bundle(${TARGET_NAME} isBundle)
 		if(${isBundle})
-			set(addTargetPath ".app/Contents/MacOS/${TARGET_NAME}")
+			set(addTargetPath ".app")
 		else()
 			set(addTargetPath "")
 		endif()
@@ -339,7 +339,7 @@ function(sign_target TARGET_NAME)
 				if(NOT \${CMAKE_INSTALL_CONFIG_NAME} STREQUAL \"Debug\")\n\
 					set(targetLocation \"${CMAKE_CURRENT_BINARY_DIR}/\${CMAKE_INSTALL_CONFIG_NAME}/${CMAKE_${targetType}_PREFIX}${TARGET_NAME}\${${TARGET_NAME}_\${CMAKE_INSTALL_CONFIG_NAME}_POSTFIX}${CMAKE_${targetType}_SUFFIX}${addTargetPath}\")\n\
 					execute_process(COMMAND \"${CMAKE_COMMAND}\" -E echo \"Signing ${TARGET_NAME}\")\n\
-					execute_process(COMMAND codesign -fs ${LA_TEAM_IDENTIFIER} --timestamp \"\${targetLocation}\")\n\
+					execute_process(COMMAND codesign -s \"${LA_TEAM_IDENTIFIER}\" --timestamp --deep --strict --force \"\${targetLocation}\")\n\
 				endif()"
 		)
 	endif()
