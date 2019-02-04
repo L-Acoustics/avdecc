@@ -19,6 +19,7 @@
 
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
+#include "la/avdecc/internals/protocolVuAecpdu.hpp"
 #include "protocolInterface_macNative.hpp"
 #include "logHelper.hpp"
 #include <stdexcept>
@@ -114,6 +115,8 @@ struct LockInformation
 + (la::avdecc::protocol::AemAecpdu::UniquePointer)makeAemResponse:(AVB17221AECPAEMMessage*)response;
 + (AVB17221AECPAddressAccessMessage*)makeAaCommand:(la::avdecc::protocol::AaAecpdu const&)command;
 + (la::avdecc::protocol::AaAecpdu::UniquePointer)makeAaResponse:(AVB17221AECPAddressAccessMessage*)response;
++ (AVB17221AECPVendorMessage*)makeVendorCommand:(la::avdecc::protocol::VuAecpdu const&)command;
++ (la::avdecc::protocol::VuAecpdu::UniquePointer)makeVendorResponse:(AVB17221AECPVendorMessage*)response;
 + (AVB17221AECPMessage*)makeAecpCommand:(la::avdecc::protocol::Aecpdu const&)command;
 + (la::avdecc::protocol::Aecpdu::UniquePointer)makeAecpResponse:(AVB17221AECPMessage*)response;
 + (la::avdecc::protocol::Acmpdu::UniquePointer)makeAcmpMessage:(AVB17221ACMPMessage*)message;
@@ -565,7 +568,6 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	auto const message = [AVB17221AECPAddressAccessMessage commandMessage];
 
 	// Set AA specific fields
-	//NSArray<AVB17221AECPAddressAccessTLV *>* tlvs = [[NSArray alloc] init];
 	auto* tlvs = [[NSMutableArray alloc] init];
 	for (auto const& tlv : command.getTlvData())
 	{
@@ -611,6 +613,49 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	return aaAecpdu;
 }
 
++ (AVB17221AECPVendorMessage*)makeVendorCommand:(la::avdecc::protocol::VuAecpdu const&)command {
+#pragma message("TODO")
+	auto const message = [[AVB17221AECPVendorMessage alloc] init];
+#if !__has_feature(objc_arc)
+	[message autorelease];
+#endif
+
+	// Set Vendor Unique specific fields
+	//message.protocolID = command.getProtocolIdentifier();
+	//auto const payloadInfo = command.getPayload();
+	//auto const* const payload = payloadInfo.first;
+	//if (payload != nullptr)
+	//{
+	//message.commandSpecificData = [NSData dataWithBytes:payload length:payloadInfo.second];
+	//}
+
+	// Set common fields
+	message.status = AVB17221AECPStatusSuccess;
+	message.targetEntityID = command.getTargetEntityID();
+	message.controllerEntityID = command.getControllerEntityID();
+	// No need to set the sequenceID field, it's handled by Apple's framework
+
+	return message;
+}
+
++ (la::avdecc::protocol::VuAecpdu::UniquePointer)makeVendorResponse:(AVB17221AECPVendorMessage*)response {
+#pragma message("TODO")
+	// We have to retrieve the ProtocolID to dispatch
+	//auto const protocolIdentifierOffset = AvtpduControl::HeaderLength + Aecpdu::HeaderLength;
+	//if (pkt_len >= (protocolIdentifierOffset + VuAecpdu::ProtocolIdentifierSize))
+	//{
+	//VuAecpdu::ProtocolIdentifier protocolIdentifier;
+	//std::memcpy(protocolIdentifier.data(), pkt_data + protocolIdentifierOffset, VuAecpdu::ProtocolIdentifierSize);
+
+	//if (protocolIdentifier == MvuAecpdu::ProtocolID)
+	//{
+	//return MvuAecpdu::create();
+	//}
+	//}
+
+	return la::avdecc::protocol::VuAecpdu::UniquePointer{ nullptr, nullptr };
+}
+
 + (AVB17221AECPMessage*)makeAecpCommand:(la::avdecc::protocol::Aecpdu const&)command {
 	switch (static_cast<AVB17221AECPMessageType>(command.getMessageType().getValue()))
 	{
@@ -618,6 +663,8 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 			return [BridgeInterface makeAemCommand:static_cast<la::avdecc::protocol::AemAecpdu const&>(command)];
 		case AVB17221AECPMessageTypeAddressAccessCommand:
 			return [BridgeInterface makeAaCommand:static_cast<la::avdecc::protocol::AaAecpdu const&>(command)];
+		case AVB17221AECPMessageTypeVendorUniqueCommand:
+			return [BridgeInterface makeVendorCommand:static_cast<la::avdecc::protocol::VuAecpdu const&>(command)];
 		default:
 			AVDECC_ASSERT(false, "Unhandled AECP message type");
 			break;
@@ -703,6 +750,8 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 				return la::avdecc::protocol::ProtocolInterface::Error::UnknownLocalEntity;
 			case kIOReturnOffline:
 				return la::avdecc::protocol::ProtocolInterface::Error::TransportError;
+			case kIOReturnBadArgument:
+				return la::avdecc::protocol::ProtocolInterface::Error::InternalError;
 			default:
 				NSLog(@"Not handled IOReturn error code: %x\n", code);
 				AVDECC_ASSERT(false, "Not handled error code");
