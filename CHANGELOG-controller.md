@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support for Milan STREAM_OUTPUT counters
 - More Milan compatibility detection (Counters)
 
+### Fixed
+- Uncaught exception when an enumeration error occured
+
 ## [2.8.0] - 2019-01-23
 ### Added
 - Better detection of non IEEE1722.1 compliant entities, and misbehaving entities (sending correctly built messages but with incoherent values)
