@@ -2320,9 +2320,10 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 }
 
 /* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetDescriptorDynamicInfo (AEM) */
-bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept
+bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, bool const optionalForMilan) noexcept
 {
-	switch (getFailureAction(status))
+	auto const action = getFailureAction(status);
+	switch (action)
 	{
 		case FailureAction::ErrorIgnore:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
@@ -2348,6 +2349,16 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 		}
 		case FailureAction::NotSupported:
 		{
+			if (action == FailureAction::NotSupported && !optionalForMilan)
+			{
+				// Remove "Milan compatibility" as device does not support mandatory command
+				if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+				{
+					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory AECP command not supported by the entity: {}", ControlledEntityImpl::descriptorDynamicInfoTypeToString(descriptorDynamicInfoType));
+					removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
+				}
+			}
+
 			// Failed to retrieve single DescriptorDynamicInformation, retrieve the corresponding descriptor instead if possible, otherwise switch back to full StaticModel enumeration
 			auto const success = fetchCorrespondingDescriptor(entity, configurationIndex, descriptorDynamicInfoType, descriptorIndex);
 

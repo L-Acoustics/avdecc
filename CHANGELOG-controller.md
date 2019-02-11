@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - Support for Milan STREAM_OUTPUT counters
-- More Milan compatibility detection (Counters)
+- More Milan compatibility detection (Counters, AECP GET commands)
 
 ### Fixed
 - Uncaught exception when an enumeration error occured
