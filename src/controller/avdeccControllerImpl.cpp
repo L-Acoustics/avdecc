@@ -1928,7 +1928,7 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const entity) n
 	}
 }
 
-ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::ControllerEntity::MvuCommandStatus const status) const noexcept
+ControllerImpl::FailureAction ControllerImpl::getFailureActionForMvuCommandStatus(entity::ControllerEntity::MvuCommandStatus const status) const noexcept
 {
 	switch (status)
 	{
@@ -1939,11 +1939,15 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 		}
 
 		// Cases we want to flag as error (should not have happened, we have a possible non certified entity) but continue enumeration
-		case entity::ControllerEntity::MvuCommandStatus::BadArguments:
-			[[fallthrough]];
 		case entity::ControllerEntity::MvuCommandStatus::ProtocolError:
 		{
 			return FailureAction::ErrorContinue;
+		}
+
+		// Case inbetween NotSupported and actual device error that shoud not happen
+		case entity::ControllerEntity::MvuCommandStatus::BadArguments:
+		{
+			return FailureAction::BadArguments;
 		}
 
 		// Cases the caller should decide whether to continue enumeration or not
@@ -1966,7 +1970,7 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 	}
 }
 
-ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::ControllerEntity::AemCommandStatus const status) const noexcept
+ControllerImpl::FailureAction ControllerImpl::getFailureActionForAemCommandStatus(entity::ControllerEntity::AemCommandStatus const status) const noexcept
 {
 	switch (status)
 	{
@@ -1997,13 +2001,17 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::AuthenticationDisabled:
 			[[fallthrough]];
-		case entity::ControllerEntity::AemCommandStatus::BadArguments:
-			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::StreamIsRunning:
 			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::ProtocolError:
 		{
 			return FailureAction::ErrorContinue;
+		}
+
+		// Case inbetween NotSupported and actual device error that shoud not happen
+		case entity::ControllerEntity::AemCommandStatus::BadArguments:
+		{
+			return FailureAction::BadArguments;
 		}
 
 		// Cases the caller should decide whether to continue enumeration or not
@@ -2030,7 +2038,7 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 	}
 }
 
-ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::ControllerEntity::ControlStatus const status) const noexcept
+ControllerImpl::FailureAction ControllerImpl::getFailureActionForControlStatus(entity::ControllerEntity::ControlStatus const status) const noexcept
 {
 	switch (status)
 	{
@@ -2109,9 +2117,11 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 /* This method handles non-success AemCommandStatus returned while trying to RegisterUnsolicitedNotifications */
 bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity) noexcept
 {
-	auto const action = getFailureAction(status);
+	auto const action = getFailureActionForAemCommandStatus(status);
 	switch (action)
 	{
+		case FailureAction::BadArguments:
+			[[fallthrough]];
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
 			removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
@@ -2184,11 +2194,13 @@ bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity:
 }
 
 /* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetMilanModel (MVU) */
-bool ControllerImpl::processFailureStatus(entity::ControllerEntity::MvuCommandStatus const status, ControlledEntityImpl* const entity, ControlledEntityImpl::MilanInfoType const milanInfoType, bool const optionalForMilan) noexcept
+bool ControllerImpl::processGetMilanModelFailureStatus(entity::ControllerEntity::MvuCommandStatus const status, ControlledEntityImpl* const entity, ControlledEntityImpl::MilanInfoType const milanInfoType, bool const optionalForMilan) noexcept
 {
-	auto const action = getFailureAction(status);
+	auto const action = getFailureActionForMvuCommandStatus(status);
 	switch (action)
 	{
+		case FailureAction::BadArguments:
+			[[fallthrough]];
 		case FailureAction::ErrorContinue:
 			// Remove "Milan compatibility" as device does not properly implement mandatory MVU
 			if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
@@ -2260,9 +2272,9 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::MvuCommandSt
 }
 
 /* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetStaticModel (AEM) */
-bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, bool const optionalForMilan) noexcept
+bool ControllerImpl::processGetStaticModelFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
-	auto const action = getFailureAction(status);
+	auto const action = getFailureActionForAemCommandStatus(status);
 	switch (action)
 	{
 		case FailureAction::ErrorContinue:
@@ -2274,15 +2286,14 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 			return true;
 		case FailureAction::WarningContinue:
 			return true;
+		case FailureAction::BadArguments: // Getting the static model of an entity is not mandatory in 1722.1, thus we can ignore a BadArguments status
+			[[fallthrough]];
 		case FailureAction::NotSupported:
-			if (!optionalForMilan)
+			// Remove "Milan compatibility" as device does not support mandatory descriptor
+			if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 			{
-				// Remove "Milan compatibility" as device does not support mandatory descriptor
-				if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
-				{
-					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory descriptor not supported by the entity: {}", entity::model::descriptorTypeToString(descriptorType));
-					removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
-				}
+				LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory descriptor not supported by the entity: {}", entity::model::descriptorTypeToString(descriptorType));
+				removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
 			}
 			return true;
 		case FailureAction::TimedOut:
@@ -2305,14 +2316,11 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 				// Too many retries, result depends on FailureAction and AemCommandStatus
 				if (action == FailureAction::TimedOut)
 				{
-					if (!optionalForMilan)
+					// Remove "Milan compatibility" as device does not respond to mandatory command
+					if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 					{
-						// Remove "Milan compatibility" as device does not respond to mandatory command
-						if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
-						{
-							LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many timeouts for Milan mandatory descriptor: {}", entity::model::descriptorTypeToString(descriptorType));
-							removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
-						}
+						LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many timeouts for Milan mandatory descriptor: {}", entity::model::descriptorTypeToString(descriptorType));
+						removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
 					}
 				}
 				else if (action == FailureAction::Busy)
@@ -2345,9 +2353,9 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 }
 
 /* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetDynamicInfo for AECP commands */
-bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex, bool const optionalForMilan) noexcept
+bool ControllerImpl::processGetAecpDynamicInfoFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex, bool const optionalForMilan) noexcept
 {
-	auto const action = getFailureAction(status);
+	auto const action = getFailureActionForAemCommandStatus(status);
 	switch (action)
 	{
 		case FailureAction::ErrorContinue:
@@ -2359,6 +2367,8 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 			return true;
 		case FailureAction::WarningContinue:
 			return true;
+		case FailureAction::BadArguments: // Getting the AECP dynamic info of an entity is not mandatory in 1722.1, thus we can ignore a BadArguments status
+			[[fallthrough]];
 		case FailureAction::NotSupported:
 			if (!optionalForMilan)
 			{
@@ -2430,9 +2440,9 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 }
 
 /* This method handles non-success ControlStatus returned while getting EnumerationSteps::GetDynamicInfo for ACMP commands */
-bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex, bool const optionalForMilan) noexcept
+bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, bool const optionalForMilan) noexcept
 {
-	auto const action = getFailureAction(status);
+	auto const action = getFailureActionForControlStatus(status);
 	switch (action)
 	{
 		case FailureAction::ErrorContinue:
@@ -2468,7 +2478,7 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 #endif // __cpp_structured_bindings
 			if (shouldRetry)
 			{
-				queryInformation(entity, configurationIndex, dynamicInfoType, descriptorIndex, subIndex, retryTimer);
+				queryInformation(entity, configurationIndex, dynamicInfoType, descriptorIndex, 0u, retryTimer);
 			}
 			else
 			{
@@ -2513,9 +2523,9 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 }
 
 /* This method handles non-success ControlStatus returned while getting EnumerationSteps::GetDynamicInfo for ACMP commands with a connection index */
-bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::StreamIdentification const& talkerStream, std::uint16_t const subIndex, bool const optionalForMilan) noexcept
+bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::StreamIdentification const& talkerStream, std::uint16_t const subIndex, bool const optionalForMilan) noexcept
 {
-	auto const action = getFailureAction(status);
+	auto const action = getFailureActionForControlStatus(status);
 	switch (action)
 	{
 		case FailureAction::ErrorContinue:
@@ -2596,9 +2606,9 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 }
 
 /* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetDescriptorDynamicInfo (AEM) */
-bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, bool const optionalForMilan) noexcept
+bool ControllerImpl::processGetDescriptorDynamicInfoFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, bool const optionalForMilan) noexcept
 {
-	auto const action = getFailureAction(status);
+	auto const action = getFailureActionForAemCommandStatus(status);
 	switch (action)
 	{
 		case FailureAction::ErrorContinue:

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support for Milan STREAM_OUTPUT counters
 - More Milan compatibility detection (Counters, AECP GET commands)
 
+### Changed
+- BAD_ARGUMENTS is allowed as a valid response for some AEM queries
+
 ### Fixed
 - Uncaught exception when an enumeration error occured
 - RegisterUnsolicitedNotification is allowed to return NO_RESOURCES (Milan spec)
