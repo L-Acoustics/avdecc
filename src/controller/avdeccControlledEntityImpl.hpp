@@ -306,6 +306,12 @@ public:
 	void setAudioMapDescriptor(entity::model::AudioMapDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex) noexcept;
 	void setClockDomainDescriptor(entity::model::ClockDomainDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) noexcept;
 
+	// Expected RegisterUnsol query methods
+	bool checkAndClearExpectedRegisterUnsol() noexcept;
+	void setRegisterUnsolExpected() noexcept;
+	bool gotExpectedRegisterUnsol() const noexcept;
+	std::pair<bool, std::chrono::milliseconds> getRegisterUnsolRetryTimer() noexcept;
+
 	// Expected Milan info query methods
 	bool checkAndClearExpectedMilanInfo(MilanInfoType const milanInfoType) noexcept;
 	void setMilanInfoExpected(MilanInfoType const milanInfoType) noexcept;
@@ -412,6 +418,7 @@ private:
 	// Private variables
 	LockInformation::SharedPointer _sharedLock{ nullptr };
 	bool _ignoreCachedEntityModel{ false };
+	std::uint16_t _registerUnsolRetryCount{ 0u };
 	std::uint16_t _queryMilanInfoRetryCount{ 0u };
 	std::uint16_t _queryDescriptorRetryCount{ 0u };
 	std::uint16_t _queryDynamicInfoRetryCount{ 0u };
@@ -421,6 +428,7 @@ private:
 	bool _gotFatalEnumerateError{ false }; // Have we got a fatal error during entity enumeration
 	bool _isSubscribedToUnsolicitedNotifications{ false }; // Are we subscribed to unsolicited notifications
 	bool _advertised{ false }; // Has the entity been advertised to the observers
+	bool _expectedRegisterUnsol{ false };
 	std::unordered_set<MilanInfoKey> _expectedMilanInfo{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DescriptorKey>> _expectedDescriptors{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DynamicInfoKey>> _expectedDynamicInfo{};

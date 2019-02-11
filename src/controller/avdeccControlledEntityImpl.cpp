@@ -35,10 +35,11 @@ namespace avdecc
 {
 namespace controller
 {
-static constexpr std::uint16_t MaxQueryMilanInfoRetryCount = 3;
-static constexpr std::uint16_t MaxQueryDescriptorRetryCount = 3;
-static constexpr std::uint16_t MaxQueryDynamicInfoRetryCount = 3;
-static constexpr std::uint16_t MaxQueryDescriptorDynamicInfoRetryCount = 3;
+static constexpr std::uint16_t MaxRegisterUnsolRetryCount = 1;
+static constexpr std::uint16_t MaxQueryMilanInfoRetryCount = 2;
+static constexpr std::uint16_t MaxQueryDescriptorRetryCount = 2;
+static constexpr std::uint16_t MaxQueryDynamicInfoRetryCount = 2;
+static constexpr std::uint16_t MaxQueryDescriptorDynamicInfoRetryCount = 2;
 static constexpr std::uint16_t QueryRetryMillisecondDelay = 500;
 
 /* ************************************************************************** */
@@ -1532,6 +1533,45 @@ void ControlledEntityImpl::setClockDomainDescriptor(entity::model::ClockDomainDe
 		m.objectName = descriptor.objectName;
 		m.clockSourceIndex = descriptor.clockSourceIndex;
 	}
+}
+
+// Expected RegisterUnsol query methods
+bool ControlledEntityImpl::checkAndClearExpectedRegisterUnsol() noexcept
+{
+	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+
+	// Ignore if we had a fatal enumeration error
+	if (_gotFatalEnumerateError)
+		return false;
+
+	auto const wasExpected = _expectedRegisterUnsol;
+	_expectedRegisterUnsol = false;
+
+	return wasExpected;
+}
+
+void ControlledEntityImpl::setRegisterUnsolExpected() noexcept
+{
+	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+
+	_expectedRegisterUnsol = true;
+}
+
+bool ControlledEntityImpl::gotExpectedRegisterUnsol() const noexcept
+{
+	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+
+	return !_expectedRegisterUnsol;
+}
+
+std::pair<bool, std::chrono::milliseconds> ControlledEntityImpl::getRegisterUnsolRetryTimer() noexcept
+{
+	++_registerUnsolRetryCount;
+	if (_registerUnsolRetryCount > MaxRegisterUnsolRetryCount)
+	{
+		return std::make_pair(false, std::chrono::milliseconds{ 0 });
+	}
+	return std::make_pair(true, std::chrono::milliseconds{ QueryRetryMillisecondDelay });
 }
 
 // Expected Milan info query methods

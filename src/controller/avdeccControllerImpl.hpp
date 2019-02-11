@@ -443,11 +443,13 @@ private:
 	/* ************************************************************ */
 	enum class FailureAction
 	{
-		WarningIgnore, /**< This query had a warning, but ignore and continue to next one. */
-		ErrorIgnore, /**< This query had an error, flag it, ignore and continue to next one. */
-		Retry, /**< Should retry this query. */
+		NotAuthenticated, /**< This query requires authentication. Caller should decide whether to retry with authentication or not. */
+		TimedOut, /**< This query timed out, try it again. */
+		Busy, /**< Device is busy, try it again. */
 		NotSupported, /**< This query is not supported by the entity. Caller should decide whether to continue or not. */
-		Fatal, /**< This query returned a fatal error, enumeration should be stopped immediately. */
+		WarningContinue, /**< This query had a warning, but ignore and continue to next one. */
+		ErrorContinue, /**< This query had an error, flag it, ignore and continue to next one. */
+		ErrorFatal, /**< This query returned a fatal error, enumeration should be stopped immediately. */
 	};
 
 	/* ************************************************************ */
@@ -485,6 +487,7 @@ private:
 	FailureAction getFailureAction(entity::ControllerEntity::MvuCommandStatus const status) const noexcept;
 	FailureAction getFailureAction(entity::ControllerEntity::AemCommandStatus const status) const noexcept;
 	FailureAction getFailureAction(entity::ControllerEntity::ControlStatus const status) const noexcept;
+	bool processRegisterUnsolFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity) noexcept;
 	bool processFailureStatus(entity::ControllerEntity::MvuCommandStatus const status, ControlledEntityImpl* const entity, ControlledEntityImpl::MilanInfoType const milanInfoType, bool const optionalForMilan = false) noexcept;
 	bool processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, bool const optionalForMilan = false) noexcept;
 	bool processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex = std::uint16_t{ 0u }, bool const optionalForMilan = false) noexcept;

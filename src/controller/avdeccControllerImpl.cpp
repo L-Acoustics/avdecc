@@ -1625,6 +1625,9 @@ void ControllerImpl::registerUnsol(ControlledEntityImpl* const entity) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
 
+	// Immediately set as expected
+	entity->setRegisterUnsolExpected();
+
 	// Register for unsolicited notifications
 	LOG_CONTROLLER_TRACE(entityID, "registerUnsolicitedNotifications ()");
 	_controller->registerUnsolicitedNotifications(entityID, std::bind(&ControllerImpl::onRegisterUnsolicitedNotificationsResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
@@ -1781,99 +1784,99 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				chooseLocale(entity, configurationIndex);
 
 				// Get DynamicModel for each AudioUnit descriptors
-				{ { auto const count = configStaticTree.audioUnitStaticModels.size();
-				for (auto index = entity::model::AudioUnitIndex(0); index < count; ++index)
 				{
-					// Get AudioUnitName
-					queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName, index);
-					// Get AudioUnitSamplingRate
-					queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate, index);
+					auto const count = configStaticTree.audioUnitStaticModels.size();
+					for (auto index = entity::model::AudioUnitIndex(0); index < count; ++index)
+					{
+						// Get AudioUnitName
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName, index);
+						// Get AudioUnitSamplingRate
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate, index);
+					}
+				}
+				// Get DynamicModel for each StreamInput descriptors
+				{
+					auto const count = configStaticTree.streamInputStaticModels.size();
+					for (auto index = entity::model::StreamIndex(0); index < count; ++index)
+					{
+						// Get InputStreamName
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName, index);
+						// Get InputStreamFormat
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat, index);
+					}
+				}
+				// Get DynamicModel for each StreamOutput descriptors
+				{
+					auto const count = configStaticTree.streamOutputStaticModels.size();
+					for (auto index = entity::model::StreamIndex(0); index < count; ++index)
+					{
+						// Get OutputStreamName
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName, index);
+						// Get OutputStreamFormat
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat, index);
+					}
+				}
+				// Get DynamicModel for each AvbInterface descriptors
+				{
+					auto const count = configStaticTree.avbInterfaceStaticModels.size();
+					for (auto index = entity::model::AvbInterfaceIndex(0); index < count; ++index)
+					{
+						// Get AvbInterfaceName
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName, index);
+					}
+				}
+				// Get DynamicModel for each ClockSource descriptors
+				{
+					auto const count = configStaticTree.clockSourceStaticModels.size();
+					for (auto index = entity::model::ClockSourceIndex(0); index < count; ++index)
+					{
+						// Get ClockSourceName
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName, index);
+					}
+				}
+				// Get DynamicModel for each MemoryObject descriptors
+				{
+					auto const count = configStaticTree.memoryObjectStaticModels.size();
+					for (auto index = entity::model::MemoryObjectIndex(0); index < count; ++index)
+					{
+						// Get MemoryObjectName
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName, index);
+						// Get MemoryObjectLength
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength, index);
+					}
+				}
+				// Get DynamicModel for each AudioCluster descriptors
+				{
+					auto const count = configStaticTree.audioClusterStaticModels.size();
+					for (auto index = entity::model::ClusterIndex(0); index < count; ++index)
+					{
+						// Get AudioClusterName
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, index);
+					}
+				}
+				// Get DynamicModel for each ClockDomain descriptors
+				{
+					auto const count = configStaticTree.clockDomainStaticModels.size();
+					for (auto index = entity::model::ClockDomainIndex(0); index < count; ++index)
+					{
+						// Get ClockDomainName
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName, index);
+						// Get ClockDomainSourceIndex
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex, index);
+					}
 				}
 			}
 		}
-		// Get DynamicModel for each StreamInput descriptors
-		{
-			auto const count = configStaticTree.streamInputStaticModels.size();
-			for (auto index = entity::model::StreamIndex(0); index < count; ++index)
-			{
-				// Get InputStreamName
-				queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName, index);
-				// Get InputStreamFormat
-				queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat, index);
-			}
-		}
-		// Get DynamicModel for each StreamOutput descriptors
-		{
-			auto const count = configStaticTree.streamOutputStaticModels.size();
-			for (auto index = entity::model::StreamIndex(0); index < count; ++index)
-			{
-				// Get OutputStreamName
-				queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName, index);
-				// Get OutputStreamFormat
-				queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat, index);
-			}
-		}
-		// Get DynamicModel for each AvbInterface descriptors
-		{
-			auto const count = configStaticTree.avbInterfaceStaticModels.size();
-			for (auto index = entity::model::AvbInterfaceIndex(0); index < count; ++index)
-			{
-				// Get AvbInterfaceName
-				queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName, index);
-			}
-		}
-		// Get DynamicModel for each ClockSource descriptors
-		{
-			auto const count = configStaticTree.clockSourceStaticModels.size();
-			for (auto index = entity::model::ClockSourceIndex(0); index < count; ++index)
-			{
-				// Get ClockSourceName
-				queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName, index);
-			}
-		}
-		// Get DynamicModel for each MemoryObject descriptors
-		{
-			auto const count = configStaticTree.memoryObjectStaticModels.size();
-			for (auto index = entity::model::MemoryObjectIndex(0); index < count; ++index)
-			{
-				// Get MemoryObjectName
-				queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName, index);
-				// Get MemoryObjectLength
-				queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength, index);
-			}
-		}
-		// Get DynamicModel for each AudioCluster descriptors
-		{
-			auto const count = configStaticTree.audioClusterStaticModels.size();
-			for (auto index = entity::model::ClusterIndex(0); index < count; ++index)
-			{
-				// Get AudioClusterName
-				queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, index);
-			}
-		}
-		// Get DynamicModel for each ClockDomain descriptors
-		{
-			auto const count = configStaticTree.clockDomainStaticModels.size();
-			for (auto index = entity::model::ClockDomainIndex(0); index < count; ++index)
-			{
-				// Get ClockDomainName
-				queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName, index);
-				// Get ClockDomainSourceIndex
-				queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex, index);
-			}
-		}
+	}
+
+	// Get all expected descriptor dynamic information
+	if (entity->gotAllExpectedDescriptorDynamicInfo())
+	{
+		// Clear this enumeration step and check for next one
+		entity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+		checkEnumerationSteps(entity);
 	}
 }
-} // namespace controller
-
-// Get all expected descriptor dynamic information
-if (entity->gotAllExpectedDescriptorDynamicInfo())
-{
-	// Clear this enumeration step and check for next one
-	entity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
-	checkEnumerationSteps(entity);
-}
-} // namespace avdecc
 
 void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const entity) noexcept
 {
@@ -1929,20 +1932,18 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 {
 	switch (status)
 	{
-		// Cases we want to schedule a retry
+		// Query timed out
 		case entity::ControllerEntity::MvuCommandStatus::TimedOut:
 		{
-			return FailureAction::Retry;
+			return FailureAction::TimedOut;
 		}
 
-		// Cases we want to ignore and continue enumeration
-
-		// Cases we want to flag as error (possible non certified entity) but continue enumeration
+		// Cases we want to flag as error (should not have happened, we have a possible non certified entity) but continue enumeration
 		case entity::ControllerEntity::MvuCommandStatus::BadArguments:
 			[[fallthrough]];
 		case entity::ControllerEntity::MvuCommandStatus::ProtocolError:
 		{
-			return FailureAction::ErrorIgnore;
+			return FailureAction::ErrorContinue;
 		}
 
 		// Cases the caller should decide whether to continue enumeration or not
@@ -1960,7 +1961,7 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 			[[fallthrough]];
 		default:
 		{
-			return FailureAction::Fatal;
+			return FailureAction::ErrorFatal;
 		}
 	}
 }
@@ -1969,38 +1970,40 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 {
 	switch (status)
 	{
-		// Cases we want to schedule a retry
+		// Cases where the device seems busy
 		case entity::ControllerEntity::AemCommandStatus::LockedByOther: // Should not happen for a read operation but some devices are bugged, so retry anyway
 			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::AcquiredByOther: // Should not happen for a read operation but some devices are bugged, so retry anyway
 			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::NoResources:
-			[[fallthrough]];
-		case entity::ControllerEntity::AemCommandStatus::InProgress:
-			[[fallthrough]];
-		case entity::ControllerEntity::AemCommandStatus::StreamIsRunning:
-			[[fallthrough]];
+		{
+			return FailureAction::Busy;
+		}
+
+		// Query timed out
 		case entity::ControllerEntity::AemCommandStatus::TimedOut:
 		{
-			return FailureAction::Retry;
+			return FailureAction::TimedOut;
 		}
 
-		// Cases we want to ignore and continue enumeration
+		// Authentication required for this command
 		case entity::ControllerEntity::AemCommandStatus::NotAuthenticated:
+		{
+			return FailureAction::NotAuthenticated;
+		}
+
+		// Cases we want to flag as error (should not have happened, we have a possible non certified entity) but continue enumeration
+		case entity::ControllerEntity::AemCommandStatus::NoSuchDescriptor:
 			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::AuthenticationDisabled:
-		{
-			return FailureAction::WarningIgnore;
-		}
-
-		// Cases we want to flag as error (possible non certified entity) but continue enumeration
-		case entity::ControllerEntity::AemCommandStatus::NoSuchDescriptor:
 			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::BadArguments:
 			[[fallthrough]];
+		case entity::ControllerEntity::AemCommandStatus::StreamIsRunning:
+			[[fallthrough]];
 		case entity::ControllerEntity::AemCommandStatus::ProtocolError:
 		{
-			return FailureAction::ErrorIgnore;
+			return FailureAction::ErrorContinue;
 		}
 
 		// Cases the caller should decide whether to continue enumeration or not
@@ -2022,7 +2025,7 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 			[[fallthrough]];
 		default:
 		{
-			return FailureAction::Fatal;
+			return FailureAction::ErrorFatal;
 		}
 	}
 }
@@ -2031,7 +2034,29 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 {
 	switch (status)
 	{
-		// Cases we want to schedule a retry
+		// Cases where the device seems busy
+		case entity::ControllerEntity::ControlStatus::StateUnavailable:
+			[[fallthrough]];
+		case entity::ControllerEntity::ControlStatus::CouldNotSendMessage:
+		{
+			return FailureAction::Busy;
+		}
+
+		// Query timed out
+		case entity::ControllerEntity::ControlStatus::TimedOut:
+		{
+			return FailureAction::TimedOut;
+		}
+
+		// Cases we want to ignore and continue enumeration
+		case entity::ControllerEntity::ControlStatus::NotConnected:
+			[[fallthrough]];
+		case entity::ControllerEntity::ControlStatus::NoSuchConnection:
+		{
+			return FailureAction::WarningContinue;
+		}
+
+		// Cases we want to flag as error (should not have happened, we have a possible non certified entity) but continue enumeration
 		case entity::ControllerEntity::ControlStatus::TalkerDestMacFail:
 			[[fallthrough]];
 		case entity::ControllerEntity::ControlStatus::TalkerNoBandwidth:
@@ -2042,27 +2067,13 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 			[[fallthrough]];
 		case entity::ControllerEntity::ControlStatus::ListenerExclusive:
 			[[fallthrough]];
-		case entity::ControllerEntity::ControlStatus::StateUnavailable:
-			[[fallthrough]];
-		case entity::ControllerEntity::ControlStatus::CouldNotSendMessage:
-			[[fallthrough]];
-		case entity::ControllerEntity::ControlStatus::TimedOut:
-		{
-			return FailureAction::Retry;
-		}
-
-		// Cases we want to ignore and continue enumeration
 		case entity::ControllerEntity::ControlStatus::TalkerNoStreamIndex:
-			[[fallthrough]];
-		case entity::ControllerEntity::ControlStatus::NotConnected:
-			[[fallthrough]];
-		case entity::ControllerEntity::ControlStatus::NoSuchConnection:
 			[[fallthrough]];
 		case entity::ControllerEntity::ControlStatus::ControllerNotAuthorized:
 			[[fallthrough]];
 		case entity::ControllerEntity::ControlStatus::IncompatibleRequest:
 		{
-			return FailureAction::WarningIgnore;
+			return FailureAction::ErrorContinue;
 		}
 
 		// Cases the caller should decide whether to continue enumeration or not
@@ -2090,17 +2101,95 @@ ControllerImpl::FailureAction ControllerImpl::getFailureAction(entity::Controlle
 			[[fallthrough]];
 		default:
 		{
-			return FailureAction::Fatal;
+			return FailureAction::ErrorFatal;
 		}
+	}
+}
+
+/* This method handles non-success AemCommandStatus returned while trying to RegisterUnsolicitedNotifications */
+bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity) noexcept
+{
+	auto const action = getFailureAction(status);
+	switch (action)
+	{
+		case FailureAction::ErrorContinue:
+			// Flag the entity as "Not fully IEEE1722.1 compliant"
+			removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			return true;
+		case FailureAction::NotAuthenticated:
+			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
+			return true;
+		case FailureAction::WarningContinue:
+			return true;
+		case FailureAction::NotSupported:
+			// Remove "Milan compatibility" as device does not support mandatory command
+			if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+			{
+				LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory command not supported by the entity: REGISTER_UNSOLICITED_NOTIFICATION");
+				removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
+			}
+			return true;
+		case FailureAction::TimedOut:
+			[[fallthrough]];
+		case FailureAction::Busy:
+		{
+#ifdef __cpp_structured_bindings
+			auto const [shouldRetry, retryTimer] = entity->getRegisterUnsolRetryTimer();
+#else // !__cpp_structured_bindings
+			auto const result = entity->getRegisterUnsolRetryTimer();
+			auto const shouldRetry = std::get<0>(result);
+			auto const retryTimer = std::get<1>(result);
+#endif // __cpp_structured_bindings
+			if (shouldRetry)
+			{
+				registerUnsol(entity);
+			}
+			else
+			{
+				// Too many retries, result depends on FailureAction and AemCommandStatus
+				if (action == FailureAction::TimedOut)
+				{
+					// Remove "Milan compatibility" as device does not respond to mandatory command
+					if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+					{
+						LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many timeouts for Milan mandatory command: REGISTER_UNSOLICITED_NOTIFICATION");
+						removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
+					}
+				}
+				else if (action == FailureAction::Busy)
+				{
+					switch (status)
+					{
+						case entity::ControllerEntity::AemCommandStatus::LockedByOther: // Should not happen for a read operation but some devices are bugged
+							[[fallthrough]];
+						case entity::ControllerEntity::AemCommandStatus::AcquiredByOther: // Should not happen for a read operation but some devices are bugged
+						{
+							LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many unexpected errors for AEM command: REGISTER_UNSOLICITED_NOTIFICATION ({})", entity::LocalEntity::statusToString(status));
+							// Flag the entity as "Not fully IEEE1722.1 compliant"
+							removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+							break;
+						}
+						default:
+							break;
+					}
+				}
+			}
+			return true;
+		}
+		case FailureAction::ErrorFatal:
+			return false;
+		default:
+			return false;
 	}
 }
 
 /* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetMilanModel (MVU) */
 bool ControllerImpl::processFailureStatus(entity::ControllerEntity::MvuCommandStatus const status, ControlledEntityImpl* const entity, ControlledEntityImpl::MilanInfoType const milanInfoType, bool const optionalForMilan) noexcept
 {
-	switch (getFailureAction(status))
+	auto const action = getFailureAction(status);
+	switch (action)
 	{
-		case FailureAction::ErrorIgnore:
+		case FailureAction::ErrorContinue:
 			// Remove "Milan compatibility" as device does not properly implement mandatory MVU
 			if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 			{
@@ -2108,7 +2197,10 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::MvuCommandSt
 				removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
 			}
 			return true;
-		case FailureAction::WarningIgnore:
+		case FailureAction::NotAuthenticated:
+			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
+			return true;
+		case FailureAction::WarningContinue:
 			return true;
 		case FailureAction::NotSupported:
 			if (!optionalForMilan)
@@ -2121,7 +2213,9 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::MvuCommandSt
 				}
 			}
 			return true;
-		case FailureAction::Retry:
+		case FailureAction::TimedOut:
+			[[fallthrough]];
+		case FailureAction::Busy:
 		{
 #ifdef __cpp_structured_bindings
 			auto const [shouldRetry, retryTimer] = entity->getQueryMilanInfoRetryTimer();
@@ -2134,9 +2228,31 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::MvuCommandSt
 			{
 				queryInformation(entity, milanInfoType, retryTimer);
 			}
+			else
+			{
+				// Too many retries, result depends on FailureAction and MvuCommandStatus
+				if (action == FailureAction::TimedOut)
+				{
+					if (!optionalForMilan)
+					{
+						// Remove "Milan compatibility" as device does not respond to mandatory command
+						if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+						{
+							LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many timeouts for Milan mandatory MVU command");
+							removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
+						}
+					}
+				}
+				else if (action == FailureAction::Busy)
+				{
+					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many unexpected errors for AEM command: REGISTER_UNSOLICITED_NOTIFICATION ({})", entity::LocalEntity::statusToString(status));
+					// Flag the entity as "Not fully IEEE1722.1 compliant"
+					removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+				}
+			}
 			return true;
 		}
-		case FailureAction::Fatal:
+		case FailureAction::ErrorFatal:
 			return false;
 		default:
 			return false;
@@ -2146,13 +2262,17 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::MvuCommandSt
 /* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetStaticModel (AEM) */
 bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, bool const optionalForMilan) noexcept
 {
-	switch (getFailureAction(status))
+	auto const action = getFailureAction(status);
+	switch (action)
 	{
-		case FailureAction::ErrorIgnore:
+		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
 			removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			return true;
-		case FailureAction::WarningIgnore:
+		case FailureAction::NotAuthenticated:
+			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
+			return true;
+		case FailureAction::WarningContinue:
 			return true;
 		case FailureAction::NotSupported:
 			if (!optionalForMilan)
@@ -2165,7 +2285,9 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 				}
 			}
 			return true;
-		case FailureAction::Retry:
+		case FailureAction::TimedOut:
+			[[fallthrough]];
+		case FailureAction::Busy:
 		{
 #ifdef __cpp_structured_bindings
 			auto const [shouldRetry, retryTimer] = entity->getQueryDescriptorRetryTimer();
@@ -2178,9 +2300,44 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 			{
 				queryInformation(entity, configurationIndex, descriptorType, descriptorIndex, retryTimer);
 			}
+			else
+			{
+				// Too many retries, result depends on FailureAction and AemCommandStatus
+				if (action == FailureAction::TimedOut)
+				{
+					if (!optionalForMilan)
+					{
+						// Remove "Milan compatibility" as device does not respond to mandatory command
+						if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+						{
+							LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many timeouts for Milan mandatory descriptor: {}", entity::model::descriptorTypeToString(descriptorType));
+							removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
+						}
+					}
+				}
+				else if (action == FailureAction::Busy)
+				{
+					switch (status)
+					{
+						case entity::ControllerEntity::AemCommandStatus::LockedByOther: // Should not happen for a read operation but some devices are bugged
+							[[fallthrough]];
+						case entity::ControllerEntity::AemCommandStatus::AcquiredByOther: // Should not happen for a read operation but some devices are bugged
+							[[fallthrough]];
+						case entity::ControllerEntity::AemCommandStatus::NoResources: // Should not happen for a read operation but some devices are bugged
+						{
+							LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many unexpected errors for READ_DESCRIPTOR on {}: {}", entity::model::descriptorTypeToString(descriptorType), entity::LocalEntity::statusToString(status));
+							// Flag the entity as "Not fully IEEE1722.1 compliant"
+							removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+							break;
+						}
+						default:
+							break;
+					}
+				}
+			}
 			return true;
 		}
-		case FailureAction::Fatal:
+		case FailureAction::ErrorFatal:
 			return false;
 		default:
 			return false;
@@ -2190,13 +2347,17 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 /* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetDynamicInfo for AECP commands */
 bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex, bool const optionalForMilan) noexcept
 {
-	switch (getFailureAction(status))
+	auto const action = getFailureAction(status);
+	switch (action)
 	{
-		case FailureAction::ErrorIgnore:
+		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
 			removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			return true;
-		case FailureAction::WarningIgnore:
+		case FailureAction::NotAuthenticated:
+			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
+			return true;
+		case FailureAction::WarningContinue:
 			return true;
 		case FailureAction::NotSupported:
 			if (!optionalForMilan)
@@ -2209,7 +2370,9 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 				}
 			}
 			return true;
-		case FailureAction::Retry:
+		case FailureAction::TimedOut:
+			[[fallthrough]];
+		case FailureAction::Busy:
 		{
 #ifdef __cpp_structured_bindings
 			auto const [shouldRetry, retryTimer] = entity->getQueryDynamicInfoRetryTimer();
@@ -2222,9 +2385,44 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 			{
 				queryInformation(entity, configurationIndex, dynamicInfoType, descriptorIndex, subIndex, retryTimer);
 			}
+			else
+			{
+				// Too many retries, result depends on FailureAction and AemCommandStatus
+				if (action == FailureAction::TimedOut)
+				{
+					if (!optionalForMilan)
+					{
+						// Remove "Milan compatibility" as device does not respond to mandatory command
+						if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+						{
+							LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many timeouts for Milan mandatory dynamic info: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+							removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
+						}
+					}
+				}
+				else if (action == FailureAction::Busy)
+				{
+					switch (status)
+					{
+						case entity::ControllerEntity::AemCommandStatus::LockedByOther: // Should not happen for a read operation but some devices are bugged
+							[[fallthrough]];
+						case entity::ControllerEntity::AemCommandStatus::AcquiredByOther: // Should not happen for a read operation but some devices are bugged
+							[[fallthrough]];
+						case entity::ControllerEntity::AemCommandStatus::NoResources: // Should not happen for a read operation but some devices are bugged
+						{
+							LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many unexpected errors for dynamic info query {}: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType), entity::LocalEntity::statusToString(status));
+							// Flag the entity as "Not fully IEEE1722.1 compliant"
+							removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+							break;
+						}
+						default:
+							break;
+					}
+				}
+			}
 			return true;
 		}
-		case FailureAction::Fatal:
+		case FailureAction::ErrorFatal:
 			return false;
 		default:
 			return false;
@@ -2234,13 +2432,17 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 /* This method handles non-success ControlStatus returned while getting EnumerationSteps::GetDynamicInfo for ACMP commands */
 bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex, bool const optionalForMilan) noexcept
 {
-	switch (getFailureAction(status))
+	auto const action = getFailureAction(status);
+	switch (action)
 	{
-		case FailureAction::ErrorIgnore:
+		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
 			removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			return true;
-		case FailureAction::WarningIgnore:
+		case FailureAction::NotAuthenticated:
+			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
+			return true;
+		case FailureAction::WarningContinue:
 			return true;
 		case FailureAction::NotSupported:
 			if (!optionalForMilan)
@@ -2253,7 +2455,9 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 				}
 			}
 			return true;
-		case FailureAction::Retry:
+		case FailureAction::TimedOut:
+			[[fallthrough]];
+		case FailureAction::Busy:
 		{
 #ifdef __cpp_structured_bindings
 			auto const [shouldRetry, retryTimer] = entity->getQueryDynamicInfoRetryTimer();
@@ -2266,9 +2470,42 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 			{
 				queryInformation(entity, configurationIndex, dynamicInfoType, descriptorIndex, subIndex, retryTimer);
 			}
+			else
+			{
+				// Too many retries, result depends on FailureAction and ControlStatus
+				if (action == FailureAction::TimedOut)
+				{
+					if (!optionalForMilan)
+					{
+						// Remove "Milan compatibility" as device does not respond to mandatory command
+						if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+						{
+							LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many timeouts for Milan mandatory ACMP command: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+							removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
+						}
+					}
+				}
+				else if (action == FailureAction::Busy)
+				{
+					switch (status)
+					{
+						case entity::ControllerEntity::ControlStatus::StateUnavailable:
+							[[fallthrough]];
+						case entity::ControllerEntity::ControlStatus::CouldNotSendMessage:
+						{
+							LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many unexpected errors for ACMP command {}: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType), entity::LocalEntity::statusToString(status));
+							// Flag the entity as "Not fully IEEE1722.1 compliant"
+							removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+							break;
+						}
+						default:
+							break;
+					}
+				}
+			}
 			return true;
 		}
-		case FailureAction::Fatal:
+		case FailureAction::ErrorFatal:
 			return false;
 		default:
 			return false;
@@ -2278,13 +2515,17 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 /* This method handles non-success ControlStatus returned while getting EnumerationSteps::GetDynamicInfo for ACMP commands with a connection index */
 bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::StreamIdentification const& talkerStream, std::uint16_t const subIndex, bool const optionalForMilan) noexcept
 {
-	switch (getFailureAction(status))
+	auto const action = getFailureAction(status);
+	switch (action)
 	{
-		case FailureAction::ErrorIgnore:
+		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
 			removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			return true;
-		case FailureAction::WarningIgnore:
+		case FailureAction::NotAuthenticated:
+			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
+			return true;
+		case FailureAction::WarningContinue:
 			return true;
 		case FailureAction::NotSupported:
 			if (!optionalForMilan)
@@ -2297,7 +2538,9 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 				}
 			}
 			return true;
-		case FailureAction::Retry:
+		case FailureAction::TimedOut:
+			[[fallthrough]];
+		case FailureAction::Busy:
 		{
 #ifdef __cpp_structured_bindings
 			auto const [shouldRetry, retryTimer] = entity->getQueryDynamicInfoRetryTimer();
@@ -2310,9 +2553,42 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::ControlStatu
 			{
 				queryInformation(entity, configurationIndex, dynamicInfoType, talkerStream, subIndex, retryTimer);
 			}
+			else
+			{
+				// Too many retries, result depends on FailureAction and ControlStatus
+				if (action == FailureAction::TimedOut)
+				{
+					if (!optionalForMilan)
+					{
+						// Remove "Milan compatibility" as device does not respond to mandatory command
+						if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+						{
+							LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many timeouts for Milan mandatory ACMP command: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+							removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
+						}
+					}
+				}
+				else if (action == FailureAction::Busy)
+				{
+					switch (status)
+					{
+						case entity::ControllerEntity::ControlStatus::StateUnavailable:
+							[[fallthrough]];
+						case entity::ControllerEntity::ControlStatus::CouldNotSendMessage:
+						{
+							LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many unexpected errors for ACMP command {}: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType), entity::LocalEntity::statusToString(status));
+							// Flag the entity as "Not fully IEEE1722.1 compliant"
+							removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+							break;
+						}
+						default:
+							break;
+					}
+				}
+			}
 			return true;
 		}
-		case FailureAction::Fatal:
+		case FailureAction::ErrorFatal:
 			return false;
 		default:
 			return false;
@@ -2325,13 +2601,18 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 	auto const action = getFailureAction(status);
 	switch (action)
 	{
-		case FailureAction::ErrorIgnore:
+		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
 			removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			[[fallthrough]];
-		case FailureAction::WarningIgnore:
+		case FailureAction::NotAuthenticated:
+			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
 			return true;
-		case FailureAction::Retry:
+		case FailureAction::WarningContinue:
+			return true;
+		case FailureAction::TimedOut:
+			[[fallthrough]];
+		case FailureAction::Busy:
 		{
 #ifdef __cpp_structured_bindings
 			auto const [shouldRetry, retryTimer] = entity->getQueryDescriptorDynamicInfoRetryTimer();
@@ -2372,7 +2653,7 @@ bool ControllerImpl::processFailureStatus(entity::ControllerEntity::AemCommandSt
 			}
 			return true;
 		}
-		case FailureAction::Fatal:
+		case FailureAction::ErrorFatal:
 			return false;
 		default:
 			return false;
@@ -2588,6 +2869,6 @@ void ControllerImpl::delTalkerStreamConnection(ControlledEntityImpl* const talke
 	talkerEntity->delStreamOutputConnection(talkerStreamIndex, listenerStream);
 }
 
-} // namespace la
-} // namespace la
+} // namespace controller
+} // namespace avdecc
 } // namespace la

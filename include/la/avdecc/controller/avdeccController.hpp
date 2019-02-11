@@ -146,6 +146,7 @@ public:
 
 	enum class QueryCommandError
 	{
+		RegisterUnsol,
 		GetMilanInfo,
 		EntityDescriptor,
 		ConfigurationDescriptor,
