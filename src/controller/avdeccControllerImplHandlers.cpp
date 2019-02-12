@@ -1935,38 +1935,49 @@ void ControllerImpl::onGetTalkerStreamStateResult(entity::controller::Interface 
 	LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "onGetTalkerStreamStateResult (TalkerID={} TalkerIndex={} ConnectionCount={} ConfigurationIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, connectionCount, configurationIndex, entity::ControllerEntity::statusToString(status));
 
 	// Take a "scoped locked" shared copy of the ControlledEntity
-	auto talker = getControlledEntityImplGuard(talkerStream.entityID);
+	auto controlledTalker = getControlledEntityImplGuard(talkerStream.entityID);
 
-	if (talker)
+	if (controlledTalker)
 	{
-		if (talker->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, talkerStream.streamIndex))
+		auto& talker = *controlledTalker;
+		if (talker.checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, talkerStream.streamIndex))
 		{
 			if (!!status)
 			{
-				clearTalkerStreamConnections(talker.get(), talkerStream.streamIndex);
+				clearTalkerStreamConnections(&talker, talkerStream.streamIndex);
+
+				// Milan device should return 0 as connectionCount
+				if (talker.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+				{
+					if (connectionCount != 0)
+					{
+						LOG_CONTROLLER_WARN(talker.getEntity().getEntityID(), "Milan device must advertise 0 connection_count in GET_TX_STATE_RESPONSE");
+						removeCompatibilityFlag(talker, ControlledEntity::CompatibilityFlag::Milan);
+					}
+				}
 
 				for (auto index = std::uint16_t(0); index < connectionCount; ++index)
 				{
-					queryInformation(talker.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamConnection, talkerStream, index);
+					queryInformation(&talker, configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamConnection, talkerStream, index);
 				}
 			}
 			else
 			{
-				if (!processGetAcmpDynamicInfoFailureStatus(status, talker.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, talkerStream.streamIndex, false))
+				if (!processGetAcmpDynamicInfoFailureStatus(status, &talker, configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, talkerStream.streamIndex, false))
 				{
-					talker->setGetFatalEnumerationError();
-					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, talker.get(), QueryCommandError::TalkerStreamState);
+					talker.setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, &talker, QueryCommandError::TalkerStreamState);
 					return;
 				}
 			}
 		}
 
 		// Got all expected dynamic information
-		if (talker->gotAllExpectedDynamicInfo())
+		if (talker.gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			talker->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
-			checkEnumerationSteps(talker.get());
+			talker.clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			checkEnumerationSteps(&talker);
 		}
 	}
 }
