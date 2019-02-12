@@ -54,8 +54,16 @@ void ControllerImpl::onGetMilanInfoResult(entity::controller::Interface const* c
 		{
 			if (!!status)
 			{
-				// Flag the entity as "Milan compatible"
-				addCompatibilityFlag(*controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+				// Flag the entity as "Milan compatible", if protocolVersion is 1
+				switch (info.protocolVersion)
+				{
+					case 1:
+						addCompatibilityFlag(*controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+						break;
+					default:
+						LOG_CONTROLLER_WARN(entityID, "Unsupported Milan protocol_version: {}", info.protocolVersion);
+						break;
+				}
 				controlledEntity->setMilanInfo(info);
 			}
 			else
