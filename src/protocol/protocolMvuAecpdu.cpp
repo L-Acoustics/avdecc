@@ -174,7 +174,7 @@ Aecpdu::UniquePointer LA_AVDECC_CALL_CONVENTION MvuAecpdu::copy() const
 }
 
 /** Entry point */
-MvuAecpdu* LA_AVDECC_CALL_CONVENTION MvuAecpdu::createRawMvuAecpdu()
+MvuAecpdu* LA_AVDECC_CALL_CONVENTION MvuAecpdu::createRawMvuAecpdu() noexcept
 {
 	return new MvuAecpdu();
 }

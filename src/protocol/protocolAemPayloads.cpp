@@ -1189,7 +1189,7 @@ Serializer<AecpAemMilanGetStreamInfoResponsePayloadSize> serializeGetStreamInfoR
 	ser << streamInfo.streamVlanID;
 	ser << reserved2;
 
-	if (streamInfo.streamInfoFlagsEx.has_value() && streamInfo.probingStatus.has_value() && streamInfo.acmpStatus.has_value())
+	if (streamInfo.streamInfoFlagsEx && streamInfo.probingStatus && streamInfo.acmpStatus)
 	{
 		auto reserved3 = std::uint8_t{ 0u };
 		auto reserved4 = std::uint16_t{ 0u };

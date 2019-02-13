@@ -4,6 +4,18 @@ All notable changes to the Avdecc Library will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.9.0] - 2019-02-13
+### Added
+- Support for Milan STREAM_OUTPUT counters
+
+### Changed
+- Removed macAddress parameter from sendAecpCommand and sendAecpResponse (automatically getting it from the AECPDU)
+- Returning ProtocolInterface::Error::InvalidParameters when trying to enable/disable advertising on a non-existent InterfaceIndex
+
+### Fixed
+- Incorrect error returned by EndStation's LocalEntity creation code
+- No longer sending ADP DEPARTING message twice when destroying a LocalEntity
+
 ## [2.8.0] - 2019-01-23
 ### Added
 - Notification when a controller is being deregistered from unsolicited notifications

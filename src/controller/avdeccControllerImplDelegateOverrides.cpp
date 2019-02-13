@@ -639,6 +639,18 @@ void ControllerImpl::onStreamInputCountersChanged(entity::controller::Interface 
 	}
 }
 
+void ControllerImpl::onStreamOutputCountersChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::StreamOutputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+		updateStreamOutputCounters(entity, streamIndex, validCounters, counters);
+	}
+}
+
 void ControllerImpl::onStreamPortInputAudioMappingsAdded(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept
 {
 	// Take a "scoped locked" shared copy of the ControlledEntity

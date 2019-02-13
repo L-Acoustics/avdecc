@@ -35,10 +35,11 @@ namespace avdecc
 {
 namespace controller
 {
-static constexpr std::uint16_t MaxQueryMilanInfoRetryCount = 3;
-static constexpr std::uint16_t MaxQueryDescriptorRetryCount = 3;
-static constexpr std::uint16_t MaxQueryDynamicInfoRetryCount = 3;
-static constexpr std::uint16_t MaxQueryDescriptorDynamicInfoRetryCount = 3;
+static constexpr std::uint16_t MaxRegisterUnsolRetryCount = 1;
+static constexpr std::uint16_t MaxQueryMilanInfoRetryCount = 2;
+static constexpr std::uint16_t MaxQueryDescriptorRetryCount = 2;
+static constexpr std::uint16_t MaxQueryDynamicInfoRetryCount = 2;
+static constexpr std::uint16_t MaxQueryDescriptorDynamicInfoRetryCount = 2;
 static constexpr std::uint16_t QueryRetryMillisecondDelay = 500;
 
 /* ************************************************************************** */
@@ -1060,6 +1061,12 @@ model::StreamInputCounters& ControlledEntityImpl::getStreamInputCounters(entity:
 	return dynamicModel.counters;
 }
 
+model::StreamOutputCounters& ControlledEntityImpl::getStreamOutputCounters(entity::model::StreamIndex const streamIndex) noexcept
+{
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels);
+	return dynamicModel.counters;
+}
+
 // Setters (of the model, not the physical entity)
 void ControlledEntityImpl::setEntity(entity::Entity const& entity) noexcept
 {
@@ -1528,6 +1535,45 @@ void ControlledEntityImpl::setClockDomainDescriptor(entity::model::ClockDomainDe
 	}
 }
 
+// Expected RegisterUnsol query methods
+bool ControlledEntityImpl::checkAndClearExpectedRegisterUnsol() noexcept
+{
+	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+
+	// Ignore if we had a fatal enumeration error
+	if (_gotFatalEnumerateError)
+		return false;
+
+	auto const wasExpected = _expectedRegisterUnsol;
+	_expectedRegisterUnsol = false;
+
+	return wasExpected;
+}
+
+void ControlledEntityImpl::setRegisterUnsolExpected() noexcept
+{
+	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+
+	_expectedRegisterUnsol = true;
+}
+
+bool ControlledEntityImpl::gotExpectedRegisterUnsol() const noexcept
+{
+	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+
+	return !_expectedRegisterUnsol;
+}
+
+std::pair<bool, std::chrono::milliseconds> ControlledEntityImpl::getRegisterUnsolRetryTimer() noexcept
+{
+	++_registerUnsolRetryCount;
+	if (_registerUnsolRetryCount > MaxRegisterUnsolRetryCount)
+	{
+		return std::make_pair(false, std::chrono::milliseconds{ 0 });
+	}
+	return std::make_pair(true, std::chrono::milliseconds{ QueryRetryMillisecondDelay });
+}
+
 // Expected Milan info query methods
 static inline ControlledEntityImpl::MilanInfoKey makeMilanInfoKey(ControlledEntityImpl::MilanInfoType const milanInfoType)
 {
@@ -1537,6 +1583,10 @@ static inline ControlledEntityImpl::MilanInfoKey makeMilanInfoKey(ControlledEnti
 bool ControlledEntityImpl::checkAndClearExpectedMilanInfo(MilanInfoType const milanInfoType) noexcept
 {
 	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+
+	// Ignore if we had a fatal enumeration error
+	if (_gotFatalEnumerateError)
+		return false;
 
 	auto const key = makeMilanInfoKey(milanInfoType);
 	return _expectedMilanInfo.erase(key) == 1;
@@ -1576,6 +1626,10 @@ static inline ControlledEntityImpl::DescriptorKey makeDescriptorKey(entity::mode
 bool ControlledEntityImpl::checkAndClearExpectedDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
 	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+
+	// Ignore if we had a fatal enumeration error
+	if (_gotFatalEnumerateError)
+		return false;
 
 	auto const confIt = _expectedDescriptors.find(configurationIndex);
 
@@ -1629,6 +1683,10 @@ bool ControlledEntityImpl::checkAndClearExpectedDynamicInfo(entity::model::Confi
 {
 	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
 
+	// Ignore if we had a fatal enumeration error
+	if (_gotFatalEnumerateError)
+		return false;
+
 	auto const confIt = _expectedDynamicInfo.find(configurationIndex);
 
 	if (confIt == _expectedDynamicInfo.end())
@@ -1680,6 +1738,10 @@ static inline ControlledEntityImpl::DescriptorDynamicInfoKey makeDescriptorDynam
 bool ControlledEntityImpl::checkAndClearExpectedDescriptorDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
 	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+
+	// Ignore if we had a fatal enumeration error
+	if (_gotFatalEnumerateError)
+		return false;
 
 	auto const confIt = _expectedDescriptorDynamicInfo.find(configurationIndex);
 
@@ -1784,6 +1846,83 @@ bool ControlledEntityImpl::wasAdvertised() const noexcept
 void ControlledEntityImpl::setAdvertised(bool const wasAdvertised) noexcept
 {
 	_advertised = wasAdvertised;
+}
+
+// Static methods
+std::string ControlledEntityImpl::dynamicInfoTypeToString(DynamicInfoType const dynamicInfoType) noexcept
+{
+	switch (dynamicInfoType)
+	{
+		case DynamicInfoType::AcquiredState:
+			return protocol::AemCommandType::AcquireEntity;
+		case DynamicInfoType::LockedState:
+			return protocol::AemCommandType::LockEntity;
+		case DynamicInfoType::InputStreamAudioMappings:
+			return static_cast<std::string>(protocol::AemCommandType::GetAudioMap) + " (STREAM_INPUT)";
+		case DynamicInfoType::OutputStreamAudioMappings:
+			return static_cast<std::string>(protocol::AemCommandType::GetAudioMap) + " (STREAM_OUTPUT)";
+		case DynamicInfoType::InputStreamState:
+			return protocol::AcmpMessageType::GetRxStateCommand;
+		case DynamicInfoType::OutputStreamState:
+			return protocol::AcmpMessageType::GetTxStateCommand;
+		case DynamicInfoType::OutputStreamConnection:
+			return protocol::AcmpMessageType::GetTxConnectionCommand;
+		case DynamicInfoType::InputStreamInfo:
+			return static_cast<std::string>(protocol::AemCommandType::GetStreamInfo) + " (STREAM_INPUT)";
+		case DynamicInfoType::OutputStreamInfo:
+			return static_cast<std::string>(protocol::AemCommandType::GetStreamInfo) + " (STREAM_OUTPUT)";
+		case DynamicInfoType::GetAvbInfo:
+			return protocol::AemCommandType::GetAvbInfo;
+		case DynamicInfoType::GetAsPath:
+			return protocol::AemCommandType::GetAsPath;
+		case DynamicInfoType::GetAvbInterfaceCounters:
+			return static_cast<std::string>(protocol::AemCommandType::GetCounters) + " (AVB_INTERFACE)";
+		case DynamicInfoType::GetClockDomainCounters:
+			return static_cast<std::string>(protocol::AemCommandType::GetCounters) + " (CLOCK_DOMAIN)";
+		case DynamicInfoType::GetStreamInputCounters:
+			return static_cast<std::string>(protocol::AemCommandType::GetCounters) + " (STREAM_INPUT)";
+		case DynamicInfoType::GetStreamOutputCounters:
+			return static_cast<std::string>(protocol::AemCommandType::GetCounters) + " (STREAM_OUTPUT)";
+		default:
+			return "Unknown DynamicInfoType";
+	}
+}
+
+std::string ControlledEntityImpl::descriptorDynamicInfoTypeToString(DescriptorDynamicInfoType const descriptorDynamicInfoType) noexcept
+{
+	switch (descriptorDynamicInfoType)
+	{
+		case DescriptorDynamicInfoType::ConfigurationName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (CONFIGURATION)";
+		case DescriptorDynamicInfoType::AudioUnitName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (AUDIO_UNIT)";
+		case DescriptorDynamicInfoType::AudioUnitSamplingRate:
+			return static_cast<std::string>(protocol::AemCommandType::GetSamplingRate) + " (AUDIO_UNIT)";
+		case DescriptorDynamicInfoType::InputStreamName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (STREAM_INPUT)";
+		case DescriptorDynamicInfoType::InputStreamFormat:
+			return static_cast<std::string>(protocol::AemCommandType::GetStreamFormat) + " (STREAM_INPUT)";
+		case DescriptorDynamicInfoType::OutputStreamName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (STREAM_OUTPUT)";
+		case DescriptorDynamicInfoType::OutputStreamFormat:
+			return static_cast<std::string>(protocol::AemCommandType::GetStreamFormat) + " (STREAM_OUTPUT)";
+		case DescriptorDynamicInfoType::AvbInterfaceName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (AVB_INTERFACE)";
+		case DescriptorDynamicInfoType::ClockSourceName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (CLOCK_SOURCE)";
+		case DescriptorDynamicInfoType::MemoryObjectName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (MEMORY_OBJECT)";
+		case DescriptorDynamicInfoType::MemoryObjectLength:
+			return protocol::AemCommandType::GetMemoryObjectLength;
+		case DescriptorDynamicInfoType::AudioClusterName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (AUDIO_CLUSTER)";
+		case DescriptorDynamicInfoType::ClockDomainName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (CLOCK_DOMAIN)";
+		case DescriptorDynamicInfoType::ClockDomainSourceIndex:
+			return protocol::AemCommandType::GetClockSource;
+		default:
+			return "Unknown DescriptorDynamicInfoType";
+	}
 }
 
 // Private methods

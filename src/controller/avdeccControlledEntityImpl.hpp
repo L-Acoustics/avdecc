@@ -91,6 +91,7 @@ public:
 		GetAvbInterfaceCounters, // getAvbInterfaceCounters (GET_COUNTERS)
 		GetClockDomainCounters, // getClockDomainCounters (GET_COUNTERS)
 		GetStreamInputCounters, // getStreamInputCounters (GET_COUNTERS)
+		GetStreamOutputCounters, // getStreamOutputCounters (GET_COUNTERS)
 	};
 
 	/** Dynamic information stored in descriptors. Only required to retrieve from entities when the static model is known (because it was in EntityModelID cache).  */
@@ -275,6 +276,7 @@ public:
 	model::AvbInterfaceCounters& getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept;
 	model::ClockDomainCounters& getClockDomainCounters(entity::model::ClockDomainIndex const clockDomainIndex) noexcept;
 	model::StreamInputCounters& getStreamInputCounters(entity::model::StreamIndex const streamIndex) noexcept;
+	model::StreamOutputCounters& getStreamOutputCounters(entity::model::StreamIndex const streamIndex) noexcept;
 
 	// Setters (of the model, not the physical entity)
 	void setEntity(entity::Entity const& entity) noexcept;
@@ -303,6 +305,12 @@ public:
 	void setAudioClusterDescriptor(entity::model::AudioClusterDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex) noexcept;
 	void setAudioMapDescriptor(entity::model::AudioMapDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex) noexcept;
 	void setClockDomainDescriptor(entity::model::ClockDomainDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) noexcept;
+
+	// Expected RegisterUnsol query methods
+	bool checkAndClearExpectedRegisterUnsol() noexcept;
+	void setRegisterUnsolExpected() noexcept;
+	bool gotExpectedRegisterUnsol() const noexcept;
+	std::pair<bool, std::chrono::milliseconds> getRegisterUnsolRetryTimer() noexcept;
 
 	// Expected Milan info query methods
 	bool checkAndClearExpectedMilanInfo(MilanInfoType const milanInfoType) noexcept;
@@ -341,6 +349,10 @@ public:
 	void setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept;
 	bool wasAdvertised() const noexcept;
 	void setAdvertised(bool const wasAdvertised) noexcept;
+
+	// Static methods
+	static std::string dynamicInfoTypeToString(DynamicInfoType const dynamicInfoType) noexcept;
+	static std::string descriptorDynamicInfoTypeToString(DescriptorDynamicInfoType const descriptorDynamicInfoType) noexcept;
 
 	// Other usefull manipulation methods
 	constexpr static bool isStreamRunningFlag(entity::StreamInfoFlags const flags) noexcept
@@ -406,6 +418,7 @@ private:
 	// Private variables
 	LockInformation::SharedPointer _sharedLock{ nullptr };
 	bool _ignoreCachedEntityModel{ false };
+	std::uint16_t _registerUnsolRetryCount{ 0u };
 	std::uint16_t _queryMilanInfoRetryCount{ 0u };
 	std::uint16_t _queryDescriptorRetryCount{ 0u };
 	std::uint16_t _queryDynamicInfoRetryCount{ 0u };
@@ -415,6 +428,7 @@ private:
 	bool _gotFatalEnumerateError{ false }; // Have we got a fatal error during entity enumeration
 	bool _isSubscribedToUnsolicitedNotifications{ false }; // Are we subscribed to unsolicited notifications
 	bool _advertised{ false }; // Has the entity been advertised to the observers
+	bool _expectedRegisterUnsol{ false };
 	std::unordered_set<MilanInfoKey> _expectedMilanInfo{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DescriptorKey>> _expectedDescriptors{};
 	std::unordered_map<entity::model::ConfigurationIndex, std::unordered_set<DynamicInfoKey>> _expectedDynamicInfo{};

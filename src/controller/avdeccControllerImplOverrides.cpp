@@ -58,6 +58,8 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 				throw Exception(Error::InterfaceNotFound, e.what());
 			case EndStation::Error::InterfaceInvalid:
 				throw Exception(Error::InterfaceInvalid, e.what());
+			case EndStation::Error::DuplicateEntityID:
+				throw Exception(Error::DuplicateProgID, e.what());
 			default:
 				AVDECC_ASSERT(false, "Unhandled exception");
 				throw Exception(Error::InternalError, e.what());

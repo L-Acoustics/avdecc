@@ -26,6 +26,7 @@
 #pragma once
 
 #include "uniqueIdentifier.hpp"
+#include "exports.hpp"
 #include <cstdint>
 #include <string>
 #include <array>
@@ -133,6 +134,8 @@ constexpr bool operator==(DescriptorType const lhs, std::underlying_type_t<Descr
 	return static_cast<std::underlying_type_t<DescriptorType>>(lhs) == rhs;
 }
 
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION descriptorTypeToString(DescriptorType const descriptorType) noexcept;
+
 /** Jack Type - Clause 7.2.7.2 */
 enum class JackType : std::uint16_t
 {
@@ -206,6 +209,8 @@ constexpr bool operator==(ClockSourceType const lhs, std::underlying_type_t<Cloc
 	return static_cast<std::underlying_type_t<ClockSourceType>>(lhs) == rhs;
 }
 
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION clockSourceTypeToString(ClockSourceType const clockSourceType) noexcept;
+
 /** MemoryObject Type - Clause 7.2.10.1 */
 enum class MemoryObjectType : std::uint16_t
 {
@@ -236,6 +241,8 @@ constexpr bool operator==(MemoryObjectType const lhs, std::underlying_type_t<Mem
 	return static_cast<std::underlying_type_t<MemoryObjectType>>(lhs) == rhs;
 }
 
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION memoryObjectTypeToString(MemoryObjectType const memoryObjectType) noexcept;
+
 /** MemoryObject Operation Type - Clause 7.2.10.2 */
 enum class MemoryObjectOperationType : std::uint16_t
 {
@@ -256,6 +263,8 @@ constexpr bool operator==(MemoryObjectOperationType const lhs, std::underlying_t
 	return static_cast<std::underlying_type_t<MemoryObjectOperationType>>(lhs) == rhs;
 }
 
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION memoryObjectOperationTypeToString(MemoryObjectOperationType const memoryObjectOperationType) noexcept;
+
 /** AudioCluster Format - Clause 7.2.16.1 */
 enum class AudioClusterFormat : std::uint8_t
 {
@@ -273,6 +282,8 @@ constexpr bool operator==(AudioClusterFormat const lhs, std::underlying_type_t<A
 {
 	return static_cast<std::underlying_type_t<AudioClusterFormat>>(lhs) == rhs;
 }
+
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION audioClusterFormatToString(AudioClusterFormat const audioClusterFormat) noexcept;
 
 /** Audio Mapping - Clause 7.2.19.1 */
 struct AudioMapping

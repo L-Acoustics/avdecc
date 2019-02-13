@@ -144,7 +144,7 @@ Aecpdu::UniquePointer LA_AVDECC_CALL_CONVENTION GenericAecpdu::copy() const
 }
 
 /** Entry point */
-GenericAecpdu* LA_AVDECC_CALL_CONVENTION GenericAecpdu::createRawGenericAecpdu()
+GenericAecpdu* LA_AVDECC_CALL_CONVENTION GenericAecpdu::createRawGenericAecpdu() noexcept
 {
 	return new GenericAecpdu();
 }

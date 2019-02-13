@@ -90,6 +90,12 @@ public:
 		return _commonInformation;
 	}
 
+	/** Returns true if the specified interfaceIndex exists, false otherwise */
+	bool hasInterfaceIndex(model::AvbInterfaceIndex const interfaceIndex) const noexcept
+	{
+		return _interfaceInformation.count(interfaceIndex) > 0;
+	}
+
 	/** Gets non-modifiable InterfaceInformation */
 	InterfaceInformation const& getInterfaceInformation(model::AvbInterfaceIndex const interfaceIndex) const
 	{
@@ -199,14 +205,12 @@ public:
 		return _commonInformation.associationID;
 	}
 
-	/** Generates an EID from a MacAddress (OUI-36) and a ProgID. This method is provided for backward compatibility, ProtocolInterface::getDynamicEID */
+	/** Generates an EID from a MacAddress (OUI-36) and a ProgID. This method is provided for backward compatibility, use ProtocolInterface::getDynamicEID instead. */
 	static UniqueIdentifier generateEID(la::avdecc::networkInterface::MacAddress const& macAddress, std::uint16_t const progID)
 	{
 		UniqueIdentifier::value_type eid{ 0u };
 		if (macAddress.size() != 6)
 			throw Exception("Invalid MAC address size");
-		if (progID == 0 || progID == 0xFFFF || progID == 0xFFFE)
-			throw Exception("Reserved value for Entity's progID value: " + std::to_string(progID));
 		eid += macAddress[0];
 		eid <<= 8;
 		eid += macAddress[1];
@@ -257,7 +261,7 @@ public:
 		// If interfaceIndex is specified, only set the value for this interface
 		if (interfaceIndex)
 		{
-			AVDECC_ASSERT(interfaceIndex.has_value(), "InterfaceIndex should be valid");
+			AVDECC_ASSERT(interfaceIndex, "InterfaceIndex should be valid");
 			getInterfaceInformation(*interfaceIndex).validTime = value;
 		}
 		else

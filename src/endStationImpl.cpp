@@ -51,11 +51,21 @@ entity::ControllerEntity* EndStationImpl::addControllerEntity(std::uint16_t cons
 	std::unique_ptr<entity::LocalEntityGuard<entity::ControllerEntityImpl>> controller{ nullptr };
 	try
 	{
-		auto const commonInformation{ entity::Entity::CommonInformation{ entity::Entity::generateEID(_protocolInterface->getMacAddress(), progID), entityModelID, entity::EntityCapabilities::None, 0u, entity::TalkerCapabilities::None, 0u, entity::ListenerCapabilities::None, entity::ControllerCapabilities::Implemented, std::nullopt, std::nullopt } };
-		auto const interfaceInfo{ entity::Entity::InterfaceInformation{ _protocolInterface->getMacAddress(), 31u, 0u, std::nullopt, std::nullopt } };
-		controller = std::make_unique<entity::LocalEntityGuard<entity::ControllerEntityImpl>>(_protocolInterface.get(), commonInformation, entity::Entity::InterfacesInformation{ { entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } }, delegate);
+		auto const eid = entity::Entity::generateEID(_protocolInterface->getMacAddress(), progID);
+
+		try
+		{
+			auto const commonInformation{ entity::Entity::CommonInformation{ eid, entityModelID, entity::EntityCapabilities::None, 0u, entity::TalkerCapabilities::None, 0u, entity::ListenerCapabilities::None, entity::ControllerCapabilities::Implemented, std::nullopt, std::nullopt } };
+			auto const interfaceInfo{ entity::Entity::InterfaceInformation{ _protocolInterface->getMacAddress(), 31u, 0u, std::nullopt, std::nullopt } };
+
+			controller = std::make_unique<entity::LocalEntityGuard<entity::ControllerEntityImpl>>(_protocolInterface.get(), commonInformation, entity::Entity::InterfacesInformation{ { entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } }, delegate);
+		}
+		catch (la::avdecc::Exception const& e) // Because entity::ControllerEntityImpl::ControllerEntityImpl might throw if an entityID cannot be generated
+		{
+			throw Exception(Error::DuplicateEntityID, e.what());
+		}
 	}
-	catch (la::avdecc::Exception const& e) // Because entity::ControllerEntityImpl::ControllerEntityImpl might throw if an entityID cannot be generated
+	catch (la::avdecc::Exception const& e) // entity::Entity::generateEID might throw if ProtocolInterface is not valid (doesn't have a valid MacAddress)
 	{
 		throw Exception(Error::InterfaceInvalid, e.what());
 	}
@@ -75,11 +85,21 @@ entity::AggregateEntity* EndStationImpl::addAggregateEntity(std::uint16_t const 
 	std::unique_ptr<entity::LocalEntityGuard<entity::AggregateEntityImpl>> aggregate{ nullptr };
 	try
 	{
-		auto const commonInformation{ entity::Entity::CommonInformation{ entity::Entity::generateEID(_protocolInterface->getMacAddress(), progID), entityModelID, entity::EntityCapabilities::None, 0u, entity::TalkerCapabilities::None, 0u, entity::ListenerCapabilities::None, controllerDelegate ? entity::ControllerCapabilities::Implemented : entity::ControllerCapabilities::None, std::nullopt, std::nullopt } };
-		auto const interfaceInfo{ entity::Entity::InterfaceInformation{ _protocolInterface->getMacAddress(), 31u, 0u, std::nullopt, std::nullopt } };
-		aggregate = std::make_unique<entity::LocalEntityGuard<entity::AggregateEntityImpl>>(_protocolInterface.get(), commonInformation, entity::Entity::InterfacesInformation{ { entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } }, controllerDelegate);
+		auto const eid = entity::Entity::generateEID(_protocolInterface->getMacAddress(), progID);
+
+		try
+		{
+			auto const commonInformation{ entity::Entity::CommonInformation{ eid, entityModelID, entity::EntityCapabilities::None, 0u, entity::TalkerCapabilities::None, 0u, entity::ListenerCapabilities::None, controllerDelegate ? entity::ControllerCapabilities::Implemented : entity::ControllerCapabilities::None, std::nullopt, std::nullopt } };
+			auto const interfaceInfo{ entity::Entity::InterfaceInformation{ _protocolInterface->getMacAddress(), 31u, 0u, std::nullopt, std::nullopt } };
+
+			aggregate = std::make_unique<entity::LocalEntityGuard<entity::AggregateEntityImpl>>(_protocolInterface.get(), commonInformation, entity::Entity::InterfacesInformation{ { entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } }, controllerDelegate);
+		}
+		catch (la::avdecc::Exception const& e) // Because entity::AggregateEntityImpl::AggregateEntityImpl might throw if entityID is already locally registered
+		{
+			throw Exception(Error::DuplicateEntityID, e.what());
+		}
 	}
-	catch (la::avdecc::Exception const& e) // Because entity::AggregateEntityImpl::AggregateEntityImpl might throw if an entityID cannot be generated
+	catch (la::avdecc::Exception const& e) // entity::Entity::generateEID might throw if ProtocolInterface is not valid (doesn't have a valid MacAddress)
 	{
 		throw Exception(Error::InterfaceInvalid, e.what());
 	}

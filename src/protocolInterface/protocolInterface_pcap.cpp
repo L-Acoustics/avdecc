@@ -41,6 +41,7 @@
 #include <functional>
 #include <memory>
 #include <chrono>
+#include <cstdlib>
 
 namespace la
 {
@@ -195,6 +196,34 @@ private:
 		_pcap.reset();
 	}
 
+	virtual UniqueIdentifier getDynamicEID() const noexcept override
+	{
+		UniqueIdentifier::value_type eid{ 0u };
+		auto const& macAddress = getMacAddress();
+
+		eid += macAddress[0];
+		eid <<= 8;
+		eid += macAddress[1];
+		eid <<= 8;
+		eid += macAddress[2];
+		eid <<= 16;
+		std::srand(static_cast<unsigned int>(std::time(0)));
+		eid += static_cast<std::uint16_t>((std::rand() % 0xFFFD) + 1);
+		eid <<= 8;
+		eid += macAddress[3];
+		eid <<= 8;
+		eid += macAddress[4];
+		eid <<= 8;
+		eid += macAddress[5];
+
+		return UniqueIdentifier{ eid };
+	}
+
+	virtual void releaseDynamicEID(UniqueIdentifier const /*entityID*/) const noexcept override
+	{
+		// Nothing to do
+	}
+
 	virtual Error registerLocalEntity(entity::LocalEntity& entity) noexcept override
 	{
 		auto error{ ProtocolInterface::Error::NoError };
@@ -217,10 +246,22 @@ private:
 
 	virtual Error unregisterLocalEntity(entity::LocalEntity& entity) noexcept override
 	{
-		// Remove from all state machines, without checking the type (will be done by the StateMachine)
-		_controllerStateMachine.unregisterLocalEntity(entity);
-#pragma message("TODO: Remove from talker/listener state machines too")
-		return ProtocolInterface::Error::NoError;
+		auto error{ ProtocolInterface::Error::NoError };
+
+		// Entity is controller capable
+		if (utils::hasFlag(entity.getControllerCapabilities(), entity::ControllerCapabilities::Implemented))
+			error |= _controllerStateMachine.unregisterLocalEntity(entity);
+
+#pragma message("TODO: Handle talker/listener types")
+		// Entity is listener capable
+		if (utils::hasFlag(entity.getListenerCapabilities(), entity::ListenerCapabilities::Implemented))
+			return ProtocolInterface::Error::InvalidEntityType; // Not supported right now
+
+		// Entity is talker capable
+		if (utils::hasFlag(entity.getTalkerCapabilities(), entity::TalkerCapabilities::Implemented))
+			return ProtocolInterface::Error::InvalidEntityType; // Not supported right now
+
+		return error;
 	}
 
 	virtual Error setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const /*flags*/, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override
@@ -271,16 +312,14 @@ private:
 		return sendMessage(acmpdu);
 	}
 
-	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& /*macAddress*/, AecpCommandResultHandler const& onResult) const noexcept override
+	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, AecpCommandResultHandler const& onResult) const noexcept override
 	{
-		// PCap protocol interface do not need the macAddress parameter, it will be retrieved from the Aecpdu when sending it
 		// Command goes through the state machine to handle timeout, retry and response
 		return _controllerStateMachine.sendAecpCommand(std::move(aecpdu), onResult);
 	}
 
-	virtual Error sendAecpResponse(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& /*macAddress*/) const noexcept override
+	virtual Error sendAecpResponse(Aecpdu::UniquePointer&& aecpdu) const noexcept override
 	{
-		// PCap protocol interface do not need the macAddress parameter, it will be retrieved from the Aecpdu when sending it
 		// Response can be directly sent
 		return sendMessage(static_cast<Aecpdu const&>(*aecpdu));
 	}

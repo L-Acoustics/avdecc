@@ -4,6 +4,18 @@ All notable changes to the Avdecc Controller Library will be documented in this 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.9.0] - 2019-02-13
+### Added
+- Support for Milan STREAM_OUTPUT counters
+- More Milan compatibility detection (Counters, AECP GET commands)
+
+### Changed
+- BAD_ARGUMENTS is allowed as a valid response for some AEM queries
+
+### Fixed
+- Uncaught exception when an enumeration error occured
+- RegisterUnsolicitedNotification is allowed to return NO_RESOURCES (Milan spec)
+
 ## [2.8.0] - 2019-01-23
 ### Added
 - Better detection of non IEEE1722.1 compliant entities, and misbehaving entities (sending correctly built messages but with incoherent values)
@@ -20,7 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Fully removed acquire/lock state from descriptors, the controller only support it at entity level (globally)
 
 ### Fixed
-- Preventing a crash in upper layers caused by toxic entities (Motu Ultralite card sending a GET_RX_STATE_RESPONSE with a non-existant stream index)
+- Preventing a crash in upper layers caused by toxic entities (Motu Ultralite card sending a GET_RX_STATE_RESPONSE with a non-existent stream index)
 - Properly monitoring changes in dynamic mappings
 - Updated GetMilanInfo to match Milan specification
 - Dynamic mappings in redundancy mode not correctly set for StreamPortOutput

@@ -486,6 +486,11 @@ void ControllerEntityImpl::getStreamInputCounters(UniqueIdentifier const targetE
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getStreamInputCounters(targetEntityID, streamIndex, handler);
 }
 
+void ControllerEntityImpl::getStreamOutputCounters(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, GetStreamOutputCountersHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getStreamOutputCounters(targetEntityID, streamIndex, handler);
+}
+
 void ControllerEntityImpl::startOperation(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer, StartOperationHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).startOperation(targetEntityID, descriptorType, descriptorIndex, operationType, memoryBuffer, handler);

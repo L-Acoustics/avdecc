@@ -19,6 +19,7 @@
 
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
+#include "la/avdecc/internals/protocolVuAecpdu.hpp"
 #include "protocolInterface_macNative.hpp"
 #include "logHelper.hpp"
 #include <stdexcept>
@@ -114,6 +115,8 @@ struct LockInformation
 + (la::avdecc::protocol::AemAecpdu::UniquePointer)makeAemResponse:(AVB17221AECPAEMMessage*)response;
 + (AVB17221AECPAddressAccessMessage*)makeAaCommand:(la::avdecc::protocol::AaAecpdu const&)command;
 + (la::avdecc::protocol::AaAecpdu::UniquePointer)makeAaResponse:(AVB17221AECPAddressAccessMessage*)response;
++ (AVB17221AECPVendorMessage*)makeVendorCommand:(la::avdecc::protocol::VuAecpdu const&)command;
++ (la::avdecc::protocol::VuAecpdu::UniquePointer)makeVendorResponse:(AVB17221AECPVendorMessage*)response;
 + (AVB17221AECPMessage*)makeAecpCommand:(la::avdecc::protocol::Aecpdu const&)command;
 + (la::avdecc::protocol::Aecpdu::UniquePointer)makeAecpResponse:(AVB17221AECPMessage*)response;
 + (la::avdecc::protocol::Acmpdu::UniquePointer)makeAcmpMessage:(AVB17221ACMPMessage*)message;
@@ -130,6 +133,8 @@ struct LockInformation
 - (void)dealloc;
 
 // la::avdecc::protocol::ProtocolInterface bridge methods
+- (la::avdecc::UniqueIdentifier)getDynamicEID;
+- (void)releaseDynamicEID:(la::avdecc::UniqueIdentifier)entityID;
 // Registration of a local process entity (an entity declared inside this process, not all local computer entities)
 - (la::avdecc::protocol::ProtocolInterface::Error)registerLocalEntity:(la::avdecc::entity::LocalEntity&)entity;
 // Remove handlers for a local process entity
@@ -141,7 +146,7 @@ struct LockInformation
 - (la::avdecc::protocol::ProtocolInterface::Error)disableEntityAdvertising:(la::avdecc::entity::LocalEntity const&)entity interfaceIndex:(std::optional<la::avdecc::entity::model::AvbInterfaceIndex>)interfaceIndex;
 - (BOOL)discoverRemoteEntities;
 - (BOOL)discoverRemoteEntity:(la::avdecc::UniqueIdentifier)entityID;
-- (la::avdecc::protocol::ProtocolInterface::Error)sendAecpCommand:(la::avdecc::protocol::Aecpdu::UniquePointer&&)aecpdu macAddress:(la::avdecc::networkInterface::MacAddress const&)macAddress handler:(la::avdecc::protocol::ProtocolInterface::AecpCommandResultHandler const&)onResult;
+- (la::avdecc::protocol::ProtocolInterface::Error)sendAecpCommand:(la::avdecc::protocol::Aecpdu::UniquePointer&&)aecpdu handler:(la::avdecc::protocol::ProtocolInterface::AecpCommandResultHandler const&)onResult;
 - (la::avdecc::protocol::ProtocolInterface::Error)sendAcmpCommand:(la::avdecc::protocol::Acmpdu::UniquePointer&&)acmpdu handler:(la::avdecc::protocol::ProtocolInterface::AcmpCommandResultHandler const&)onResult;
 - (void)lock;
 - (void)unlock;
@@ -225,6 +230,16 @@ private:
 		}
 	}
 
+	virtual UniqueIdentifier getDynamicEID() const noexcept override
+	{
+		return [_bridge getDynamicEID];
+	}
+
+	virtual void releaseDynamicEID(UniqueIdentifier const entityID) const noexcept override
+	{
+		[_bridge releaseDynamicEID:entityID];
+	}
+
 	virtual Error registerLocalEntity(entity::LocalEntity& entity) noexcept override
 	{
 		return [_bridge registerLocalEntity:entity];
@@ -284,12 +299,12 @@ private:
 		return Error::MessageNotSupported;
 	}
 
-	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& macAddress, AecpCommandResultHandler const& onResult) const noexcept override
+	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, AecpCommandResultHandler const& onResult) const noexcept override
 	{
-		return [_bridge sendAecpCommand:std::move(aecpdu) macAddress:macAddress handler:onResult];
+		return [_bridge sendAecpCommand:std::move(aecpdu) handler:onResult];
 	}
 
-	virtual Error sendAecpResponse(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& /*macAddress*/) const noexcept override
+	virtual Error sendAecpResponse(Aecpdu::UniquePointer&& aecpdu) const noexcept override
 	{
 		AVDECC_ASSERT(false, "TBD: To be implemented");
 		return ProtocolInterface::Error::InternalError;
@@ -437,7 +452,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	{
 		la::avdecc::utils::addFlag(entityCaps, la::avdecc::entity::EntityCapabilities::GptpSupported);
 		gptpGrandmasterID = *interfaceInfo.gptpGrandmasterID;
-		if (AVDECC_ASSERT_WITH_RET(interfaceInfo.gptpDomainNumber.has_value(), "gptpDomainNumber should be set when gptpGrandmasterID is set"))
+		if (AVDECC_ASSERT_WITH_RET(interfaceInfo.gptpDomainNumber, "gptpDomainNumber should be set when gptpGrandmasterID is set"))
 		{
 			gptpDomainNumber = *interfaceInfo.gptpDomainNumber;
 		}
@@ -553,7 +568,6 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	auto const message = [AVB17221AECPAddressAccessMessage commandMessage];
 
 	// Set AA specific fields
-	//NSArray<AVB17221AECPAddressAccessTLV *>* tlvs = [[NSArray alloc] init];
 	auto* tlvs = [[NSMutableArray alloc] init];
 	for (auto const& tlv : command.getTlvData())
 	{
@@ -599,6 +613,49 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	return aaAecpdu;
 }
 
++ (AVB17221AECPVendorMessage*)makeVendorCommand:(la::avdecc::protocol::VuAecpdu const&)command {
+#pragma message("TODO")
+	auto const message = [[AVB17221AECPVendorMessage alloc] init];
+#if !__has_feature(objc_arc)
+	[message autorelease];
+#endif
+
+	// Set Vendor Unique specific fields
+	//message.protocolID = command.getProtocolIdentifier();
+	//auto const payloadInfo = command.getPayload();
+	//auto const* const payload = payloadInfo.first;
+	//if (payload != nullptr)
+	//{
+	//message.commandSpecificData = [NSData dataWithBytes:payload length:payloadInfo.second];
+	//}
+
+	// Set common fields
+	message.status = AVB17221AECPStatusSuccess;
+	message.targetEntityID = command.getTargetEntityID();
+	message.controllerEntityID = command.getControllerEntityID();
+	// No need to set the sequenceID field, it's handled by Apple's framework
+
+	return message;
+}
+
++ (la::avdecc::protocol::VuAecpdu::UniquePointer)makeVendorResponse:(AVB17221AECPVendorMessage*)response {
+#pragma message("TODO")
+	// We have to retrieve the ProtocolID to dispatch
+	//auto const protocolIdentifierOffset = AvtpduControl::HeaderLength + Aecpdu::HeaderLength;
+	//if (pkt_len >= (protocolIdentifierOffset + VuAecpdu::ProtocolIdentifierSize))
+	//{
+	//VuAecpdu::ProtocolIdentifier protocolIdentifier;
+	//std::memcpy(protocolIdentifier.data(), pkt_data + protocolIdentifierOffset, VuAecpdu::ProtocolIdentifierSize);
+
+	//if (protocolIdentifier == MvuAecpdu::ProtocolID)
+	//{
+	//return MvuAecpdu::create();
+	//}
+	//}
+
+	return la::avdecc::protocol::VuAecpdu::UniquePointer{ nullptr, nullptr };
+}
+
 + (AVB17221AECPMessage*)makeAecpCommand:(la::avdecc::protocol::Aecpdu const&)command {
 	switch (static_cast<AVB17221AECPMessageType>(command.getMessageType().getValue()))
 	{
@@ -606,6 +663,8 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 			return [BridgeInterface makeAemCommand:static_cast<la::avdecc::protocol::AemAecpdu const&>(command)];
 		case AVB17221AECPMessageTypeAddressAccessCommand:
 			return [BridgeInterface makeAaCommand:static_cast<la::avdecc::protocol::AaAecpdu const&>(command)];
+		case AVB17221AECPMessageTypeVendorUniqueCommand:
+			return [BridgeInterface makeVendorCommand:static_cast<la::avdecc::protocol::VuAecpdu const&>(command)];
 		default:
 			AVDECC_ASSERT(false, "Unhandled AECP message type");
 			break;
@@ -691,6 +750,8 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 				return la::avdecc::protocol::ProtocolInterface::Error::UnknownLocalEntity;
 			case kIOReturnOffline:
 				return la::avdecc::protocol::ProtocolInterface::Error::TransportError;
+			case kIOReturnBadArgument:
+				return la::avdecc::protocol::ProtocolInterface::Error::InternalError;
 			default:
 				NSLog(@"Not handled IOReturn error code: %x\n", code);
 				AVDECC_ASSERT(false, "Not handled error code");
@@ -787,6 +848,14 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 }
 
 #pragma mark la::avdecc::protocol::ProtocolInterface bridge methods
+- (la::avdecc::UniqueIdentifier)getDynamicEID {
+	return [AVBCentralManager nextAvailableDynamicEntityID];
+}
+
+- (void)releaseDynamicEID:(la::avdecc::UniqueIdentifier)entityID {
+	[AVBCentralManager releaseDynamicEntityID:entityID];
+}
+
 // Registration of a local process entity (an entity declared inside this process, not all local computer entities)
 - (la::avdecc::protocol::ProtocolInterface::Error)registerLocalEntity:(la::avdecc::entity::LocalEntity&)entity {
 	// Lock entities now, so we don't get interrupted during registration
@@ -871,7 +940,13 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	// If interfaceIndex is specified, only enable advertising for this interface
 	if (interfaceIndex)
 	{
-		[self.interface.entityDiscovery addLocalEntity:[BridgeInterface makeAVB17221Entity:entity interfaceIndex:*interfaceIndex] error:&error];
+		auto const idx = *interfaceIndex;
+		if (!entity.hasInterfaceIndex(idx))
+		{
+			return la::avdecc::protocol::ProtocolInterface::Error::InvalidParameters;
+		}
+
+		[self.interface.entityDiscovery addLocalEntity:[BridgeInterface makeAVB17221Entity:entity interfaceIndex:idx] error:&error];
 		if (error != nullptr)
 			return [BridgeInterface getProtocolError:error];
 	}
@@ -895,6 +970,16 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 
 - (la::avdecc::protocol::ProtocolInterface::Error)disableEntityAdvertising:(la::avdecc::entity::LocalEntity const&)entity interfaceIndex:(std::optional<la::avdecc::entity::model::AvbInterfaceIndex>)interfaceIndex {
 	NSError* error{ nullptr };
+
+	// If interfaceIndex is specified
+	if (interfaceIndex)
+	{
+		auto const idx = *interfaceIndex;
+		if (!entity.hasInterfaceIndex(idx))
+		{
+			return la::avdecc::protocol::ProtocolInterface::Error::InvalidParameters;
+		}
+	}
 
 	[self.interface.entityDiscovery removeLocalEntity:entity.getEntityID() error:&error];
 	if (error != nullptr)
@@ -923,8 +1008,8 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	return [self.interface.entityDiscovery discoverEntity:entityID];
 }
 
-- (la::avdecc::protocol::ProtocolInterface::Error)sendAecpCommand:(la::avdecc::protocol::Aecpdu::UniquePointer&&)aecpdu macAddress:(la::avdecc::networkInterface::MacAddress const&)macAddress handler:(la::avdecc::protocol::ProtocolInterface::AecpCommandResultHandler const&)onResult {
-	auto const macAddr = macAddress; // Make a copy of the macAddress so it can safely be used inside the objC block
+- (la::avdecc::protocol::ProtocolInterface::Error)sendAecpCommand:(la::avdecc::protocol::Aecpdu::UniquePointer&&)aecpdu handler:(la::avdecc::protocol::ProtocolInterface::AecpCommandResultHandler const&)onResult {
+	auto const macAddr = aecpdu->getDestAddress(); // Make a copy of the target macAddress so it can safely be used inside the objC block
 	__block auto resultHandler = onResult; // Make a copy of the handler so it can safely be used inside the objC block. Declare it as __block so we can modify it from the block (to fix a bug that macOS sometimes call the completionHandler twice)
 
 	auto message = [BridgeInterface makeAecpCommand:*aecpdu];

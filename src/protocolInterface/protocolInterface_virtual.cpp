@@ -289,6 +289,8 @@ private:
 
 	// ProtocolInterface overrides
 	virtual void shutdown() noexcept override;
+	virtual UniqueIdentifier getDynamicEID() const noexcept override;
+	virtual void releaseDynamicEID(UniqueIdentifier const entityID) const noexcept override;
 	virtual Error registerLocalEntity(entity::LocalEntity& entity) noexcept override;
 	virtual Error unregisterLocalEntity(entity::LocalEntity& entity) noexcept override;
 	virtual Error setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const flags, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override;
@@ -300,8 +302,8 @@ private:
 	virtual Error sendAdpMessage(Adpdu const& adpdu) const noexcept override;
 	virtual Error sendAecpMessage(Aecpdu const& aecpdu) const noexcept override;
 	virtual Error sendAcmpMessage(Acmpdu const& acmpdu) const noexcept override;
-	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& macAddress, AecpCommandResultHandler const& onResult) const noexcept override;
-	virtual Error sendAecpResponse(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& macAddress) const noexcept override;
+	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, AecpCommandResultHandler const& onResult) const noexcept override;
+	virtual Error sendAecpResponse(Aecpdu::UniquePointer&& aecpdu) const noexcept override;
 	virtual Error sendAcmpCommand(Acmpdu::UniquePointer&& acmpdu, AcmpCommandResultHandler const& onResult) const noexcept override;
 	virtual Error sendAcmpResponse(Acmpdu::UniquePointer&& acmpdu) const noexcept override;
 	virtual void lock() noexcept override;
@@ -515,6 +517,34 @@ void ProtocolInterfaceVirtualImpl::shutdown() noexcept
 	dispatcher.unregisterObserver(_networkInterfaceName, this);
 }
 
+UniqueIdentifier ProtocolInterfaceVirtualImpl::getDynamicEID() const noexcept
+{
+	UniqueIdentifier::value_type eid{ 0u };
+	auto const& macAddress = getMacAddress();
+	static auto s_CurrentProgID = std::uint16_t{ 0u };
+
+	eid += macAddress[0];
+	eid <<= 8;
+	eid += macAddress[1];
+	eid <<= 8;
+	eid += macAddress[2];
+	eid <<= 16;
+	eid += ++s_CurrentProgID;
+	eid <<= 8;
+	eid += macAddress[3];
+	eid <<= 8;
+	eid += macAddress[4];
+	eid <<= 8;
+	eid += macAddress[5];
+
+	return UniqueIdentifier{ eid };
+}
+
+void ProtocolInterfaceVirtualImpl::releaseDynamicEID(UniqueIdentifier const /*entityID*/) const noexcept
+{
+	// Nothing to do
+}
+
 ProtocolInterface::Error ProtocolInterfaceVirtualImpl::registerLocalEntity(entity::LocalEntity& entity) noexcept
 {
 	auto error{ ProtocolInterface::Error::NoError };
@@ -537,10 +567,22 @@ ProtocolInterface::Error ProtocolInterfaceVirtualImpl::registerLocalEntity(entit
 
 ProtocolInterface::Error ProtocolInterfaceVirtualImpl::unregisterLocalEntity(entity::LocalEntity& entity) noexcept
 {
-	// Remove from all state machines, without checking the type (will be done by the StateMachine)
-	_controllerStateMachine.unregisterLocalEntity(entity);
-#pragma message("TODO: Remove from talker/listener state machines too")
-	return ProtocolInterface::Error::NoError;
+	auto error{ ProtocolInterface::Error::NoError };
+
+	// Entity is controller capable
+	if (utils::hasFlag(entity.getControllerCapabilities(), entity::ControllerCapabilities::Implemented))
+		error |= _controllerStateMachine.unregisterLocalEntity(entity);
+
+#pragma message("TODO: Handle talker/listener types")
+	// Entity is listener capable
+	if (utils::hasFlag(entity.getListenerCapabilities(), entity::ListenerCapabilities::Implemented))
+		return ProtocolInterface::Error::InvalidEntityType; // Not supported right now
+
+	// Entity is talker capable
+	if (utils::hasFlag(entity.getTalkerCapabilities(), entity::TalkerCapabilities::Implemented))
+		return ProtocolInterface::Error::InvalidEntityType; // Not supported right now
+
+	return error;
 }
 
 ProtocolInterface::Error ProtocolInterfaceVirtualImpl::setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const /*flags*/, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept
@@ -591,16 +633,14 @@ ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendAcmpMessage(Acmpdu co
 	return sendMessage(acmpdu);
 }
 
-ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& /*macAddress*/, AecpCommandResultHandler const& onResult) const noexcept
+ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, AecpCommandResultHandler const& onResult) const noexcept
 {
-	// Virtual protocol interface do not need the macAddress parameter, it will be retrieved from the Aecpdu when sending it
 	// Command goes through the state machine to handle timeout, retry and response
 	return _controllerStateMachine.sendAecpCommand(std::move(aecpdu), onResult);
 }
 
-ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendAecpResponse(Aecpdu::UniquePointer&& aecpdu, networkInterface::MacAddress const& /*macAddress*/) const noexcept
+ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendAecpResponse(Aecpdu::UniquePointer&& aecpdu) const noexcept
 {
-	// Virtual protocol interface do not need the macAddress parameter, it will be retrieved from the Aecpdu when sending it
 	// Response can be directly sent
 	return sendMessage(static_cast<Aecpdu const&>(*aecpdu));
 }

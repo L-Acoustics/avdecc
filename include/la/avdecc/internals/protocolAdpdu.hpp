@@ -46,7 +46,7 @@ public:
 	* @details Creates a new Adpdu as a unique pointer.
 	* @return A new Adpdu as a Adpdu::UniquePointer.
 	*/
-	static UniquePointer create()
+	static UniquePointer create() noexcept
 	{
 		auto deleter = [](Adpdu* self)
 		{
@@ -210,7 +210,7 @@ public:
 
 private:
 	/** Entry point */
-	static LA_AVDECC_API Adpdu* LA_AVDECC_CALL_CONVENTION createRawAdpdu();
+	static LA_AVDECC_API Adpdu* LA_AVDECC_CALL_CONVENTION createRawAdpdu() noexcept;
 
 	/** Destroy method for COM-like interface */
 	LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION destroy() noexcept;
