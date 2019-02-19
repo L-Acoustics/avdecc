@@ -168,7 +168,7 @@ class ProtocolInterfaceMacNativeImpl;
 	return aaAecpdu;
 }
 
-+ (la::avdecc::protocol::VuAecpdu::UniquePointer)makeVendorUniqueAecpdu:(AVB17221AECPVendorMessage*)response {
++ (la::avdecc::protocol::VuAecpdu::UniquePointer)makeVendorUniqueAecpdu:(AVB17221AECPVendorMessage*)message {
 #pragma message("TODO")
 	// We have to retrieve the ProtocolID to dispatch
 	//auto const protocolIdentifierOffset = AvtpduControl::HeaderLength + Aecpdu::HeaderLength;
@@ -388,7 +388,7 @@ class ProtocolInterfaceMacNativeImpl;
 	return message;
 }
 
-+ (AVB17221AECPAddressAccessMessage*)makeAaMessage:(la::avdecc::protocol::AaAecpdu const&)command isResponse:(bool)isResponse {
++ (AVB17221AECPAddressAccessMessage*)makeAaMessage:(la::avdecc::protocol::AaAecpdu const&)aecpdu isResponse:(bool)isResponse {
 	auto* message = static_cast<AVB17221AECPAddressAccessMessage*>(nullptr);
 
 	if (isResponse)
@@ -398,7 +398,7 @@ class ProtocolInterfaceMacNativeImpl;
 
 	// Set AA specific fields
 	auto* tlvs = [[NSMutableArray alloc] init];
-	for (auto const& tlv : command.getTlvData())
+	for (auto const& tlv : aecpdu.getTlvData())
 	{
 		auto* t = [[AVB17221AECPAddressAccessTLV alloc] init];
 		t.mode = static_cast<AVB17221AECPAddressAccessTLVMode>(tlv.getMode().getValue());
@@ -410,33 +410,49 @@ class ProtocolInterfaceMacNativeImpl;
 
 	// Set common fields
 	message.status = AVB17221AECPStatusSuccess;
-	message.targetEntityID = command.getTargetEntityID();
-	message.controllerEntityID = command.getControllerEntityID();
+	message.targetEntityID = aecpdu.getTargetEntityID();
+	message.controllerEntityID = aecpdu.getControllerEntityID();
 	// No need to set the sequenceID field, it's handled by Apple's framework
 
 	return message;
 }
 
-+ (AVB17221AECPVendorMessage*)makeVendorUniqueMessage:(la::avdecc::protocol::VuAecpdu const&)command {
-#pragma message("TODO")
++ (AVB17221AECPVendorMessage*)makeVendorUniqueMessage:(la::avdecc::protocol::VuAecpdu const&)aecpdu isResponse:(bool)isResponse {
 	auto const message = [[AVB17221AECPVendorMessage alloc] init];
 #if !__has_feature(objc_arc)
 	[message autorelease];
 #endif
 
 	// Set Vendor Unique specific fields
-	//message.protocolID = command.getProtocolIdentifier();
-	//auto const payloadInfo = command.getPayload();
-	//auto const* const payload = payloadInfo.first;
-	//if (payload != nullptr)
-	//{
-	//message.commandSpecificData = [NSData dataWithBytes:payload length:payloadInfo.second];
-	//}
+	{
+		auto protID = decltype(message.protocolID){ 0u };
+		auto const& protocolIdentifier = aecpdu.getProtocolIdentifier();
+		for (auto const v : protocolIdentifier)
+		{
+			protID = (protID << 8) | v;
+		}
+		message.protocolID = protID;
+	}
+	{
+		// Use VuAecpdu serialization to construct the vendor specific payload
+		la::avdecc::protocol::SerializationBuffer buffer;
+		la::avdecc::protocol::serialize<la::avdecc::protocol::VuAecpdu>(aecpdu, buffer);
+
+		// Copy the payload to commandSpecificData, minus the header
+		auto constexpr HeaderLength = la::avdecc::protocol::Aecpdu::HeaderLength + la::avdecc::protocol::VuAecpdu::HeaderLength;
+		auto const* const payloadData = buffer.data();
+		auto const payloadLength = buffer.size();
+		if (payloadLength > HeaderLength)
+		{
+			message.protocolSpecificData = [NSData dataWithBytes:(payloadData + HeaderLength) length:payloadLength - HeaderLength];
+		}
+	}
 
 	// Set common fields
+	message.messageType = AVB17221AECPMessageTypeVendorUniqueCommand;
 	message.status = AVB17221AECPStatusSuccess;
-	message.targetEntityID = command.getTargetEntityID();
-	message.controllerEntityID = command.getControllerEntityID();
+	message.targetEntityID = aecpdu.getTargetEntityID();
+	message.controllerEntityID = aecpdu.getControllerEntityID();
 	// No need to set the sequenceID field, it's handled by Apple's framework
 
 	return message;
@@ -454,9 +470,9 @@ class ProtocolInterfaceMacNativeImpl;
 		case AVB17221AECPMessageTypeAddressAccessResponse:
 			return [ToNative makeAaMessage:static_cast<la::avdecc::protocol::AaAecpdu const&>(message) isResponse:true];
 		case AVB17221AECPMessageTypeVendorUniqueCommand:
-			return [ToNative makeVendorUniqueMessage:static_cast<la::avdecc::protocol::VuAecpdu const&>(message)];
+			return [ToNative makeVendorUniqueMessage:static_cast<la::avdecc::protocol::VuAecpdu const&>(message) isResponse:false];
 		case AVB17221AECPMessageTypeVendorUniqueResponse:
-			return [ToNative makeVendorUniqueMessage:static_cast<la::avdecc::protocol::VuAecpdu const&>(message)];
+			return [ToNative makeVendorUniqueMessage:static_cast<la::avdecc::protocol::VuAecpdu const&>(message) isResponse:true];
 		default:
 			AVDECC_ASSERT(false, "Unhandled AECP message type");
 			break;
@@ -779,14 +795,17 @@ private:
 	virtual ProtocolInterface::Error sendMessage(la::avdecc::protocol::Adpdu const& adpdu) const noexcept override
 	{
 		AVDECC_ASSERT(false, "Should never be called (if needed someday, just forward to _bridge");
+		return ProtocolInterface::Error::InternalError;
 	}
 	virtual ProtocolInterface::Error sendMessage(la::avdecc::protocol::Aecpdu const& aecpdu) const noexcept override
 	{
 		AVDECC_ASSERT(false, "Should never be called (if needed someday, just forward to _bridge");
+		return ProtocolInterface::Error::InternalError;
 	}
 	virtual ProtocolInterface::Error sendMessage(la::avdecc::protocol::Acmpdu const& acmpdu) const noexcept override
 	{
 		AVDECC_ASSERT(false, "Should never be called (if needed someday, just forward to _bridge");
+		return ProtocolInterface::Error::InternalError;
 	}
 
 private:
@@ -816,6 +835,13 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 
 #pragma mark - BridgeInterface Implementation
 @implementation BridgeInterface
+
+- (EntityQueues const&)createQueuesForRemoteEntity:(la::avdecc::UniqueIdentifier)entityID {
+	EntityQueues eq;
+	eq.aecpQueue = dispatch_queue_create([[NSString stringWithFormat:@"%@.0x%016llx.aecp", [self className], entityID.getValue()] UTF8String], 0);
+	eq.aecpLimiter = dispatch_semaphore_create(la::avdecc::protocol::Aecpdu::DefaultMaxInflightCommands);
+	return _entityQueues[entityID] = std::move(eq);
+}
 
 + (BOOL)isSupported {
 	if ([NSProcessInfo instancesRespondToSelector:@selector(isOperatingSystemAtLeastVersion:)])
@@ -963,8 +989,11 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	// Entity is controller capable
 	if (la::avdecc::utils::hasFlag(entity.getControllerCapabilities(), la::avdecc::entity::ControllerCapabilities::Implemented))
 	{
-		// Set a handler to monitor AECP Response messages, we are interested in unsolicited notifications
-		[self.interface.aecp setResponseHandler:self forControllerEntityID:entityID];
+		// Set a handler to monitor AECP Response messages, we are interested in unsolicited notifications and VendorUnique responses
+		if ([self.interface.aecp setResponseHandler:self forControllerEntityID:entityID] == NO)
+		{
+			return la::avdecc::protocol::ProtocolInterface::Error::DuplicateLocalEntityID;
+		}
 	}
 	// Other types are not supported right now
 	else
@@ -1098,10 +1127,12 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 			auto eqIt = _entityQueues.find(message.targetEntityID);
 			if (eqIt == _entityQueues.end())
 			{
-				AVDECC_ASSERT(false, "Should not happen");
-				return la::avdecc::protocol::ProtocolInterface::Error::UnknownRemoteEntity;
+				queue = [self createQueuesForRemoteEntity:message.targetEntityID].aecpQueue;
 			}
-			queue = eqIt->second.aecpQueue;
+			else
+			{
+				queue = eqIt->second.aecpQueue;
+			}
 		}
 
 		dispatch_async(queue, ^{
@@ -1232,10 +1263,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	// Create queues and semaphore
 	{
 		std::lock_guard<decltype(_lockQueues)> const lg(_lockQueues);
-		EntityQueues eq;
-		eq.aecpQueue = dispatch_queue_create([[NSString stringWithFormat:@"%@.0x%016llx.aecp", [self className], entityID.getValue()] UTF8String], 0);
-		eq.aecpLimiter = dispatch_semaphore_create(la::avdecc::protocol::Aecpdu::DefaultMaxInflightCommands);
-		_entityQueues[entityID] = std::move(eq);
+		[self createQueuesForRemoteEntity:entityID];
 	}
 }
 
