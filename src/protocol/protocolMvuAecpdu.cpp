@@ -37,7 +37,7 @@ namespace protocol
 /* MvuAecpdu class definition                              */
 /***********************************************************/
 
-VuAecpdu::ProtocolIdentifier MvuAecpdu::ProtocolID{ { 0x00, 0x1b, 0xc5, 0x0a, 0xc1, 0x00 } }; /* Avnu OUI-36 (00-1B-C5-0A-C) + MVU ProtocolUniqueIdentifier (0x100) */
+VuAecpdu::ProtocolIdentifier MvuAecpdu::ProtocolID{ 0x001bc50ac100 }; /* Avnu OUI-36 (00-1B-C5-0A-C) + MVU ProtocolUniqueIdentifier (0x100) */
 
 MvuAecpdu::MvuAecpdu() noexcept
 {

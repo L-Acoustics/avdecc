@@ -209,11 +209,11 @@ void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 			[&commandResultPromise](la::avdecc::protocol::Aecpdu const* const /*response*/, la::avdecc::protocol::ProtocolInterface::Error const error)
 			{
 				commandResultPromise.set_value();
-				outputText("Got AECP response with status: " + std::to_string(la::avdecc::utils::to_integral(error)) + "\n");
+				outputText("Got AEM-AECP response with status: " + std::to_string(la::avdecc::utils::to_integral(error)) + "\n");
 			});
 		if (!!error)
 		{
-			outputText("Error sending AECP command: " + std::to_string(la::avdecc::utils::to_integral(error)) + "\n");
+			outputText("Error sending AEM-AECP command: " + std::to_string(la::avdecc::utils::to_integral(error)) + "\n");
 		}
 		else
 		{
@@ -221,7 +221,7 @@ void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 			auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(20));
 			if (status == std::future_status::timeout)
 			{
-				outputText("AECP command timed out\n");
+				outputText("AEM-AECP command timed out\n");
 			}
 		}
 	}
@@ -251,11 +251,11 @@ void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 			[&commandResultPromise](la::avdecc::protocol::Aecpdu const* const /*response*/, la::avdecc::protocol::ProtocolInterface::Error const error)
 			{
 				commandResultPromise.set_value();
-				outputText("Got AECP response with status: " + std::to_string(la::avdecc::utils::to_integral(error)) + "\n");
+				outputText("Got MVU-AECP response with status: " + std::to_string(la::avdecc::utils::to_integral(error)) + "\n");
 			});
 		if (!!error)
 		{
-			outputText("Error sending AECP command: " + std::to_string(la::avdecc::utils::to_integral(error)) + "\n");
+			outputText("Error sending MVU-AECP command: " + std::to_string(la::avdecc::utils::to_integral(error)) + "\n");
 		}
 		else
 		{
@@ -263,7 +263,7 @@ void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 			auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(20));
 			if (status == std::future_status::timeout)
 			{
-				outputText("AECP command timed out\n");
+				outputText("MVU-AECP command timed out\n");
 			}
 		}
 	}

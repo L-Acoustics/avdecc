@@ -26,11 +26,13 @@
 
 #include "la/avdecc/utils.hpp"
 #include "la/avdecc/networkInterfaceHelper.hpp"
+
 #include "exception.hpp"
 #include "entity.hpp"
 #include "protocolAdpdu.hpp"
 #include "protocolAecpdu.hpp"
 #include "protocolAcmpdu.hpp"
+
 #include <memory>
 #include <string>
 #include <cstdint>
@@ -105,6 +107,7 @@ public:
 	class Observer : public la::avdecc::utils::Observer<ProtocolInterface>
 	{
 	public:
+		virtual ~Observer() noexcept = default;
 		/* **** Global notifications **** */
 		virtual void onTransportError(la::avdecc::protocol::ProtocolInterface* const /*pi*/) noexcept {}
 		/* **** Discovery notifications **** */
@@ -144,7 +147,7 @@ public:
 	}
 
 	/** Returns the Mac Address associated with this ProtocolInterface. */
-	virtual networkInterface::MacAddress const& getMacAddress() const noexcept;
+	LA_AVDECC_API networkInterface::MacAddress const& LA_AVDECC_CALL_CONVENTION getMacAddress() const noexcept;
 
 	/* ************************************************************ */
 	/* General entry points                                         */

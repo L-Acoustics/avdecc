@@ -25,6 +25,7 @@ set(TESTS_SOURCE
 	protocolAvtpdu_tests.cpp
 	protocolInterface_pcap_tests.cpp
 	protocolInterface_virtual_tests.cpp
+	protocolVuAecpduProtocolIdentifier_tests.cpp
 	streamFormat_tests.cpp
 	uniqueIdentifier_tests.cpp
 )

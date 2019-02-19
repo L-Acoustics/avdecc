@@ -822,12 +822,12 @@ void ProtocolInterfaceVirtualImpl::dispatchAvdeccMessage(std::uint8_t const* con
 						{
 							// We have to retrieve the ProtocolID to dispatch
 							auto const protocolIdentifierOffset = AvtpduControl::HeaderLength + Aecpdu::HeaderLength;
-							if (pkt_len >= (protocolIdentifierOffset + VuAecpdu::ProtocolIdentifierSize))
+							if (pkt_len >= (protocolIdentifierOffset + VuAecpdu::ProtocolIdentifier::Size))
 							{
-								VuAecpdu::ProtocolIdentifier protocolIdentifier;
-								std::memcpy(protocolIdentifier.data(), pkt_data + protocolIdentifierOffset, VuAecpdu::ProtocolIdentifierSize);
+								VuAecpdu::ProtocolIdentifier::ArrayType protocolIdentifier{};
+								std::memcpy(protocolIdentifier.data(), pkt_data + protocolIdentifierOffset, VuAecpdu::ProtocolIdentifier::Size);
 
-								if (protocolIdentifier == MvuAecpdu::ProtocolID)
+								if (MvuAecpdu::ProtocolID == protocolIdentifier)
 								{
 									return MvuAecpdu::create();
 								}
