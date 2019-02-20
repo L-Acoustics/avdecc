@@ -267,7 +267,6 @@ void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 			}
 		}
 	}
-	std::this_thread::sleep_for(std::chrono::seconds(100));
 }
 
 

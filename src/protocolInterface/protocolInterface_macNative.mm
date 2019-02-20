@@ -168,19 +168,6 @@ class ProtocolInterfaceMacNativeImpl;
 
 + (la::avdecc::protocol::VuAecpdu::UniquePointer)makeVendorUniqueAecpdu:(AVB17221AECPVendorMessage*)message isResponse:(bool)isResponse {
 #pragma message("TODO")
-	// We have to retrieve the ProtocolID to dispatch
-	//auto const protocolIdentifierOffset = AvtpduControl::HeaderLength + Aecpdu::HeaderLength;
-	//if (pkt_len >= (protocolIdentifierOffset + VuAecpdu::ProtocolIdentifierSize))
-	//{
-	//VuAecpdu::ProtocolIdentifier protocolIdentifier;
-	//std::memcpy(protocolIdentifier.data(), pkt_data + protocolIdentifierOffset, VuAecpdu::ProtocolIdentifierSize);
-
-	//if (protocolIdentifier == MvuAecpdu::ProtocolID)
-	//{
-	//return MvuAecpdu::create();
-	//}
-	//}
-
 	return la::avdecc::protocol::VuAecpdu::UniquePointer{ nullptr, nullptr };
 }
 
@@ -1160,8 +1147,20 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 												 auto const lg = std::lock_guard{ _lock };
 												 if (kIOReturnSuccess == (IOReturn)error.code)
 												 {
-													 auto aecpdu = [FromNative makeAecpdu:message];
-													 la::avdecc::utils::invokeProtectedHandler(resultHandler, aecpdu.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
+													 // Special case for VendorUnique messages:
+													 //  It's up to the implementation to keep track of the message, the response, the timeout, the retry.
+													 //  This completion handler is called immediately upon send, with NSError set if there was an error.
+													 //  Otherwise we arrive here with the exact sent message passed here so we can retrieve the sequenceID to track the response in - (BOOL)AECPDidReceiveResponse:(AVB17221AECPMessage*)message onInterface:(AVB17221AECPInterface*)anInterface;
+													 if (message.messageType == AVB17221AECPMessageTypeVendorUniqueCommand)
+													 {
+														 // Right now, due to a bug in AECPDidReceiveResponse not being triggered, just act as if the message had time out
+														 la::avdecc::utils::invokeProtectedHandler(resultHandler, nullptr, la::avdecc::protocol::ProtocolInterface::Error::Timeout);
+													 }
+													 else
+													 {
+														 auto aecpdu = [FromNative makeAecpdu:message];
+														 la::avdecc::utils::invokeProtectedHandler(resultHandler, aecpdu.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
+													 }
 												 }
 												 else
 												 {
