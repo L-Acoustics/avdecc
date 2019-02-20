@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Removed
 - GenericAecpdu class, due to potential misusage
+- Aecpdu::copy method, no longer necessary
 
 ## [2.9.0] - 2019-02-13
 ### Added

@@ -164,16 +164,6 @@ void LA_AVDECC_CALL_CONVENTION MvuAecpdu::deserialize(DeserializationBuffer& buf
 #endif // DEBUG
 }
 
-/** Copy method */
-Aecpdu::UniquePointer LA_AVDECC_CALL_CONVENTION MvuAecpdu::copy() const
-{
-	auto deleter = [](Aecpdu* self)
-	{
-		static_cast<MvuAecpdu*>(self)->destroy();
-	};
-	return UniquePointer(new MvuAecpdu(*this), deleter);
-}
-
 /** Contruct a Response message to this Command (only changing the messageType to be of Response kind). Returns nullptr if the message is not a Command or if no Response is possible for this messageType */
 Aecpdu::UniquePointer LA_AVDECC_CALL_CONVENTION MvuAecpdu::responseCopy() const
 {

@@ -118,8 +118,8 @@ class ProtocolInterfaceMacNativeImpl;
 	return la::avdecc::entity::Entity{ commonInfo, { { avbInterfaceIndex, interfaceInfo } } };
 }
 
-+ (la::avdecc::protocol::AemAecpdu::UniquePointer)makeAemAecpdu:(AVB17221AECPAEMMessage*)message {
-	auto aemAecpdu = la::avdecc::protocol::AemAecpdu::create();
++ (la::avdecc::protocol::AemAecpdu::UniquePointer)makeAemAecpdu:(AVB17221AECPAEMMessage*)message isResponse:(bool)isResponse {
+	auto aemAecpdu = la::avdecc::protocol::AemAecpdu::create(isResponse);
 	auto& aem = static_cast<la::avdecc::protocol::AemAecpdu&>(*aemAecpdu);
 
 	// Set Ether2 fields
@@ -128,7 +128,6 @@ class ProtocolInterfaceMacNativeImpl;
 	//aem.setDestAddress();
 
 	// Set AECP fields
-	aem.setMessageType(la::avdecc::protocol::AecpMessageType{ [message messageType] });
 	aem.setStatus(la::avdecc::protocol::AecpStatus{ message.status });
 	aem.setTargetEntityID(message.targetEntityID);
 	aem.setControllerEntityID(message.controllerEntityID);
@@ -143,8 +142,8 @@ class ProtocolInterfaceMacNativeImpl;
 	return aemAecpdu;
 }
 
-+ (la::avdecc::protocol::AaAecpdu::UniquePointer)makeAaAecpdu:(AVB17221AECPAddressAccessMessage*)message {
-	auto aaAecpdu = la::avdecc::protocol::AaAecpdu::create();
++ (la::avdecc::protocol::AaAecpdu::UniquePointer)makeAaAecpdu:(AVB17221AECPAddressAccessMessage*)message isResponse:(bool)isResponse {
+	auto aaAecpdu = la::avdecc::protocol::AaAecpdu::create(isResponse);
 	auto& aa = static_cast<la::avdecc::protocol::AaAecpdu&>(*aaAecpdu);
 
 	// Set Ether2 fields
@@ -153,7 +152,6 @@ class ProtocolInterfaceMacNativeImpl;
 	//aa.setDestAddress();
 
 	// Set AECP fields
-	aa.setMessageType(la::avdecc::protocol::AecpMessageType{ [message messageType] });
 	aa.setStatus(la::avdecc::protocol::AecpStatus(message.status));
 	aa.setTargetEntityID(message.targetEntityID);
 	aa.setControllerEntityID(message.controllerEntityID);
@@ -168,7 +166,7 @@ class ProtocolInterfaceMacNativeImpl;
 	return aaAecpdu;
 }
 
-+ (la::avdecc::protocol::VuAecpdu::UniquePointer)makeVendorUniqueAecpdu:(AVB17221AECPVendorMessage*)message {
++ (la::avdecc::protocol::VuAecpdu::UniquePointer)makeVendorUniqueAecpdu:(AVB17221AECPVendorMessage*)message isResponse:(bool)isResponse {
 #pragma message("TODO")
 	// We have to retrieve the ProtocolID to dispatch
 	//auto const protocolIdentifierOffset = AvtpduControl::HeaderLength + Aecpdu::HeaderLength;
@@ -190,14 +188,17 @@ class ProtocolInterfaceMacNativeImpl;
 	switch ([message messageType])
 	{
 		case AVB17221AECPMessageTypeAEMCommand:
+			return [FromNative makeAemAecpdu:static_cast<AVB17221AECPAEMMessage*>(message)isResponse:false];
 		case AVB17221AECPMessageTypeAEMResponse:
-			return [FromNative makeAemAecpdu:static_cast<AVB17221AECPAEMMessage*>(message)];
+			return [FromNative makeAemAecpdu:static_cast<AVB17221AECPAEMMessage*>(message)isResponse:true];
 		case AVB17221AECPMessageTypeAddressAccessCommand:
+			return [FromNative makeAaAecpdu:static_cast<AVB17221AECPAddressAccessMessage*>(message)isResponse:false];
 		case AVB17221AECPMessageTypeAddressAccessResponse:
-			return [FromNative makeAaAecpdu:static_cast<AVB17221AECPAddressAccessMessage*>(message)];
+			return [FromNative makeAaAecpdu:static_cast<AVB17221AECPAddressAccessMessage*>(message)isResponse:true];
 		case AVB17221AECPMessageTypeVendorUniqueCommand:
+			return [FromNative makeVendorUniqueAecpdu:static_cast<AVB17221AECPVendorMessage*>(message)isResponse:false];
 		case AVB17221AECPMessageTypeVendorUniqueResponse:
-			return [FromNative makeVendorUniqueAecpdu:static_cast<AVB17221AECPVendorMessage*>(message)];
+			return [FromNative makeVendorUniqueAecpdu:static_cast<AVB17221AECPVendorMessage*>(message) isResponse:true];
 		default:
 			AVDECC_ASSERT(false, "Unhandled AECP message type");
 			break;
@@ -425,13 +426,7 @@ class ProtocolInterfaceMacNativeImpl;
 
 	// Set Vendor Unique specific fields
 	{
-		auto protID = decltype(message.protocolID){ 0u };
-		auto const& protocolIdentifier = aecpdu.getProtocolIdentifier();
-		for (auto const v : protocolIdentifier)
-		{
-			protID = (protID << 8) | v;
-		}
-		message.protocolID = protID;
+		message.protocolID = static_cast<la::avdecc::protocol::VuAecpdu::ProtocolIdentifier::IntegralType>(aecpdu.getProtocolIdentifier());
 	}
 	{
 		// Use VuAecpdu serialization to construct the vendor specific payload
@@ -449,7 +444,7 @@ class ProtocolInterfaceMacNativeImpl;
 	}
 
 	// Set common fields
-	message.messageType = AVB17221AECPMessageTypeVendorUniqueCommand;
+	message.messageType = isResponse ? AVB17221AECPMessageTypeVendorUniqueResponse : AVB17221AECPMessageTypeVendorUniqueCommand;
 	message.status = AVB17221AECPStatusSuccess;
 	message.targetEntityID = aecpdu.getTargetEntityID();
 	message.controllerEntityID = aecpdu.getControllerEntityID();

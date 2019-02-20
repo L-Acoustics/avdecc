@@ -46,7 +46,7 @@ public:
 		using IntegralType = std::uint64_t;
 		using ArrayType = std::array<std::uint8_t, Size>;
 
-		ProtocolIdentifier() noexcept = default;
+		ProtocolIdentifier() noexcept {}
 
 		/** Initializes the ProtocolIdentifier from a 64 bits value (only the LSB 48 bits are used) */
 		explicit ProtocolIdentifier(IntegralType const identifier) noexcept
