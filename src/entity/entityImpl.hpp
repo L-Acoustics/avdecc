@@ -27,7 +27,6 @@
 #include "la/avdecc/internals/entity.hpp"
 #include "la/avdecc/internals/entityModel.hpp"
 #include "la/avdecc/internals/protocolInterface.hpp"
-#include "la/avdecc/internals/protocolGenericAecpdu.hpp"
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
 #include "la/avdecc/internals/protocolMvuAecpdu.hpp"
@@ -237,14 +236,13 @@ public:
 		try
 		{
 			// Build AEM-AECPDU frame
-			auto frame = protocol::AemAecpdu::create();
+			auto frame = protocol::AemAecpdu::create(false);
 			auto* aem = static_cast<protocol::AemAecpdu*>(frame.get());
 
 			// Set Ether2 fields
 			aem->setSrcAddress(pi->getMacAddress());
 			aem->setDestAddress(targetMacAddress);
 			// Set AECP fields
-			aem->setMessageType(protocol::AecpMessageType::AemCommand);
 			aem->setStatus(protocol::AecpStatus::Success);
 			aem->setTargetEntityID(targetEntityID);
 			aem->setControllerEntityID(controllerEntityID);
@@ -279,14 +277,13 @@ public:
 		try
 		{
 			// Build AA-AECPDU frame
-			auto frame = protocol::AaAecpdu::create();
+			auto frame = protocol::AaAecpdu::create(false);
 			auto* aa = static_cast<protocol::AaAecpdu*>(frame.get());
 
 			// Set Ether2 fields
 			aa->setSrcAddress(pi->getMacAddress());
 			aa->setDestAddress(targetMacAddress);
 			// Set AECP fields
-			aa->setMessageType(protocol::AecpMessageType::AddressAccessCommand);
 			aa->setStatus(protocol::AecpStatus::Success);
 			aa->setTargetEntityID(targetEntityID);
 			aa->setControllerEntityID(controllerEntityID);
@@ -322,14 +319,13 @@ public:
 		try
 		{
 			// Build MVU-AECPDU frame
-			auto frame = protocol::MvuAecpdu::create();
+			auto frame = protocol::MvuAecpdu::create(false);
 			auto* mvu = static_cast<protocol::MvuAecpdu*>(frame.get());
 
 			// Set Ether2 fields
 			mvu->setSrcAddress(pi->getMacAddress());
 			mvu->setDestAddress(targetMacAddress);
 			// Set AECP fields
-			mvu->setMessageType(protocol::AecpMessageType::VendorUniqueCommand);
 			mvu->setStatus(protocol::AecpStatus::Success);
 			mvu->setTargetEntityID(targetEntityID);
 			mvu->setControllerEntityID(controllerEntityID);
@@ -410,27 +406,30 @@ public:
 	{
 		try
 		{
-			auto response = command.copy();
+			// Try to make a response from this command
+			auto response = command.responseCopy();
 
-			// Set Ether2 fields
+			if (response)
 			{
-				auto& ether2 = static_cast<protocol::EtherLayer2&>(*response);
-				if (command.getDestAddress() != pi->getMacAddress())
+				// Set Ether2 fields
 				{
-					LOG_ENTITY_WARN(command.getTargetEntityID(), "Sending AECP response using own MacAddress as source, instead of the incorrect one from the AECP command");
+					auto& ether2 = static_cast<protocol::EtherLayer2&>(*response);
+					if (command.getDestAddress() != pi->getMacAddress())
+					{
+						LOG_ENTITY_WARN(command.getTargetEntityID(), "Sending AECP response using own MacAddress as source, instead of the incorrect one from the AECP command");
+					}
+					ether2.setSrcAddress(pi->getMacAddress()); // Using our MacAddress instead of the one from the Command, some devices incorrectly send some AEM messages to the multicast Ether2 MacAddress instead of targeting an entity
+					ether2.setDestAddress(command.getSrcAddress());
 				}
-				ether2.setSrcAddress(pi->getMacAddress()); // Using our MacAddress instead of the one from the Command, some devices incorrectly send some AEM messages to the multicast Ether2 MacAddress instead of targeting an entity
-				ether2.setDestAddress(command.getSrcAddress());
-			}
-			// Set AECP fields
-			{
-				auto& frame = static_cast<protocol::GenericAecpdu&>(*response);
-				frame.setMessageType(protocol::AecpMessageType{ static_cast<protocol::AecpMessageType::value_type>(command.getMessageType().getValue() + 1u) }); // Responses are always the value next after the command
-				frame.setStatus(status);
-			}
+				// Set AECP status
+				{
+					auto& frame = static_cast<protocol::Aecpdu&>(*response);
+					frame.setStatus(status);
+				}
 
-			// We don't care about the send errors
-			pi->sendAecpResponse(std::move(response));
+				// We don't care about the send errors
+				pi->sendAecpResponse(std::move(response));
+			}
 		}
 		catch (...)
 		{
@@ -442,7 +441,7 @@ public:
 		try
 		{
 			// Build AEM-AECPDU frame
-			auto frame = protocol::AemAecpdu::create();
+			auto frame = protocol::AemAecpdu::create(true);
 			auto* aem = static_cast<protocol::AemAecpdu*>(frame.get());
 
 			// Set Ether2 fields
@@ -453,7 +452,6 @@ public:
 			aem->setSrcAddress(pi->getMacAddress()); // Using our MacAddress instead of the one from the Command, some devices incorrectly send some AEM messages to the multicast Ether2 MacAddress instead of targeting an entity
 			aem->setDestAddress(commandAem.getSrcAddress());
 			// Set AECP fields
-			aem->setMessageType(protocol::AecpMessageType::AemResponse);
 			aem->setStatus(status);
 			aem->setTargetEntityID(commandAem.getTargetEntityID());
 			aem->setControllerEntityID(commandAem.getControllerEntityID());

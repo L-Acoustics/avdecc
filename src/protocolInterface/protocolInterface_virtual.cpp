@@ -800,22 +800,22 @@ void ProtocolInterfaceVirtualImpl::dispatchAvdeccMessage(std::uint8_t const* con
 					{ AecpMessageType::AemCommand,
 						[](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
 						{
-							return AemAecpdu::create();
+							return AemAecpdu::create(false);
 						} },
 					{ AecpMessageType::AemResponse,
 						[](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
 						{
-							return AemAecpdu::create();
+							return AemAecpdu::create(true);
 						} },
 					{ AecpMessageType::AddressAccessCommand,
 						[](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
 						{
-							return AaAecpdu::create();
+							return AaAecpdu::create(false);
 						} },
 					{ AecpMessageType::AddressAccessResponse,
 						[](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
 						{
-							return AaAecpdu::create();
+							return AaAecpdu::create(true);
 						} },
 					{ AecpMessageType::VendorUniqueResponse,
 						[](std::uint8_t const* const pkt_data, size_t const pkt_len)
@@ -829,7 +829,7 @@ void ProtocolInterfaceVirtualImpl::dispatchAvdeccMessage(std::uint8_t const* con
 
 								if (MvuAecpdu::ProtocolID == protocolIdentifier)
 								{
-									return MvuAecpdu::create();
+									return MvuAecpdu::create(true);
 								}
 							}
 

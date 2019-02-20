@@ -37,8 +37,9 @@ namespace protocol
 /* VuAecpdu class definition                               */
 /***********************************************************/
 
-VuAecpdu::VuAecpdu() noexcept
+VuAecpdu::VuAecpdu(bool const isResponse) noexcept
 {
+	Aecpdu::setMessageType(isResponse ? AecpMessageType::VendorUniqueResponse : AecpMessageType::VendorUniqueCommand);
 	Aecpdu::setAecpSpecificDataLength(VuAecpdu::HeaderLength);
 }
 

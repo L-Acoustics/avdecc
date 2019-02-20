@@ -50,19 +50,20 @@ public:
 	/**
 	* @brief Factory method to create a new MvuAecpdu.
 	* @details Creates a new MvuAecpdu as a unique pointer.
+	* @param[in] isResponse True if the MVU message is a response, false if it's a command.
 	* @return A new MvuAecpdu as a Aecpdu::UniquePointer.
 	*/
-	static UniquePointer create() noexcept
+	static UniquePointer create(bool const isResponse) noexcept
 	{
 		auto deleter = [](Aecpdu* self)
 		{
 			static_cast<MvuAecpdu*>(self)->destroy();
 		};
-		return UniquePointer(createRawMvuAecpdu(), deleter);
+		return UniquePointer(createRawMvuAecpdu(isResponse), deleter);
 	}
 
 	/** Constructor for heap MvuAecpdu */
-	LA_AVDECC_API MvuAecpdu() noexcept;
+	LA_AVDECC_API MvuAecpdu(bool const isResponse) noexcept;
 
 	/** Destructor (for some reason we have to define it in the cpp file or clang complains about missing vtable, using = default or inline not working) */
 	virtual LA_AVDECC_API ~MvuAecpdu() noexcept override;
@@ -84,6 +85,9 @@ public:
 	/** Copy method */
 	virtual LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION copy() const override;
 
+	/** Contruct a Response message to this Command (only changing the messageType to be of Response kind). Returns nullptr if the message is not a Command or if no Response is possible for this messageType */
+	virtual LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION responseCopy() const override;
+
 	// Defaulted compiler auto-generated methods
 	MvuAecpdu(MvuAecpdu&&) = default;
 	MvuAecpdu(MvuAecpdu const&) = default;
@@ -92,7 +96,7 @@ public:
 
 private:
 	/** Entry point */
-	static LA_AVDECC_API MvuAecpdu* LA_AVDECC_CALL_CONVENTION createRawMvuAecpdu() noexcept;
+	static LA_AVDECC_API MvuAecpdu* LA_AVDECC_CALL_CONVENTION createRawMvuAecpdu(bool const isResponse) noexcept;
 
 	/** Destroy method for COM-like interface */
 	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION destroy() noexcept override;

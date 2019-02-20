@@ -39,7 +39,8 @@ namespace protocol
 
 VuAecpdu::ProtocolIdentifier MvuAecpdu::ProtocolID{ 0x001bc50ac100 }; /* Avnu OUI-36 (00-1B-C5-0A-C) + MVU ProtocolUniqueIdentifier (0x100) */
 
-MvuAecpdu::MvuAecpdu() noexcept
+MvuAecpdu::MvuAecpdu(bool const isResponse) noexcept
+	: VuAecpdu(isResponse)
 {
 	Aecpdu::setAecpSpecificDataLength(VuAecpdu::HeaderLength + MvuAecpdu::HeaderLength);
 	VuAecpdu::setProtocolIdentifier(ProtocolID);
@@ -173,10 +174,34 @@ Aecpdu::UniquePointer LA_AVDECC_CALL_CONVENTION MvuAecpdu::copy() const
 	return UniquePointer(new MvuAecpdu(*this), deleter);
 }
 
-/** Entry point */
-MvuAecpdu* LA_AVDECC_CALL_CONVENTION MvuAecpdu::createRawMvuAecpdu() noexcept
+/** Contruct a Response message to this Command (only changing the messageType to be of Response kind). Returns nullptr if the message is not a Command or if no Response is possible for this messageType */
+Aecpdu::UniquePointer LA_AVDECC_CALL_CONVENTION MvuAecpdu::responseCopy() const
 {
-	return new MvuAecpdu();
+	if (!AVDECC_ASSERT_WITH_RET(getMessageType() == AecpMessageType::VendorUniqueCommand, "Calling MvuAecpdu::reflectedResponse() on something that is not an VENDOR_UNIQUE_COMMAND"))
+	{
+		return UniquePointer{ nullptr, nullptr };
+	}
+
+	auto deleter = [](Aecpdu* self)
+	{
+		static_cast<MvuAecpdu*>(self)->destroy();
+	};
+
+	// Create a response message as a copy of this
+	auto response = UniquePointer(new MvuAecpdu(*this), deleter);
+	auto& mvu = static_cast<MvuAecpdu&>(*response);
+
+	// Change the message type to be an VENDOR_UNIQUE_RESPONSE
+	mvu.setMessageType(AecpMessageType::VendorUniqueResponse);
+
+	// Return the created response
+	return response;
+}
+
+/** Entry point */
+MvuAecpdu* LA_AVDECC_CALL_CONVENTION MvuAecpdu::createRawMvuAecpdu(bool const isResponse) noexcept
+{
+	return new MvuAecpdu(isResponse);
 }
 
 /** Destroy method for COM-like interface */

@@ -105,23 +105,24 @@ void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 
 	// Send raw AECP message (Acquire Command)
 	{
-		auto aecpdu = la::avdecc::protocol::GenericAecpdu{};
+		auto aecpdu = la::avdecc::protocol::AemAecpdu{ false };
 		la::avdecc::protocol::SerializationBuffer buffer;
 
-		// Manually fill the AECP payload
-		buffer << static_cast<std::uint16_t>(((0u /* Not Unsolicited */ << 15) & 0x8000) | (0u /* Acquire */ & 0x7fff)); // AEM header
+		// Manually fill the AEM payload
 		buffer << static_cast<std::uint32_t>(0u /* Acquire Flags */) << static_cast<std::uint64_t>(0u /* Owner */) << static_cast<std::uint16_t>(0u /* DescriptorType */) << static_cast<std::uint16_t>(0u /* DescriptorIndex */); // Acquire payload
 
 		// Set Ether2 fields
 		aecpdu.setSrcAddress(pi.getMacAddress());
 		aecpdu.setDestAddress(s_TargetMacAddress);
 		// Set AECP fields
-		aecpdu.setMessageType(la::avdecc::protocol::AecpMessageType::AemCommand);
 		aecpdu.setStatus(la::avdecc::protocol::AemAecpStatus::Success);
 		aecpdu.setTargetEntityID(s_TargetEntityID);
 		aecpdu.setControllerEntityID(0x0af700048902f1);
 		aecpdu.setSequenceID(0u);
-		aecpdu.setPayload(buffer.data(), buffer.size());
+		// Set AEM fields
+		aecpdu.setUnsolicited(false);
+		aecpdu.setCommandType(la::avdecc::protocol::AemCommandType::AcquireEntity);
+		aecpdu.setCommandSpecificData(buffer.data(), buffer.size());
 
 		// Send the message
 		pi.sendAecpMessage(aecpdu);
@@ -183,25 +184,25 @@ void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 
 	// Send AEM-AECP command (Acquire Command)
 	{
-		auto aecpdu = la::avdecc::protocol::GenericAecpdu::create();
+		auto aecpdu = la::avdecc::protocol::AemAecpdu::create(false);
 		la::avdecc::protocol::SerializationBuffer buffer;
 
-		// Manually fill the AECP payload
-		buffer << static_cast<std::uint16_t>(((0u /* Not Unsolicited */ << 15) & 0x8000) | (0u /* Acquire */ & 0x7fff)); // AEM header
+		// Manually fill the AEM payload
 		buffer << static_cast<std::uint32_t>(0u /* Acquire Flags */) << static_cast<std::uint64_t>(0u /* Owner */) << static_cast<std::uint16_t>(0u /* DescriptorType */) << static_cast<std::uint16_t>(0u /* DescriptorIndex */); // Acquire payload
 
 		// Set Ether2 fields
 		aecpdu->setSrcAddress(pi.getMacAddress());
 		aecpdu->setDestAddress(s_TargetMacAddress);
 		// Set AECP fields
-		aecpdu->setMessageType(la::avdecc::protocol::AecpMessageType::AemCommand);
 		aecpdu->setStatus(la::avdecc::protocol::AemAecpStatus::Success);
 		aecpdu->setTargetEntityID(s_TargetEntityID);
 		aecpdu->setControllerEntityID(entity->getEntityID());
 		aecpdu->setSequenceID(666); // Not necessary, it's set by the ProtocolInterface layer
-		// Set Generic fields
-		auto& generic = static_cast<la::avdecc::protocol::GenericAecpdu&>(*aecpdu);
-		generic.setPayload(buffer.data(), buffer.size());
+		// Set AEM fields
+		auto& aem = static_cast<la::avdecc::protocol::AemAecpdu&>(*aecpdu);
+		aem.setUnsolicited(false);
+		aem.setCommandType(la::avdecc::protocol::AemCommandType::AcquireEntity);
+		aem.setCommandSpecificData(buffer.data(), buffer.size());
 
 		// Send the message
 		std::promise<void> commandResultPromise{};
@@ -228,13 +229,12 @@ void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 
 	// Send MVU-AECP command (Get Milan Info)
 	{
-		auto aecpdu = la::avdecc::protocol::MvuAecpdu::create();
+		auto aecpdu = la::avdecc::protocol::MvuAecpdu::create(false);
 
 		// Set Ether2 fields
 		aecpdu->setSrcAddress(pi.getMacAddress());
 		aecpdu->setDestAddress(s_TargetMacAddress);
 		// Set AECP fields
-		aecpdu->setMessageType(la::avdecc::protocol::AecpMessageType::VendorUniqueCommand);
 		aecpdu->setStatus(la::avdecc::protocol::AecpStatus::Success);
 		aecpdu->setTargetEntityID(s_TargetEntityID);
 		aecpdu->setControllerEntityID(entity->getEntityID());
@@ -267,6 +267,7 @@ void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 			}
 		}
 	}
+	std::this_thread::sleep_for(std::chrono::seconds(100));
 }
 
 

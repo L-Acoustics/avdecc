@@ -158,7 +158,7 @@ public:
 
 protected:
 	/** Constructor */
-	LA_AVDECC_API VuAecpdu() noexcept;
+	LA_AVDECC_API VuAecpdu(bool const isResponse) noexcept;
 
 	/** Destructor */
 	virtual ~VuAecpdu() noexcept override = default;
