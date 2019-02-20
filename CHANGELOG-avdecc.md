@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- macOS Native Protocol Interface correctly handles incoming AECP Commands
+- macOS Native Protocol Interface simulates a time out for VENDOR_UNIQUE messages, instead of incorrectly handling them (time out required due to bug in AVBFramework)
+
 ### Removed
 - GenericAecpdu class, due to potential misusage
 - Aecpdu::copy method, no longer necessary

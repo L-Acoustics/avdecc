@@ -58,7 +58,7 @@ class ProtocolInterfaceMacNativeImpl;
 
 @interface FromNative : NSObject
 + (la::avdecc::entity::Entity)makeEntity:(AVB17221Entity*)entity;
-+ (la::avdecc::protocol::Aecpdu::UniquePointer)makeAecpdu:(AVB17221AECPMessage*)message;
++ (la::avdecc::protocol::Aecpdu::UniquePointer)makeAecpdu:(AVB17221AECPMessage*)message toDestAddress:(la::avdecc::networkInterface::MacAddress const&)destAddress;
 + (la::avdecc::protocol::Acmpdu::UniquePointer)makeAcmpdu:(AVB17221ACMPMessage*)message;
 + (la::avdecc::networkInterface::MacAddress)makeMacAddress:(AVBMACAddress*)macAddress;
 + (la::avdecc::protocol::ProtocolInterface::Error)getProtocolError:(NSError*)error;
@@ -118,14 +118,13 @@ class ProtocolInterfaceMacNativeImpl;
 	return la::avdecc::entity::Entity{ commonInfo, { { avbInterfaceIndex, interfaceInfo } } };
 }
 
-+ (la::avdecc::protocol::AemAecpdu::UniquePointer)makeAemAecpdu:(AVB17221AECPAEMMessage*)message isResponse:(bool)isResponse {
++ (la::avdecc::protocol::AemAecpdu::UniquePointer)makeAemAecpdu:(AVB17221AECPAEMMessage*)message toDestAddress:(la::avdecc::networkInterface::MacAddress const&)destAddress isResponse:(bool)isResponse {
 	auto aemAecpdu = la::avdecc::protocol::AemAecpdu::create(isResponse);
 	auto& aem = static_cast<la::avdecc::protocol::AemAecpdu&>(*aemAecpdu);
 
 	// Set Ether2 fields
-#pragma message("TBD: Find a way to retrieve these information")
-	//aem.setSrcAddress();
-	//aem.setDestAddress();
+	aem.setSrcAddress([FromNative makeMacAddress:message.sourceMAC]);
+	aem.setDestAddress(destAddress);
 
 	// Set AECP fields
 	aem.setStatus(la::avdecc::protocol::AecpStatus{ message.status });
@@ -142,14 +141,13 @@ class ProtocolInterfaceMacNativeImpl;
 	return aemAecpdu;
 }
 
-+ (la::avdecc::protocol::AaAecpdu::UniquePointer)makeAaAecpdu:(AVB17221AECPAddressAccessMessage*)message isResponse:(bool)isResponse {
++ (la::avdecc::protocol::AaAecpdu::UniquePointer)makeAaAecpdu:(AVB17221AECPAddressAccessMessage*)message toDestAddress:(la::avdecc::networkInterface::MacAddress const&)destAddress isResponse:(bool)isResponse {
 	auto aaAecpdu = la::avdecc::protocol::AaAecpdu::create(isResponse);
 	auto& aa = static_cast<la::avdecc::protocol::AaAecpdu&>(*aaAecpdu);
 
 	// Set Ether2 fields
-#pragma message("TBD: Find a way to retrieve these information")
-	//aa.setSrcAddress();
-	//aa.setDestAddress();
+	aa.setSrcAddress([FromNative makeMacAddress:message.sourceMAC]);
+	aa.setDestAddress(destAddress);
 
 	// Set AECP fields
 	aa.setStatus(la::avdecc::protocol::AecpStatus(message.status));
@@ -166,26 +164,26 @@ class ProtocolInterfaceMacNativeImpl;
 	return aaAecpdu;
 }
 
-+ (la::avdecc::protocol::VuAecpdu::UniquePointer)makeVendorUniqueAecpdu:(AVB17221AECPVendorMessage*)message isResponse:(bool)isResponse {
++ (la::avdecc::protocol::VuAecpdu::UniquePointer)makeVendorUniqueAecpdu:(AVB17221AECPVendorMessage*)message toDestAddress:(la::avdecc::networkInterface::MacAddress const&)destAddress isResponse:(bool)isResponse {
 #pragma message("TODO")
 	return la::avdecc::protocol::VuAecpdu::UniquePointer{ nullptr, nullptr };
 }
 
-+ (la::avdecc::protocol::Aecpdu::UniquePointer)makeAecpdu:(AVB17221AECPMessage*)message {
++ (la::avdecc::protocol::Aecpdu::UniquePointer)makeAecpdu:(AVB17221AECPMessage*)message toDestAddress:(la::avdecc::networkInterface::MacAddress const&)destAddress {
 	switch ([message messageType])
 	{
 		case AVB17221AECPMessageTypeAEMCommand:
-			return [FromNative makeAemAecpdu:static_cast<AVB17221AECPAEMMessage*>(message)isResponse:false];
+			return [FromNative makeAemAecpdu:static_cast<AVB17221AECPAEMMessage*>(message) toDestAddress:destAddress isResponse:false];
 		case AVB17221AECPMessageTypeAEMResponse:
-			return [FromNative makeAemAecpdu:static_cast<AVB17221AECPAEMMessage*>(message)isResponse:true];
+			return [FromNative makeAemAecpdu:static_cast<AVB17221AECPAEMMessage*>(message) toDestAddress:destAddress isResponse:true];
 		case AVB17221AECPMessageTypeAddressAccessCommand:
-			return [FromNative makeAaAecpdu:static_cast<AVB17221AECPAddressAccessMessage*>(message)isResponse:false];
+			return [FromNative makeAaAecpdu:static_cast<AVB17221AECPAddressAccessMessage*>(message) toDestAddress:destAddress isResponse:false];
 		case AVB17221AECPMessageTypeAddressAccessResponse:
-			return [FromNative makeAaAecpdu:static_cast<AVB17221AECPAddressAccessMessage*>(message)isResponse:true];
+			return [FromNative makeAaAecpdu:static_cast<AVB17221AECPAddressAccessMessage*>(message) toDestAddress:destAddress isResponse:true];
 		case AVB17221AECPMessageTypeVendorUniqueCommand:
-			return [FromNative makeVendorUniqueAecpdu:static_cast<AVB17221AECPVendorMessage*>(message)isResponse:false];
+			return [FromNative makeVendorUniqueAecpdu:static_cast<AVB17221AECPVendorMessage*>(message) toDestAddress:destAddress isResponse:false];
 		case AVB17221AECPMessageTypeVendorUniqueResponse:
-			return [FromNative makeVendorUniqueAecpdu:static_cast<AVB17221AECPVendorMessage*>(message) isResponse:true];
+			return [FromNative makeVendorUniqueAecpdu:static_cast<AVB17221AECPVendorMessage*>(message) toDestAddress:destAddress isResponse:true];
 		default:
 			AVDECC_ASSERT(false, "Unhandled AECP message type");
 			break;
@@ -371,7 +369,7 @@ class ProtocolInterfaceMacNativeImpl;
 	message.status = AVB17221AECPStatusSuccess;
 	message.targetEntityID = aecpdu.getTargetEntityID();
 	message.controllerEntityID = aecpdu.getControllerEntityID();
-	// No need to set the sequenceID field, it's handled by Apple's framework
+	message.sequenceID = aecpdu.getSequenceID();
 
 	return message;
 }
@@ -400,7 +398,7 @@ class ProtocolInterfaceMacNativeImpl;
 	message.status = AVB17221AECPStatusSuccess;
 	message.targetEntityID = aecpdu.getTargetEntityID();
 	message.controllerEntityID = aecpdu.getControllerEntityID();
-	// No need to set the sequenceID field, it's handled by Apple's framework
+	message.sequenceID = aecpdu.getSequenceID();
 
 	return message;
 }
@@ -435,7 +433,7 @@ class ProtocolInterfaceMacNativeImpl;
 	message.status = AVB17221AECPStatusSuccess;
 	message.targetEntityID = aecpdu.getTargetEntityID();
 	message.controllerEntityID = aecpdu.getControllerEntityID();
-	// No need to set the sequenceID field, it's handled by Apple's framework
+	message.sequenceID = aecpdu.getSequenceID();
 
 	return message;
 }
@@ -561,6 +559,7 @@ struct LockInformation
 - (BOOL)discoverRemoteEntities;
 - (BOOL)discoverRemoteEntity:(la::avdecc::UniqueIdentifier)entityID;
 - (la::avdecc::protocol::ProtocolInterface::Error)sendAecpCommand:(la::avdecc::protocol::Aecpdu::UniquePointer&&)aecpdu handler:(la::avdecc::protocol::ProtocolInterface::AecpCommandResultHandler const&)onResult;
+- (la::avdecc::protocol::ProtocolInterface::Error)sendAecpResponse:(la::avdecc::protocol::Aecpdu::UniquePointer&&)aecpdu;
 - (la::avdecc::protocol::ProtocolInterface::Error)sendAcmpCommand:(la::avdecc::protocol::Acmpdu::UniquePointer&&)acmpdu handler:(la::avdecc::protocol::ProtocolInterface::AcmpCommandResultHandler const&)onResult;
 - (void)lock;
 - (void)unlock;
@@ -726,9 +725,7 @@ private:
 
 	virtual Error sendAecpResponse(Aecpdu::UniquePointer&& aecpdu) const noexcept override
 	{
-		AVDECC_ASSERT(false, "TBD: To be implemented");
-		return ProtocolInterface::Error::InternalError;
-		//return [_bridge sendAecpResponse:std::move(aecpdu) macAddress:macAddress];
+		return [_bridge sendAecpResponse:std::move(aecpdu)];
 	}
 
 	virtual Error sendAcmpCommand(Acmpdu::UniquePointer&& acmpdu, AcmpCommandResultHandler const& onResult) const noexcept override
@@ -971,6 +968,11 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	// Entity is controller capable
 	if (la::avdecc::utils::hasFlag(entity.getControllerCapabilities(), la::avdecc::entity::ControllerCapabilities::Implemented))
 	{
+		// Set a handler to monitor AECP Command messages
+		if ([self.interface.aecp setCommandHandler:self forEntityID:entityID] == NO)
+		{
+			return la::avdecc::protocol::ProtocolInterface::Error::DuplicateLocalEntityID;
+		}
 		// Set a handler to monitor AECP Response messages, we are interested in unsolicited notifications and VendorUnique responses
 		if ([self.interface.aecp setResponseHandler:self forControllerEntityID:entityID] == NO)
 		{
@@ -999,7 +1001,8 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	// Entity is controller capable
 	if (la::avdecc::utils::hasFlag(entity.getControllerCapabilities(), la::avdecc::entity::ControllerCapabilities::Implemented))
 	{
-		// Remove handler
+		// Remove handlers
+		[self.interface.aecp removeCommandHandlerForEntityID:entityID];
 		[self.interface.aecp removeResponseHandlerForControllerEntityID:entityID];
 	}
 }
@@ -1158,7 +1161,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 													 }
 													 else
 													 {
-														 auto aecpdu = [FromNative makeAecpdu:message];
+														 auto aecpdu = [FromNative makeAecpdu:message toDestAddress:_protocolInterface->getMacAddress()];
 														 la::avdecc::utils::invokeProtectedHandler(resultHandler, aecpdu.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
 													 }
 												 }
@@ -1172,6 +1175,60 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 											 // Signal the semaphore so we can process another command
 											 dispatch_semaphore_signal(limiter);
 										 }]; // We don't care about the method result, the completionHandler will always be called anyway (if for some reason, we detect it's not always the case, simply remove the resultHandler and call stopAsyncOperation and signal the semaphore if the method fails, and return TransportError. Carefull to change the resultHandler under a small lock that has to be shared with the block as well)
+		});
+	}
+	else
+	{
+		AVDECC_ASSERT(false, "Not supported AECP message type");
+		return la::avdecc::protocol::ProtocolInterface::Error::InternalError;
+	}
+	return la::avdecc::protocol::ProtocolInterface::Error::NoError;
+}
+
+- (la::avdecc::protocol::ProtocolInterface::Error)sendAecpResponse:(la::avdecc::protocol::Aecpdu::UniquePointer&&)aecpdu {
+	auto const macAddr = aecpdu->getDestAddress(); // Make a copy of the target macAddress so it can safely be used inside the objC block
+
+	auto message = [ToNative makeAecpMessage:*aecpdu];
+	if (message != NULL)
+	{
+		decltype(EntityQueues::aecpQueue) queue;
+		// Only take the lock while searching for the queue, we want to release it before invoking dispath_async to prevent a deadlock
+		{
+			std::lock_guard<decltype(_lockQueues)> const lg(_lockQueues);
+			auto eqIt = _entityQueues.find(message.controllerEntityID);
+			if (eqIt == _entityQueues.end())
+			{
+				queue = [self createQueuesForRemoteEntity:message.controllerEntityID].aecpQueue;
+			}
+			else
+			{
+				queue = eqIt->second.aecpQueue;
+			}
+		}
+
+		dispatch_async(queue, ^{
+			dispatch_semaphore_t limiter;
+			{
+				std::lock_guard<decltype(_lockQueues)> const lg(_lockQueues);
+				auto eqIt = _entityQueues.find(message.controllerEntityID);
+				if (eqIt == _entityQueues.end())
+				{
+					// Entity no longer registered, ignore this command and return
+					return;
+				}
+				limiter = eqIt->second.aecpLimiter; // We can store the limiter here, we know the queue and semaphore exists until all scheduled blocks on this queue are finished (thanks to the dispatch_sync call)
+			}
+
+			// Take a semaphore count to limit the inflight commands
+			dispatch_semaphore_wait(limiter, DISPATCH_TIME_FOREVER);
+
+			// Actually send the message
+			[self startAsyncOperation];
+			[self.interface.aecp sendResponse:message toMACAddress:[ToNative makeAVBMacAddress:macAddr] error:Nil];
+			[self stopAsyncOperation];
+
+			// Signal the semaphore so we can process another command
+			dispatch_semaphore_signal(limiter);
 		});
 	}
 	else
@@ -1201,7 +1258,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	message.listenerUniqueID = acmp.getListenerUniqueID();
 	message.destinationMAC = [ToNative makeAVBMacAddress:acmp.getStreamDestAddress()];
 	message.connectionCount = acmp.getConnectionCount();
-	// No need to set the sequenceID field, it's handled by Apple's framework
+	message.sequenceID = acmp.getSequenceID();
 	message.flags = static_cast<AVB17221ACMPFlags>(acmp.getFlags());
 	message.vlanID = acmp.getStreamVlanID();
 
@@ -1470,7 +1527,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	if (_localProcessEntities.count([message targetEntityID]) == 0)
 		return NO;
 
-	auto const aecpdu = [FromNative makeAecpdu:message];
+	auto const aecpdu = [FromNative makeAecpdu:message toDestAddress:_protocolInterface->getMacAddress()];
 
 	// Notify the observers
 	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onAecpCommand, _protocolInterface, *aecpdu);
@@ -1488,7 +1545,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	if (_localProcessEntities.count([message controllerEntityID]) == 0)
 		return NO;
 
-	auto const aecpdu = [FromNative makeAecpdu:message];
+	auto const aecpdu = [FromNative makeAecpdu:message toDestAddress:_protocolInterface->getMacAddress()];
 
 	// Special case for Unsolicited Responses
 	if ([message messageType] == AVB17221AECPMessageTypeAEMResponse && [static_cast<AVB17221AECPAEMMessage*>(message) isUnsolicited])
