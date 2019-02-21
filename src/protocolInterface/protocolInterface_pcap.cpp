@@ -66,7 +66,12 @@ public:
 
 		// Open pcap on specified network interface
 		std::array<char, PCAP_ERRBUF_SIZE> errbuf;
-		auto pcap = _pcapLibrary.open_live(networkInterfaceName.c_str(), 65536, 1, 5, errbuf.data());
+#ifdef _WIN32
+		auto const pcapInterfaceName = std::string("\\Device\\NPF_") + networkInterfaceName;
+#else // !_WIN32
+		auto const pcapInterfaceName = networkInterfaceName;
+#endif // _WIN32
+		auto pcap = _pcapLibrary.open_live((pcapInterfaceName).c_str(), 65536, 1, 5, errbuf.data());
 		if (pcap == nullptr)
 			throw Exception(Error::TransportError, errbuf.data());
 

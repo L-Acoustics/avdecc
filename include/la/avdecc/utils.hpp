@@ -131,10 +131,10 @@ constexpr auto forceNumeric(T const t) noexcept
 	return +t;
 }
 
-inline std::vector<std::string> splitString(std::string const& tokensString, char const ch, bool const emptyIsToken) noexcept
+inline std::vector<std::string> tokenizeString(std::string const& inputString, char const separator, bool const emptyIsToken) noexcept
 {
-	auto const* const str = tokensString.c_str();
-	auto const pathLen = tokensString.length();
+	auto const* const str = inputString.c_str();
+	auto const pathLen = inputString.length();
 
 	auto tokensArray = std::vector<std::string>{};
 	auto startPos = size_t{ 0u };
@@ -142,13 +142,13 @@ inline std::vector<std::string> splitString(std::string const& tokensString, cha
 	while (currentPos < pathLen)
 	{
 		// Check if we found our char
-		while (str[currentPos] == ch && currentPos < pathLen)
+		while (str[currentPos] == separator && currentPos < pathLen)
 		{
 			auto const foundPos = currentPos;
 			if (!emptyIsToken)
 			{
 				// And trim consecutive chars
-				while (str[currentPos] == ch)
+				while (str[currentPos] == separator)
 				{
 					currentPos++;
 				}
@@ -157,7 +157,7 @@ inline std::vector<std::string> splitString(std::string const& tokensString, cha
 			{
 				currentPos++;
 			}
-			auto const subStr = tokensString.substr(startPos, foundPos - startPos);
+			auto const subStr = inputString.substr(startPos, foundPos - startPos);
 			if (!subStr.empty() || emptyIsToken)
 			{
 				tokensArray.push_back(subStr);
@@ -168,7 +168,7 @@ inline std::vector<std::string> splitString(std::string const& tokensString, cha
 	}
 
 	// Add what remains as a token (except if empty and !emptyIsToken)
-	auto const subStr = tokensString.substr(startPos, pathLen - startPos);
+	auto const subStr = inputString.substr(startPos, pathLen - startPos);
 	if (!subStr.empty() || emptyIsToken)
 	{
 		tokensArray.push_back(subStr);

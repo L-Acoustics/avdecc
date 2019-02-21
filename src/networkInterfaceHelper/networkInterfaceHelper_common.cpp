@@ -22,13 +22,16 @@
 * @author Christophe Calmejane
 */
 
+#include "la/avdecc/utils.hpp"
+#include "la/avdecc/internals/endian.hpp"
+
 #include "networkInterfaceHelper_common.hpp"
 
 #include <sstream>
 #include <exception>
 #include <iomanip> // setfill
 #include <ios> // uppercase
-#include <algorithm> // remove
+#include <algorithm> // remove / copy
 #include <string>
 #include <mutex>
 
@@ -96,7 +99,7 @@ Interface LA_AVDECC_CALL_CONVENTION getInterfaceByName(std::string const& name)
 	return it->second;
 }
 
-std::string LA_AVDECC_CALL_CONVENTION macAddressToString(MacAddress const& macAddress, bool const upperCase) noexcept
+std::string LA_AVDECC_CALL_CONVENTION macAddressToString(MacAddress const& macAddress, bool const upperCase, char const separator) noexcept
 {
 	try
 	{
@@ -104,15 +107,24 @@ std::string LA_AVDECC_CALL_CONVENTION macAddressToString(MacAddress const& macAd
 		std::stringstream ss;
 
 		if (upperCase)
+		{
 			ss << std::uppercase;
+		}
 		ss << std::hex << std::setfill('0');
 
 		for (auto const v : macAddress)
 		{
 			if (isFirst)
+			{
 				isFirst = false;
+			}
 			else
-				ss << ":";
+			{
+				if (separator != '\0')
+				{
+					ss << separator;
+				}
+			}
 			ss << std::setw(2) << forceNumeric(v); // setw has to be called every time
 		}
 
@@ -124,10 +136,13 @@ std::string LA_AVDECC_CALL_CONVENTION macAddressToString(MacAddress const& macAd
 	}
 }
 
-MacAddress LA_AVDECC_CALL_CONVENTION stringToMacAddress(std::string const& macAddressAsString)
+MacAddress LA_AVDECC_CALL_CONVENTION stringToMacAddress(std::string const& macAddressAsString, char const separator)
 {
 	auto str = macAddressAsString;
-	str.erase(std::remove(str.begin(), str.end(), ':'), str.end());
+	if (separator != '\0')
+	{
+		str.erase(std::remove(str.begin(), str.end(), separator), str.end());
+	}
 
 	auto ss = std::stringstream{};
 	ss << std::hex << str;
@@ -160,6 +175,484 @@ bool LA_AVDECC_CALL_CONVENTION isMacAddressValid(MacAddress const& macAddress) n
 			return true;
 	}
 	return false;
+}
+
+/* ************************************************************ */
+/* IPAddress class definition                                   */
+/* ************************************************************ */
+IPAddress::IPAddress() noexcept
+	: _ipString{ "Invalid IP" }
+{
+}
+
+IPAddress::IPAddress(value_type_v4 const ipv4) noexcept
+{
+	setValue(ipv4);
+}
+
+IPAddress::IPAddress(value_type_v6 const ipv6) noexcept
+{
+	setValue(ipv6);
+}
+
+IPAddress::IPAddress(value_type_packed_v4 const ipv4) noexcept
+{
+	setValue(ipv4);
+}
+
+IPAddress::IPAddress(std::string const& ipString)
+{
+	// TODO: Handle IPV6 later: https://tools.ietf.org/html/rfc5952
+	auto tokens = la::avdecc::utils::tokenizeString(ipString, '.', false);
+
+	value_type_v4 ip{};
+	if (tokens.size() != ip.size())
+	{
+		throw std::invalid_argument("Invalid IPV4 format");
+	}
+	for (auto i = 0u; i < ip.size(); ++i)
+	{
+		// Using std::uint16_t for convertFromString since it's not possible to use 'char' type for this method
+		auto const tokenValue = la::avdecc::utils::convertFromString<std::uint16_t>(tokens[i].c_str());
+		// Check if parsed value doesn't exceed max value for a value_type_v4 single element
+		if (tokenValue > std::integral_constant<decltype(tokenValue), std::numeric_limits<decltype(ip)::value_type>::max()>::value)
+		{
+			throw std::invalid_argument("Invalid IPV4 value");
+		}
+		ip[i] = static_cast<decltype(ip)::value_type>(tokenValue);
+	}
+	setValue(ip);
+}
+
+IPAddress::~IPAddress() noexcept {}
+
+void IPAddress::setValue(value_type_v4 const ipv4) noexcept
+{
+	_type = Type::V4;
+	_ipv4 = ipv4;
+	_ipv6 = {};
+
+	buildIPString();
+}
+
+void IPAddress::setValue(value_type_v6 const ipv6) noexcept
+{
+	_type = Type::V6;
+	_ipv4 = {};
+	_ipv6 = ipv6;
+
+	buildIPString();
+}
+
+void IPAddress::setValue(value_type_packed_v4 const ipv4) noexcept
+{
+	setValue(unpack(ipv4));
+}
+
+IPAddress::Type IPAddress::getType() const noexcept
+{
+	return _type;
+}
+
+IPAddress::value_type_v4 IPAddress::getIPV4() const
+{
+	if (_type != Type::V4)
+	{
+		throw std::invalid_argument("Not an IP V4");
+	}
+	return _ipv4;
+}
+
+IPAddress::value_type_v6 IPAddress::getIPV6() const
+{
+	if (_type != Type::V6)
+	{
+		throw std::invalid_argument("Not an IP V6");
+	}
+	return _ipv6;
+}
+
+IPAddress::value_type_packed_v4 IPAddress::getIPV4Packed() const
+{
+	if (_type != Type::V4)
+	{
+		throw std::invalid_argument("Not an IP V4");
+	}
+
+	return pack(_ipv4);
+}
+
+bool IPAddress::isValid() const noexcept
+{
+	return _type != Type::None;
+}
+
+IPAddress::operator value_type_v4() const
+{
+	return getIPV4();
+}
+
+IPAddress::operator value_type_v6() const
+{
+	return getIPV6();
+}
+
+IPAddress::operator value_type_packed_v4() const
+{
+	return getIPV4Packed();
+}
+
+IPAddress::operator bool() const noexcept
+{
+	return isValid();
+}
+
+IPAddress::operator std::string() const noexcept
+{
+	return std::string(_ipString.data());
+}
+
+bool operator==(IPAddress const& lhs, IPAddress const& rhs) noexcept
+{
+	if (!lhs.isValid() && !rhs.isValid())
+	{
+		return true;
+	}
+	if (lhs._type != rhs._type)
+	{
+		return false;
+	}
+	switch (lhs._type)
+	{
+		case IPAddress::Type::V4:
+			return lhs._ipv4 == rhs._ipv4;
+		case IPAddress::Type::V6:
+			return lhs._ipv6 == rhs._ipv6;
+		default:
+			break;
+	}
+	return false;
+}
+
+bool operator!=(IPAddress const& lhs, IPAddress const& rhs) noexcept
+{
+	return !operator==(lhs, rhs);
+}
+
+bool operator<(IPAddress const& lhs, IPAddress const& rhs)
+{
+	if (lhs._type != rhs._type)
+	{
+		return lhs._type < rhs._type;
+	}
+	switch (lhs._type)
+	{
+		case IPAddress::Type::V4:
+			return lhs._ipv4 < rhs._ipv4;
+		case IPAddress::Type::V6:
+			return lhs._ipv6 < rhs._ipv6;
+		default:
+			throw std::invalid_argument("Invalid Type");
+	}
+}
+
+bool operator<=(IPAddress const& lhs, IPAddress const& rhs)
+{
+	if (lhs._type != rhs._type)
+	{
+		return lhs._type < rhs._type;
+	}
+	switch (lhs._type)
+	{
+		case IPAddress::Type::V4:
+			return lhs._ipv4 <= rhs._ipv4;
+		case IPAddress::Type::V6:
+			return lhs._ipv6 <= rhs._ipv6;
+		default:
+			throw std::invalid_argument("Invalid Type");
+	}
+}
+
+IPAddress operator+(IPAddress const& lhs, std::size_t const value)
+{
+	switch (lhs._type)
+	{
+		case IPAddress::Type::V4:
+		{
+			auto v = endianSwap<Endianness::NetworkEndian, Endianness::HostEndian>(lhs.getIPV4Packed());
+			v += value;
+			return IPAddress{ endianSwap<Endianness::HostEndian, Endianness::NetworkEndian>(v) };
+		}
+		case IPAddress::Type::V6:
+			throw std::invalid_argument("IPV6 not supported yet");
+		default:
+			throw std::invalid_argument("Invalid Type");
+	}
+}
+
+IPAddress operator-(IPAddress const& lhs, std::size_t const value)
+{
+	switch (lhs._type)
+	{
+		case IPAddress::Type::V4:
+		{
+			auto v = endianSwap<Endianness::NetworkEndian, Endianness::HostEndian>(lhs.getIPV4Packed());
+			v -= value;
+			return IPAddress{ endianSwap<Endianness::HostEndian, Endianness::NetworkEndian>(v) };
+		}
+		case IPAddress::Type::V6:
+			throw std::invalid_argument("IPV6 not supported yet");
+		default:
+			throw std::invalid_argument("Invalid Type");
+	}
+}
+
+IPAddress& operator++(IPAddress& lhs)
+{
+	switch (lhs._type)
+	{
+		case IPAddress::Type::V4:
+		{
+			auto v = endianSwap<Endianness::NetworkEndian, Endianness::HostEndian>(lhs.getIPV4Packed());
+			++v;
+			lhs.setValue(endianSwap<Endianness::HostEndian, Endianness::NetworkEndian>(v));
+			break;
+		}
+		case IPAddress::Type::V6:
+			throw std::invalid_argument("IPV6 not supported yet");
+		default:
+			throw std::invalid_argument("Invalid Type");
+	}
+
+	return lhs;
+}
+
+IPAddress& operator--(IPAddress& lhs)
+{
+	switch (lhs._type)
+	{
+		case IPAddress::Type::V4:
+		{
+			auto v = endianSwap<Endianness::NetworkEndian, Endianness::HostEndian>(lhs.getIPV4Packed());
+			--v;
+			lhs.setValue(endianSwap<Endianness::HostEndian, Endianness::NetworkEndian>(v));
+			break;
+		}
+		case IPAddress::Type::V6:
+			throw std::invalid_argument("IPV6 not supported yet");
+		default:
+			throw std::invalid_argument("Invalid Type");
+	}
+
+	return lhs;
+}
+
+IPAddress operator&(IPAddress const& lhs, IPAddress const& rhs)
+{
+	switch (lhs._type)
+	{
+		case IPAddress::Type::V4:
+		{
+			return IPAddress{ lhs.getIPV4Packed() & rhs.getIPV4Packed() };
+		}
+		case IPAddress::Type::V6:
+			throw std::invalid_argument("IPV6 not supported yet");
+		default:
+			throw std::invalid_argument("Invalid Type");
+	}
+}
+
+IPAddress operator|(IPAddress const& lhs, IPAddress const& rhs)
+{
+	switch (lhs._type)
+	{
+		case IPAddress::Type::V4:
+		{
+			return IPAddress{ lhs.getIPV4Packed() | rhs.getIPV4Packed() };
+		}
+		case IPAddress::Type::V6:
+			throw std::invalid_argument("IPV6 not supported yet");
+		default:
+			throw std::invalid_argument("Invalid Type");
+	}
+}
+
+IPAddress::value_type_packed_v4 IPAddress::pack(value_type_v4 const ipv4) noexcept
+{
+	value_type_packed_v4 ip{ 0u };
+
+	ip |= ipv4[0];
+	ip |= ipv4[1] << 8;
+	ip |= ipv4[2] << 16;
+	ip |= ipv4[3] << 24;
+
+	return ip;
+}
+
+IPAddress::value_type_v4 IPAddress::unpack(value_type_packed_v4 const ipv4) noexcept
+{
+	value_type_v4 ip{};
+
+	ip[0] = ipv4 & 0xFF;
+	ip[1] = (ipv4 >> 8) & 0xFF;
+	ip[2] = (ipv4 >> 16) & 0xFF;
+	ip[3] = (ipv4 >> 24) & 0xFF;
+
+	return ip;
+}
+
+
+std::size_t IPAddress::hash::operator()(IPAddress const& ip) const
+{
+	std::size_t h{ 0u };
+	switch (ip._type)
+	{
+		case Type::V4:
+		{
+			for (auto const v : ip._ipv4)
+			{
+				h = h * 0x100 + v;
+			}
+		}
+		case Type::V6:
+		{
+			for (auto const v : ip._ipv6)
+			{
+				h = h * 0x10 + v;
+			}
+		}
+		default:
+			break;
+	}
+	return h;
+}
+
+void IPAddress::buildIPString() noexcept
+{
+	std::string ip;
+
+	switch (_type)
+	{
+		case Type::V4:
+		{
+			for (auto const v : _ipv4)
+			{
+				if (!ip.empty())
+				{
+					ip.append(".");
+				}
+				ip.append(std::to_string(v));
+			}
+			break;
+		}
+		case Type::V6:
+		{
+			bool first{ true };
+			std::stringstream ss;
+			ss << std::hex;
+
+			for (auto const v : _ipv6)
+			{
+				if (first)
+				{
+					first = false;
+				}
+				else
+				{
+					ss << ":";
+				}
+				ss << v;
+			}
+
+			ip = ss.str();
+			break;
+		}
+		default:
+			ip = "Invalid IPAddress";
+			break;
+	}
+
+	auto len = ip.size();
+	if (!AVDECC_ASSERT_WITH_RET(len < _ipString.size(), "String length greater than IPStringMaxLength"))
+	{
+		len = _ipString.size() - 1;
+		ip.resize(len);
+	}
+	std::copy(ip.begin(), ip.end(), _ipString.begin());
+	_ipString[len] = 0;
+}
+
+/* ************************************************************ */
+/* IPAddressInfo definition                                     */
+/* ************************************************************ */
+IPAddress IPAddressInfo::getNetworkBaseAddress() const
+{
+	auto const addressType = address.getType();
+	if (addressType != netmask.getType())
+	{
+		throw std::invalid_argument("address and netmask not of the same Type");
+	}
+
+	switch (addressType)
+	{
+		case IPAddress::Type::V4:
+		{
+			return IPAddress{ address.getIPV4Packed() & netmask.getIPV4Packed() };
+		}
+		case IPAddress::Type::V6:
+			throw std::invalid_argument("IPV6 not supported yet");
+		default:
+			throw std::invalid_argument("Invalid Type");
+	}
+}
+
+IPAddress IPAddressInfo::getBroadcastAddress() const
+{
+	auto const addressType = address.getType();
+	if (addressType != netmask.getType())
+	{
+		throw std::invalid_argument("ip and netmask not of the same Type");
+	}
+
+	switch (addressType)
+	{
+		case IPAddress::Type::V4:
+		{
+			return IPAddress{ address.getIPV4Packed() | ~netmask.getIPV4Packed() };
+		}
+		case IPAddress::Type::V6:
+			throw std::invalid_argument("IPV6 not supported yet");
+		default:
+			throw std::invalid_argument("Invalid Type");
+	}
+}
+
+bool operator==(IPAddressInfo const& lhs, IPAddressInfo const& rhs) noexcept
+{
+	return (lhs.address == rhs.address) && (lhs.netmask == rhs.netmask);
+}
+
+bool operator!=(IPAddressInfo const& lhs, IPAddressInfo const& rhs) noexcept
+{
+	return !operator==(lhs, rhs);
+}
+
+bool operator<(IPAddressInfo const& lhs, IPAddressInfo const& rhs)
+{
+	if (lhs.address != rhs.address)
+	{
+		return lhs.address < rhs.address;
+	}
+	return lhs.netmask < rhs.netmask;
+}
+
+bool operator<=(IPAddressInfo const& lhs, IPAddressInfo const& rhs)
+{
+	if (lhs.address != rhs.address)
+	{
+		return lhs.address < rhs.address;
+	}
+	return lhs.netmask <= rhs.netmask;
 }
 
 } // namespace networkInterface
