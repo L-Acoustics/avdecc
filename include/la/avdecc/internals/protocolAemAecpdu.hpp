@@ -51,19 +51,20 @@ public:
 	/**
 	* @brief Factory method to create a new AemAecpdu.
 	* @details Creates a new AemAecpdu as a unique pointer.
+	* @param[in] isResponse True if the AEM message is a response, false if it's a command.
 	* @return A new AemAecpdu as a Aecpdu::UniquePointer.
 	*/
-	static UniquePointer create() noexcept
+	static UniquePointer create(bool const isResponse) noexcept
 	{
 		auto deleter = [](Aecpdu* self)
 		{
 			static_cast<AemAecpdu*>(self)->destroy();
 		};
-		return UniquePointer(createRawAemAecpdu(), deleter);
+		return UniquePointer(createRawAemAecpdu(isResponse), deleter);
 	}
 
 	/** Constructor for heap AemAecpdu */
-	LA_AVDECC_API AemAecpdu() noexcept;
+	LA_AVDECC_API AemAecpdu(bool const isResponse) noexcept;
 
 	/** Destructor (for some reason we have to define it in the cpp file or clang complains about missing vtable, using = default or inline not working) */
 	virtual LA_AVDECC_API ~AemAecpdu() noexcept override;
@@ -84,8 +85,8 @@ public:
 	/** Deserialization method */
 	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION deserialize(DeserializationBuffer& buffer) override;
 
-	/** Copy method */
-	virtual LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION copy() const override;
+	/** Contruct a Response message to this Command (only changing the messageType to be of Response kind). Returns nullptr if the message is not a Command or if no Response is possible for this messageType */
+	virtual LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION responseCopy() const override;
 
 	// Defaulted compiler auto-generated methods
 	AemAecpdu(AemAecpdu&&) = default;
@@ -95,7 +96,7 @@ public:
 
 private:
 	/** Entry point */
-	static LA_AVDECC_API AemAecpdu* LA_AVDECC_CALL_CONVENTION createRawAemAecpdu() noexcept;
+	static LA_AVDECC_API AemAecpdu* LA_AVDECC_CALL_CONVENTION createRawAemAecpdu(bool const isResponse) noexcept;
 
 	/** Destroy method for COM-like interface */
 	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION destroy() noexcept override;

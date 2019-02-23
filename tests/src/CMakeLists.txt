@@ -17,7 +17,7 @@ set(TESTS_SOURCE
 	any_tests.cpp
 	avdeccFixedString_tests.cpp
 	controllerEntity_tests.cpp
-	controllerStateMachine_tests.cpp
+	commandStateMachine_tests.cpp
 	enum_tests.cpp
 	instrumentationObserver.hpp
 	logger_tests.cpp
@@ -25,6 +25,7 @@ set(TESTS_SOURCE
 	protocolAvtpdu_tests.cpp
 	protocolInterface_pcap_tests.cpp
 	protocolInterface_virtual_tests.cpp
+	protocolVuAecpduProtocolIdentifier_tests.cpp
 	streamFormat_tests.cpp
 	uniqueIdentifier_tests.cpp
 )

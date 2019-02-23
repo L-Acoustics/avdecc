@@ -41,7 +41,6 @@
 #include "internals/protocolAecpdu.hpp"
 #include "internals/protocolAaAecpdu.hpp"
 #include "internals/protocolAemAecpdu.hpp"
-#include "internals/protocolGenericAecpdu.hpp"
 
 /** EndStation definition */
 #include "internals/endStation.hpp"

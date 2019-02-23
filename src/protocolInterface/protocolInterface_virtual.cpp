@@ -23,12 +23,17 @@
 */
 
 #include "la/avdecc/internals/serialization.hpp"
-#include "la/avdecc/internals/instrumentationNotifier.hpp"
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
-#include "stateMachine/controllerStateMachine.hpp"
+#include "la/avdecc/internals/protocolMvuAecpdu.hpp"
+#include "la/avdecc/internals/instrumentationNotifier.hpp"
+#include "la/avdecc/watchDog.hpp"
+#include "la/avdecc/utils.hpp"
+
+#include "stateMachine/stateMachineManager.hpp"
 #include "protocolInterface_virtual.hpp"
 #include "logHelper.hpp"
+
 #include <stdexcept>
 #include <thread>
 #include <condition_variable>
@@ -264,9 +269,12 @@ private:
 static la::avdecc::networkInterface::MacAddress Multicast_Mac_Address{ { 0x91, 0xe0, 0xf0, 0x01, 0x00, 0x00 } };
 static la::avdecc::networkInterface::MacAddress Identify_Mac_Address{ { 0x91, 0xe0, 0xf0, 0x01, 0x00, 0x01 } };
 
-class ProtocolInterfaceVirtualImpl final : public ProtocolInterfaceVirtual, private stateMachine::ControllerStateMachine::Delegate, private MessageDispatcher::Observer
+class ProtocolInterfaceVirtualImpl final : public ProtocolInterfaceVirtual, private stateMachine::ProtocolInterfaceDelegate, private stateMachine::AdvertiseStateMachine::Delegate, private stateMachine::DiscoveryStateMachine::Delegate, private stateMachine::CommandStateMachine::Delegate, private MessageDispatcher::Observer
 {
 public:
+	/* ************************************************************ */
+	/* Public APIs                                                  */
+	/* ************************************************************ */
 	/** Constructor */
 	ProtocolInterfaceVirtualImpl(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress);
 
@@ -276,8 +284,6 @@ public:
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept override;
 
-	void dispatchAvdeccMessage(std::uint8_t const* const pkt_data, size_t const pkt_len, EtherLayer2 const& etherLayer2) noexcept;
-
 	// Deleted compiler auto-generated methods
 	ProtocolInterfaceVirtualImpl(ProtocolInterfaceVirtualImpl&&) = delete;
 	ProtocolInterfaceVirtualImpl(ProtocolInterfaceVirtualImpl const&) = delete;
@@ -285,17 +291,17 @@ public:
 	ProtocolInterfaceVirtualImpl& operator=(ProtocolInterfaceVirtualImpl&&) = delete;
 
 private:
-	Error sendPacket(SerializationBuffer const& buffer) const noexcept;
-
-	// ProtocolInterface overrides
+	/* ************************************************************ */
+	/* ProtocolInterface overrides                                  */
+	/* ************************************************************ */
 	virtual void shutdown() noexcept override;
 	virtual UniqueIdentifier getDynamicEID() const noexcept override;
 	virtual void releaseDynamicEID(UniqueIdentifier const entityID) const noexcept override;
 	virtual Error registerLocalEntity(entity::LocalEntity& entity) noexcept override;
 	virtual Error unregisterLocalEntity(entity::LocalEntity& entity) noexcept override;
-	virtual Error setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const flags, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override;
-	virtual Error enableEntityAdvertising(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override;
-	virtual Error disableEntityAdvertising(entity::LocalEntity& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override;
+	virtual Error setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const flags) noexcept override;
+	virtual Error enableEntityAdvertising(entity::LocalEntity& entity) noexcept override;
+	virtual Error disableEntityAdvertising(entity::LocalEntity const& entity) noexcept override;
 	virtual Error discoverRemoteEntities() const noexcept override;
 	virtual Error discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept override;
 	virtual bool isDirectMessageSupported() const noexcept override;
@@ -310,32 +316,59 @@ private:
 	virtual void unlock() noexcept override;
 	virtual bool isSelfLocked() const noexcept override;
 
-	// ProtocolInterfaceVirtual overrides
+	/* ************************************************************ */
+	/* ProtocolInterfaceVirtual overrides                           */
+	/* ************************************************************ */
 	virtual void forceTransportError() const noexcept override;
 
-	// stateMachine::ControllerStateMachine::Delegate overrides
+	/* ************************************************************ */
+	/* stateMachine::ProtocolInterfaceDelegate overrides            */
+	/* ************************************************************ */
+	virtual void onAecpCommand(la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override;
+	virtual void onAcmpCommand(la::avdecc::protocol::Acmpdu const& acmpdu) noexcept override;
+	virtual void onAcmpResponse(la::avdecc::protocol::Acmpdu const& acmpdu) noexcept override;
+	virtual ProtocolInterface::Error sendMessage(la::avdecc::protocol::Adpdu const& adpdu) const noexcept override;
+	virtual ProtocolInterface::Error sendMessage(la::avdecc::protocol::Aecpdu const& aecpdu) const noexcept override;
+	virtual ProtocolInterface::Error sendMessage(la::avdecc::protocol::Acmpdu const& acmpdu) const noexcept override;
+
+	/* ************************************************************ */
+	/* stateMachine::AdvertiseStateMachine::Delegate overrides      */
+	/* ************************************************************ */
+
+	/* ************************************************************ */
+	/* stateMachine::DiscoveryStateMachine::Delegate overrides      */
+	/* ************************************************************ */
 	virtual void onLocalEntityOnline(la::avdecc::entity::Entity const& entity) noexcept override;
 	virtual void onLocalEntityOffline(la::avdecc::UniqueIdentifier const entityID) noexcept override;
 	virtual void onLocalEntityUpdated(la::avdecc::entity::Entity const& entity) noexcept override;
 	virtual void onRemoteEntityOnline(la::avdecc::entity::Entity const& entity) noexcept override;
 	virtual void onRemoteEntityOffline(la::avdecc::UniqueIdentifier const entityID) noexcept override;
 	virtual void onRemoteEntityUpdated(la::avdecc::entity::Entity const& entity) noexcept override;
-	virtual void onAecpCommand(la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override;
-	virtual void onAecpUnsolicitedResponse(la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override;
-	virtual void onAcmpSniffedCommand(la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Acmpdu const& acmpdu) noexcept override;
-	virtual void onAcmpSniffedResponse(la::avdecc::entity::LocalEntity const& entity, la::avdecc::protocol::Acmpdu const& acmpdu) noexcept override;
-	virtual ProtocolInterface::Error sendMessage(la::avdecc::protocol::Adpdu const& adpdu) const noexcept override;
-	virtual ProtocolInterface::Error sendMessage(la::avdecc::protocol::Aecpdu const& aecpdu) const noexcept override;
-	virtual ProtocolInterface::Error sendMessage(la::avdecc::protocol::Acmpdu const& acmpdu) const noexcept override;
 
-	// MessageDispatcher::Observer overrides
+	/* ************************************************************ */
+	/* stateMachine::CommandStateMachine::Delegate overrides        */
+	/* ************************************************************ */
+	virtual void onAecpAemUnsolicitedResponse(la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override;
+
+	/* ************************************************************ */
+	/* MessageDispatcher::Observer overrides                        */
+	/* ************************************************************ */
 	virtual void onMessage(SerializationBuffer const& message) noexcept override;
 	virtual void onTransportError() noexcept override;
 
+	/* ************************************************************ */
+	/* Private methods                                              */
+	/* ************************************************************ */
+	Error sendPacket(SerializationBuffer const& buffer) const noexcept;
+	void dispatchAvdeccMessage(std::uint8_t const* const pkt_data, size_t const pkt_len, EtherLayer2 const& etherLayer2) noexcept;
+
 	// Private variables
-	mutable stateMachine::ControllerStateMachine _controllerStateMachine{ this, this };
+	mutable stateMachine::Manager _stateMachineManager{ this, this, this, this, this };
 };
 
+/* ************************************************************ */
+/* Public APIs                                                  */
+/* ************************************************************ */
 /** Constructor */
 ProtocolInterfaceVirtualImpl::ProtocolInterfaceVirtualImpl(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress)
 	: ProtocolInterfaceVirtual(networkInterfaceName, macAddress)
@@ -346,6 +379,9 @@ ProtocolInterfaceVirtualImpl::ProtocolInterfaceVirtualImpl(std::string const& ne
 	// Register to the message dispatcher
 	auto& dispatcher = MessageDispatcher::getInstance();
 	dispatcher.registerObserver(networkInterfaceName, this);
+
+	// Start the state machines
+	_stateMachineManager.startStateMachines();
 }
 
 /** Destructor */
@@ -359,159 +395,14 @@ void ProtocolInterfaceVirtualImpl::destroy() noexcept
 	delete this;
 }
 
-void ProtocolInterfaceVirtualImpl::dispatchAvdeccMessage(std::uint8_t const* const pkt_data, size_t const pkt_len, EtherLayer2 const& etherLayer2) noexcept
-{
-	try
-	{
-		// Read Avtpdu SubType and ControlData (which is remapped to MessageType for all 1722.1 messages)
-		std::uint8_t const subType = pkt_data[0] & 0x7f;
-		std::uint8_t const controlData = pkt_data[1] & 0x7f;
-
-		// Create a deserialization buffer
-		auto des = DeserializationBuffer(pkt_data, pkt_len);
-
-		switch (subType)
-		{
-			/* ADP Message */
-			case AvtpSubType_Adp:
-			{
-				auto adpdu = Adpdu::create();
-				auto& adp = static_cast<Adpdu&>(*adpdu);
-
-				// Fill EtherLayer2
-				adp.setSrcAddress(etherLayer2.getSrcAddress());
-				adp.setDestAddress(etherLayer2.getDestAddress());
-				// Then deserialize Avtp control
-				deserialize<AvtpduControl>(&adp, des);
-				// Then deserialize Adp
-				deserialize<Adpdu>(&adp, des);
-
-				// Forward to our state machine
-				_controllerStateMachine.processAdpdu(adp);
-				break;
-			}
-
-			/* AECP Message */
-			case AvtpSubType_Aecp:
-			{
-				Aecpdu::UniquePointer aecpdu{ nullptr, nullptr };
-				auto const messageType = static_cast<AecpMessageType>(controlData);
-
-#pragma message("TODO: Handle other AECP message types")
-				static std::unordered_map<AecpMessageType, std::function<Aecpdu::UniquePointer()>, AecpMessageType::Hash> s_Dispatch{
-					{ AecpMessageType::AemCommand,
-						[]()
-						{
-							return AemAecpdu::create();
-						} },
-					{ AecpMessageType::AemResponse,
-						[]()
-						{
-							return AemAecpdu::create();
-						} },
-					{ AecpMessageType::AddressAccessCommand,
-						[]()
-						{
-							return AaAecpdu::create();
-						} },
-					{ AecpMessageType::AddressAccessResponse,
-						[]()
-						{
-							return AaAecpdu::create();
-						} },
-				};
-
-				auto const& it = s_Dispatch.find(messageType);
-				if (it == s_Dispatch.end())
-					return; // Unsupported AECP message type
-
-				// Create aecpdu frame based on message type
-				aecpdu = it->second();
-
-				if (aecpdu != nullptr)
-				{
-					auto& aecp = static_cast<Aecpdu&>(*aecpdu);
-
-					// Fill EtherLayer2
-					aecp.setSrcAddress(etherLayer2.getSrcAddress());
-					aecp.setDestAddress(etherLayer2.getDestAddress());
-					// Then deserialize Avtp control
-					deserialize<AvtpduControl>(&aecp, des);
-					// Then deserialize Aecp
-					deserialize<Aecpdu>(&aecp, des);
-
-					// Forward to our state machine
-#pragma message("TODO: Should not forward to *controllerStateMachine* specifically, but to all possible state machines for the local EndStation")
-					_controllerStateMachine.processAecpdu(aecp);
-				}
-				break;
-			}
-
-			/* ACMP Message */
-			case AvtpSubType_Acmp:
-			{
-				auto acmpdu = Acmpdu::create();
-				auto& acmp = static_cast<Acmpdu&>(*acmpdu);
-
-				// Fill EtherLayer2
-				acmp.setSrcAddress(etherLayer2.getSrcAddress());
-				static_cast<EtherLayer2&>(*acmpdu).setDestAddress(etherLayer2.getDestAddress()); // Fill dest address, even if we know it's always the MultiCast address
-				// Then deserialize Avtp control
-				deserialize<AvtpduControl>(&acmp, des);
-				// Then deserialize Acmp
-				deserialize<Acmpdu>(&acmp, des);
-
-				// Forward to our state machine
-#pragma message("TODO: Should not forward to *controllerStateMachine* specifically, but to all possible state machines for the local EndStation")
-				_controllerStateMachine.processAcmpdu(acmp);
-				break;
-			}
-
-			/* MAAP Message */
-			case AvtpSubType_Maap:
-			{
-				break;
-			}
-			default:
-				return;
-		}
-	}
-	catch (std::invalid_argument const& e)
-	{
-		LOG_GENERIC_WARN(std::string("ProtocolInterfaceVirtual: Packet dropped: ") + e.what());
-	}
-	catch (...)
-	{
-		AVDECC_ASSERT(false, "Unknown exception");
-		LOG_GENERIC_WARN("ProtocolInterfaceVirtual: Packet dropped due to unknown exception");
-	}
-}
-
-ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendPacket(SerializationBuffer const& buffer) const noexcept
-{
-	auto length = buffer.size();
-	constexpr auto minimumSize = EthernetPayloadMinimumSize + EtherLayer2::HeaderLength;
-
-	/* Check the buffer has enough bytes in it */
-	if (length < minimumSize)
-		length = minimumSize; // No need to resize nor pad the buffer, it has enough capacity and we don't care about the unused bytes. Simply increase the length of the data to send.
-
-	try
-	{
-		// Push the buffer to the message dispatcher
-		auto& dispatcher = MessageDispatcher::getInstance();
-		dispatcher.push(_networkInterfaceName, buffer);
-		return Error::NoError;
-	}
-	catch (...)
-	{
-	}
-	return Error::TransportError;
-}
-
-// ProtocolInterface overrides
+/* ************************************************************ */
+/* ProtocolInterface overrides                                  */
+/* ************************************************************ */
 void ProtocolInterfaceVirtualImpl::shutdown() noexcept
 {
+	// Stop the state machines
+	_stateMachineManager.stopStateMachines();
+
 	// Unregister from the message dispatcher
 	auto& dispatcher = MessageDispatcher::getInstance();
 	dispatcher.unregisterObserver(_networkInterfaceName, this);
@@ -547,67 +438,45 @@ void ProtocolInterfaceVirtualImpl::releaseDynamicEID(UniqueIdentifier const /*en
 
 ProtocolInterface::Error ProtocolInterfaceVirtualImpl::registerLocalEntity(entity::LocalEntity& entity) noexcept
 {
-	auto error{ ProtocolInterface::Error::NoError };
+	// Checks if entity has declared an InterfaceInformation matching this ProtocolInterface
+	auto const index = _stateMachineManager.getMatchingInterfaceIndex(entity);
 
-	// Entity is controller capable
-	if (utils::hasFlag(entity.getControllerCapabilities(), entity::ControllerCapabilities::Implemented))
-		error |= _controllerStateMachine.registerLocalEntity(entity);
+	if (index)
+	{
+		return _stateMachineManager.registerLocalEntity(entity);
+	}
 
-#pragma message("TODO: Handle talker/listener types")
-	// Entity is listener capable
-	if (utils::hasFlag(entity.getListenerCapabilities(), entity::ListenerCapabilities::Implemented))
-		return ProtocolInterface::Error::InvalidEntityType; // Not supported right now
-
-	// Entity is talker capable
-	if (utils::hasFlag(entity.getTalkerCapabilities(), entity::TalkerCapabilities::Implemented))
-		return ProtocolInterface::Error::InvalidEntityType; // Not supported right now
-
-	return error;
+	return Error::InvalidParameters;
 }
 
 ProtocolInterface::Error ProtocolInterfaceVirtualImpl::unregisterLocalEntity(entity::LocalEntity& entity) noexcept
 {
-	auto error{ ProtocolInterface::Error::NoError };
-
-	// Entity is controller capable
-	if (utils::hasFlag(entity.getControllerCapabilities(), entity::ControllerCapabilities::Implemented))
-		error |= _controllerStateMachine.unregisterLocalEntity(entity);
-
-#pragma message("TODO: Handle talker/listener types")
-	// Entity is listener capable
-	if (utils::hasFlag(entity.getListenerCapabilities(), entity::ListenerCapabilities::Implemented))
-		return ProtocolInterface::Error::InvalidEntityType; // Not supported right now
-
-	// Entity is talker capable
-	if (utils::hasFlag(entity.getTalkerCapabilities(), entity::TalkerCapabilities::Implemented))
-		return ProtocolInterface::Error::InvalidEntityType; // Not supported right now
-
-	return error;
+	return _stateMachineManager.unregisterLocalEntity(entity);
 }
 
-ProtocolInterface::Error ProtocolInterfaceVirtualImpl::setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const /*flags*/, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept
+ProtocolInterface::Error ProtocolInterfaceVirtualImpl::setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const /*flags*/) noexcept
 {
-	return _controllerStateMachine.setEntityNeedsAdvertise(entity, interfaceIndex);
+	return _stateMachineManager.setEntityNeedsAdvertise(entity);
 }
 
-ProtocolInterface::Error ProtocolInterfaceVirtualImpl::enableEntityAdvertising(entity::LocalEntity const& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept
+ProtocolInterface::Error ProtocolInterfaceVirtualImpl::enableEntityAdvertising(entity::LocalEntity& entity) noexcept
 {
-	return _controllerStateMachine.enableEntityAdvertising(entity, interfaceIndex);
+	return _stateMachineManager.enableEntityAdvertising(entity);
 }
 
-ProtocolInterface::Error ProtocolInterfaceVirtualImpl::disableEntityAdvertising(entity::LocalEntity& entity, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex) noexcept
+ProtocolInterface::Error ProtocolInterfaceVirtualImpl::disableEntityAdvertising(entity::LocalEntity const& entity) noexcept
 {
-	return _controllerStateMachine.disableEntityAdvertising(entity, interfaceIndex);
+	return _stateMachineManager.disableEntityAdvertising(entity);
 }
 
 ProtocolInterface::Error ProtocolInterfaceVirtualImpl::discoverRemoteEntities() const noexcept
 {
-	return _controllerStateMachine.discoverRemoteEntities();
+	return _stateMachineManager.discoverRemoteEntities();
 }
 
 ProtocolInterface::Error ProtocolInterfaceVirtualImpl::discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept
 {
-	return _controllerStateMachine.discoverRemoteEntity(entityID);
+	return _stateMachineManager.discoverRemoteEntity(entityID);
 }
 
 bool ProtocolInterfaceVirtualImpl::isDirectMessageSupported() const noexcept
@@ -636,7 +505,7 @@ ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendAcmpMessage(Acmpdu co
 ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, AecpCommandResultHandler const& onResult) const noexcept
 {
 	// Command goes through the state machine to handle timeout, retry and response
-	return _controllerStateMachine.sendAecpCommand(std::move(aecpdu), onResult);
+	return _stateMachineManager.sendAecpCommand(std::move(aecpdu), onResult);
 }
 
 ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendAecpResponse(Aecpdu::UniquePointer&& aecpdu) const noexcept
@@ -648,7 +517,7 @@ ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendAecpResponse(Aecpdu::
 ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendAcmpCommand(Acmpdu::UniquePointer&& acmpdu, AcmpCommandResultHandler const& onResult) const noexcept
 {
 	// Command goes through the state machine to handle timeout, retry and response
-	return _controllerStateMachine.sendAcmpCommand(std::move(acmpdu), onResult);
+	return _stateMachineManager.sendAcmpCommand(std::move(acmpdu), onResult);
 }
 
 ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendAcmpResponse(Acmpdu::UniquePointer&& acmpdu) const noexcept
@@ -659,86 +528,46 @@ ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendAcmpResponse(Acmpdu::
 
 void ProtocolInterfaceVirtualImpl::lock() noexcept
 {
-	_controllerStateMachine.lock();
+	_stateMachineManager.lock();
 }
 
 void ProtocolInterfaceVirtualImpl::unlock() noexcept
 {
-	_controllerStateMachine.unlock();
+	_stateMachineManager.unlock();
 }
 
 bool ProtocolInterfaceVirtualImpl::isSelfLocked() const noexcept
 {
-	return _controllerStateMachine.isSelfLocked();
+	return _stateMachineManager.isSelfLocked();
 }
 
-// ProtocolInterfaceVirtual overrides
+/* ************************************************************ */
+/* ProtocolInterfaceVirtual overrides                           */
+/* ************************************************************ */
 void ProtocolInterfaceVirtualImpl::forceTransportError() const noexcept
 {
 	sendPacket({});
 }
 
-// stateMachine::ControllerStateMachine::Delegate overrides
-void ProtocolInterfaceVirtualImpl::onLocalEntityOnline(la::avdecc::entity::Entity const& entity) noexcept
+/* ************************************************************ */
+/* stateMachine::ProtocolInterfaceDelegate overrides            */
+/* ************************************************************ */
+void ProtocolInterfaceVirtualImpl::onAecpCommand(Aecpdu const& aecpdu) noexcept
 {
 	// Notify observers
-	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onLocalEntityOnline, this, entity);
+	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpCommand, this, aecpdu);
 }
 
-void ProtocolInterfaceVirtualImpl::onLocalEntityOffline(UniqueIdentifier const entityID) noexcept
+void ProtocolInterfaceVirtualImpl::onAcmpCommand(Acmpdu const& acmpdu) noexcept
 {
 	// Notify observers
-	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onLocalEntityOffline, this, entityID);
+	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAcmpCommand, this, acmpdu);
 }
 
-void ProtocolInterfaceVirtualImpl::onLocalEntityUpdated(la::avdecc::entity::Entity const& entity) noexcept
+void ProtocolInterfaceVirtualImpl::onAcmpResponse(Acmpdu const& acmpdu) noexcept
 {
 	// Notify observers
-	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onLocalEntityUpdated, this, entity);
-}
-
-void ProtocolInterfaceVirtualImpl::onRemoteEntityOnline(la::avdecc::entity::Entity const& entity) noexcept
-{
-	// Notify observers
-	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityOnline, this, entity);
-}
-
-void ProtocolInterfaceVirtualImpl::onRemoteEntityOffline(UniqueIdentifier const entityID) noexcept
-{
-	// Notify observers
-	SEND_INSTRUMENTATION_NOTIFICATION("ProtocolInterfaceVirtual::onRemoteEntityOffline::PreNotify");
-	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityOffline, this, entityID);
-	SEND_INSTRUMENTATION_NOTIFICATION("ProtocolInterfaceVirtual::onRemoteEntityOffline::PostNotify");
-}
-
-void ProtocolInterfaceVirtualImpl::onRemoteEntityUpdated(la::avdecc::entity::Entity const& entity) noexcept
-{
-	// Notify observers
-	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityUpdated, this, entity);
-}
-
-void ProtocolInterfaceVirtualImpl::onAecpCommand(entity::LocalEntity const& entity, Aecpdu const& aecpdu) noexcept
-{
-	// Notify observers
-	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpCommand, this, entity, aecpdu);
-}
-
-void ProtocolInterfaceVirtualImpl::onAecpUnsolicitedResponse(entity::LocalEntity const& entity, Aecpdu const& aecpdu) noexcept
-{
-	// Notify observers
-	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpUnsolicitedResponse, this, entity, aecpdu);
-}
-
-void ProtocolInterfaceVirtualImpl::onAcmpSniffedCommand(entity::LocalEntity const& entity, Acmpdu const& acmpdu) noexcept
-{
-	// Notify observers
-	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAcmpSniffedCommand, this, entity, acmpdu);
-}
-
-void ProtocolInterfaceVirtualImpl::onAcmpSniffedResponse(entity::LocalEntity const& entity, Acmpdu const& acmpdu) noexcept
-{
-	// Notify observers
-	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAcmpSniffedResponse, this, entity, acmpdu);
+	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAcmpResponse, this, acmpdu);
 }
 
 ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendMessage(Adpdu const& adpdu) const noexcept
@@ -813,7 +642,63 @@ ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendMessage(Acmpdu const&
 	}
 }
 
-// MessageDispatcher::Observer overrides
+/* ************************************************************ */
+/* stateMachine::AdvertiseStateMachine::Delegate overrides      */
+/* ************************************************************ */
+
+/* ************************************************************ */
+/* stateMachine::DiscoveryStateMachine::Delegate overrides      */
+/* ************************************************************ */
+void ProtocolInterfaceVirtualImpl::onLocalEntityOnline(la::avdecc::entity::Entity const& entity) noexcept
+{
+	// Notify observers
+	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onLocalEntityOnline, this, entity);
+}
+
+void ProtocolInterfaceVirtualImpl::onLocalEntityOffline(UniqueIdentifier const entityID) noexcept
+{
+	// Notify observers
+	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onLocalEntityOffline, this, entityID);
+}
+
+void ProtocolInterfaceVirtualImpl::onLocalEntityUpdated(la::avdecc::entity::Entity const& entity) noexcept
+{
+	// Notify observers
+	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onLocalEntityUpdated, this, entity);
+}
+
+void ProtocolInterfaceVirtualImpl::onRemoteEntityOnline(la::avdecc::entity::Entity const& entity) noexcept
+{
+	// Notify observers
+	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityOnline, this, entity);
+}
+
+void ProtocolInterfaceVirtualImpl::onRemoteEntityOffline(UniqueIdentifier const entityID) noexcept
+{
+	// Notify observers
+	SEND_INSTRUMENTATION_NOTIFICATION("ProtocolInterfaceVirtual::onRemoteEntityOffline::PreNotify");
+	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityOffline, this, entityID);
+	SEND_INSTRUMENTATION_NOTIFICATION("ProtocolInterfaceVirtual::onRemoteEntityOffline::PostNotify");
+}
+
+void ProtocolInterfaceVirtualImpl::onRemoteEntityUpdated(la::avdecc::entity::Entity const& entity) noexcept
+{
+	// Notify observers
+	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityUpdated, this, entity);
+}
+
+/* ************************************************************ */
+/* stateMachine::CommandStateMachine::Delegate overrides        */
+/* ************************************************************ */
+void ProtocolInterfaceVirtualImpl::onAecpAemUnsolicitedResponse(Aecpdu const& aecpdu) noexcept
+{
+	// Notify observers
+	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpAemUnsolicitedResponse, this, aecpdu);
+}
+
+/* ************************************************************ */
+/* MessageDispatcher::Observer overrides                        */
+/* ************************************************************ */
 void ProtocolInterfaceVirtualImpl::onMessage(SerializationBuffer const& message) noexcept
 {
 	auto const* const buffer = message.data();
@@ -846,6 +731,174 @@ void ProtocolInterfaceVirtualImpl::onMessage(SerializationBuffer const& message)
 void ProtocolInterfaceVirtualImpl::onTransportError() noexcept
 {
 	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onTransportError, this);
+}
+
+/* ************************************************************ */
+/* Private methods                                              */
+/* ************************************************************ */
+ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendPacket(SerializationBuffer const& buffer) const noexcept
+{
+	auto length = buffer.size();
+	constexpr auto minimumSize = EthernetPayloadMinimumSize + EtherLayer2::HeaderLength;
+
+	/* Check the buffer has enough bytes in it */
+	if (length < minimumSize)
+		length = minimumSize; // No need to resize nor pad the buffer, it has enough capacity and we don't care about the unused bytes. Simply increase the length of the data to send.
+
+	try
+	{
+		// Push the buffer to the message dispatcher
+		auto& dispatcher = MessageDispatcher::getInstance();
+		dispatcher.push(_networkInterfaceName, buffer);
+		return Error::NoError;
+	}
+	catch (...)
+	{
+	}
+	return Error::TransportError;
+}
+
+void ProtocolInterfaceVirtualImpl::dispatchAvdeccMessage(std::uint8_t const* const pkt_data, size_t const pkt_len, EtherLayer2 const& etherLayer2) noexcept
+{
+	try
+	{
+		// Read Avtpdu SubType and ControlData (which is remapped to MessageType for all 1722.1 messages)
+		std::uint8_t const subType = pkt_data[0] & 0x7f;
+		std::uint8_t const controlData = pkt_data[1] & 0x7f;
+
+		// Create a deserialization buffer
+		auto des = DeserializationBuffer(pkt_data, pkt_len);
+
+		switch (subType)
+		{
+			/* ADP Message */
+			case AvtpSubType_Adp:
+			{
+				auto adpdu = Adpdu::create();
+				auto& adp = static_cast<Adpdu&>(*adpdu);
+
+				// Fill EtherLayer2
+				adp.setSrcAddress(etherLayer2.getSrcAddress());
+				adp.setDestAddress(etherLayer2.getDestAddress());
+				// Then deserialize Avtp control
+				deserialize<AvtpduControl>(&adp, des);
+				// Then deserialize Adp
+				deserialize<Adpdu>(&adp, des);
+
+				// Forward to our state machine
+				_stateMachineManager.processAdpdu(adp);
+				break;
+			}
+
+			/* AECP Message */
+			case AvtpSubType_Aecp:
+			{
+				Aecpdu::UniquePointer aecpdu{ nullptr, nullptr };
+				auto const messageType = static_cast<AecpMessageType>(controlData);
+
+				static std::unordered_map<AecpMessageType, std::function<Aecpdu::UniquePointer(std::uint8_t const* const pkt_data, size_t const pkt_len)>, AecpMessageType::Hash> s_Dispatch{
+					{ AecpMessageType::AemCommand,
+						[](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
+						{
+							return AemAecpdu::create(false);
+						} },
+					{ AecpMessageType::AemResponse,
+						[](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
+						{
+							return AemAecpdu::create(true);
+						} },
+					{ AecpMessageType::AddressAccessCommand,
+						[](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
+						{
+							return AaAecpdu::create(false);
+						} },
+					{ AecpMessageType::AddressAccessResponse,
+						[](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
+						{
+							return AaAecpdu::create(true);
+						} },
+					{ AecpMessageType::VendorUniqueResponse,
+						[](std::uint8_t const* const pkt_data, size_t const pkt_len)
+						{
+							// We have to retrieve the ProtocolID to dispatch
+							auto const protocolIdentifierOffset = AvtpduControl::HeaderLength + Aecpdu::HeaderLength;
+							if (pkt_len >= (protocolIdentifierOffset + VuAecpdu::ProtocolIdentifier::Size))
+							{
+								VuAecpdu::ProtocolIdentifier::ArrayType protocolIdentifier{};
+								std::memcpy(protocolIdentifier.data(), pkt_data + protocolIdentifierOffset, VuAecpdu::ProtocolIdentifier::Size);
+
+								if (MvuAecpdu::ProtocolID == protocolIdentifier)
+								{
+									return MvuAecpdu::create(true);
+								}
+							}
+
+							return Aecpdu::UniquePointer{ nullptr, nullptr };
+						} },
+				};
+
+				auto const& it = s_Dispatch.find(messageType);
+				if (it == s_Dispatch.end())
+					return; // Unsupported AECP message type
+
+				// Create aecpdu frame based on message type
+				aecpdu = it->second(pkt_data, pkt_len);
+
+				if (aecpdu != nullptr)
+				{
+					auto& aecp = static_cast<Aecpdu&>(*aecpdu);
+
+					// Fill EtherLayer2
+					aecp.setSrcAddress(etherLayer2.getSrcAddress());
+					aecp.setDestAddress(etherLayer2.getDestAddress());
+					// Then deserialize Avtp control
+					deserialize<AvtpduControl>(&aecp, des);
+					// Then deserialize Aecp
+					deserialize<Aecpdu>(&aecp, des);
+
+					// Forward to our state machine
+					_stateMachineManager.processAecpdu(aecp);
+				}
+				break;
+			}
+
+			/* ACMP Message */
+			case AvtpSubType_Acmp:
+			{
+				auto acmpdu = Acmpdu::create();
+				auto& acmp = static_cast<Acmpdu&>(*acmpdu);
+
+				// Fill EtherLayer2
+				acmp.setSrcAddress(etherLayer2.getSrcAddress());
+				static_cast<EtherLayer2&>(*acmpdu).setDestAddress(etherLayer2.getDestAddress()); // Fill dest address, even if we know it's always the MultiCast address
+				// Then deserialize Avtp control
+				deserialize<AvtpduControl>(&acmp, des);
+				// Then deserialize Acmp
+				deserialize<Acmpdu>(&acmp, des);
+
+				// Forward to our state machine
+				_stateMachineManager.processAcmpdu(acmp);
+				break;
+			}
+
+			/* MAAP Message */
+			case AvtpSubType_Maap:
+			{
+				break;
+			}
+			default:
+				return;
+		}
+	}
+	catch ([[maybe_unused]] std::invalid_argument const& e)
+	{
+		LOG_GENERIC_WARN(std::string("ProtocolInterfaceVirtual: Packet dropped: ") + e.what());
+	}
+	catch (...)
+	{
+		AVDECC_ASSERT(false, "Unknown exception");
+		LOG_GENERIC_WARN("ProtocolInterfaceVirtual: Packet dropped due to unknown exception");
+	}
 }
 
 ProtocolInterfaceVirtual::ProtocolInterfaceVirtual(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress)

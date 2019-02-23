@@ -37,8 +37,9 @@ namespace protocol
 /* VuAecpdu class definition                               */
 /***********************************************************/
 
-VuAecpdu::VuAecpdu() noexcept
+VuAecpdu::VuAecpdu(bool const isResponse) noexcept
 {
+	Aecpdu::setMessageType(isResponse ? AecpMessageType::VendorUniqueResponse : AecpMessageType::VendorUniqueCommand);
 	Aecpdu::setAecpSpecificDataLength(VuAecpdu::HeaderLength);
 }
 
@@ -59,7 +60,7 @@ void LA_AVDECC_CALL_CONVENTION VuAecpdu::serialize(SerializationBuffer& buffer) 
 
 	auto const previousSize = buffer.size();
 
-	buffer << _protocolIdentifier;
+	buffer << static_cast<ProtocolIdentifier::ArrayType>(_protocolIdentifier);
 
 	if (!AVDECC_ASSERT_WITH_RET((buffer.size() - previousSize) == HeaderLength, "VuAecpdu::serialize error: Packed buffer length != expected header length"))
 	{
@@ -79,7 +80,11 @@ void LA_AVDECC_CALL_CONVENTION VuAecpdu::deserialize(DeserializationBuffer& buff
 		throw std::invalid_argument("Not enough data to deserialize");
 	}
 
-	buffer >> _protocolIdentifier;
+	ProtocolIdentifier::ArrayType protocolIdentifier{};
+
+	buffer >> protocolIdentifier;
+
+	_protocolIdentifier.setValue(protocolIdentifier);
 }
 
 } // namespace protocol

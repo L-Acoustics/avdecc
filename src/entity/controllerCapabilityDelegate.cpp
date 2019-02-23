@@ -39,11 +39,6 @@ namespace entity
 namespace controller
 {
 /* ************************************************************************** */
-/* Constants                                                                  */
-/* ************************************************************************** */
-constexpr int DISCOVER_SEND_DELAY = 10000; // Delay (in milliseconds) between 2 DISCOVER message broadcast
-
-/* ************************************************************************** */
 /* Static variables used for bindings                                         */
 /* ************************************************************************** */
 static model::AudioMappings const s_emptyMappings{}; // Empty AudioMappings used by timeout callback (needs a ref to an AudioMappings)
@@ -74,36 +69,9 @@ CapabilityDelegate::CapabilityDelegate(protocol::ProtocolInterface* const protoc
 	, _controllerInterface(controllerInterface)
 	, _controllerID(controllerID)
 {
-	// Create the discovery thread
-	_discoveryThread = std::thread(
-		[this]
-		{
-			utils::setCurrentThreadName("avdecc::ControllerDiscovery");
-			while (!_shouldTerminate)
-			{
-				// Request a discovery
-				_protocolInterface->discoverRemoteEntities();
-
-				// Wait few seconds before sending another one
-				std::chrono::time_point<std::chrono::system_clock> start{ std::chrono::system_clock::now() };
-				do
-				{
-					// Wait a little bit so we don't burn the CPU
-					std::this_thread::sleep_for(std::chrono::milliseconds(10));
-				} while (!_shouldTerminate && std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start).count() <= DISCOVER_SEND_DELAY);
-			}
-		});
 }
 
-CapabilityDelegate::~CapabilityDelegate() noexcept
-{
-	// Notify the thread we are shutting down
-	_shouldTerminate = true;
-
-	// Wait for the thread to complete its pending tasks
-	if (_discoveryThread.joinable())
-		_discoveryThread.join();
-}
+CapabilityDelegate::~CapabilityDelegate() noexcept {}
 
 /* ************************************************************************** */
 /* Controller methods                                                         */
@@ -1599,7 +1567,7 @@ bool CapabilityDelegate::onUnhandledAecpCommand(protocol::ProtocolInterface* con
 	return false;
 }
 
-void CapabilityDelegate::onAecpUnsolicitedResponse(protocol::ProtocolInterface* const /*pi*/, LocalEntity const& /*entity*/, protocol::Aecpdu const& aecpdu) noexcept
+void CapabilityDelegate::onAecpAemUnsolicitedResponse(protocol::ProtocolInterface* const /*pi*/, protocol::Aecpdu const& aecpdu) noexcept
 {
 	// Ignore messages not for me
 	if (_controllerID != aecpdu.getControllerEntityID())
@@ -1619,16 +1587,35 @@ void CapabilityDelegate::onAecpUnsolicitedResponse(protocol::ProtocolInterface* 
 }
 
 /* **** ACMP notifications **** */
-void CapabilityDelegate::onAcmpSniffedCommand(protocol::ProtocolInterface* const /*pi*/, LocalEntity const& /*entity*/, protocol::Acmpdu const& /*acmpdu*/) noexcept {}
-
-void CapabilityDelegate::onAcmpSniffedResponse(protocol::ProtocolInterface* const /*pi*/, LocalEntity const& /*entity*/, protocol::Acmpdu const& acmpdu) noexcept
+void CapabilityDelegate::onAcmpCommand(protocol::ProtocolInterface* const /*pi*/, protocol::Acmpdu const& /*acmpdu*/) noexcept
 {
-	processAcmpResponse(&acmpdu, LocalEntityImpl<>::OnACMPErrorCallback(), LocalEntityImpl<>::AnswerCallback(), true);
+	// Controllers do not care about ACMP Commands (which can only be sniffed ones)
+}
+
+void CapabilityDelegate::onAcmpResponse(protocol::ProtocolInterface* const /*pi*/, protocol::Acmpdu const& acmpdu) noexcept
+{
+	// Controllers only care about sniffed ACMP Responses here (responses to their commands have already been processed by the ProtocolInterface)
+
+	// Check if it's a response for a Controller (since the communication btw listener and talkers uses our controllerID, we don't want to detect talker's response as ours)
+	auto const expectedControllerResponseType = isResponseForController(acmpdu.getMessageType());
+
+	// Only process sniffed responses (ie. Talker response to Listener, or Listener response to another Controller)
+	if (_controllerID != acmpdu.getControllerEntityID() || !expectedControllerResponseType)
+	{
+		processAcmpResponse(&acmpdu, LocalEntityImpl<>::OnACMPErrorCallback(), LocalEntityImpl<>::AnswerCallback(), true);
+	}
 }
 
 /* ************************************************************************** */
 /* Internal methods                                                           */
 /* ************************************************************************** */
+bool CapabilityDelegate::isResponseForController(protocol::AcmpMessageType const messageType) const noexcept
+{
+	if (messageType == protocol::AcmpMessageType::ConnectRxResponse || messageType == protocol::AcmpMessageType::DisconnectRxResponse || messageType == protocol::AcmpMessageType::GetRxStateResponse || messageType == protocol::AcmpMessageType::GetTxConnectionResponse)
+		return true;
+	return false;
+}
+
 void CapabilityDelegate::sendAemAecpCommand(UniqueIdentifier const targetEntityID, protocol::AemCommandType const commandType, void const* const payload, size_t const payloadLength, LocalEntityImpl<>::OnAemAECPErrorCallback const& onErrorCallback, LocalEntityImpl<>::AnswerCallback const& answerCallback) const noexcept
 {
 	auto targetMacAddress = networkInterface::MacAddress{};

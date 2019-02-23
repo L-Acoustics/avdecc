@@ -28,6 +28,10 @@
 #endif // _WIN32
 #if defined(__APPLE__)
 #	include <pthread.h>
+#	include <stdbool.h>
+#	include <sys/types.h>
+#	include <unistd.h>
+#	include <sys/sysctl.h>
 #endif // __APPLE__
 #if defined(__unix__)
 #	include <pthread.h>
@@ -41,6 +45,44 @@ namespace avdecc
 {
 namespace utils
 {
+#if defined(__APPLE__)
+static bool IsDebuggerPresent()
+{
+	int junk;
+	int mib[4];
+	struct kinfo_proc info;
+	size_t size;
+
+	// Initialize the flags so that, if sysctl fails for some bizarre
+	// reason, we get a predictable result.
+
+	info.kp_proc.p_flag = 0;
+
+	// Initialize mib, which tells sysctl the info we want, in this case
+	// we're looking for information about a specific process ID.
+
+	mib[0] = CTL_KERN;
+	mib[1] = KERN_PROC;
+	mib[2] = KERN_PROC_PID;
+	mib[3] = getpid();
+
+	// Call sysctl.
+
+	size = sizeof(info);
+	junk = sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, NULL, 0);
+	assert(junk == 0);
+
+	// We're being debugged if the P_TRACED flag is set.
+
+	return ((info.kp_proc.p_flag & P_TRACED) != 0);
+}
+#elif !defined(_WIN32)
+static bool IsDebuggerPresent()
+{
+	return false;
+}
+#endif // __APPLE__
+
 bool LA_AVDECC_CALL_CONVENTION setCurrentThreadName(std::string const& name)
 {
 #if defined(_WIN32)
@@ -127,7 +169,6 @@ void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsig
 					"Press 'Ignore' to try to continue normal execution\n");
 			}
 		}
-#ifdef _WIN32
 		if (IsDebuggerPresent())
 		{
 			shouldBreak = true; // Always call DebugBreak if debugger is attached
@@ -135,11 +176,12 @@ void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsig
 		}
 		else
 		{
+#ifdef _WIN32
 			auto const value = MessageBox(nullptr, buffer, "Assert", MB_ABORTRETRYIGNORE | MB_ICONERROR);
 			shouldBreak = (value == IDRETRY);
 			shouldAbort = (value == IDABORT);
-		}
 #endif // _WIN32
+		}
 	}
 	catch (...)
 	{

@@ -37,8 +37,9 @@ namespace protocol
 /* AaAecpdu class definition                              */
 /***********************************************************/
 
-AaAecpdu::AaAecpdu() noexcept
+AaAecpdu::AaAecpdu(bool const isResponse) noexcept
 {
+	Aecpdu::setMessageType(isResponse ? AecpMessageType::AddressAccessResponse : AecpMessageType::AddressAccessCommand);
 	Aecpdu::setAecpSpecificDataLength(AaAecpdu::HeaderLength);
 }
 
@@ -120,20 +121,34 @@ void LA_AVDECC_CALL_CONVENTION AaAecpdu::deserialize(DeserializationBuffer& buff
 #endif // DEBUG
 }
 
-/** Copy method */
-Aecpdu::UniquePointer LA_AVDECC_CALL_CONVENTION AaAecpdu::copy() const
+/** Contruct a Response message to this Command (only changing the messageType to be of Response kind). Returns nullptr if the message is not a Command or if no Response is possible for this messageType */
+Aecpdu::UniquePointer LA_AVDECC_CALL_CONVENTION AaAecpdu::responseCopy() const
 {
+	if (!AVDECC_ASSERT_WITH_RET(getMessageType() == AecpMessageType::AddressAccessCommand, "Calling AaAecpdu::reflectedResponse() on something that is not an ADDRESS_ACCESS_COMMAND"))
+	{
+		return UniquePointer{ nullptr, nullptr };
+	}
+
 	auto deleter = [](Aecpdu* self)
 	{
 		static_cast<AaAecpdu*>(self)->destroy();
 	};
-	return UniquePointer(new AaAecpdu(*this), deleter);
+
+	// Create a response message as a copy of this
+	auto response = UniquePointer(new AaAecpdu(*this), deleter);
+	auto& aa = static_cast<AaAecpdu&>(*response);
+
+	// Change the message type to be an ADDRESS_ACCESS_RESPONSE
+	aa.setMessageType(AecpMessageType::AddressAccessResponse);
+
+	// Return the created response
+	return response;
 }
 
 /** Entry point */
-AaAecpdu* LA_AVDECC_CALL_CONVENTION AaAecpdu::createRawAaAecpdu() noexcept
+AaAecpdu* LA_AVDECC_CALL_CONVENTION AaAecpdu::createRawAaAecpdu(bool const isResponse) noexcept
 {
-	return new AaAecpdu();
+	return new AaAecpdu(isResponse);
 }
 
 /** Destroy method for COM-like interface */

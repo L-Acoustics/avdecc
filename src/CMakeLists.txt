@@ -63,7 +63,6 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAemAecpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAvtpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolDefines.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolGenericAecpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolMvuAecpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolVuAecpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolInterface.hpp
@@ -89,7 +88,6 @@ set (SOURCE_FILES_PROTOCOL
 	protocol/protocolAaAecpdu.cpp
 	protocol/protocolAvtpdu.cpp
 	protocol/protocolDefines.cpp
-	protocol/protocolGenericAecpdu.cpp
 	protocol/protocolVuAecpdu.cpp
 	protocol/protocolMvuAecpdu.cpp
 	protocol/protocolMvuPayloads.cpp
@@ -105,11 +103,18 @@ set (SOURCE_FILES_PROTOCOL_INTERFACE
 
 # State machines
 set (HEADER_FILES_STATE_MACHINES
-	stateMachine/controllerStateMachine.hpp
+	stateMachine/advertiseStateMachine.hpp
+	stateMachine/commandStateMachine.hpp
+	stateMachine/discoveryStateMachine.hpp
+	stateMachine/protocolInterfaceDelegate.hpp
+	stateMachine/stateMachineManager.hpp
 )
 
 set (SOURCE_FILES_STATE_MACHINES
-	stateMachine/controllerStateMachine.cpp
+	stateMachine/advertiseStateMachine.cpp
+	stateMachine/commandStateMachine.cpp
+	stateMachine/discoveryStateMachine.cpp
+	stateMachine/stateMachineManager.cpp
 )
 
 # Entity

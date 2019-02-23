@@ -79,7 +79,7 @@ ProtocolInterface::ProtocolInterface(std::string const& networkInterfaceName, ne
 }
 
 
-la::avdecc::networkInterface::MacAddress const& ProtocolInterface::getMacAddress() const noexcept
+la::avdecc::networkInterface::MacAddress const& LA_AVDECC_CALL_CONVENTION ProtocolInterface::getMacAddress() const noexcept
 {
 	return _networkInterfaceMacAddress;
 }
