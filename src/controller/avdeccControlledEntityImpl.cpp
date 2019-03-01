@@ -358,24 +358,21 @@ model::LocaleNodeStaticModel const* ControlledEntityImpl::findLocaleNode(entity:
 	return &configStaticTree.localeStaticModels.at(0);
 }
 
-entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString(entity::model::LocalizedStringReference const stringReference) const noexcept
+entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString(entity::model::LocalizedStringReference const& stringReference) const noexcept
 {
 	return getLocalizedString(getCurrentConfigurationIndex(), stringReference);
 }
 
-entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocalizedStringReference const stringReference) const noexcept
+entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocalizedStringReference const& stringReference) const noexcept
 {
 	static entity::model::AvdeccFixedString s_noLocalizationString{};
 	try
 	{
-		// Special value meaning NO_STRING
-		if (stringReference == entity::model::getNullLocalizedStringReference())
+		// Not valid, return NO_STRING
+		if (!stringReference)
 			return s_noLocalizationString;
 
-		auto const offset = stringReference >> 3;
-		auto const index = stringReference & 0x0007;
-		auto const globalOffset = ((offset * 7u) + index) & 0xFFFF;
-
+		auto const globalOffset = stringReference.getGlobalOffset();
 		auto const& configDynamicModel = getConfigurationNodeDynamicModel(configurationIndex);
 
 		return configDynamicModel.localizedStrings.at(entity::model::StringsIndex(globalOffset));

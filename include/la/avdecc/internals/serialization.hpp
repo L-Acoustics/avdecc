@@ -108,6 +108,12 @@ public:
 		return operator<<(v.getValue());
 	}
 
+	/** Serializes a LocalizedStringReference */
+	Serializer& operator<<(entity::model::LocalizedStringReference const& v)
+	{
+		return operator<<(v.getValue());
+	}
+
 	/** Serializes an AvdeccFixedString (without changing endianess) */
 	Serializer& operator<<(entity::model::AvdeccFixedString const& v)
 	{
@@ -224,6 +230,15 @@ public:
 	Deserializer& operator>>(UniqueIdentifier& v)
 	{
 		UniqueIdentifier::value_type value;
+		operator>>(value);
+		v.setValue(value);
+		return *this;
+	}
+
+	/** Unpacks a LocalizedStringReference */
+	Deserializer& operator>>(entity::model::LocalizedStringReference& v)
+	{
+		entity::model::LocalizedStringReference::value_type value;
 		operator>>(value);
 		v.setValue(value);
 		return *this;
