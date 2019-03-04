@@ -36,11 +36,10 @@
 
 TEST(Aem, SerializeFrame)
 {
-	auto frame = la::avdecc::protocol::AemAecpdu::create();
+	auto frame = la::avdecc::protocol::AemAecpdu::create(false);
 	auto& aem = static_cast<la::avdecc::protocol::AemAecpdu&>(*frame);
 
 	// Set AECP fields
-	aem.setMessageType(la::avdecc::protocol::AecpMessageType::AemCommand);
 	aem.setStatus(la::avdecc::protocol::AecpStatus::NotImplemented);
 	aem.setTargetEntityID(la::avdecc::UniqueIdentifier::getUninitializedUniqueIdentifier());
 	aem.setControllerEntityID(la::avdecc::UniqueIdentifier::getUninitializedUniqueIdentifier());
