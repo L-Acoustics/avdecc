@@ -56,6 +56,9 @@ if(ENABLE_AVDECC_FEATURE_REDUNDANCY)
 		list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DENABLE_AVDECC_STRICT_2018_REDUNDANCY")
 	endif()
 endif()
+if(ENABLE_AVDECC_FEATURE_JSON)
+	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DENABLE_AVDECC_FEATURE_JSON")
+endif()
 
 # Other options
 if(ENABLE_AVDECC_CUSTOM_ANY)
@@ -97,6 +100,11 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 		target_link_libraries(la_avdecc_controller_cxx PRIVATE fmt-header-only)
 	endif()
 
+	# Setup json
+	if(ENABLE_AVDECC_FEATURE_JSON)
+		target_link_libraries(la_avdecc_controller_cxx PRIVATE nlohmann_json)
+	endif()
+
 	# Set installation rule
 	if(INSTALL_AVDECC_LIB_SHARED_CXX)
 		# Sign binary (this is done during installation phase)
@@ -122,6 +130,11 @@ if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 
 	# Setup common options
 	setup_library_options(la_avdecc_controller_static "la_avdecc_controller")
+
+	# Setup json
+	if(ENABLE_AVDECC_FEATURE_JSON)
+		target_link_libraries(la_avdecc_controller_static PRIVATE nlohmann_json)
+	endif()
 
 	# Link with avdecc using static library
 	target_link_libraries(la_avdecc_controller_static PUBLIC la_avdecc_static)

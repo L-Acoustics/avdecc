@@ -83,6 +83,10 @@ std::vector<CompileOptionInfo> LA_AVDECC_CONTROLLER_CALL_CONVENTION getCompileOp
 #	endif // ENABLE_AVDECC_STRICT_2018_REDUNDANCY
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+	options.emplace_back(CompileOptionInfo{ CompileOption::EnableJsonSupport, "JSN", "JSON" });
+#endif // ENABLE_AVDECC_FEATURE_JSON
+
 	return options;
 }
 

@@ -82,6 +82,7 @@ enum class CompileOption : std::uint32_t
 	IgnoreNeitherStaticNorDynamicMappings = 1u << 0,
 	EnableRedundancy = 1u << 15,
 	Strict2018Redundancy = 1u << 16,
+	EnableJsonSupport = 1u << 17,
 };
 using CompileOptions = utils::EnumBitfield<CompileOption>;
 

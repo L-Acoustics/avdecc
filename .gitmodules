@@ -4,3 +4,6 @@
 [submodule "externals/3rdparty/fmtlib"]
 	path = externals/3rdparty/fmtlib
 	url = https://github.com/fmtlib/fmt
+[submodule "externals/3rdparty/json"]
+	path = externals/3rdparty/json
+	url = https://github.com/nlohmann/json
