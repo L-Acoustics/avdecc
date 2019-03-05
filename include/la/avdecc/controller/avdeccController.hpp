@@ -199,6 +199,15 @@ public:
 		ClockDomainSourceIndex,
 	};
 
+	enum class SerializationError
+	{
+		NoError = 0,
+		AccessDenied = 1, /**< File access denied. */
+		UnknownEntity = 2, /**< Specified entityID unknown. */
+		SerializationError = 3, /**< Error during json serialization. */
+		InternalError = 99, /**< Internal error, please report the issue. */
+	};
+
 	/**
 	* @brief Observer for entity state and query results. All handlers are guaranteed to be mutually exclusively called.
 	* @warning For all handlers, the la::avdecc::controller::ControlledEntity parameter should not be copied, since there
@@ -407,6 +416,10 @@ public:
 	/** BasicLockable concept 'unlock' method for the whole Controller */
 	virtual void unlock() noexcept = 0;
 
+	/* Model serialization methods */
+	virtual std::tuple<SerializationError, std::string> serializeAllControlledEntitiesAsReadableJson(std::string const& filePath) const noexcept = 0;
+	virtual std::tuple<SerializationError, std::string> serializeControlledEntityAsReadableJson(UniqueIdentifier const entityID, std::string const& filePath) const noexcept = 0;
+
 	// Deleted compiler auto-generated methods
 	Controller(Controller const&) = delete;
 	Controller(Controller&&) = delete;
@@ -432,6 +445,11 @@ private:
 constexpr bool operator!(Controller::Error const error)
 {
 	return error == Controller::Error::NoError;
+}
+
+constexpr bool operator!(Controller::SerializationError const error)
+{
+	return error == Controller::SerializationError::NoError;
 }
 
 } // namespace controller

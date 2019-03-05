@@ -29,7 +29,6 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/exports.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/logItems.hpp
 )
-source_group("Header Files\\Public\\Controller" FILES ${PUBLIC_HEADER_FILES})
 
 set (HEADER_FILES_COMMON
 	${CMAKE_CURRENT_BINARY_DIR}/config.h
@@ -57,6 +56,11 @@ if(ENABLE_AVDECC_FEATURE_REDUNDANCY)
 	endif()
 endif()
 if(ENABLE_AVDECC_FEATURE_JSON)
+	list(APPEND PUBLIC_HEADER_FILES
+		${LA_ROOT_DIR}/include/la/avdecc/controller/internals/jsonTypes.hpp
+	)
+	list(APPEND SOURCE_FILES_COMMON avdeccControlledEntityJsonSerializer.cpp)
+	list(APPEND HEADER_FILES_COMMON avdeccControlledEntityJsonSerializer.hpp)
 	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DENABLE_AVDECC_FEATURE_JSON")
 endif()
 
@@ -73,6 +77,8 @@ endif()
 
 set (LIB_HEADER_FILES ${HEADER_FILES_COMMON} ${PUBLIC_HEADER_FILES})
 set (LIB_SOURCE_FILES ${SOURCE_FILES_COMMON})
+
+source_group("Header Files\\Public\\Controller" FILES ${PUBLIC_HEADER_FILES})
 
 # C++ dynamic library
 if(BUILD_AVDECC_LIB_SHARED_CXX)

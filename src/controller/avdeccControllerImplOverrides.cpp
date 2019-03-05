@@ -25,9 +25,14 @@
 #include "avdeccControllerImpl.hpp"
 #include "avdeccControllerLogHelper.hpp"
 #include "avdeccEntityModelCache.hpp"
+#include "avdeccControlledEntityJsonSerializer.hpp"
 #include "la/avdecc/internals/serialization.hpp"
+#include "la/avdecc/controller/internals/jsonTypes.hpp"
 #include <cstdlib> // free / malloc
+#include <cstring> // strerror
+#include <cerrno> // errno
 #include <unordered_set>
+#include <fstream>
 
 namespace la
 {
@@ -2122,6 +2127,79 @@ void ControllerImpl::lock() noexcept
 void ControllerImpl::unlock() noexcept
 {
 	_controller->unlock();
+}
+
+/* Model serialization methods */
+std::tuple<Controller::SerializationError, std::string> ControllerImpl::serializeAllControlledEntitiesAsReadableJson(std::string const& filePath) const noexcept
+{
+	// Try to open the output file
+	std::ofstream of{ filePath };
+
+	// Failed to open file to writting
+	if (!of.is_open())
+	{
+		return { SerializationError::AccessDenied, std::strerror(errno) };
+	}
+
+	// Create the object
+	auto object = json{};
+
+	// Dump information of the dump itself
+	object[entitySerializer::keyName::Controller_DumpVersion] = 1;
+
+	// Lock to protect _controlledEntities
+	std::lock_guard<decltype(_lock)> const lg(_lock);
+
+	for (auto const& [entityID, entity] : _controlledEntities)
+	{
+		// Try to serialize
+		auto const entityObject = entitySerializer::createJsonObject(*entity);
+
+		// Check if there was an error, in which case the JSON object would be an array (of strings) type, containing the error message
+		if (entityObject.is_array())
+		{
+			return { SerializationError::SerializationError, static_cast<std::string>(entityObject[0]) };
+		}
+		object[entitySerializer::keyName::Controller_Entities].push_back(entityObject);
+	}
+
+	// Everything is fine, write the JSON object to disk
+	of << std::setw(4) << object << std::endl;
+
+	return { SerializationError::NoError, "" };
+}
+
+std::tuple<Controller::SerializationError, std::string> ControllerImpl::serializeControlledEntityAsReadableJson(UniqueIdentifier const entityID, std::string const& filePath) const noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto const entity = getControlledEntityImplGuard(entityID);
+	if (!entity || !entity->wasAdvertised())
+	{
+		return { SerializationError::UnknownEntity, "Entity offline" };
+	}
+
+	// Try to open the output file
+	std::ofstream of{ filePath };
+
+	// Failed to open file to writting
+	if (!of.is_open())
+	{
+		return { SerializationError::AccessDenied, std::strerror(errno) };
+	}
+
+	// Try to serialize
+	auto const object = entitySerializer::createJsonObject(*entity);
+
+	// Check if there was an error, in which case the JSON object would be an array (of strings) type, containing the error message
+	if (object.is_array())
+	{
+		return { SerializationError::SerializationError, static_cast<std::string>(object[0]) };
+	}
+
+	// Everything is fine, write the JSON object to disk
+	of << std::setw(4) << object << std::endl;
+
+	return { SerializationError::NoError, "" };
 }
 
 } // namespace controller

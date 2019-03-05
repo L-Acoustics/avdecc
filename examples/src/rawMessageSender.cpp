@@ -291,7 +291,7 @@ int doJob()
 	//	DECLARE_AVDECC_OBSERVER_GUARD(Observer);
 	//};
 
-	auto const protocolInterfaceType = chooseProtocolInterfaceType();
+	auto const protocolInterfaceType = chooseProtocolInterfaceType(la::avdecc::protocol::ProtocolInterface::SupportedProtocolInterfaceTypes{ la::avdecc::protocol::ProtocolInterface::Type::PCap, la::avdecc::protocol::ProtocolInterface::Type::MacOSNative });
 	auto intfc = chooseNetworkInterface();
 
 	if (intfc.type == la::avdecc::networkInterface::Interface::Type::None || protocolInterfaceType == la::avdecc::protocol::ProtocolInterface::Type::None)
