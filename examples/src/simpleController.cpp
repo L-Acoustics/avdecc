@@ -63,7 +63,7 @@ int doJob()
 			{
 				std::stringstream ss;
 				ss << std::hex << "### Unit online (" << la::avdecc::utils::toHexString(entityID, true) << ")";
-				if (la::avdecc::utils::hasFlag(entity.getEntityCapabilities(), la::avdecc::entity::EntityCapabilities::AemSupported))
+				if (entity.getEntityCapabilities().test(la::avdecc::entity::EntityCapability::AemSupported))
 				{
 					//controller->getMilanInfo(entityID, 0, nullptr);
 					ss << std::hex << ", querying EntityModel" << std::endl;

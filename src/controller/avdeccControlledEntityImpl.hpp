@@ -58,15 +58,15 @@ public:
 		std::thread::id lockingThreadID{};
 	};
 
-	enum class EnumerationSteps : std::uint16_t
+	enum class EnumerationStep : std::uint16_t
 	{
-		None = 0,
 		GetMilanInfo = 1u << 0,
 		RegisterUnsol = 1u << 1,
 		GetStaticModel = 1u << 2,
 		GetDescriptorDynamicInfo = 1u << 3, /** DescriptorDynamicInfoType */
 		GetDynamicInfo = 1u << 4, /** DynamicInfoType */
 	};
+	using EnumerationSteps = utils::EnumBitfield<EnumerationStep>;
 
 	/** Milan Vendor Unique Information */
 	enum class MilanInfoType : std::uint16_t
@@ -342,8 +342,9 @@ public:
 	bool shouldIgnoreCachedEntityModel() const noexcept;
 	void setIgnoreCachedEntityModel() noexcept;
 	EnumerationSteps getEnumerationSteps() const noexcept;
-	void addEnumerationSteps(EnumerationSteps const steps) noexcept;
-	void clearEnumerationSteps(EnumerationSteps const steps) noexcept;
+	void setEnumerationSteps(EnumerationSteps const steps) noexcept;
+	void addEnumerationStep(EnumerationStep const step) noexcept;
+	void clearEnumerationStep(EnumerationStep const step) noexcept;
 	void setCompatibilityFlags(CompatibilityFlags const compatibilityFlags) noexcept;
 	void setGetFatalEnumerationError() noexcept;
 	void setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept;
@@ -357,17 +358,17 @@ public:
 	// Other usefull manipulation methods
 	constexpr static bool isStreamRunningFlag(entity::StreamInfoFlags const flags) noexcept
 	{
-		return !utils::hasFlag(flags, entity::StreamInfoFlags::StreamingWait);
+		return !flags.test(entity::StreamInfoFlag::StreamingWait);
 	}
 	constexpr static void setStreamRunningFlag(entity::StreamInfoFlags& flags, bool const isRunning) noexcept
 	{
 		if (isRunning)
 		{
-			utils::clearFlag(flags, entity::StreamInfoFlags::StreamingWait);
+			flags.reset(entity::StreamInfoFlag::StreamingWait);
 		}
 		else
 		{
-			utils::addFlag(flags, entity::StreamInfoFlags::StreamingWait);
+			flags.set(entity::StreamInfoFlag::StreamingWait);
 		}
 	}
 
@@ -423,7 +424,7 @@ private:
 	std::uint16_t _queryDescriptorRetryCount{ 0u };
 	std::uint16_t _queryDynamicInfoRetryCount{ 0u };
 	std::uint16_t _queryDescriptorDynamicInfoRetryCount{ 0u };
-	EnumerationSteps _enumerationSteps{ EnumerationSteps::None };
+	EnumerationSteps _enumerationSteps{};
 	CompatibilityFlags _compatibilityFlags{ CompatibilityFlag::IEEE17221 }; // Entity is IEEE1722.1 compatible by default
 	bool _gotFatalEnumerateError{ false }; // Have we got a fatal error during entity enumeration
 	bool _isSubscribedToUnsolicitedNotifications{ false }; // Are we subscribed to unsolicited notifications
@@ -449,13 +450,5 @@ private:
 };
 
 } // namespace controller
-
-// Define bitfield enum traits for controller::ControlledEntityImpl::EnumerationSteps
-template<>
-struct utils::enum_traits<controller::ControlledEntityImpl::EnumerationSteps>
-{
-	static constexpr bool is_bitfield = true;
-};
-
 } // namespace avdecc
 } // namespace la

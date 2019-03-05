@@ -87,32 +87,39 @@ class ProtocolInterfaceMacNativeImpl;
 }
 
 + (la::avdecc::entity::Entity)makeEntity:(AVB17221Entity*)entity {
-	auto const entityCaps = static_cast<la::avdecc::entity::EntityCapabilities>(entity.entityCapabilities);
+	auto entityCaps = la::avdecc::entity::EntityCapabilities{};
+	entityCaps.assign(static_cast<la::avdecc::entity::EntityCapabilities::underlying_value_type>(entity.entityCapabilities));
+	auto talkerCaps = la::avdecc::entity::TalkerCapabilities{};
+	talkerCaps.assign(static_cast<la::avdecc::entity::TalkerCapabilities::underlying_value_type>(entity.talkerCapabilities));
+	auto listenerCaps = la::avdecc::entity::ListenerCapabilities{};
+	listenerCaps.assign(static_cast<la::avdecc::entity::ListenerCapabilities::underlying_value_type>(entity.listenerCapabilities));
+	auto controllerCaps = la::avdecc::entity::ControllerCapabilities{};
+	controllerCaps.assign(static_cast<la::avdecc::entity::ControllerCapabilities::underlying_value_type>(entity.controllerCapabilities));
 	auto controlIndex{ std::optional<la::avdecc::entity::model::ControlIndex>{} };
 	auto associationID{ std::optional<la::avdecc::UniqueIdentifier>{} };
 	auto avbInterfaceIndex{ la::avdecc::entity::Entity::GlobalAvbInterfaceIndex };
 	auto gptpGrandmasterID{ std::optional<la::avdecc::UniqueIdentifier>{} };
 	auto gptpDomainNumber{ std::optional<std::uint8_t>{} };
 
-	if (la::avdecc::utils::hasFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemIdentifyControlIndexValid))
+	if (entityCaps.test(la::avdecc::entity::EntityCapability::AemIdentifyControlIndexValid))
 	{
 		controlIndex = entity.identifyControlIndex;
 	}
-	if (la::avdecc::utils::hasFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AssociationIDValid))
+	if (entityCaps.test(la::avdecc::entity::EntityCapability::AssociationIDValid))
 	{
 		associationID = entity.associationID;
 	}
-	if (la::avdecc::utils::hasFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemInterfaceIndexValid))
+	if (entityCaps.test(la::avdecc::entity::EntityCapability::AemInterfaceIndexValid))
 	{
 		avbInterfaceIndex = entity.interfaceIndex;
 	}
-	if (la::avdecc::utils::hasFlag(entityCaps, la::avdecc::entity::EntityCapabilities::GptpSupported))
+	if (entityCaps.test(la::avdecc::entity::EntityCapability::GptpSupported))
 	{
 		gptpGrandmasterID = entity.gPTPGrandmasterID;
 		gptpDomainNumber = entity.gPTPDomainNumber;
 	}
 
-	auto const commonInfo{ la::avdecc::entity::Entity::CommonInformation{ entity.entityID, entity.entityModelID, entityCaps, entity.talkerStreamSources, static_cast<la::avdecc::entity::TalkerCapabilities>(entity.talkerCapabilities), entity.listenerStreamSinks, static_cast<la::avdecc::entity::ListenerCapabilities>(entity.listenerCapabilities), static_cast<la::avdecc::entity::ControllerCapabilities>(entity.controllerCapabilities), controlIndex, associationID } };
+	auto const commonInfo{ la::avdecc::entity::Entity::CommonInformation{ entity.entityID, entity.entityModelID, entityCaps, entity.talkerStreamSources, talkerCaps, entity.listenerStreamSinks, listenerCaps, controllerCaps, controlIndex, associationID } };
 	auto const interfaceInfo{ la::avdecc::entity::Entity::InterfaceInformation{ [FromNative getFirstMacAddress:entity.macAddresses], static_cast<std::uint8_t>(entity.timeToLive / 2u), entity.availableIndex, gptpGrandmasterID, gptpDomainNumber } };
 
 	return la::avdecc::entity::Entity{ commonInfo, { { avbInterfaceIndex, interfaceInfo } } };
@@ -201,6 +208,8 @@ class ProtocolInterfaceMacNativeImpl;
 	//aem.setDestAddress();
 
 	// Set ACMP fields
+	auto flags = la::avdecc::entity::ConnectionFlags{};
+	flags.assign(static_cast<la::avdecc::entity::ConnectionFlags::underlying_value_type>(message.flags));
 	acmp.setMessageType(la::avdecc::protocol::AcmpMessageType(message.messageType));
 	acmp.setStatus(la::avdecc::protocol::AcmpStatus(message.status));
 	acmp.setStreamID(message.streamID);
@@ -212,7 +221,7 @@ class ProtocolInterfaceMacNativeImpl;
 	acmp.setStreamDestAddress([FromNative makeMacAddress:message.destinationMAC]);
 	acmp.setConnectionCount(message.connectionCount);
 	acmp.setSequenceID(message.sequenceID);
-	acmp.setFlags(la::avdecc::entity::ConnectionFlags(message.flags));
+	acmp.setFlags(flags);
 	acmp.setStreamVlanID(message.vlanID);
 
 	return acmpdu;
@@ -279,40 +288,40 @@ class ProtocolInterfaceMacNativeImpl;
 
 	if (entity.getIdentifyControlIndex())
 	{
-		la::avdecc::utils::addFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemIdentifyControlIndexValid);
+		entityCaps.set(la::avdecc::entity::EntityCapability::AemIdentifyControlIndexValid);
 		identifyControlIndex = *entity.getIdentifyControlIndex();
 	}
 	else
 	{
 		// We don't have a valid IdentifyControlIndex, don't set the flag
-		la::avdecc::utils::clearFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemIdentifyControlIndexValid);
+		entityCaps.reset(la::avdecc::entity::EntityCapability::AemIdentifyControlIndexValid);
 	}
 
 	if (interfaceIndex != la::avdecc::entity::Entity::GlobalAvbInterfaceIndex)
 	{
-		la::avdecc::utils::addFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemInterfaceIndexValid);
+		entityCaps.set(la::avdecc::entity::EntityCapability::AemInterfaceIndexValid);
 		avbInterfaceIndex = interfaceIndex;
 	}
 	else
 	{
 		// We don't have a valid AvbInterfaceIndex, don't set the flag
-		la::avdecc::utils::clearFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AemInterfaceIndexValid);
+		entityCaps.reset(la::avdecc::entity::EntityCapability::AemInterfaceIndexValid);
 	}
 
 	if (entity.getAssociationID())
 	{
-		la::avdecc::utils::addFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AssociationIDValid);
+		entityCaps.set(la::avdecc::entity::EntityCapability::AssociationIDValid);
 		associationID = *entity.getAssociationID();
 	}
 	else
 	{
 		// We don't have a valid AssociationID, don't set the flag
-		la::avdecc::utils::clearFlag(entityCaps, la::avdecc::entity::EntityCapabilities::AssociationIDValid);
+		entityCaps.reset(la::avdecc::entity::EntityCapability::AssociationIDValid);
 	}
 
 	if (interfaceInfo.gptpGrandmasterID)
 	{
-		la::avdecc::utils::addFlag(entityCaps, la::avdecc::entity::EntityCapabilities::GptpSupported);
+		entityCaps.set(la::avdecc::entity::EntityCapability::GptpSupported);
 		gptpGrandmasterID = *interfaceInfo.gptpGrandmasterID;
 		if (AVDECC_ASSERT_WITH_RET(interfaceInfo.gptpDomainNumber, "gptpDomainNumber should be set when gptpGrandmasterID is set"))
 		{
@@ -322,19 +331,19 @@ class ProtocolInterfaceMacNativeImpl;
 	else
 	{
 		// We don't have a valid gptpGrandmasterID value, don't set the flag
-		la::avdecc::utils::clearFlag(entityCaps, la::avdecc::entity::EntityCapabilities::GptpSupported);
+		entityCaps.reset(la::avdecc::entity::EntityCapability::GptpSupported);
 	}
 
 	auto e = [[AVB17221Entity alloc] init];
 
 	e.entityID = entity.getEntityID();
 	e.entityModelID = entity.getEntityModelID();
-	e.entityCapabilities = static_cast<AVB17221ADPEntityCapabilities>(entityCaps);
+	e.entityCapabilities = static_cast<AVB17221ADPEntityCapabilities>(entityCaps.value());
 	e.talkerStreamSources = entity.getTalkerStreamSources();
-	e.talkerCapabilities = static_cast<AVB17221ADPTalkerCapabilities>(entity.getTalkerCapabilities());
+	e.talkerCapabilities = static_cast<AVB17221ADPTalkerCapabilities>(entity.getTalkerCapabilities().value());
 	e.listenerStreamSinks = entity.getListenerStreamSinks();
-	e.listenerCapabilities = static_cast<AVB17221ADPListenerCapabilities>(entity.getListenerCapabilities());
-	e.controllerCapabilities = static_cast<AVB17221ADPControllerCapabilities>(entity.getControllerCapabilities());
+	e.listenerCapabilities = static_cast<AVB17221ADPListenerCapabilities>(entity.getListenerCapabilities().value());
+	e.controllerCapabilities = static_cast<AVB17221ADPControllerCapabilities>(entity.getControllerCapabilities().value());
 	e.identifyControlIndex = identifyControlIndex;
 	e.interfaceIndex = avbInterfaceIndex;
 	e.associationID = associationID;
@@ -964,7 +973,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	auto const entityID = entity.getEntityID();
 
 	// Entity is controller capable
-	if (la::avdecc::utils::hasFlag(entity.getControllerCapabilities(), la::avdecc::entity::ControllerCapabilities::Implemented))
+	if (entity.getControllerCapabilities().test(la::avdecc::entity::ControllerCapability::Implemented))
 	{
 		// Set a handler to monitor AECP Command messages
 		if ([self.interface.aecp setCommandHandler:self forEntityID:entityID] == NO)
@@ -997,7 +1006,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	auto const entityID = entity.getEntityID();
 
 	// Entity is controller capable
-	if (la::avdecc::utils::hasFlag(entity.getControllerCapabilities(), la::avdecc::entity::ControllerCapabilities::Implemented))
+	if (entity.getControllerCapabilities().test(la::avdecc::entity::ControllerCapability::Implemented))
 	{
 		// Remove handlers
 		[self.interface.aecp removeCommandHandlerForEntityID:entityID];
@@ -1257,7 +1266,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	message.destinationMAC = [ToNative makeAVBMacAddress:acmp.getStreamDestAddress()];
 	message.connectionCount = acmp.getConnectionCount();
 	message.sequenceID = acmp.getSequenceID();
-	message.flags = static_cast<AVB17221ACMPFlags>(acmp.getFlags());
+	message.flags = static_cast<AVB17221ACMPFlags>(acmp.getFlags().value());
 	message.vlanID = acmp.getStreamVlanID();
 
 	[self startAsyncOperation];

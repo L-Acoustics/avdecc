@@ -80,7 +80,7 @@ struct AvbInterfaceNodeDynamicModel
 struct ClockSourceNodeDynamicModel
 {
 	entity::model::AvdeccFixedString objectName{};
-	entity::ClockSourceFlags clockSourceFlags{ entity::ClockSourceFlags::None };
+	entity::ClockSourceFlags clockSourceFlags{};
 	UniqueIdentifier clockSourceIdentifier{};
 };
 

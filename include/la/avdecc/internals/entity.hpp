@@ -48,12 +48,12 @@ public:
 	{
 		UniqueIdentifier entityID{ la::avdecc::UniqueIdentifier::getNullUniqueIdentifier() }; /** The entity's unique identifier. */
 		UniqueIdentifier entityModelID{ la::avdecc::UniqueIdentifier::getNullUniqueIdentifier() }; /** The EntityModel unique identifier. */
-		EntityCapabilities entityCapabilities{ EntityCapabilities::None }; /** The entity's current capabilities (can change over time). */
+		EntityCapabilities entityCapabilities{}; /** The entity's current capabilities (can change over time). */
 		std::uint16_t talkerStreamSources{ 0u }; /** The maximum number of streams the entity is capable of sourcing simultaneously. */
-		TalkerCapabilities talkerCapabilities{ TalkerCapabilities::None }; /** The entity's capabilities as a talker. */
+		TalkerCapabilities talkerCapabilities{}; /** The entity's capabilities as a talker. */
 		std::uint16_t listenerStreamSinks{ 0u }; /** The maximum number of streams the entity is capable of sinking simultaneously. */
-		ListenerCapabilities listenerCapabilities{ ListenerCapabilities::None }; /** The entity's capabilities as a listener. */
-		ControllerCapabilities controllerCapabilities{ ControllerCapabilities::None }; /** The entity's capabilities as a controller. */
+		ListenerCapabilities listenerCapabilities{}; /** The entity's capabilities as a listener. */
+		ControllerCapabilities controllerCapabilities{}; /** The entity's capabilities as a controller. */
 		std::optional<model::ControlIndex> identifyControlIndex{ std::nullopt }; /** The ControlIndex for the primary IDENTIFY control, if set. Only valid if EntityCapabilities::AemIdentifyControlIndexValid is defined. */
 		std::optional<UniqueIdentifier> associationID{ std::nullopt }; /** The unique identifier of the associated entity, if set. Only valid if EntityCapabilities::AssociationIDValid is defined. */
 	};

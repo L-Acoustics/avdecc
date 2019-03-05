@@ -135,7 +135,7 @@ void DiscoveryStateMachine::handleAdpEntityAvailable(Adpdu const& adpdu) noexcep
 	}
 
 	// If entity is not ready
-	if (utils::hasFlag(adpdu.getEntityCapabilities(), entity::EntityCapabilities::EntityNotReady))
+	if (adpdu.getEntityCapabilities().test(entity::EntityCapability::EntityNotReady))
 	{
 		return;
 	}
@@ -236,19 +236,19 @@ entity::Entity DiscoveryStateMachine::makeEntity(Adpdu const& adpdu) const noexc
 	auto gptpGrandmasterID{ std::optional<UniqueIdentifier>{} };
 	auto gptpDomainNumber{ std::optional<std::uint8_t>{} };
 
-	if (utils::hasFlag(entityCaps, entity::EntityCapabilities::AemIdentifyControlIndexValid))
+	if (entityCaps.test(entity::EntityCapability::AemIdentifyControlIndexValid))
 	{
 		controlIndex = adpdu.getIdentifyControlIndex();
 	}
-	if (utils::hasFlag(entityCaps, entity::EntityCapabilities::AssociationIDValid))
+	if (entityCaps.test(entity::EntityCapability::AssociationIDValid))
 	{
 		associationID = adpdu.getAssociationID();
 	}
-	if (utils::hasFlag(entityCaps, entity::EntityCapabilities::AemInterfaceIndexValid))
+	if (entityCaps.test(entity::EntityCapability::AemInterfaceIndexValid))
 	{
 		avbInterfaceIndex = adpdu.getInterfaceIndex();
 	}
-	if (utils::hasFlag(entityCaps, entity::EntityCapabilities::GptpSupported))
+	if (entityCaps.test(entity::EntityCapability::GptpSupported))
 	{
 		gptpGrandmasterID = adpdu.getGptpGrandmasterID();
 		gptpDomainNumber = adpdu.getGptpDomainNumber();

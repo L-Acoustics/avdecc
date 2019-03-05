@@ -378,7 +378,7 @@ public:
 			acmp->setStreamDestAddress({});
 			acmp->setConnectionCount(connectionIndex);
 			// No need to set the SequenceID, it's set by the ProtocolInterface layer
-			acmp->setFlags(ConnectionFlags::None);
+			acmp->setFlags({});
 			acmp->setStreamVlanID(0);
 
 			auto const error = pi->sendAcmpCommand(std::move(frame),

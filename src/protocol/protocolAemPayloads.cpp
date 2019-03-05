@@ -1236,7 +1236,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 
 	if (commandPayloadLength >= AecpAemMilanGetStreamInfoResponsePayloadSize)
 	{
-		auto streamInfoFlagsEx = entity::StreamInfoFlagsEx::None;
+		auto streamInfoFlagsEx = entity::StreamInfoFlagsEx{};
 		auto probing_acmp_status = std::uint8_t{ 0u };
 		auto reserved3 = std::uint8_t{ 0u };
 		auto reserved4 = std::uint16_t{ 0u };
