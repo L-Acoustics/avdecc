@@ -75,12 +75,12 @@ Adpdu Manager::makeDiscoveryMessage(la::avdecc::networkInterface::MacAddress con
 	frame.setValidTime(0);
 	frame.setEntityID(targetEntityID);
 	frame.setEntityModelID(UniqueIdentifier::getNullUniqueIdentifier());
-	frame.setEntityCapabilities(entity::EntityCapabilities::None);
+	frame.setEntityCapabilities({});
 	frame.setTalkerStreamSources(0);
-	frame.setTalkerCapabilities(entity::TalkerCapabilities::None);
+	frame.setTalkerCapabilities({});
 	frame.setListenerStreamSinks(0);
-	frame.setListenerCapabilities(entity::ListenerCapabilities::None);
-	frame.setControllerCapabilities(entity::ControllerCapabilities::None);
+	frame.setListenerCapabilities({});
+	frame.setControllerCapabilities({});
 	frame.setAvailableIndex(0);
 	frame.setGptpGrandmasterID(UniqueIdentifier::getNullUniqueIdentifier());
 	frame.setGptpDomainNumber(0);
@@ -103,40 +103,40 @@ Adpdu Manager::makeEntityAvailableMessage(entity::LocalEntity& entity, entity::m
 
 	if (entity.getIdentifyControlIndex())
 	{
-		utils::addFlag(entityCaps, entity::EntityCapabilities::AemIdentifyControlIndexValid);
+		entityCaps.set(entity::EntityCapability::AemIdentifyControlIndexValid);
 		identifyControlIndex = *entity.getIdentifyControlIndex();
 	}
 	else
 	{
 		// We don't have a valid IdentifyControlIndex, don't set the flag
-		utils::clearFlag(entityCaps, entity::EntityCapabilities::AemIdentifyControlIndexValid);
+		entityCaps.reset(entity::EntityCapability::AemIdentifyControlIndexValid);
 	}
 
 	if (interfaceIndex != entity::Entity::GlobalAvbInterfaceIndex)
 	{
-		utils::addFlag(entityCaps, entity::EntityCapabilities::AemInterfaceIndexValid);
+		entityCaps.set(entity::EntityCapability::AemInterfaceIndexValid);
 		avbInterfaceIndex = interfaceIndex;
 	}
 	else
 	{
 		// We don't have a valid AvbInterfaceIndex, don't set the flag
-		utils::clearFlag(entityCaps, entity::EntityCapabilities::AemInterfaceIndexValid);
+		entityCaps.reset(entity::EntityCapability::AemInterfaceIndexValid);
 	}
 
 	if (entity.getAssociationID())
 	{
-		utils::addFlag(entityCaps, entity::EntityCapabilities::AssociationIDValid);
+		entityCaps.set(entity::EntityCapability::AssociationIDValid);
 		associationID = *entity.getAssociationID();
 	}
 	else
 	{
 		// We don't have a valid AssociationID, don't set the flag
-		utils::clearFlag(entityCaps, entity::EntityCapabilities::AssociationIDValid);
+		entityCaps.reset(entity::EntityCapability::AssociationIDValid);
 	}
 
 	if (interfaceInfo.gptpGrandmasterID)
 	{
-		utils::addFlag(entityCaps, entity::EntityCapabilities::GptpSupported);
+		entityCaps.set(entity::EntityCapability::GptpSupported);
 		gptpGrandmasterID = *interfaceInfo.gptpGrandmasterID;
 		if (AVDECC_ASSERT_WITH_RET(interfaceInfo.gptpDomainNumber, "gptpDomainNumber should be set when gptpGrandmasterID is set"))
 		{
@@ -146,7 +146,7 @@ Adpdu Manager::makeEntityAvailableMessage(entity::LocalEntity& entity, entity::m
 	else
 	{
 		// We don't have a valid gptpGrandmasterID value, don't set the flag
-		utils::clearFlag(entityCaps, entity::EntityCapabilities::GptpSupported);
+		entityCaps.reset(entity::EntityCapability::GptpSupported);
 	}
 
 	Adpdu frame;
@@ -177,12 +177,12 @@ Adpdu Manager::makeEntityAvailableMessage(entity::LocalEntity& entity, entity::m
 Adpdu Manager::makeEntityDepartingMessage(entity::LocalEntity const& entity, entity::model::AvbInterfaceIndex const interfaceIndex)
 {
 	auto const& interfaceInfo = entity.getInterfaceInformation(interfaceIndex);
-	auto entityCaps{ entity::EntityCapabilities::None };
+	auto entityCaps = entity::EntityCapabilities{};
 	auto avbInterfaceIndex{ entity::model::AvbInterfaceIndex{ 0u } };
 
 	if (interfaceIndex != entity::Entity::GlobalAvbInterfaceIndex)
 	{
-		utils::addFlag(entityCaps, entity::EntityCapabilities::AemInterfaceIndexValid);
+		entityCaps.set(entity::EntityCapability::AemInterfaceIndexValid);
 		avbInterfaceIndex = interfaceIndex;
 	}
 
@@ -197,10 +197,10 @@ Adpdu Manager::makeEntityDepartingMessage(entity::LocalEntity const& entity, ent
 	frame.setEntityModelID(UniqueIdentifier::getNullUniqueIdentifier());
 	frame.setEntityCapabilities(entityCaps);
 	frame.setTalkerStreamSources(0);
-	frame.setTalkerCapabilities(entity::TalkerCapabilities::None);
+	frame.setTalkerCapabilities({});
 	frame.setListenerStreamSinks(0);
-	frame.setListenerCapabilities(entity::ListenerCapabilities::None);
-	frame.setControllerCapabilities(entity::ControllerCapabilities::None);
+	frame.setListenerCapabilities({});
+	frame.setControllerCapabilities({});
 	frame.setAvailableIndex(0);
 	frame.setGptpGrandmasterID(UniqueIdentifier::getNullUniqueIdentifier());
 	frame.setGptpDomainNumber(0);

@@ -61,12 +61,12 @@ void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 		adpdu.setValidTime(10);
 		adpdu.setEntityID(0x0102030405060708);
 		adpdu.setEntityModelID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
-		adpdu.setEntityCapabilities(la::avdecc::entity::EntityCapabilities::None);
+		adpdu.setEntityCapabilities({});
 		adpdu.setTalkerStreamSources(0u);
-		adpdu.setTalkerCapabilities(la::avdecc::entity::TalkerCapabilities::None);
+		adpdu.setTalkerCapabilities({});
 		adpdu.setListenerStreamSinks(0u);
-		adpdu.setListenerCapabilities(la::avdecc::entity::ListenerCapabilities::None);
-		adpdu.setControllerCapabilities(la::avdecc::entity::ControllerCapabilities::Implemented);
+		adpdu.setListenerCapabilities({});
+		adpdu.setControllerCapabilities(la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented });
 		adpdu.setAvailableIndex(0);
 		adpdu.setGptpGrandmasterID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
 		adpdu.setGptpDomainNumber(0u);
@@ -96,7 +96,7 @@ void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 		acmpdu.setStreamDestAddress(la::avdecc::networkInterface::MacAddress{});
 		acmpdu.setConnectionCount(0u);
 		acmpdu.setSequenceID(0u);
-		acmpdu.setFlags(la::avdecc::entity::ConnectionFlags::StreamingWait);
+		acmpdu.setFlags(la::avdecc::entity::ConnectionFlags{ la::avdecc::entity::ConnectionFlag::StreamingWait });
 		acmpdu.setStreamVlanID(0u);
 
 		// Send the message
@@ -132,7 +132,7 @@ void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 {
 	// In order to be allowed to send Commands, we have to declare ourself as a LocalEntity
-	auto const commonInformation{ la::avdecc::entity::Entity::CommonInformation{ la::avdecc::entity::Entity::generateEID(pi.getMacAddress(), 0x0005), la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), la::avdecc::entity::EntityCapabilities::None, 0u, la::avdecc::entity::TalkerCapabilities::None, 0u, la::avdecc::entity::ListenerCapabilities::None, la::avdecc::entity::ControllerCapabilities::Implemented, std::nullopt, std::nullopt } };
+	auto const commonInformation{ la::avdecc::entity::Entity::CommonInformation{ la::avdecc::entity::Entity::generateEID(pi.getMacAddress(), 0x0005), la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), la::avdecc::entity::EntityCapabilities{}, 0u, la::avdecc::entity::TalkerCapabilities{}, 0u, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented }, std::nullopt, std::nullopt } };
 	auto const interfaceInfo{ la::avdecc::entity::Entity::InterfaceInformation{ pi.getMacAddress(), 31u, 0u, std::nullopt, std::nullopt } };
 	auto entity = la::avdecc::entity::ControllerEntity::create(&pi, commonInformation, la::avdecc::entity::Entity::InterfacesInformation{ { la::avdecc::entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } }, nullptr);
 
@@ -156,7 +156,7 @@ void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 		acmpdu->setStreamDestAddress(la::avdecc::networkInterface::MacAddress{});
 		acmpdu->setConnectionCount(0u);
 		acmpdu->setSequenceID(666); // Not necessary, it's set by the ProtocolInterface layer
-		acmpdu->setFlags(la::avdecc::entity::ConnectionFlags::None);
+		acmpdu->setFlags({});
 		acmpdu->setStreamVlanID(0u);
 
 		// Send the message

@@ -46,12 +46,12 @@ void ControllerImpl::onEntityOnline(entity::controller::Interface const* const c
 	LOG_CONTROLLER_TRACE(entityID, "onEntityOnline");
 
 	auto const caps = entity.getEntityCapabilities();
-	if (utils::hasFlag(caps, entity::EntityCapabilities::EntityNotReady))
+	if (caps.test(entity::EntityCapability::EntityNotReady))
 	{
 		LOG_CONTROLLER_TRACE(entityID, "Entity is declared as 'Not Ready', ignoring it right now");
 		return;
 	}
-	if (utils::hasFlag(caps, entity::EntityCapabilities::GeneralControllerIgnore))
+	if (caps.test(entity::EntityCapability::GeneralControllerIgnore))
 	{
 		LOG_CONTROLLER_TRACE(entityID, "Entity is declared as 'General Controller Ignore', ignoring it");
 		return;
@@ -79,23 +79,25 @@ void ControllerImpl::onEntityOnline(entity::controller::Interface const* const c
 	if (controlledEntity)
 	{
 		// New entity get everything we can from it
-		auto steps{ ControlledEntityImpl::EnumerationSteps::None };
+		auto steps = ControlledEntityImpl::EnumerationSteps{};
 
 		// The entity supports AEM, also get information related to AEM
-		if (utils::hasFlag(caps, entity::EntityCapabilities::AemSupported))
+		if (caps.test(entity::EntityCapability::AemSupported))
 		{
 			// Only get MilanInfo if the Entity supports VendorUnique
-			if (utils::hasFlag(caps, entity::EntityCapabilities::VendorUniqueSupported))
+			if (caps.test(entity::EntityCapability::VendorUniqueSupported))
 			{
-				steps |= ControlledEntityImpl::EnumerationSteps::GetMilanInfo;
+				steps.set(ControlledEntityImpl::EnumerationStep::GetMilanInfo);
 			}
-			steps |= ControlledEntityImpl::EnumerationSteps::RegisterUnsol | ControlledEntityImpl::EnumerationSteps::GetStaticModel | ControlledEntityImpl::EnumerationSteps::GetDynamicInfo;
+			steps.set(ControlledEntityImpl::EnumerationStep::RegisterUnsol);
+			steps.set(ControlledEntityImpl::EnumerationStep::GetStaticModel);
+			steps.set(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 		}
 
 		// Currently, we have nothing more to get if the entity does not support AEM
 
 		// Set Steps
-		controlledEntity->addEnumerationSteps(steps);
+		controlledEntity->setEnumerationSteps(steps);
 
 		// Check first enumeration step
 		checkEnumerationSteps(controlledEntity.get());

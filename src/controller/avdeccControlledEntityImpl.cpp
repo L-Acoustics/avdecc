@@ -114,7 +114,7 @@ bool ControlledEntityImpl::isStreamOutputRunning(entity::model::ConfigurationInd
 ControlledEntity::InterfaceLinkStatus ControlledEntityImpl::getAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex) const
 {
 	// AEM not supported, unknown status
-	if (!utils::hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+	if (!_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
 	{
 		return InterfaceLinkStatus::Unknown;
 	}
@@ -161,7 +161,7 @@ model::EntityNode const& ControlledEntityImpl::getEntityNode() const
 	if (gotFatalEnumerationError())
 		throw Exception(Exception::Type::EnumerationError, "Entity had an enumeration error");
 
-	if (!utils::hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+	if (!_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
 		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
 
 	checkAndBuildEntityModelGraph();
@@ -436,7 +436,7 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 	if (visitor == nullptr)
 		return;
 
-	if (!utils::hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+	if (!_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
 		return;
 
 	try
@@ -634,7 +634,7 @@ model::EntityStaticTree const& ControlledEntityImpl::getEntityStaticTree() const
 	if (gotFatalEnumerationError())
 		throw Exception(Exception::Type::EnumerationError, "Entity had a fatal enumeration error");
 
-	if (!utils::hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+	if (!_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
 		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
 
 	return _entityStaticTree;
@@ -645,7 +645,7 @@ model::EntityDynamicTree const& ControlledEntityImpl::getEntityDynamicTree() con
 	if (gotFatalEnumerationError())
 		throw Exception(Exception::Type::EnumerationError, "Entity had a fatal enumeration error");
 
-	if (!utils::hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+	if (!_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
 		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
 
 	return _entityDynamicTree;
@@ -805,7 +805,7 @@ std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> Controlle
 	if (dynamicModel.streamInfo.streamFormat == entity::model::getNullStreamFormat())
 	{
 		dynamicModel.streamInfo.streamFormat = previousInfo.streamFormat;
-		utils::addFlag(dynamicModel.streamInfo.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid); // Force the flag as well
+		dynamicModel.streamInfo.streamInfoFlags.set(entity::StreamInfoFlag::StreamFormatValid); // Force the flag as well
 	}
 
 	return { previousInfo, dynamicModel.streamInfo };
@@ -844,7 +844,7 @@ std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> Controlle
 	if (dynamicModel.streamInfo.streamFormat == entity::model::getNullStreamFormat())
 	{
 		dynamicModel.streamInfo.streamFormat = previousInfo.streamFormat;
-		utils::addFlag(dynamicModel.streamInfo.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid); // Force the flag as well
+		dynamicModel.streamInfo.streamInfoFlags.set(entity::StreamInfoFlag::StreamFormatValid); // Force the flag as well
 	}
 
 	return { previousInfo, dynamicModel.streamInfo };
@@ -1282,7 +1282,7 @@ void ControlledEntityImpl::setStreamInputDescriptor(entity::model::StreamDescrip
 		// Changeable fields through commands
 		m.objectName = descriptor.objectName;
 		m.streamInfo.streamFormat = descriptor.currentFormat; // Copy the streamFormat, but we should get the complete StreamInfo soon
-		utils::addFlag(m.streamInfo.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid);
+		m.streamInfo.streamInfoFlags.set(entity::StreamInfoFlag::StreamFormatValid);
 	}
 }
 
@@ -1318,7 +1318,7 @@ void ControlledEntityImpl::setStreamOutputDescriptor(entity::model::StreamDescri
 		// Changeable fields through commands
 		m.objectName = descriptor.objectName;
 		m.streamInfo.streamFormat = descriptor.currentFormat; // Copy the streamFormat, but we should get the complete StreamInfo soon
-		utils::addFlag(m.streamInfo.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid);
+		m.streamInfo.streamInfoFlags.set(entity::StreamInfoFlag::StreamFormatValid);
 	}
 }
 
@@ -1809,14 +1809,20 @@ ControlledEntityImpl::EnumerationSteps ControlledEntityImpl::getEnumerationSteps
 	return _enumerationSteps;
 }
 
-void ControlledEntityImpl::addEnumerationSteps(EnumerationSteps const steps) noexcept
+void ControlledEntityImpl::setEnumerationSteps(EnumerationSteps const steps) noexcept
 {
-	utils::addFlag(_enumerationSteps, steps);
+	AVDECC_ASSERT(_enumerationSteps.empty(), "EnumerationSteps were not empty");
+	_enumerationSteps = steps;
 }
 
-void ControlledEntityImpl::clearEnumerationSteps(EnumerationSteps const steps) noexcept
+void ControlledEntityImpl::addEnumerationStep(EnumerationStep const step) noexcept
 {
-	utils::clearFlag(_enumerationSteps, steps);
+	_enumerationSteps.set(step);
+}
+
+void ControlledEntityImpl::clearEnumerationStep(EnumerationStep const step) noexcept
+{
+	_enumerationSteps.reset(step);
 }
 
 void ControlledEntityImpl::setCompatibilityFlags(CompatibilityFlags const compatibilityFlags) noexcept

@@ -81,7 +81,7 @@ struct StreamNodeStaticModel
 {
 	entity::model::LocalizedStringReference localizedDescription{};
 	entity::model::ClockDomainIndex clockDomainIndex{ entity::model::ClockDomainIndex(0u) };
-	entity::StreamFlags streamFlags{ entity::StreamFlags::None };
+	entity::StreamFlags streamFlags{};
 	UniqueIdentifier backupTalkerEntityID_0{};
 	std::uint16_t backupTalkerUniqueID_0{ 0u };
 	UniqueIdentifier backupTalkerEntityID_1{};
@@ -102,7 +102,7 @@ struct AvbInterfaceNodeStaticModel
 {
 	entity::model::LocalizedStringReference localizedDescription{};
 	networkInterface::MacAddress macAddress{};
-	entity::AvbInterfaceFlags interfaceFlags{ entity::AvbInterfaceFlags::None };
+	entity::AvbInterfaceFlags interfaceFlags{};
 	UniqueIdentifier clockIdentity{};
 	std::uint8_t priority1{ 0xff };
 	std::uint8_t clockClass{ 0xff };
@@ -149,7 +149,7 @@ struct StringsNodeStaticModel
 struct StreamPortNodeStaticModel
 {
 	entity::model::ClockDomainIndex clockDomainIndex{ entity::model::ClockDomainIndex(0u) };
-	entity::PortFlags portFlags{ entity::PortFlags::None };
+	entity::PortFlags portFlags{};
 	std::uint16_t numberOfControls{ 0u };
 	entity::model::ControlIndex baseControl{ entity::model::ControlIndex(0u) };
 	std::uint16_t numberOfClusters{ 0u };

@@ -102,6 +102,26 @@ public:
 		return *this;
 	}
 
+	/** Serializes any EnumBitfield type */
+	template<class Bitfield, typename T = typename std::underlying_type_t<Bitfield>>
+	Serializer& operator<<(utils::EnumBitfield<Bitfield> const& v)
+	{
+		// Check enough room in buffer
+		if (remaining() < sizeof(T))
+		{
+			throw std::invalid_argument("Not enough room to serialize");
+		}
+
+		// Copy value to buffer
+		T* const ptr = reinterpret_cast<T*>(_buffer.data() + _pos);
+		*ptr = AVDECC_PACK_TYPE(v.value(), T);
+
+		// Advance data pointer
+		_pos += sizeof(v);
+
+		return *this;
+	}
+
 	/** Serializes a UniqueIdentifier */
 	Serializer& operator<<(UniqueIdentifier const& v)
 	{
@@ -219,6 +239,27 @@ public:
 		auto const* const ptr = static_cast<std::uint8_t const*>(_ptr) + _pos;
 		auto const val = *reinterpret_cast<T const*>(ptr);
 		v.setValue(AVDECC_UNPACK_TYPE(val, T));
+
+		// Advance data pointer
+		_pos += sizeof(v);
+
+		return *this;
+	}
+
+	/** Unpacks any EnumBitfield type */
+	template<class Bitfield, typename T = typename std::underlying_type_t<Bitfield>>
+	Deserializer& operator>>(utils::EnumBitfield<Bitfield>& v)
+	{
+		// Check enough remaining data in buffer
+		if (remaining() < sizeof(T))
+		{
+			throw std::invalid_argument("Not enough data to deserialize");
+		}
+
+		// Read value
+		auto const* const ptr = static_cast<std::uint8_t const*>(_ptr) + _pos;
+		auto const val = *reinterpret_cast<T const*>(ptr);
+		v.assign(AVDECC_UNPACK_TYPE(val, T));
 
 		// Advance data pointer
 		_pos += sizeof(v);

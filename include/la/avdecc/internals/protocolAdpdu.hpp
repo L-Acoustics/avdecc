@@ -217,12 +217,12 @@ private:
 
 	// Adpdu header data
 	UniqueIdentifier _entityModelID{};
-	entity::EntityCapabilities _entityCapabilities{ entity::EntityCapabilities::None };
+	entity::EntityCapabilities _entityCapabilities{};
 	std::uint16_t _talkerStreamSources{};
-	entity::TalkerCapabilities _talkerCapabilities{ entity::TalkerCapabilities::None };
+	entity::TalkerCapabilities _talkerCapabilities{};
 	std::uint16_t _listenerStreamSinks{};
-	entity::ListenerCapabilities _listenerCapabilities{ entity::ListenerCapabilities::None };
-	entity::ControllerCapabilities _controllerCapabilities{ entity::ControllerCapabilities::None };
+	entity::ListenerCapabilities _listenerCapabilities{};
+	entity::ControllerCapabilities _controllerCapabilities{};
 	std::uint32_t _availableIndex{};
 	UniqueIdentifier _gptpGrandmasterID{};
 	std::uint8_t _gptpDomainNumber{ 0u };

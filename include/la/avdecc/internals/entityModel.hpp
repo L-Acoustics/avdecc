@@ -70,12 +70,12 @@ struct EntityDescriptor
 {
 	UniqueIdentifier entityID{};
 	UniqueIdentifier entityModelID{};
-	EntityCapabilities entityCapabilities{ EntityCapabilities::None };
+	EntityCapabilities entityCapabilities{};
 	std::uint16_t talkerStreamSources{ 0u };
-	TalkerCapabilities talkerCapabilities{ TalkerCapabilities::None };
+	TalkerCapabilities talkerCapabilities{};
 	std::uint16_t listenerStreamSinks{ 0u };
-	ListenerCapabilities listenerCapabilities{ ListenerCapabilities::None };
-	ControllerCapabilities controllerCapabilities{ ControllerCapabilities::None };
+	ListenerCapabilities listenerCapabilities{};
+	ControllerCapabilities controllerCapabilities{};
 	std::uint32_t availableIndex{ 0u };
 	UniqueIdentifier associationID{};
 	AvdeccFixedString entityName{};
@@ -148,7 +148,7 @@ struct StreamDescriptor
 	AvdeccFixedString objectName{};
 	LocalizedStringReference localizedDescription{};
 	ClockDomainIndex clockDomainIndex{ ClockDomainIndex(0u) };
-	StreamFlags streamFlags{ StreamFlags::None };
+	StreamFlags streamFlags{};
 	StreamFormat currentFormat{ getNullStreamFormat() };
 	UniqueIdentifier backupTalkerEntityID_0{};
 	std::uint16_t backupTalkerUniqueID_0{ 0u };
@@ -171,7 +171,7 @@ struct JackDescriptor
 {
 	AvdeccFixedString objectName{};
 	LocalizedStringReference localizedDescription{};
-	JackFlags jackFlags{ JackFlags::None };
+	JackFlags jackFlags{};
 	JackType jackType{ JackType::Speaker };
 	std::uint16_t numberOfControls{ 0u };
 	ControlIndex baseControl{ ControlIndex(0u) };
@@ -183,7 +183,7 @@ struct AvbInterfaceDescriptor
 	AvdeccFixedString objectName{};
 	LocalizedStringReference localizedDescription{};
 	networkInterface::MacAddress macAddress{};
-	AvbInterfaceFlags interfaceFlags{ AvbInterfaceFlags::None };
+	AvbInterfaceFlags interfaceFlags{};
 	UniqueIdentifier clockIdentity{};
 	std::uint8_t priority1{ 0xff };
 	std::uint8_t clockClass{ 0xff };
@@ -202,7 +202,7 @@ struct ClockSourceDescriptor
 {
 	AvdeccFixedString objectName{};
 	LocalizedStringReference localizedDescription{};
-	ClockSourceFlags clockSourceFlags{ ClockSourceFlags::None };
+	ClockSourceFlags clockSourceFlags{};
 	ClockSourceType clockSourceType{ ClockSourceType::Internal };
 	UniqueIdentifier clockSourceIdentifier{};
 	DescriptorType clockSourceLocationType{ DescriptorType::Invalid };
@@ -240,7 +240,7 @@ struct StringsDescriptor
 struct StreamPortDescriptor
 {
 	ClockDomainIndex clockDomainIndex{ ClockDomainIndex(0u) };
-	PortFlags portFlags{ PortFlags::None };
+	PortFlags portFlags{};
 	std::uint16_t numberOfControls{ 0u };
 	ControlIndex baseControl{ ControlIndex(0u) };
 	std::uint16_t numberOfClusters{ 0u };
@@ -253,7 +253,7 @@ struct StreamPortDescriptor
 struct ExternalPortDescriptor
 {
 	ClockDomainIndex clockDomainIndex{ ClockDomainIndex(0u) };
-	PortFlags portFlags{ PortFlags::None };
+	PortFlags portFlags{};
 	std::uint16_t numberOfControls{ 0u };
 	ControlIndex baseControl{ ControlIndex(0u) };
 	DescriptorType signalType{ DescriptorType::Invalid };
@@ -267,7 +267,7 @@ struct ExternalPortDescriptor
 struct InternalPortDescriptor
 {
 	ClockDomainIndex clockDomainIndex{ ClockDomainIndex(0u) };
-	PortFlags portFlags{ PortFlags::None };
+	PortFlags portFlags{};
 	std::uint16_t numberOfControls{ 0u };
 	ControlIndex baseControl{ ControlIndex(0u) };
 	DescriptorType signalType{ DescriptorType::Invalid };
@@ -339,7 +339,7 @@ struct ClockDomainDescriptor
 /** GET_STREAM_INFO and SET_STREAM_INFO Dynamic Information - Clause 7.4.16.2 */
 struct StreamInfo
 {
-	StreamInfoFlags streamInfoFlags{ StreamInfoFlags::None };
+	StreamInfoFlags streamInfoFlags{};
 	StreamFormat streamFormat{ getNullStreamFormat() };
 	std::uint64_t streamID{ 0u };
 	std::uint32_t msrpAccumulatedLatency{ 0u };
@@ -369,7 +369,7 @@ struct AvbInfo
 	UniqueIdentifier gptpGrandmasterID{};
 	std::uint32_t propagationDelay{ 0u };
 	std::uint8_t gptpDomainNumber{ 0u };
-	AvbInfoFlags flags{ AvbInfoFlags::None };
+	AvbInfoFlags flags{};
 	entity::model::MsrpMappings mappings{};
 };
 

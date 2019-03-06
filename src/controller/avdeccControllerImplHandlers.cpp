@@ -81,7 +81,7 @@ void ControllerImpl::onGetMilanInfoResult(entity::controller::Interface const* c
 		if (controlledEntity->gotAllExpectedMilanInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetMilanInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetMilanInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -119,7 +119,7 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 		if (entity.gotExpectedRegisterUnsol())
 		{
 			// Clear this enumeration step and check for next one
-			entity.clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::RegisterUnsol);
+			entity.clearEnumerationStep(ControlledEntityImpl::EnumerationStep::RegisterUnsol);
 			checkEnumerationSteps(&entity);
 		}
 	}
@@ -144,7 +144,7 @@ void ControllerImpl::onEntityDescriptorResult(entity::controller::Interface cons
 				// Already cached, no need to get the remaining of EnumerationSteps::GetStaticModel, proceed with EnumerationSteps::GetDescriptorDynamicInfo
 				if (cachedStaticTree && controlledEntity->setCachedEntityStaticTree(*cachedStaticTree, descriptor))
 				{
-					controlledEntity->addEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+					controlledEntity->addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 				}
 				else
 				{
@@ -170,7 +170,7 @@ void ControllerImpl::onEntityDescriptorResult(entity::controller::Interface cons
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -327,7 +327,7 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::controller::Interfa
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -384,7 +384,7 @@ void ControllerImpl::onAudioUnitDescriptorResult(entity::controller::Interface c
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -420,7 +420,7 @@ void ControllerImpl::onStreamInputDescriptorResult(entity::controller::Interface
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -456,7 +456,7 @@ void ControllerImpl::onStreamOutputDescriptorResult(entity::controller::Interfac
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -494,7 +494,7 @@ void ControllerImpl::onAvbInterfaceDescriptorResult(entity::controller::Interfac
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -530,7 +530,7 @@ void ControllerImpl::onClockSourceDescriptorResult(entity::controller::Interface
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -566,7 +566,7 @@ void ControllerImpl::onMemoryObjectDescriptorResult(entity::controller::Interfac
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -615,7 +615,7 @@ void ControllerImpl::onLocaleDescriptorResult(entity::controller::Interface cons
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -651,7 +651,7 @@ void ControllerImpl::onStringsDescriptorResult(entity::controller::Interface con
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -706,7 +706,7 @@ void ControllerImpl::onStreamPortInputDescriptorResult(entity::controller::Inter
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -761,7 +761,7 @@ void ControllerImpl::onStreamPortOutputDescriptorResult(entity::controller::Inte
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -797,7 +797,7 @@ void ControllerImpl::onAudioClusterDescriptorResult(entity::controller::Interfac
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -833,7 +833,7 @@ void ControllerImpl::onAudioMapDescriptorResult(entity::controller::Interface co
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -869,7 +869,7 @@ void ControllerImpl::onClockDomainDescriptorResult(entity::controller::Interface
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -906,7 +906,7 @@ void ControllerImpl::onGetStreamInputInfoResult(entity::controller::Interface co
 		if (controlledEntity->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -943,7 +943,7 @@ void ControllerImpl::onGetStreamOutputInfoResult(entity::controller::Interface c
 		if (controlledEntity->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -982,7 +982,7 @@ void ControllerImpl::onGetAcquiredStateResult(entity::controller::Interface cons
 		if (controlledEntity->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1021,7 +1021,7 @@ void ControllerImpl::onGetLockedStateResult(entity::controller::Interface const*
 		if (controlledEntity->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1084,7 +1084,7 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::controller::Inte
 		if (controlledEntity->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1147,7 +1147,7 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::controller::Int
 		if (controlledEntity->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1183,7 +1183,7 @@ void ControllerImpl::onGetAvbInfoResult(entity::controller::Interface const* con
 		if (controlledEntity->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1219,7 +1219,7 @@ void ControllerImpl::onGetAsPathResult(entity::controller::Interface const* cons
 		if (controlledEntity->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1268,7 +1268,7 @@ void ControllerImpl::onGetAvbInterfaceCountersResult(entity::controller::Interfa
 		if (controlledEntity->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1317,7 +1317,7 @@ void ControllerImpl::onGetClockDomainCountersResult(entity::controller::Interfac
 		if (controlledEntity->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1366,7 +1366,7 @@ void ControllerImpl::onGetStreamInputCountersResult(entity::controller::Interfac
 		if (controlledEntity->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1415,7 +1415,7 @@ void ControllerImpl::onGetStreamOutputCountersResult(entity::controller::Interfa
 		if (controlledEntity->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1451,7 +1451,7 @@ void ControllerImpl::onConfigurationNameResult(entity::controller::Interface con
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1487,7 +1487,7 @@ void ControllerImpl::onAudioUnitNameResult(entity::controller::Interface const* 
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1523,7 +1523,7 @@ void ControllerImpl::onAudioUnitSamplingRateResult(entity::controller::Interface
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1559,7 +1559,7 @@ void ControllerImpl::onInputStreamNameResult(entity::controller::Interface const
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1596,7 +1596,7 @@ void ControllerImpl::onInputStreamFormatResult(entity::controller::Interface con
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1632,7 +1632,7 @@ void ControllerImpl::onOutputStreamNameResult(entity::controller::Interface cons
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1669,7 +1669,7 @@ void ControllerImpl::onOutputStreamFormatResult(entity::controller::Interface co
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1705,7 +1705,7 @@ void ControllerImpl::onAvbInterfaceNameResult(entity::controller::Interface cons
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1741,7 +1741,7 @@ void ControllerImpl::onClockSourceNameResult(entity::controller::Interface const
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1777,7 +1777,7 @@ void ControllerImpl::onMemoryObjectNameResult(entity::controller::Interface cons
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1813,7 +1813,7 @@ void ControllerImpl::onMemoryObjectLengthResult(entity::controller::Interface co
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1849,7 +1849,7 @@ void ControllerImpl::onAudioClusterNameResult(entity::controller::Interface cons
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1885,7 +1885,7 @@ void ControllerImpl::onClockDomainNameResult(entity::controller::Interface const
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1921,7 +1921,7 @@ void ControllerImpl::onClockDomainSourceIndexResult(entity::controller::Interfac
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
@@ -1930,12 +1930,12 @@ void ControllerImpl::onClockDomainSourceIndexResult(entity::controller::Interfac
 /* Connection Management Protocol (ACMP) handlers */
 void ControllerImpl::onConnectStreamResult(entity::controller::Interface const* const /*controller*/, [[maybe_unused]] entity::model::StreamIdentification const& talkerStream, [[maybe_unused]] entity::model::StreamIdentification const& listenerStream, [[maybe_unused]] uint16_t const connectionCount, [[maybe_unused]] entity::ConnectionFlags const flags, [[maybe_unused]] entity::ControllerEntity::ControlStatus const status) noexcept
 {
-	LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "onConnectStreamResult (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={} ConnectionCount={} Flags={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, connectionCount, utils::toHexString(utils::to_integral(flags), true), entity::ControllerEntity::statusToString(status));
+	LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "onConnectStreamResult (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={} ConnectionCount={} Flags={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, connectionCount, utils::toHexString(utils::forceNumeric(flags.value()), true), entity::ControllerEntity::statusToString(status));
 }
 
 void ControllerImpl::onDisconnectStreamResult(entity::controller::Interface const* const /*controller*/, [[maybe_unused]] entity::model::StreamIdentification const& talkerStream, [[maybe_unused]] entity::model::StreamIdentification const& listenerStream, [[maybe_unused]] uint16_t const connectionCount, [[maybe_unused]] entity::ConnectionFlags const flags, [[maybe_unused]] entity::ControllerEntity::ControlStatus const status) noexcept
 {
-	LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "onDisconnectStreamResult (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={} ConnectionCount={} Flags={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, connectionCount, utils::toHexString(utils::to_integral(flags), true), entity::ControllerEntity::statusToString(status));
+	LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "onDisconnectStreamResult (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={} ConnectionCount={} Flags={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, connectionCount, utils::toHexString(utils::forceNumeric(flags.value()), true), entity::ControllerEntity::statusToString(status));
 }
 
 void ControllerImpl::onGetTalkerStreamStateResult(entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& /*listenerStream*/, [[maybe_unused]] uint16_t const connectionCount, entity::ConnectionFlags const /*flags*/, entity::ControllerEntity::ControlStatus const status, entity::model::ConfigurationIndex const configurationIndex) noexcept
@@ -1984,7 +1984,7 @@ void ControllerImpl::onGetTalkerStreamStateResult(entity::controller::Interface 
 		if (talker.gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			talker.clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			talker.clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(&talker);
 		}
 	}
@@ -1992,7 +1992,7 @@ void ControllerImpl::onGetTalkerStreamStateResult(entity::controller::Interface 
 
 void ControllerImpl::onGetListenerStreamStateResult(entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
-	LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "onGetListenerStreamStateResult (ListenerID={} ListenerIndex={} ConnectionCount={} Flags={} ConfigurationIndex={}): {}", utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, connectionCount, utils::toHexString(utils::to_integral(flags), true), configurationIndex, entity::ControllerEntity::statusToString(status));
+	LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "onGetListenerStreamStateResult (ListenerID={} ListenerIndex={} ConnectionCount={} Flags={} ConfigurationIndex={}): {}", utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, connectionCount, utils::toHexString(utils::forceNumeric(flags.value()), true), configurationIndex, entity::ControllerEntity::statusToString(status));
 
 	if (!!status)
 	{
@@ -2026,7 +2026,7 @@ void ControllerImpl::onGetListenerStreamStateResult(entity::controller::Interfac
 		if (listener->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			listener->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			listener->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(listener.get());
 		}
 	}
@@ -2062,7 +2062,7 @@ void ControllerImpl::onGetTalkerStreamConnectionResult(entity::controller::Inter
 		if (talker->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			talker->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			talker->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(talker.get());
 		}
 	}
