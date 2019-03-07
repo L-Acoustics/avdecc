@@ -39,6 +39,7 @@ namespace entity
 /** ADP Entity Capabilities - Clause 6.2.1.10 */
 enum class EntityCapability : std::uint32_t
 {
+	None = 0u,
 	EfuMode = 1u << 0, /**< Entity Firmware Upgrade mode is enabled on the AVDECC Entity. When this flag is set, the AVDECC Entity is in the mode to perform an AVDECC Entity firmware upgrade. */
 	AddressAccessSupported = 1u << 1, /**< Supports receiving the ADDRESS_ACCESS commands as defined in 9.2.1.3. */
 	GatewayEntity = 1u << 2, /**< AVDECC Entity serves as a gateway to a device on another type of media (typically a IEEE Std 1394 device) by proxying control services for it. */
@@ -64,6 +65,7 @@ using EntityCapabilities = utils::EnumBitfield<EntityCapability>;
 /** ADP Talker Capabilities - Clause 6.2.1.12 */
 enum class TalkerCapability : std::uint16_t
 {
+	None = 0u,
 	Implemented = 1u << 0, /**< Implements an AVDECC Talker. */
 	/* Bits 7 to 14 reserved for future use */
 	OtherSource = 1u << 9, /**< The AVDECC Talker has other Stream sources not covered by the following. */
@@ -79,6 +81,7 @@ using TalkerCapabilities = utils::EnumBitfield<TalkerCapability>;
 /** ADP Listener Capabilities - Clause 6.2.1.14 */
 enum class ListenerCapability : std::uint16_t
 {
+	None = 0u,
 	Implemented = 1u << 0, /**< Implements an AVDECC Listener. */
 	/* Bits 7 to 14 reserved for future use */
 	OtherSink = 1u << 9, /**< The AVDECC Listener has other Stream sinks not covered by the following. */
@@ -94,6 +97,7 @@ using ListenerCapabilities = utils::EnumBitfield<ListenerCapability>;
 /** ADP Controller Capabilities - Clause 6.2.1.15 */
 enum class ControllerCapability : std::uint32_t
 {
+	None = 0u,
 	Implemented = 1u << 0, /**< Implements an AVDECC Controller. */
 	/* Bits 0 to 20 reserved for future use */
 };
@@ -102,6 +106,7 @@ using ControllerCapabilities = utils::EnumBitfield<ControllerCapability>;
 /** ConnectionFlags - Clause 8.2.1.17 */
 enum class ConnectionFlag : std::uint16_t
 {
+	None = 0u,
 	ClassB = 1u << 0, /**< Indicates that the Stream is Class B instead of Class A (default 0 is class A). */
 	FastConnect = 1u << 1, /**< Fast Connect Mode, the connection is being attempted in fast connect mode. */
 	SavedState = 1u << 2, /**< Connection has saved state (used in Get State only). */
@@ -116,6 +121,7 @@ using ConnectionFlags = utils::EnumBitfield<ConnectionFlag>;
 /** StreamFlags - Clause 7.2.6.1 */
 enum class StreamFlag : std::uint16_t
 {
+	None = 0u,
 	ClockSyncSource = 1u << 0, /**< Indicates that the Stream can be used as a clock synchronization source. */
 	ClassA = 1u << 1, /**< Indicates that the Stream supports streaming at Class A. */
 	ClassB = 1u << 2, /**< Indicates that the Stream supports streaming at Class B. */
@@ -133,6 +139,7 @@ using StreamFlags = utils::EnumBitfield<StreamFlag>;
 /** JackFlags - Clause 7.2.7.1 */
 enum class JackFlag : std::uint16_t
 {
+	None = 0u,
 	ClockSyncSource = 1u << 0, /**< Indicates that the Jack can be used as a clock synchronization source. */
 	Captive = 1u << 1, /**< Indicates that the Jack connection is hardwired, cannot be disconnected and may be physically within the device's structure. */
 	/* Bits 0 to 13 reserved for future use */
@@ -142,6 +149,7 @@ using JackFlags = utils::EnumBitfield<JackFlag>;
 /** AvbInterfaceFlags - Clause 7.2.8.1 */
 enum class AvbInterfaceFlag : std::uint16_t
 {
+	None = 0u,
 	GptpGrandmasterSupported = 1u << 0, /**< Indicates that the interface supports the IEEE Std 802.1AS-2011 grandmaster functionality. */
 	GptpSupported = 1u << 1, /**< Indicates that the interface supports the IEEE Std 802.1AS-2011 functionality. */
 	SrpSupported = 1u << 2, /**< Indicates that the interface supports Clause 35 of IEEE Std 802.1Q-2011, "Stream Reservation Protocol (SRP)" functionality. */
@@ -152,6 +160,7 @@ using AvbInterfaceFlags = utils::EnumBitfield<AvbInterfaceFlag>;
 /** ClockSourceFlags - Clause 7.2.9.1 */
 enum class ClockSourceFlag : std::uint16_t
 {
+	None = 0u,
 	StreamID = 1u << 0, /**< The INPUT_STREAM Clock Source is identified by the stream_id. */
 	LocalID = 1u << 1, /**< The INPUT_STREAM Clock Source is identified by its local ID. */
 	/* Bits 0 to 13 reserved for future use */
@@ -161,6 +170,7 @@ using ClockSourceFlags = utils::EnumBitfield<ClockSourceFlag>;
 /** PortFlags - Clause 7.2.13.1 */
 enum class PortFlag : std::uint16_t
 {
+	None = 0u,
 	ClockSyncSource = 1u << 0, /**< Indicates that the Port can be used as a clock synchronization source. */
 	AsyncSampleRateConv = 1u << 1, /**< Indicates that the Port has an asynchronous sample rate convertor to convert sample rates between another Clock Domain and the Unit's. */
 	SyncSampleRateConv = 1u << 2, /**< Indicates that the Port has a synchronous sample rate convertor to convert between sample rates in the same Clock Domain. */
@@ -171,6 +181,7 @@ using PortFlags = utils::EnumBitfield<PortFlag>;
 /** StreamInfo Flags - Clause 7.4.15.1 */
 enum class StreamInfoFlag : std::uint32_t
 {
+	None = 0u,
 	ClassB = 1u << 0, /**< Indicates that the Stream is Class B instead of Class A (default 0 is class A). */
 	FastConnect = 1u << 1, /**< Fast Connect Mode, the Stream was connected in Fast Connect Mode or is presently trying to connect in Fast Connect Mode. */
 	SavedState = 1u << 2, /**< Connection has saved ACMP state. */
@@ -192,6 +203,7 @@ using StreamInfoFlags = utils::EnumBitfield<StreamInfoFlag>;
 /** StreamInfoEx Flags - Milan Clause 7.3.10 */
 enum class StreamInfoFlagEx : std::uint32_t
 {
+	None = 0u,
 	Registering = 1u << 0, /**< StreamInput: Registering either a matching Talker Advertise or a matching Talker Failed attribute. StreamOutput: Declaring a Talker Advertise or a Talker Failed attribute and registering a matching Listener attribute. */
 	/* Bits 0 to 30 reserved for future use */
 };
@@ -200,6 +212,7 @@ using StreamInfoFlagsEx = utils::EnumBitfield<StreamInfoFlagEx>;
 /** AvbInfo Flags - Clause 7.4.40.2 */
 enum class AvbInfoFlag : std::uint8_t
 {
+	None = 0u,
 	AsCapable = 1u << 0, /**< The IEEE Std 802.1AS-2011 variable asCapable is set on this interface. */
 	GptpEnabled = 1u << 1, /**< Indicates that the interface has the IEEE Std 802.1AS-2011 functionality enabled. */
 	SrpEnabled = 1u << 2, /**< Indicates that the interface has the IEEE Std 802.1Q-2011 Clause 35, "Stream Reservation Protocol (SRP)" functionality enabled. */

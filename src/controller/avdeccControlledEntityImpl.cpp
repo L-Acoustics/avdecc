@@ -445,7 +445,7 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 		auto const& entityModel = getEntityNode();
 
 		// Visit EntityModelNode (no parent)
-		visitor->visit(this, nullptr, entityModel);
+		visitor->visit(this, entityModel);
 
 		// Loop over all configurations
 		for (auto const& configurationKV : entityModel.configurations)

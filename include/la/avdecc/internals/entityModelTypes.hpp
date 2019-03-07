@@ -511,7 +511,7 @@ public:
 		return ((offset * 7u) + index) & 0xFFFF;
 	}
 
-	/** Getter to retrive the offset and index values from this LocalizedStringReference. */
+	/** Getter to retrieve the offset and index values from this LocalizedStringReference. */
 	constexpr std::pair<std::uint16_t, std::uint8_t> getOffsetIndex() const noexcept
 	{
 		return std::make_pair(static_cast<std::uint16_t>(_value >> 3), static_cast<std::uint8_t>(_value & 0x0007));
