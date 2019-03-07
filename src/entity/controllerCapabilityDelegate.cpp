@@ -1041,7 +1041,7 @@ void CapabilityDelegate::setAudioUnitSamplingRate(UniqueIdentifier const targetE
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetSamplingRateCommand(model::DescriptorType::AudioUnit, audioUnitIndex, samplingRate);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, audioUnitIndex, model::getNullSamplingRate());
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, audioUnitIndex, model::SamplingRate::getNullSamplingRate());
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1056,7 +1056,7 @@ void CapabilityDelegate::getAudioUnitSamplingRate(UniqueIdentifier const targetE
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetSamplingRateCommand(model::DescriptorType::AudioUnit, audioUnitIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, audioUnitIndex, model::getNullSamplingRate());
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, audioUnitIndex, model::SamplingRate::getNullSamplingRate());
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1071,7 +1071,7 @@ void CapabilityDelegate::setVideoClusterSamplingRate(UniqueIdentifier const targ
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetSamplingRateCommand(model::DescriptorType::VideoCluster, videoClusterIndex, samplingRate);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, videoClusterIndex, model::getNullSamplingRate());
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, videoClusterIndex, model::SamplingRate::getNullSamplingRate());
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1086,7 +1086,7 @@ void CapabilityDelegate::getVideoClusterSamplingRate(UniqueIdentifier const targ
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetSamplingRateCommand(model::DescriptorType::VideoCluster, videoClusterIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, videoClusterIndex, model::getNullSamplingRate());
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, videoClusterIndex, model::SamplingRate::getNullSamplingRate());
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1101,7 +1101,7 @@ void CapabilityDelegate::setSensorClusterSamplingRate(UniqueIdentifier const tar
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetSamplingRateCommand(model::DescriptorType::SensorCluster, sensorClusterIndex, samplingRate);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, sensorClusterIndex, model::getNullSamplingRate());
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, sensorClusterIndex, model::SamplingRate::getNullSamplingRate());
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1116,7 +1116,7 @@ void CapabilityDelegate::getSensorClusterSamplingRate(UniqueIdentifier const tar
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetSamplingRateCommand(model::DescriptorType::SensorCluster, sensorClusterIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, sensorClusterIndex, model::getNullSamplingRate());
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, sensorClusterIndex, model::SamplingRate::getNullSamplingRate());
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
 	}

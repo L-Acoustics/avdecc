@@ -464,11 +464,11 @@ void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID,
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamInputFormat (StreamIndex={} streamFormat={})", streamIndex, utils::toHexString(streamFormat, true));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamInputFormat (StreamIndex={} streamFormat={})", streamIndex, utils::toHexString(streamFormat.getValue(), true));
 		_controller->setStreamInputFormat(targetEntityID, streamIndex, streamFormat,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat)
 			{
-				LOG_CONTROLLER_TRACE(entityID, "User setStreamInputFormat (StreamIndex={} streamFormat={}): {}", streamIndex, utils::toHexString(streamFormat, true), entity::ControllerEntity::statusToString(status));
+				LOG_CONTROLLER_TRACE(entityID, "User setStreamInputFormat (StreamIndex={} streamFormat={}): {}", streamIndex, utils::toHexString(streamFormat.getValue(), true), entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntity
 				auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -505,11 +505,11 @@ void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamOutputFormat (StreamIndex={} streamFormat={})", streamIndex, utils::toHexString(streamFormat, true));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamOutputFormat (StreamIndex={} streamFormat={})", streamIndex, utils::toHexString(streamFormat.getValue(), true));
 		_controller->setStreamOutputFormat(targetEntityID, streamIndex, streamFormat,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat)
 			{
-				LOG_CONTROLLER_TRACE(entityID, "User setStreamOutputFormat (StreamIndex={} streamFormat={}): {}", streamIndex, utils::toHexString(streamFormat, true), entity::ControllerEntity::statusToString(status));
+				LOG_CONTROLLER_TRACE(entityID, "User setStreamOutputFormat (StreamIndex={} streamFormat={}): {}", streamIndex, utils::toHexString(streamFormat.getValue(), true), entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntity
 				auto controlledEntity = getControlledEntityImplGuard(entityID);

@@ -802,7 +802,7 @@ std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> Controlle
 	dynamicModel.streamInfo = info;
 
 	// We should always have a valid value in the StreamFormat (was properly initialized), so don't overwrite it if it's not valid in the new info
-	if (dynamicModel.streamInfo.streamFormat == entity::model::getNullStreamFormat())
+	if (!dynamicModel.streamInfo.streamFormat)
 	{
 		dynamicModel.streamInfo.streamFormat = previousInfo.streamFormat;
 		dynamicModel.streamInfo.streamInfoFlags.set(entity::StreamInfoFlag::StreamFormatValid); // Force the flag as well
@@ -841,7 +841,7 @@ std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> Controlle
 	dynamicModel.streamInfo = info;
 
 	// We should always have a valid value in the StreamFormat (was properly initialized), so don't overwrite it if it's not valid in the new info
-	if (dynamicModel.streamInfo.streamFormat == entity::model::getNullStreamFormat())
+	if (!dynamicModel.streamInfo.streamFormat)
 	{
 		dynamicModel.streamInfo.streamFormat = previousInfo.streamFormat;
 		dynamicModel.streamInfo.streamInfoFlags.set(entity::StreamInfoFlag::StreamFormatValid); // Force the flag as well

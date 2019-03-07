@@ -128,6 +128,18 @@ public:
 		return operator<<(v.getValue());
 	}
 
+	/** Serializes a SamplingRate */
+	Serializer& operator<<(entity::model::SamplingRate const& v)
+	{
+		return operator<<(v.getValue());
+	}
+
+	/** Serializes a StreamFormat */
+	Serializer& operator<<(entity::model::StreamFormat const& v)
+	{
+		return operator<<(v.getValue());
+	}
+
 	/** Serializes a LocalizedStringReference */
 	Serializer& operator<<(entity::model::LocalizedStringReference const& v)
 	{
@@ -271,6 +283,24 @@ public:
 	Deserializer& operator>>(UniqueIdentifier& v)
 	{
 		UniqueIdentifier::value_type value;
+		operator>>(value);
+		v.setValue(value);
+		return *this;
+	}
+
+	/** Unpacks a SamplingRate */
+	Deserializer& operator>>(entity::model::SamplingRate& v)
+	{
+		entity::model::SamplingRate::value_type value;
+		operator>>(value);
+		v.setValue(value);
+		return *this;
+	}
+
+	/** Unpacks a StreamFormat */
+	Deserializer& operator>>(entity::model::StreamFormat& v)
+	{
+		entity::model::StreamFormat::value_type value;
 		operator>>(value);
 		v.setValue(value);
 		return *this;

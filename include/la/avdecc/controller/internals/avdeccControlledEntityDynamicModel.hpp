@@ -48,7 +48,7 @@ using StreamOutputCounters = std::map<entity::StreamOutputCounterValidFlag, enti
 struct AudioUnitNodeDynamicModel
 {
 	entity::model::AvdeccFixedString objectName{};
-	entity::model::SamplingRate currentSamplingRate{ entity::model::getNullSamplingRate() };
+	entity::model::SamplingRate currentSamplingRate{};
 };
 
 struct StreamNodeDynamicModel

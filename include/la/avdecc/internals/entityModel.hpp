@@ -55,16 +55,6 @@ constexpr DescriptorIndex getInvalidDescriptorIndex() noexcept
 	return DescriptorIndex(0xFFFF);
 }
 
-constexpr StreamFormat getNullStreamFormat() noexcept
-{
-	return StreamFormat(0u);
-}
-
-constexpr SamplingRate getNullSamplingRate() noexcept
-{
-	return SamplingRate(0u);
-}
-
 /** ENTITY Descriptor - Clause 7.2.1 */
 struct EntityDescriptor
 {
@@ -134,7 +124,7 @@ struct AudioUnitDescriptor
 	SignalTranscoderIndex baseTranscoder{ SignalTranscoderIndex(0u) };
 	std::uint16_t numberOfControlBlocks{ 0u };
 	ControlBlockIndex baseControlBlock{ ControlBlockIndex(0u) };
-	SamplingRate currentSamplingRate{ getNullSamplingRate() };
+	SamplingRate currentSamplingRate{};
 	std::set<SamplingRate> samplingRates{};
 };
 
@@ -149,7 +139,7 @@ struct StreamDescriptor
 	LocalizedStringReference localizedDescription{};
 	ClockDomainIndex clockDomainIndex{ ClockDomainIndex(0u) };
 	StreamFlags streamFlags{};
-	StreamFormat currentFormat{ getNullStreamFormat() };
+	StreamFormat currentFormat{};
 	UniqueIdentifier backupTalkerEntityID_0{};
 	std::uint16_t backupTalkerUniqueID_0{ 0u };
 	UniqueIdentifier backupTalkerEntityID_1{};
@@ -340,7 +330,7 @@ struct ClockDomainDescriptor
 struct StreamInfo
 {
 	StreamInfoFlags streamInfoFlags{};
-	StreamFormat streamFormat{ getNullStreamFormat() };
+	StreamFormat streamFormat{};
 	std::uint64_t streamID{ 0u };
 	std::uint32_t msrpAccumulatedLatency{ 0u };
 	la::avdecc::networkInterface::MacAddress streamDestMac{};

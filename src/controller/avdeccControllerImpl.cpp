@@ -282,12 +282,12 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit not set in GET_STREAM_INFO response");
 			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			// But if we have a valid streamFormat in the field, use it
-			if (info.streamFormat != entity::model::getNullStreamFormat())
+			if (!!info.streamFormat)
 			{
 				streamFormat = info.streamFormat;
 			}
 		}
-		if (info.streamFormat == entity::model::getNullStreamFormat())
+		if (!info.streamFormat)
 		{
 			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "stream_format field not set in GET_STREAM_INFO response");
 			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
@@ -348,12 +348,12 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit not set in GET_STREAM_INFO response");
 			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			// But if we have a valid streamFormat in the field, use it
-			if (info.streamFormat != entity::model::getNullStreamFormat())
+			if (!!info.streamFormat)
 			{
 				streamFormat = info.streamFormat;
 			}
 		}
-		if (info.streamFormat == entity::model::getNullStreamFormat())
+		if (!info.streamFormat)
 		{
 			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "stream_format field not set in GET_STREAM_INFO response");
 			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);

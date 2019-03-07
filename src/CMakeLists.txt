@@ -67,7 +67,7 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolVuAecpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolInterface.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/serialization.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/streamFormat.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/streamFormatInfo.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/uniqueIdentifier.hpp
 )
 
@@ -145,7 +145,7 @@ set (SOURCE_FILES_COMMON
 	avdecc.cpp
 	endStationImpl.cpp
 	logger.cpp
-	streamFormat.cpp
+	streamFormatInfo.cpp
 	utils.cpp
 	watchDog.cpp
 )

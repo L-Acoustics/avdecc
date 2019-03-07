@@ -18,7 +18,7 @@
 */
 
 /**
-* @file streamFormat.hpp
+* @file streamFormatInfo.hpp
 * @author Christophe Calmejane
 * @brief Stream format (IEEE Std 1722) helper.
 */

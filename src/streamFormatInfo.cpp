@@ -22,7 +22,7 @@
 * @author Christophe Calmejane
 */
 
-#include "la/avdecc/internals/streamFormat.hpp"
+#include "la/avdecc/internals/streamFormatInfo.hpp"
 #include <cstdint>
 #include <type_traits>
 
@@ -62,9 +62,9 @@ constexpr T clearMask()
 
 #pragma message("TODO: Make this template works on all endianess")
 template<std::uint8_t FirstBit, std::uint8_t LastBit, typename T = std::uint8_t>
-T getField(StreamFormat const& format) noexcept
+T getField(StreamFormat::value_type const& format) noexcept
 {
-	constexpr auto sfBitsCount = sizeof(StreamFormat) * 8;
+	constexpr auto sfBitsCount = sizeof(StreamFormat::value_type) * 8;
 	static_assert(LastBit < sfBitsCount, "LastBit must be inferior to the maximum bits StreamFormat can hold");
 	static_assert(FirstBit <= LastBit, "FirstBit must be lower than LastBit");
 	static_assert((LastBit - FirstBit) <= (sizeof(T) * 8), "Count of bits must be inferior or equal to the size of return value type");
@@ -75,9 +75,9 @@ T getField(StreamFormat const& format) noexcept
 }
 
 template<std::uint8_t FirstBit, std::uint8_t LastBit, typename T = std::uint8_t>
-void replaceField(StreamFormat& format, T const newValue) noexcept
+void replaceField(StreamFormat::value_type& format, T const newValue) noexcept
 {
-	constexpr auto sfBitsCount = sizeof(StreamFormat) * 8;
+	constexpr auto sfBitsCount = sizeof(StreamFormat::value_type) * 8;
 	static_assert(LastBit < (sfBitsCount), "LastBit must be inferior to the maximum bits StreamFormat can hold");
 	static_assert(FirstBit <= LastBit, "FirstBit must be lower than LastBit");
 	static_assert((LastBit - FirstBit) <= (sizeof(T) * 8), "Count of bits must be inferior or equal to the size of T");
@@ -85,9 +85,9 @@ void replaceField(StreamFormat& format, T const newValue) noexcept
 	constexpr auto shiftCountFirst = sfBitsCount - FirstBit - 1;
 	constexpr auto shiftCountLast = sfBitsCount - LastBit - 1;
 	// Clear previous bits
-	format &= clearMask<shiftCountLast, shiftCountFirst, StreamFormat>();
+	format &= clearMask<shiftCountLast, shiftCountFirst, StreamFormat::value_type>();
 	// Set new bits
-	auto const v = static_cast<StreamFormat>(newValue) << shiftCountLast;
+	auto const v = static_cast<StreamFormat::value_type>(newValue) << shiftCountLast;
 	format |= v;
 }
 
@@ -104,14 +104,14 @@ public:
 
 	virtual StreamFormat getStreamFormat() const noexcept override final
 	{
-		return _streamFormat;
+		return StreamFormat{ _streamFormat };
 	}
 
 	virtual StreamFormat getAdaptedStreamFormat(std::uint16_t const channelsCount) const noexcept override
 	{
 		AVDECC_ASSERT(_upToChannelsCount == false, "getAdaptedStreamFormat must be specialized for StreamFormat supported upToChannelsCount");
 		if (channelsCount != _channelsCount)
-			return getNullStreamFormat();
+			return StreamFormat::getNullStreamFormat();
 		return getStreamFormat();
 	}
 
@@ -182,7 +182,7 @@ public:
 	}
 
 protected:
-	StreamFormat _streamFormat{ 0 };
+	StreamFormat::value_type _streamFormat{ 0 };
 	StreamFormatInfo::Type _type{ StreamFormatInfo::Type::Unsupported };
 	std::uint16_t _channelsCount{ 0u };
 	bool _upToChannelsCount{ false };
@@ -295,17 +295,17 @@ public:
 		if (_upToChannelsCount)
 		{
 			if (channelsCount > _channelsCount)
-				return getNullStreamFormat();
+				return StreamFormat::getNullStreamFormat();
 
 			auto fmt = _streamFormat;
 			replaceField<34, 34>(fmt, std::uint8_t(0)); // ut field
 			replaceField<24, 31>(fmt, channelsCount); // dbs field
 			replaceField<48, 55>(fmt, channelsCount); // mbld_cnt field
-			return fmt;
+			return StreamFormat{ fmt };
 		}
 
 		if (channelsCount != _channelsCount)
-			return getNullStreamFormat();
+			return StreamFormat::getNullStreamFormat();
 		return getStreamFormat();
 	}
 
@@ -400,16 +400,16 @@ public:
 		if (_upToChannelsCount)
 		{
 			if (channelsCount > _channelsCount)
-				return getNullStreamFormat();
+				return StreamFormat::getNullStreamFormat();
 
 			auto fmt = _streamFormat;
 			replaceField<11, 11>(fmt, std::uint8_t(0)); // ut field
 			replaceField<32, 41>(fmt, channelsCount); // channels_per_frame field
-			return fmt;
+			return StreamFormat{ fmt };
 		}
 
 		if (channelsCount != _channelsCount)
-			return getNullStreamFormat();
+			return StreamFormat::getNullStreamFormat();
 		return getStreamFormat();
 	}
 
@@ -506,7 +506,7 @@ private:
 StreamFormatInfo* LA_AVDECC_CALL_CONVENTION StreamFormatInfo::createRawStreamFormatInfo(StreamFormat const& streamFormat) noexcept
 {
 	// No stream format
-	if (streamFormat == 0)
+	if (!streamFormat)
 		return new StreamFormatInfoAAF_None(streamFormat);
 
 	try
@@ -609,7 +609,7 @@ StreamFormatInfo* LA_AVDECC_CALL_CONVENTION StreamFormatInfo::createRawStreamFor
 
 StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_IEC_61883_6(std::uint16_t const channelsCount, bool const isUpToChannelsCount, SamplingRate const samplingRate, SampleFormat const sampleFormat, bool const useSynchronousClock) noexcept
 {
-	StreamFormat fmt{ 0u };
+	StreamFormat::value_type fmt{ 0u };
 	replaceField<0, 0>(fmt, static_cast<std::uint8_t>(0)); // 'v' field must be set to zero for an AVTP defined time-sensitive stream
 
 	replaceField<1, 7>(fmt, static_cast<std::uint8_t>(0x00)); // subtype = 61883 or IIDC
@@ -628,7 +628,7 @@ StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_IEC_61883_6
 		case SampleFormat::FloatingPoint32: // IEC 61883-6 32-bit floating point packetization
 			[[fallthrough]]; // Not supported
 		default:
-			return getNullStreamFormat();
+			return StreamFormat::getNullStreamFormat();
 	}
 	replaceField<16, 20>(fmt, static_cast<std::uint8_t>(0x0)); // fdf_evt = sampleFormat
 
@@ -657,7 +657,7 @@ StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_IEC_61883_6
 			fdf_sfc = 6;
 			break;
 		default:
-			return getNullStreamFormat();
+			return StreamFormat::getNullStreamFormat();
 	}
 	replaceField<21, 23>(fmt, static_cast<std::uint8_t>(fdf_sfc)); // fdf_sfc = samplingRate
 	replaceField<24, 31>(fmt, static_cast<std::uint16_t>(channelsCount)); // dbs = channelsCount
@@ -666,12 +666,12 @@ StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_IEC_61883_6
 	replaceField<35, 35>(fmt, static_cast<std::uint8_t>(useSynchronousClock)); // sc = useSynchronousClock
 	replaceField<48, 55>(fmt, static_cast<std::uint16_t>(channelsCount)); // label_mbla_cnt = channelsCount
 
-	return fmt;
+	return StreamFormat{ fmt };
 }
 
 StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_AAF(std::uint16_t const channelsCount, bool const isUpToChannelsCount, SamplingRate const samplingRate, SampleFormat const sampleFormat, std::uint16_t const sampleBitDepth, std::uint16_t const samplesPerFrame) noexcept
 {
-	StreamFormat fmt{ 0u };
+	StreamFormat::value_type fmt{ 0u };
 	replaceField<0, 0>(fmt, static_cast<std::uint8_t>(0)); // 'v' field must be set to zero for an AVTP defined time-sensitive stream
 
 	replaceField<1, 7>(fmt, static_cast<std::uint8_t>(0x02)); // subtype = AAF (AVTP Audio Format)
@@ -715,7 +715,7 @@ StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_AAF(std::ui
 			nsr = 10;
 			break;
 		default:
-			return getNullStreamFormat();
+			return StreamFormat::getNullStreamFormat();
 	}
 	replaceField<12, 15>(fmt, static_cast<std::uint8_t>(nsr)); // nsr = samplingRate
 
@@ -736,17 +736,17 @@ StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_AAF(std::ui
 			format = 0x04;
 			break;
 		default:
-			return getNullStreamFormat();
+			return StreamFormat::getNullStreamFormat();
 	}
 	if (sampleBitDepth > maxDepth)
-		return getNullStreamFormat();
+		return StreamFormat::getNullStreamFormat();
 
 	replaceField<16, 23>(fmt, static_cast<std::uint8_t>(format)); // format = sampleFormat
 	replaceField<24, 31>(fmt, static_cast<std::uint16_t>(sampleBitDepth)); // bit_depth = sampleBitDepth
 	replaceField<32, 41>(fmt, static_cast<std::uint16_t>(channelsCount)); // channels_per_frame = channelsCount
 	replaceField<42, 51>(fmt, static_cast<std::uint16_t>(samplesPerFrame)); // samples_per_frame = samplesPerFrame
 
-	return fmt;
+	return StreamFormat{ fmt };
 }
 
 bool LA_AVDECC_CALL_CONVENTION StreamFormatInfo::isListenerFormatCompatibleWithTalkerFormat(StreamFormat const& listenerStreamFormat, StreamFormat const& talkerStreamFormat) noexcept
@@ -806,14 +806,14 @@ std::pair<StreamFormat, StreamFormat> LA_AVDECC_CALL_CONVENTION StreamFormatInfo
 			// Ok, return adapted formats for both talker and listener
 			auto const lAdapted = lFormatInfo->getAdaptedStreamFormat(lChanCount);
 			auto const tAdapted = tFormatInfo->getAdaptedStreamFormat(tChanCount);
-			if (AVDECC_ASSERT_WITH_RET(lAdapted != getNullStreamFormat() && tAdapted != getNullStreamFormat(), "Failed to get AdaptedFormat for either Listener or Talker"))
+			if (AVDECC_ASSERT_WITH_RET(lAdapted && tAdapted, "Failed to get AdaptedFormat for either Listener or Talker"))
 			{
 				return std::make_pair(lAdapted, tAdapted);
 			}
 		}
 	}
 
-	return std::make_pair(getNullStreamFormat(), getNullStreamFormat());
+	return std::make_pair(StreamFormat::getNullStreamFormat(), StreamFormat::getNullStreamFormat());
 }
 
 } // namespace model

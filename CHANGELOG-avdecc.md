@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Changed
 - [Replaced all la::avdecc::enum_traits with la::avdecc::EnumBitfield](https://github.com/L-Acoustics/avdecc/issues/34)
+- StreamFormat and SamplingRate now have their own class, instead of just an alias
 
 ### Fixed
 - macOS Native Protocol Interface correctly handles incoming AECP Commands
