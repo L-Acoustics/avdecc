@@ -469,20 +469,20 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 					visitor->visit(this, &configuration, audioUnit);
 
 					// Loop over StreamPortNode
-					auto processStreamPorts = [this, visitor](model::AudioUnitNode const& audioUnit, std::map<entity::model::StreamPortIndex, model::StreamPortNode> const& streamPorts)
+					auto processStreamPorts = [this, visitor](model::ConfigurationNode const& configuration, model::AudioUnitNode const& audioUnit, std::map<entity::model::StreamPortIndex, model::StreamPortNode> const& streamPorts)
 					{
 						for (auto const& streamPortKV : streamPorts)
 						{
 							auto const& streamPort = streamPortKV.second;
 							// Visit StreamPortNode (AudioUnitNode is parent)
-							visitor->visit(this, &audioUnit, streamPort);
+							visitor->visit(this, &configuration, &audioUnit, streamPort);
 
 							// Loop over AudioClusterNode
 							for (auto const& audioClusterKV : streamPort.audioClusters)
 							{
 								auto const& audioCluster = audioClusterKV.second;
 								// Visit AudioClusterNode (StreamPortNode is parent)
-								visitor->visit(this, &streamPort, audioCluster);
+								visitor->visit(this, &configuration, &audioUnit, &streamPort, audioCluster);
 							}
 
 							// Loop over AudioMapNode
@@ -490,12 +490,12 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 							{
 								auto const& audioMap = audioMapKV.second;
 								// Visit AudioMapNode (StreamPortNode is parent)
-								visitor->visit(this, &streamPort, audioMap);
+								visitor->visit(this, &configuration, &audioUnit, &streamPort, audioMap);
 							}
 						}
 					};
-					processStreamPorts(audioUnit, audioUnit.streamPortInputs); // streamPortInputs
-					processStreamPorts(audioUnit, audioUnit.streamPortOutputs); // streamPortOutputs
+					processStreamPorts(configuration, audioUnit, audioUnit.streamPortInputs); // streamPortInputs
+					processStreamPorts(configuration, audioUnit, audioUnit.streamPortOutputs); // streamPortOutputs
 				}
 
 				// Loop over StreamInputNode for inputs
@@ -527,7 +527,7 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 					{
 						auto const* stream = static_cast<model::StreamInputNode const*>(streamKV.second);
 						// Visit StreamInputNode (RedundantStreamInputNode is parent)
-						visitor->visit(this, &redundantStream, *stream);
+						visitor->visit(this, &configuration, &redundantStream, *stream);
 					}
 				}
 
@@ -543,7 +543,7 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 					{
 						auto const* stream = static_cast<model::StreamOutputNode const*>(streamKV.second);
 						// Visit StreamOutputNode (RedundantStreamOutputNode is parent)
-						visitor->visit(this, &redundantStream, *stream);
+						visitor->visit(this, &configuration, &redundantStream, *stream);
 					}
 				}
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
@@ -595,7 +595,7 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 					{
 						auto const* source = sourceKV.second;
 						// Visit ClockSourceNode (ClockDomainNode is parent)
-						visitor->visit(this, &domain, *source);
+						visitor->visit(this, &configuration, &domain, *source);
 					}
 				}
 			}
