@@ -617,11 +617,9 @@ StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_IEC_61883_6
 	replaceField<8, 8>(fmt, static_cast<std::uint8_t>(1)); // sf = IEC 61883
 	replaceField<9, 14>(fmt, static_cast<std::uint8_t>(0x10)); // fmt = IEC 61883-6
 
-	std::uint8_t fdf_evt{ 0u };
 	switch (sampleFormat)
 	{
 		case SampleFormat::Int24: // IEC 61883-6 AM824
-			fdf_evt = 0x00;
 			break;
 		case SampleFormat::FixedPoint32: // IEC 61883-6 32-bit fixed point packetization
 			[[fallthrough]]; // Not supported
@@ -630,7 +628,7 @@ StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_IEC_61883_6
 		default:
 			return getNullStreamFormat();
 	}
-	replaceField<16, 20>(fmt, static_cast<std::uint8_t>(0x0)); // fdf_evt = sampleFormat
+	replaceField<16, 20>(fmt, static_cast<std::uint8_t>(0x0));
 
 	std::uint8_t fdf_sfc{ 0u };
 	switch (samplingRate)
