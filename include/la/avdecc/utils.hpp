@@ -356,7 +356,7 @@ public:
 	}
 
 	/** Clears the specified flag. If passed value is not valid (not exactly one bit set), this leads to undefined behavior. */
-	EnumBitfield& reset(value_type const flag) noexcept
+	constexpr EnumBitfield& reset(value_type const flag) noexcept
 	{
 		checkInvalidValue(flag);
 		_value &= ~to_integral(flag);
