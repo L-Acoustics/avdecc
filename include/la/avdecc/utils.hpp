@@ -285,13 +285,9 @@ public:
 			}
 			return *this;
 		}
-		reference operator*() noexcept
+		value_type operator*() noexcept
 		{
-			return *reinterpret_cast<pointer>(&_currentValue);
-		}
-		const_reference operator*() const noexcept
-		{
-			return *reinterpret_cast<const_pointer>(&_currentValue);
+			return static_cast<value_type>(_currentValue);
 		}
 		pointer operator->() noexcept
 		{
