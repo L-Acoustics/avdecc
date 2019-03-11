@@ -27,6 +27,7 @@
 
 #include "utils.hpp"
 #include "internals/exports.hpp"
+#include <memory>
 #include <mutex>
 #include <string>
 #include <chrono>
