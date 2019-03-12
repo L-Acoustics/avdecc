@@ -271,6 +271,8 @@ public:
 
 	static LA_AVDECC_API MvuFeaturesFlags const None;
 	static LA_AVDECC_API MvuFeaturesFlags const Redundancy;
+
+	LA_AVDECC_API operator std::string() const noexcept;
 };
 
 /** ACMP Message Type - Clause 8.2.1.5 */
