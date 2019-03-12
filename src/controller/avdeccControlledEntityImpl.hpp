@@ -356,11 +356,11 @@ public:
 	static std::string descriptorDynamicInfoTypeToString(DescriptorDynamicInfoType const descriptorDynamicInfoType) noexcept;
 
 	// Other usefull manipulation methods
-	constexpr static bool isStreamRunningFlag(entity::StreamInfoFlags const flags) noexcept
+	static inline bool isStreamRunningFlag(entity::StreamInfoFlags const flags) noexcept
 	{
 		return !flags.test(entity::StreamInfoFlag::StreamingWait);
 	}
-	constexpr static void setStreamRunningFlag(entity::StreamInfoFlags& flags, bool const isRunning) noexcept
+	static inline void setStreamRunningFlag(entity::StreamInfoFlags& flags, bool const isRunning) noexcept
 	{
 		if (isRunning)
 		{
