@@ -53,9 +53,60 @@ public:
 	{
 		using SharedPointer = std::shared_ptr<LockInformation>;
 
-		std::recursive_mutex lock{};
-		std::uint32_t lockedCount{ 0u };
-		std::thread::id lockingThreadID{};
+		std::recursive_mutex _lock{};
+		std::uint32_t _lockedCount{ 0u };
+		std::thread::id _lockingThreadID{};
+
+		void lock() noexcept
+		{
+			_lock.lock();
+			if (_lockedCount == 0)
+			{
+				_lockingThreadID = std::this_thread::get_id();
+			}
+			++_lockedCount;
+		}
+
+		void unlock() noexcept
+		{
+			AVDECC_ASSERT(isSelfLocked(), "unlock should not be called when current thread is not the lock holder");
+
+			--_lockedCount;
+			if (_lockedCount == 0)
+			{
+				_lockingThreadID = {};
+			}
+			_lock.unlock();
+		}
+
+		void lockAll(std::uint32_t const lockedCount) noexcept
+		{
+			for (auto count = 0u; count < lockedCount; ++count)
+			{
+				lock();
+			}
+		}
+
+		std::uint32_t unlockAll() noexcept
+		{
+			AVDECC_ASSERT(isSelfLocked(), "unlockAll should not be called when current thread is not the lock holder");
+
+			auto result = 0u;
+			auto const previousLockedCount = _lockedCount;
+			while (isSelfLocked())
+			{
+				unlock();
+				++result;
+			}
+
+			AVDECC_ASSERT(previousLockedCount == result, "lockedCount does not match the number of unlockings");
+			return result;
+		}
+
+		bool isSelfLocked() const noexcept
+		{
+			return _lockingThreadID == std::this_thread::get_id();
+		}
 	};
 
 	enum class EnumerationStep : std::uint16_t
@@ -230,7 +281,7 @@ public:
 	template<typename FieldPointer, typename DescriptorIndexType>
 	typename std::remove_pointer_t<FieldPointer>::mapped_type& getNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer model::ConfigurationStaticTree::*Field) noexcept
 	{
-		AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+		AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 		auto& configStaticTree = getConfigurationStaticTree(configurationIndex);
 		return (configStaticTree.*Field)[index];
@@ -238,7 +289,7 @@ public:
 	template<typename FieldPointer, typename DescriptorIndexType>
 	typename std::remove_pointer_t<FieldPointer>::mapped_type& getNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer model::ConfigurationDynamicTree::*Field) noexcept
 	{
-		AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+		AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 		auto& configDynamicTree = getConfigurationDynamicTree(configurationIndex);
 		return (configDynamicTree.*Field)[index];

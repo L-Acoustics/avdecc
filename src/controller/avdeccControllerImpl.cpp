@@ -977,7 +977,7 @@ void ControllerImpl::updateOperationStatus(ControlledEntityImpl& controlledEntit
 /* ************************************************************ */
 bool ControllerImpl::areControlledEntitiesSelfLocked() const noexcept
 {
-	return _entitiesSharedLockInformation->lockingThreadID == std::this_thread::get_id();
+	return _entitiesSharedLockInformation->isSelfLocked();
 }
 
 std::tuple<model::AcquireState, UniqueIdentifier> ControllerImpl::getAcquiredInfoFromStatus(ControlledEntityImpl& entity, UniqueIdentifier const owningEntity, entity::ControllerEntity::AemCommandStatus const status, bool const releaseEntityResult) const noexcept

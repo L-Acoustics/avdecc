@@ -610,22 +610,12 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 
 void ControlledEntityImpl::lock() noexcept
 {
-	_sharedLock->lock.lock();
-	if (_sharedLock->lockedCount == 0)
-	{
-		_sharedLock->lockingThreadID = std::this_thread::get_id();
-	}
-	++_sharedLock->lockedCount;
+	_sharedLock->lock();
 }
 
 void ControlledEntityImpl::unlock() noexcept
 {
-	--_sharedLock->lockedCount;
-	if (_sharedLock->lockedCount == 0)
-	{
-		_sharedLock->lockingThreadID = {};
-	}
-	_sharedLock->lock.unlock();
+	_sharedLock->unlock();
 }
 
 // Const Tree getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist
@@ -1535,7 +1525,7 @@ void ControlledEntityImpl::setClockDomainDescriptor(entity::model::ClockDomainDe
 // Expected RegisterUnsol query methods
 bool ControlledEntityImpl::checkAndClearExpectedRegisterUnsol() noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	// Ignore if we had a fatal enumeration error
 	if (_gotFatalEnumerateError)
@@ -1549,14 +1539,14 @@ bool ControlledEntityImpl::checkAndClearExpectedRegisterUnsol() noexcept
 
 void ControlledEntityImpl::setRegisterUnsolExpected() noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	_expectedRegisterUnsol = true;
 }
 
 bool ControlledEntityImpl::gotExpectedRegisterUnsol() const noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	return !_expectedRegisterUnsol;
 }
@@ -1579,7 +1569,7 @@ static inline ControlledEntityImpl::MilanInfoKey makeMilanInfoKey(ControlledEnti
 
 bool ControlledEntityImpl::checkAndClearExpectedMilanInfo(MilanInfoType const milanInfoType) noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	// Ignore if we had a fatal enumeration error
 	if (_gotFatalEnumerateError)
@@ -1591,7 +1581,7 @@ bool ControlledEntityImpl::checkAndClearExpectedMilanInfo(MilanInfoType const mi
 
 void ControlledEntityImpl::setMilanInfoExpected(MilanInfoType const milanInfoType) noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	auto const key = makeMilanInfoKey(milanInfoType);
 	_expectedMilanInfo.insert(key);
@@ -1599,7 +1589,7 @@ void ControlledEntityImpl::setMilanInfoExpected(MilanInfoType const milanInfoTyp
 
 bool ControlledEntityImpl::gotAllExpectedMilanInfo() const noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	return _expectedMilanInfo.empty();
 }
@@ -1622,7 +1612,7 @@ static inline ControlledEntityImpl::DescriptorKey makeDescriptorKey(entity::mode
 
 bool ControlledEntityImpl::checkAndClearExpectedDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	// Ignore if we had a fatal enumeration error
 	if (_gotFatalEnumerateError)
@@ -1640,7 +1630,7 @@ bool ControlledEntityImpl::checkAndClearExpectedDescriptor(entity::model::Config
 
 void ControlledEntityImpl::setDescriptorExpected(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	auto& conf = _expectedDescriptors[configurationIndex];
 
@@ -1650,7 +1640,7 @@ void ControlledEntityImpl::setDescriptorExpected(entity::model::ConfigurationInd
 
 bool ControlledEntityImpl::gotAllExpectedDescriptors() const noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	for (auto const& confKV : _expectedDescriptors)
 	{
@@ -1678,7 +1668,7 @@ static inline ControlledEntityImpl::DynamicInfoKey makeDynamicInfoKey(Controlled
 
 bool ControlledEntityImpl::checkAndClearExpectedDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex) noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	// Ignore if we had a fatal enumeration error
 	if (_gotFatalEnumerateError)
@@ -1696,7 +1686,7 @@ bool ControlledEntityImpl::checkAndClearExpectedDynamicInfo(entity::model::Confi
 
 void ControlledEntityImpl::setDynamicInfoExpected(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex) noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	auto& conf = _expectedDynamicInfo[configurationIndex];
 
@@ -1706,7 +1696,7 @@ void ControlledEntityImpl::setDynamicInfoExpected(entity::model::ConfigurationIn
 
 bool ControlledEntityImpl::gotAllExpectedDynamicInfo() const noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	for (auto const& confKV : _expectedDynamicInfo)
 	{
@@ -1734,7 +1724,7 @@ static inline ControlledEntityImpl::DescriptorDynamicInfoKey makeDescriptorDynam
 
 bool ControlledEntityImpl::checkAndClearExpectedDescriptorDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	// Ignore if we had a fatal enumeration error
 	if (_gotFatalEnumerateError)
@@ -1752,7 +1742,7 @@ bool ControlledEntityImpl::checkAndClearExpectedDescriptorDynamicInfo(entity::mo
 
 void ControlledEntityImpl::setDescriptorDynamicInfoExpected(entity::model::ConfigurationIndex const configurationIndex, DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	auto& conf = _expectedDescriptorDynamicInfo[configurationIndex];
 
@@ -1762,14 +1752,14 @@ void ControlledEntityImpl::setDescriptorDynamicInfoExpected(entity::model::Confi
 
 void ControlledEntityImpl::clearAllExpectedDescriptorDynamicInfo() noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	_expectedDescriptorDynamicInfo.clear();
 }
 
 bool ControlledEntityImpl::gotAllExpectedDescriptorDynamicInfo() const noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	for (auto const& confKV : _expectedDescriptorDynamicInfo)
 	{

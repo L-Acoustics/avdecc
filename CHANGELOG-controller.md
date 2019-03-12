@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - ControlledEntity visitor reports a more specialized parent class
 
+### Fixed
+- Controller entry-points automatically unlock all ControlledEntity (temporarily) during a sendMessage call
+
 ## [2.9.0] - 2019-02-13
 ### Added
 - Support for Milan STREAM_OUTPUT counters
