@@ -47,6 +47,10 @@ namespace controller
 /* ************************************************************************** */
 /* ControlledEntity                                                           */
 /* ************************************************************************** */
+/**
+* @brief A local or remote entity that was discovered and is attached to a Controller.
+* @details Representation of an entity that was previously discovered by a Controller.
+*/
 class ControlledEntity
 {
 public:
@@ -172,7 +176,10 @@ protected:
 /* ************************************************************************** */
 /* ControlledEntityGuard                                                      */
 /* ************************************************************************** */
-/** A guard around a ControlledEntity that guarantees it won't be modified while the Guard is alive. WARNING: The guard should not be kept for more than a few milliseconds. */
+/**
+* @brief A guard around a ControlledEntity that guarantees it won't be modified while the Guard is alive.
+* @warning The guard should not be kept for more than a few milliseconds.
+*/
 class ControlledEntityGuard final
 {
 public:
