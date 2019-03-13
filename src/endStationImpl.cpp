@@ -55,7 +55,7 @@ entity::ControllerEntity* EndStationImpl::addControllerEntity(std::uint16_t cons
 
 		try
 		{
-			auto const commonInformation{ entity::Entity::CommonInformation{ eid, entityModelID, entity::EntityCapabilities::None, 0u, entity::TalkerCapabilities::None, 0u, entity::ListenerCapabilities::None, entity::ControllerCapabilities::Implemented, std::nullopt, std::nullopt } };
+			auto const commonInformation{ entity::Entity::CommonInformation{ eid, entityModelID, entity::EntityCapabilities{}, 0u, entity::TalkerCapabilities{}, 0u, entity::ListenerCapabilities{}, entity::ControllerCapabilities{ entity::ControllerCapability::Implemented }, std::nullopt, std::nullopt } };
 			auto const interfaceInfo{ entity::Entity::InterfaceInformation{ _protocolInterface->getMacAddress(), 31u, 0u, std::nullopt, std::nullopt } };
 
 			controller = std::make_unique<entity::LocalEntityGuard<entity::ControllerEntityImpl>>(_protocolInterface.get(), commonInformation, entity::Entity::InterfacesInformation{ { entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } }, delegate);
@@ -89,7 +89,7 @@ entity::AggregateEntity* EndStationImpl::addAggregateEntity(std::uint16_t const 
 
 		try
 		{
-			auto const commonInformation{ entity::Entity::CommonInformation{ eid, entityModelID, entity::EntityCapabilities::None, 0u, entity::TalkerCapabilities::None, 0u, entity::ListenerCapabilities::None, controllerDelegate ? entity::ControllerCapabilities::Implemented : entity::ControllerCapabilities::None, std::nullopt, std::nullopt } };
+			auto const commonInformation{ entity::Entity::CommonInformation{ eid, entityModelID, entity::EntityCapabilities{}, 0u, entity::TalkerCapabilities{}, 0u, entity::ListenerCapabilities{}, controllerDelegate ? entity::ControllerCapabilities{ entity::ControllerCapability::Implemented } : entity::ControllerCapabilities{}, std::nullopt, std::nullopt } };
 			auto const interfaceInfo{ entity::Entity::InterfaceInformation{ _protocolInterface->getMacAddress(), 31u, 0u, std::nullopt, std::nullopt } };
 
 			aggregate = std::make_unique<entity::LocalEntityGuard<entity::AggregateEntityImpl>>(_protocolInterface.get(), commonInformation, entity::Entity::InterfacesInformation{ { entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } }, controllerDelegate);

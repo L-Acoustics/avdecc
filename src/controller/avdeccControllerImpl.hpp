@@ -397,6 +397,7 @@ private:
 		bool _locked{ false };
 	};
 
+	/** A guard around a ControlledEntityImpl that guarantees it won't be destroyed while the Guard is alive. All access to the underlying object is blocked. */
 	class SharedControlledEntityImplHolder final
 	{
 	public:
@@ -436,6 +437,42 @@ private:
 
 	private:
 		SharedControlledEntityImpl _controlledEntity{ nullptr };
+	};
+
+	/** A guard around a ControllerImpl that guarantees the lock on all the ControlledEntities will be released during the lifetime of this object. When destroyed, all the locked count will be restored. */
+	class ControlledEntityUnlockerGuard final
+	{
+	public:
+		ControlledEntityUnlockerGuard(ControllerImpl const& controller) noexcept
+			: _sharedLockInformation(controller._entitiesSharedLockInformation)
+			, _wasLocked(_sharedLockInformation->isSelfLocked())
+		{
+			if (_wasLocked)
+			{
+				_lockedCount = _sharedLockInformation->unlockAll();
+			}
+		}
+
+		~ControlledEntityUnlockerGuard() noexcept
+		{
+			if (_wasLocked)
+			{
+				_sharedLockInformation->lockAll(_lockedCount);
+			}
+		}
+
+		// Allow move semantics
+		ControlledEntityUnlockerGuard(ControlledEntityUnlockerGuard&&) = default;
+		ControlledEntityUnlockerGuard& operator=(ControlledEntityUnlockerGuard&&) = default;
+
+		// Disallow copy
+		ControlledEntityUnlockerGuard(ControlledEntityUnlockerGuard const&) = delete;
+		ControlledEntityUnlockerGuard& operator=(ControlledEntityUnlockerGuard const&) = delete;
+
+	private:
+		ControlledEntityImpl::LockInformation::SharedPointer _sharedLockInformation{ nullptr };
+		bool const _wasLocked{ false };
+		std::uint32_t _lockedCount{ 0u };
 	};
 
 	/* ************************************************************ */

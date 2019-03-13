@@ -340,6 +340,20 @@ MvuCommandType::operator std::string() const noexcept
 MvuFeaturesFlags const MvuFeaturesFlags::None{ 0x00000000 };
 MvuFeaturesFlags const MvuFeaturesFlags::Redundancy{ 0x00000001 };
 
+MvuFeaturesFlags::operator std::string() const noexcept
+{
+	static std::unordered_map<MvuFeaturesFlags::value_type, std::string> s_MvuFeaturesFlagsMapping = {
+		{ MvuFeaturesFlags::None.getValue(), "NONE" },
+		{ MvuFeaturesFlags::Redundancy.getValue(), "REDUNDANCY" },
+	};
+
+	auto const& it = s_MvuFeaturesFlagsMapping.find(getValue());
+	if (it == s_MvuFeaturesFlagsMapping.end())
+		return "INVALID_FEATURE_FLAG";
+	return it->second;
+}
+
+
 /** ACMP Message Type - Clause 8.2.1.5 */
 AcmpMessageType const AcmpMessageType::ConnectTxCommand{ 0 };
 AcmpMessageType const AcmpMessageType::ConnectTxResponse{ 1 };

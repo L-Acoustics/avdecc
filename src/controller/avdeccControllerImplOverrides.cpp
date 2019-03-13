@@ -133,6 +133,8 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 
 ControllerImpl::~ControllerImpl()
 {
+	AVDECC_ASSERT(!areControlledEntitiesSelfLocked(), "No ControlledEntity should be locked during this call. relinquish the ownership (with .reset()) before calling this method");
+
 	// Notify the thread we are shutting down
 	_shouldTerminate = true;
 
@@ -234,13 +236,16 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 		}
 		controlledEntity->setAcquireState(model::AcquireState::TryAcquire);
 		controlledEntity.reset(); // We have to relinquish the ownership of the ControlledEntity before calling the controller
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->acquireEntity(targetEntityID, isPersistent, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
 			{
-#pragma message("REMOVE THIS WHEN maybe_unused is fixed in VS")
+#if _MSC_VER < 1920
+#	pragma message("REMOVE THIS WHEN the required version to build is VS 2019")
 				// Visual Studio 15.9 is bugged and (again) ignore the maybe_unused attribute in lambda
 				(void)descriptorType;
 				(void)descriptorIndex;
+#endif // _MSC_VER
 				LOG_CONTROLLER_TRACE(entityID, "User acquireEntityResult (OwningController={} DescriptorType={} DescriptorIndex={}): {}", utils::toHexString(owningEntity, true), utils::to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntity
@@ -280,13 +285,16 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User releaseEntity (DescriptorType={} DescriptorIndex={})", utils::to_integral(descriptorType), descriptorIndex);
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->releaseEntity(targetEntityID, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
 			{
-#pragma message("REMOVE THIS WHEN maybe_unused is fixed in VS")
+#if _MSC_VER < 1920
+#	pragma message("REMOVE THIS WHEN the required version to build is VS 2019")
 				// Visual Studio 15.9 is bugged and (again) ignore the maybe_unused attribute in lambda
 				(void)descriptorType;
 				(void)descriptorIndex;
+#endif // _MSC_VER
 				LOG_CONTROLLER_TRACE(entityID, "User releaseEntity (OwningController={} DescriptorType={} DescriptorIndex={}): {}", utils::toHexString(owningEntity, true), utils::to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntity
@@ -335,13 +343,16 @@ void ControllerImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntit
 		}
 		controlledEntity->setLockState(model::LockState::TryLock);
 		controlledEntity.reset(); // We have to relinquish the ownership of the ControlledEntity before calling the controller
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->lockEntity(targetEntityID, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const lockingEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
 			{
-#pragma message("REMOVE THIS WHEN maybe_unused is fixed in VS")
+#if _MSC_VER < 1920
+#	pragma message("REMOVE THIS WHEN the required version to build is VS 2019")
 				// Visual Studio 15.9 is bugged and (again) ignore the maybe_unused attribute in lambda
 				(void)descriptorType;
 				(void)descriptorIndex;
+#endif // _MSC_VER
 				LOG_CONTROLLER_TRACE(entityID, "User lockEntityResult (LockingController={} DescriptorType={} DescriptorIndex={}): {}", utils::toHexString(lockingEntity, true), utils::to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntity
@@ -381,13 +392,16 @@ void ControllerImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockE
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User unlockEntity (DescriptorType={} DescriptorIndex={})", utils::to_integral(descriptorType), descriptorIndex);
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->unlockEntity(targetEntityID, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const lockingEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
 			{
-#pragma message("REMOVE THIS WHEN maybe_unused is fixed in VS")
+#if _MSC_VER < 1920
+#	pragma message("REMOVE THIS WHEN the required version to build is VS 2019")
 				// Visual Studio 15.9 is bugged and (again) ignore the maybe_unused attribute in lambda
 				(void)descriptorType;
 				(void)descriptorIndex;
+#endif // _MSC_VER
 				LOG_CONTROLLER_TRACE(entityID, "User unlockEntity (LockingController={} DescriptorType={} DescriptorIndex={}): {}", utils::toHexString(lockingEntity, true), utils::to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntity
@@ -424,6 +438,7 @@ void ControllerImpl::setConfiguration(UniqueIdentifier const targetEntityID, ent
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setConfiguration (ConfigurationIndex={})", configurationIndex);
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setConfiguration(targetEntityID, configurationIndex,
 			[this, handler](entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex)
 			{
@@ -464,11 +479,12 @@ void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID,
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamInputFormat (StreamIndex={} streamFormat={})", streamIndex, utils::toHexString(streamFormat, true));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamInputFormat (StreamIndex={} streamFormat={})", streamIndex, utils::toHexString(streamFormat.getValue(), true));
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setStreamInputFormat(targetEntityID, streamIndex, streamFormat,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat)
 			{
-				LOG_CONTROLLER_TRACE(entityID, "User setStreamInputFormat (StreamIndex={} streamFormat={}): {}", streamIndex, utils::toHexString(streamFormat, true), entity::ControllerEntity::statusToString(status));
+				LOG_CONTROLLER_TRACE(entityID, "User setStreamInputFormat (StreamIndex={} streamFormat={}): {}", streamIndex, utils::toHexString(streamFormat.getValue(), true), entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntity
 				auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -505,11 +521,12 @@ void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID
 
 	if (controlledEntity)
 	{
-		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamOutputFormat (StreamIndex={} streamFormat={})", streamIndex, utils::toHexString(streamFormat, true));
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamOutputFormat (StreamIndex={} streamFormat={})", streamIndex, utils::toHexString(streamFormat.getValue(), true));
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setStreamOutputFormat(targetEntityID, streamIndex, streamFormat,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat)
 			{
-				LOG_CONTROLLER_TRACE(entityID, "User setStreamOutputFormat (StreamIndex={} streamFormat={}): {}", streamIndex, utils::toHexString(streamFormat, true), entity::ControllerEntity::statusToString(status));
+				LOG_CONTROLLER_TRACE(entityID, "User setStreamOutputFormat (StreamIndex={} streamFormat={}): {}", streamIndex, utils::toHexString(streamFormat.getValue(), true), entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntity
 				auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -547,6 +564,7 @@ void ControllerImpl::setStreamInputInfo(UniqueIdentifier const targetEntityID, e
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamInputInfo (StreamIndex={})", streamIndex);
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setStreamInputInfo(targetEntityID, streamIndex, info,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info)
 			{
@@ -588,6 +606,7 @@ void ControllerImpl::setStreamOutputInfo(UniqueIdentifier const targetEntityID, 
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamOutputInfo (StreamIndex={})", streamIndex);
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setStreamOutputInfo(targetEntityID, streamIndex, info,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info)
 			{
@@ -629,6 +648,7 @@ void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setEntityName (Name={})", name.str());
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setEntityName(targetEntityID, name,
 			[this, name, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status)
 			{
@@ -670,6 +690,7 @@ void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, e
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setEntityGroupName (Name={})", name.str());
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setEntityGroupName(targetEntityID, name,
 			[this, name, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status)
 			{
@@ -711,6 +732,7 @@ void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID,
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setConfigurationName (ConfigurationIndex={} Name={})", configurationIndex, name.str());
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setConfigurationName(targetEntityID, configurationIndex, name,
 			[this, name, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex)
 			{
@@ -752,6 +774,7 @@ void ControllerImpl::setAudioUnitName(UniqueIdentifier const targetEntityID, ent
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioUnitName (ConfigurationIndex={} AudioUnitIndex={} Name={})", configurationIndex, audioUnitIndex, name.str());
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setAudioUnitName(targetEntityID, configurationIndex, audioUnitIndex, name,
 			[this, name, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex)
 			{
@@ -793,6 +816,7 @@ void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, e
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamInputName (ConfigurationIndex={} StreamIndex={} Name={})", configurationIndex, streamIndex, name.str());
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setStreamInputName(targetEntityID, configurationIndex, streamIndex, name,
 			[this, name, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
 			{
@@ -834,6 +858,7 @@ void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, 
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamOutputName (ConfigurationIndex={} StreamIndex={} Name={})", configurationIndex, streamIndex, name.str());
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setStreamOutputName(targetEntityID, configurationIndex, streamIndex, name,
 			[this, name, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
 			{
@@ -875,6 +900,7 @@ void ControllerImpl::setAvbInterfaceName(UniqueIdentifier const targetEntityID, 
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setAvbInterfaceName (ConfigurationIndex={} AvbInterfaceIndex={} Name={})", configurationIndex, avbInterfaceIndex, name.str());
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setAvbInterfaceName(targetEntityID, configurationIndex, avbInterfaceIndex, name,
 			[this, name, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex)
 			{
@@ -916,6 +942,7 @@ void ControllerImpl::setClockSourceName(UniqueIdentifier const targetEntityID, e
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setClockSourceName (ConfigurationIndex={} ClockSourceIndex={} Name={})", configurationIndex, clockSourceIndex, name.str());
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setClockSourceName(targetEntityID, configurationIndex, clockSourceIndex, name,
 			[this, name, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex)
 			{
@@ -957,6 +984,7 @@ void ControllerImpl::setMemoryObjectName(UniqueIdentifier const targetEntityID, 
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setMemoryObjectName (ConfigurationIndex={} MemoryObjectIndex={} Name={})", configurationIndex, memoryObjectIndex, name.str());
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setMemoryObjectName(targetEntityID, configurationIndex, memoryObjectIndex, name,
 			[this, name, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex)
 			{
@@ -998,6 +1026,7 @@ void ControllerImpl::setAudioClusterName(UniqueIdentifier const targetEntityID, 
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioClusterName (ConfigurationIndex={} AudioClusterIndex={} Name={})", configurationIndex, audioClusterIndex, name.str());
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setAudioClusterName(targetEntityID, configurationIndex, audioClusterIndex, name,
 			[this, name, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex)
 			{
@@ -1039,6 +1068,7 @@ void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, e
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setClockDomainName (ConfigurationIndex={} ClockDomainIndex={} Name={})", configurationIndex, clockDomainIndex, name.str());
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setClockDomainName(targetEntityID, configurationIndex, clockDomainIndex, name,
 			[this, name, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex)
 			{
@@ -1080,6 +1110,7 @@ void ControllerImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntit
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioUnitSamplingRate (AudioUnitIndex={} SamplingRate={})", audioUnitIndex, samplingRate);
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setAudioUnitSamplingRate(targetEntityID, audioUnitIndex, samplingRate,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate)
 			{
@@ -1121,6 +1152,7 @@ void ControllerImpl::setClockSource(UniqueIdentifier const targetEntityID, entit
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setClockSource (ClockDomainIndex={} ClockSourceIndex={})", clockDomainIndex, clockSourceIndex);
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setClockSource(targetEntityID, clockDomainIndex, clockSourceIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex)
 			{
@@ -1162,6 +1194,7 @@ void ControllerImpl::startStreamInput(UniqueIdentifier const targetEntityID, ent
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User startStreamInput (StreamIndex={})", streamIndex);
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->startStreamInput(targetEntityID, streamIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 			{
@@ -1203,6 +1236,7 @@ void ControllerImpl::stopStreamInput(UniqueIdentifier const targetEntityID, enti
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User stopStreamInput (StreamIndex={})", streamIndex);
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->stopStreamInput(targetEntityID, streamIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 			{
@@ -1244,6 +1278,7 @@ void ControllerImpl::startStreamOutput(UniqueIdentifier const targetEntityID, en
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User startStreamOutput (StreamIndex={})", streamIndex);
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->startStreamOutput(targetEntityID, streamIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 			{
@@ -1285,6 +1320,7 @@ void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, ent
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User stopStreamOutput (StreamIndex={})", streamIndex);
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->stopStreamOutput(targetEntityID, streamIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex)
 			{
@@ -1326,6 +1362,7 @@ void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targ
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User addStreamInputAudioMappings (StreamPortIndex={})", streamPortIndex); // TODO: Convert mappings to string and add to log
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->addStreamPortInputAudioMappings(targetEntityID, streamPortIndex, mappings,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 			{
@@ -1367,6 +1404,7 @@ void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const tar
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User addStreamOutputAudioMappings (StreamPortIndex={})", streamPortIndex);
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->addStreamPortOutputAudioMappings(targetEntityID, streamPortIndex, mappings,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 			{
@@ -1408,6 +1446,7 @@ void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const t
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User removeStreamInputAudioMappings (StreamPortIndex={})", streamPortIndex);
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->removeStreamPortInputAudioMappings(targetEntityID, streamPortIndex, mappings,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 			{
@@ -1449,6 +1488,7 @@ void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const 
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User removeStreamOutputAudioMappings (StreamPortIndex={})", streamPortIndex);
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->removeStreamPortOutputAudioMappings(targetEntityID, streamPortIndex, mappings,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings)
 			{
@@ -1490,6 +1530,7 @@ void ControllerImpl::setMemoryObjectLength(UniqueIdentifier const targetEntityID
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setMemoryObjectLength (ConfigurationIndex={} MemoryObjectIndex={} Length={})", configurationIndex, memoryObjectIndex, length);
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setMemoryObjectLength(targetEntityID, configurationIndex, memoryObjectIndex, length,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length)
 			{
@@ -1672,6 +1713,7 @@ void ControllerImpl::readDeviceMemory(UniqueIdentifier const targetEntityID, std
 		if (tlv)
 		{
 			LOG_CONTROLLER_TRACE(targetEntityID, "User readDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", utils::toHexString(address, true), length, 0, tlv.size());
+			auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 			_controller->addressAccess(targetEntityID, { std::move(tlv) },
 				[this, baseAddress = address, length, progressHandlerCopy = progressHandler, completionHandlerCopy = completionHandler, memoryBuffer = std::move(memoryBuffer)](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs) mutable
 				{
@@ -1698,6 +1740,7 @@ void ControllerImpl::startOperation(UniqueIdentifier const targetEntityID, entit
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User startOperation (DescriptorType={}, DescriptorIndex={}, OperationType={})", static_cast<std::uint16_t>(descriptorType), descriptorIndex, static_cast<std::uint16_t>(operationType));
 
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->startOperation(targetEntityID, descriptorType, descriptorIndex, operationType, memoryBuffer,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const /*descriptorType*/, la::avdecc::entity::model::DescriptorIndex const /*descriptorIndex*/, la::avdecc::entity::model::OperationID const operationID, la::avdecc::entity::model::MemoryObjectOperationType const /*operationType*/, la::avdecc::MemoryBuffer const& memoryBuffer)
 			{
@@ -1733,6 +1776,7 @@ void ControllerImpl::abortOperation(UniqueIdentifier const targetEntityID, entit
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User abortOperation (DescriptorType={}, DescriptorIndex={}, OperationID={})", static_cast<std::uint16_t>(descriptorType), descriptorIndex, operationID);
 
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->abortOperation(targetEntityID, descriptorType, descriptorIndex, operationID,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::DescriptorType const /*descriptorType*/, entity::model::DescriptorIndex const /*descriptorIndex*/, entity::model::OperationID const /*operationID*/)
 			{
@@ -1811,6 +1855,7 @@ void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, st
 		if (tlv)
 		{
 			LOG_CONTROLLER_TRACE(targetEntityID, "User writeDeviceMemory chunk (BaseAddress={}, Length={}, Pos={}, ChunkLength={})", utils::toHexString(address, true), memoryBuffer.size(), 0, tlv.size());
+			auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 			_controller->addressAccess(targetEntityID, { std::move(tlv) },
 				[this, baseAddress = address, sentSize = tlv.size(), progressHandlerCopy = progressHandler, completionHandlerCopy = completionHandler, memoryBuffer = std::move(memoryBuffer)](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& /*tlvs*/) mutable
 				{
@@ -1836,6 +1881,7 @@ void ControllerImpl::connectStream(entity::model::StreamIdentification const& ta
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->connectStream(talkerStream, listenerStream,
 			[this, handler](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 			{
@@ -1847,7 +1893,7 @@ void ControllerImpl::connectStream(entity::model::StreamIdentification const& ta
 
 				if (!!status)
 				{
-					// Do not trust the connectionCount value to determine if the listener is connected, but rather use the status code (SUCCESS means connection is established)
+					// Do not trust the connectionCount value to determine if the listener is connected, but rather use the fact there was no error in the command
 					handleListenerStreamStateNotification(talkerStream, listenerStream, true, flags, false);
 				}
 
@@ -1869,59 +1915,57 @@ void ControllerImpl::disconnectStream(entity::model::StreamIdentification const&
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->disconnectStream(talkerStream, listenerStream,
-			[this, handler](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
+			[this, handler](entity::controller::Interface const* const /*controller*/, [[maybe_unused]] entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 			{
+#if _MSC_VER < 1920
+#	pragma message("REMOVE THIS WHEN the required version to build is VS 2019")
+				// Visual Studio 15.9 is bugged and (again) ignore the maybe_unused attribute in lambda
+				(void)talkerStream;
+#endif // _MSC_VER
 				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
-				bool shouldNotifyHandler{ true }; // Shall we notify the handler right now, or do we have to send another message before
-
-				if (!!status) // No error, update the connection state
+				if (!!status || status == entity::ControllerEntity::ControlStatus::NotConnected) // No error, update the connection state
 				{
-					// Do not trust the connectionCount value to determine if the listener is disconnected, but rather use the status code (SUCCESS means disconnected)
-					handleListenerStreamStateNotification(talkerStream, listenerStream, false, flags, false);
+					// Do not trust the connectionCount value to determine if the listener is disconnected, but rather use the fact there was no error (NOT_CONNECTED is actually not an error) in the command
+					handleListenerStreamStateNotification({}, listenerStream, false, flags, false);
+
+					// Take a "scoped locked" shared copy of the ControlledEntity
+					auto listener = getControlledEntityImplGuard(listenerStream.entityID);
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, entity::ControllerEntity::ControlStatus::Success); // Force SUCCESS as status
 				}
 				else
 				{
 					// In case of a disconnect we might get an error (forwarded from the talker) but the stream is actually disconnected.
 					// In that case, we have to query the listener stream state in order to know the actual connection state
-					if (status != entity::ControllerEntity::ControlStatus::NotConnected)
-					{
-						shouldNotifyHandler = false; // Don't notify handler right now, wait for getListenerStreamState answer
-						_controller->getListenerStreamState(listenerStream,
-							[this, handler, disconnectStatus = status](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
+					// Also don't notify the result handler right now, wait for getListenerStreamState answer
+					_controller->getListenerStreamState(listenerStream,
+						[this, handler, disconnectStatus = status](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
+						{
+							entity::ControllerEntity::ControlStatus controlStatus{ disconnectStatus };
+							// In a GET_RX_STATE_RESPONSE message, the connectionCount is set to 1 if the stream is connected and 0 if not connected (See Marc Illouz clarification document, and hopefully someday as a corrigendum)
+							auto const isStillConnected = connectionCount != 0;
+
+							if (!!status)
 							{
-								entity::ControllerEntity::ControlStatus controlStatus{ disconnectStatus };
-								// In a GET_RX_STATE_RESPONSE message, the connectionCount is set to 1 if the stream is connected and 0 if not connected (See Marc Illouz clarification document, and hopefully someday as a corrigendum)
-								auto const isStillConnected = connectionCount != 0;
+								// Status to return depends if we actually got disconnected (success in that case)
+								controlStatus = isStillConnected ? disconnectStatus : entity::ControllerEntity::ControlStatus::Success;
+							}
 
-								if (!!status)
-								{
-									// Status to return depends if we actually got disconnected (success in that case)
-									controlStatus = isStillConnected ? disconnectStatus : entity::ControllerEntity::ControlStatus::Success;
-								}
+							// Take a "scoped locked" shared copy of the ControlledEntity
+							auto listener = getControlledEntityImplGuard(listenerStream.entityID);
 
-								// Take a "scoped locked" shared copy of the ControlledEntity
-								auto listener = getControlledEntityImplGuard(listenerStream.entityID);
+							if (!!status)
+							{
+								handleListenerStreamStateNotification(talkerStream, listenerStream, isStillConnected, flags, false);
+							}
 
-								if (!!status)
-								{
-									handleListenerStreamStateNotification(talkerStream, listenerStream, isStillConnected, flags, false);
-								}
-
-								// Invoke result handler
-								utils::invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, controlStatus);
-							});
-					}
-				}
-
-				if (shouldNotifyHandler)
-				{
-					// Take a "scoped locked" shared copy of the ControlledEntity
-					auto listener = getControlledEntityImplGuard(listenerStream.entityID);
-
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, status);
+							// Invoke result handler
+							utils::invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, controlStatus);
+						});
 				}
 			});
 	}
@@ -1939,6 +1983,7 @@ void ControllerImpl::disconnectTalkerStream(entity::model::StreamIdentification 
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectTalkerStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->disconnectTalkerStream(talkerStream, listenerStream,
 			[this, handler](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 			{
@@ -1952,7 +1997,7 @@ void ControllerImpl::disconnectTalkerStream(entity::model::StreamIdentification 
 
 				if (!!status) // No error, update the connection state
 				{
-					// Do not trust the connectionCount value to determine if the listener is disconnected, but rather use the status code (SUCCESS means disconnected)
+					// Do not trust the connectionCount value to determine if the listener is connected, but rather use the fact there was no error in the command
 					handleTalkerStreamStateNotification(talkerStream, listenerStream, false, flags, true);
 				}
 
@@ -1974,6 +2019,7 @@ void ControllerImpl::getListenerStreamState(entity::model::StreamIdentification 
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User getListenerStreamState (ListenerID={} ListenerIndex={})", utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->getListenerStreamState(listenerStream,
 			[this, handler](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 			{
@@ -1995,7 +2041,7 @@ void ControllerImpl::getListenerStreamState(entity::model::StreamIdentification 
 	}
 	else
 	{
-		utils::invokeProtectedHandler(handler, nullptr, nullptr, entity::model::StreamIndex(0), entity::model::StreamIndex(0), uint16_t(0), entity::ConnectionFlags::None, entity::ControllerEntity::ControlStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, nullptr, entity::model::StreamIndex(0), entity::model::StreamIndex(0), uint16_t(0), entity::ConnectionFlags{}, entity::ControllerEntity::ControlStatus::UnknownEntity);
 	}
 }
 

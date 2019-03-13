@@ -27,7 +27,6 @@
 #include "la/avdecc/internals/entity.hpp"
 #include "la/avdecc/internals/entityModel.hpp"
 #include "la/avdecc/internals/protocolInterface.hpp"
-#include "la/avdecc/internals/protocolGenericAecpdu.hpp"
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
 #include "la/avdecc/internals/protocolMvuAecpdu.hpp"
@@ -65,12 +64,17 @@ public:
 	{
 		std::uint8_t const validTime = static_cast<decltype(validTime)>(availableDuration / 2);
 		SuperClass::setValidTime(validTime, interfaceIndex);
-		return !_protocolInterface->enableEntityAdvertising(*this, interfaceIndex);
+
+		// TODO: When Entity will support multiple ProtocolInterfaces, call the correct one, based on interfaceIndex
+		// If interfaceIndex is not set, disable it for all interfaces
+		return !_protocolInterface->enableEntityAdvertising(*this);
 	}
 
-	virtual void disableEntityAdvertising(std::optional<model::AvbInterfaceIndex> const interfaceIndex) noexcept override
+	virtual void disableEntityAdvertising(std::optional<model::AvbInterfaceIndex> const /*interfaceIndex*/) noexcept override
 	{
-		_protocolInterface->disableEntityAdvertising(*this, interfaceIndex);
+		// TODO: When Entity will support multiple ProtocolInterfaces, call the correct one, based on interfaceIndex
+		// If interfaceIndex is not set, disable it for all interfaces
+		_protocolInterface->disableEntityAdvertising(*this);
 	}
 
 	/** Sets the entity capabilities and flag for announcement */
@@ -78,7 +82,7 @@ public:
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
 		SuperClass::setEntityCapabilities(entityCapabilities);
-		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::EntityCapabilities }, std::nullopt);
+		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::EntityCapabilities });
 	}
 
 	/** Sets the association unique identifier and flag for announcement */
@@ -86,7 +90,7 @@ public:
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
 		SuperClass::setAssociationID(associationID);
-		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::AssociationID }, std::nullopt);
+		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::AssociationID });
 	}
 
 	/** Sets the valid time value on the specified interfaceIndex if set, otherwise on all interfaces, and flag for announcement */
@@ -94,7 +98,8 @@ public:
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
 		SuperClass::setValidTime(validTime, interfaceIndex);
-		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::ValidTime }, interfaceIndex);
+		// TODO: When Entity will support multiple ProtocolInterfaces, call the correct one, based on interfaceIndex
+		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::ValidTime });
 	}
 
 	/** Sets the gptp grandmaster unique identifier and flag for announcement */
@@ -102,7 +107,8 @@ public:
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
 		SuperClass::setGptpGrandmasterID(gptpGrandmasterID, interfaceIndex);
-		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::GptpGrandmasterID }, interfaceIndex);
+		// TODO: When Entity will support multiple ProtocolInterfaces, call the correct one, based on interfaceIndex
+		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::GptpGrandmasterID });
 	}
 
 	/** Sets th gptp domain number and flag for announcement */
@@ -110,7 +116,8 @@ public:
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
 		SuperClass::setGptpDomainNumber(gptpDomainNumber, interfaceIndex);
-		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::GptpDomainNumber }, interfaceIndex);
+		// TODO: When Entity will support multiple ProtocolInterfaces, call the correct one, based on interfaceIndex
+		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::GptpDomainNumber });
 	}
 
 	/* ************************************************************************** */
@@ -229,14 +236,13 @@ public:
 		try
 		{
 			// Build AEM-AECPDU frame
-			auto frame = protocol::AemAecpdu::create();
+			auto frame = protocol::AemAecpdu::create(false);
 			auto* aem = static_cast<protocol::AemAecpdu*>(frame.get());
 
 			// Set Ether2 fields
 			aem->setSrcAddress(pi->getMacAddress());
 			aem->setDestAddress(targetMacAddress);
 			// Set AECP fields
-			aem->setMessageType(protocol::AecpMessageType::AemCommand);
 			aem->setStatus(protocol::AecpStatus::Success);
 			aem->setTargetEntityID(targetEntityID);
 			aem->setControllerEntityID(controllerEntityID);
@@ -271,14 +277,13 @@ public:
 		try
 		{
 			// Build AA-AECPDU frame
-			auto frame = protocol::AaAecpdu::create();
+			auto frame = protocol::AaAecpdu::create(false);
 			auto* aa = static_cast<protocol::AaAecpdu*>(frame.get());
 
 			// Set Ether2 fields
 			aa->setSrcAddress(pi->getMacAddress());
 			aa->setDestAddress(targetMacAddress);
 			// Set AECP fields
-			aa->setMessageType(protocol::AecpMessageType::AddressAccessCommand);
 			aa->setStatus(protocol::AecpStatus::Success);
 			aa->setTargetEntityID(targetEntityID);
 			aa->setControllerEntityID(controllerEntityID);
@@ -314,14 +319,13 @@ public:
 		try
 		{
 			// Build MVU-AECPDU frame
-			auto frame = protocol::MvuAecpdu::create();
+			auto frame = protocol::MvuAecpdu::create(false);
 			auto* mvu = static_cast<protocol::MvuAecpdu*>(frame.get());
 
 			// Set Ether2 fields
 			mvu->setSrcAddress(pi->getMacAddress());
 			mvu->setDestAddress(targetMacAddress);
 			// Set AECP fields
-			mvu->setMessageType(protocol::AecpMessageType::VendorUniqueCommand);
 			mvu->setStatus(protocol::AecpStatus::Success);
 			mvu->setTargetEntityID(targetEntityID);
 			mvu->setControllerEntityID(controllerEntityID);
@@ -374,7 +378,7 @@ public:
 			acmp->setStreamDestAddress({});
 			acmp->setConnectionCount(connectionIndex);
 			// No need to set the SequenceID, it's set by the ProtocolInterface layer
-			acmp->setFlags(ConnectionFlags::None);
+			acmp->setFlags({});
 			acmp->setStreamVlanID(0);
 
 			auto const error = pi->sendAcmpCommand(std::move(frame),
@@ -402,27 +406,30 @@ public:
 	{
 		try
 		{
-			auto response = command.copy();
+			// Try to make a response from this command
+			auto response = command.responseCopy();
 
-			// Set Ether2 fields
+			if (response)
 			{
-				auto& ether2 = static_cast<protocol::EtherLayer2&>(*response);
-				if (command.getDestAddress() != pi->getMacAddress())
+				// Set Ether2 fields
 				{
-					LOG_ENTITY_WARN(command.getTargetEntityID(), "Sending AECP response using own MacAddress as source, instead of the incorrect one from the AECP command");
+					auto& ether2 = static_cast<protocol::EtherLayer2&>(*response);
+					if (command.getDestAddress() != pi->getMacAddress())
+					{
+						LOG_ENTITY_WARN(command.getTargetEntityID(), "Sending AECP response using own MacAddress as source, instead of the incorrect one from the AECP command");
+					}
+					ether2.setSrcAddress(pi->getMacAddress()); // Using our MacAddress instead of the one from the Command, some devices incorrectly send some AEM messages to the multicast Ether2 MacAddress instead of targeting an entity
+					ether2.setDestAddress(command.getSrcAddress());
 				}
-				ether2.setSrcAddress(pi->getMacAddress()); // Using our MacAddress instead of the one from the Command, some devices incorrectly send some AEM messages to the multicast Ether2 MacAddress instead of targeting an entity
-				ether2.setDestAddress(command.getSrcAddress());
-			}
-			// Set AECP fields
-			{
-				auto& frame = static_cast<protocol::GenericAecpdu&>(*response);
-				frame.setMessageType(protocol::AecpMessageType{ static_cast<protocol::AecpMessageType::value_type>(command.getMessageType().getValue() + 1u) }); // Responses are always the value next after the command
-				frame.setStatus(status);
-			}
+				// Set AECP status
+				{
+					auto& frame = static_cast<protocol::Aecpdu&>(*response);
+					frame.setStatus(status);
+				}
 
-			// We don't care about the send errors
-			pi->sendAecpResponse(std::move(response));
+				// We don't care about the send errors
+				pi->sendAecpResponse(std::move(response));
+			}
 		}
 		catch (...)
 		{
@@ -434,7 +441,7 @@ public:
 		try
 		{
 			// Build AEM-AECPDU frame
-			auto frame = protocol::AemAecpdu::create();
+			auto frame = protocol::AemAecpdu::create(true);
 			auto* aem = static_cast<protocol::AemAecpdu*>(frame.get());
 
 			// Set Ether2 fields
@@ -445,7 +452,6 @@ public:
 			aem->setSrcAddress(pi->getMacAddress()); // Using our MacAddress instead of the one from the Command, some devices incorrectly send some AEM messages to the multicast Ether2 MacAddress instead of targeting an entity
 			aem->setDestAddress(commandAem.getSrcAddress());
 			// Set AECP fields
-			aem->setMessageType(protocol::AecpMessageType::AemResponse);
 			aem->setStatus(status);
 			aem->setTargetEntityID(commandAem.getTargetEntityID());
 			aem->setControllerEntityID(commandAem.getControllerEntityID());
@@ -490,7 +496,7 @@ private:
 	/* protocol::ProtocolInterface::Observer overrides                            */
 	/* ************************************************************************** */
 	/* **** AECP notifications **** */
-	virtual void onAecpCommand(protocol::ProtocolInterface* const /*pi*/, LocalEntity const& /*entity*/, protocol::Aecpdu const& aecpdu) noexcept override;
+	virtual void onAecpCommand(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept override;
 
 	// Internal variables
 	std::recursive_mutex _lock{}; // Lock to protect writable fields (not used for the BasicLockable concept of the class itself)
@@ -539,10 +545,10 @@ public:
 	{
 		return false;
 	}
-	virtual void onAecpUnsolicitedResponse(protocol::ProtocolInterface* const /*pi*/, LocalEntity const& /*entity*/, protocol::Aecpdu const& /*aecpdu*/) noexcept {}
+	virtual void onAecpAemUnsolicitedResponse(protocol::ProtocolInterface* const /*pi*/, protocol::Aecpdu const& /*aecpdu*/) noexcept {}
 	/* **** ACMP notifications **** */
-	virtual void onAcmpSniffedCommand(protocol::ProtocolInterface* const /*pi*/, LocalEntity const& /*entity*/, protocol::Acmpdu const& /*acmpdu*/) noexcept {}
-	virtual void onAcmpSniffedResponse(protocol::ProtocolInterface* const /*pi*/, LocalEntity const& /*entity*/, protocol::Acmpdu const& /*acmpdu*/) noexcept {}
+	virtual void onAcmpCommand(protocol::ProtocolInterface* const /*pi*/, protocol::Acmpdu const& /*acmpdu*/) noexcept {}
+	virtual void onAcmpResponse(protocol::ProtocolInterface* const /*pi*/, protocol::Acmpdu const& /*acmpdu*/) noexcept {}
 };
 
 } // namespace entity

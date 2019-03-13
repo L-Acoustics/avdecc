@@ -18,16 +18,16 @@
 */
 
 /**
-* @file controllerStateMachine_tests.cpp
+* @file commandStateMachine_tests.cpp
 * @author Christophe Calmejane
 */
 
 // Internal API
-#include "stateMachine/controllerStateMachine.hpp"
+#include "stateMachine/commandStateMachine.hpp"
 
 #include <gtest/gtest.h>
 
-TEST(ControllerStateMachine, InvalidDelegate)
+TEST(CommandStateMachine, InvalidDelegate)
 {
-	EXPECT_THROW(la::avdecc::protocol::stateMachine::ControllerStateMachine(nullptr, nullptr);, la::avdecc::Exception);
+	EXPECT_THROW(la::avdecc::protocol::stateMachine::CommandStateMachine(nullptr, nullptr);, la::avdecc::Exception);
 }

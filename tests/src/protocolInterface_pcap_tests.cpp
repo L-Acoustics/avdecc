@@ -56,14 +56,11 @@ TEST(ProtocolInterfacePCap, TransportError)
 		virtual void onTransportError(la::avdecc::protocol::ProtocolInterface* const pi) noexcept override
 		{
 			std::this_thread::sleep_for(std::chrono::seconds(15)); // Wait for an entity to go offline
-			// Now we are sure ProtocolInterface (from avdecc::ControllerStateMachine thread) wants to acquire the observers lock, but we currently own this lock
-			// So let's call something that wants to acquire the ControllerStateMachine and see if we deadlock or not
+			// Now we are sure ProtocolInterface (from avdecc::CommandStateMachine thread) wants to acquire the observers lock, but we currently own this lock
+			// So let's call something that wants to acquire the CommandStateMachine and see if we deadlock or not
 			pi->lock(); // This will use CSM's lock
 			pi->unlock();
 		}
-		virtual void onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override {}
-		virtual void onLocalEntityOffline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const /*entityID*/) noexcept override {}
-		virtual void onLocalEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override {}
 		virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override
 		{
 			static auto done{ false };
@@ -78,11 +75,6 @@ TEST(ProtocolInterfacePCap, TransportError)
 		{
 			completedPromise.set_value();
 		}
-		virtual void onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override {}
-		virtual void onAecpCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept override {}
-		virtual void onAecpUnsolicitedResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept override {}
-		virtual void onAcmpSniffedCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept override {}
-		virtual void onAcmpSniffedResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept override {}
 		DECLARE_AVDECC_OBSERVER_GUARD(Observer);
 	};
 

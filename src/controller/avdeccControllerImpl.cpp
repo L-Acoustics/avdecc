@@ -252,7 +252,7 @@ void ControllerImpl::updateStreamInputFormat(ControlledEntityImpl& controlledEnt
 	// Make a copy of current StreamInfo, change affected field and notify changes
 	auto newInfo = streamDynamicModel.streamInfo;
 	newInfo.streamFormat = streamFormat;
-	utils::addFlag(newInfo.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid);
+	newInfo.streamInfoFlags.set(entity::StreamInfoFlag::StreamFormatValid);
 	updateStreamInputInfo(controlledEntity, streamIndex, newInfo, false, false); // No need to check again for StreamFormat or Milan Extended Information
 }
 
@@ -265,7 +265,7 @@ void ControllerImpl::updateStreamOutputFormat(ControlledEntityImpl& controlledEn
 	// Make a copy of current StreamInfo, change affected field and notify changes
 	auto newInfo = streamDynamicModel.streamInfo;
 	newInfo.streamFormat = streamFormat;
-	utils::addFlag(newInfo.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid);
+	newInfo.streamInfoFlags.set(entity::StreamInfoFlag::StreamFormatValid);
 	updateStreamOutputInfo(controlledEntity, streamIndex, newInfo, false, false); // No need to check again for StreamFormat or Milan Extended Information
 }
 
@@ -276,18 +276,18 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 	// Try to detect non compliant entities
 	if (streamFormatRequired)
 	{
-		auto streamFormat = utils::hasFlag(info.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid) ? std::optional<entity::model::StreamFormat>{ info.streamFormat } : std::nullopt;
+		auto streamFormat = info.streamInfoFlags.test(entity::StreamInfoFlag::StreamFormatValid) ? std::optional<entity::model::StreamFormat>{ info.streamFormat } : std::nullopt;
 		if (!streamFormat)
 		{
 			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit not set in GET_STREAM_INFO response");
 			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			// But if we have a valid streamFormat in the field, use it
-			if (info.streamFormat != entity::model::getNullStreamFormat())
+			if (!!info.streamFormat)
 			{
 				streamFormat = info.streamFormat;
 			}
 		}
-		if (info.streamFormat == entity::model::getNullStreamFormat())
+		if (!info.streamFormat)
 		{
 			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "stream_format field not set in GET_STREAM_INFO response");
 			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
@@ -342,18 +342,18 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 	// Try to detect non compliant entities
 	if (streamFormatRequired)
 	{
-		auto streamFormat = utils::hasFlag(info.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid) ? std::optional<entity::model::StreamFormat>{ info.streamFormat } : std::nullopt;
+		auto streamFormat = info.streamInfoFlags.test(entity::StreamInfoFlag::StreamFormatValid) ? std::optional<entity::model::StreamFormat>{ info.streamFormat } : std::nullopt;
 		if (!streamFormat)
 		{
 			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit not set in GET_STREAM_INFO response");
 			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			// But if we have a valid streamFormat in the field, use it
-			if (info.streamFormat != entity::model::getNullStreamFormat())
+			if (!!info.streamFormat)
 			{
 				streamFormat = info.streamFormat;
 			}
 		}
-		if (info.streamFormat == entity::model::getNullStreamFormat())
+		if (!info.streamFormat)
 		{
 			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "stream_format field not set in GET_STREAM_INFO response");
 			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
@@ -572,14 +572,14 @@ void ControllerImpl::updateAssociationID(ControlledEntityImpl& controlledEntity,
 	auto entity = controlledEntity.getEntity(); // Copy the entity so we can alter values in the copy and not the original
 	auto const caps = entity.getEntityCapabilities();
 
-	if (!utils::hasFlag(caps, entity::EntityCapabilities::AssociationIDSupported))
+	if (!caps.test(entity::EntityCapability::AssociationIDSupported))
 	{
 		LOG_CONTROLLER_WARN(entity.getEntityID(), "Entity changed its ASSOCIATION_ID but it said ASSOCIATION_ID_NOT_SUPPORTED in ADPDU");
 		return;
 	}
 
 	// Only update the Entity if AssociationIDValid flag was not set in ADPDU
-	if (utils::hasFlag(caps, entity::EntityCapabilities::AssociationIDValid))
+	if (caps.test(entity::EntityCapability::AssociationIDValid))
 	{
 		entity.setAssociationID(associationID);
 		setEntityAndNotify(controlledEntity, entity);
@@ -666,11 +666,11 @@ void ControllerImpl::updateAvbInfo(ControlledEntityImpl& controlledEntity, entit
 	setAvbInfoAndNotify(controlledEntity, avbInterfaceIndex, info);
 
 	// Only update if we have valid gPTP information
-	if (utils::hasFlag(info.flags, entity::AvbInfoFlags::GptpEnabled))
+	if (info.flags.test(entity::AvbInfoFlag::GptpEnabled))
 	{
 		auto entity = controlledEntity.getEntity(); // Copy the entity so we can alter values in the copy and not the original
 		auto const caps = entity.getEntityCapabilities();
-		if (utils::hasFlag(caps, entity::EntityCapabilities::GptpSupported))
+		if (caps.test(entity::EntityCapability::GptpSupported))
 		{
 			try
 			{
@@ -977,7 +977,7 @@ void ControllerImpl::updateOperationStatus(ControlledEntityImpl& controlledEntit
 /* ************************************************************ */
 bool ControllerImpl::areControlledEntitiesSelfLocked() const noexcept
 {
-	return _entitiesSharedLockInformation->lockingThreadID == std::this_thread::get_id();
+	return _entitiesSharedLockInformation->isSelfLocked();
 }
 
 std::tuple<model::AcquireState, UniqueIdentifier> ControllerImpl::getAcquiredInfoFromStatus(ControlledEntityImpl& entity, UniqueIdentifier const owningEntity, entity::ControllerEntity::AemCommandStatus const status, bool const releaseEntityResult) const noexcept
@@ -1606,7 +1606,7 @@ void ControllerImpl::getMilanInfo(ControlledEntityImpl* const entity) noexcept
 	auto const caps = entity->getEntity().getEntityCapabilities();
 
 	// Check if AEM and VendorUnique is supported by this entity
-	if (utils::hasFlag(caps, entity::EntityCapabilities::AemSupported | entity::EntityCapabilities::VendorUniqueSupported))
+	if (caps.test(entity::EntityCapability::AemSupported) && caps.test(entity::EntityCapability::VendorUniqueSupported))
 	{
 		// Get MilanInfo
 		queryInformation(entity, ControlledEntityImpl::MilanInfoType::MilanInfo);
@@ -1616,7 +1616,7 @@ void ControllerImpl::getMilanInfo(ControlledEntityImpl* const entity) noexcept
 	if (entity->gotAllExpectedMilanInfo())
 	{
 		// Clear this enumeration step and check for next one
-		entity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetMilanInfo);
+		entity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetMilanInfo);
 		checkEnumerationSteps(entity);
 	}
 }
@@ -1643,7 +1643,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 {
 	auto const caps = entity->getEntity().getEntityCapabilities();
 	// Check if AEM is supported by this entity
-	if (utils::hasFlag(caps, entity::EntityCapabilities::AemSupported))
+	if (caps.test(entity::EntityCapability::AemSupported))
 	{
 		auto const configurationIndex = entity->getCurrentConfigurationIndex();
 		auto const& configStaticTree = entity->getConfigurationStaticTree(configurationIndex);
@@ -1751,7 +1751,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 	if (entity->gotAllExpectedDynamicInfo())
 	{
 		// Clear this enumeration step and check for next one
-		entity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+		entity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 		checkEnumerationSteps(entity);
 	}
 }
@@ -1760,7 +1760,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 {
 	auto const caps = entity->getEntity().getEntityCapabilities();
 	// Check if AEM is supported by this entity
-	if (utils::hasFlag(caps, entity::EntityCapabilities::AemSupported))
+	if (caps.test(entity::EntityCapability::AemSupported))
 	{
 		auto const& entityStaticTree = entity->getEntityStaticTree();
 		auto const currentConfigurationIndex = entity->getCurrentConfigurationIndex();
@@ -1873,7 +1873,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 	if (entity->gotAllExpectedDescriptorDynamicInfo())
 	{
 		// Clear this enumeration step and check for next one
-		entity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+		entity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 		checkEnumerationSteps(entity);
 	}
 }
@@ -1883,31 +1883,31 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const entity) n
 	auto const steps = entity->getEnumerationSteps();
 
 	// Always start with retrieving MilanInfo from the device
-	if (utils::hasFlag(steps, ControlledEntityImpl::EnumerationSteps::GetMilanInfo))
+	if (steps.test(ControlledEntityImpl::EnumerationStep::GetMilanInfo))
 	{
 		getMilanInfo(entity);
 		return;
 	}
 	// Then register to unsolicited notifications
-	if (utils::hasFlag(steps, ControlledEntityImpl::EnumerationSteps::RegisterUnsol))
+	if (steps.test(ControlledEntityImpl::EnumerationStep::RegisterUnsol))
 	{
 		registerUnsol(entity);
 		return;
 	}
 	// Then get the static AEM
-	if (utils::hasFlag(steps, ControlledEntityImpl::EnumerationSteps::GetStaticModel))
+	if (steps.test(ControlledEntityImpl::EnumerationStep::GetStaticModel))
 	{
 		getStaticModel(entity);
 		return;
 	}
 	// Then get descriptors dynamic information, it AEM is cached
-	if (utils::hasFlag(steps, ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo))
+	if (steps.test(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo))
 	{
 		getDescriptorDynamicInfo(entity);
 		return;
 	}
 	// Finally retrieve all other dynamic information
-	if (utils::hasFlag(steps, ControlledEntityImpl::EnumerationSteps::GetDynamicInfo))
+	if (steps.test(ControlledEntityImpl::EnumerationStep::GetDynamicInfo))
 	{
 		getDynamicInfo(entity);
 		return;
@@ -2658,7 +2658,7 @@ bool ControllerImpl::processGetDescriptorDynamicInfoFailureStatus(entity::Contro
 			{
 				entity->setIgnoreCachedEntityModel();
 				entity->clearAllExpectedDescriptorDynamicInfo();
-				entity->addEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+				entity->addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 				LOG_CONTROLLER_ERROR(entity->getEntity().getEntityID(), "Failed to use cached EntityModel (too many DescriptorDynamic query retries), falling back to full StaticModel enumeration");
 			}
 			return true;
@@ -2767,7 +2767,7 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 	{
 		conState = model::StreamConnectionState::State::Connected;
 	}
-	else if (utils::hasFlag(flags, entity::ConnectionFlags::FastConnect))
+	else if (flags.test(entity::ConnectionFlag::FastConnect))
 	{
 		conState = model::StreamConnectionState::State::FastConnecting;
 	}
@@ -2822,7 +2822,7 @@ void ControllerImpl::handleTalkerStreamStateNotification(entity::model::StreamId
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	// Build Talker StreamIdentification
-	auto const isFastConnect = utils::hasFlag(flags, entity::ConnectionFlags::FastConnect);
+	auto const isFastConnect = flags.test(entity::ConnectionFlag::FastConnect);
 	auto talkerStreamIdentification{ entity::model::StreamIdentification{} };
 	if (isConnected || isFastConnect)
 	{

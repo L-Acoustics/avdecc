@@ -17,6 +17,11 @@
 * along with LA_avdecc.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/**
+* @file protocolInterface_macNative.hpp
+* @author Christophe Calmejane
+*/
+
 #pragma once
 
 #include "la/avdecc/internals/protocolInterface.hpp"

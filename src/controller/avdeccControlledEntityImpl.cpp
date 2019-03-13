@@ -114,7 +114,7 @@ bool ControlledEntityImpl::isStreamOutputRunning(entity::model::ConfigurationInd
 ControlledEntity::InterfaceLinkStatus ControlledEntityImpl::getAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex) const
 {
 	// AEM not supported, unknown status
-	if (!utils::hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+	if (!_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
 	{
 		return InterfaceLinkStatus::Unknown;
 	}
@@ -161,7 +161,7 @@ model::EntityNode const& ControlledEntityImpl::getEntityNode() const
 	if (gotFatalEnumerationError())
 		throw Exception(Exception::Type::EnumerationError, "Entity had an enumeration error");
 
-	if (!utils::hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+	if (!_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
 		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
 
 	checkAndBuildEntityModelGraph();
@@ -358,24 +358,21 @@ model::LocaleNodeStaticModel const* ControlledEntityImpl::findLocaleNode(entity:
 	return &configStaticTree.localeStaticModels.at(0);
 }
 
-entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString(entity::model::LocalizedStringReference const stringReference) const noexcept
+entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString(entity::model::LocalizedStringReference const& stringReference) const noexcept
 {
 	return getLocalizedString(getCurrentConfigurationIndex(), stringReference);
 }
 
-entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocalizedStringReference const stringReference) const noexcept
+entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocalizedStringReference const& stringReference) const noexcept
 {
 	static entity::model::AvdeccFixedString s_noLocalizationString{};
 	try
 	{
-		// Special value meaning NO_STRING
-		if (stringReference == entity::model::getNullLocalizedStringReference())
+		// Not valid, return NO_STRING
+		if (!stringReference)
 			return s_noLocalizationString;
 
-		auto const offset = stringReference >> 3;
-		auto const index = stringReference & 0x0007;
-		auto const globalOffset = ((offset * 7u) + index) & 0xFFFF;
-
+		auto const globalOffset = stringReference.getGlobalOffset();
 		auto const& configDynamicModel = getConfigurationNodeDynamicModel(configurationIndex);
 
 		return configDynamicModel.localizedStrings.at(entity::model::StringsIndex(globalOffset));
@@ -439,7 +436,7 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 	if (visitor == nullptr)
 		return;
 
-	if (!utils::hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+	if (!_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
 		return;
 
 	try
@@ -448,7 +445,7 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 		auto const& entityModel = getEntityNode();
 
 		// Visit EntityModelNode (no parent)
-		visitor->visit(this, nullptr, entityModel);
+		visitor->visit(this, entityModel);
 
 		// Loop over all configurations
 		for (auto const& configurationKV : entityModel.configurations)
@@ -472,20 +469,20 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 					visitor->visit(this, &configuration, audioUnit);
 
 					// Loop over StreamPortNode
-					auto processStreamPorts = [this, visitor](model::AudioUnitNode const& audioUnit, std::map<entity::model::StreamPortIndex, model::StreamPortNode> const& streamPorts)
+					auto processStreamPorts = [this, visitor](model::ConfigurationNode const& configuration, model::AudioUnitNode const& audioUnit, std::map<entity::model::StreamPortIndex, model::StreamPortNode> const& streamPorts)
 					{
 						for (auto const& streamPortKV : streamPorts)
 						{
 							auto const& streamPort = streamPortKV.second;
 							// Visit StreamPortNode (AudioUnitNode is parent)
-							visitor->visit(this, &audioUnit, streamPort);
+							visitor->visit(this, &configuration, &audioUnit, streamPort);
 
 							// Loop over AudioClusterNode
 							for (auto const& audioClusterKV : streamPort.audioClusters)
 							{
 								auto const& audioCluster = audioClusterKV.second;
 								// Visit AudioClusterNode (StreamPortNode is parent)
-								visitor->visit(this, &streamPort, audioCluster);
+								visitor->visit(this, &configuration, &audioUnit, &streamPort, audioCluster);
 							}
 
 							// Loop over AudioMapNode
@@ -493,12 +490,12 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 							{
 								auto const& audioMap = audioMapKV.second;
 								// Visit AudioMapNode (StreamPortNode is parent)
-								visitor->visit(this, &streamPort, audioMap);
+								visitor->visit(this, &configuration, &audioUnit, &streamPort, audioMap);
 							}
 						}
 					};
-					processStreamPorts(audioUnit, audioUnit.streamPortInputs); // streamPortInputs
-					processStreamPorts(audioUnit, audioUnit.streamPortOutputs); // streamPortOutputs
+					processStreamPorts(configuration, audioUnit, audioUnit.streamPortInputs); // streamPortInputs
+					processStreamPorts(configuration, audioUnit, audioUnit.streamPortOutputs); // streamPortOutputs
 				}
 
 				// Loop over StreamInputNode for inputs
@@ -530,7 +527,7 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 					{
 						auto const* stream = static_cast<model::StreamInputNode const*>(streamKV.second);
 						// Visit StreamInputNode (RedundantStreamInputNode is parent)
-						visitor->visit(this, &redundantStream, *stream);
+						visitor->visit(this, &configuration, &redundantStream, *stream);
 					}
 				}
 
@@ -546,7 +543,7 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 					{
 						auto const* stream = static_cast<model::StreamOutputNode const*>(streamKV.second);
 						// Visit StreamOutputNode (RedundantStreamOutputNode is parent)
-						visitor->visit(this, &redundantStream, *stream);
+						visitor->visit(this, &configuration, &redundantStream, *stream);
 					}
 				}
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
@@ -598,7 +595,7 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 					{
 						auto const* source = sourceKV.second;
 						// Visit ClockSourceNode (ClockDomainNode is parent)
-						visitor->visit(this, &domain, *source);
+						visitor->visit(this, &configuration, &domain, *source);
 					}
 				}
 			}
@@ -613,22 +610,12 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 
 void ControlledEntityImpl::lock() noexcept
 {
-	_sharedLock->lock.lock();
-	if (_sharedLock->lockedCount == 0)
-	{
-		_sharedLock->lockingThreadID = std::this_thread::get_id();
-	}
-	++_sharedLock->lockedCount;
+	_sharedLock->lock();
 }
 
 void ControlledEntityImpl::unlock() noexcept
 {
-	--_sharedLock->lockedCount;
-	if (_sharedLock->lockedCount == 0)
-	{
-		_sharedLock->lockingThreadID = {};
-	}
-	_sharedLock->lock.unlock();
+	_sharedLock->unlock();
 }
 
 // Const Tree getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist
@@ -637,7 +624,7 @@ model::EntityStaticTree const& ControlledEntityImpl::getEntityStaticTree() const
 	if (gotFatalEnumerationError())
 		throw Exception(Exception::Type::EnumerationError, "Entity had a fatal enumeration error");
 
-	if (!utils::hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+	if (!_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
 		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
 
 	return _entityStaticTree;
@@ -648,7 +635,7 @@ model::EntityDynamicTree const& ControlledEntityImpl::getEntityDynamicTree() con
 	if (gotFatalEnumerationError())
 		throw Exception(Exception::Type::EnumerationError, "Entity had a fatal enumeration error");
 
-	if (!utils::hasFlag(_entity.getEntityCapabilities(), entity::EntityCapabilities::AemSupported))
+	if (!_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
 		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
 
 	return _entityDynamicTree;
@@ -805,10 +792,10 @@ std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> Controlle
 	dynamicModel.streamInfo = info;
 
 	// We should always have a valid value in the StreamFormat (was properly initialized), so don't overwrite it if it's not valid in the new info
-	if (dynamicModel.streamInfo.streamFormat == entity::model::getNullStreamFormat())
+	if (!dynamicModel.streamInfo.streamFormat)
 	{
 		dynamicModel.streamInfo.streamFormat = previousInfo.streamFormat;
-		utils::addFlag(dynamicModel.streamInfo.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid); // Force the flag as well
+		dynamicModel.streamInfo.streamInfoFlags.set(entity::StreamInfoFlag::StreamFormatValid); // Force the flag as well
 	}
 
 	return { previousInfo, dynamicModel.streamInfo };
@@ -844,10 +831,10 @@ std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> Controlle
 	dynamicModel.streamInfo = info;
 
 	// We should always have a valid value in the StreamFormat (was properly initialized), so don't overwrite it if it's not valid in the new info
-	if (dynamicModel.streamInfo.streamFormat == entity::model::getNullStreamFormat())
+	if (!dynamicModel.streamInfo.streamFormat)
 	{
 		dynamicModel.streamInfo.streamFormat = previousInfo.streamFormat;
-		utils::addFlag(dynamicModel.streamInfo.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid); // Force the flag as well
+		dynamicModel.streamInfo.streamInfoFlags.set(entity::StreamInfoFlag::StreamFormatValid); // Force the flag as well
 	}
 
 	return { previousInfo, dynamicModel.streamInfo };
@@ -1285,7 +1272,7 @@ void ControlledEntityImpl::setStreamInputDescriptor(entity::model::StreamDescrip
 		// Changeable fields through commands
 		m.objectName = descriptor.objectName;
 		m.streamInfo.streamFormat = descriptor.currentFormat; // Copy the streamFormat, but we should get the complete StreamInfo soon
-		utils::addFlag(m.streamInfo.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid);
+		m.streamInfo.streamInfoFlags.set(entity::StreamInfoFlag::StreamFormatValid);
 	}
 }
 
@@ -1321,7 +1308,7 @@ void ControlledEntityImpl::setStreamOutputDescriptor(entity::model::StreamDescri
 		// Changeable fields through commands
 		m.objectName = descriptor.objectName;
 		m.streamInfo.streamFormat = descriptor.currentFormat; // Copy the streamFormat, but we should get the complete StreamInfo soon
-		utils::addFlag(m.streamInfo.streamInfoFlags, entity::StreamInfoFlags::StreamFormatValid);
+		m.streamInfo.streamInfoFlags.set(entity::StreamInfoFlag::StreamFormatValid);
 	}
 }
 
@@ -1538,7 +1525,7 @@ void ControlledEntityImpl::setClockDomainDescriptor(entity::model::ClockDomainDe
 // Expected RegisterUnsol query methods
 bool ControlledEntityImpl::checkAndClearExpectedRegisterUnsol() noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	// Ignore if we had a fatal enumeration error
 	if (_gotFatalEnumerateError)
@@ -1552,14 +1539,14 @@ bool ControlledEntityImpl::checkAndClearExpectedRegisterUnsol() noexcept
 
 void ControlledEntityImpl::setRegisterUnsolExpected() noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	_expectedRegisterUnsol = true;
 }
 
 bool ControlledEntityImpl::gotExpectedRegisterUnsol() const noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	return !_expectedRegisterUnsol;
 }
@@ -1582,7 +1569,7 @@ static inline ControlledEntityImpl::MilanInfoKey makeMilanInfoKey(ControlledEnti
 
 bool ControlledEntityImpl::checkAndClearExpectedMilanInfo(MilanInfoType const milanInfoType) noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	// Ignore if we had a fatal enumeration error
 	if (_gotFatalEnumerateError)
@@ -1594,7 +1581,7 @@ bool ControlledEntityImpl::checkAndClearExpectedMilanInfo(MilanInfoType const mi
 
 void ControlledEntityImpl::setMilanInfoExpected(MilanInfoType const milanInfoType) noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	auto const key = makeMilanInfoKey(milanInfoType);
 	_expectedMilanInfo.insert(key);
@@ -1602,7 +1589,7 @@ void ControlledEntityImpl::setMilanInfoExpected(MilanInfoType const milanInfoTyp
 
 bool ControlledEntityImpl::gotAllExpectedMilanInfo() const noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	return _expectedMilanInfo.empty();
 }
@@ -1625,7 +1612,7 @@ static inline ControlledEntityImpl::DescriptorKey makeDescriptorKey(entity::mode
 
 bool ControlledEntityImpl::checkAndClearExpectedDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	// Ignore if we had a fatal enumeration error
 	if (_gotFatalEnumerateError)
@@ -1643,7 +1630,7 @@ bool ControlledEntityImpl::checkAndClearExpectedDescriptor(entity::model::Config
 
 void ControlledEntityImpl::setDescriptorExpected(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	auto& conf = _expectedDescriptors[configurationIndex];
 
@@ -1653,7 +1640,7 @@ void ControlledEntityImpl::setDescriptorExpected(entity::model::ConfigurationInd
 
 bool ControlledEntityImpl::gotAllExpectedDescriptors() const noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	for (auto const& confKV : _expectedDescriptors)
 	{
@@ -1681,7 +1668,7 @@ static inline ControlledEntityImpl::DynamicInfoKey makeDynamicInfoKey(Controlled
 
 bool ControlledEntityImpl::checkAndClearExpectedDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex) noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	// Ignore if we had a fatal enumeration error
 	if (_gotFatalEnumerateError)
@@ -1699,7 +1686,7 @@ bool ControlledEntityImpl::checkAndClearExpectedDynamicInfo(entity::model::Confi
 
 void ControlledEntityImpl::setDynamicInfoExpected(entity::model::ConfigurationIndex const configurationIndex, DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex) noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	auto& conf = _expectedDynamicInfo[configurationIndex];
 
@@ -1709,7 +1696,7 @@ void ControlledEntityImpl::setDynamicInfoExpected(entity::model::ConfigurationIn
 
 bool ControlledEntityImpl::gotAllExpectedDynamicInfo() const noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	for (auto const& confKV : _expectedDynamicInfo)
 	{
@@ -1737,7 +1724,7 @@ static inline ControlledEntityImpl::DescriptorDynamicInfoKey makeDescriptorDynam
 
 bool ControlledEntityImpl::checkAndClearExpectedDescriptorDynamicInfo(entity::model::ConfigurationIndex const configurationIndex, DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	// Ignore if we had a fatal enumeration error
 	if (_gotFatalEnumerateError)
@@ -1755,7 +1742,7 @@ bool ControlledEntityImpl::checkAndClearExpectedDescriptorDynamicInfo(entity::mo
 
 void ControlledEntityImpl::setDescriptorDynamicInfoExpected(entity::model::ConfigurationIndex const configurationIndex, DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	auto& conf = _expectedDescriptorDynamicInfo[configurationIndex];
 
@@ -1765,14 +1752,14 @@ void ControlledEntityImpl::setDescriptorDynamicInfoExpected(entity::model::Confi
 
 void ControlledEntityImpl::clearAllExpectedDescriptorDynamicInfo() noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	_expectedDescriptorDynamicInfo.clear();
 }
 
 bool ControlledEntityImpl::gotAllExpectedDescriptorDynamicInfo() const noexcept
 {
-	AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 	for (auto const& confKV : _expectedDescriptorDynamicInfo)
 	{
@@ -1812,14 +1799,20 @@ ControlledEntityImpl::EnumerationSteps ControlledEntityImpl::getEnumerationSteps
 	return _enumerationSteps;
 }
 
-void ControlledEntityImpl::addEnumerationSteps(EnumerationSteps const steps) noexcept
+void ControlledEntityImpl::setEnumerationSteps(EnumerationSteps const steps) noexcept
 {
-	utils::addFlag(_enumerationSteps, steps);
+	AVDECC_ASSERT(_enumerationSteps.empty(), "EnumerationSteps were not empty");
+	_enumerationSteps = steps;
 }
 
-void ControlledEntityImpl::clearEnumerationSteps(EnumerationSteps const steps) noexcept
+void ControlledEntityImpl::addEnumerationStep(EnumerationStep const step) noexcept
 {
-	utils::clearFlag(_enumerationSteps, steps);
+	_enumerationSteps.set(step);
+}
+
+void ControlledEntityImpl::clearEnumerationStep(EnumerationStep const step) noexcept
+{
+	_enumerationSteps.reset(step);
 }
 
 void ControlledEntityImpl::setCompatibilityFlags(CompatibilityFlags const compatibilityFlags) noexcept

@@ -269,22 +269,28 @@ struct EntityNode : public EntityModelNode
 class EntityModelVisitor
 {
 public:
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const /*parent*/, la::avdecc::controller::model::EntityNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const /*parent*/, la::avdecc::controller::model::ConfigurationNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const /*parent*/, la::avdecc::controller::model::AudioUnitNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const /*parent*/, la::avdecc::controller::model::StreamInputNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const /*parent*/, la::avdecc::controller::model::StreamOutputNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const /*parent*/, la::avdecc::controller::model::AvbInterfaceNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const /*parent*/, la::avdecc::controller::model::MemoryObjectNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const /*parent*/, la::avdecc::controller::model::LocaleNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const /*parent*/, la::avdecc::controller::model::StringsNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const /*parent*/, la::avdecc::controller::model::StreamPortNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const /*parent*/, la::avdecc::controller::model::AudioClusterNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const /*parent*/, la::avdecc::controller::model::AudioMapNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const /*parent*/, la::avdecc::controller::model::ClockDomainNode const& /*node*/) noexcept {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::EntityNode const& /*node*/) noexcept {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::EntityNode const* const /*parent*/, la::avdecc::controller::model::ConfigurationNode const& /*node*/) noexcept {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::AudioUnitNode const& /*node*/) noexcept {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::StreamInputNode const& /*node*/) noexcept {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::StreamOutputNode const& /*node*/) noexcept {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::AvbInterfaceNode const& /*node*/) noexcept {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& /*node*/) noexcept {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::MemoryObjectNode const& /*node*/) noexcept {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::LocaleNode const& /*node*/) noexcept {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::LocaleNode const* const /*parent*/, la::avdecc::controller::model::StringsNode const& /*node*/) noexcept {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::StreamPortNode const& /*node*/) noexcept {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::AudioClusterNode const& /*node*/) noexcept {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::AudioMapNode const& /*node*/) noexcept {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::ClockDomainNode const& /*node*/) noexcept {}
+	// Virtual parenting to show ClockSourceNode which have the specified ClockDomainNode as parent
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::ClockDomainNode const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& /*node*/) noexcept {}
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::Node const* const /*parent*/, la::avdecc::controller::model::RedundantStreamNode const& /*node*/) noexcept {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamNode const& /*node*/) noexcept {}
+	// Virtual parenting to show StreamInputNode which have the specified RedundantStreamNode as parent
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::RedundantStreamNode const* const /*parent*/, la::avdecc::controller::model::StreamInputNode const& /*node*/) noexcept {}
+	// Virtual parenting to show StreamOutputNode which have the specified RedundantStreamNode as parent
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::RedundantStreamNode const* const /*parent*/, la::avdecc::controller::model::StreamOutputNode const& /*node*/) noexcept {}
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 	// Defaulted compiler auto-generated methods

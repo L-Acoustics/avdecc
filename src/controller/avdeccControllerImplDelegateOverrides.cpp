@@ -46,12 +46,12 @@ void ControllerImpl::onEntityOnline(entity::controller::Interface const* const c
 	LOG_CONTROLLER_TRACE(entityID, "onEntityOnline");
 
 	auto const caps = entity.getEntityCapabilities();
-	if (utils::hasFlag(caps, entity::EntityCapabilities::EntityNotReady))
+	if (caps.test(entity::EntityCapability::EntityNotReady))
 	{
 		LOG_CONTROLLER_TRACE(entityID, "Entity is declared as 'Not Ready', ignoring it right now");
 		return;
 	}
-	if (utils::hasFlag(caps, entity::EntityCapabilities::GeneralControllerIgnore))
+	if (caps.test(entity::EntityCapability::GeneralControllerIgnore))
 	{
 		LOG_CONTROLLER_TRACE(entityID, "Entity is declared as 'General Controller Ignore', ignoring it");
 		return;
@@ -79,23 +79,25 @@ void ControllerImpl::onEntityOnline(entity::controller::Interface const* const c
 	if (controlledEntity)
 	{
 		// New entity get everything we can from it
-		auto steps{ ControlledEntityImpl::EnumerationSteps::None };
+		auto steps = ControlledEntityImpl::EnumerationSteps{};
 
 		// The entity supports AEM, also get information related to AEM
-		if (utils::hasFlag(caps, entity::EntityCapabilities::AemSupported))
+		if (caps.test(entity::EntityCapability::AemSupported))
 		{
 			// Only get MilanInfo if the Entity supports VendorUnique
-			if (utils::hasFlag(caps, entity::EntityCapabilities::VendorUniqueSupported))
+			if (caps.test(entity::EntityCapability::VendorUniqueSupported))
 			{
-				steps |= ControlledEntityImpl::EnumerationSteps::GetMilanInfo;
+				steps.set(ControlledEntityImpl::EnumerationStep::GetMilanInfo);
 			}
-			steps |= ControlledEntityImpl::EnumerationSteps::RegisterUnsol | ControlledEntityImpl::EnumerationSteps::GetStaticModel | ControlledEntityImpl::EnumerationSteps::GetDynamicInfo;
+			steps.set(ControlledEntityImpl::EnumerationStep::RegisterUnsol);
+			steps.set(ControlledEntityImpl::EnumerationStep::GetStaticModel);
+			steps.set(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 		}
 
 		// Currently, we have nothing more to get if the entity does not support AEM
 
 		// Set Steps
-		controlledEntity->addEnumerationSteps(steps);
+		controlledEntity->setEnumerationSteps(steps);
 
 		// Check first enumeration step
 		checkEnumerationSteps(controlledEntity.get());
@@ -162,18 +164,18 @@ void ControllerImpl::onControllerConnectResponseSniffed(entity::controller::Inte
 {
 	if (!!status)
 	{
-		// Do not trust the connectionCount value to determine if the listener is connected, but rather use the status code (SUCCESS means connection is established)
+		// Do not trust the connectionCount value to determine if the listener is connected, but rather use the fact there was no error in the command
 		handleListenerStreamStateNotification(talkerStream, listenerStream, true, flags, true);
 	}
 	// We don't care about sniffed errors
 }
 
-void ControllerImpl::onControllerDisconnectResponseSniffed(entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept
+void ControllerImpl::onControllerDisconnectResponseSniffed(entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& /*talkerStream*/, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept
 {
-	if (!!status)
+	if (!!status || status == entity::ControllerEntity::ControlStatus::NotConnected)
 	{
-		// Do not trust the connectionCount value to determine if the listener is disconnected, but rather use the status code (SUCCESS means disconnected)
-		handleListenerStreamStateNotification(talkerStream, listenerStream, false, flags, true);
+		// Do not trust the connectionCount value to determine if the listener is disconnected, but rather use the fact there was no error (NOT_CONNECTED is actually not an error) in the command
+		handleListenerStreamStateNotification({}, listenerStream, false, flags, true);
 	}
 	// We don't care about sniffed errors
 }
@@ -182,7 +184,7 @@ void ControllerImpl::onListenerConnectResponseSniffed(entity::controller::Interf
 {
 	if (!!status)
 	{
-		// Do not trust the connectionCount value to determine if the listener is connected, but rather use the status code (SUCCESS means connection is established)
+		// Do not trust the connectionCount value to determine if the listener is connected, but rather use the fact there was no error in the command
 		handleTalkerStreamStateNotification(talkerStream, listenerStream, true, flags, true);
 	}
 	// We don't care about sniffed errors
@@ -192,7 +194,7 @@ void ControllerImpl::onListenerDisconnectResponseSniffed(entity::controller::Int
 {
 	if (!!status)
 	{
-		// Do not trust the connectionCount value to determine if the listener is disconnected, but rather use the status code (SUCCESS means disconnected)
+		// Do not trust the connectionCount value to determine if the listener is connected, but rather use the fact there was no error in the command
 		handleTalkerStreamStateNotification(talkerStream, listenerStream, false, flags, true);
 	}
 	// We don't care about sniffed errors

@@ -121,6 +121,94 @@ std::string LA_AVDECC_CALL_CONVENTION descriptorTypeToString(DescriptorType cons
 	}
 }
 
+std::string LA_AVDECC_CALL_CONVENTION jackTypeToString(JackType const jackType) noexcept
+{
+	switch (jackType)
+	{
+		case JackType::Speaker:
+			return "SPEAKER";
+		case JackType::Headphone:
+			return "HEADPHONE";
+		case JackType::AnalogMicrophone:
+			return "ANALOG_MICROPHONE";
+		case JackType::Spdif:
+			return "SPDIF";
+		case JackType::Adat:
+			return "ADAT";
+		case JackType::Tdif:
+			return "TDIF";
+		case JackType::Madi:
+			return "MADI";
+		case JackType::UnbalancedAnalog:
+			return "UNBALANCED_ANALOG";
+		case JackType::BalancedAnalog:
+			return "BALANCED_ANALOG";
+		case JackType::Digital:
+			return "DIGITAL";
+		case JackType::Midi:
+			return "MIDI";
+		case JackType::AesEbu:
+			return "AES_EBU";
+		case JackType::CompositeVideo:
+			return "COMPOSITE_VIDEO";
+		case JackType::SVhsVideo:
+			return "S_VHS_VIDEO";
+		case JackType::ComponentVideo:
+			return "COMPONENT_VIDEO";
+		case JackType::Dvi:
+			return "DVI";
+		case JackType::Hdmi:
+			return "HDMI";
+		case JackType::Udi:
+			return "UDI";
+		case JackType::DisplayPort:
+			return "DISPLAYPORT";
+		case JackType::Antenna:
+			return "ANTENNA";
+		case JackType::AnalogTuner:
+			return "ANALOG_TUNER";
+		case JackType::Ethernet:
+			return "ETHERNET";
+		case JackType::Wifi:
+			return "WIFI";
+		case JackType::Usb:
+			return "USB";
+		case JackType::Pci:
+			return "PCI";
+		case JackType::PciE:
+			return "PCI_E";
+		case JackType::Scsi:
+			return "SCSI";
+		case JackType::Ata:
+			return "ATA";
+		case JackType::Imager:
+			return "IMAGER";
+		case JackType::Ir:
+			return "IR";
+		case JackType::Thunderbolt:
+			return "THUNDERBOLT";
+		case JackType::Sata:
+			return "SATA";
+		case JackType::SmpteLtc:
+			return "SMPTE_LTC";
+		case JackType::DigitalMicrophone:
+			return "DIGITAL_MICROPHONE";
+		case JackType::AudioMediaClock:
+			return "AUDIO_MEDIA_CLOCK";
+		case JackType::VideoMediaClock:
+			return "VIDEO_MEDIA_CLOCK";
+		case JackType::GnssClock:
+			return "GNSS_CLOCK";
+		case JackType::Pps:
+			return "PPS";
+		case JackType::Expansion:
+			return "EXPANSION";
+		default:
+			AVDECC_ASSERT(false, "Not handled!");
+			return "UNKNOWN";
+	}
+}
+
 std::string LA_AVDECC_CALL_CONVENTION clockSourceTypeToString(ClockSourceType const clockSourceType) noexcept
 {
 	switch (clockSourceType)

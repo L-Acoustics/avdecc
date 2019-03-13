@@ -49,11 +49,12 @@ struct Interface
 		Loopback = 1, /**< Loopback interface */
 		Ethernet = 2, /**< Ethernet interface */
 		WiFi = 3, /**< 802.11 WiFi interface */
+		AWDL = 4, /**< Apple Wireless Direct Link */
 	};
 
-	std::string name{}; /** Name of the interface (system chosen) */
-	std::string description{}; /** Description of the interface (system chosen) */
-	std::string alias{}; /** Alias of the interface (user chosen) */
+	std::string name{}; /** Name of the interface (system chosen) (UTF-8) */
+	std::string description{}; /** Description of the interface (system chosen) (UTF-8) */
+	std::string alias{}; /** Alias of the interface (user chosen) (UTF-8) */
 	MacAddress macAddress{}; /** Mac address */
 	std::vector<std::string> ipAddresses{}; /** List of IP addresses attached to this interface */
 	std::vector<std::string> gateways{}; /** List of Gateways available for this interface */

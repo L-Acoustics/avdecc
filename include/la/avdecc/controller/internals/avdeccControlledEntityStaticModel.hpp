@@ -40,7 +40,7 @@ namespace model
 {
 struct AudioUnitNodeStaticModel
 {
-	entity::model::LocalizedStringReference localizedDescription{ entity::model::getNullLocalizedStringReference() };
+	entity::model::LocalizedStringReference localizedDescription{};
 	entity::model::ClockDomainIndex clockDomainIndex{ 0u };
 	std::uint16_t numberOfStreamInputPorts{ 0u };
 	entity::model::StreamPortIndex baseStreamInputPort{ entity::model::StreamPortIndex(0u) };
@@ -79,9 +79,9 @@ struct AudioUnitNodeStaticModel
 
 struct StreamNodeStaticModel
 {
-	entity::model::LocalizedStringReference localizedDescription{ entity::model::getNullLocalizedStringReference() };
+	entity::model::LocalizedStringReference localizedDescription{};
 	entity::model::ClockDomainIndex clockDomainIndex{ entity::model::ClockDomainIndex(0u) };
-	entity::StreamFlags streamFlags{ entity::StreamFlags::None };
+	entity::StreamFlags streamFlags{};
 	UniqueIdentifier backupTalkerEntityID_0{};
 	std::uint16_t backupTalkerUniqueID_0{ 0u };
 	UniqueIdentifier backupTalkerEntityID_1{};
@@ -100,9 +100,9 @@ struct StreamNodeStaticModel
 
 struct AvbInterfaceNodeStaticModel
 {
-	entity::model::LocalizedStringReference localizedDescription{ entity::model::getNullLocalizedStringReference() };
+	entity::model::LocalizedStringReference localizedDescription{};
 	networkInterface::MacAddress macAddress{};
-	entity::AvbInterfaceFlags interfaceFlags{ entity::AvbInterfaceFlags::None };
+	entity::AvbInterfaceFlags interfaceFlags{};
 	UniqueIdentifier clockIdentity{};
 	std::uint8_t priority1{ 0xff };
 	std::uint8_t clockClass{ 0xff };
@@ -118,7 +118,7 @@ struct AvbInterfaceNodeStaticModel
 
 struct ClockSourceNodeStaticModel
 {
-	entity::model::LocalizedStringReference localizedDescription{ entity::model::getNullLocalizedStringReference() };
+	entity::model::LocalizedStringReference localizedDescription{};
 	entity::model::ClockSourceType clockSourceType{ entity::model::ClockSourceType::Internal };
 	entity::model::DescriptorType clockSourceLocationType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex clockSourceLocationIndex{ entity::model::DescriptorIndex(0u) };
@@ -126,7 +126,7 @@ struct ClockSourceNodeStaticModel
 
 struct MemoryObjectNodeStaticModel
 {
-	entity::model::LocalizedStringReference localizedDescription{ entity::model::getNullLocalizedStringReference() };
+	entity::model::LocalizedStringReference localizedDescription{};
 	entity::model::MemoryObjectType memoryObjectType{ entity::model::MemoryObjectType::FirmwareImage };
 	entity::model::DescriptorType targetDescriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex targetDescriptorIndex{ entity::model::DescriptorIndex(0u) };
@@ -149,7 +149,7 @@ struct StringsNodeStaticModel
 struct StreamPortNodeStaticModel
 {
 	entity::model::ClockDomainIndex clockDomainIndex{ entity::model::ClockDomainIndex(0u) };
-	entity::PortFlags portFlags{ entity::PortFlags::None };
+	entity::PortFlags portFlags{};
 	std::uint16_t numberOfControls{ 0u };
 	entity::model::ControlIndex baseControl{ entity::model::ControlIndex(0u) };
 	std::uint16_t numberOfClusters{ 0u };
@@ -161,7 +161,7 @@ struct StreamPortNodeStaticModel
 
 struct AudioClusterNodeStaticModel
 {
-	entity::model::LocalizedStringReference localizedDescription{ entity::model::getNullLocalizedStringReference() };
+	entity::model::LocalizedStringReference localizedDescription{};
 	entity::model::DescriptorType signalType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex signalIndex{ entity::model::DescriptorIndex(0u) };
 	std::uint16_t signalOutput{ 0u };
@@ -178,20 +178,20 @@ struct AudioMapNodeStaticModel
 
 struct ClockDomainNodeStaticModel
 {
-	entity::model::LocalizedStringReference localizedDescription{ entity::model::getNullLocalizedStringReference() };
+	entity::model::LocalizedStringReference localizedDescription{};
 	ClockSources clockSources{};
 };
 
 struct ConfigurationNodeStaticModel
 {
-	entity::model::LocalizedStringReference localizedDescription{ entity::model::getNullLocalizedStringReference() };
+	entity::model::LocalizedStringReference localizedDescription{};
 	DescriptorCounts descriptorCounts{};
 };
 
 struct EntityNodeStaticModel
 {
-	entity::model::LocalizedStringReference vendorNameString{ entity::model::getNullLocalizedStringReference() };
-	entity::model::LocalizedStringReference modelNameString{ entity::model::getNullLocalizedStringReference() };
+	entity::model::LocalizedStringReference vendorNameString{};
+	entity::model::LocalizedStringReference modelNameString{};
 };
 
 } // namespace model

@@ -47,6 +47,10 @@ namespace controller
 /* ************************************************************************** */
 /* ControlledEntity                                                           */
 /* ************************************************************************** */
+/**
+* @brief A local or remote entity that was discovered and is attached to a Controller.
+* @details Representation of an entity that was previously discovered by a Controller.
+*/
 class ControlledEntity
 {
 public:
@@ -136,8 +140,8 @@ public:
 	virtual model::ClockDomainNode const& getClockDomainNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if clockDomainIndex do not exist
 
 	virtual model::LocaleNodeStaticModel const* findLocaleNode(entity::model::ConfigurationIndex const configurationIndex, std::string const& locale) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
-	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::LocalizedStringReference const stringReference) const noexcept = 0; // Get localized string or empty string if not found, in current configuration descriptor
-	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocalizedStringReference const stringReference) const noexcept = 0; // Get localized string or empty string if not found // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
+	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::LocalizedStringReference const& stringReference) const noexcept = 0; // Get localized string or empty string if not found, in current configuration descriptor
+	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocalizedStringReference const& stringReference) const noexcept = 0; // Get localized string or empty string if not found // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
 
 	/** Get connected information about a listener's stream (TalkerID and StreamIndex might be filled even if isConnected is not true, in case of FastConnect) */
 	virtual model::StreamConnectionState const& getConnectedSinkState(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
@@ -172,7 +176,10 @@ protected:
 /* ************************************************************************** */
 /* ControlledEntityGuard                                                      */
 /* ************************************************************************** */
-/** A guard around a ControlledEntity that guarantees it won't be modified while the Guard is alive. WARNING: The guard should not be kept for more than a few milliseconds. */
+/**
+* @brief A guard around a ControlledEntity that guarantees it won't be modified while the Guard is alive.
+* @warning The guard should not be kept for more than a few milliseconds.
+*/
 class ControlledEntityGuard final
 {
 public:

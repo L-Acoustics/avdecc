@@ -53,20 +53,71 @@ public:
 	{
 		using SharedPointer = std::shared_ptr<LockInformation>;
 
-		std::recursive_mutex lock{};
-		std::uint32_t lockedCount{ 0u };
-		std::thread::id lockingThreadID{};
+		std::recursive_mutex _lock{};
+		std::uint32_t _lockedCount{ 0u };
+		std::thread::id _lockingThreadID{};
+
+		void lock() noexcept
+		{
+			_lock.lock();
+			if (_lockedCount == 0)
+			{
+				_lockingThreadID = std::this_thread::get_id();
+			}
+			++_lockedCount;
+		}
+
+		void unlock() noexcept
+		{
+			AVDECC_ASSERT(isSelfLocked(), "unlock should not be called when current thread is not the lock holder");
+
+			--_lockedCount;
+			if (_lockedCount == 0)
+			{
+				_lockingThreadID = {};
+			}
+			_lock.unlock();
+		}
+
+		void lockAll(std::uint32_t const lockedCount) noexcept
+		{
+			for (auto count = 0u; count < lockedCount; ++count)
+			{
+				lock();
+			}
+		}
+
+		std::uint32_t unlockAll() noexcept
+		{
+			AVDECC_ASSERT(isSelfLocked(), "unlockAll should not be called when current thread is not the lock holder");
+
+			auto result = 0u;
+			[[maybe_unused]] auto const previousLockedCount = _lockedCount;
+			while (isSelfLocked())
+			{
+				unlock();
+				++result;
+			}
+
+			AVDECC_ASSERT(previousLockedCount == result, "lockedCount does not match the number of unlockings");
+			return result;
+		}
+
+		bool isSelfLocked() const noexcept
+		{
+			return _lockingThreadID == std::this_thread::get_id();
+		}
 	};
 
-	enum class EnumerationSteps : std::uint16_t
+	enum class EnumerationStep : std::uint16_t
 	{
-		None = 0,
 		GetMilanInfo = 1u << 0,
 		RegisterUnsol = 1u << 1,
 		GetStaticModel = 1u << 2,
 		GetDescriptorDynamicInfo = 1u << 3, /** DescriptorDynamicInfoType */
 		GetDynamicInfo = 1u << 4, /** DynamicInfoType */
 	};
+	using EnumerationSteps = utils::EnumBitfield<EnumerationStep>;
 
 	/** Milan Vendor Unique Information */
 	enum class MilanInfoType : std::uint16_t
@@ -164,8 +215,8 @@ public:
 	virtual model::ClockDomainNode const& getClockDomainNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) const override;
 
 	virtual model::LocaleNodeStaticModel const* findLocaleNode(entity::model::ConfigurationIndex const configurationIndex, std::string const& locale) const override; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
-	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::LocalizedStringReference const stringReference) const noexcept override;
-	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocalizedStringReference const stringReference) const noexcept override; // Get localized string or empty string if not found // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
+	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::LocalizedStringReference const& stringReference) const noexcept override;
+	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocalizedStringReference const& stringReference) const noexcept override; // Get localized string or empty string if not found // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
 
 	// Visitor method
 	virtual void accept(model::EntityModelVisitor* const visitor) const noexcept override;
@@ -230,7 +281,7 @@ public:
 	template<typename FieldPointer, typename DescriptorIndexType>
 	typename std::remove_pointer_t<FieldPointer>::mapped_type& getNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer model::ConfigurationStaticTree::*Field) noexcept
 	{
-		AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+		AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 		auto& configStaticTree = getConfigurationStaticTree(configurationIndex);
 		return (configStaticTree.*Field)[index];
@@ -238,7 +289,7 @@ public:
 	template<typename FieldPointer, typename DescriptorIndexType>
 	typename std::remove_pointer_t<FieldPointer>::mapped_type& getNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer model::ConfigurationDynamicTree::*Field) noexcept
 	{
-		AVDECC_ASSERT(_sharedLock->lockedCount >= 0, "ControlledEntity should be locked");
+		AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
 		auto& configDynamicTree = getConfigurationDynamicTree(configurationIndex);
 		return (configDynamicTree.*Field)[index];
@@ -342,8 +393,9 @@ public:
 	bool shouldIgnoreCachedEntityModel() const noexcept;
 	void setIgnoreCachedEntityModel() noexcept;
 	EnumerationSteps getEnumerationSteps() const noexcept;
-	void addEnumerationSteps(EnumerationSteps const steps) noexcept;
-	void clearEnumerationSteps(EnumerationSteps const steps) noexcept;
+	void setEnumerationSteps(EnumerationSteps const steps) noexcept;
+	void addEnumerationStep(EnumerationStep const step) noexcept;
+	void clearEnumerationStep(EnumerationStep const step) noexcept;
 	void setCompatibilityFlags(CompatibilityFlags const compatibilityFlags) noexcept;
 	void setGetFatalEnumerationError() noexcept;
 	void setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept;
@@ -355,19 +407,19 @@ public:
 	static std::string descriptorDynamicInfoTypeToString(DescriptorDynamicInfoType const descriptorDynamicInfoType) noexcept;
 
 	// Other usefull manipulation methods
-	constexpr static bool isStreamRunningFlag(entity::StreamInfoFlags const flags) noexcept
+	static inline bool isStreamRunningFlag(entity::StreamInfoFlags const flags) noexcept
 	{
-		return !utils::hasFlag(flags, entity::StreamInfoFlags::StreamingWait);
+		return !flags.test(entity::StreamInfoFlag::StreamingWait);
 	}
-	constexpr static void setStreamRunningFlag(entity::StreamInfoFlags& flags, bool const isRunning) noexcept
+	static inline void setStreamRunningFlag(entity::StreamInfoFlags& flags, bool const isRunning) noexcept
 	{
 		if (isRunning)
 		{
-			utils::clearFlag(flags, entity::StreamInfoFlags::StreamingWait);
+			flags.reset(entity::StreamInfoFlag::StreamingWait);
 		}
 		else
 		{
-			utils::addFlag(flags, entity::StreamInfoFlags::StreamingWait);
+			flags.set(entity::StreamInfoFlag::StreamingWait);
 		}
 	}
 
@@ -423,7 +475,7 @@ private:
 	std::uint16_t _queryDescriptorRetryCount{ 0u };
 	std::uint16_t _queryDynamicInfoRetryCount{ 0u };
 	std::uint16_t _queryDescriptorDynamicInfoRetryCount{ 0u };
-	EnumerationSteps _enumerationSteps{ EnumerationSteps::None };
+	EnumerationSteps _enumerationSteps{};
 	CompatibilityFlags _compatibilityFlags{ CompatibilityFlag::IEEE17221 }; // Entity is IEEE1722.1 compatible by default
 	bool _gotFatalEnumerateError{ false }; // Have we got a fatal error during entity enumeration
 	bool _isSubscribedToUnsolicitedNotifications{ false }; // Are we subscribed to unsolicited notifications
@@ -449,13 +501,5 @@ private:
 };
 
 } // namespace controller
-
-// Define bitfield enum traits for controller::ControlledEntityImpl::EnumerationSteps
-template<>
-struct utils::enum_traits<controller::ControlledEntityImpl::EnumerationSteps>
-{
-	static constexpr bool is_bitfield = true;
-};
-
 } // namespace avdecc
 } // namespace la

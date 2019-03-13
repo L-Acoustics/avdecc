@@ -192,7 +192,7 @@ private:
 	networkInterface::MacAddress _streamDestAddress{};
 	std::uint16_t _connectionCount{ 0u };
 	AcmpSequenceID _sequenceID{ 0u };
-	entity::ConnectionFlags _flags{ entity::ConnectionFlags::None };
+	entity::ConnectionFlags _flags{};
 	std::uint16_t _streamVlanID{ 0u };
 
 private:

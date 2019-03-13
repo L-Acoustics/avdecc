@@ -109,6 +109,10 @@ LA_AVDECC_CONTROLLER_API std::vector<CompileOptionInfo> LA_AVDECC_CONTROLLER_CAL
 /* ************************************************************************** */
 /* Controller                                                                 */
 /* ************************************************************************** */
+/**
+* @brief A Controller type entity.
+* @details Controller handling local and remote entities discovery (ControlledEntity), state tracking every change in them and interacting with them through commands and queries.
+*/
 class Controller : public la::avdecc::utils::Subject<Controller, std::recursive_mutex>
 {
 public:

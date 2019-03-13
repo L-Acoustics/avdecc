@@ -422,7 +422,7 @@ entity::model::StreamDescriptor deserializeReadStreamDescriptorResponse(AemAecpd
 		// Let's loop over the formats
 		for (auto index = 0u; index < numberOfFormats; ++index)
 		{
-			std::uint64_t format;
+			entity::model::StreamFormat format{};
 			des >> format;
 			streamDescriptor.formats.insert(format);
 		}
@@ -993,7 +993,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	Deserializer des(commandPayload, commandPayloadLength);
 	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
-	entity::model::StreamFormat streamFormat{ entity::model::getNullStreamFormat() };
+	entity::model::StreamFormat streamFormat{};
 
 	des >> descriptorType >> descriptorIndex;
 	des >> streamFormat;
@@ -1236,7 +1236,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 
 	if (commandPayloadLength >= AecpAemMilanGetStreamInfoResponsePayloadSize)
 	{
-		auto streamInfoFlagsEx = entity::StreamInfoFlagsEx::None;
+		auto streamInfoFlagsEx = entity::StreamInfoFlagsEx{};
 		auto probing_acmp_status = std::uint8_t{ 0u };
 		auto reserved3 = std::uint8_t{ 0u };
 		auto reserved4 = std::uint16_t{ 0u };
@@ -1402,7 +1402,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	Deserializer des(commandPayload, commandPayloadLength);
 	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
-	entity::model::SamplingRate samplingRate{ entity::model::getNullSamplingRate() };
+	entity::model::SamplingRate samplingRate{};
 
 	des >> descriptorType >> descriptorIndex;
 	des >> samplingRate;

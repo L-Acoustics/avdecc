@@ -58,10 +58,6 @@ public:
 	using UniquePointer = std::unique_ptr<Aecpdu, void (*)(Aecpdu*)>;
 
 	// Setters
-	void LA_AVDECC_CALL_CONVENTION setMessageType(AecpMessageType const messageType) noexcept
-	{
-		AvtpduControl::setControlData(messageType.getValue());
-	}
 	void LA_AVDECC_CALL_CONVENTION setStatus(AecpStatus const status) noexcept
 	{
 		AvtpduControl::setStatus(status.getValue());
@@ -112,8 +108,8 @@ public:
 	/** Deserialization method */
 	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION deserialize(DeserializationBuffer& buffer) = 0;
 
-	/** Copy method */
-	virtual LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION copy() const = 0;
+	/** Contruct a Response message to this Command (only changing the messageType to be of Response kind). Returns nullptr if the message is not a Command or if no Response is possible for this messageType */
+	virtual LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION responseCopy() const = 0;
 
 	// Defaulted compiler auto-generated methods
 	Aecpdu(Aecpdu&&) = default;
@@ -127,6 +123,11 @@ protected:
 
 	/** Destructor */
 	virtual ~Aecpdu() noexcept override = default;
+
+	void LA_AVDECC_CALL_CONVENTION setMessageType(AecpMessageType const messageType) noexcept
+	{
+		AvtpduControl::setControlData(messageType.getValue());
+	}
 
 private:
 	/** Destroy method for COM-like interface */

@@ -39,8 +39,9 @@ namespace protocol
 
 la::avdecc::networkInterface::MacAddress AemAecpdu::Identify_Mac_Address{ { 0x91, 0xe0, 0xf0, 0x01, 0x00, 0x01 } };
 
-AemAecpdu::AemAecpdu() noexcept
+AemAecpdu::AemAecpdu(bool const isResponse) noexcept
 {
+	Aecpdu::setMessageType(isResponse ? AecpMessageType::AemResponse : AecpMessageType::AemCommand);
 	Aecpdu::setAecpSpecificDataLength(AemAecpdu::HeaderLength);
 }
 
@@ -164,20 +165,34 @@ void LA_AVDECC_CALL_CONVENTION AemAecpdu::deserialize(DeserializationBuffer& buf
 #endif // DEBUG
 }
 
-/** Copy method */
-Aecpdu::UniquePointer LA_AVDECC_CALL_CONVENTION AemAecpdu::copy() const
+/** Contruct a Response message to this Command (only changing the messageType to be of Response kind). Returns nullptr if the message is not a Command or if no Response is possible for this messageType */
+Aecpdu::UniquePointer LA_AVDECC_CALL_CONVENTION AemAecpdu::responseCopy() const
 {
+	if (!AVDECC_ASSERT_WITH_RET(getMessageType() == AecpMessageType::AemCommand, "Calling AemAecpdu::reflectedResponse() on something that is not an AEM_COMMAND"))
+	{
+		return UniquePointer{ nullptr, nullptr };
+	}
+
 	auto deleter = [](Aecpdu* self)
 	{
 		static_cast<AemAecpdu*>(self)->destroy();
 	};
-	return UniquePointer(new AemAecpdu(*this), deleter);
+
+	// Create a response message as a copy of this
+	auto response = UniquePointer(new AemAecpdu(*this), deleter);
+	auto& aem = static_cast<AemAecpdu&>(*response);
+
+	// Change the message type to be an AEM_RESPONSE
+	aem.setMessageType(AecpMessageType::AemResponse);
+
+	// Return the created response
+	return response;
 }
 
 /** Entry point */
-AemAecpdu* LA_AVDECC_CALL_CONVENTION AemAecpdu::createRawAemAecpdu() noexcept
+AemAecpdu* LA_AVDECC_CALL_CONVENTION AemAecpdu::createRawAemAecpdu(bool const isResponse) noexcept
 {
-	return new AemAecpdu();
+	return new AemAecpdu(isResponse);
 }
 
 /** Destroy method for COM-like interface */

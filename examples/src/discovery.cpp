@@ -109,7 +109,7 @@ void Discovery::onEntityQueryError(la::avdecc::controller::Controller const* con
 void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
-	if (la::avdecc::utils::hasFlag(entity->getEntity().getEntityCapabilities(), la::avdecc::entity::EntityCapabilities::AemSupported))
+	if (entity->getEntity().getEntityCapabilities().test(la::avdecc::entity::EntityCapability::AemSupported))
 	{
 		std::uint32_t const vendorID = std::get<0>(la::avdecc::entity::model::splitEntityModelID(entity->getEntity().getEntityModelID()));
 		// Filter entities from the same vendor as this controller
@@ -125,7 +125,7 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 					}
 				});
 		}
-		else if (la::avdecc::utils::hasFlag(entity->getEntity().getTalkerCapabilities(), la::avdecc::entity::TalkerCapabilities::Implemented))
+		else if (entity->getEntity().getTalkerCapabilities().test(la::avdecc::entity::TalkerCapability::Implemented))
 		{
 			outputText("New talker online: " + la::avdecc::utils::toHexString(entityID, true) + "\n");
 		}

@@ -175,14 +175,15 @@ private:
 	virtual void onRemoteEntityUpdated(protocol::ProtocolInterface* const pi, Entity const& entity) noexcept override;
 	/* **** AECP notifications **** */
 	virtual bool onUnhandledAecpCommand(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept override;
-	virtual void onAecpUnsolicitedResponse(protocol::ProtocolInterface* const pi, LocalEntity const& entity, protocol::Aecpdu const& aecpdu) noexcept override;
+	virtual void onAecpAemUnsolicitedResponse(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept override;
 	/* **** ACMP notifications **** */
-	virtual void onAcmpSniffedCommand(protocol::ProtocolInterface* const pi, LocalEntity const& entity, protocol::Acmpdu const& acmpdu) noexcept override;
-	virtual void onAcmpSniffedResponse(protocol::ProtocolInterface* const pi, LocalEntity const& entity, protocol::Acmpdu const& acmpdu) noexcept override;
+	virtual void onAcmpCommand(protocol::ProtocolInterface* const pi, protocol::Acmpdu const& acmpdu) noexcept override;
+	virtual void onAcmpResponse(protocol::ProtocolInterface* const pi, protocol::Acmpdu const& acmpdu) noexcept override;
 
 	/* ************************************************************************** */
 	/* Internal methods                                                           */
 	/* ************************************************************************** */
+	bool isResponseForController(protocol::AcmpMessageType const messageType) const noexcept;
 	void sendAemAecpCommand(UniqueIdentifier const targetEntityID, protocol::AemCommandType const commandType, void const* const payload, size_t const payloadLength, LocalEntityImpl<>::OnAemAECPErrorCallback const& onErrorCallback, LocalEntityImpl<>::AnswerCallback const& answerCallback) const noexcept;
 	void sendAaAecpCommand(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, LocalEntityImpl<>::OnAaAECPErrorCallback const& onErrorCallback, LocalEntityImpl<>::AnswerCallback const& answerCallback) const noexcept;
 	void sendMvuAecpCommand(UniqueIdentifier const targetEntityID, protocol::MvuCommandType const commandType, void const* const payload, size_t const payloadLength, LocalEntityImpl<>::OnMvuAECPErrorCallback const& onErrorCallback, LocalEntityImpl<>::AnswerCallback const& answerCallback) const noexcept;
@@ -199,9 +200,7 @@ private:
 	controller::Delegate* _controllerDelegate{ nullptr };
 	Interface& _controllerInterface;
 	UniqueIdentifier const _controllerID{ UniqueIdentifier::getNullUniqueIdentifier() };
-	bool _shouldTerminate{ false };
 	DiscoveredEntities _discoveredEntities{};
-	std::thread _discoveryThread{};
 };
 
 } // namespace controller

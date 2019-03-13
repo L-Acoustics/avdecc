@@ -48,20 +48,20 @@ AggregateEntityImpl::AggregateEntityImpl(protocol::ProtocolInterface* const prot
 	auto const entityID = getEntityID();
 
 	// Entity is controller capable
-	if (la::avdecc::utils::hasFlag(commonInformation.controllerCapabilities, ControllerCapabilities::Implemented))
+	if (commonInformation.controllerCapabilities.test(ControllerCapability::Implemented))
 	{
 		_controllerCapabilityDelegate = std::make_unique<controller::CapabilityDelegate>(getProtocolInterface(), controllerDelegate, *this, entityID);
 	}
 
 	// Entity is listener capable
-	if (la::avdecc::utils::hasFlag(commonInformation.listenerCapabilities, ListenerCapabilities::Implemented))
+	if (commonInformation.listenerCapabilities.test(ListenerCapability::Implemented))
 	{
 		AVDECC_ASSERT(false, "TODO: AggregateEntityImpl: Handle listener capability");
 		//_listenerCapabilityDelegate = std::make_unique<listener::CapabilityDelegate>(entityID);
 	}
 
 	// Entity is talker capable
-	if (la::avdecc::utils::hasFlag(commonInformation.talkerCapabilities, TalkerCapabilities::Implemented))
+	if (commonInformation.talkerCapabilities.test(TalkerCapability::Implemented))
 	{
 		AVDECC_ASSERT(false, "TODO: AggregateEntityImpl: Handle talker capability");
 		//_talkerCapabilityDelegate = std::make_unique<talker::CapabilityDelegate>(entityID);
@@ -1009,52 +1009,52 @@ void AggregateEntityImpl::onRemoteEntityUpdated(protocol::ProtocolInterface* con
 }
 
 /* **** AECP notifications **** */
-void AggregateEntityImpl::onAecpUnsolicitedResponse(protocol::ProtocolInterface* const pi, LocalEntity const& entity, protocol::Aecpdu const& aecpdu) noexcept
+void AggregateEntityImpl::onAecpAemUnsolicitedResponse(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept
 {
 	if (_controllerCapabilityDelegate != nullptr)
 	{
-		_controllerCapabilityDelegate->onAecpUnsolicitedResponse(pi, entity, aecpdu);
+		_controllerCapabilityDelegate->onAecpAemUnsolicitedResponse(pi, aecpdu);
 	}
 	if (_listenerCapabilityDelegate != nullptr)
 	{
-		_listenerCapabilityDelegate->onAecpUnsolicitedResponse(pi, entity, aecpdu);
+		_listenerCapabilityDelegate->onAecpAemUnsolicitedResponse(pi, aecpdu);
 	}
 	if (_talkerCapabilityDelegate != nullptr)
 	{
-		_talkerCapabilityDelegate->onAecpUnsolicitedResponse(pi, entity, aecpdu);
+		_talkerCapabilityDelegate->onAecpAemUnsolicitedResponse(pi, aecpdu);
 	}
 }
 
 /* **** ACMP notifications **** */
-void AggregateEntityImpl::onAcmpSniffedCommand(protocol::ProtocolInterface* const pi, LocalEntity const& entity, protocol::Acmpdu const& acmpdu) noexcept
+void AggregateEntityImpl::onAcmpCommand(protocol::ProtocolInterface* const pi, protocol::Acmpdu const& acmpdu) noexcept
 {
 	if (_controllerCapabilityDelegate != nullptr)
 	{
-		_controllerCapabilityDelegate->onAcmpSniffedCommand(pi, entity, acmpdu);
+		_controllerCapabilityDelegate->onAcmpCommand(pi, acmpdu);
 	}
 	if (_listenerCapabilityDelegate != nullptr)
 	{
-		_listenerCapabilityDelegate->onAcmpSniffedCommand(pi, entity, acmpdu);
+		_listenerCapabilityDelegate->onAcmpCommand(pi, acmpdu);
 	}
 	if (_talkerCapabilityDelegate != nullptr)
 	{
-		_talkerCapabilityDelegate->onAcmpSniffedCommand(pi, entity, acmpdu);
+		_talkerCapabilityDelegate->onAcmpCommand(pi, acmpdu);
 	}
 }
 
-void AggregateEntityImpl::onAcmpSniffedResponse(protocol::ProtocolInterface* const pi, LocalEntity const& entity, protocol::Acmpdu const& acmpdu) noexcept
+void AggregateEntityImpl::onAcmpResponse(protocol::ProtocolInterface* const pi, protocol::Acmpdu const& acmpdu) noexcept
 {
 	if (_controllerCapabilityDelegate != nullptr)
 	{
-		_controllerCapabilityDelegate->onAcmpSniffedResponse(pi, entity, acmpdu);
+		_controllerCapabilityDelegate->onAcmpResponse(pi, acmpdu);
 	}
 	if (_listenerCapabilityDelegate != nullptr)
 	{
-		_listenerCapabilityDelegate->onAcmpSniffedResponse(pi, entity, acmpdu);
+		_listenerCapabilityDelegate->onAcmpResponse(pi, acmpdu);
 	}
 	if (_talkerCapabilityDelegate != nullptr)
 	{
-		_talkerCapabilityDelegate->onAcmpSniffedResponse(pi, entity, acmpdu);
+		_talkerCapabilityDelegate->onAcmpResponse(pi, acmpdu);
 	}
 }
 

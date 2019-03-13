@@ -139,7 +139,7 @@ LocalEntity::ControlStatus LocalEntityImpl<SuperClass>::convertErrorToControlSta
 }
 
 template<class SuperClass>
-void LocalEntityImpl<SuperClass>::onAecpCommand(protocol::ProtocolInterface* const pi, LocalEntity const& /*entity*/, protocol::Aecpdu const& aecpdu) noexcept
+void LocalEntityImpl<SuperClass>::onAecpCommand(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept
 {
 	// Ignore messages not for me
 	if (aecpdu.getTargetEntityID() != SuperClass::getEntityID())
