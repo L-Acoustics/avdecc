@@ -92,7 +92,7 @@ public:
 			AVDECC_ASSERT(isSelfLocked(), "unlockAll should not be called when current thread is not the lock holder");
 
 			auto result = 0u;
-			auto const previousLockedCount = _lockedCount;
+			[[maybe_unused]] auto const previousLockedCount = _lockedCount;
 			while (isSelfLocked())
 			{
 				unlock();
