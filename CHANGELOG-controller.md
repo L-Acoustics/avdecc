@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - Controller entry-points automatically unlock all ControlledEntity (temporarily) during a sendMessage call
+- StreamInput connected state not always properly updated for non-Milan devices, in FastConnect mode
 
 ## [2.9.0] - 2019-02-13
 ### Added

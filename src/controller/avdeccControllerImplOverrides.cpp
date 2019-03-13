@@ -1885,7 +1885,7 @@ void ControllerImpl::connectStream(entity::model::StreamIdentification const& ta
 
 				if (!!status)
 				{
-					// Do not trust the connectionCount value to determine if the listener is connected, but rather use the status code (SUCCESS means connection is established)
+					// Do not trust the connectionCount value to determine if the listener is connected, but rather use the fact there was no error in the command
 					handleListenerStreamStateNotification(talkerStream, listenerStream, true, flags, false);
 				}
 
@@ -1913,54 +1913,46 @@ void ControllerImpl::disconnectStream(entity::model::StreamIdentification const&
 			{
 				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
-				bool shouldNotifyHandler{ true }; // Shall we notify the handler right now, or do we have to send another message before
-
-				if (!!status) // No error, update the connection state
+				if (!!status || status == entity::ControllerEntity::ControlStatus::NotConnected) // No error, update the connection state
 				{
-					// Do not trust the connectionCount value to determine if the listener is disconnected, but rather use the status code (SUCCESS means disconnected)
-					handleListenerStreamStateNotification(talkerStream, listenerStream, false, flags, false);
+					// Do not trust the connectionCount value to determine if the listener is disconnected, but rather use the fact there was no error (NOT_CONNECTED is actually not an error) in the command
+					handleListenerStreamStateNotification({}, listenerStream, false, flags, false);
+
+					// Take a "scoped locked" shared copy of the ControlledEntity
+					auto listener = getControlledEntityImplGuard(listenerStream.entityID);
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, entity::ControllerEntity::ControlStatus::Success); // Force SUCCESS as status
 				}
 				else
 				{
 					// In case of a disconnect we might get an error (forwarded from the talker) but the stream is actually disconnected.
 					// In that case, we have to query the listener stream state in order to know the actual connection state
-					if (status != entity::ControllerEntity::ControlStatus::NotConnected)
-					{
-						shouldNotifyHandler = false; // Don't notify handler right now, wait for getListenerStreamState answer
-						_controller->getListenerStreamState(listenerStream,
-							[this, handler, disconnectStatus = status](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
+					// Also don't notify the result handler right now, wait for getListenerStreamState answer
+					_controller->getListenerStreamState(listenerStream,
+						[this, handler, disconnectStatus = status](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
+						{
+							entity::ControllerEntity::ControlStatus controlStatus{ disconnectStatus };
+							// In a GET_RX_STATE_RESPONSE message, the connectionCount is set to 1 if the stream is connected and 0 if not connected (See Marc Illouz clarification document, and hopefully someday as a corrigendum)
+							auto const isStillConnected = connectionCount != 0;
+
+							if (!!status)
 							{
-								entity::ControllerEntity::ControlStatus controlStatus{ disconnectStatus };
-								// In a GET_RX_STATE_RESPONSE message, the connectionCount is set to 1 if the stream is connected and 0 if not connected (See Marc Illouz clarification document, and hopefully someday as a corrigendum)
-								auto const isStillConnected = connectionCount != 0;
+								// Status to return depends if we actually got disconnected (success in that case)
+								controlStatus = isStillConnected ? disconnectStatus : entity::ControllerEntity::ControlStatus::Success;
+							}
 
-								if (!!status)
-								{
-									// Status to return depends if we actually got disconnected (success in that case)
-									controlStatus = isStillConnected ? disconnectStatus : entity::ControllerEntity::ControlStatus::Success;
-								}
+							// Take a "scoped locked" shared copy of the ControlledEntity
+							auto listener = getControlledEntityImplGuard(listenerStream.entityID);
 
-								// Take a "scoped locked" shared copy of the ControlledEntity
-								auto listener = getControlledEntityImplGuard(listenerStream.entityID);
+							if (!!status)
+							{
+								handleListenerStreamStateNotification(talkerStream, listenerStream, isStillConnected, flags, false);
+							}
 
-								if (!!status)
-								{
-									handleListenerStreamStateNotification(talkerStream, listenerStream, isStillConnected, flags, false);
-								}
-
-								// Invoke result handler
-								utils::invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, controlStatus);
-							});
-					}
-				}
-
-				if (shouldNotifyHandler)
-				{
-					// Take a "scoped locked" shared copy of the ControlledEntity
-					auto listener = getControlledEntityImplGuard(listenerStream.entityID);
-
-					// Invoke result handler
-					utils::invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, status);
+							// Invoke result handler
+							utils::invokeProtectedHandler(handler, listener.get(), listenerStream.streamIndex, controlStatus);
+						});
 				}
 			});
 	}
@@ -1992,7 +1984,7 @@ void ControllerImpl::disconnectTalkerStream(entity::model::StreamIdentification 
 
 				if (!!status) // No error, update the connection state
 				{
-					// Do not trust the connectionCount value to determine if the listener is disconnected, but rather use the status code (SUCCESS means disconnected)
+					// Do not trust the connectionCount value to determine if the listener is connected, but rather use the fact there was no error in the command
 					handleTalkerStreamStateNotification(talkerStream, listenerStream, false, flags, true);
 				}
 

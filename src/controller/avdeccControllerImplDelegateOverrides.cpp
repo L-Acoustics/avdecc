@@ -164,18 +164,18 @@ void ControllerImpl::onControllerConnectResponseSniffed(entity::controller::Inte
 {
 	if (!!status)
 	{
-		// Do not trust the connectionCount value to determine if the listener is connected, but rather use the status code (SUCCESS means connection is established)
+		// Do not trust the connectionCount value to determine if the listener is connected, but rather use the fact there was no error in the command
 		handleListenerStreamStateNotification(talkerStream, listenerStream, true, flags, true);
 	}
 	// We don't care about sniffed errors
 }
 
-void ControllerImpl::onControllerDisconnectResponseSniffed(entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept
+void ControllerImpl::onControllerDisconnectResponseSniffed(entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& /*talkerStream*/, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept
 {
-	if (!!status)
+	if (!!status || status == entity::ControllerEntity::ControlStatus::NotConnected)
 	{
-		// Do not trust the connectionCount value to determine if the listener is disconnected, but rather use the status code (SUCCESS means disconnected)
-		handleListenerStreamStateNotification(talkerStream, listenerStream, false, flags, true);
+		// Do not trust the connectionCount value to determine if the listener is disconnected, but rather use the fact there was no error (NOT_CONNECTED is actually not an error) in the command
+		handleListenerStreamStateNotification({}, listenerStream, false, flags, true);
 	}
 	// We don't care about sniffed errors
 }
@@ -184,7 +184,7 @@ void ControllerImpl::onListenerConnectResponseSniffed(entity::controller::Interf
 {
 	if (!!status)
 	{
-		// Do not trust the connectionCount value to determine if the listener is connected, but rather use the status code (SUCCESS means connection is established)
+		// Do not trust the connectionCount value to determine if the listener is connected, but rather use the fact there was no error in the command
 		handleTalkerStreamStateNotification(talkerStream, listenerStream, true, flags, true);
 	}
 	// We don't care about sniffed errors
@@ -194,7 +194,7 @@ void ControllerImpl::onListenerDisconnectResponseSniffed(entity::controller::Int
 {
 	if (!!status)
 	{
-		// Do not trust the connectionCount value to determine if the listener is disconnected, but rather use the status code (SUCCESS means disconnected)
+		// Do not trust the connectionCount value to determine if the listener is connected, but rather use the fact there was no error in the command
 		handleTalkerStreamStateNotification(talkerStream, listenerStream, false, flags, true);
 	}
 	// We don't care about sniffed errors
