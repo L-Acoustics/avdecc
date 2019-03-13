@@ -4,6 +4,8 @@ All notable changes to the Avdecc Library will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
 ## [2.9.1] - 2019-03-13
 ### Changed
 - [Replaced all la::avdecc::enum_traits with la::avdecc::EnumBitfield](https://github.com/L-Acoustics/avdecc/issues/34)
