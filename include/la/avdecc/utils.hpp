@@ -289,14 +289,6 @@ public:
 		{
 			return static_cast<value_type>(_currentValue);
 		}
-		pointer operator->() noexcept
-		{
-			return static_cast<pointer>(&_currentValue);
-		}
-		const_pointer operator->() const noexcept
-		{
-			return static_cast<const_pointer>(&_currentValue);
-		}
 		bool operator==(self_name const& other) const noexcept
 		{
 			return _currentBitPosition == other._currentBitPosition;
