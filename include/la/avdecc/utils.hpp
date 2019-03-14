@@ -235,8 +235,8 @@ public:
 		static constexpr auto EndBit = value_size;
 
 	public:
-		using value_type = value_type;
-		using underlying_value_type = underlying_value_type;
+		using value_type = EnumType;
+		using underlying_value_type = std::underlying_type_t<value_type>;
 		using difference_type = size_t;
 		using iterator_category = std::forward_iterator_tag;
 		using reference = value_type&;
