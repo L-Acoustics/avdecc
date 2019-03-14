@@ -630,7 +630,7 @@ StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_IEC_61883_6
 		default:
 			return StreamFormat::getNullStreamFormat();
 	}
-	replaceField<16, 20>(fmt, static_cast<std::uint8_t>(0x0)); // fdf_evt = sampleFormat
+	replaceField<16, 20>(fmt, static_cast<std::uint8_t>(fdf_evt)); // fdf_evt = sampleFormat
 
 	std::uint8_t fdf_sfc{ 0u };
 	switch (samplingRate)
