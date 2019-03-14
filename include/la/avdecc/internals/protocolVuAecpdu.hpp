@@ -88,7 +88,7 @@ public:
 		{
 			ArrayType value{};
 
-			for (auto i = 0; i < Size; ++i)
+			for (auto i = 0u; i < Size; ++i)
 			{
 				value[i] = static_cast<ArrayType::value_type>((_identifier >> ((Size - 1 - i) * 8)) & 0x00000000000000FF);
 			}
