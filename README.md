@@ -62,7 +62,7 @@ The controller API has 2 interfaces:
 - Xcode 10
 
 ### Linux
-- C++17 compliant compiler
+- C++17 compliant compiler (minimum recommended 8.2.1)
 - Make
 - pcap developer package
 - ncurses developer package (optional, for examples)
