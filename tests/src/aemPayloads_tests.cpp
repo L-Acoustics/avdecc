@@ -104,13 +104,13 @@ TEST(AemPayloads, GetConfigurationResponse)
 
 TEST(AemPayloads, SetStreamFormatCommand)
 {
-	CHECK_PAYLOAD(SetStreamFormatCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::getNullStreamFormat());
+	CHECK_PAYLOAD(SetStreamFormatCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::StreamFormat{});
 	CHECK_PAYLOAD(SetStreamFormatCommand, la::avdecc::entity::model::DescriptorType::StreamInput, la::avdecc::entity::model::DescriptorIndex(5), la::avdecc::entity::model::StreamFormat(159));
 }
 
 TEST(AemPayloads, SetStreamFormatResponse)
 {
-	CHECK_PAYLOAD(SetStreamFormatResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::getNullStreamFormat());
+	CHECK_PAYLOAD(SetStreamFormatResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::StreamFormat{});
 	CHECK_PAYLOAD(SetStreamFormatResponse, la::avdecc::entity::model::DescriptorType::StreamOutput, la::avdecc::entity::model::DescriptorIndex(50), la::avdecc::entity::model::StreamFormat(501369));
 }
 
@@ -122,20 +122,20 @@ TEST(AemPayloads, GetStreamFormatCommand)
 
 TEST(AemPayloads, GetStreamFormatResponse)
 {
-	CHECK_PAYLOAD(GetStreamFormatResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::getNullStreamFormat());
+	CHECK_PAYLOAD(GetStreamFormatResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::StreamFormat{});
 	CHECK_PAYLOAD(GetStreamFormatResponse, la::avdecc::entity::model::DescriptorType::StreamOutput, la::avdecc::entity::model::DescriptorIndex(50), la::avdecc::entity::model::StreamFormat(501369));
 }
 
 TEST(AemPayloads, SetStreamInfoCommand)
 {
-	la::avdecc::entity::model::StreamInfo streamInfo{ la::avdecc::entity::StreamInfoFlags::Connected | la::avdecc::entity::StreamInfoFlags::SavedState, la::avdecc::entity::model::StreamFormat(16132), la::avdecc::UniqueIdentifier(5), std::uint32_t(52), la::avdecc::networkInterface::MacAddress{ 1, 2, 3, 4, 5, 6 }, std::uint8_t(8), la::avdecc::UniqueIdentifier(99), std::uint16_t(1) };
+	la::avdecc::entity::model::StreamInfo streamInfo{ la::avdecc::entity::StreamInfoFlags{ la::avdecc::entity::StreamInfoFlag::Connected } | la::avdecc::entity::StreamInfoFlags{ la::avdecc::entity::StreamInfoFlag::SavedState }, la::avdecc::entity::model::StreamFormat(16132), la::avdecc::UniqueIdentifier(5), std::uint32_t(52), la::avdecc::networkInterface::MacAddress{ 1, 2, 3, 4, 5, 6 }, std::uint8_t(8), la::avdecc::UniqueIdentifier(99), std::uint16_t(1) };
 	CHECK_PAYLOAD(SetStreamInfoCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::StreamInfo{});
 	CHECK_PAYLOAD(SetStreamInfoCommand, la::avdecc::entity::model::DescriptorType::StreamInput, la::avdecc::entity::model::DescriptorIndex(5), streamInfo);
 }
 
 TEST(AemPayloads, SetStreamInfoResponse)
 {
-	la::avdecc::entity::model::StreamInfo streamInfo{ la::avdecc::entity::StreamInfoFlags::Connected | la::avdecc::entity::StreamInfoFlags::SavedState, la::avdecc::entity::model::StreamFormat(16132), la::avdecc::UniqueIdentifier(5), std::uint32_t(52), la::avdecc::networkInterface::MacAddress{ 1, 2, 3, 4, 5, 6 }, std::uint8_t(8), la::avdecc::UniqueIdentifier(99), std::uint16_t(1) };
+	la::avdecc::entity::model::StreamInfo streamInfo{ la::avdecc::entity::StreamInfoFlags{ la::avdecc::entity::StreamInfoFlag::Connected } | la::avdecc::entity::StreamInfoFlags{ la::avdecc::entity::StreamInfoFlag::SavedState }, la::avdecc::entity::model::StreamFormat(16132), la::avdecc::UniqueIdentifier(5), std::uint32_t(52), la::avdecc::networkInterface::MacAddress{ 1, 2, 3, 4, 5, 6 }, std::uint8_t(8), la::avdecc::UniqueIdentifier(99), std::uint16_t(1) };
 	CHECK_PAYLOAD(SetStreamInfoResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::StreamInfo{});
 	CHECK_PAYLOAD(SetStreamInfoResponse, la::avdecc::entity::model::DescriptorType::StreamInput, la::avdecc::entity::model::DescriptorIndex(5), streamInfo);
 }
@@ -148,8 +148,8 @@ TEST(AemPayloads, GetStreamInfoCommand)
 
 TEST(AemPayloads, GetStreamInfoResponse)
 {
-	la::avdecc::entity::model::StreamInfo streamInfo{ la::avdecc::entity::StreamInfoFlags::Connected | la::avdecc::entity::StreamInfoFlags::SavedState, la::avdecc::entity::model::StreamFormat(16132), la::avdecc::UniqueIdentifier(5), std::uint32_t(52), la::avdecc::networkInterface::MacAddress{ 1, 2, 3, 4, 5, 6 }, std::uint8_t(8), la::avdecc::UniqueIdentifier(99), std::uint16_t(1) };
-	la::avdecc::entity::model::StreamInfo streamInfoMilan{ la::avdecc::entity::StreamInfoFlags::Connected | la::avdecc::entity::StreamInfoFlags::SavedState, la::avdecc::entity::model::StreamFormat(16132), la::avdecc::UniqueIdentifier(5), std::uint32_t(52), la::avdecc::networkInterface::MacAddress{ 1, 2, 3, 4, 5, 6 }, std::uint8_t(8), la::avdecc::UniqueIdentifier(99), std::uint16_t(1), la::avdecc::entity::StreamInfoFlagsEx::Registering, la::avdecc::entity::model::ProbingStatus::Active, la::avdecc::protocol::AcmpStatus::ListenerMisbehaving };
+	la::avdecc::entity::model::StreamInfo streamInfo{ la::avdecc::entity::StreamInfoFlags{ la::avdecc::entity::StreamInfoFlag::Connected } | la::avdecc::entity::StreamInfoFlags{ la::avdecc::entity::StreamInfoFlag::SavedState }, la::avdecc::entity::model::StreamFormat(16132), la::avdecc::UniqueIdentifier(5), std::uint32_t(52), la::avdecc::networkInterface::MacAddress{ 1, 2, 3, 4, 5, 6 }, std::uint8_t(8), la::avdecc::UniqueIdentifier(99), std::uint16_t(1) };
+	la::avdecc::entity::model::StreamInfo streamInfoMilan{ la::avdecc::entity::StreamInfoFlags{ la::avdecc::entity::StreamInfoFlag::Connected } | la::avdecc::entity::StreamInfoFlags{ la::avdecc::entity::StreamInfoFlag::SavedState }, la::avdecc::entity::model::StreamFormat(16132), la::avdecc::UniqueIdentifier(5), std::uint32_t(52), la::avdecc::networkInterface::MacAddress{ 1, 2, 3, 4, 5, 6 }, std::uint8_t(8), la::avdecc::UniqueIdentifier(99), std::uint16_t(1), la::avdecc::entity::StreamInfoFlagsEx{ la::avdecc::entity::StreamInfoFlagEx::Registering }, la::avdecc::entity::model::ProbingStatus::Active, la::avdecc::protocol::AcmpStatus::ListenerMisbehaving };
 	//CHECK_PAYLOAD_SIZED(la::avdecc::protocol::aemPayload::AecpAemGetStreamInfoResponsePayloadSize, false, true, GetStreamInfoResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::StreamInfo{});
 	//CHECK_PAYLOAD_SIZED(la::avdecc::protocol::aemPayload::AecpAemGetStreamInfoResponsePayloadSize, false, true, GetStreamInfoResponse, la::avdecc::entity::model::DescriptorType::StreamInput, la::avdecc::entity::model::DescriptorIndex(5), streamInfo);
 	CHECK_PAYLOAD_SIZED(la::avdecc::protocol::aemPayload::AecpAemMilanGetStreamInfoResponsePayloadSize, true, false, GetStreamInfoResponse, la::avdecc::entity::model::DescriptorType::StreamOutput, la::avdecc::entity::model::DescriptorIndex(66), streamInfoMilan);
@@ -181,13 +181,13 @@ TEST(AemPayloads, GetNameResponse)
 
 TEST(AemPayloads, SetSamplingRateCommand)
 {
-	CHECK_PAYLOAD(SetSamplingRateCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::getNullSamplingRate());
+	CHECK_PAYLOAD(SetSamplingRateCommand, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::SamplingRate{});
 	CHECK_PAYLOAD(SetSamplingRateCommand, la::avdecc::entity::model::DescriptorType::StreamInput, la::avdecc::entity::model::DescriptorIndex(5), la::avdecc::entity::model::SamplingRate(159));
 }
 
 TEST(AemPayloads, SetSamplingRateResponse)
 {
-	CHECK_PAYLOAD(SetSamplingRateResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::getNullSamplingRate());
+	CHECK_PAYLOAD(SetSamplingRateResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::SamplingRate{});
 	CHECK_PAYLOAD(SetSamplingRateResponse, la::avdecc::entity::model::DescriptorType::StreamOutput, la::avdecc::entity::model::DescriptorIndex(50), la::avdecc::entity::model::SamplingRate(501369));
 }
 
@@ -199,7 +199,7 @@ TEST(AemPayloads, GetSamplingRateCommand)
 
 TEST(AemPayloads, GetSamplingRateResponse)
 {
-	CHECK_PAYLOAD(GetSamplingRateResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::ClockSourceIndex(0u));
+	CHECK_PAYLOAD(GetSamplingRateResponse, la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), la::avdecc::entity::model::SamplingRate(0u));
 	CHECK_PAYLOAD(GetSamplingRateResponse, la::avdecc::entity::model::DescriptorType::StreamOutput, la::avdecc::entity::model::DescriptorIndex(50), la::avdecc::entity::model::SamplingRate(501369));
 }
 
@@ -267,7 +267,7 @@ TEST(AemPayloads, GetAvbInfoCommand)
 
 TEST(AemPayloads, GetAvbInfoResponse)
 {
-	la::avdecc::entity::model::AvbInfo avbInfo{ la::avdecc::UniqueIdentifier::getUninitializedUniqueIdentifier(), std::uint32_t(5), std::uint8_t(2), la::avdecc::entity::AvbInfoFlags::AsCapable, la::avdecc::entity::model::MsrpMappings{} };
+	la::avdecc::entity::model::AvbInfo avbInfo{ la::avdecc::UniqueIdentifier::getUninitializedUniqueIdentifier(), std::uint32_t(5), std::uint8_t(2), la::avdecc::entity::AvbInfoFlags{ la::avdecc::entity::AvbInfoFlag::AsCapable }, la::avdecc::entity::model::MsrpMappings{} };
 	EXPECT_NO_THROW(auto const ser = la::avdecc::protocol::aemPayload::serializeGetAvbInfoResponse(la::avdecc::entity::model::DescriptorType::Entity, la::avdecc::entity::model::DescriptorIndex(0), avbInfo); EXPECT_EQ(la::avdecc::protocol::aemPayload::AecpAemGetAvbInfoResponsePayloadMinSize, ser.size()); auto result = la::avdecc::protocol::aemPayload::deserializeGetAvbInfoResponse({ ser.data(), ser.usedBytes() }); auto const& info = std::get<2>(result); EXPECT_EQ(avbInfo, info);) << "Serialization/deserialization should not throw anything";
 }
 
