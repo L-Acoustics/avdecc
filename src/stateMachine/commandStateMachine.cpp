@@ -190,9 +190,23 @@ void CommandStateMachine::handleAecpResponse(Aecpdu const& aecpdu) noexcept
 	auto const lg = std::lock_guard{ *_manager };
 
 	auto* const protocolInterface = _manager->getProtocolInterfaceDelegate();
+	auto const controllerID = aecpdu.getControllerEntityID();
+
+	// First check if we received a multicast IdentifyNotification
+	if (controllerID == AemAecpdu::Identify_ControllerEntityID)
+	{
+		// Check if it's an AEM unsolicited response
+		if (isAEMUnsolicitedResponse(aecpdu))
+		{
+			utils::invokeProtectedMethod(&Delegate::onAecpAemIdentifyNotification, _delegate, aecpdu);
+		}
+		else
+		{
+			LOG_PROTOCOL_INTERFACE_WARN(aecpdu.getSrcAddress(), aecpdu.getDestAddress(), std::string("Received an AECP response message with controller_entity_id set to the IDENTIFY ControllerID, but the message is not an unsolicited AEM response"));
+		}
+	}
 
 	// Only process it if it's targeted to a registered local command entity (which is set in the ControllerID field)
-	auto const controllerID = aecpdu.getControllerEntityID();
 	auto const commandEntityIt = _commandEntities.find(controllerID);
 	if (commandEntityIt != _commandEntities.end())
 	{

@@ -466,6 +466,12 @@ private:
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpAemUnsolicitedResponse, this, aecpdu);
 	}
 
+	virtual void onAecpAemIdentifyNotification(la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override
+	{
+		// Notify observers
+		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpAemIdentifyNotification, this, aecpdu);
+	}
+
 	/* ************************************************************ */
 	/* Private methods                                              */
 	/* ************************************************************ */

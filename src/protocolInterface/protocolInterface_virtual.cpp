@@ -349,6 +349,7 @@ private:
 	/* stateMachine::CommandStateMachine::Delegate overrides        */
 	/* ************************************************************ */
 	virtual void onAecpAemUnsolicitedResponse(la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override;
+	virtual void onAecpAemIdentifyNotification(la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override;
 
 	/* ************************************************************ */
 	/* MessageDispatcher::Observer overrides                        */
@@ -694,6 +695,12 @@ void ProtocolInterfaceVirtualImpl::onAecpAemUnsolicitedResponse(Aecpdu const& ae
 {
 	// Notify observers
 	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpAemUnsolicitedResponse, this, aecpdu);
+}
+
+void ProtocolInterfaceVirtualImpl::onAecpAemIdentifyNotification(la::avdecc::protocol::Aecpdu const& aecpdu) noexcept
+{
+	// Notify observers
+	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpAemIdentifyNotification, this, aecpdu);
 }
 
 /* ************************************************************ */
