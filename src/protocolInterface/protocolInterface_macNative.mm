@@ -1548,14 +1548,33 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	// Lock
 	auto const lg = std::lock_guard{ _lock };
 
+	auto aecpdu = [FromNative makeAecpdu:message toDestAddress:_protocolInterface->getMacAddress()];
+	auto const controllerID = la::avdecc::UniqueIdentifier{ [message controllerEntityID] };
+	auto const isAemUnsolicitedResponse = [message messageType] == AVB17221AECPMessageTypeAEMResponse && [static_cast<AVB17221AECPAEMMessage*>(message) isUnsolicited];
+
+	// First check if we received a multicast IdentifyNotification
+	if (controllerID == la::avdecc::protocol::AemAecpdu::Identify_ControllerEntityID)
+	{
+		// We have to cheat a little bit here since there is currently no way to retrieve the DestMacAddress from macOS native APIs. Assume we correctly received a multicast message from a device, not a targeted one.
+		aecpdu->setDestAddress(la::avdecc::protocol::AemAecpdu::Identify_Mac_Address);
+
+		// Check if it's an AEM unsolicited response
+		if (isAemUnsolicitedResponse)
+		{
+			_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onAecpAemIdentifyNotification, _protocolInterface, *aecpdu);
+		}
+		else
+		{
+			LOG_PROTOCOL_INTERFACE_WARN(aecpdu->getSrcAddress(), aecpdu->getDestAddress(), std::string("Received an AECP response message with controller_entity_id set to the IDENTIFY ControllerID, but the message is not an unsolicited AEM response"));
+		}
+	}
+
 	// Search our local entities, which should be found!
-	if (_localProcessEntities.count([message controllerEntityID]) == 0)
+	if (_localProcessEntities.count(controllerID) == 0)
 		return NO;
 
-	auto const aecpdu = [FromNative makeAecpdu:message toDestAddress:_protocolInterface->getMacAddress()];
-
 	// Special case for Unsolicited Responses
-	if ([message messageType] == AVB17221AECPMessageTypeAEMResponse && [static_cast<AVB17221AECPAEMMessage*>(message) isUnsolicited])
+	if (isAemUnsolicitedResponse)
 	{
 		// Notify the observers
 		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onAecpAemUnsolicitedResponse, _protocolInterface, *aecpdu);

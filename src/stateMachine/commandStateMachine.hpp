@@ -51,6 +51,7 @@ public:
 		virtual ~Delegate() noexcept = default;
 		/* **** AECP notifications **** */
 		virtual void onAecpAemUnsolicitedResponse(la::avdecc::protocol::Aecpdu const& aecpdu) noexcept = 0;
+		virtual void onAecpAemIdentifyNotification(la::avdecc::protocol::Aecpdu const& aecpdu) noexcept = 0;
 	};
 
 	CommandStateMachine(Manager* manager, Delegate* const delegate) noexcept;

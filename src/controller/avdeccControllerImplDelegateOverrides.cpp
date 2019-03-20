@@ -725,6 +725,34 @@ void ControllerImpl::onOperationStatus(entity::controller::Interface const* cons
 	}
 }
 
+/* Identification notifications */
+void ControllerImpl::onEntityIdentifyNotification(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		// Lock to protect _identifications
+		auto const lg = std::lock_guard{ _lock };
+
+		// Get current time
+		auto const currentTime = std::chrono::system_clock::now();
+
+		auto [it, inserted] = _identifications.insert(std::make_pair(entityID, currentTime));
+		if (inserted)
+		{
+			// Notify
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onIdentificationStarted, this, controlledEntity.get());
+		}
+		else
+		{
+			// Update the time
+			it->second = currentTime;
+		}
+	}
+}
+
 } // namespace controller
 } // namespace avdecc
 } // namespace la

@@ -39,7 +39,7 @@ class Adpdu final : public AvtpduControl
 public:
 	static constexpr size_t Length = 56; /* ADPDU size - Clause 6.2.1.7 */
 	using UniquePointer = std::unique_ptr<Adpdu, void (*)(Adpdu*)>;
-	static LA_AVDECC_API la::avdecc::networkInterface::MacAddress Multicast_Mac_Address;
+	static LA_AVDECC_API la::avdecc::networkInterface::MacAddress const Multicast_Mac_Address; /* Annex B */
 
 	/**
 	* @brief Factory method to create a new Adpdu.

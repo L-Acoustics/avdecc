@@ -1024,6 +1024,21 @@ void AggregateEntityImpl::onAecpAemUnsolicitedResponse(protocol::ProtocolInterfa
 		_talkerCapabilityDelegate->onAecpAemUnsolicitedResponse(pi, aecpdu);
 	}
 }
+void AggregateEntityImpl::onAecpAemIdentifyNotification(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept
+{
+	if (_controllerCapabilityDelegate != nullptr)
+	{
+		_controllerCapabilityDelegate->onAecpAemIdentifyNotification(pi, aecpdu);
+	}
+	if (_listenerCapabilityDelegate != nullptr)
+	{
+		_listenerCapabilityDelegate->onAecpAemIdentifyNotification(pi, aecpdu);
+	}
+	if (_talkerCapabilityDelegate != nullptr)
+	{
+		_talkerCapabilityDelegate->onAecpAemIdentifyNotification(pi, aecpdu);
+	}
+}
 
 /* **** ACMP notifications **** */
 void AggregateEntityImpl::onAcmpCommand(protocol::ProtocolInterface* const pi, protocol::Acmpdu const& acmpdu) noexcept

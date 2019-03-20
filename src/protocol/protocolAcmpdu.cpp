@@ -37,7 +37,7 @@ namespace protocol
 /* Acmpdu class definition                                 */
 /***********************************************************/
 
-la::avdecc::networkInterface::MacAddress Acmpdu::Multicast_Mac_Address{ { 0x91, 0xe0, 0xf0, 0x01, 0x00, 0x00 } };
+la::avdecc::networkInterface::MacAddress const Acmpdu::Multicast_Mac_Address{ { 0x91, 0xe0, 0xf0, 0x01, 0x00, 0x00 } };
 
 Acmpdu::Acmpdu() noexcept
 {
