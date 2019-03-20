@@ -27,6 +27,7 @@
 #include "avdeccEntityModelCache.hpp"
 #include "la/avdecc/internals/serialization.hpp"
 #include <cstdlib> // free / malloc
+#include <unordered_set>
 
 namespace la
 {
@@ -71,58 +72,115 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 		throw Exception(Error::InternalError, e.what());
 	}
 
-	// Create the delayed query thread
-	_delayedQueryThread = std::thread(
+	// Create the StateMachines thread
+	_stateMachinesThread = std::thread(
 		[this]
 		{
-			utils::setCurrentThreadName("avdecc::controller::DelayedQueries");
+			utils::setCurrentThreadName("avdecc::controller::StateMachines");
+			std::unordered_set<UniqueIdentifier, UniqueIdentifier::hash> identificationsStopped{};
 			decltype(_delayedQueries) queriesToSend{};
 			while (!_shouldTerminate)
 			{
-				// Check all delayed queries if we need to send any of them, and copy them so we can send outside the loop
+				// Entity Identification
 				{
-					// Lock to protect _delayedQueries
-					std::lock_guard<decltype(_lock)> const lg(_lock);
-
-					// Get current time
-					std::chrono::time_point<std::chrono::system_clock> currentTime = std::chrono::system_clock::now();
-
-					for (auto it = _delayedQueries.begin(); it != _delayedQueries.end(); /* Iterate inside the loop */)
+					// Check all ongoing identifications if we didn't receive any new message for some time, and copy them so we can notify outside the loop
 					{
-						auto const& query = *it;
-						if (currentTime > query.sendTime)
-						{
-							// Move the query to the "to process" list
-							queriesToSend.emplace_back(std::move(*it));
+						// Lock to protect _identifications
+						auto const lg = std::lock_guard{ _lock };
 
-							// Remove the command from the list
-							it = _delayedQueries.erase(it);
-						}
-						else
+						// Get current time
+						auto const currentTime = std::chrono::system_clock::now();
+
+						for (auto it = _identifications.begin(); it != _identifications.end(); /* Iterate inside the loop */)
 						{
-							++it;
+							auto const entityID = it->first;
+							auto const lastNotificationTime = it->second;
+
+							if (currentTime > (lastNotificationTime + std::chrono::milliseconds(1200)))
+							{
+								// Move the entityID to the "to process" list
+								identificationsStopped.insert(entityID);
+
+								// Remove the entity from the list
+								it = _identifications.erase(it);
+							}
+							else
+							{
+								++it;
+							}
 						}
 					}
+
+					// Now actually notify, outside the lock
+					for (auto const entityID : identificationsStopped)
+					{
+						if (_shouldTerminate)
+						{
+							break;
+						}
+
+						// Take a "scoped locked" shared copy of the ControlledEntity
+						auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+						// Entity still online
+						if (controlledEntity)
+						{
+							// Notify
+							notifyObserversMethod<Controller::Observer>(&Controller::Observer::onIdentificationStopped, this, controlledEntity.get());
+						}
+					}
+
+					// Clear the list
+					identificationsStopped.clear();
 				}
 
-				// Now actually send queries, outside the lock
-				while (!queriesToSend.empty() && !_shouldTerminate)
+				// Delayed Queries
 				{
-					// Get first query from the list
-					auto const& query = queriesToSend.front();
-
-					// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-					auto controlledEntity = getSharedControlledEntityImplHolder(query.entityID);
-
-					// Entity still online
-					if (controlledEntity)
+					// Check all delayed queries if we need to send any of them, and copy them so we can send outside the loop
 					{
-						// Send the query
-						utils::invokeProtectedHandler(query.queryHandler, _controller);
+						// Lock to protect _delayedQueries
+						auto const lg = std::lock_guard{ _lock };
+
+						// Get current time
+						auto const currentTime = std::chrono::system_clock::now();
+
+						for (auto it = _delayedQueries.begin(); it != _delayedQueries.end(); /* Iterate inside the loop */)
+						{
+							auto const& query = *it;
+							if (currentTime > query.sendTime)
+							{
+								// Move the query to the "to process" list
+								queriesToSend.emplace_back(std::move(*it));
+
+								// Remove the command from the list
+								it = _delayedQueries.erase(it);
+							}
+							else
+							{
+								++it;
+							}
+						}
 					}
 
-					// Remove the query from the list
-					queriesToSend.pop_front();
+					// Now actually send queries, outside the lock
+					while (!queriesToSend.empty() && !_shouldTerminate)
+					{
+						// Get first query from the list
+						auto const& query = queriesToSend.front();
+
+						// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+						auto controlledEntity = getSharedControlledEntityImplHolder(query.entityID);
+
+						// Entity still online
+						if (controlledEntity)
+						{
+							// Send the query
+							utils::invokeProtectedHandler(query.queryHandler, _controller);
+						}
+
+						// Remove the query from the list
+						queriesToSend.pop_front();
+					}
 				}
 
 				// Wait a little bit so we don't burn the CPU
@@ -139,8 +197,8 @@ ControllerImpl::~ControllerImpl()
 	_shouldTerminate = true;
 
 	// Wait for the thread to complete its pending tasks
-	if (_delayedQueryThread.joinable())
-		_delayedQueryThread.join();
+	if (_stateMachinesThread.joinable())
+		_stateMachinesThread.join();
 
 	// First, remove ourself from the controller's delegate, we don't want notifications anymore (even if one is coming before the end of the destructor, it's not a big deal, _controlledEntities will be empty)
 	_controller->setControllerDelegate(nullptr);
@@ -150,7 +208,7 @@ ControllerImpl::~ControllerImpl()
 	// Move all controlled Entities (under lock), we don't want them to be accessible during destructor
 	{
 		// Lock to protect _controlledEntities
-		std::lock_guard<decltype(_lock)> const lg(_lock);
+		auto const lg = std::lock_guard{ _lock };
 		controlledEntities = std::move(_controlledEntities);
 	}
 

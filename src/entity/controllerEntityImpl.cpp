@@ -611,6 +611,11 @@ void ControllerEntityImpl::onAecpAemUnsolicitedResponse(protocol::ProtocolInterf
 	_controllerCapabilityDelegate->onAecpAemUnsolicitedResponse(pi, aecpdu);
 }
 
+void ControllerEntityImpl::onAecpAemIdentifyNotification(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept
+{
+	_controllerCapabilityDelegate->onAecpAemIdentifyNotification(pi, aecpdu);
+}
+
 /* **** ACMP notifications **** */
 void ControllerEntityImpl::onAcmpCommand(protocol::ProtocolInterface* const pi, protocol::Acmpdu const& acmpdu) noexcept
 {
