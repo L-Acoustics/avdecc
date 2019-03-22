@@ -18,12 +18,12 @@
 */
 
 /**
-* @file discovery.cpp
+* @file entityDumper.cpp
 * @author Christophe Calmejane
 */
 
 /** ************************************************************************ **/
-/** AVDECC_CONTROLLER DELEGATE EXAMPLE                                       **/
+/** ENTITIES DUMPER EXAMPLE                                                  **/
 /** ************************************************************************ **/
 
 #include <la/avdecc/controller/avdeccController.hpp>
@@ -45,30 +45,28 @@
 #include <cassert>
 
 /* ************************************************************************** */
-/* Discovery class                                                            */
+/* Dumper class                                                               */
 /* ************************************************************************** */
 
-class Discovery : public la::avdecc::controller::Controller::Observer, public la::avdecc::logger::Logger::Observer
+class Dumper : public la::avdecc::controller::Controller::Observer, public la::avdecc::logger::Logger::Observer
 {
 public:
 	/** Constructor/destructor/destroy */
-	Discovery(la::avdecc::protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, la::avdecc::UniqueIdentifier const entityModelID, std::string const& preferedLocale);
-	~Discovery() noexcept override
-	{
-		la::avdecc::logger::Logger::getInstance().unregisterObserver(this);
-	}
+	Dumper(la::avdecc::protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, la::avdecc::UniqueIdentifier const entityModelID, std::string const& preferedLocale);
+	~Dumper() noexcept override;
 
 	// Deleted compiler auto-generated methods
-	Discovery(Discovery&&) = delete;
-	Discovery(Discovery const&) = delete;
-	Discovery& operator=(Discovery const&) = delete;
-	Discovery& operator=(Discovery&&) = delete;
+	Dumper(Dumper&&) = delete;
+	Dumper(Dumper const&) = delete;
+	Dumper& operator=(Dumper const&) = delete;
+	Dumper& operator=(Dumper&&) = delete;
 
 private:
 	// la::avdecc::Logger::Observer overrides
-	virtual void onLogItem(la::avdecc::logger::Level const level, la::avdecc::logger::LogItem const* const item) noexcept override
+	virtual void onLogItem(la::avdecc::logger::Level const /*level*/, la::avdecc::logger::LogItem const* const /*item*/) noexcept override
 	{
-		outputText("[" + la::avdecc::logger::Logger::getInstance().levelToString(level) + "] " + item->getMessage() + "\n");
+		// TODO: Save to an internal map and dump
+		//outputText("[" + la::avdecc::logger::Logger::getInstance().levelToString(level) + "] " + item->getMessage() + "\n");
 	}
 	// la::avdecc::controller::Controller::Observer overrides
 	// Global notifications
@@ -76,14 +74,13 @@ private:
 	virtual void onEntityQueryError(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::controller::Controller::QueryCommandError const error) noexcept override;
 	// Discovery notifications (ADP)
 	virtual void onEntityOnline(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity) noexcept override;
-	virtual void onEntityOffline(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity) noexcept override;
 
 private:
 	la::avdecc::controller::Controller::UniquePointer _controller{ nullptr, nullptr }; // Read/Write from the UI thread (and read only from la::avdecc::controller::Controller::Observer callbacks)
-	DECLARE_AVDECC_OBSERVER_GUARD(Discovery); // Not really needed because the _controller field will be destroyed before parent class destruction
+	DECLARE_AVDECC_OBSERVER_GUARD(Dumper); // Not really needed because the _controller field will be destroyed before parent class destruction
 };
 
-Discovery::Discovery(la::avdecc::protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, la::avdecc::UniqueIdentifier const entityModelID, std::string const& preferedLocale)
+Dumper::Dumper(la::avdecc::protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, la::avdecc::UniqueIdentifier const entityModelID, std::string const& preferedLocale)
 	: _controller(la::avdecc::controller::Controller::create(protocolInterfaceType, interfaceName, progID, entityModelID, preferedLocale))
 {
 	// Register observers
@@ -95,85 +92,52 @@ Discovery::Discovery(la::avdecc::protocol::ProtocolInterface::Type const protoco
 	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Trace);
 }
 
-void Discovery::onTransportError(la::avdecc::controller::Controller const* const /*controller*/) noexcept
+Dumper::~Dumper() noexcept
+{
+	auto const networkDumpFileName = std::string{ "FullDump.json" };
+	auto const [error, message] = _controller->serializeAllControlledEntitiesAsReadableJson(networkDumpFileName);
+	if (!!error)
+	{
+		outputText("Failed to dump all entities: " + message + "\n");
+	}
+	else
+	{
+		outputText("Successfully dumped network state to " + networkDumpFileName + "\n");
+	}
+	la::avdecc::logger::Logger::getInstance().unregisterObserver(this);
+}
+
+void Dumper::onTransportError(la::avdecc::controller::Controller const* const /*controller*/) noexcept
 {
 	outputText("Fatal error on transport layer\n");
 }
 
-void Discovery::onEntityQueryError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* entity, la::avdecc::controller::Controller::QueryCommandError const error) noexcept
+void Dumper::onEntityQueryError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* entity, la::avdecc::controller::Controller::QueryCommandError const error) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
 	outputText("Query error on entity " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(static_cast<std::underlying_type_t<decltype(error)>>(error)) + "\n");
 }
 
-void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity) noexcept
+void Dumper::onEntityOnline(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
-	if (entity->getEntity().getEntityCapabilities().test(la::avdecc::entity::EntityCapability::AemSupported))
+	auto const entityString = la::avdecc::utils::toHexString(entityID, true, true);
+	auto const entityDumpFileName = std::string("EntityDump_") + entityString + ".json";
+
+	// Dump as JSON
 	{
-		std::uint32_t const vendorID = std::get<0>(la::avdecc::entity::model::splitEntityModelID(entity->getEntity().getEntityModelID()));
-		// Filter entities from the same vendor as this controller
-		if (vendorID == VENDOR_ID)
+		auto const [error, message] = controller->serializeControlledEntityAsReadableJson(entityID, entityDumpFileName);
+		if (!!error)
 		{
-			outputText("New LA unit online: " + la::avdecc::utils::toHexString(entityID, true) + "\n");
-			_controller->acquireEntity(entity->getEntity().getEntityID(), false,
-				[](la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const /*owningEntity*/) noexcept
-				{
-					if (!!status)
-					{
-						outputText("Unit acquired: " + la::avdecc::utils::toHexString(entity->getEntity().getEntityID(), true) + "\n");
-					}
-				});
-		}
-		else if (entity->getEntity().getTalkerCapabilities().test(la::avdecc::entity::TalkerCapability::Implemented))
-		{
-			outputText("New talker online: " + la::avdecc::utils::toHexString(entityID, true) + "\n");
+			outputText("Failed to dump entity " + entityString + ": " + message + "\n");
 		}
 		else
 		{
-			outputText("New unknown entity online: " + la::avdecc::utils::toHexString(entityID, true) + "\n");
-		}
-
-		// Get PNG Manufacturer image
-		auto const& configNode = entity->getCurrentConfigurationNode();
-		for (auto const& objIt : configNode.memoryObjects)
-		{
-			auto const& obj = objIt.second;
-			if (obj.staticModel->memoryObjectType == la::avdecc::entity::model::MemoryObjectType::PngEntity)
-			{
-				_controller->readDeviceMemory(entity->getEntity().getEntityID(), obj.staticModel->startAddress, obj.staticModel->maximumLength,
-					[](la::avdecc::controller::ControlledEntity const* const /*entity*/, float const percentComplete)
-					{
-						outputText("Memory Object progress: " + std::to_string(percentComplete) + "\n");
-						return false;
-					},
-					[](la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AaCommandStatus const status, la::avdecc::controller::Controller::DeviceMemoryBuffer const& memoryBuffer)
-					{
-						if (!!status && entity)
-						{
-							auto const fileName{ std::to_string(entity->getEntity().getEntityID()) + ".png" };
-							std::ofstream file(fileName, std::ios::binary);
-							if (file.is_open())
-							{
-								file.write(reinterpret_cast<char const*>(memoryBuffer.data()), memoryBuffer.size());
-								file.close();
-								outputText("Memory Object saved to file: " + fileName + "\n");
-							}
-						}
-					});
-			}
+			outputText("Successfully dumped entity " + entityString + " to " + entityDumpFileName + "\n");
 		}
 	}
-	else
-	{
-		outputText("New NON-AEM entity online: " + la::avdecc::utils::toHexString(entityID, true) + "\n");
-	}
-}
 
-void Discovery::onEntityOffline(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity) noexcept
-{
-	auto const entityID = entity->getEntity().getEntityID();
-	outputText("Unit going offline: " + la::avdecc::utils::toHexString(entityID, true) + "\n");
+	// TODO: Dump log file
 }
 
 
@@ -183,7 +147,7 @@ void Discovery::onEntityOffline(la::avdecc::controller::Controller const* const 
 
 int doJob()
 {
-	auto const protocolInterfaceType = chooseProtocolInterfaceType(la::avdecc::protocol::ProtocolInterface::SupportedProtocolInterfaceTypes{ la::avdecc::protocol::ProtocolInterface::Type::PCap, la::avdecc::protocol::ProtocolInterface::Type::MacOSNative });
+	auto const protocolInterfaceType = chooseProtocolInterfaceType(la::avdecc::protocol::ProtocolInterface::SupportedProtocolInterfaceTypes{ la::avdecc::protocol::ProtocolInterface::Type::PCap });
 	auto intfc = chooseNetworkInterface();
 
 	if (intfc.type == la::avdecc::networkInterface::Interface::Type::None || protocolInterfaceType == la::avdecc::protocol::ProtocolInterface::Type::None)
@@ -193,11 +157,13 @@ int doJob()
 
 	try
 	{
-		outputText("Selected interface '" + intfc.alias + "' and protocol interface '" + la::avdecc::protocol::ProtocolInterface::typeToString(protocolInterfaceType) + "', discovery active:\n");
+		outputText("Selected interface '" + intfc.alias + "' and protocol interface '" + la::avdecc::protocol::ProtocolInterface::typeToString(protocolInterfaceType) + "', waiting for entities for 10 seconds...\n");
 
-		Discovery discovery(protocolInterfaceType, intfc.name, 0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), "en");
+		Dumper dumper(protocolInterfaceType, intfc.name, 0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), "en");
 
-		std::this_thread::sleep_for(std::chrono::seconds(30));
+		std::this_thread::sleep_for(std::chrono::seconds(10));
+
+		outputText("Done.\n");
 	}
 	catch (la::avdecc::controller::Controller::Exception const& e)
 	{

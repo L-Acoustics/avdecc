@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - Support for Identify notifications
+- Full entity and network state dump as readable json
 
 ## [2.9.1] - 2019-03-13
 ### Changed

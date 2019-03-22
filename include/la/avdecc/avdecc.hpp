@@ -99,6 +99,7 @@ enum class CompileOption : std::uint32_t
 	AllowSendBigAecpPayloads = 1u << 2,
 	AllowRecvBigAecpPayloads = 1u << 3,
 	EnableRedundancy = 1u << 15,
+	EnableJsonSupport = 1u << 16,
 };
 using CompileOptions = utils::EnumBitfield<CompileOption>;
 

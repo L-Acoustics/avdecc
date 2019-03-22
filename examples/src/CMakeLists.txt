@@ -50,4 +50,21 @@ if(BUILD_AVDECC_CONTROLLER)
 	if(INSTALL_AVDECC_EXAMPLES)
 		install(TARGETS Discovery RUNTIME CONFIGURATIONS Release DESTINATION bin)
 	endif()
+
+	# EntityDumper
+	add_executable(EntityDumper entityDumper.cpp utils.cpp utils.hpp)
+	set_target_properties(EntityDumper PROPERTIES FOLDER "Examples")
+	# Using controller library
+	target_link_libraries(EntityDumper PRIVATE la_avdecc_controller_cxx)
+	copy_runtime(EntityDumper la_avdecc_controller_cxx)
+	copy_runtime(EntityDumper la_avdecc_cxx) # We need to copy avdecc library too (until it's transitively added to the export target)
+	if(NOT WIN32)
+		target_link_libraries(EntityDumper PRIVATE ncurses)
+	endif()
+	# Setup common options
+	setup_executable_options(EntityDumper)
+	# Set installation rule
+	if(INSTALL_AVDECC_EXAMPLES)
+		install(TARGETS EntityDumper RUNTIME CONFIGURATIONS Release DESTINATION bin)
+	endif()
 endif()

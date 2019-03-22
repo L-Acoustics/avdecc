@@ -82,6 +82,7 @@ enum class CompileOption : std::uint32_t
 	IgnoreNeitherStaticNorDynamicMappings = 1u << 0,
 	EnableRedundancy = 1u << 15,
 	Strict2018Redundancy = 1u << 16,
+	EnableJsonSupport = 1u << 17,
 };
 using CompileOptions = utils::EnumBitfield<CompileOption>;
 
@@ -196,6 +197,15 @@ public:
 		AudioClusterName,
 		ClockDomainName,
 		ClockDomainSourceIndex,
+	};
+
+	enum class SerializationError
+	{
+		NoError = 0,
+		AccessDenied = 1, /**< File access denied. */
+		UnknownEntity = 2, /**< Specified entityID unknown. */
+		SerializationError = 3, /**< Error during json serialization. */
+		InternalError = 99, /**< Internal error, please report the issue. */
 	};
 
 	/**
@@ -406,6 +416,10 @@ public:
 	/** BasicLockable concept 'unlock' method for the whole Controller */
 	virtual void unlock() noexcept = 0;
 
+	/* Model serialization methods */
+	virtual std::tuple<SerializationError, std::string> serializeAllControlledEntitiesAsReadableJson(std::string const& filePath) const noexcept = 0;
+	virtual std::tuple<SerializationError, std::string> serializeControlledEntityAsReadableJson(UniqueIdentifier const entityID, std::string const& filePath) const noexcept = 0;
+
 	// Deleted compiler auto-generated methods
 	Controller(Controller const&) = delete;
 	Controller(Controller&&) = delete;
@@ -431,6 +445,11 @@ private:
 constexpr bool operator!(Controller::Error const error)
 {
 	return error == Controller::Error::NoError;
+}
+
+constexpr bool operator!(Controller::SerializationError const error)
+{
+	return error == Controller::SerializationError::NoError;
 }
 
 } // namespace controller
