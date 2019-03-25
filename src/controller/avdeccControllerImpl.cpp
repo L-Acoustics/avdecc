@@ -1112,7 +1112,7 @@ void ControllerImpl::chooseLocale(ControlledEntityImpl* const entity, entity::mo
 	{
 		auto const& configStaticTree = entity->getConfigurationStaticTree(configurationIndex);
 
-		entity->setSelectedLocaleBaseIndex(configurationIndex, localeNode->baseStringDescriptorIndex);
+		entity->setSelectedLocaleStringsIndexesRange(configurationIndex, localeNode->baseStringDescriptorIndex, localeNode->numberOfStringDescriptors);
 		for (auto index = entity::model::StringsIndex(0); index < localeNode->numberOfStringDescriptors; ++index)
 		{
 			// Check if we already have the Strings descriptor
@@ -1122,7 +1122,7 @@ void ControllerImpl::chooseLocale(ControlledEntityImpl* const entity, entity::mo
 			{
 				// Already in cache, no need to query (just have to copy strings to Configuration for quick access)
 				auto const& stringsStaticModel = stringsStaticModelIt->second;
-				entity->setLocalizedStrings(configurationIndex, stringsIndex, stringsStaticModel.strings);
+				entity->setLocalizedStrings(configurationIndex, index, stringsStaticModel.strings);
 			}
 			else
 			{

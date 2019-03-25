@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Support for Identify notifications
 - Full entity and network state dump as readable json
+- Enumeration of STRINGS descriptor
+
+### Fixed
+- Invalid strings indexes when not using the first locale
 
 ## [2.9.1] - 2019-03-13
 ### Changed
