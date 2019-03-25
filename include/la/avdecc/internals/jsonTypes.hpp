@@ -617,7 +617,9 @@ void to_json(json& j, MilanInfo const& info)
 {
 	j[keyName::MilanInfo_ProtocolVersion] = info.protocolVersion;
 	j[keyName::MilanInfo_Flags] = info.featuresFlags;
-	j[keyName::MilanInfo_CertificationVersion] = info.certificationVersion;
+	{
+		j[keyName::MilanInfo_CertificationVersion] = std::to_string(info.certificationVersion >> 24 & 0xFF) + "." + std::to_string(info.certificationVersion >> 16 & 0xFF) + "." + std::to_string(info.certificationVersion >> 8 & 0xFF) + "." + std::to_string(info.certificationVersion & 0xFF);
+	}
 }
 
 } // namespace model
