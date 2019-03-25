@@ -180,11 +180,6 @@ void ControllerImpl::removeCompatibilityFlag(ControlledEntityImpl& controlledEnt
 	}
 }
 
-void ControllerImpl::updateMilanInfo(ControlledEntityImpl& controlledEntity, entity::model::MilanInfo const& info) const noexcept
-{
-	controlledEntity.setMilanInfo(info);
-}
-
 void ControllerImpl::updateUnsolicitedNotificationsSubscription(ControlledEntityImpl& controlledEntity, bool const isSubscribed) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");

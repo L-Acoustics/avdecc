@@ -151,7 +151,7 @@ entity::Entity const& ControlledEntityImpl::getEntity() const noexcept
 	return _entity;
 }
 
-entity::model::MilanInfo const& ControlledEntityImpl::getMilanInfo() const noexcept
+std::optional<entity::model::MilanInfo> ControlledEntityImpl::getMilanInfo() const noexcept
 {
 	return _milanInfo;
 }

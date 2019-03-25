@@ -1051,8 +1051,15 @@ json createJsonObject(ControlledEntity const& entity) noexcept
 		for (auto const& [avbInterfaceIndex, intfcInfo] : e.getInterfacesInformation())
 		{
 			json j = intfcInfo; // Must use operator= instead of constructor to force usage of the to_json overload
-			j[entity::keyName::Entity_InterfaceInformation_AvbInterfaceIndex] = avbInterfaceIndex;
-			object[entity::keyName::Entity_InterfaceInformation_Node][avbInterfaceIndex] = j;
+			if (avbInterfaceIndex == entity::Entity::GlobalAvbInterfaceIndex)
+			{
+				j[entity::keyName::Entity_InterfaceInformation_AvbInterfaceIndex] = nullptr;
+			}
+			else
+			{
+				j[entity::keyName::Entity_InterfaceInformation_AvbInterfaceIndex] = avbInterfaceIndex;
+			}
+			object[entity::keyName::Entity_InterfaceInformation_Node].push_back(j);
 		}
 	}
 
@@ -1068,8 +1075,12 @@ json createJsonObject(ControlledEntity const& entity) noexcept
 		}
 	}
 
-	// Dump Milan information (TODO: Only if present)
-	object[keyName::ControlledEntity_MilanInformation] = entity.getMilanInfo();
+	// Dump Milan information, if present
+	auto const milanInfo = entity.getMilanInfo();
+	if (milanInfo)
+	{
+		object[keyName::ControlledEntity_MilanInformation] = *milanInfo;
+	}
 
 	// Entity State
 	{

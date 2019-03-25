@@ -194,7 +194,7 @@ public:
 	virtual model::LockState getLockState() const noexcept override;
 	virtual UniqueIdentifier getLockingControllerID() const noexcept override;
 	virtual entity::Entity const& getEntity() const noexcept override;
-	virtual entity::model::MilanInfo const& getMilanInfo() const noexcept override;
+	virtual std::optional<entity::model::MilanInfo> getMilanInfo() const noexcept override;
 
 	virtual model::EntityNode const& getEntityNode() const override;
 	virtual model::ConfigurationNode const& getConfigurationNode(entity::model::ConfigurationIndex const configurationIndex) const override;
@@ -491,7 +491,7 @@ private:
 	model::LockState _lockState{ model::LockState::Undefined };
 	UniqueIdentifier _lockingControllerID{}; // EID of the controller currently locking (who locked) this entity
 	// Milan specific information
-	entity::model::MilanInfo _milanInfo{};
+	std::optional<entity::model::MilanInfo> _milanInfo{ std::nullopt };
 	// Entity variables
 	entity::Entity _entity; // No NSMI, Entity has no default constructor but it has to be passed to the only constructor of this class anyway
 	// Entity Model
