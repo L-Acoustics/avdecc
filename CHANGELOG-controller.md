@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support for Identify notifications
 - Full entity and network state dump as readable json
 - Enumeration of STRINGS descriptor
+- Support for Entity Descriptor counters
 
 ### Fixed
 - Invalid strings indexes when not using the first locale

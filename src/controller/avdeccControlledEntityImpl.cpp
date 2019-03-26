@@ -1036,6 +1036,12 @@ void ControlledEntityImpl::setMemoryObjectLength(entity::model::ConfigurationInd
 	dynamicModel.length = length;
 }
 
+model::EntityCounters& ControlledEntityImpl::getEntityCounters() noexcept
+{
+	auto& entityDynamicTree = getEntityDynamicTree();
+	return entityDynamicTree.dynamicModel.counters;
+}
+
 model::AvbInterfaceCounters& ControlledEntityImpl::getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), avbInterfaceIndex, &model::ConfigurationDynamicTree::avbInterfaceDynamicModels);
@@ -1878,6 +1884,8 @@ std::string ControlledEntityImpl::dynamicInfoTypeToString(DynamicInfoType const 
 			return protocol::AemCommandType::GetAvbInfo;
 		case DynamicInfoType::GetAsPath:
 			return protocol::AemCommandType::GetAsPath;
+		case DynamicInfoType::GetEntityCounters:
+			return static_cast<std::string>(protocol::AemCommandType::GetCounters) + " (ENTITY)";
 		case DynamicInfoType::GetAvbInterfaceCounters:
 			return static_cast<std::string>(protocol::AemCommandType::GetCounters) + " (AVB_INTERFACE)";
 		case DynamicInfoType::GetClockDomainCounters:

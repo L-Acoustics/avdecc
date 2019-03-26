@@ -239,6 +239,19 @@ NLOHMANN_JSON_SERIALIZE_ENUM(AvbInfoFlag, {
 																						{ AvbInfoFlag::SrpEnabled, "SRP_ENABLED" },
 																					});
 
+/* EntityCounterValidFlag conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(EntityCounterValidFlag, {
+																											 { EntityCounterValidFlag::None, "UNKNOWN" },
+																											 { EntityCounterValidFlag::EntitySpecific8, "ENTITY_SPECIFIC_8" },
+																											 { EntityCounterValidFlag::EntitySpecific7, "ENTITY_SPECIFIC_7" },
+																											 { EntityCounterValidFlag::EntitySpecific6, "ENTITY_SPECIFIC_6" },
+																											 { EntityCounterValidFlag::EntitySpecific5, "ENTITY_SPECIFIC_5" },
+																											 { EntityCounterValidFlag::EntitySpecific4, "ENTITY_SPECIFIC_4" },
+																											 { EntityCounterValidFlag::EntitySpecific3, "ENTITY_SPECIFIC_3" },
+																											 { EntityCounterValidFlag::EntitySpecific2, "ENTITY_SPECIFIC_2" },
+																											 { EntityCounterValidFlag::EntitySpecific1, "ENTITY_SPECIFIC_1" },
+																										 });
+
 /* AvbInterfaceCounterValidFlag conversion */
 NLOHMANN_JSON_SERIALIZE_ENUM(AvbInterfaceCounterValidFlag, {
 																														 { AvbInterfaceCounterValidFlag::None, "UNKNOWN" },

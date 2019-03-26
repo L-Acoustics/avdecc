@@ -40,6 +40,7 @@ namespace controller
 {
 namespace model
 {
+using EntityCounters = std::map<entity::EntityCounterValidFlag, entity::model::DescriptorCounter>;
 using AvbInterfaceCounters = std::map<entity::AvbInterfaceCounterValidFlag, entity::model::DescriptorCounter>;
 using ClockDomainCounters = std::map<entity::ClockDomainCounterValidFlag, entity::model::DescriptorCounter>;
 using StreamInputCounters = std::map<entity::StreamInputCounterValidFlag, entity::model::DescriptorCounter>;
@@ -137,6 +138,7 @@ struct EntityNodeDynamicModel
 	entity::model::AvdeccFixedString firmwareVersion{};
 	entity::model::AvdeccFixedString serialNumber{};
 	std::uint16_t currentConfiguration{ 0u };
+	EntityCounters counters{};
 };
 
 } // namespace model

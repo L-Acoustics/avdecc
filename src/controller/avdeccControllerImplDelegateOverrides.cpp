@@ -605,6 +605,18 @@ void ControllerImpl::onAsPathChanged(entity::controller::Interface const* const 
 	}
 }
 
+void ControllerImpl::onEntityCountersChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::EntityCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+		updateEntityCounters(entity, validCounters, counters);
+	}
+}
+
 void ControllerImpl::onAvbInterfaceCountersChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::AvbInterfaceCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) noexcept
 {
 	// Take a "scoped locked" shared copy of the ControlledEntity

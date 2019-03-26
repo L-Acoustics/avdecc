@@ -139,6 +139,7 @@ public:
 		OutputStreamInfo, // getStreamOutputInfo (GET_STREAM_INFO)
 		GetAvbInfo, // getAvbInfo (GET_AVB_INFO)
 		GetAsPath, // getAsPath (GET_AS_PATH)
+		GetEntityCounters, // getEntityCounters (GET_COUNTERS)
 		GetAvbInterfaceCounters, // getAvbInterfaceCounters (GET_COUNTERS)
 		GetClockDomainCounters, // getClockDomainCounters (GET_COUNTERS)
 		GetStreamInputCounters, // getStreamInputCounters (GET_COUNTERS)
@@ -324,6 +325,7 @@ public:
 	void removeStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept;
 	void setClockSource(entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex) noexcept;
 	void setMemoryObjectLength(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) noexcept;
+	model::EntityCounters& getEntityCounters() noexcept;
 	model::AvbInterfaceCounters& getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept;
 	model::ClockDomainCounters& getClockDomainCounters(entity::model::ClockDomainIndex const clockDomainIndex) noexcept;
 	model::StreamInputCounters& getStreamInputCounters(entity::model::StreamIndex const streamIndex) noexcept;

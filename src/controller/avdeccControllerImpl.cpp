@@ -719,6 +719,26 @@ void ControllerImpl::updateAvbInterfaceLinkStatus(ControlledEntityImpl& controll
 	}
 }
 
+void ControllerImpl::updateEntityCounters(ControlledEntityImpl& controlledEntity, entity::EntityCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) const noexcept
+{
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+	// Get previous counters
+	auto& entityCounters = controlledEntity.getEntityCounters();
+
+	// Update (or set) counters
+	for (auto counter : validCounters)
+	{
+		entityCounters[counter] = counters[validCounters.getPosition(counter)];
+	}
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityCountersChanged, this, &controlledEntity, entityCounters);
+	}
+}
+
 void ControllerImpl::updateAvbInterfaceCounters(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::AvbInterfaceCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
@@ -1389,6 +1409,13 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 				controller->getAsPath(entityID, descriptorIndex, std::bind(&ControllerImpl::onGetAsPathResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
 			};
 			break;
+		case ControlledEntityImpl::DynamicInfoType::GetEntityCounters:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getEntityCounters ()");
+				controller->getEntityCounters(entityID, std::bind(&ControllerImpl::onGetEntityCountersResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
+			};
+			break;
 		case ControlledEntityImpl::DynamicInfoType::GetAvbInterfaceCounters:
 			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
 			{
@@ -1656,6 +1683,9 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			}
 			queryInformation(entity, 0u, ControlledEntityImpl::DynamicInfoType::LockedState, 0u);
 		}
+
+		// Entity Counters
+		queryInformation(entity, 0u, ControlledEntityImpl::DynamicInfoType::GetEntityCounters, 0u);
 
 		// Get StreamInfo/Counters and RX_STATE for each StreamInput descriptors
 		{

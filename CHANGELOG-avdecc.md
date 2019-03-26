@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - Support for IdentifyNotification in ProtocolInterface and ControllerEntity
+- Support for Entity Descriptor counters
 
 ## [2.9.1] - 2019-03-13
 ### Changed

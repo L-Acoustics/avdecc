@@ -90,6 +90,7 @@ private:
 			jdynamic[model::keyName::EntityNode_Dynamic_FirmwareVersion] = d.firmwareVersion;
 			jdynamic[model::keyName::EntityNode_Dynamic_SerialNumber] = d.serialNumber;
 			jdynamic[model::keyName::EntityNode_Dynamic_CurrentConfiguration] = d.currentConfiguration;
+			jdynamic[model::keyName::EntityNode_Dynamic_Counters] = d.counters;
 
 			jnode[keyName::ControlledEntity_DynamicInformation] = jdynamic;
 		}

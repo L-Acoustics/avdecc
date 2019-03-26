@@ -220,6 +220,21 @@ enum class AvbInfoFlag : std::uint8_t
 };
 using AvbInfoFlags = utils::EnumBitfield<AvbInfoFlag>;
 
+/* ENTITY Counters - Clause 7.4.42.2.1 */
+enum class EntityCounterValidFlag : model::DescriptorCounterValidFlag
+{
+	None = 0u,
+	EntitySpecific8 = 1u << 24, /**< Entity Specific counter 8. */
+	EntitySpecific7 = 1u << 25, /**< Entity Specific counter 7. */
+	EntitySpecific6 = 1u << 26, /**< Entity Specific counter 6. */
+	EntitySpecific5 = 1u << 27, /**< Entity Specific counter 5. */
+	EntitySpecific4 = 1u << 28, /**< Entity Specific counter 4. */
+	EntitySpecific3 = 1u << 29, /**< Entity Specific counter 3. */
+	EntitySpecific2 = 1u << 30, /**< Entity Specific counter 2. */
+	EntitySpecific1 = 1u << 31, /**< Entity Specific counter 1. */
+};
+using EntityCounterValidFlags = utils::EnumBitfield<EntityCounterValidFlag>;
+
 /* AVB_INTERFACE Counters - Clause 7.4.42.2.2 */
 enum class AvbInterfaceCounterValidFlag : model::DescriptorCounterValidFlag
 {
@@ -247,8 +262,7 @@ enum class ClockDomainCounterValidFlag : model::DescriptorCounterValidFlag
 	None = 0u,
 	Locked = 1u << 0, /**< Increments on a clock locking event. */
 	Unlocked = 1u << 1, /**< Increments on a clock unlocking event. */
-	EntitySpecific8 = 1u << 24,
-	/**< Entity Specific counter 8. */ /* WARNING: 1722.1 says EntitySpecific counters are in the reverse order, but that might be a mistake */
+	EntitySpecific8 = 1u << 24, /**< Entity Specific counter 8. */
 	EntitySpecific7 = 1u << 25, /**< Entity Specific counter 7. */
 	EntitySpecific6 = 1u << 26, /**< Entity Specific counter 6. */
 	EntitySpecific5 = 1u << 27, /**< Entity Specific counter 5. */
