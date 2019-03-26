@@ -265,8 +265,8 @@ enum class StreamInputCounterValidFlag : model::DescriptorCounterValidFlag
 	None = 0u,
 	MediaLocked = 1u << 0, /**< Increments on a Stream media clock locking. */
 	MediaUnlocked = 1u << 1, /**< Increments on a Stream media clock unlocking. */
-	StreamReset = 1u << 2, /**< IEEE1722.1 - Increments whenever the Stream playback is reset. */
-	StreamInterrupted = 1u << 2, /**< Milan - Incremented each time the stream playback is interrupted for any reason other than a Controller Unbind operation. */
+	StreamReset = 1u << 2, /**< IEEE1722.1-2013 - Increments whenever the Stream playback is reset. */
+	StreamInterrupted = 1u << 2, /**< IEEE1722-2016 / Milan - Incremented each time the stream playback is interrupted for any reason other than a Controller Unbind operation. */
 	SeqNumMismatch = 1u << 3, /**< Increments when a Stream data AVTPDU is received with a nonsequential sequence_num field. */
 	MediaReset = 1u << 4, /**< Increments on a toggle of the mr bit in the Stream data AVTPDU. */
 	TimestampUncertain = 1u << 5, /**< Increments on a toggle of the tu bit in the Stream data AVTPDU. */
