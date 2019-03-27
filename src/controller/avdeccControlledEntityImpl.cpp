@@ -2110,13 +2110,12 @@ void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
 						auto const stringsIndex = entity::model::StringsIndex(stringsIndexCounter + localeStaticModel.baseStringDescriptorIndex);
 						auto& stringsNode = localeNode.strings[stringsIndex];
 						initNode(stringsNode, entity::model::DescriptorType::Strings, stringsIndex);
-						try
+
+						// Manually searching the Strings to improve performance (not throwing if Strings not loaded for this Locale), ignoring not loaded strings
+						auto const stringsIt = configStaticTree.stringsStaticModels.find(stringsIndex);
+						if (stringsIt != configStaticTree.stringsStaticModels.end())
 						{
-							stringsNode.staticModel = &getNodeStaticModel(configIndex, stringsIndex, &model::ConfigurationStaticTree::stringsStaticModels);
-						}
-						catch (Exception const&)
-						{
-							// Ignore not loaded Strings
+							stringsNode.staticModel = &stringsIt->second;
 						}
 					}
 				}
