@@ -1943,12 +1943,139 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const entity) n
 	{
 		if (!entity->gotFatalEnumerationError())
 		{
+			// Do some final steps before advertising entity
+			onPreAdvertiseEntity(*entity);
+
 			// Store EntityModel in the cache for later use
 			EntityModelCache::getInstance().cacheEntityStaticTree(entity->getEntity().getEntityID(), entity->getCurrentConfigurationIndex(), entity->getEntityStaticTree());
 
 			// Advertise the entity
 			entity->setAdvertised(true);
 			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityOnline, this, entity);
+		}
+	}
+}
+
+void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept
+{
+	auto const& e = controlledEntity.getEntity();
+	auto const entityID = e.getEntityID();
+
+	// For a Talker, we want to build an accurate list of connections, based on the know listeners
+	if (e.getTalkerCapabilities().test(entity::TalkerCapability::Implemented) && e.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+	{
+		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+		try
+		{
+			auto const& talkerConfigurationNode = controlledEntity.getCurrentConfigurationNode();
+
+			// Lock to protect _controlledEntities
+			auto const lg = std::lock_guard{ _lock };
+
+			// For all ControlledEntities, check if there are connected to this talker
+			for (auto const& entityKV : _controlledEntities)
+			{
+				// Don't process self
+				if (entityKV.first == entityID)
+				{
+					continue;
+				}
+				auto const& entity = *(entityKV.second);
+				if (entity.getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+				{
+					try
+					{
+						auto const& configurationNode = entity.getCurrentConfigurationNode();
+						for (auto const& streamInputNodeKV : configurationNode.streamInputs)
+						{
+							auto const& streamInputNode = streamInputNodeKV.second;
+
+							if (streamInputNode.dynamicModel)
+							{
+								auto const& connectionState = streamInputNode.dynamicModel->connectionState;
+
+								// If the Stream is Connected
+								if (connectionState.state == model::StreamConnectionState::State::Connected)
+								{
+									// Check against all the Talker's Output Streams
+									for (auto const& streamOutputNodeKV : talkerConfigurationNode.streamOutputs)
+									{
+										auto const streamOutputIndex = streamOutputNodeKV.first;
+										//auto const& streamOutputNode = streamOutputNodeKV.second;
+										auto const talkerIdentification = entity::model::StreamIdentification{ entityID, streamOutputIndex };
+
+										// Connected to our talker
+										if (connectionState.talkerStream == talkerIdentification)
+										{
+											controlledEntity.addStreamOutputConnection(streamOutputIndex, connectionState.listenerStream);
+											// Do not trigger any notification, we are just about to advertise the entity
+										}
+									}
+								}
+							}
+						}
+					}
+					catch (...)
+					{
+						AVDECC_ASSERT(false, "Unexpected exception");
+					}
+				}
+			}
+		}
+		catch (...)
+		{
+			AVDECC_ASSERT(false, "Unexpected exception");
+		}
+	}
+}
+
+void ControllerImpl::onPreUnadvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept
+{
+	auto const& e = controlledEntity.getEntity();
+	auto const entityID = e.getEntityID();
+
+	// For a Listener, we want to inform all the talkers we are connected to, that we left
+	if (e.getListenerCapabilities().test(entity::ListenerCapability::Implemented) && e.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+	{
+		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+		try
+		{
+			auto const& configurationNode = controlledEntity.getCurrentConfigurationNode();
+
+			for (auto const& streamInputNodeKV : configurationNode.streamInputs)
+			{
+				auto const& streamInputNode = streamInputNodeKV.second;
+
+				if (streamInputNode.dynamicModel)
+				{
+					auto const& connectionState = streamInputNode.dynamicModel->connectionState;
+
+					// If the Stream is Connected, search for the Talker we are connected to
+					if (connectionState.state == model::StreamConnectionState::State::Connected)
+					{
+						// Take a "scoped locked" shared copy of the ControlledEntity
+						auto talkerEntity = getControlledEntityImplGuard(connectionState.talkerStream.entityID);
+
+						if (talkerEntity)
+						{
+							auto& talker = *talkerEntity;
+							auto const talkerStreamIndex = connectionState.talkerStream.streamIndex;
+							talker.delStreamOutputConnection(talkerStreamIndex, connectionState.listenerStream);
+							// Entity was advertised to the user, notify observers
+							if (talker.wasAdvertised())
+							{
+								notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamConnectionsChanged, this, &talker, talkerStreamIndex, talker.getStreamOutputConnections(talkerStreamIndex));
+							}
+						}
+					}
+				}
+			}
+		}
+		catch (...)
+		{
+			AVDECC_ASSERT(false, "Unexpected exception");
 		}
 	}
 }
@@ -2838,6 +2965,21 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 			{
 				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamConnectionChanged, this, state, changedByOther);
 			}
+
+			// Check if talker StreamIdentification changed
+			if (previousState.talkerStream != state.talkerStream)
+			{
+				if (previousState.talkerStream.entityID)
+				{
+					// Update the cached connection on the talker (disconnect)
+					handleTalkerStreamStateNotification(previousState.talkerStream, state.listenerStream, false, entity::ConnectionFlags{}, changedByOther);
+				}
+				if (state.talkerStream.entityID && isConnected)
+				{
+					// Update the cached connection on the talker (connect)
+					handleTalkerStreamStateNotification(state.talkerStream, state.listenerStream, true, entity::ConnectionFlags{}, changedByOther);
+				}
+			}
 		}
 	}
 }
@@ -2896,12 +3038,6 @@ void ControllerImpl::addTalkerStreamConnection(ControlledEntityImpl* const talke
 {
 	// Update our internal cache
 	talkerEntity->addStreamOutputConnection(talkerStreamIndex, listenerStream);
-}
-
-void ControllerImpl::delTalkerStreamConnection(ControlledEntityImpl* const talkerEntity, entity::model::StreamIndex const talkerStreamIndex, entity::model::StreamIdentification const& listenerStream) const noexcept
-{
-	// Update our internal cache
-	talkerEntity->delStreamOutputConnection(talkerStreamIndex, listenerStream);
 }
 
 } // namespace controller

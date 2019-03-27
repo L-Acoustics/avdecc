@@ -150,6 +150,9 @@ void ControllerImpl::onEntityOffline(entity::controller::Interface const* const 
 
 	if (controlledEntity)
 	{
+		// Do some final steps before unadvertising entity
+		onPreUnadvertiseEntity(*controlledEntity);
+
 		// Entity was advertised to the user, notify observers
 		if (controlledEntity->wasAdvertised())
 		{

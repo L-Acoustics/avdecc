@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - Invalid strings indexes when not using the first locale
+- Talker's connections list accurate again with Milan devices
 
 ## [2.9.1] - 2019-03-13
 ### Changed
