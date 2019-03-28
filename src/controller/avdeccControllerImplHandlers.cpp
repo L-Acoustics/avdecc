@@ -1245,7 +1245,7 @@ void ControllerImpl::onGetEntityCountersResult(entity::controller::Interface con
 			}
 			else
 			{
-				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::GetEntityCounters, 0u, 0u, false))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::GetEntityCounters, 0u, 0u, true))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::EntityCounters);
