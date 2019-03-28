@@ -1410,7 +1410,7 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 			};
 			break;
 		case ControlledEntityImpl::DynamicInfoType::GetEntityCounters:
-			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			queryFunc = [this, entityID](entity::ControllerEntity* const controller) noexcept
 			{
 				LOG_CONTROLLER_TRACE(entityID, "getEntityCounters ()");
 				controller->getEntityCounters(entityID, std::bind(&ControllerImpl::onGetEntityCountersResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5));
@@ -2033,7 +2033,6 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 void ControllerImpl::onPreUnadvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept
 {
 	auto const& e = controlledEntity.getEntity();
-	auto const entityID = e.getEntityID();
 
 	// For a Listener, we want to inform all the talkers we are connected to, that we left
 	if (e.getListenerCapabilities().test(entity::ListenerCapability::Implemented) && e.getEntityCapabilities().test(entity::EntityCapability::AemSupported))

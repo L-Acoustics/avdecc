@@ -107,7 +107,7 @@ class ProtocolInterfaceMacNativeImpl;
 	}
 	if (entityCaps.test(la::avdecc::entity::EntityCapability::AssociationIDValid))
 	{
-		associationID = entity.associationID;
+		associationID = la::avdecc::UniqueIdentifier{ entity.associationID };
 	}
 	if (entityCaps.test(la::avdecc::entity::EntityCapability::AemInterfaceIndexValid))
 	{
@@ -115,11 +115,11 @@ class ProtocolInterfaceMacNativeImpl;
 	}
 	if (entityCaps.test(la::avdecc::entity::EntityCapability::GptpSupported))
 	{
-		gptpGrandmasterID = entity.gPTPGrandmasterID;
+		gptpGrandmasterID = la::avdecc::UniqueIdentifier{ entity.gPTPGrandmasterID };
 		gptpDomainNumber = entity.gPTPDomainNumber;
 	}
 
-	auto const commonInfo{ la::avdecc::entity::Entity::CommonInformation{ entity.entityID, entity.entityModelID, entityCaps, entity.talkerStreamSources, talkerCaps, entity.listenerStreamSinks, listenerCaps, controllerCaps, controlIndex, associationID } };
+	auto const commonInfo{ la::avdecc::entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier{ entity.entityID }, la::avdecc::UniqueIdentifier{ entity.entityModelID }, entityCaps, entity.talkerStreamSources, talkerCaps, entity.listenerStreamSinks, listenerCaps, controllerCaps, controlIndex, associationID } };
 	auto const interfaceInfo{ la::avdecc::entity::Entity::InterfaceInformation{ [FromNative getFirstMacAddress:entity.macAddresses], static_cast<std::uint8_t>(entity.timeToLive / 2u), entity.availableIndex, gptpGrandmasterID, gptpDomainNumber } };
 
 	return la::avdecc::entity::Entity{ commonInfo, { { avbInterfaceIndex, interfaceInfo } } };
@@ -135,8 +135,8 @@ class ProtocolInterfaceMacNativeImpl;
 
 	// Set AECP fields
 	aem.setStatus(la::avdecc::protocol::AecpStatus{ message.status });
-	aem.setTargetEntityID(message.targetEntityID);
-	aem.setControllerEntityID(message.controllerEntityID);
+	aem.setTargetEntityID(la::avdecc::UniqueIdentifier{ message.targetEntityID });
+	aem.setControllerEntityID(la::avdecc::UniqueIdentifier{ message.controllerEntityID });
 	aem.setSequenceID(message.sequenceID);
 
 	// Set AEM fields
@@ -158,8 +158,8 @@ class ProtocolInterfaceMacNativeImpl;
 
 	// Set AECP fields
 	aa.setStatus(la::avdecc::protocol::AecpStatus(message.status));
-	aa.setTargetEntityID(message.targetEntityID);
-	aa.setControllerEntityID(message.controllerEntityID);
+	aa.setTargetEntityID(la::avdecc::UniqueIdentifier{ message.targetEntityID });
+	aa.setControllerEntityID(la::avdecc::UniqueIdentifier{ message.controllerEntityID });
 	aa.setSequenceID(message.sequenceID);
 
 	// Set Address Access fields
@@ -213,9 +213,9 @@ class ProtocolInterfaceMacNativeImpl;
 	acmp.setMessageType(la::avdecc::protocol::AcmpMessageType(message.messageType));
 	acmp.setStatus(la::avdecc::protocol::AcmpStatus(message.status));
 	acmp.setStreamID(message.streamID);
-	acmp.setControllerEntityID(message.controllerEntityID);
-	acmp.setTalkerEntityID(message.talkerEntityID);
-	acmp.setListenerEntityID(message.listenerEntityID);
+	acmp.setControllerEntityID(la::avdecc::UniqueIdentifier{ message.controllerEntityID });
+	acmp.setTalkerEntityID(la::avdecc::UniqueIdentifier{ message.talkerEntityID });
+	acmp.setListenerEntityID(la::avdecc::UniqueIdentifier{ message.listenerEntityID });
 	acmp.setTalkerUniqueID(message.talkerUniqueID);
 	acmp.setListenerUniqueID(message.listenerUniqueID);
 	acmp.setStreamDestAddress([FromNative makeMacAddress:message.destinationMAC]);
@@ -958,7 +958,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 
 #pragma mark la::avdecc::protocol::ProtocolInterface bridge methods
 - (la::avdecc::UniqueIdentifier)getDynamicEID {
-	return [AVBCentralManager nextAvailableDynamicEntityID];
+	return la::avdecc::UniqueIdentifier{ [AVBCentralManager nextAvailableDynamicEntityID] };
 }
 
 - (void)releaseDynamicEID:(la::avdecc::UniqueIdentifier)entityID {
@@ -1116,10 +1116,10 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 		// Only take the lock while searching for the queue, we want to release it before invoking dispath_async to prevent a deadlock
 		{
 			std::lock_guard<decltype(_lockQueues)> const lg(_lockQueues);
-			auto eqIt = _entityQueues.find(message.targetEntityID);
+			auto eqIt = _entityQueues.find(la::avdecc::UniqueIdentifier{ message.targetEntityID });
 			if (eqIt == _entityQueues.end())
 			{
-				queue = [self createQueuesForRemoteEntity:message.targetEntityID].aecpQueue;
+				queue = [self createQueuesForRemoteEntity:la::avdecc::UniqueIdentifier{ message.targetEntityID }].aecpQueue;
 			}
 			else
 			{
@@ -1131,7 +1131,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 			dispatch_semaphore_t limiter;
 			{
 				std::lock_guard<decltype(_lockQueues)> const lg(_lockQueues);
-				auto eqIt = _entityQueues.find(message.targetEntityID);
+				auto eqIt = _entityQueues.find(la::avdecc::UniqueIdentifier{ message.targetEntityID });
 				if (eqIt == _entityQueues.end())
 				{
 					// Entity no longer registered, ignore this command and return
@@ -1202,10 +1202,10 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 		// Only take the lock while searching for the queue, we want to release it before invoking dispath_async to prevent a deadlock
 		{
 			std::lock_guard<decltype(_lockQueues)> const lg(_lockQueues);
-			auto eqIt = _entityQueues.find(message.controllerEntityID);
+			auto eqIt = _entityQueues.find(la::avdecc::UniqueIdentifier{ message.controllerEntityID });
 			if (eqIt == _entityQueues.end())
 			{
-				queue = [self createQueuesForRemoteEntity:message.controllerEntityID].aecpQueue;
+				queue = [self createQueuesForRemoteEntity:la::avdecc::UniqueIdentifier{ message.controllerEntityID }].aecpQueue;
 			}
 			else
 			{
@@ -1217,7 +1217,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 			dispatch_semaphore_t limiter;
 			{
 				std::lock_guard<decltype(_lockQueues)> const lg(_lockQueues);
-				auto eqIt = _entityQueues.find(message.controllerEntityID);
+				auto eqIt = _entityQueues.find(la::avdecc::UniqueIdentifier{ message.controllerEntityID });
 				if (eqIt == _entityQueues.end())
 				{
 					// Entity no longer registered, ignore this command and return
@@ -1373,7 +1373,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 
 // Notification of an arriving local computer entity
 - (void)didAddLocalEntity:(AVB17221Entity*)newEntity on17221EntityDiscovery:(AVB17221EntityDiscovery*)entityDiscovery {
-	[self initEntity:newEntity.entityID];
+	[self initEntity:la::avdecc::UniqueIdentifier{ newEntity.entityID }];
 
 	// Lock
 	auto const lg = std::lock_guard{ _lock };
@@ -1385,13 +1385,14 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 
 // Notification of a departing local computer entity
 - (void)didRemoveLocalEntity:(AVB17221Entity*)oldEntity on17221EntityDiscovery:(AVB17221EntityDiscovery*)entityDiscovery {
-	[self deinitEntity:oldEntity.entityID];
+	auto const oldEntityID = la::avdecc::UniqueIdentifier{ oldEntity.entityID };
+	[self deinitEntity:oldEntityID];
 
 	// Lock
 	auto const lg = std::lock_guard{ _lock };
 
 	// Notify observers
-	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOffline, _protocolInterface, oldEntity.entityID);
+	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOffline, _protocolInterface, oldEntityID);
 }
 
 - (void)didRediscoverLocalEntity:(AVB17221Entity*)entity on17221EntityDiscovery:(AVB17221EntityDiscovery*)entityDiscovery {
@@ -1399,7 +1400,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	{
 		// Lock
 		auto const lg = std::lock_guard{ _lock };
-		if (_registeredAcmpHandlers.find(entity.entityID) == _registeredAcmpHandlers.end())
+		if (_registeredAcmpHandlers.find(la::avdecc::UniqueIdentifier{ entity.entityID }) == _registeredAcmpHandlers.end())
 		{
 			AVDECC_ASSERT(false, "didRediscoverLocalEntity: Entity not registered... I thought Rediscover was called when an entity announces itself again without any change in it's ADP info... Maybe simply call didAddLocalEntity");
 			return;
@@ -1432,7 +1433,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 }
 
 - (void)didAddRemoteEntity:(AVB17221Entity*)newEntity on17221EntityDiscovery:(AVB17221EntityDiscovery*)entityDiscovery {
-	[self initEntity:newEntity.entityID];
+	[self initEntity:la::avdecc::UniqueIdentifier{ newEntity.entityID }];
 
 	// Lock
 	auto const lg = std::lock_guard{ _lock };
@@ -1450,16 +1451,17 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 }
 
 - (void)didRemoveRemoteEntity:(AVB17221Entity*)oldEntity on17221EntityDiscovery:(AVB17221EntityDiscovery*)entityDiscovery {
-	[self deinitEntity:oldEntity.entityID];
+	auto const oldEntityID = la::avdecc::UniqueIdentifier{ oldEntity.entityID };
+	[self deinitEntity:oldEntityID];
 
 	// Lock
 	auto const lg = std::lock_guard{ _lock };
 
 	// Clear entity from available index list
-	_lastAvailableIndex.erase(oldEntity.entityID);
+	_lastAvailableIndex.erase(oldEntityID);
 
 	// Notify observers
-	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOffline, _protocolInterface, oldEntity.entityID);
+	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOffline, _protocolInterface, oldEntityID);
 }
 
 - (void)didRediscoverRemoteEntity:(AVB17221Entity*)entity on17221EntityDiscovery:(AVB17221EntityDiscovery*)entityDiscovery {
@@ -1467,7 +1469,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	{
 		// Lock
 		auto const lg = std::lock_guard{ _lock };
-		if (_registeredAcmpHandlers.find(entity.entityID) == _registeredAcmpHandlers.end())
+		if (_registeredAcmpHandlers.find(la::avdecc::UniqueIdentifier{ entity.entityID }) == _registeredAcmpHandlers.end())
 		{
 			AVDECC_ASSERT(false, "didRediscoverRemoteEntity: Entity not registered... I thought Rediscover was called when an entity announces itself again without any change in it's ADP info... Maybe simply call didAddRemoteEntity");
 			return;
@@ -1483,11 +1485,12 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	// Check for an invalid change in AvailableIndex
 	if ((changedProperties & AVB17221EntityPropertyChangedAvailableIndex) != 0)
 	{
-		auto previousIndexIt = _lastAvailableIndex.find(entity.entityID);
+		auto const entityID = la::avdecc::UniqueIdentifier{ entity.entityID };
+		auto previousIndexIt = _lastAvailableIndex.find(entityID);
 		if (previousIndexIt == _lastAvailableIndex.end())
 		{
 			AVDECC_ASSERT(previousIndexIt != _lastAvailableIndex.end(), "didUpdateRemoteEntity called but entity is unknown");
-			_lastAvailableIndex.insert(std::make_pair(entity.entityID, entity.availableIndex));
+			_lastAvailableIndex.insert(std::make_pair(entityID, entity.availableIndex));
 		}
 		else
 		{
@@ -1531,7 +1534,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	auto const lg = std::lock_guard{ _lock };
 
 	// Only process it if it's targeted to a registered LocalEntity
-	if (_localProcessEntities.count([message targetEntityID]) == 0)
+	if (_localProcessEntities.count(la::avdecc::UniqueIdentifier{ message.targetEntityID }) == 0)
 		return NO;
 
 	auto const aecpdu = [FromNative makeAecpdu:message toDestAddress:_protocolInterface->getMacAddress()];
