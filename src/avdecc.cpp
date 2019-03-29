@@ -24,6 +24,7 @@
 */
 
 #include "la/avdecc/avdecc.hpp"
+
 #include "config.h"
 
 namespace la

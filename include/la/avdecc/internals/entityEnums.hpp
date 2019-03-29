@@ -26,7 +26,9 @@
 #pragma once
 
 #include "la/avdecc/utils.hpp"
+
 #include "entityModelTypes.hpp"
+
 #include <cstdint>
 #include <string>
 

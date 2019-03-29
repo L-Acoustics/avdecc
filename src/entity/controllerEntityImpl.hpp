@@ -29,7 +29,9 @@
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
 #include "la/avdecc/internals/protocolMvuAecpdu.hpp"
+
 #include "entityImpl.hpp"
+
 #include <unordered_map>
 #include <functional>
 #include <thread>

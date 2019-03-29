@@ -23,6 +23,7 @@
 */
 
 #include "networkInterfaceHelper_common.hpp"
+
 #include <sstream>
 #include <exception>
 #include <iomanip> // setfill

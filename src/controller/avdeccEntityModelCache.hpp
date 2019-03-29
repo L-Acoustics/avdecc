@@ -25,6 +25,7 @@
 #pragma once
 
 #include "avdeccControlledEntityModelTree.hpp"
+
 #include <unordered_map>
 
 namespace la

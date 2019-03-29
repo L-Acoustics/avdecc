@@ -23,9 +23,11 @@
 */
 
 #include "la/avdecc/utils.hpp"
+
 #include "logHelper.hpp"
 #include "aggregateEntityImpl.hpp"
 #include "controllerCapabilityDelegate.hpp"
+
 #include <exception>
 #include <cassert>
 #include <chrono>

@@ -25,7 +25,9 @@
 #pragma once
 
 #include "la/avdecc/controller/internals/avdeccControlledEntity.hpp"
+
 #include "avdeccControlledEntityModelTree.hpp"
+
 #include <string>
 #include <unordered_map>
 #include <unordered_set>

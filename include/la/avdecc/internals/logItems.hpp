@@ -28,6 +28,7 @@
 #include "la/avdecc/logger.hpp"
 #include "la/avdecc/utils.hpp"
 #include "la/avdecc/networkInterfaceHelper.hpp"
+
 #include "uniqueIdentifier.hpp"
 
 namespace la

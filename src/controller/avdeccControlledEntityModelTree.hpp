@@ -27,6 +27,7 @@
 
 #include "la/avdecc/controller/internals/avdeccControlledEntityStaticModel.hpp"
 #include "la/avdecc/controller/internals/avdeccControlledEntityDynamicModel.hpp"
+
 #include <map>
 #include <set>
 

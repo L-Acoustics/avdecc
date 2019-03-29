@@ -24,6 +24,7 @@
 
 #include "la/avdecc/logger.hpp"
 #include "la/avdecc/utils.hpp"
+
 #include <vector>
 #include <mutex>
 #include <algorithm>

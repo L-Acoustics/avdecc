@@ -27,10 +27,12 @@
 
 #include "la/avdecc/utils.hpp"
 #include "la/avdecc/networkInterfaceHelper.hpp"
+
 #include "entityEnums.hpp"
 #include "uniqueIdentifier.hpp"
 #include "protocolDefines.hpp"
 #include "entityModelTypes.hpp"
+
 #include <cstdint>
 #include <string>
 #include <array>

@@ -23,9 +23,11 @@
 */
 
 #include "la/avdecc/utils.hpp"
+
 #include "controllerCapabilityDelegate.hpp"
 #include "protocol/protocolAemPayloads.hpp"
 #include "protocol/protocolMvuPayloads.hpp"
+
 #include <exception>
 #include <chrono>
 #include <thread>

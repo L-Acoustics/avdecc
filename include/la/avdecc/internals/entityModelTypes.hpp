@@ -26,9 +26,10 @@
 #pragma once
 
 #include "la/avdecc/utils.hpp"
-#include "uniqueIdentifier.hpp"
 
+#include "uniqueIdentifier.hpp"
 #include "exports.hpp"
+
 #include <cstdint>
 #include <string>
 #include <array>

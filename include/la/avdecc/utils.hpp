@@ -25,6 +25,9 @@
 
 #pragma once
 
+#include "internals/exports.hpp"
+#include "internals/uniqueIdentifier.hpp"
+
 #include <type_traits>
 #include <iterator>
 #include <functional>
@@ -37,8 +40,6 @@
 #include <stdexcept> // out_of_range
 #include <set>
 #include <mutex>
-#include "internals/exports.hpp"
-#include "internals/uniqueIdentifier.hpp"
 
 namespace la
 {

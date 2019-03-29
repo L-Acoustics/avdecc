@@ -29,8 +29,10 @@
 #include <la/avdecc/utils.hpp>
 #include <la/avdecc/watchDog.hpp>
 #include <la/avdecc/internals/exception.hpp>
+
 #include "avdeccControlledEntityModel.hpp"
 #include "exports.hpp"
+
 #include <string>
 #include <memory>
 #include <mutex>

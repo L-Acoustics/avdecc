@@ -23,6 +23,7 @@
 */
 
 #include "la/avdecc/watchDog.hpp"
+
 #include <unordered_map>
 #include <thread>
 #ifdef _WIN32

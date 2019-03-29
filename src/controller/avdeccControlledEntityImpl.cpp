@@ -24,6 +24,7 @@
 
 #include "avdeccControlledEntityImpl.hpp"
 #include "avdeccControllerLogHelper.hpp"
+
 #include <algorithm>
 #include <cassert>
 #include <typeindex>

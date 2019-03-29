@@ -25,13 +25,14 @@
 
 #pragma once
 
+#include "internals/exports.hpp"
+#include "internals/exception.hpp"
+
 #include <vector>
 #include <string>
 #include <cstdint>
 #include <array>
 #include <functional>
-#include "internals/exports.hpp"
-#include "internals/exception.hpp"
 
 namespace la
 {

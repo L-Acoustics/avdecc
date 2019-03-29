@@ -27,7 +27,9 @@
 #pragma once
 
 #include <la/avdecc/avdecc.hpp>
+
 #include "avdeccControlledEntityCommonModel.hpp"
+
 #include <cstdint>
 
 namespace la

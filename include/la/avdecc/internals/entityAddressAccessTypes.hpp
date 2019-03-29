@@ -26,7 +26,9 @@
 #pragma once
 
 #include "la/avdecc/utils.hpp"
+
 #include "protocolDefines.hpp"
+
 #include <cstdint>
 #include <vector>
 

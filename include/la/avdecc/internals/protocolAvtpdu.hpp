@@ -25,9 +25,11 @@
 #pragma once
 
 #include "la/avdecc/networkInterfaceHelper.hpp"
+
 #include "entity.hpp"
 #include "protocolDefines.hpp"
 #include "serialization.hpp"
+
 #include <cstdint>
 #include <utility>
 #include <array>

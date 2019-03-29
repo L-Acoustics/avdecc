@@ -31,6 +31,7 @@
 #include "protocolInterface.hpp"
 #include "exports.hpp"
 #include "exception.hpp"
+
 #include <cstdint>
 #include <memory>
 #include <string>

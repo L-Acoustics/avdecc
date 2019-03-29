@@ -29,8 +29,10 @@
 #include <la/avdecc/utils.hpp>
 #include <la/avdecc/internals/exception.hpp>
 #include <la/avdecc/memoryBuffer.hpp>
+
 #include "internals/avdeccControlledEntity.hpp"
 #include "internals/exports.hpp"
+
 #include <memory>
 #include <functional>
 #include <cstdint>

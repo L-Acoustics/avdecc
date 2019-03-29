@@ -27,7 +27,9 @@
 #pragma once
 
 #include <la/avdecc/avdecc.hpp>
+
 #include "avdeccControlledEntityCommonModel.hpp"
+
 #include <unordered_map>
 #include <cstdint>
 #include <map>

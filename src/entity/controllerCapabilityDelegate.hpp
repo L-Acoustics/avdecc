@@ -25,6 +25,7 @@
 #pragma once
 
 #include "la/avdecc/internals/controllerEntity.hpp"
+
 #include "entityImpl.hpp"
 
 namespace la

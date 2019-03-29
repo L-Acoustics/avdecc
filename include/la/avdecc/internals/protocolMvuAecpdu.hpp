@@ -25,6 +25,7 @@
 #pragma once
 
 #include "protocolVuAecpdu.hpp"
+
 #include <utility>
 #include <array>
 #include <cstring> // memcpy

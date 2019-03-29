@@ -30,7 +30,9 @@
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
 #include "la/avdecc/internals/protocolMvuAecpdu.hpp"
+
 #include "logHelper.hpp"
+
 #include <cstdint>
 #include <algorithm>
 #include <mutex>

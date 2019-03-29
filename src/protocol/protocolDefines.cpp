@@ -24,6 +24,7 @@
 
 #include "la/avdecc/internals/protocolDefines.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
+
 #include <unordered_map>
 
 namespace la

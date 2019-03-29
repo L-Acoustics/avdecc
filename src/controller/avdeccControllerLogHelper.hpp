@@ -26,6 +26,7 @@
 #pragma once
 
 #include "la/avdecc/controller/internals/logItems.hpp"
+
 #ifdef HAVE_FMT
 #	ifdef _WIN32
 #		pragma warning(push)

@@ -26,11 +26,13 @@
 #pragma once
 
 #include "la/avdecc/memoryBuffer.hpp"
+
 #include "protocolInterface.hpp"
 #include "entity.hpp"
 #include "entityModel.hpp"
 #include "entityAddressAccessTypes.hpp"
 #include "exports.hpp"
+
 #include <thread>
 #include <unordered_map>
 #include <string>

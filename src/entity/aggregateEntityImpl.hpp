@@ -26,7 +26,9 @@
 
 #include "la/avdecc/internals/aggregateEntity.hpp"
 #include "la/avdecc/internals/protocolInterface.hpp"
+
 #include "entityImpl.hpp"
+
 #include <unordered_map>
 #include <functional>
 #include <thread>
