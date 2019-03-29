@@ -125,7 +125,7 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 						}
 
 						// Take a "scoped locked" shared copy of the ControlledEntity
-						auto controlledEntity = getControlledEntityImplGuard(entityID);
+						auto controlledEntity = getControlledEntityImplGuard(entityID, true);
 
 						// Entity still online
 						if (controlledEntity)
@@ -285,7 +285,7 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 	auto const descriptorIndex{ entity::model::DescriptorIndex{ 0u } };
 
 	// Take a "scoped locked" shared copy of the ControlledEntity
-	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -343,7 +343,7 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 	auto const descriptorIndex{ entity::model::DescriptorIndex{ 0u } };
 
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -392,7 +392,7 @@ void ControllerImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntit
 	auto const descriptorIndex{ entity::model::DescriptorIndex{ 0u } };
 
 	// Take a "scoped locked" shared copy of the ControlledEntity
-	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -450,7 +450,7 @@ void ControllerImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockE
 	auto const descriptorIndex{ entity::model::DescriptorIndex{ 0u } };
 
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -496,7 +496,7 @@ void ControllerImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockE
 void ControllerImpl::setConfiguration(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, SetConfigurationHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -538,7 +538,7 @@ void ControllerImpl::setConfiguration(UniqueIdentifier const targetEntityID, ent
 void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat, SetStreamInputFormatHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -580,7 +580,7 @@ void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID,
 void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat, SetStreamOutputFormatHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -622,7 +622,7 @@ void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID
 void ControllerImpl::setStreamInputInfo(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, SetStreamInputInfoHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -664,7 +664,7 @@ void ControllerImpl::setStreamInputInfo(UniqueIdentifier const targetEntityID, e
 void ControllerImpl::setStreamOutputInfo(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, SetStreamOutputInfoHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -706,7 +706,7 @@ void ControllerImpl::setStreamOutputInfo(UniqueIdentifier const targetEntityID, 
 void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity::model::AvdeccFixedString const& name, SetEntityNameHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -748,7 +748,7 @@ void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity
 void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, entity::model::AvdeccFixedString const& name, SetEntityGroupNameHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -790,7 +790,7 @@ void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, e
 void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& name, SetConfigurationNameHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -832,7 +832,7 @@ void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID,
 void ControllerImpl::setAudioUnitName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::AvdeccFixedString const& name, SetAudioUnitNameHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -874,7 +874,7 @@ void ControllerImpl::setAudioUnitName(UniqueIdentifier const targetEntityID, ent
 void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& name, SetStreamInputNameHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -916,7 +916,7 @@ void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, e
 void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& name, SetStreamOutputNameHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -958,7 +958,7 @@ void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, 
 void ControllerImpl::setAvbInterfaceName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvdeccFixedString const& name, SetAvbInterfaceNameHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -1000,7 +1000,7 @@ void ControllerImpl::setAvbInterfaceName(UniqueIdentifier const targetEntityID, 
 void ControllerImpl::setClockSourceName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex, entity::model::AvdeccFixedString const& name, SetClockSourceNameHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -1042,7 +1042,7 @@ void ControllerImpl::setClockSourceName(UniqueIdentifier const targetEntityID, e
 void ControllerImpl::setMemoryObjectName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, entity::model::AvdeccFixedString const& name, SetMemoryObjectNameHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -1084,7 +1084,7 @@ void ControllerImpl::setMemoryObjectName(UniqueIdentifier const targetEntityID, 
 void ControllerImpl::setAudioClusterName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex, entity::model::AvdeccFixedString const& name, SetAudioClusterNameHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -1126,7 +1126,7 @@ void ControllerImpl::setAudioClusterName(UniqueIdentifier const targetEntityID, 
 void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::AvdeccFixedString const& name, SetClockDomainNameHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -1168,7 +1168,7 @@ void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, e
 void ControllerImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntityID, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate, SetAudioUnitSamplingRateHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -1210,7 +1210,7 @@ void ControllerImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntit
 void ControllerImpl::setClockSource(UniqueIdentifier const targetEntityID, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex, SetClockSourceHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -1252,7 +1252,7 @@ void ControllerImpl::setClockSource(UniqueIdentifier const targetEntityID, entit
 void ControllerImpl::startStreamInput(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, StartStreamInputHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -1294,7 +1294,7 @@ void ControllerImpl::startStreamInput(UniqueIdentifier const targetEntityID, ent
 void ControllerImpl::stopStreamInput(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, StopStreamInputHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -1336,7 +1336,7 @@ void ControllerImpl::stopStreamInput(UniqueIdentifier const targetEntityID, enti
 void ControllerImpl::startStreamOutput(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, StartStreamOutputHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -1378,7 +1378,7 @@ void ControllerImpl::startStreamOutput(UniqueIdentifier const targetEntityID, en
 void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, entity::model::StreamIndex const streamIndex, StopStreamOutputHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -1420,7 +1420,7 @@ void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, ent
 void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, AddStreamPortInputAudioMappingsHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -1462,7 +1462,7 @@ void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targ
 void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, AddStreamPortOutputAudioMappingsHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -1504,7 +1504,7 @@ void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const tar
 void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, RemoveStreamPortInputAudioMappingsHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -1546,7 +1546,7 @@ void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const t
 void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, RemoveStreamPortOutputAudioMappingsHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -1588,7 +1588,7 @@ void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const 
 void ControllerImpl::setMemoryObjectLength(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length, SetMemoryObjectLengthHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -1764,7 +1764,7 @@ void ControllerImpl::onUserWriteDeviceMemoryResult(UniqueIdentifier const target
 void ControllerImpl::readDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, std::uint64_t const length, ReadDeviceMemoryProgressHandler const& progressHandler, ReadDeviceMemoryCompletionHandler const& completionHandler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -1797,7 +1797,7 @@ void ControllerImpl::readDeviceMemory(UniqueIdentifier const targetEntityID, std
 void ControllerImpl::startOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer, StartOperationHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -1833,7 +1833,7 @@ void ControllerImpl::startOperation(UniqueIdentifier const targetEntityID, entit
 void ControllerImpl::abortOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, AbortOperationHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -1909,7 +1909,7 @@ void ControllerImpl::startUploadMemoryObjectOperation(UniqueIdentifier const tar
 void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, DeviceMemoryBuffer memoryBuffer, WriteDeviceMemoryProgressHandler const& progressHandler, WriteDeviceMemoryCompletionHandler const& completionHandler) const noexcept
 {
 	// Take a "scoped locked" shared copy of the ControlledEntity
-	auto controlledEntity = getControlledEntityImplGuard(targetEntityID);
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID, true);
 
 	if (controlledEntity)
 	{
@@ -1939,7 +1939,7 @@ void ControllerImpl::writeDeviceMemory(UniqueIdentifier const targetEntityID, st
 void ControllerImpl::connectStream(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, ConnectStreamHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(listenerStream.entityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(listenerStream.entityID, true);
 
 	if (controlledEntity)
 	{
@@ -1973,7 +1973,7 @@ void ControllerImpl::connectStream(entity::model::StreamIdentification const& ta
 void ControllerImpl::disconnectStream(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, DisconnectStreamHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(listenerStream.entityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(listenerStream.entityID, true);
 
 	if (controlledEntity)
 	{
@@ -2041,7 +2041,7 @@ void ControllerImpl::disconnectStream(entity::model::StreamIdentification const&
 void ControllerImpl::disconnectTalkerStream(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, DisconnectTalkerStreamHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(talkerStream.entityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(talkerStream.entityID, true);
 
 	if (controlledEntity)
 	{
@@ -2077,7 +2077,7 @@ void ControllerImpl::disconnectTalkerStream(entity::model::StreamIdentification 
 void ControllerImpl::getListenerStreamState(entity::model::StreamIdentification const& listenerStream, GetListenerStreamStateHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(listenerStream.entityID);
+	auto controlledEntity = getSharedControlledEntityImplHolder(listenerStream.entityID, true);
 
 	if (controlledEntity)
 	{
@@ -2172,8 +2172,8 @@ std::tuple<Controller::SerializationError, std::string> ControllerImpl::serializ
 std::tuple<Controller::SerializationError, std::string> ControllerImpl::serializeControlledEntityAsReadableJson(UniqueIdentifier const entityID, std::string const& filePath) const noexcept
 {
 	// Take a "scoped locked" shared copy of the ControlledEntity
-	auto const entity = getControlledEntityImplGuard(entityID);
-	if (!entity || !entity->wasAdvertised())
+	auto const entity = getControlledEntityImplGuard(entityID, true);
+	if (!entity)
 	{
 		return { SerializationError::UnknownEntity, "Entity offline" };
 	}

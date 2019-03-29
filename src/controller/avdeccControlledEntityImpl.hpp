@@ -425,6 +425,9 @@ public:
 		}
 	}
 
+	// Other Controller restricted methods
+	void buildEntityModelGraph() const noexcept;
+
 	// Defaulted compiler auto-generated methods
 	ControlledEntityImpl(ControlledEntityImpl&&) = default;
 	ControlledEntityImpl(ControlledEntityImpl const&) = default;
@@ -464,7 +467,6 @@ protected:
 	}
 
 private:
-	void checkAndBuildEntityModelGraph() const noexcept;
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	void buildRedundancyNodes(model::ConfigurationNode& configNode) const noexcept;
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
@@ -499,7 +501,7 @@ private:
 	// Entity Model
 	mutable model::EntityStaticTree _entityStaticTree{}; // Static part of the model as represented by the AVDECC protocol
 	mutable model::EntityDynamicTree _entityDynamicTree{}; // Dynamic part of the model as represented by the AVDECC protocol
-	mutable model::EntityNode _entityNode{}; // Model as represented by the ControlledEntity (tree of references to the model::EntityDescriptor and model::EntityDynamicInfo)
+	mutable model::EntityNode _entityNode{}; // Model as represented by the ControlledEntity (tree of references to the model::EntityStaticTree and model::EntityDynamicTree)
 };
 
 } // namespace controller

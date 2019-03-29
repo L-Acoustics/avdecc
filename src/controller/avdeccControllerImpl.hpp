@@ -559,7 +559,7 @@ private:
 	}
 
 	/** Gets a scoped reference on a ControlledEntitiyImpl */
-	inline SharedControlledEntityImplHolder getSharedControlledEntityImplHolder(UniqueIdentifier const entityID) const noexcept
+	inline SharedControlledEntityImplHolder getSharedControlledEntityImplHolder(UniqueIdentifier const entityID, bool const onlyIfAdvertised = false) const noexcept
 	{
 		// Lock to protect _controlledEntities
 		std::lock_guard<decltype(_lock)> const lg(_lock);
@@ -567,14 +567,17 @@ private:
 		auto const entityIt = _controlledEntities.find(entityID);
 		if (entityIt != _controlledEntities.end())
 		{
-			// Return a reference on the entity while locked
-			return SharedControlledEntityImplHolder{ entityIt->second };
+			if (!onlyIfAdvertised || entityIt->second->wasAdvertised())
+			{
+				// Return a reference on the entity while locked
+				return SharedControlledEntityImplHolder{ entityIt->second };
+			}
 		}
 
 		return {};
 	}
 
-	inline ControlledEntityImplGuard getControlledEntityImplGuard(UniqueIdentifier const entityID, bool const locked = true) const noexcept
+	inline ControlledEntityImplGuard getControlledEntityImplGuard(UniqueIdentifier const entityID, bool const onlyIfAdvertised = false, bool const locked = true) const noexcept
 	{
 		auto entity = SharedControlledEntityImpl{};
 
@@ -585,8 +588,11 @@ private:
 			auto const entityIt = _controlledEntities.find(entityID);
 			if (entityIt != _controlledEntities.end())
 			{
-				// Get a reference on the entity while locked
-				entity = entityIt->second;
+				if (!onlyIfAdvertised || entityIt->second->wasAdvertised())
+				{
+					// Get a reference on the entity while locked
+					entity = entityIt->second;
+				}
 			}
 		}
 

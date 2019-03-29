@@ -164,7 +164,6 @@ model::EntityNode const& ControlledEntityImpl::getEntityNode() const
 	if (!_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
 		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
 
-	checkAndBuildEntityModelGraph();
 	return _entityNode;
 }
 
@@ -1937,12 +1936,14 @@ std::string ControlledEntityImpl::descriptorDynamicInfoTypeToString(DescriptorDy
 }
 
 // Private methods
-void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
+void ControlledEntityImpl::buildEntityModelGraph() const noexcept
 {
 	try
 	{
-#pragma message("TODO: Use a std::optional when available, instead of detecting the non-initialized value from configurations count (xcode clang is still missing optional as of this date)")
-		if (_entityNode.configurations.size() == 0)
+		// Wipe previous graph
+		_entityNode = {};
+
+		// Build a new one
 		{
 			// Build root node (EntityNode)
 			initNode(_entityNode, entity::model::DescriptorType::Entity, 0);
