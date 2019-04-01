@@ -22,9 +22,13 @@
 * @author Christophe Calmejane
 */
 
-#include "avdeccControlledEntityJsonSerializer.hpp"
+#include "la/avdecc/internals/jsonSerialization.hpp"
 #include "la/avdecc/internals/jsonTypes.hpp"
 #include "la/avdecc/controller/internals/jsonTypes.hpp"
+
+#include "avdeccControlledEntityJsonSerializer.hpp"
+#include "avdeccControllerImpl.hpp"
+#include "avdeccControlledEntityImpl.hpp"
 
 using json = nlohmann::json;
 
@@ -36,6 +40,9 @@ namespace controller
 {
 namespace entitySerializer
 {
+/* ************************************************************ */
+/* Private Visitor class to dump AEM                            */
+/* ************************************************************ */
 class Visitor : public model::EntityModelVisitor
 {
 public:
@@ -1029,17 +1036,17 @@ private:
 };
 
 
-json createJsonObject(ControlledEntity const& entity) noexcept
+/* ************************************************************ */
+/* Public methods                                               */
+/* ************************************************************ */
+json createJsonObject(ControlledEntityImpl const& entity) noexcept
 {
 	// Create the object
 	auto object = json{};
 	auto const& e = entity.getEntity();
 
 	// Dump information of the dump itself
-	object[keyName::ControlledEntity_DumpVersion] = 1;
-
-	// Dump device compatibility flags
-	object[keyName::ControlledEntity_CompatibilityFlags] = entity.getCompatibilityFlags();
+	object[keyName::ControlledEntity_DumpVersion] = keyValue::ControlledEntity_DumpVersion;
 
 	// Dump ADP information
 	{
@@ -1064,6 +1071,9 @@ json createJsonObject(ControlledEntity const& entity) noexcept
 		}
 	}
 
+	// Dump device compatibility flags
+	object[keyName::ControlledEntity_CompatibilityFlags] = entity.getCompatibilityFlags();
+
 	// Dump AEM if supported
 	if (e.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
 	{
@@ -1083,7 +1093,7 @@ json createJsonObject(ControlledEntity const& entity) noexcept
 		object[keyName::ControlledEntity_MilanInformation] = *milanInfo;
 	}
 
-	// Entity State
+	// Dump Entity State
 	{
 		auto& state = object[keyName::ControlledEntity_EntityState];
 		state[controller::keyName::ControlledEntityState_AcquireState] = entity.getAcquireState();

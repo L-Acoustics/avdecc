@@ -58,6 +58,7 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/internals/exception.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/exports.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/instrumentationNotifier.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/jsonSerialization.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/logItems.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAaAecpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAcmpdu.hpp
@@ -224,7 +225,9 @@ if(ENABLE_AVDECC_FEATURE_REDUNDANCY)
 	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DENABLE_AVDECC_FEATURE_REDUNDANCY")
 endif()
 if(ENABLE_AVDECC_FEATURE_JSON)
-	list(APPEND PUBLIC_HEADER_FILES ${LA_ROOT_DIR}/include/la/avdecc/internals/jsonTypes.hpp)
+	list(APPEND PUBLIC_HEADER_FILES
+		${LA_ROOT_DIR}/include/la/avdecc/internals/jsonTypes.hpp
+	)
 	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DENABLE_AVDECC_FEATURE_JSON")
 endif()
 

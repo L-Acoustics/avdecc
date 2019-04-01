@@ -31,10 +31,45 @@
 
 #include <nlohmann/json.hpp>
 
+#include <optional>
+
 using json = nlohmann::json;
 
 namespace nlohmann
 {
+template<typename T>
+struct adl_serializer<std::optional<T>>
+{
+	static void to_json(json& j, std::optional<T> const& opt)
+	{
+		if (opt)
+		{
+			j = *opt;
+		}
+		else
+		{
+			j = nullptr;
+		}
+	}
+	static void from_json(json const& j, std::optional<T>& opt)
+	{
+		if (!j.is_null())
+		{
+			opt = j.get<T>();
+		}
+	}
+};
+
+template<typename KeyT, typename ValueType>
+inline void get_optional_value(json const& j, KeyT&& key, ValueType& v)
+{
+	auto const it = j.find(std::forward<KeyT>(key));
+	if (it != j.end())
+	{
+		it->get_to(v);
+	}
+}
+
 template<>
 struct adl_serializer<la::avdecc::entity::model::EntityCounters>
 {
@@ -141,13 +176,30 @@ void to_json(json& j, Enum const& flags)
 		}
 	}
 }
+template<typename Enum, typename EnumValue = typename Enum::value_type, EnumValue DefaultValue = EnumValue::None, typename = std::enable_if_t<std::is_same_v<Enum, EnumBitfield<EnumValue>>>>
+void from_json(json const& j, Enum& flags)
+{
+	for (auto const& o : j)
+	{
+		auto const v = o.get<EnumValue>();
+		if (v == DefaultValue)
+		{
+			throw std::invalid_argument("Invalid enum value: " + o.get<std::string>());
+		}
+		flags.set(v);
+	}
+}
 
 } // namespace utils
 
 /* UniqueIdentifier conversion */
-void to_json(json& j, UniqueIdentifier const& eid)
+inline void to_json(json& j, UniqueIdentifier const& eid)
 {
 	j = utils::toHexString(eid.getValue(), true, true);
+}
+inline void from_json(json const& j, UniqueIdentifier& eid)
+{
+	eid.setValue(utils::convertFromString<UniqueIdentifier::value_type>(j.get<std::string>().c_str()));
 }
 
 namespace entity
@@ -407,7 +459,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(StreamOutputCounterValidFlag, {
 																													 });
 
 /* Entity::CommonInformation conversion */
-void to_json(json& j, Entity::CommonInformation const& commonInfo)
+inline void to_json(json& j, Entity::CommonInformation const& commonInfo)
 {
 	j[keyName::Entity_CommonInformation_EntityID] = commonInfo.entityID;
 	j[keyName::Entity_CommonInformation_EntityModelID] = commonInfo.entityModelID;
@@ -417,18 +469,26 @@ void to_json(json& j, Entity::CommonInformation const& commonInfo)
 	j[keyName::Entity_CommonInformation_ListenerStreamSinks] = commonInfo.listenerStreamSinks;
 	j[keyName::Entity_CommonInformation_ListenerCapabilities] = commonInfo.listenerCapabilities;
 	j[keyName::Entity_CommonInformation_ControllerCapabilities] = commonInfo.controllerCapabilities;
-	if (commonInfo.identifyControlIndex)
-	{
-		j[keyName::Entity_CommonInformation_IdentifyControlIndex] = *commonInfo.identifyControlIndex;
-	}
-	if (commonInfo.associationID)
-	{
-		j[keyName::Entity_CommonInformation_AssociationID] = *commonInfo.associationID;
-	}
+	j[keyName::Entity_CommonInformation_IdentifyControlIndex] = commonInfo.identifyControlIndex;
+	j[keyName::Entity_CommonInformation_AssociationID] = commonInfo.associationID;
+}
+inline void from_json(json const& j, Entity::CommonInformation& commonInfo)
+{
+	j.at(keyName::Entity_CommonInformation_EntityID).get_to(commonInfo.entityID);
+	j.at(keyName::Entity_CommonInformation_EntityModelID).get_to(commonInfo.entityModelID);
+	j.at(keyName::Entity_CommonInformation_EntityCapabilities).get_to(commonInfo.entityCapabilities);
+	j.at(keyName::Entity_CommonInformation_TalkerStreamSources).get_to(commonInfo.talkerStreamSources);
+	j.at(keyName::Entity_CommonInformation_TalkerCapabilities).get_to(commonInfo.talkerCapabilities);
+	j.at(keyName::Entity_CommonInformation_ListenerStreamSinks).get_to(commonInfo.listenerStreamSinks);
+	j.at(keyName::Entity_CommonInformation_ListenerCapabilities).get_to(commonInfo.listenerCapabilities);
+	j.at(keyName::Entity_CommonInformation_ControllerCapabilities).get_to(commonInfo.controllerCapabilities);
+	get_optional_value(j, keyName::Entity_CommonInformation_IdentifyControlIndex, commonInfo.identifyControlIndex);
+	get_optional_value(j, keyName::Entity_CommonInformation_AssociationID, commonInfo.associationID);
 }
 
+
 /* Entity::InterfaceInformation conversion */
-void to_json(json& j, Entity::InterfaceInformation const& intfcInfo)
+inline void to_json(json& j, Entity::InterfaceInformation const& intfcInfo)
 {
 	j[keyName::Entity_InterfaceInformation_MacAddress] = networkInterface::macAddressToString(intfcInfo.macAddress, true);
 	j[keyName::Entity_InterfaceInformation_ValidTime] = intfcInfo.validTime;
@@ -441,6 +501,14 @@ void to_json(json& j, Entity::InterfaceInformation const& intfcInfo)
 	{
 		j[keyName::Entity_InterfaceInformation_GptpDomainNumber] = *intfcInfo.gptpDomainNumber;
 	}
+}
+inline void from_json(json const& j, Entity::InterfaceInformation& intfcInfo)
+{
+	intfcInfo.macAddress = networkInterface::stringToMacAddress(j.at(keyName::Entity_InterfaceInformation_MacAddress).get<std::string>());
+	j.at(keyName::Entity_InterfaceInformation_ValidTime).get_to(intfcInfo.validTime);
+	j.at(keyName::Entity_InterfaceInformation_AvailableIndex).get_to(intfcInfo.availableIndex);
+	get_optional_value(j, keyName::Entity_InterfaceInformation_GptpGrandmasterID, intfcInfo.gptpGrandmasterID);
+	get_optional_value(j, keyName::Entity_InterfaceInformation_GptpDomainNumber, intfcInfo.gptpDomainNumber);
 }
 
 namespace model
@@ -615,19 +683,19 @@ NLOHMANN_JSON_SERIALIZE_ENUM(AudioClusterFormat, {
 																								 });
 
 /* SamplingRate conversion */
-void to_json(json& j, SamplingRate const& sr)
+inline void to_json(json& j, SamplingRate const& sr)
 {
 	j = utils::toHexString(sr.getValue(), true, true);
 }
 
 /* StreamFormat conversion */
-void to_json(json& j, StreamFormat const& sf)
+inline void to_json(json& j, StreamFormat const& sf)
 {
 	j = utils::toHexString(sf.getValue(), true, true);
 }
 
 /* LocalizedStringReference conversion */
-void to_json(json& j, LocalizedStringReference const& ref)
+inline void to_json(json& j, LocalizedStringReference const& ref)
 {
 	if (ref)
 	{
@@ -638,13 +706,13 @@ void to_json(json& j, LocalizedStringReference const& ref)
 }
 
 /* AvdeccFixedString conversion */
-void to_json(json& j, AvdeccFixedString const& str)
+inline void to_json(json& j, AvdeccFixedString const& str)
 {
 	j = str.str();
 }
 
 /* MsrpMapping conversion */
-void to_json(json& j, MsrpMapping const& mapping)
+inline void to_json(json& j, MsrpMapping const& mapping)
 {
 	j[keyName::MsrpMapping_TrafficClass] = mapping.trafficClass;
 	j[keyName::MsrpMapping_Priority] = mapping.priority;
@@ -652,7 +720,7 @@ void to_json(json& j, MsrpMapping const& mapping)
 }
 
 /* AudioMapping conversion */
-void to_json(json& j, AudioMapping const& mapping)
+inline void to_json(json& j, AudioMapping const& mapping)
 {
 	j[keyName::AudioMapping_StreamIndex] = mapping.streamIndex;
 	j[keyName::AudioMapping_StreamChannel] = mapping.streamChannel;
@@ -661,14 +729,14 @@ void to_json(json& j, AudioMapping const& mapping)
 }
 
 /* StreamIdentification conversion */
-void to_json(json& j, StreamIdentification const& stream)
+inline void to_json(json& j, StreamIdentification const& stream)
 {
 	j[keyName::StreamIdentification_EntityID] = stream.entityID;
 	j[keyName::StreamIdentification_StreamIndex] = stream.streamIndex;
 }
 
 /* StreamInfo conversion */
-void to_json(json& j, StreamInfo const& info)
+inline void to_json(json& j, StreamInfo const& info)
 {
 	j[keyName::StreamInfo_Flags] = info.streamInfoFlags;
 	j[keyName::StreamInfo_StreamFormat] = info.streamFormat;
@@ -694,7 +762,7 @@ void to_json(json& j, StreamInfo const& info)
 }
 
 /* AvbInfo conversion */
-void to_json(json& j, AvbInfo const& info)
+inline void to_json(json& j, AvbInfo const& info)
 {
 	j[keyName::AvbInfo_GptpGrandmasterID] = info.gptpGrandmasterID;
 	j[keyName::AvbInfo_GptpDomainNumber] = info.gptpDomainNumber;
@@ -704,18 +772,42 @@ void to_json(json& j, AvbInfo const& info)
 }
 
 /* AsPath conversion */
-void to_json(json& j, AsPath const& path)
+inline void to_json(json& j, AsPath const& path)
 {
 	j = path.sequence;
 }
 
 /* MilanInfo conversion */
-void to_json(json& j, MilanInfo const& info)
+inline void to_json(json& j, MilanInfo const& info)
 {
 	j[keyName::MilanInfo_ProtocolVersion] = info.protocolVersion;
 	j[keyName::MilanInfo_Flags] = info.featuresFlags;
 	{
 		j[keyName::MilanInfo_CertificationVersion] = std::to_string(info.certificationVersion >> 24 & 0xFF) + "." + std::to_string(info.certificationVersion >> 16 & 0xFF) + "." + std::to_string(info.certificationVersion >> 8 & 0xFF) + "." + std::to_string(info.certificationVersion & 0xFF);
+	}
+}
+inline void from_json(json const& j, MilanInfo& info)
+{
+	j.at(keyName::MilanInfo_ProtocolVersion).get_to(info.protocolVersion);
+	info.featuresFlags.fromString(j.at(keyName::MilanInfo_Flags).get<std::string>());
+	{
+		auto const str = j.at(keyName::MilanInfo_CertificationVersion).get<std::string>();
+		auto certificationVersion = decltype(info.certificationVersion){ 0u };
+		auto const tokens = utils::splitString(str, '.', true);
+		if (tokens.size() != 4)
+		{
+			throw std::invalid_argument("Invalid Milan CertificationVersion string representation: " + str);
+		}
+		for (auto i = 0u; i < 4u; ++i)
+		{
+			auto const tokValue = utils::convertFromString<decltype(certificationVersion)>(tokens[i].c_str());
+			if (tokValue > 255)
+			{
+				throw std::invalid_argument("Invalid Milan CertificationVersion digit value (greater than 255): " + str);
+			}
+			certificationVersion += (tokValue & 0xFF) << (24 - i * 8);
+		}
+		info.certificationVersion = certificationVersion;
 	}
 }
 

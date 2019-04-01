@@ -341,17 +341,30 @@ MvuCommandType::operator std::string() const noexcept
 MvuFeaturesFlags const MvuFeaturesFlags::None{ 0x00000000 };
 MvuFeaturesFlags const MvuFeaturesFlags::Redundancy{ 0x00000001 };
 
+static std::unordered_map<MvuFeaturesFlags::value_type, std::string> s_MvuFeaturesFlagsMapping = {
+	{ MvuFeaturesFlags::None.getValue(), "NONE" },
+	{ MvuFeaturesFlags::Redundancy.getValue(), "REDUNDANCY" },
+};
+
 MvuFeaturesFlags::operator std::string() const noexcept
 {
-	static std::unordered_map<MvuFeaturesFlags::value_type, std::string> s_MvuFeaturesFlagsMapping = {
-		{ MvuFeaturesFlags::None.getValue(), "NONE" },
-		{ MvuFeaturesFlags::Redundancy.getValue(), "REDUNDANCY" },
-	};
-
 	auto const& it = s_MvuFeaturesFlagsMapping.find(getValue());
 	if (it == s_MvuFeaturesFlagsMapping.end())
 		return "INVALID_FEATURE_FLAG";
 	return it->second;
+}
+
+void LA_AVDECC_CALL_CONVENTION MvuFeaturesFlags::fromString(std::string const& stringValue)
+{
+	for (auto const& [key, value] : s_MvuFeaturesFlagsMapping)
+	{
+		if (value == stringValue)
+		{
+			setValue(key);
+			return;
+		}
+	}
+	throw std::invalid_argument("Unknown MvuFeaturesFlags string representation: " + stringValue);
 }
 
 

@@ -28,6 +28,7 @@
 #include <la/avdecc/avdecc.hpp>
 #include <la/avdecc/utils.hpp>
 #include <la/avdecc/internals/exception.hpp>
+#include <la/avdecc/internals/jsonSerialization.hpp>
 #include <la/avdecc/memoryBuffer.hpp>
 
 #include "internals/avdeccControlledEntity.hpp"
@@ -200,15 +201,6 @@ public:
 		AudioClusterName,
 		ClockDomainName,
 		ClockDomainSourceIndex,
-	};
-
-	enum class SerializationError
-	{
-		NoError = 0,
-		AccessDenied = 1, /**< File access denied. */
-		UnknownEntity = 2, /**< Specified entityID unknown. */
-		SerializationError = 3, /**< Error during json serialization. */
-		InternalError = 99, /**< Internal error, please report the issue. */
 	};
 
 	/**
@@ -421,8 +413,8 @@ public:
 	virtual void unlock() noexcept = 0;
 
 	/* Model serialization methods */
-	virtual std::tuple<SerializationError, std::string> serializeAllControlledEntitiesAsReadableJson(std::string const& filePath) const noexcept = 0;
-	virtual std::tuple<SerializationError, std::string> serializeControlledEntityAsReadableJson(UniqueIdentifier const entityID, std::string const& filePath) const noexcept = 0;
+	virtual std::tuple<avdecc::entitySerializer::SerializationError, std::string> serializeAllControlledEntitiesAsReadableJson(std::string const& filePath) const noexcept = 0;
+	virtual std::tuple<avdecc::entitySerializer::SerializationError, std::string> serializeControlledEntityAsReadableJson(UniqueIdentifier const entityID, std::string const& filePath) const noexcept = 0;
 
 	// Deleted compiler auto-generated methods
 	Controller(Controller const&) = delete;
@@ -451,12 +443,6 @@ constexpr bool operator!(Controller::Error const error)
 	return error == Controller::Error::NoError;
 }
 
-constexpr bool operator!(Controller::SerializationError const error)
-{
-	return error == Controller::SerializationError::NoError;
-}
-
 } // namespace controller
-
 } // namespace avdecc
 } // namespace la

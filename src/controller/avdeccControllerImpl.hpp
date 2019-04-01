@@ -45,11 +45,11 @@ namespace controller
 class ControllerImpl final : public Controller, private entity::controller::Delegate
 {
 public:
+	using SharedControlledEntityImpl = std::shared_ptr<ControlledEntityImpl>;
+
 	ControllerImpl(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale);
 
 private:
-	using SharedControlledEntityImpl = std::shared_ptr<ControlledEntityImpl>;
-
 	virtual ~ControllerImpl() override;
 
 	/* ************************************************************ */
@@ -120,8 +120,8 @@ private:
 	virtual void unlock() noexcept override;
 
 	/* Model serialization methods */
-	virtual std::tuple<SerializationError, std::string> serializeAllControlledEntitiesAsReadableJson(std::string const& filePath) const noexcept override;
-	virtual std::tuple<SerializationError, std::string> serializeControlledEntityAsReadableJson(UniqueIdentifier const entityID, std::string const& filePath) const noexcept override;
+	virtual std::tuple<avdecc::entitySerializer::SerializationError, std::string> serializeAllControlledEntitiesAsReadableJson(std::string const& filePath) const noexcept override;
+	virtual std::tuple<avdecc::entitySerializer::SerializationError, std::string> serializeControlledEntityAsReadableJson(UniqueIdentifier const entityID, std::string const& filePath) const noexcept override;
 
 	/* ************************************************************ */
 	/* Result handlers                                              */

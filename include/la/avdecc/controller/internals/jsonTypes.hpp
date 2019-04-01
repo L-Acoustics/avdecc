@@ -242,6 +242,16 @@ constexpr auto ControlledEntity_StaticInformation = "static";
 constexpr auto ControlledEntity_DynamicInformation = "dynamic";
 
 } // namespace keyName
+
+namespace keyValue
+{
+/* Controller nodes */
+constexpr auto Controller_DumpVersion = std::uint32_t{ 1 };
+
+/* ControlledEntity nodes */
+constexpr auto ControlledEntity_DumpVersion = std::uint32_t{ 1 };
+
+} // namespace keyValue
 } // namespace entitySerializer
 } // namespace controller
 } // namespace avdecc
