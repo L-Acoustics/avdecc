@@ -130,6 +130,82 @@ constexpr auto forceNumeric(T const t) noexcept
 	return +t;
 }
 
+inline std::vector<std::string> splitString(std::string const& tokensString, char const ch, bool const emptyIsToken) noexcept
+{
+	auto const* const str = tokensString.c_str();
+	auto const pathLen = tokensString.length();
+
+	auto tokensArray = std::vector<std::string>{};
+	auto startPos = size_t{ 0u };
+	auto currentPos = size_t{ 0u };
+	while (currentPos < pathLen)
+	{
+		// Check if we found our char
+		while (str[currentPos] == ch && currentPos < pathLen)
+		{
+			auto const foundPos = currentPos;
+			if (!emptyIsToken)
+			{
+				// And trim consecutive chars
+				while (str[currentPos] == ch)
+				{
+					currentPos++;
+				}
+			}
+			else
+			{
+				currentPos++;
+			}
+			auto const subStr = tokensString.substr(startPos, foundPos - startPos);
+			if (!subStr.empty() || emptyIsToken)
+			{
+				tokensArray.push_back(subStr);
+			}
+			startPos = currentPos;
+		}
+		currentPos++;
+	}
+
+	// Add what remains as a token (except if empty and !emptyIsToken)
+	auto const subStr = tokensString.substr(startPos, pathLen - startPos);
+	if (!subStr.empty() || emptyIsToken)
+	{
+		tokensArray.push_back(subStr);
+	}
+
+	return tokensArray;
+}
+
+/** Useful template to convert the string representation of any integer to its underlying type. */
+template<typename T>
+T convertFromString(char const* const str)
+{
+	static_assert(sizeof(T) > 1, "convertFromString<T> must not be char type");
+
+	if (std::strncmp(str, "0b", 2) == 0)
+	{
+		char* endptr = nullptr;
+		auto c = std::strtoll(str + 2, &endptr, 2);
+		if (endptr != nullptr && *endptr) // Conversion failed
+		{
+			throw std::invalid_argument(str);
+		}
+		return static_cast<T>(c);
+	}
+	std::stringstream ss;
+	if (std::strncmp(str, "0x", 2) == 0 || std::strncmp(str, "0X", 2) == 0)
+	{
+		ss << std::hex;
+	}
+
+	ss << str;
+	T out;
+	ss >> out;
+	if (ss.fail())
+		throw std::invalid_argument(str);
+	return out;
+}
+
 /** Useful template to convert any integer value to it's hex representation. Can be filled with zeros (ex: int16(0x123) = 0x0123) and printed in uppercase. */
 template<typename T>
 inline std::string toHexString(T const v, bool const zeroFilled = false, bool const upper = false) noexcept
