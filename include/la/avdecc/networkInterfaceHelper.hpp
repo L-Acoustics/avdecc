@@ -84,6 +84,8 @@ LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION enumerateInterfaces(EnumerateInterf
 LA_AVDECC_API Interface LA_AVDECC_CALL_CONVENTION getInterfaceByName(std::string const& name);
 /** Converts the specified MAC address to string (in the form: xx:xx:xx:xx:xx:xx) */
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION macAddressToString(MacAddress const& macAddress, bool const upperCase = true) noexcept;
+/** Converts the string representation of a MAC address to a MacAddress (from the form: xx:xx:xx:xx:xx:xx or XX:XX:XX:XX:XX:XX) */
+LA_AVDECC_API MacAddress LA_AVDECC_CALL_CONVENTION stringToMacAddress(std::string const& macAddressAsString); // Throws std::invalid_argument if the string cannot be parsed
 /** Returns true if specified MAC address is valid */
 LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION isMacAddressValid(MacAddress const& macAddress) noexcept;
 

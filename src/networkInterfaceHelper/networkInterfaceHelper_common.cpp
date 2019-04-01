@@ -28,6 +28,8 @@
 #include <exception>
 #include <iomanip> // setfill
 #include <ios> // uppercase
+#include <algorithm> // remove
+#include <string>
 #include <mutex>
 
 namespace la
@@ -110,7 +112,7 @@ std::string LA_AVDECC_CALL_CONVENTION macAddressToString(MacAddress const& macAd
 			if (isFirst)
 				isFirst = false;
 			else
-				ss << "-";
+				ss << ":";
 			ss << std::setw(2) << forceNumeric(v); // setw has to be called every time
 		}
 
@@ -120,6 +122,32 @@ std::string LA_AVDECC_CALL_CONVENTION macAddressToString(MacAddress const& macAd
 	{
 		return {};
 	}
+}
+
+MacAddress LA_AVDECC_CALL_CONVENTION stringToMacAddress(std::string const& macAddressAsString)
+{
+	auto str = macAddressAsString;
+	str.erase(std::remove(str.begin(), str.end(), ':'), str.end());
+
+	auto ss = std::stringstream{};
+	ss << std::hex << str;
+
+	auto macAsInteger = std::uint64_t{};
+	ss >> macAsInteger;
+	if (ss.fail())
+	{
+		throw std::invalid_argument("Invalid MacAddress representation: " + macAddressAsString);
+	}
+
+	auto out = MacAddress{};
+	out[0] = static_cast<MacAddress::value_type>((macAsInteger >> 40) & 0xFF);
+	out[1] = static_cast<MacAddress::value_type>((macAsInteger >> 32) & 0xFF);
+	out[2] = static_cast<MacAddress::value_type>((macAsInteger >> 24) & 0xFF);
+	out[3] = static_cast<MacAddress::value_type>((macAsInteger >> 16) & 0xFF);
+	out[4] = static_cast<MacAddress::value_type>((macAsInteger >> 8) & 0xFF);
+	out[5] = static_cast<MacAddress::value_type>((macAsInteger >> 0) & 0xFF);
+
+	return out;
 }
 
 bool LA_AVDECC_CALL_CONVENTION isMacAddressValid(MacAddress const& macAddress) noexcept
