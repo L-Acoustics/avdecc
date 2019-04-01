@@ -28,8 +28,7 @@
 
 #include <la/avdecc/avdecc.hpp>
 #include <la/avdecc/internals/exception.hpp>
-#include <la/avdecc/internals/entityModelTreeDynamic.hpp>
-#include <la/avdecc/internals/entityModelTreeStatic.hpp>
+#include <la/avdecc/internals/entityModelTree.hpp>
 
 #if defined(ENABLE_AVDECC_CUSTOM_ANY)
 #	include <la/avdecc/internals/any.hpp>

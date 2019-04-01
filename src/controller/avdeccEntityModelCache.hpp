@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include "avdeccControlledEntityModelTree.hpp"
+#include <la/avdecc/internals/entityModelTree.hpp>
 
 #include <unordered_map>
 
@@ -57,7 +57,7 @@ public:
 	// because clearCache would probably not be called from the same thread than getCachedEntityStaticTree and cacheEntityStaticTree.
 	// Also we should return a copy of the data (pair<bool, Tree> or std::optional) so the lock is release with valid data
 
-	model::EntityStaticTree const* getCachedEntityStaticTree(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex) const noexcept
+	entity::model::EntityStaticTree const* getCachedEntityStaticTree(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex) const noexcept
 	{
 		if (_isEnabled)
 		{
@@ -76,7 +76,7 @@ public:
 		return nullptr;
 	}
 
-	void cacheEntityStaticTree(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, model::EntityStaticTree const& staticTree) noexcept
+	void cacheEntityStaticTree(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::EntityStaticTree const& staticTree) noexcept
 	{
 		if (_isEnabled)
 		{
@@ -92,7 +92,7 @@ public:
 	}
 
 private:
-	using StaticEntityModel = std::unordered_map<entity::model::ConfigurationIndex, model::EntityStaticTree>;
+	using StaticEntityModel = std::unordered_map<entity::model::ConfigurationIndex, entity::model::EntityStaticTree>;
 	std::unordered_map<UniqueIdentifier, StaticEntityModel, la::avdecc::UniqueIdentifier::hash> _modelCache{};
 	bool _isEnabled{ false };
 };

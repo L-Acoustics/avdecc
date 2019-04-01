@@ -102,13 +102,13 @@ bool ControlledEntityImpl::isLockedByOther() const noexcept
 
 bool ControlledEntityImpl::isStreamInputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const
 {
-	auto const& dynamicModel = getNodeDynamicModel(configurationIndex, streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels);
+	auto const& dynamicModel = getNodeDynamicModel(configurationIndex, streamIndex, &entity::model::ConfigurationDynamicTree::streamInputDynamicModels);
 	return isStreamRunningFlag(dynamicModel.streamInfo.streamInfoFlags);
 }
 
 bool ControlledEntityImpl::isStreamOutputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const
 {
-	auto const& dynamicModel = getNodeDynamicModel(configurationIndex, streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels);
+	auto const& dynamicModel = getNodeDynamicModel(configurationIndex, streamIndex, &entity::model::ConfigurationDynamicTree::streamOutputDynamicModels);
 	return isStreamRunningFlag(dynamicModel.streamInfo.streamInfoFlags);
 }
 
@@ -385,7 +385,7 @@ entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString
 
 entity::model::StreamConnectionState const& ControlledEntityImpl::getConnectedSinkState(entity::model::StreamIndex const streamIndex) const
 {
-	auto const& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels);
+	auto const& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationDynamicTree::streamInputDynamicModels);
 
 	AVDECC_ASSERT(_entity.getEntityID() == dynamicModel.connectionState.listenerStream.entityID, "EntityID not correctly initialized");
 	AVDECC_ASSERT(streamIndex == dynamicModel.connectionState.listenerStream.streamIndex, "StreamIndex not correctly initialized");
@@ -397,12 +397,12 @@ entity::model::AudioMappings const& ControlledEntityImpl::getStreamPortInputAudi
 	auto const currentConfiguration = getCurrentConfigurationIndex();
 
 	// Check if dynamic mappings is supported by the entity
-	auto const& staticModel = getNodeStaticModel(currentConfiguration, streamPortIndex, &model::ConfigurationStaticTree::streamPortInputStaticModels);
+	auto const& staticModel = getNodeStaticModel(currentConfiguration, streamPortIndex, &entity::model::ConfigurationStaticTree::streamPortInputStaticModels);
 	if (!staticModel.hasDynamicAudioMap)
 		throw Exception(Exception::Type::NotSupported, "Dynamic mappings not supported by this stream port");
 
 	// Return dynamic mappings for this stream port
-	auto const& dynamicModel = getNodeDynamicModel(currentConfiguration, streamPortIndex, &model::ConfigurationDynamicTree::streamPortInputDynamicModels);
+	auto const& dynamicModel = getNodeDynamicModel(currentConfiguration, streamPortIndex, &entity::model::ConfigurationDynamicTree::streamPortInputDynamicModels);
 	return dynamicModel.dynamicAudioMap;
 }
 
@@ -411,18 +411,18 @@ entity::model::AudioMappings const& ControlledEntityImpl::getStreamPortOutputAud
 	auto const currentConfiguration = getCurrentConfigurationIndex();
 
 	// Check if dynamic mappings is supported by the entity
-	auto const& staticModel = getNodeStaticModel(currentConfiguration, streamPortIndex, &model::ConfigurationStaticTree::streamPortOutputStaticModels);
+	auto const& staticModel = getNodeStaticModel(currentConfiguration, streamPortIndex, &entity::model::ConfigurationStaticTree::streamPortOutputStaticModels);
 	if (!staticModel.hasDynamicAudioMap)
 		throw Exception(Exception::Type::NotSupported, "Dynamic mappings not supported by this stream port");
 
 	// Return dynamic mappings for this stream port
-	auto const& dynamicModel = getNodeDynamicModel(currentConfiguration, streamPortIndex, &model::ConfigurationDynamicTree::streamPortOutputDynamicModels);
+	auto const& dynamicModel = getNodeDynamicModel(currentConfiguration, streamPortIndex, &entity::model::ConfigurationDynamicTree::streamPortOutputDynamicModels);
 	return dynamicModel.dynamicAudioMap;
 }
 
 entity::model::StreamConnections const& ControlledEntityImpl::getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const
 {
-	auto const& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels);
+	auto const& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationDynamicTree::streamOutputDynamicModels);
 
 	return dynamicModel.connections;
 }
@@ -624,7 +624,7 @@ void ControlledEntityImpl::unlock() noexcept
 }
 
 // Const Tree getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist
-model::EntityStaticTree const& ControlledEntityImpl::getEntityStaticTree() const
+entity::model::EntityStaticTree const& ControlledEntityImpl::getEntityStaticTree() const
 {
 	if (gotFatalEnumerationError())
 		throw Exception(Exception::Type::EnumerationError, "Entity had a fatal enumeration error");
@@ -635,7 +635,7 @@ model::EntityStaticTree const& ControlledEntityImpl::getEntityStaticTree() const
 	return _entityStaticTree;
 }
 
-model::EntityDynamicTree const& ControlledEntityImpl::getEntityDynamicTree() const
+entity::model::EntityDynamicTree const& ControlledEntityImpl::getEntityDynamicTree() const
 {
 	if (gotFatalEnumerationError())
 		throw Exception(Exception::Type::EnumerationError, "Entity had a fatal enumeration error");
@@ -646,7 +646,7 @@ model::EntityDynamicTree const& ControlledEntityImpl::getEntityDynamicTree() con
 	return _entityDynamicTree;
 }
 
-model::ConfigurationStaticTree const& ControlledEntityImpl::getConfigurationStaticTree(entity::model::ConfigurationIndex const configurationIndex) const
+entity::model::ConfigurationStaticTree const& ControlledEntityImpl::getConfigurationStaticTree(entity::model::ConfigurationIndex const configurationIndex) const
 {
 	auto const& entityStaticTree = getEntityStaticTree();
 	auto const it = entityStaticTree.configurationStaticTrees.find(configurationIndex);
@@ -656,7 +656,7 @@ model::ConfigurationStaticTree const& ControlledEntityImpl::getConfigurationStat
 	return it->second;
 }
 
-model::ConfigurationDynamicTree const& ControlledEntityImpl::getConfigurationDynamicTree(entity::model::ConfigurationIndex const configurationIndex) const
+entity::model::ConfigurationDynamicTree const& ControlledEntityImpl::getConfigurationDynamicTree(entity::model::ConfigurationIndex const configurationIndex) const
 {
 	auto const& entityDynamicTree = getEntityDynamicTree();
 	auto const it = entityDynamicTree.configurationDynamicTrees.find(configurationIndex);
@@ -693,23 +693,23 @@ entity::model::ConfigurationNodeDynamicModel const& ControlledEntityImpl::getCon
 }
 
 // Non-const Tree getters
-model::EntityStaticTree& ControlledEntityImpl::getEntityStaticTree() noexcept
+entity::model::EntityStaticTree& ControlledEntityImpl::getEntityStaticTree() noexcept
 {
 	return _entityStaticTree;
 }
 
-model::EntityDynamicTree& ControlledEntityImpl::getEntityDynamicTree() noexcept
+entity::model::EntityDynamicTree& ControlledEntityImpl::getEntityDynamicTree() noexcept
 {
 	return _entityDynamicTree;
 }
 
-model::ConfigurationStaticTree& ControlledEntityImpl::getConfigurationStaticTree(entity::model::ConfigurationIndex const configurationIndex) noexcept
+entity::model::ConfigurationStaticTree& ControlledEntityImpl::getConfigurationStaticTree(entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
 	auto& entityStaticTree = getEntityStaticTree();
 	return entityStaticTree.configurationStaticTrees[configurationIndex];
 }
 
-model::ConfigurationDynamicTree& ControlledEntityImpl::getConfigurationDynamicTree(entity::model::ConfigurationIndex const configurationIndex) noexcept
+entity::model::ConfigurationDynamicTree& ControlledEntityImpl::getConfigurationDynamicTree(entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
 	auto& entityDynamicTree = getEntityDynamicTree();
 	return entityDynamicTree.configurationDynamicTrees[configurationIndex];
@@ -766,7 +766,7 @@ void ControlledEntityImpl::setConfigurationName(entity::model::ConfigurationInde
 
 void ControlledEntityImpl::setSamplingRate(entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate) noexcept
 {
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), audioUnitIndex, &model::ConfigurationDynamicTree::audioUnitDynamicModels);
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), audioUnitIndex, &entity::model::ConfigurationDynamicTree::audioUnitDynamicModels);
 	dynamicModel.currentSamplingRate = samplingRate;
 }
 
@@ -775,7 +775,7 @@ entity::model::StreamConnectionState ControlledEntityImpl::setStreamInputConnect
 	AVDECC_ASSERT(_entity.getEntityID() == state.listenerStream.entityID, "EntityID not correctly initialized");
 	AVDECC_ASSERT(streamIndex == state.listenerStream.streamIndex, "StreamIndex not correctly initialized");
 
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels);
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationDynamicTree::streamInputDynamicModels);
 
 	// Save previous StreamConnectionState
 	auto previousState = dynamicModel.connectionState;
@@ -788,7 +788,7 @@ entity::model::StreamConnectionState ControlledEntityImpl::setStreamInputConnect
 
 std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> ControlledEntityImpl::setStreamInputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept
 {
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels);
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationDynamicTree::streamInputDynamicModels);
 
 	// Save previous StreamInfo
 	auto previousInfo = dynamicModel.streamInfo;
@@ -808,26 +808,26 @@ std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> Controlle
 
 void ControlledEntityImpl::clearStreamOutputConnections(entity::model::StreamIndex const streamIndex) noexcept
 {
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels);
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationDynamicTree::streamOutputDynamicModels);
 	dynamicModel.connections.clear();
 }
 
 bool ControlledEntityImpl::addStreamOutputConnection(entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream) noexcept
 {
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels);
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationDynamicTree::streamOutputDynamicModels);
 	auto const result = dynamicModel.connections.insert(listenerStream);
 	return result.second;
 }
 
 bool ControlledEntityImpl::delStreamOutputConnection(entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream) noexcept
 {
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels);
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationDynamicTree::streamOutputDynamicModels);
 	return dynamicModel.connections.erase(listenerStream) > 0;
 }
 
 std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> ControlledEntityImpl::setStreamOutputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept
 {
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels);
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationDynamicTree::streamOutputDynamicModels);
 
 	// Save previous StreamInfo
 	auto previousInfo = dynamicModel.streamInfo;
@@ -847,7 +847,7 @@ std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> Controlle
 
 entity::model::AvbInfo ControlledEntityImpl::setAvbInfo(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) noexcept
 {
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), avbInterfaceIndex, &model::ConfigurationDynamicTree::avbInterfaceDynamicModels);
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), avbInterfaceIndex, &entity::model::ConfigurationDynamicTree::avbInterfaceDynamicModels);
 
 	// Save previous AvbInfo
 	auto previousInfo = dynamicModel.avbInfo;
@@ -860,7 +860,7 @@ entity::model::AvbInfo ControlledEntityImpl::setAvbInfo(entity::model::AvbInterf
 
 entity::model::AsPath ControlledEntityImpl::setAsPath(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath) noexcept
 {
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), avbInterfaceIndex, &model::ConfigurationDynamicTree::avbInterfaceDynamicModels);
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), avbInterfaceIndex, &entity::model::ConfigurationDynamicTree::avbInterfaceDynamicModels);
 
 	// Save previous AsPath
 	auto previousPath = dynamicModel.asPath;
@@ -880,13 +880,13 @@ void ControlledEntityImpl::setSelectedLocaleStringsIndexesRange(entity::model::C
 
 void ControlledEntityImpl::clearStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) noexcept
 {
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamPortIndex, &model::ConfigurationDynamicTree::streamPortInputDynamicModels);
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamPortIndex, &entity::model::ConfigurationDynamicTree::streamPortInputDynamicModels);
 	dynamicModel.dynamicAudioMap.clear();
 }
 
 void ControlledEntityImpl::addStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept
 {
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamPortIndex, &model::ConfigurationDynamicTree::streamPortInputDynamicModels);
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamPortIndex, &entity::model::ConfigurationDynamicTree::streamPortInputDynamicModels);
 	auto& dynamicMap = dynamicModel.dynamicAudioMap;
 
 	// Process audio mappings
@@ -928,7 +928,7 @@ void ControlledEntityImpl::addStreamPortInputAudioMappings(entity::model::Stream
 
 void ControlledEntityImpl::removeStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept
 {
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamPortIndex, &model::ConfigurationDynamicTree::streamPortInputDynamicModels);
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamPortIndex, &entity::model::ConfigurationDynamicTree::streamPortInputDynamicModels);
 	auto& dynamicMap = dynamicModel.dynamicAudioMap;
 
 	// Process audio mappings
@@ -953,13 +953,13 @@ void ControlledEntityImpl::removeStreamPortInputAudioMappings(entity::model::Str
 
 void ControlledEntityImpl::clearStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) noexcept
 {
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamPortIndex, &model::ConfigurationDynamicTree::streamPortOutputDynamicModels);
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamPortIndex, &entity::model::ConfigurationDynamicTree::streamPortOutputDynamicModels);
 	dynamicModel.dynamicAudioMap.clear();
 }
 
 void ControlledEntityImpl::addStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept
 {
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamPortIndex, &model::ConfigurationDynamicTree::streamPortOutputDynamicModels);
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamPortIndex, &entity::model::ConfigurationDynamicTree::streamPortOutputDynamicModels);
 	auto& dynamicMap = dynamicModel.dynamicAudioMap;
 
 	// Process audio mappings
@@ -1001,7 +1001,7 @@ void ControlledEntityImpl::addStreamPortOutputAudioMappings(entity::model::Strea
 
 void ControlledEntityImpl::removeStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept
 {
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamPortIndex, &model::ConfigurationDynamicTree::streamPortOutputDynamicModels);
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamPortIndex, &entity::model::ConfigurationDynamicTree::streamPortOutputDynamicModels);
 	auto& dynamicMap = dynamicModel.dynamicAudioMap;
 
 	// Process audio mappings
@@ -1026,13 +1026,13 @@ void ControlledEntityImpl::removeStreamPortOutputAudioMappings(entity::model::St
 
 void ControlledEntityImpl::setClockSource(entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex) noexcept
 {
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), clockDomainIndex, &model::ConfigurationDynamicTree::clockDomainDynamicModels);
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), clockDomainIndex, &entity::model::ConfigurationDynamicTree::clockDomainDynamicModels);
 	dynamicModel.clockSourceIndex = clockSourceIndex;
 }
 
 void ControlledEntityImpl::setMemoryObjectLength(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) noexcept
 {
-	auto& dynamicModel = getNodeDynamicModel(configurationIndex, memoryObjectIndex, &model::ConfigurationDynamicTree::memoryObjectDynamicModels);
+	auto& dynamicModel = getNodeDynamicModel(configurationIndex, memoryObjectIndex, &entity::model::ConfigurationDynamicTree::memoryObjectDynamicModels);
 	dynamicModel.length = length;
 }
 
@@ -1044,25 +1044,25 @@ entity::model::EntityCounters& ControlledEntityImpl::getEntityCounters() noexcep
 
 entity::model::AvbInterfaceCounters& ControlledEntityImpl::getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept
 {
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), avbInterfaceIndex, &model::ConfigurationDynamicTree::avbInterfaceDynamicModels);
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), avbInterfaceIndex, &entity::model::ConfigurationDynamicTree::avbInterfaceDynamicModels);
 	return dynamicModel.counters;
 }
 
 entity::model::ClockDomainCounters& ControlledEntityImpl::getClockDomainCounters(entity::model::ClockDomainIndex const clockDomainIndex) noexcept
 {
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), clockDomainIndex, &model::ConfigurationDynamicTree::clockDomainDynamicModels);
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), clockDomainIndex, &entity::model::ConfigurationDynamicTree::clockDomainDynamicModels);
 	return dynamicModel.counters;
 }
 
 entity::model::StreamInputCounters& ControlledEntityImpl::getStreamInputCounters(entity::model::StreamIndex const streamIndex) noexcept
 {
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels);
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationDynamicTree::streamInputDynamicModels);
 	return dynamicModel.counters;
 }
 
 entity::model::StreamOutputCounters& ControlledEntityImpl::getStreamOutputCounters(entity::model::StreamIndex const streamIndex) noexcept
 {
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels);
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationDynamicTree::streamOutputDynamicModels);
 	return dynamicModel.counters;
 }
 
@@ -1123,7 +1123,7 @@ void ControlledEntityImpl::setMilanInfo(entity::model::MilanInfo const& info) no
 
 // Setters of the Model from AEM Descriptors (including DescriptorDynamic info)
 
-bool ControlledEntityImpl::setCachedEntityStaticTree(model::EntityStaticTree const& cachedStaticTree, entity::model::EntityDescriptor const& descriptor) noexcept
+bool ControlledEntityImpl::setCachedEntityStaticTree(entity::model::EntityStaticTree const& cachedStaticTree, entity::model::EntityDescriptor const& descriptor) noexcept
 {
 	// Check if static information in EntityDescriptor are identical
 	auto const& cachedDescriptor = cachedStaticTree.staticModel;
@@ -1202,7 +1202,7 @@ void ControlledEntityImpl::setAudioUnitDescriptor(entity::model::AudioUnitDescri
 	// Copy static model
 	{
 		// Get or create a new model::AudioUnitNodeStaticModel
-		auto& m = getNodeStaticModel(configurationIndex, audioUnitIndex, &model::ConfigurationStaticTree::audioUnitStaticModels);
+		auto& m = getNodeStaticModel(configurationIndex, audioUnitIndex, &entity::model::ConfigurationStaticTree::audioUnitStaticModels);
 		m.localizedDescription = descriptor.localizedDescription;
 		m.clockDomainIndex = descriptor.clockDomainIndex;
 		m.numberOfStreamInputPorts = descriptor.numberOfStreamInputPorts;
@@ -1243,7 +1243,7 @@ void ControlledEntityImpl::setAudioUnitDescriptor(entity::model::AudioUnitDescri
 	// Copy dynamic model
 	{
 		// Get or create a new model::AudioUnitNodeDynamicModel
-		auto& m = getNodeDynamicModel(configurationIndex, audioUnitIndex, &model::ConfigurationDynamicTree::audioUnitDynamicModels);
+		auto& m = getNodeDynamicModel(configurationIndex, audioUnitIndex, &entity::model::ConfigurationDynamicTree::audioUnitDynamicModels);
 		// Changeable fields through commands
 		m.objectName = descriptor.objectName;
 		m.currentSamplingRate = descriptor.currentSamplingRate;
@@ -1255,7 +1255,7 @@ void ControlledEntityImpl::setStreamInputDescriptor(entity::model::StreamDescrip
 	// Copy static model
 	{
 		// Get or create a new model::StreamNodeStaticModel
-		auto& m = getNodeStaticModel(configurationIndex, streamIndex, &model::ConfigurationStaticTree::streamInputStaticModels);
+		auto& m = getNodeStaticModel(configurationIndex, streamIndex, &entity::model::ConfigurationStaticTree::streamInputStaticModels);
 		m.localizedDescription = descriptor.localizedDescription;
 		m.clockDomainIndex = descriptor.clockDomainIndex;
 		m.streamFlags = descriptor.streamFlags;
@@ -1278,7 +1278,7 @@ void ControlledEntityImpl::setStreamInputDescriptor(entity::model::StreamDescrip
 	// Copy dynamic model
 	{
 		// Get or create a new model::StreamInputNodeDynamicModel
-		auto& m = getNodeDynamicModel(configurationIndex, streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels);
+		auto& m = getNodeDynamicModel(configurationIndex, streamIndex, &entity::model::ConfigurationDynamicTree::streamInputDynamicModels);
 		// Not changeable fields
 		m.connectionState.listenerStream = entity::model::StreamIdentification{ _entity.getEntityID(), streamIndex }; // We always are the other endpoint of a connection, initialize this now
 		// Changeable fields through commands
@@ -1293,7 +1293,7 @@ void ControlledEntityImpl::setStreamOutputDescriptor(entity::model::StreamDescri
 	// Copy static model
 	{
 		// Get or create a new model::StreamNodeStaticModel
-		auto& m = getNodeStaticModel(configurationIndex, streamIndex, &model::ConfigurationStaticTree::streamOutputStaticModels);
+		auto& m = getNodeStaticModel(configurationIndex, streamIndex, &entity::model::ConfigurationStaticTree::streamOutputStaticModels);
 		m.localizedDescription = descriptor.localizedDescription;
 		m.clockDomainIndex = descriptor.clockDomainIndex;
 		m.streamFlags = descriptor.streamFlags;
@@ -1316,7 +1316,7 @@ void ControlledEntityImpl::setStreamOutputDescriptor(entity::model::StreamDescri
 	// Copy dynamic model
 	{
 		// Get or create a new model::StreamOutputNodeDynamicModel
-		auto& m = getNodeDynamicModel(configurationIndex, streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels);
+		auto& m = getNodeDynamicModel(configurationIndex, streamIndex, &entity::model::ConfigurationDynamicTree::streamOutputDynamicModels);
 		// Changeable fields through commands
 		m.objectName = descriptor.objectName;
 		m.streamInfo.streamFormat = descriptor.currentFormat; // Copy the streamFormat, but we should get the complete StreamInfo soon
@@ -1329,7 +1329,7 @@ void ControlledEntityImpl::setAvbInterfaceDescriptor(entity::model::AvbInterface
 	// Copy static model
 	{
 		// Get or create a new model::AvbInterfaceNodeStaticModel
-		auto& m = getNodeStaticModel(configurationIndex, interfaceIndex, &model::ConfigurationStaticTree::avbInterfaceStaticModels);
+		auto& m = getNodeStaticModel(configurationIndex, interfaceIndex, &entity::model::ConfigurationStaticTree::avbInterfaceStaticModels);
 		m.localizedDescription = descriptor.localizedDescription;
 		m.macAddress = descriptor.macAddress;
 		m.interfaceFlags = descriptor.interfaceFlags;
@@ -1349,7 +1349,7 @@ void ControlledEntityImpl::setAvbInterfaceDescriptor(entity::model::AvbInterface
 	// Copy dynamic model
 	{
 		// Get or create a new model::AvbInterfaceNodeDynamicModel
-		auto& m = getNodeDynamicModel(configurationIndex, interfaceIndex, &model::ConfigurationDynamicTree::avbInterfaceDynamicModels);
+		auto& m = getNodeDynamicModel(configurationIndex, interfaceIndex, &entity::model::ConfigurationDynamicTree::avbInterfaceDynamicModels);
 		// Changeable fields through commands
 		m.objectName = descriptor.objectName;
 	}
@@ -1360,7 +1360,7 @@ void ControlledEntityImpl::setClockSourceDescriptor(entity::model::ClockSourceDe
 	// Copy static model
 	{
 		// Get or create a new model::ClockSourceNodeStaticModel
-		auto& m = getNodeStaticModel(configurationIndex, clockIndex, &model::ConfigurationStaticTree::clockSourceStaticModels);
+		auto& m = getNodeStaticModel(configurationIndex, clockIndex, &entity::model::ConfigurationStaticTree::clockSourceStaticModels);
 		m.localizedDescription = descriptor.localizedDescription;
 		m.clockSourceType = descriptor.clockSourceType;
 		m.clockSourceLocationType = descriptor.clockSourceLocationType;
@@ -1370,7 +1370,7 @@ void ControlledEntityImpl::setClockSourceDescriptor(entity::model::ClockSourceDe
 	// Copy dynamic model
 	{
 		// Get or create a new model::ClockSourceNodeDynamicModel
-		auto& m = getNodeDynamicModel(configurationIndex, clockIndex, &model::ConfigurationDynamicTree::clockSourceDynamicModels);
+		auto& m = getNodeDynamicModel(configurationIndex, clockIndex, &entity::model::ConfigurationDynamicTree::clockSourceDynamicModels);
 		// Not changeable fields
 		m.clockSourceFlags = descriptor.clockSourceFlags;
 		m.clockSourceIdentifier = descriptor.clockSourceIdentifier;
@@ -1384,7 +1384,7 @@ void ControlledEntityImpl::setMemoryObjectDescriptor(entity::model::MemoryObject
 	// Copy static model
 	{
 		// Get or create a new model::MemoryObjectNodeStaticModel
-		auto& m = getNodeStaticModel(configurationIndex, memoryObjectIndex, &model::ConfigurationStaticTree::memoryObjectStaticModels);
+		auto& m = getNodeStaticModel(configurationIndex, memoryObjectIndex, &entity::model::ConfigurationStaticTree::memoryObjectStaticModels);
 		m.localizedDescription = descriptor.localizedDescription;
 		m.memoryObjectType = descriptor.memoryObjectType;
 		m.targetDescriptorType = descriptor.targetDescriptorType;
@@ -1396,7 +1396,7 @@ void ControlledEntityImpl::setMemoryObjectDescriptor(entity::model::MemoryObject
 	// Copy dynamic model
 	{
 		// Get or create a new model::MemoryObjectNodeDynamicModel
-		auto& m = getNodeDynamicModel(configurationIndex, memoryObjectIndex, &model::ConfigurationDynamicTree::memoryObjectDynamicModels);
+		auto& m = getNodeDynamicModel(configurationIndex, memoryObjectIndex, &entity::model::ConfigurationDynamicTree::memoryObjectDynamicModels);
 		// Changeable fields through commands
 		m.objectName = descriptor.objectName;
 		m.length = descriptor.length;
@@ -1408,7 +1408,7 @@ void ControlledEntityImpl::setLocaleDescriptor(entity::model::LocaleDescriptor c
 	// Copy static model
 	{
 		// Get or create a new model::LocaleNodeStaticModel
-		auto& m = getNodeStaticModel(configurationIndex, localeIndex, &model::ConfigurationStaticTree::localeStaticModels);
+		auto& m = getNodeStaticModel(configurationIndex, localeIndex, &entity::model::ConfigurationStaticTree::localeStaticModels);
 		m.localeID = descriptor.localeID;
 		m.numberOfStringDescriptors = descriptor.numberOfStringDescriptors;
 		m.baseStringDescriptorIndex = descriptor.baseStringDescriptorIndex;
@@ -1420,7 +1420,7 @@ void ControlledEntityImpl::setStringsDescriptor(entity::model::StringsDescriptor
 	// Copy static model
 	{
 		// Get or create a new model::StringsNodeStaticModel
-		auto& m = getNodeStaticModel(configurationIndex, stringsIndex, &model::ConfigurationStaticTree::stringsStaticModels);
+		auto& m = getNodeStaticModel(configurationIndex, stringsIndex, &entity::model::ConfigurationStaticTree::stringsStaticModels);
 		m.strings = descriptor.strings;
 	}
 
@@ -1448,7 +1448,7 @@ void ControlledEntityImpl::setStreamPortInputDescriptor(entity::model::StreamPor
 	// Copy static model
 	{
 		// Get or create a new model::StreamPortNodeStaticModel
-		auto& m = getNodeStaticModel(configurationIndex, streamPortIndex, &model::ConfigurationStaticTree::streamPortInputStaticModels);
+		auto& m = getNodeStaticModel(configurationIndex, streamPortIndex, &entity::model::ConfigurationStaticTree::streamPortInputStaticModels);
 		m.clockDomainIndex = descriptor.clockDomainIndex;
 		m.portFlags = descriptor.portFlags;
 		m.numberOfControls = descriptor.numberOfControls;
@@ -1468,7 +1468,7 @@ void ControlledEntityImpl::setStreamPortOutputDescriptor(entity::model::StreamPo
 	// Copy static model
 	{
 		// Get or create a new model::StreamPortNodeStaticModel
-		auto& m = getNodeStaticModel(configurationIndex, streamPortIndex, &model::ConfigurationStaticTree::streamPortOutputStaticModels);
+		auto& m = getNodeStaticModel(configurationIndex, streamPortIndex, &entity::model::ConfigurationStaticTree::streamPortOutputStaticModels);
 		m.clockDomainIndex = descriptor.clockDomainIndex;
 		m.portFlags = descriptor.portFlags;
 		m.numberOfControls = descriptor.numberOfControls;
@@ -1488,7 +1488,7 @@ void ControlledEntityImpl::setAudioClusterDescriptor(entity::model::AudioCluster
 	// Copy static model
 	{
 		// Get or create a new model::AudioClusterNodeStaticModel
-		auto& m = getNodeStaticModel(configurationIndex, clusterIndex, &model::ConfigurationStaticTree::audioClusterStaticModels);
+		auto& m = getNodeStaticModel(configurationIndex, clusterIndex, &entity::model::ConfigurationStaticTree::audioClusterStaticModels);
 		m.localizedDescription = descriptor.localizedDescription;
 		m.signalType = descriptor.signalType;
 		m.signalIndex = descriptor.signalIndex;
@@ -1502,7 +1502,7 @@ void ControlledEntityImpl::setAudioClusterDescriptor(entity::model::AudioCluster
 	// Copy dynamic model
 	{
 		// Get or create a new model::AudioClusterNodeDynamicModel
-		auto& m = getNodeDynamicModel(configurationIndex, clusterIndex, &model::ConfigurationDynamicTree::audioClusterDynamicModels);
+		auto& m = getNodeDynamicModel(configurationIndex, clusterIndex, &entity::model::ConfigurationDynamicTree::audioClusterDynamicModels);
 		// Changeable fields through commands
 		m.objectName = descriptor.objectName;
 	}
@@ -1513,7 +1513,7 @@ void ControlledEntityImpl::setAudioMapDescriptor(entity::model::AudioMapDescript
 	// Copy static model
 	{
 		// Get or create a new model::AudioMapNodeStaticModel
-		auto& m = getNodeStaticModel(configurationIndex, mapIndex, &model::ConfigurationStaticTree::audioMapStaticModels);
+		auto& m = getNodeStaticModel(configurationIndex, mapIndex, &entity::model::ConfigurationStaticTree::audioMapStaticModels);
 		m.mappings = descriptor.mappings;
 	}
 }
@@ -1523,7 +1523,7 @@ void ControlledEntityImpl::setClockDomainDescriptor(entity::model::ClockDomainDe
 	// Copy static model
 	{
 		// Get or create a new model::ClockDomainNodeStaticModel
-		auto& m = getNodeStaticModel(configurationIndex, clockDomainIndex, &model::ConfigurationStaticTree::clockDomainStaticModels);
+		auto& m = getNodeStaticModel(configurationIndex, clockDomainIndex, &entity::model::ConfigurationStaticTree::clockDomainStaticModels);
 		m.localizedDescription = descriptor.localizedDescription;
 		m.clockSources = descriptor.clockSources;
 	}
@@ -1531,7 +1531,7 @@ void ControlledEntityImpl::setClockDomainDescriptor(entity::model::ClockDomainDe
 	// Copy dynamic model
 	{
 		// Get or create a new model::ClockDomainNodeDynamicModel
-		auto& m = getNodeDynamicModel(configurationIndex, clockDomainIndex, &model::ConfigurationDynamicTree::clockDomainDynamicModels);
+		auto& m = getNodeDynamicModel(configurationIndex, clockDomainIndex, &entity::model::ConfigurationDynamicTree::clockDomainDynamicModels);
 		// Changeable fields through commands
 		m.objectName = descriptor.objectName;
 		m.clockSourceIndex = descriptor.clockSourceIndex;
@@ -1988,14 +1988,14 @@ void ControlledEntityImpl::buildEntityModelGraph() const noexcept
 							if (descriptorType == entity::model::DescriptorType::StreamPortInput)
 							{
 								streamPortNode = &audioUnitNode.streamPortInputs[streamPortIndex];
-								streamPortStaticModel = &entity->getNodeStaticModel(configIndex, streamPortIndex, &model::ConfigurationStaticTree::streamPortInputStaticModels);
-								streamPortDynamicModel = &entity->getNodeDynamicModel(configIndex, streamPortIndex, &model::ConfigurationDynamicTree::streamPortInputDynamicModels);
+								streamPortStaticModel = &entity->getNodeStaticModel(configIndex, streamPortIndex, &entity::model::ConfigurationStaticTree::streamPortInputStaticModels);
+								streamPortDynamicModel = &entity->getNodeDynamicModel(configIndex, streamPortIndex, &entity::model::ConfigurationDynamicTree::streamPortInputDynamicModels);
 							}
 							else
 							{
 								streamPortNode = &audioUnitNode.streamPortOutputs[streamPortIndex];
-								streamPortStaticModel = &entity->getNodeStaticModel(configIndex, streamPortIndex, &model::ConfigurationStaticTree::streamPortOutputStaticModels);
-								streamPortDynamicModel = &entity->getNodeDynamicModel(configIndex, streamPortIndex, &model::ConfigurationDynamicTree::streamPortOutputDynamicModels);
+								streamPortStaticModel = &entity->getNodeStaticModel(configIndex, streamPortIndex, &entity::model::ConfigurationStaticTree::streamPortOutputStaticModels);
+								streamPortDynamicModel = &entity->getNodeDynamicModel(configIndex, streamPortIndex, &entity::model::ConfigurationDynamicTree::streamPortOutputDynamicModels);
 							}
 
 							initNode(*streamPortNode, descriptorType, streamPortIndex);
@@ -2009,8 +2009,8 @@ void ControlledEntityImpl::buildEntityModelGraph() const noexcept
 								auto& audioClusterNode = streamPortNode->audioClusters[clusterIndex];
 								initNode(audioClusterNode, entity::model::DescriptorType::AudioCluster, clusterIndex);
 
-								auto const& audioClusterStaticModel = entity->getNodeStaticModel(configIndex, clusterIndex, &model::ConfigurationStaticTree::audioClusterStaticModels);
-								auto& audioClusterDynamicModel = entity->getNodeDynamicModel(configIndex, clusterIndex, &model::ConfigurationDynamicTree::audioClusterDynamicModels);
+								auto const& audioClusterStaticModel = entity->getNodeStaticModel(configIndex, clusterIndex, &entity::model::ConfigurationStaticTree::audioClusterStaticModels);
+								auto& audioClusterDynamicModel = entity->getNodeDynamicModel(configIndex, clusterIndex, &entity::model::ConfigurationDynamicTree::audioClusterDynamicModels);
 								audioClusterNode.staticModel = &audioClusterStaticModel;
 								audioClusterNode.dynamicModel = &audioClusterDynamicModel;
 							}
@@ -2022,7 +2022,7 @@ void ControlledEntityImpl::buildEntityModelGraph() const noexcept
 								auto& audioMapNode = streamPortNode->audioMaps[mapIndex];
 								initNode(audioMapNode, entity::model::DescriptorType::AudioMap, mapIndex);
 
-								auto const& audioMapStaticModel = entity->getNodeStaticModel(configIndex, mapIndex, &model::ConfigurationStaticTree::audioMapStaticModels);
+								auto const& audioMapStaticModel = entity->getNodeStaticModel(configIndex, mapIndex, &entity::model::ConfigurationStaticTree::audioMapStaticModels);
 								audioMapNode.staticModel = &audioMapStaticModel;
 							}
 						}

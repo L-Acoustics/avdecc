@@ -31,7 +31,6 @@ set (HEADER_FILES_COMMON
 	${CMAKE_CURRENT_BINARY_DIR}/config.h
 	avdeccControllerImpl.hpp
 	avdeccControlledEntityImpl.hpp
-	avdeccControlledEntityModelTree.hpp
 	avdeccControllerLogHelper.hpp
 	avdeccEntityModelCache.hpp
 )

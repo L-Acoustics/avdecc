@@ -24,9 +24,9 @@
 
 #pragma once
 
-#include "la/avdecc/controller/internals/avdeccControlledEntity.hpp"
+#include <la/avdecc/internals/entityModelTree.hpp>
 
-#include "avdeccControlledEntityModelTree.hpp"
+#include "la/avdecc/controller/internals/avdeccControlledEntity.hpp"
 
 #include <string>
 #include <unordered_map>
@@ -236,10 +236,10 @@ public:
 	virtual entity::model::StreamConnections const& getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const override; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 
 	// Const Tree getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist
-	model::EntityStaticTree const& getEntityStaticTree() const;
-	model::EntityDynamicTree const& getEntityDynamicTree() const;
-	model::ConfigurationStaticTree const& getConfigurationStaticTree(entity::model::ConfigurationIndex const configurationIndex) const;
-	model::ConfigurationDynamicTree const& getConfigurationDynamicTree(entity::model::ConfigurationIndex const configurationIndex) const;
+	entity::model::EntityStaticTree const& getEntityStaticTree() const;
+	entity::model::EntityDynamicTree const& getEntityDynamicTree() const;
+	entity::model::ConfigurationStaticTree const& getConfigurationStaticTree(entity::model::ConfigurationIndex const configurationIndex) const;
+	entity::model::ConfigurationDynamicTree const& getConfigurationDynamicTree(entity::model::ConfigurationIndex const configurationIndex) const;
 	entity::model::ConfigurationIndex getCurrentConfigurationIndex() const noexcept;
 
 	// Const NodeModel getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist, Exception::InvalidDescriptorIndex if descriptorIndex is invalid
@@ -248,7 +248,7 @@ public:
 	entity::model::ConfigurationNodeStaticModel const& getConfigurationNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex) const;
 	entity::model::ConfigurationNodeDynamicModel const& getConfigurationNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex) const;
 	template<typename FieldPointer, typename DescriptorIndexType>
-	typename std::remove_pointer_t<FieldPointer>::mapped_type const& getNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer model::ConfigurationStaticTree::*Field) const
+	typename std::remove_pointer_t<FieldPointer>::mapped_type const& getNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer entity::model::ConfigurationStaticTree::*Field) const
 	{
 		auto const& configStaticTree = getConfigurationStaticTree(configurationIndex);
 
@@ -259,7 +259,7 @@ public:
 		return it->second;
 	}
 	template<typename FieldPointer, typename DescriptorIndexType>
-	typename std::remove_pointer_t<FieldPointer>::mapped_type const& getNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer model::ConfigurationDynamicTree::*Field) const
+	typename std::remove_pointer_t<FieldPointer>::mapped_type const& getNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer entity::model::ConfigurationDynamicTree::*Field) const
 	{
 		auto const& configDynamicTree = getConfigurationDynamicTree(configurationIndex);
 
@@ -271,10 +271,10 @@ public:
 	}
 
 	// Non-const Tree getters
-	model::EntityStaticTree& getEntityStaticTree() noexcept;
-	model::EntityDynamicTree& getEntityDynamicTree() noexcept;
-	model::ConfigurationStaticTree& getConfigurationStaticTree(entity::model::ConfigurationIndex const configurationIndex) noexcept;
-	model::ConfigurationDynamicTree& getConfigurationDynamicTree(entity::model::ConfigurationIndex const configurationIndex) noexcept;
+	entity::model::EntityStaticTree& getEntityStaticTree() noexcept;
+	entity::model::EntityDynamicTree& getEntityDynamicTree() noexcept;
+	entity::model::ConfigurationStaticTree& getConfigurationStaticTree(entity::model::ConfigurationIndex const configurationIndex) noexcept;
+	entity::model::ConfigurationDynamicTree& getConfigurationDynamicTree(entity::model::ConfigurationIndex const configurationIndex) noexcept;
 
 	// Non-const NodeModel getters
 	entity::model::EntityNodeStaticModel& getEntityNodeStaticModel() noexcept;
@@ -282,7 +282,7 @@ public:
 	entity::model::ConfigurationNodeStaticModel& getConfigurationNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex) noexcept;
 	entity::model::ConfigurationNodeDynamicModel& getConfigurationNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex) noexcept;
 	template<typename FieldPointer, typename DescriptorIndexType>
-	typename std::remove_pointer_t<FieldPointer>::mapped_type& getNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer model::ConfigurationStaticTree::*Field) noexcept
+	typename std::remove_pointer_t<FieldPointer>::mapped_type& getNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer entity::model::ConfigurationStaticTree::*Field) noexcept
 	{
 		AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
@@ -290,7 +290,7 @@ public:
 		return (configStaticTree.*Field)[index];
 	}
 	template<typename FieldPointer, typename DescriptorIndexType>
-	typename std::remove_pointer_t<FieldPointer>::mapped_type& getNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer model::ConfigurationDynamicTree::*Field) noexcept
+	typename std::remove_pointer_t<FieldPointer>::mapped_type& getNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer entity::model::ConfigurationDynamicTree::*Field) noexcept
 	{
 		AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
 
@@ -304,7 +304,7 @@ public:
 	void setCurrentConfiguration(entity::model::ConfigurationIndex const configurationIndex) noexcept;
 	void setConfigurationName(entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& name) noexcept;
 	template<typename FieldPointer, typename DescriptorIndexType>
-	void setObjectName(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer model::ConfigurationDynamicTree::*Field, entity::model::AvdeccFixedString const& name) noexcept
+	void setObjectName(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer entity::model::ConfigurationDynamicTree::*Field, entity::model::AvdeccFixedString const& name) noexcept
 	{
 		auto& dynamicModel = getNodeDynamicModel(configurationIndex, index, Field);
 		dynamicModel.objectName = name;
@@ -343,7 +343,7 @@ public:
 	void setMilanInfo(entity::model::MilanInfo const& info) noexcept;
 
 	// Setters of the Model from AEM Descriptors (including DescriptorDynamic info)
-	bool setCachedEntityStaticTree(model::EntityStaticTree const& cachedStaticTree, entity::model::EntityDescriptor const& descriptor) noexcept; // Returns true if the cached EntityStaticTree is accepted (and set) for this entity
+	bool setCachedEntityStaticTree(entity::model::EntityStaticTree const& cachedStaticTree, entity::model::EntityDescriptor const& descriptor) noexcept; // Returns true if the cached EntityStaticTree is accepted (and set) for this entity
 	void setEntityDescriptor(entity::model::EntityDescriptor const& descriptor) noexcept;
 	void setConfigurationDescriptor(entity::model::ConfigurationDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex) noexcept;
 	void setAudioUnitDescriptor(entity::model::AudioUnitDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex) noexcept;
@@ -501,8 +501,8 @@ private:
 	// Entity variables
 	entity::Entity _entity; // No NSMI, Entity has no default constructor but it has to be passed to the only constructor of this class anyway
 	// Entity Model
-	mutable model::EntityStaticTree _entityStaticTree{}; // Static part of the model as represented by the AVDECC protocol
-	mutable model::EntityDynamicTree _entityDynamicTree{}; // Dynamic part of the model as represented by the AVDECC protocol
+	mutable entity::model::EntityStaticTree _entityStaticTree{}; // Static part of the model as represented by the AVDECC protocol
+	mutable entity::model::EntityDynamicTree _entityDynamicTree{}; // Dynamic part of the model as represented by the AVDECC protocol
 	mutable model::EntityNode _entityNode{}; // Model as represented by the ControlledEntity (tree of references to the model::EntityStaticTree and model::EntityDynamicTree)
 };
 

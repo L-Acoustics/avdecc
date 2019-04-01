@@ -32,8 +32,7 @@
 #include "internals/entityModel.hpp"
 
 /** Entity model tree definition */
-#include "internals/entityModelTreeDynamic.hpp"
-#include "internals/entityModelTreeStatic.hpp"
+#include "internals/entityModelTree.hpp"
 
 /** ProtocolInterface definition */
 #include "internals/protocolInterface.hpp"

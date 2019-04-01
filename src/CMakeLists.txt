@@ -51,6 +51,7 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityAddressAccessTypes.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityEnums.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModel.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTree.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTreeCommon.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTreeDynamic.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTreeStatic.hpp

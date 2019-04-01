@@ -1509,7 +1509,7 @@ void ControllerImpl::onAudioUnitNameResult(entity::controller::Interface const* 
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, audioUnitIndex, &model::ConfigurationDynamicTree::audioUnitDynamicModels, audioUnitName);
+				controlledEntity->setObjectName(configurationIndex, audioUnitIndex, &entity::model::ConfigurationDynamicTree::audioUnitDynamicModels, audioUnitName);
 			}
 			else
 			{
@@ -1581,7 +1581,7 @@ void ControllerImpl::onInputStreamNameResult(entity::controller::Interface const
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels, streamInputName);
+				controlledEntity->setObjectName(configurationIndex, streamIndex, &entity::model::ConfigurationDynamicTree::streamInputDynamicModels, streamInputName);
 			}
 			else
 			{
@@ -1654,7 +1654,7 @@ void ControllerImpl::onOutputStreamNameResult(entity::controller::Interface cons
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels, streamOutputName);
+				controlledEntity->setObjectName(configurationIndex, streamIndex, &entity::model::ConfigurationDynamicTree::streamOutputDynamicModels, streamOutputName);
 			}
 			else
 			{
@@ -1727,7 +1727,7 @@ void ControllerImpl::onAvbInterfaceNameResult(entity::controller::Interface cons
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, avbInterfaceIndex, &model::ConfigurationDynamicTree::avbInterfaceDynamicModels, avbInterfaceName);
+				controlledEntity->setObjectName(configurationIndex, avbInterfaceIndex, &entity::model::ConfigurationDynamicTree::avbInterfaceDynamicModels, avbInterfaceName);
 			}
 			else
 			{
@@ -1763,7 +1763,7 @@ void ControllerImpl::onClockSourceNameResult(entity::controller::Interface const
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, clockSourceIndex, &model::ConfigurationDynamicTree::clockSourceDynamicModels, clockSourceName);
+				controlledEntity->setObjectName(configurationIndex, clockSourceIndex, &entity::model::ConfigurationDynamicTree::clockSourceDynamicModels, clockSourceName);
 			}
 			else
 			{
@@ -1799,7 +1799,7 @@ void ControllerImpl::onMemoryObjectNameResult(entity::controller::Interface cons
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, memoryObjectIndex, &model::ConfigurationDynamicTree::memoryObjectDynamicModels, memoryObjectName);
+				controlledEntity->setObjectName(configurationIndex, memoryObjectIndex, &entity::model::ConfigurationDynamicTree::memoryObjectDynamicModels, memoryObjectName);
 			}
 			else
 			{
@@ -1871,7 +1871,7 @@ void ControllerImpl::onAudioClusterNameResult(entity::controller::Interface cons
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, audioClusterIndex, &model::ConfigurationDynamicTree::audioClusterDynamicModels, audioClusterName);
+				controlledEntity->setObjectName(configurationIndex, audioClusterIndex, &entity::model::ConfigurationDynamicTree::audioClusterDynamicModels, audioClusterName);
 			}
 			else
 			{
@@ -1907,7 +1907,7 @@ void ControllerImpl::onClockDomainNameResult(entity::controller::Interface const
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, clockDomainIndex, &model::ConfigurationDynamicTree::clockDomainDynamicModels, clockDomainName);
+				controlledEntity->setObjectName(configurationIndex, clockDomainIndex, &entity::model::ConfigurationDynamicTree::clockDomainDynamicModels, clockDomainName);
 			}
 			else
 			{
