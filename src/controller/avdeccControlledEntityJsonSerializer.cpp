@@ -219,7 +219,7 @@ private:
 		}
 	}
 
-	json JsonizeStreamNodeStaticModel(model::StreamNodeStaticModel const& model)
+	json JsonizeStreamNodeStaticModel(entity::model::StreamNodeStaticModel const& model)
 	{
 		auto jstatic = json{};
 

@@ -33,6 +33,90 @@
 
 using json = nlohmann::json;
 
+namespace nlohmann
+{
+template<>
+struct adl_serializer<la::avdecc::entity::model::EntityCounters>
+{
+	static void to_json(json& j, la::avdecc::entity::model::EntityCounters const& counters)
+	{
+		auto object = json::object();
+
+		for (auto const [name, value] : counters)
+		{
+			json const n = name;
+			object[n.get<std::string>()] = value;
+		}
+
+		j = std::move(object);
+	}
+};
+template<>
+struct adl_serializer<la::avdecc::entity::model::AvbInterfaceCounters>
+{
+	static void to_json(json& j, la::avdecc::entity::model::AvbInterfaceCounters const& counters)
+	{
+		auto object = json::object();
+
+		for (auto const [name, value] : counters)
+		{
+			json const n = name;
+			object[n.get<std::string>()] = value;
+		}
+
+		j = std::move(object);
+	}
+};
+template<>
+struct adl_serializer<la::avdecc::entity::model::ClockDomainCounters>
+{
+	static void to_json(json& j, la::avdecc::entity::model::ClockDomainCounters const& counters)
+	{
+		auto object = json::object();
+
+		for (auto const [name, value] : counters)
+		{
+			json const n = name;
+			object[n.get<std::string>()] = value;
+		}
+
+		j = std::move(object);
+	}
+};
+template<>
+struct adl_serializer<la::avdecc::entity::model::StreamInputCounters>
+{
+	static void to_json(json& j, la::avdecc::entity::model::StreamInputCounters const& counters)
+	{
+		auto object = json::object();
+
+		for (auto const [name, value] : counters)
+		{
+			json const n = name;
+			object[n.get<std::string>()] = value;
+		}
+
+		j = std::move(object);
+	}
+};
+template<>
+struct adl_serializer<la::avdecc::entity::model::StreamOutputCounters>
+{
+	static void to_json(json& j, la::avdecc::entity::model::StreamOutputCounters const& counters)
+	{
+		auto object = json::object();
+
+		for (auto const [name, value] : counters)
+		{
+			json const n = name;
+			object[n.get<std::string>()] = value;
+		}
+
+		j = std::move(object);
+	}
+};
+} // namespace nlohmann
+
 namespace la
 {
 namespace avdecc

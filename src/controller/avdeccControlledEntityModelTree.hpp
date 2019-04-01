@@ -25,8 +25,8 @@
 
 #pragma once
 
-#include "la/avdecc/controller/internals/avdeccControlledEntityStaticModel.hpp"
-#include "la/avdecc/controller/internals/avdeccControlledEntityDynamicModel.hpp"
+#include <la/avdecc/internals/entityModelTreeDynamic.hpp>
+#include <la/avdecc/internals/entityModelTreeStatic.hpp>
 
 #include <map>
 #include <set>
@@ -42,25 +42,25 @@ namespace model
 struct ConfigurationDynamicTree
 {
 	// Children
-	std::map<entity::model::AudioUnitIndex, AudioUnitNodeDynamicModel> audioUnitDynamicModels{};
-	std::map<entity::model::StreamIndex, StreamInputNodeDynamicModel> streamInputDynamicModels{};
-	std::map<entity::model::StreamIndex, StreamOutputNodeDynamicModel> streamOutputDynamicModels{};
-	//std::map<entity::model::JackIndex, JackNodeDynamicModel> jackInputDynamicModels{};
-	//std::map<entity::model::JackIndex, JackNodeDynamicModel> jackOutputDynamicModels{};
-	std::map<entity::model::AvbInterfaceIndex, AvbInterfaceNodeDynamicModel> avbInterfaceDynamicModels{};
-	std::map<entity::model::ClockSourceIndex, ClockSourceNodeDynamicModel> clockSourceDynamicModels{};
-	std::map<entity::model::MemoryObjectIndex, MemoryObjectNodeDynamicModel> memoryObjectDynamicModels{};
-	std::map<entity::model::StreamPortIndex, StreamPortNodeDynamicModel> streamPortInputDynamicModels{};
-	std::map<entity::model::StreamPortIndex, StreamPortNodeDynamicModel> streamPortOutputDynamicModels{};
-	//std::map<entity::model::ExternalPortIndex, ExternalPortNodeDynamicModel> externalPortInputDynamicModels{};
-	//std::map<entity::model::ExternalPortIndex, ExternalPortNodeDynamicModel> externalPortOutputDynamicModels{};
-	//std::map<entity::model::InternalPortIndex, InternalPortNodeDynamicModel> internalPortInputDynamicModels{};
-	//std::map<entity::model::InternalPortIndex, InternalPortNodeDynamicModel> internalPortOutputDynamicModels{};
-	std::map<entity::model::ClusterIndex, AudioClusterNodeDynamicModel> audioClusterDynamicModels{};
-	std::map<entity::model::ClockDomainIndex, ClockDomainNodeDynamicModel> clockDomainDynamicModels{};
+	std::map<entity::model::AudioUnitIndex, entity::model::AudioUnitNodeDynamicModel> audioUnitDynamicModels{};
+	std::map<entity::model::StreamIndex, entity::model::StreamInputNodeDynamicModel> streamInputDynamicModels{};
+	std::map<entity::model::StreamIndex, entity::model::StreamOutputNodeDynamicModel> streamOutputDynamicModels{};
+	//std::map<entity::model::JackIndex, entity::model::JackNodeDynamicModel> jackInputDynamicModels{};
+	//std::map<entity::model::JackIndex, entity::model::JackNodeDynamicModel> jackOutputDynamicModels{};
+	std::map<entity::model::AvbInterfaceIndex, entity::model::AvbInterfaceNodeDynamicModel> avbInterfaceDynamicModels{};
+	std::map<entity::model::ClockSourceIndex, entity::model::ClockSourceNodeDynamicModel> clockSourceDynamicModels{};
+	std::map<entity::model::MemoryObjectIndex, entity::model::MemoryObjectNodeDynamicModel> memoryObjectDynamicModels{};
+	std::map<entity::model::StreamPortIndex, entity::model::StreamPortNodeDynamicModel> streamPortInputDynamicModels{};
+	std::map<entity::model::StreamPortIndex, entity::model::StreamPortNodeDynamicModel> streamPortOutputDynamicModels{};
+	//std::map<entity::model::ExternalPortIndex, entity::model::ExternalPortNodeDynamicModel> externalPortInputDynamicModels{};
+	//std::map<entity::model::ExternalPortIndex, entity::model::ExternalPortNodeDynamicModel> externalPortOutputDynamicModels{};
+	//std::map<entity::model::InternalPortIndex, entity::model::InternalPortNodeDynamicModel> internalPortInputDynamicModels{};
+	//std::map<entity::model::InternalPortIndex, entity::model::InternalPortNodeDynamicModel> internalPortOutputDynamicModels{};
+	std::map<entity::model::ClusterIndex, entity::model::AudioClusterNodeDynamicModel> audioClusterDynamicModels{};
+	std::map<entity::model::ClockDomainIndex, entity::model::ClockDomainNodeDynamicModel> clockDomainDynamicModels{};
 
 	// AEM Dynamic info
-	ConfigurationNodeDynamicModel dynamicModel;
+	entity::model::ConfigurationNodeDynamicModel dynamicModel;
 };
 
 struct EntityDynamicTree
@@ -69,34 +69,34 @@ struct EntityDynamicTree
 	std::map<entity::model::ConfigurationIndex, ConfigurationDynamicTree> configurationDynamicTrees{};
 
 	// AEM Dynamic info
-	EntityNodeDynamicModel dynamicModel;
+	entity::model::EntityNodeDynamicModel dynamicModel;
 };
 
 struct ConfigurationStaticTree
 {
 	// Children
-	std::map<entity::model::AudioUnitIndex, AudioUnitNodeStaticModel> audioUnitStaticModels{};
-	std::map<entity::model::StreamIndex, StreamNodeStaticModel> streamInputStaticModels{};
-	std::map<entity::model::StreamIndex, StreamNodeStaticModel> streamOutputStaticModels{};
-	//std::map<entity::model::JackIndex, JackNodeStaticModel> jackInputStaticModels{};
-	//std::map<entity::model::JackIndex, JackNodeStaticModel> jackOutputStaticModels{};
-	std::map<entity::model::AvbInterfaceIndex, AvbInterfaceNodeStaticModel> avbInterfaceStaticModels{};
-	std::map<entity::model::ClockSourceIndex, ClockSourceNodeStaticModel> clockSourceStaticModels{};
-	std::map<entity::model::MemoryObjectIndex, MemoryObjectNodeStaticModel> memoryObjectStaticModels{};
-	std::map<entity::model::LocaleIndex, LocaleNodeStaticModel> localeStaticModels{};
-	std::map<entity::model::StringsIndex, StringsNodeStaticModel> stringsStaticModels{};
-	std::map<entity::model::StreamPortIndex, StreamPortNodeStaticModel> streamPortInputStaticModels{};
-	std::map<entity::model::StreamPortIndex, StreamPortNodeStaticModel> streamPortOutputStaticModels{};
-	//std::map<entity::model::ExternalPortIndex, ExternalPortNodeStaticModel> externalPortInputStaticModels{};
-	//std::map<entity::model::ExternalPortIndex, ExternalPortNodeStaticModel> externalPortOutputStaticModels{};
-	//std::map<entity::model::InternalPortIndex, InternalPortNodeStaticModel> internalPortInputStaticModels{};
-	//std::map<entity::model::InternalPortIndex, InternalPortNodeStaticModel> internalPortOutputStaticModels{};
-	std::map<entity::model::ClusterIndex, AudioClusterNodeStaticModel> audioClusterStaticModels{};
-	std::map<entity::model::MapIndex, AudioMapNodeStaticModel> audioMapStaticModels{};
-	std::map<entity::model::ClockDomainIndex, ClockDomainNodeStaticModel> clockDomainStaticModels{};
+	std::map<entity::model::AudioUnitIndex, entity::model::AudioUnitNodeStaticModel> audioUnitStaticModels{};
+	std::map<entity::model::StreamIndex, entity::model::StreamNodeStaticModel> streamInputStaticModels{};
+	std::map<entity::model::StreamIndex, entity::model::StreamNodeStaticModel> streamOutputStaticModels{};
+	//std::map<entity::model::JackIndex, entity::model::JackNodeStaticModel> jackInputStaticModels{};
+	//std::map<entity::model::JackIndex, entity::model::JackNodeStaticModel> jackOutputStaticModels{};
+	std::map<entity::model::AvbInterfaceIndex, entity::model::AvbInterfaceNodeStaticModel> avbInterfaceStaticModels{};
+	std::map<entity::model::ClockSourceIndex, entity::model::ClockSourceNodeStaticModel> clockSourceStaticModels{};
+	std::map<entity::model::MemoryObjectIndex, entity::model::MemoryObjectNodeStaticModel> memoryObjectStaticModels{};
+	std::map<entity::model::LocaleIndex, entity::model::LocaleNodeStaticModel> localeStaticModels{};
+	std::map<entity::model::StringsIndex, entity::model::StringsNodeStaticModel> stringsStaticModels{};
+	std::map<entity::model::StreamPortIndex, entity::model::StreamPortNodeStaticModel> streamPortInputStaticModels{};
+	std::map<entity::model::StreamPortIndex, entity::model::StreamPortNodeStaticModel> streamPortOutputStaticModels{};
+	//std::map<entity::model::ExternalPortIndex, entity::model::ExternalPortNodeStaticModel> externalPortInputStaticModels{};
+	//std::map<entity::model::ExternalPortIndex, entity::model::ExternalPortNodeStaticModel> externalPortOutputStaticModels{};
+	//std::map<entity::model::InternalPortIndex, entity::model::InternalPortNodeStaticModel> internalPortInputStaticModels{};
+	//std::map<entity::model::InternalPortIndex, entity::model::InternalPortNodeStaticModel> internalPortOutputStaticModels{};
+	std::map<entity::model::ClusterIndex, entity::model::AudioClusterNodeStaticModel> audioClusterStaticModels{};
+	std::map<entity::model::MapIndex, entity::model::AudioMapNodeStaticModel> audioMapStaticModels{};
+	std::map<entity::model::ClockDomainIndex, entity::model::ClockDomainNodeStaticModel> clockDomainStaticModels{};
 
 	// AEM Static info
-	ConfigurationNodeStaticModel staticModel;
+	entity::model::ConfigurationNodeStaticModel staticModel;
 };
 
 struct EntityStaticTree
@@ -105,7 +105,7 @@ struct EntityStaticTree
 	std::map<entity::model::ConfigurationIndex, ConfigurationStaticTree> configurationStaticTrees{};
 
 	// AEM Static info
-	EntityNodeStaticModel staticModel;
+	entity::model::EntityNodeStaticModel staticModel;
 };
 
 } // namespace model

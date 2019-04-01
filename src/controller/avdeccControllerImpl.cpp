@@ -1121,7 +1121,7 @@ void ControllerImpl::addDelayedQuery(std::chrono::milliseconds const delay, Uniq
 
 void ControllerImpl::chooseLocale(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
-	model::LocaleNodeStaticModel const* localeNode{ nullptr };
+	entity::model::LocaleNodeStaticModel const* localeNode{ nullptr };
 	localeNode = entity->findLocaleNode(configurationIndex, _preferedLocale);
 	if (localeNode == nullptr)
 	{
@@ -2003,7 +2003,7 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 								auto const& connectionState = streamInputNode.dynamicModel->connectionState;
 
 								// If the Stream is Connected
-								if (connectionState.state == model::StreamConnectionState::State::Connected)
+								if (connectionState.state == entity::model::StreamConnectionState::State::Connected)
 								{
 									// Check against all the Talker's Output Streams
 									for (auto const& streamOutputNodeKV : talkerConfigurationNode.streamOutputs)
@@ -2054,7 +2054,7 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 					auto const& connectionState = streamInputNode.dynamicModel->connectionState;
 
 					// If the Stream is Connected, search for the Talker we are connected to
-					if (connectionState.state == model::StreamConnectionState::State::Connected)
+					if (connectionState.state == entity::model::StreamConnectionState::State::Connected)
 					{
 						// Take a "scoped locked" shared copy of the ControlledEntity
 						auto talkerEntity = getControlledEntityImplGuard(connectionState.talkerStream.entityID, true);
@@ -2099,7 +2099,7 @@ void ControllerImpl::onPreUnadvertiseEntity(ControlledEntityImpl& controlledEnti
 					auto const& connectionState = streamInputNode.dynamicModel->connectionState;
 
 					// If the Stream is Connected, search for the Talker we are connected to
-					if (connectionState.state == model::StreamConnectionState::State::Connected)
+					if (connectionState.state == entity::model::StreamConnectionState::State::Connected)
 					{
 						// Take a "scoped locked" shared copy of the ControlledEntity
 						auto talkerEntity = getControlledEntityImplGuard(connectionState.talkerStream.entityID, true);
@@ -2956,24 +2956,24 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	// Build StreamConnectionState::State
-	auto conState{ model::StreamConnectionState::State::NotConnected };
+	auto conState{ entity::model::StreamConnectionState::State::NotConnected };
 	if (isConnected)
 	{
-		conState = model::StreamConnectionState::State::Connected;
+		conState = entity::model::StreamConnectionState::State::Connected;
 	}
 	else if (flags.test(entity::ConnectionFlag::FastConnect))
 	{
-		conState = model::StreamConnectionState::State::FastConnecting;
+		conState = entity::model::StreamConnectionState::State::FastConnecting;
 	}
 
 	// Build Talker StreamIdentification
 	auto talkerStreamIdentification{ entity::model::StreamIdentification{} };
-	if (conState != model::StreamConnectionState::State::NotConnected)
+	if (conState != entity::model::StreamConnectionState::State::NotConnected)
 	{
 		if (!talkerStream.entityID)
 		{
 			LOG_CONTROLLER_WARN(UniqueIdentifier::getNullUniqueIdentifier(), "Listener StreamState notification advertises being connected but with no Talker Identification (ListenerID={} ListenerIndex={})", utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
-			conState = model::StreamConnectionState::State::NotConnected;
+			conState = entity::model::StreamConnectionState::State::NotConnected;
 		}
 		else
 		{
@@ -2982,7 +2982,7 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 	}
 
 	// Build a StreamConnectionState
-	auto const state = model::StreamConnectionState{ listenerStream, talkerStreamIdentification, conState };
+	auto const state = entity::model::StreamConnectionState{ listenerStream, talkerStreamIdentification, conState };
 
 	// Check if Listener is online so we can update the StreamState
 	{

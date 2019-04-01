@@ -346,7 +346,7 @@ model::ClockDomainNode const& ControlledEntityImpl::getClockDomainNode(entity::m
 	return it->second;
 }
 
-model::LocaleNodeStaticModel const* ControlledEntityImpl::findLocaleNode(entity::model::ConfigurationIndex const configurationIndex, std::string const& /*locale*/) const
+entity::model::LocaleNodeStaticModel const* ControlledEntityImpl::findLocaleNode(entity::model::ConfigurationIndex const configurationIndex, std::string const& /*locale*/) const
 {
 	auto const& configStaticTree = getConfigurationStaticTree(configurationIndex);
 
@@ -383,7 +383,7 @@ entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString
 	}
 }
 
-model::StreamConnectionState const& ControlledEntityImpl::getConnectedSinkState(entity::model::StreamIndex const streamIndex) const
+entity::model::StreamConnectionState const& ControlledEntityImpl::getConnectedSinkState(entity::model::StreamIndex const streamIndex) const
 {
 	auto const& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels);
 
@@ -420,7 +420,7 @@ entity::model::AudioMappings const& ControlledEntityImpl::getStreamPortOutputAud
 	return dynamicModel.dynamicAudioMap;
 }
 
-model::StreamConnections const& ControlledEntityImpl::getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const
+entity::model::StreamConnections const& ControlledEntityImpl::getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const
 {
 	auto const& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels);
 
@@ -672,22 +672,22 @@ entity::model::ConfigurationIndex ControlledEntityImpl::getCurrentConfigurationI
 }
 
 // Const NodeModel getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist, Exception::InvalidDescriptorIndex if descriptorIndex is invalid
-model::EntityNodeStaticModel const& ControlledEntityImpl::getEntityNodeStaticModel() const
+entity::model::EntityNodeStaticModel const& ControlledEntityImpl::getEntityNodeStaticModel() const
 {
 	return getEntityStaticTree().staticModel;
 }
 
-model::EntityNodeDynamicModel const& ControlledEntityImpl::getEntityNodeDynamicModel() const
+entity::model::EntityNodeDynamicModel const& ControlledEntityImpl::getEntityNodeDynamicModel() const
 {
 	return getEntityDynamicTree().dynamicModel;
 }
 
-model::ConfigurationNodeStaticModel const& ControlledEntityImpl::getConfigurationNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex) const
+entity::model::ConfigurationNodeStaticModel const& ControlledEntityImpl::getConfigurationNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex) const
 {
 	return getConfigurationStaticTree(configurationIndex).staticModel;
 }
 
-model::ConfigurationNodeDynamicModel const& ControlledEntityImpl::getConfigurationNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex) const
+entity::model::ConfigurationNodeDynamicModel const& ControlledEntityImpl::getConfigurationNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex) const
 {
 	return getConfigurationDynamicTree(configurationIndex).dynamicModel;
 }
@@ -716,22 +716,22 @@ model::ConfigurationDynamicTree& ControlledEntityImpl::getConfigurationDynamicTr
 }
 
 // Non-const NodeModel getters
-model::EntityNodeStaticModel& ControlledEntityImpl::getEntityNodeStaticModel() noexcept
+entity::model::EntityNodeStaticModel& ControlledEntityImpl::getEntityNodeStaticModel() noexcept
 {
 	return getEntityStaticTree().staticModel;
 }
 
-model::EntityNodeDynamicModel& ControlledEntityImpl::getEntityNodeDynamicModel() noexcept
+entity::model::EntityNodeDynamicModel& ControlledEntityImpl::getEntityNodeDynamicModel() noexcept
 {
 	return getEntityDynamicTree().dynamicModel;
 }
 
-model::ConfigurationNodeStaticModel& ControlledEntityImpl::getConfigurationNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex) noexcept
+entity::model::ConfigurationNodeStaticModel& ControlledEntityImpl::getConfigurationNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
 	return getConfigurationStaticTree(configurationIndex).staticModel;
 }
 
-model::ConfigurationNodeDynamicModel& ControlledEntityImpl::getConfigurationNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex) noexcept
+entity::model::ConfigurationNodeDynamicModel& ControlledEntityImpl::getConfigurationNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
 	return getConfigurationDynamicTree(configurationIndex).dynamicModel;
 }
@@ -770,7 +770,7 @@ void ControlledEntityImpl::setSamplingRate(entity::model::AudioUnitIndex const a
 	dynamicModel.currentSamplingRate = samplingRate;
 }
 
-model::StreamConnectionState ControlledEntityImpl::setStreamInputConnectionState(entity::model::StreamIndex const streamIndex, model::StreamConnectionState const& state) noexcept
+entity::model::StreamConnectionState ControlledEntityImpl::setStreamInputConnectionState(entity::model::StreamIndex const streamIndex, entity::model::StreamConnectionState const& state) noexcept
 {
 	AVDECC_ASSERT(_entity.getEntityID() == state.listenerStream.entityID, "EntityID not correctly initialized");
 	AVDECC_ASSERT(streamIndex == state.listenerStream.streamIndex, "StreamIndex not correctly initialized");
@@ -1036,31 +1036,31 @@ void ControlledEntityImpl::setMemoryObjectLength(entity::model::ConfigurationInd
 	dynamicModel.length = length;
 }
 
-model::EntityCounters& ControlledEntityImpl::getEntityCounters() noexcept
+entity::model::EntityCounters& ControlledEntityImpl::getEntityCounters() noexcept
 {
 	auto& entityDynamicTree = getEntityDynamicTree();
 	return entityDynamicTree.dynamicModel.counters;
 }
 
-model::AvbInterfaceCounters& ControlledEntityImpl::getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept
+entity::model::AvbInterfaceCounters& ControlledEntityImpl::getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), avbInterfaceIndex, &model::ConfigurationDynamicTree::avbInterfaceDynamicModels);
 	return dynamicModel.counters;
 }
 
-model::ClockDomainCounters& ControlledEntityImpl::getClockDomainCounters(entity::model::ClockDomainIndex const clockDomainIndex) noexcept
+entity::model::ClockDomainCounters& ControlledEntityImpl::getClockDomainCounters(entity::model::ClockDomainIndex const clockDomainIndex) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), clockDomainIndex, &model::ConfigurationDynamicTree::clockDomainDynamicModels);
 	return dynamicModel.counters;
 }
 
-model::StreamInputCounters& ControlledEntityImpl::getStreamInputCounters(entity::model::StreamIndex const streamIndex) noexcept
+entity::model::StreamInputCounters& ControlledEntityImpl::getStreamInputCounters(entity::model::StreamIndex const streamIndex) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels);
 	return dynamicModel.counters;
 }
 
-model::StreamOutputCounters& ControlledEntityImpl::getStreamOutputCounters(entity::model::StreamIndex const streamIndex) noexcept
+entity::model::StreamOutputCounters& ControlledEntityImpl::getStreamOutputCounters(entity::model::StreamIndex const streamIndex) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels);
 	return dynamicModel.counters;
@@ -1432,7 +1432,7 @@ void ControlledEntityImpl::setStringsDescriptor(entity::model::StringsDescriptor
 	}
 }
 
-void ControlledEntityImpl::setLocalizedStrings(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const relativeStringsIndex, model::AvdeccFixedStrings const& strings) noexcept
+void ControlledEntityImpl::setLocalizedStrings(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const relativeStringsIndex, entity::model::AvdeccFixedStrings const& strings) noexcept
 {
 	auto& configDynamicModel = getConfigurationNodeDynamicModel(configurationIndex);
 	// Copy the strings to the ConfigurationDynamicModel for a quick access
@@ -1981,8 +1981,8 @@ void ControlledEntityImpl::buildEntityModelGraph() const noexcept
 						for (auto streamPortIndexCounter = entity::model::StreamPortIndex(0); streamPortIndexCounter < numberOfStreamPorts; ++streamPortIndexCounter)
 						{
 							model::StreamPortNode* streamPortNode{ nullptr };
-							model::StreamPortNodeStaticModel const* streamPortStaticModel{ nullptr };
-							model::StreamPortNodeDynamicModel* streamPortDynamicModel{ nullptr };
+							entity::model::StreamPortNodeStaticModel const* streamPortStaticModel{ nullptr };
+							entity::model::StreamPortNodeDynamicModel* streamPortDynamicModel{ nullptr };
 							auto const streamPortIndex = entity::model::StreamPortIndex(streamPortIndexCounter + baseStreamPort);
 
 							if (descriptorType == entity::model::DescriptorType::StreamPortInput)
