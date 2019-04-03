@@ -1938,7 +1938,7 @@ void ControlledEntityImpl::buildEntityModelGraph() const noexcept
 					audioUnitNode.dynamicModel = &audioUnitDynamicModel;
 
 					// Build stream port inputs and outputs (StreamPortNode)
-					auto processStreamPorts = [entity = const_cast<ControlledEntityImpl*>(this), &audioUnitNode, configIndex](entity::model::DescriptorType const descriptorType, std::uint16_t const numberOfStreamPorts, entity::model::StreamPortIndex const baseStreamPort)
+					auto processStreamPorts = [entity = const_cast<ControlledEntityImpl*>(this), &audioUnitNode, configIndex = configIndex/* Have to explicitly redefine configIndex due to a clang bug*/](entity::model::DescriptorType const descriptorType, std::uint16_t const numberOfStreamPorts, entity::model::StreamPortIndex const baseStreamPort)
 					{
 						for (auto streamPortIndexCounter = entity::model::StreamPortIndex(0); streamPortIndexCounter < numberOfStreamPorts; ++streamPortIndexCounter)
 						{
