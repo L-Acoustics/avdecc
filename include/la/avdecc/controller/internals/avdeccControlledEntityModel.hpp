@@ -28,9 +28,7 @@
 
 #include <la/avdecc/avdecc.hpp>
 #include <la/avdecc/internals/exception.hpp>
-
-#include "avdeccControlledEntityStaticModel.hpp"
-#include "avdeccControlledEntityDynamicModel.hpp"
+#include <la/avdecc/internals/entityModelTree.hpp>
 
 #if defined(ENABLE_AVDECC_CUSTOM_ANY)
 #	include <la/avdecc/internals/any.hpp>
@@ -93,7 +91,7 @@ struct VirtualNode : public Node
 struct AudioMapNode : public EntityModelNode
 {
 	// AEM Static info
-	AudioMapNodeStaticModel const* staticModel{ nullptr };
+	entity::model::AudioMapNodeStaticModel const* staticModel{ nullptr };
 
 	// AEM Dynamic info
 	//AudioMapNodeDynamicModel* dynamicModel{ nullptr };
@@ -102,10 +100,10 @@ struct AudioMapNode : public EntityModelNode
 struct AudioClusterNode : public EntityModelNode
 {
 	// AEM Static info
-	AudioClusterNodeStaticModel const* staticModel{ nullptr };
+	entity::model::AudioClusterNodeStaticModel const* staticModel{ nullptr };
 
 	// AEM Dynamic info
-	AudioClusterNodeDynamicModel* dynamicModel{ nullptr };
+	entity::model::AudioClusterNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 struct StreamPortNode : public EntityModelNode
@@ -115,10 +113,10 @@ struct StreamPortNode : public EntityModelNode
 	std::map<entity::model::MapIndex, AudioMapNode> audioMaps{};
 
 	// AEM Static info
-	StreamPortNodeStaticModel const* staticModel{ nullptr };
+	entity::model::StreamPortNodeStaticModel const* staticModel{ nullptr };
 
 	// AEM Dynamic info
-	StreamPortNodeDynamicModel* dynamicModel{ nullptr };
+	entity::model::StreamPortNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 struct AudioUnitNode : public EntityModelNode
@@ -132,16 +130,16 @@ struct AudioUnitNode : public EntityModelNode
 	// InternalPortOutput
 
 	// AEM Static info
-	AudioUnitNodeStaticModel const* staticModel{ nullptr };
+	entity::model::AudioUnitNodeStaticModel const* staticModel{ nullptr };
 
 	// AEM Dynamic info
-	AudioUnitNodeDynamicModel* dynamicModel{ nullptr };
+	entity::model::AudioUnitNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 struct StreamNode : public EntityModelNode
 {
 	// AEM Static info
-	StreamNodeStaticModel const* staticModel{ nullptr };
+	entity::model::StreamNodeStaticModel const* staticModel{ nullptr };
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	bool isRedundant{ false }; // True if stream is part of a valid redundant stream association
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
@@ -150,13 +148,13 @@ struct StreamNode : public EntityModelNode
 struct StreamInputNode : public StreamNode
 {
 	// AEM Dynamic info
-	StreamInputNodeDynamicModel* dynamicModel{ nullptr };
+	entity::model::StreamInputNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 struct StreamOutputNode : public StreamNode
 {
 	// AEM Dynamic info
-	StreamOutputNodeDynamicModel* dynamicModel{ nullptr };
+	entity::model::StreamOutputNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
@@ -173,34 +171,34 @@ struct RedundantStreamNode : public VirtualNode
 struct AvbInterfaceNode : public EntityModelNode
 {
 	// AEM Static info
-	AvbInterfaceNodeStaticModel const* staticModel{ nullptr };
+	entity::model::AvbInterfaceNodeStaticModel const* staticModel{ nullptr };
 
 	// AEM Dynamic info
-	AvbInterfaceNodeDynamicModel* dynamicModel{ nullptr };
+	entity::model::AvbInterfaceNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 struct ClockSourceNode : public EntityModelNode
 {
 	// AEM Static info
-	ClockSourceNodeStaticModel const* staticModel{ nullptr };
+	entity::model::ClockSourceNodeStaticModel const* staticModel{ nullptr };
 
 	// AEM Dynamic info
-	ClockSourceNodeDynamicModel* dynamicModel{ nullptr };
+	entity::model::ClockSourceNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 struct MemoryObjectNode : public EntityModelNode
 {
 	// AEM Static info
-	MemoryObjectNodeStaticModel const* staticModel{ nullptr };
+	entity::model::MemoryObjectNodeStaticModel const* staticModel{ nullptr };
 
 	// AEM Dynamic info
-	MemoryObjectNodeDynamicModel* dynamicModel{ nullptr };
+	entity::model::MemoryObjectNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 struct StringsNode : public EntityModelNode
 {
 	// AEM Static info
-	StringsNodeStaticModel const* staticModel{ nullptr };
+	entity::model::StringsNodeStaticModel const* staticModel{ nullptr };
 
 	// AEM Dynamic info
 	//StringsNodeDynamicModel* dynamicModel{ nullptr };
@@ -212,7 +210,7 @@ struct LocaleNode : public EntityModelNode
 	std::map<entity::model::StringsIndex, StringsNode> strings{};
 
 	// AEM Static info
-	LocaleNodeStaticModel const* staticModel{ nullptr };
+	entity::model::LocaleNodeStaticModel const* staticModel{ nullptr };
 
 	// AEM Dynamic info
 	//LocaleNodeDynamicModel* dynamicModel{ nullptr };
@@ -224,10 +222,10 @@ struct ClockDomainNode : public EntityModelNode
 	std::map<entity::model::ClockSourceIndex, ClockSourceNode const*> clockSources{};
 
 	// AEM Static info
-	ClockDomainNodeStaticModel const* staticModel{ nullptr };
+	entity::model::ClockDomainNodeStaticModel const* staticModel{ nullptr };
 
 	// AEM Dynamic info
-	ClockDomainNodeDynamicModel* dynamicModel{ nullptr };
+	entity::model::ClockDomainNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 struct ConfigurationNode : public EntityModelNode
@@ -250,10 +248,10 @@ struct ConfigurationNode : public EntityModelNode
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 	// AEM Static info
-	ConfigurationNodeStaticModel const* staticModel{ nullptr };
+	entity::model::ConfigurationNodeStaticModel const* staticModel{ nullptr };
 
 	// AEM Dynamic info
-	ConfigurationNodeDynamicModel* dynamicModel{ nullptr };
+	entity::model::ConfigurationNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 struct EntityNode : public EntityModelNode
@@ -262,10 +260,10 @@ struct EntityNode : public EntityModelNode
 	std::map<entity::model::ConfigurationIndex, ConfigurationNode> configurations{};
 
 	// AEM Static info
-	EntityNodeStaticModel const* staticModel{ nullptr };
+	entity::model::EntityNodeStaticModel const* staticModel{ nullptr };
 
 	// AEM Dynamic info
-	EntityNodeDynamicModel* dynamicModel{ nullptr };
+	entity::model::EntityNodeDynamicModel* dynamicModel{ nullptr };
 };
 
 class EntityModelVisitor

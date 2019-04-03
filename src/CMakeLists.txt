@@ -51,10 +51,15 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityAddressAccessTypes.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityEnums.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModel.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTree.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTreeCommon.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTreeDynamic.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTreeStatic.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTypes.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/exception.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/exports.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/instrumentationNotifier.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/jsonSerialization.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/logItems.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAaAecpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAcmpdu.hpp
@@ -221,7 +226,12 @@ if(ENABLE_AVDECC_FEATURE_REDUNDANCY)
 	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DENABLE_AVDECC_FEATURE_REDUNDANCY")
 endif()
 if(ENABLE_AVDECC_FEATURE_JSON)
-	list(APPEND PUBLIC_HEADER_FILES ${LA_ROOT_DIR}/include/la/avdecc/internals/jsonTypes.hpp)
+	list(APPEND PUBLIC_HEADER_FILES
+		${LA_ROOT_DIR}/include/la/avdecc/internals/jsonTypes.hpp
+	)
+	list(APPEND SOURCE_FILES_ENTITY
+		entity/entityModelJsonSerializer.cpp
+	)
 	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DENABLE_AVDECC_FEATURE_JSON")
 endif()
 
@@ -289,7 +299,7 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 
 	# Setup json
 	if(ENABLE_AVDECC_FEATURE_JSON)
-		target_link_libraries(la_avdecc_cxx PRIVATE nlohmann_json)
+		target_link_libraries(la_avdecc_cxx PUBLIC nlohmann_json)
 	endif()
 
 	# Set installation rule
@@ -323,7 +333,7 @@ if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 	
 	# Setup json
 	if(ENABLE_AVDECC_FEATURE_JSON)
-		target_link_libraries(la_avdecc_static PRIVATE nlohmann_json)
+		target_link_libraries(la_avdecc_static PUBLIC nlohmann_json)
 	endif()
 
 	# Set installation rule

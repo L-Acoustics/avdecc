@@ -18,17 +18,15 @@
 */
 
 /**
-* @file avdeccControlledEntityDynamicModel.hpp
+* @file entityModelTreeDynamic.hpp
 * @author Christophe Calmejane
-* @brief Dynamic part of the avdecc entity model for a #la::avdecc::controller::ControlledEntity.
+* @brief Dynamic part of the avdecc entity model tree.
 * @note This is the part of the AEM that can be changed dynamically, or that might be different from an Entity to another one with the same EntityModelID
 */
 
 #pragma once
 
-#include <la/avdecc/avdecc.hpp>
-
-#include "avdeccControlledEntityCommonModel.hpp"
+#include "entityModelTreeCommon.hpp"
 
 #include <unordered_map>
 #include <cstdint>
@@ -38,26 +36,26 @@ namespace la
 {
 namespace avdecc
 {
-namespace controller
+namespace entity
 {
 namespace model
 {
-using EntityCounters = std::map<entity::EntityCounterValidFlag, entity::model::DescriptorCounter>;
-using AvbInterfaceCounters = std::map<entity::AvbInterfaceCounterValidFlag, entity::model::DescriptorCounter>;
-using ClockDomainCounters = std::map<entity::ClockDomainCounterValidFlag, entity::model::DescriptorCounter>;
-using StreamInputCounters = std::map<entity::StreamInputCounterValidFlag, entity::model::DescriptorCounter>;
-using StreamOutputCounters = std::map<entity::StreamOutputCounterValidFlag, entity::model::DescriptorCounter>;
+using EntityCounters = std::map<entity::EntityCounterValidFlag, DescriptorCounter>;
+using AvbInterfaceCounters = std::map<entity::AvbInterfaceCounterValidFlag, DescriptorCounter>;
+using ClockDomainCounters = std::map<entity::ClockDomainCounterValidFlag, DescriptorCounter>;
+using StreamInputCounters = std::map<entity::StreamInputCounterValidFlag, DescriptorCounter>;
+using StreamOutputCounters = std::map<entity::StreamOutputCounterValidFlag, DescriptorCounter>;
 
 struct AudioUnitNodeDynamicModel
 {
-	entity::model::AvdeccFixedString objectName{};
-	entity::model::SamplingRate currentSamplingRate{};
+	AvdeccFixedString objectName{};
+	SamplingRate currentSamplingRate{};
 };
 
 struct StreamNodeDynamicModel
 {
-	entity::model::AvdeccFixedString objectName{};
-	entity::model::StreamInfo streamInfo{};
+	AvdeccFixedString objectName{};
+	StreamInfo streamInfo{};
 };
 
 struct StreamInputNodeDynamicModel : public StreamNodeDynamicModel
@@ -74,22 +72,22 @@ struct StreamOutputNodeDynamicModel : public StreamNodeDynamicModel
 
 struct AvbInterfaceNodeDynamicModel
 {
-	entity::model::AvdeccFixedString objectName{};
-	entity::model::AvbInfo avbInfo{};
-	entity::model::AsPath asPath{};
+	AvdeccFixedString objectName{};
+	AvbInfo avbInfo{};
+	AsPath asPath{};
 	AvbInterfaceCounters counters{};
 };
 
 struct ClockSourceNodeDynamicModel
 {
-	entity::model::AvdeccFixedString objectName{};
+	AvdeccFixedString objectName{};
 	entity::ClockSourceFlags clockSourceFlags{};
 	UniqueIdentifier clockSourceIdentifier{};
 };
 
 struct MemoryObjectNodeDynamicModel
 {
-	entity::model::AvdeccFixedString objectName{};
+	AvdeccFixedString objectName{};
 	std::uint64_t length{ 0u };
 };
 
@@ -103,12 +101,12 @@ struct MemoryObjectNodeDynamicModel
 
 struct StreamPortNodeDynamicModel
 {
-	entity::model::AudioMappings dynamicAudioMap{};
+	AudioMappings dynamicAudioMap{};
 };
 
 struct AudioClusterNodeDynamicModel
 {
-	entity::model::AvdeccFixedString objectName{};
+	AvdeccFixedString objectName{};
 };
 
 //struct AudioMapNodeDynamicModel
@@ -117,33 +115,33 @@ struct AudioClusterNodeDynamicModel
 
 struct ClockDomainNodeDynamicModel
 {
-	entity::model::AvdeccFixedString objectName{};
-	entity::model::ClockSourceIndex clockSourceIndex{ entity::model::ClockSourceIndex(0u) };
+	AvdeccFixedString objectName{};
+	ClockSourceIndex clockSourceIndex{ ClockSourceIndex(0u) };
 	ClockDomainCounters counters{};
 };
 
 struct ConfigurationNodeDynamicModel
 {
-	entity::model::AvdeccFixedString objectName{};
+	AvdeccFixedString objectName{};
 	bool isActiveConfiguration{ false };
 
 	// Internal variables
-	entity::model::StringsIndex selectedLocaleBaseIndex{ entity::model::StringsIndex{ 0u } }; /** Base StringIndex for the selected locale */
-	entity::model::StringsIndex selectedLocaleCountIndexes{ entity::model::StringsIndex{ 0u } }; /** Count StringIndexes for the selected locale */
-	std::unordered_map<entity::model::StringsIndex, entity::model::AvdeccFixedString> localizedStrings{}; /** Aggregated copy of all loaded localized strings */
+	StringsIndex selectedLocaleBaseIndex{ StringsIndex{ 0u } }; /** Base StringIndex for the selected locale */
+	StringsIndex selectedLocaleCountIndexes{ StringsIndex{ 0u } }; /** Count StringIndexes for the selected locale */
+	std::unordered_map<StringsIndex, AvdeccFixedString> localizedStrings{}; /** Aggregated copy of all loaded localized strings */
 };
 
 struct EntityNodeDynamicModel
 {
-	entity::model::AvdeccFixedString entityName{};
-	entity::model::AvdeccFixedString groupName{};
-	entity::model::AvdeccFixedString firmwareVersion{};
-	entity::model::AvdeccFixedString serialNumber{};
+	AvdeccFixedString entityName{};
+	AvdeccFixedString groupName{};
+	AvdeccFixedString firmwareVersion{};
+	AvdeccFixedString serialNumber{};
 	std::uint16_t currentConfiguration{ 0u };
 	EntityCounters counters{};
 };
 
 } // namespace model
-} // namespace controller
+} // namespace entity
 } // namespace avdecc
 } // namespace la

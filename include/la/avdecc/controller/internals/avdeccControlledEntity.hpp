@@ -141,17 +141,17 @@ public:
 	//virtual model::AudioMapNode const& getAudioMapNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if audioUnitIndex, streamPortIndex or MapIndex do not exist
 	virtual model::ClockDomainNode const& getClockDomainNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if clockDomainIndex do not exist
 
-	virtual model::LocaleNodeStaticModel const* findLocaleNode(entity::model::ConfigurationIndex const configurationIndex, std::string const& locale) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
+	virtual entity::model::LocaleNodeStaticModel const* findLocaleNode(entity::model::ConfigurationIndex const configurationIndex, std::string const& locale) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
 	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::LocalizedStringReference const& stringReference) const noexcept = 0; // Get localized string or empty string if not found, in current configuration descriptor
 	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocalizedStringReference const& stringReference) const noexcept = 0; // Get localized string or empty string if not found // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
 
 	/** Get connected information about a listener's stream (TalkerID and StreamIndex might be filled even if isConnected is not true, in case of FastConnect) */
-	virtual model::StreamConnectionState const& getConnectedSinkState(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
+	virtual entity::model::StreamConnectionState const& getConnectedSinkState(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 	virtual entity::model::AudioMappings const& getStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
 	virtual entity::model::AudioMappings const& getStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
 
 	/** Get connections information about a talker's stream */
-	virtual model::StreamConnections const& getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
+	virtual entity::model::StreamConnections const& getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 
 	// Visitor method
 	virtual void accept(model::EntityModelVisitor* const visitor) const noexcept = 0;

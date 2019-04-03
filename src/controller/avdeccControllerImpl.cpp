@@ -73,7 +73,7 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 			if (information.gptpGrandmasterID)
 			{
 				// Build an AvbInfo and forward to updateAvbInfo (which will check for changes)
-				auto const& avbInterfaceDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), avbInterfaceIndex, &model::ConfigurationDynamicTree::avbInterfaceDynamicModels);
+				auto const& avbInterfaceDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels);
 
 				// Copy the AvbInfo and update it with the new values we got from the ADPDU
 				auto info = avbInterfaceDynamicModel.avbInfo;
@@ -242,7 +242,7 @@ void ControllerImpl::updateStreamInputFormat(ControlledEntityImpl& controlledEnt
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	auto const& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels);
+	auto const& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels);
 
 	// Make a copy of current StreamInfo, change affected field and notify changes
 	auto newInfo = streamDynamicModel.streamInfo;
@@ -255,7 +255,7 @@ void ControllerImpl::updateStreamOutputFormat(ControlledEntityImpl& controlledEn
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	auto const& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels);
+	auto const& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
 
 	// Make a copy of current StreamInfo, change affected field and notify changes
 	auto newInfo = streamDynamicModel.streamInfo;
@@ -439,7 +439,7 @@ void ControllerImpl::updateAudioUnitName(ControlledEntityImpl& controlledEntity,
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setObjectName(configurationIndex, audioUnitIndex, &model::ConfigurationDynamicTree::audioUnitDynamicModels, audioUnitName);
+	controlledEntity.setObjectName(configurationIndex, audioUnitIndex, &entity::model::ConfigurationTree::audioUnitModels, audioUnitName);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -452,7 +452,7 @@ void ControllerImpl::updateStreamInputName(ControlledEntityImpl& controlledEntit
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setObjectName(configurationIndex, streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels, streamInputName);
+	controlledEntity.setObjectName(configurationIndex, streamIndex, &entity::model::ConfigurationTree::streamInputModels, streamInputName);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -465,7 +465,7 @@ void ControllerImpl::updateStreamOutputName(ControlledEntityImpl& controlledEnti
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setObjectName(configurationIndex, streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels, streamOutputName);
+	controlledEntity.setObjectName(configurationIndex, streamIndex, &entity::model::ConfigurationTree::streamOutputModels, streamOutputName);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -478,7 +478,7 @@ void ControllerImpl::updateAvbInterfaceName(ControlledEntityImpl& controlledEnti
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setObjectName(configurationIndex, avbInterfaceIndex, &model::ConfigurationDynamicTree::avbInterfaceDynamicModels, avbInterfaceName);
+	controlledEntity.setObjectName(configurationIndex, avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels, avbInterfaceName);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -491,7 +491,7 @@ void ControllerImpl::updateClockSourceName(ControlledEntityImpl& controlledEntit
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setObjectName(configurationIndex, clockSourceIndex, &model::ConfigurationDynamicTree::clockSourceDynamicModels, clockSourceName);
+	controlledEntity.setObjectName(configurationIndex, clockSourceIndex, &entity::model::ConfigurationTree::clockSourceModels, clockSourceName);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -504,7 +504,7 @@ void ControllerImpl::updateMemoryObjectName(ControlledEntityImpl& controlledEnti
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setObjectName(configurationIndex, memoryObjectIndex, &model::ConfigurationDynamicTree::memoryObjectDynamicModels, memoryObjectName);
+	controlledEntity.setObjectName(configurationIndex, memoryObjectIndex, &entity::model::ConfigurationTree::memoryObjectModels, memoryObjectName);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -517,7 +517,7 @@ void ControllerImpl::updateAudioClusterName(ControlledEntityImpl& controlledEnti
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setObjectName(configurationIndex, audioClusterIndex, &model::ConfigurationDynamicTree::audioClusterDynamicModels, audioClusterName);
+	controlledEntity.setObjectName(configurationIndex, audioClusterIndex, &entity::model::ConfigurationTree::audioClusterModels, audioClusterName);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -530,7 +530,7 @@ void ControllerImpl::updateClockDomainName(ControlledEntityImpl& controlledEntit
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setObjectName(configurationIndex, clockDomainIndex, &model::ConfigurationDynamicTree::clockDomainDynamicModels, clockDomainName);
+	controlledEntity.setObjectName(configurationIndex, clockDomainIndex, &entity::model::ConfigurationTree::clockDomainModels, clockDomainName);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -611,7 +611,7 @@ void ControllerImpl::updateStreamInputRunningStatus(ControlledEntityImpl& contro
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	auto const& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels);
+	auto const& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels);
 
 	// Make a copy of current StreamInfo, change affected field and notify changes
 	auto newInfo = streamDynamicModel.streamInfo;
@@ -623,7 +623,7 @@ void ControllerImpl::updateStreamOutputRunningStatus(ControlledEntityImpl& contr
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	auto const& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels);
+	auto const& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
 
 	// Make a copy of current StreamInfo, change affected field and notify changes
 	auto newInfo = streamDynamicModel.streamInfo;
@@ -1121,7 +1121,7 @@ void ControllerImpl::addDelayedQuery(std::chrono::milliseconds const delay, Uniq
 
 void ControllerImpl::chooseLocale(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
-	model::LocaleNodeStaticModel const* localeNode{ nullptr };
+	entity::model::LocaleNodeStaticModel const* localeNode{ nullptr };
 	localeNode = entity->findLocaleNode(configurationIndex, _preferedLocale);
 	if (localeNode == nullptr)
 	{
@@ -1130,18 +1130,18 @@ void ControllerImpl::chooseLocale(ControlledEntityImpl* const entity, entity::mo
 	}
 	if (localeNode != nullptr)
 	{
-		auto const& configStaticTree = entity->getConfigurationStaticTree(configurationIndex);
+		auto const& configTree = entity->getConfigurationTree(configurationIndex);
 
 		entity->setSelectedLocaleStringsIndexesRange(configurationIndex, localeNode->baseStringDescriptorIndex, localeNode->numberOfStringDescriptors);
 		for (auto index = entity::model::StringsIndex(0); index < localeNode->numberOfStringDescriptors; ++index)
 		{
 			// Check if we already have the Strings descriptor
 			auto const stringsIndex = static_cast<decltype(index)>(localeNode->baseStringDescriptorIndex + index);
-			auto const stringsStaticModelIt = configStaticTree.stringsStaticModels.find(stringsIndex);
-			if (stringsStaticModelIt != configStaticTree.stringsStaticModels.end())
+			auto const stringsModelIt = configTree.stringsModels.find(stringsIndex);
+			if (stringsModelIt != configTree.stringsModels.end())
 			{
 				// Already in cache, no need to query (just have to copy strings to Configuration for quick access)
-				auto const& stringsStaticModel = stringsStaticModelIt->second;
+				auto const& stringsStaticModel = stringsModelIt->second.staticModel;
 				entity->setLocalizedStrings(configurationIndex, index, stringsStaticModel.strings);
 			}
 			else
@@ -1668,7 +1668,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 	if (caps.test(entity::EntityCapability::AemSupported))
 	{
 		auto const configurationIndex = entity->getCurrentConfigurationIndex();
-		auto const& configStaticTree = entity->getConfigurationStaticTree(configurationIndex);
+		auto const& configTree = entity->getConfigurationTree(configurationIndex);
 
 		// Get AcquiredState / LockedState (global entity information not related to current configuration)
 		{
@@ -1689,7 +1689,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 
 		// Get StreamInfo/Counters and RX_STATE for each StreamInput descriptors
 		{
-			auto const count = configStaticTree.streamInputStaticModels.size();
+			auto const count = configTree.streamInputModels.size();
 			for (auto index = entity::model::StreamIndex(0); index < count; ++index)
 			{
 				// StreamInfo
@@ -1705,7 +1705,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 
 		// Get StreamInfo and TX_STATE for each StreamOutput descriptors
 		{
-			auto const count = configStaticTree.streamOutputStaticModels.size();
+			auto const count = configTree.streamOutputModels.size();
 			for (auto index = entity::model::StreamIndex(0); index < count; ++index)
 			{
 				// StreamInfo
@@ -1721,7 +1721,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 
 		// Get AvbInfo/Counters for each AvbInterface descriptors
 		{
-			auto const count = configStaticTree.avbInterfaceStaticModels.size();
+			auto const count = configTree.avbInterfaceModels.size();
 			for (auto index = entity::model::AvbInterfaceIndex(0); index < count; ++index)
 			{
 				// AvbInfo
@@ -1735,7 +1735,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 
 		// Get Counters for each ClockDomain descriptors
 		{
-			auto const count = configStaticTree.clockDomainStaticModels.size();
+			auto const count = configTree.clockDomainModels.size();
 			for (auto index = entity::model::ClockDomainIndex(0); index < count; ++index)
 			{
 				// Counters
@@ -1745,10 +1745,10 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 
 		// Get AudioMappings for each StreamPortInput descriptors
 		{
-			auto const count = configStaticTree.streamPortInputStaticModels.size();
+			auto const count = configTree.streamPortInputModels.size();
 			for (auto index = entity::model::StreamPortIndex(0); index < count; ++index)
 			{
-				auto const& staticModel = entity->getNodeStaticModel(configurationIndex, index, &model::ConfigurationStaticTree::streamPortInputStaticModels);
+				auto const& staticModel = entity->getNodeStaticModel(configurationIndex, index, &entity::model::ConfigurationTree::streamPortInputModels);
 				if (staticModel.numberOfMaps == 0)
 				{
 					// TODO: Clause 7.4.44.3 recommands to Lock or Acquire the entity before getting the dynamic audio map
@@ -1759,10 +1759,10 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 
 		// Get AudioMappings for each StreamPortOutput descriptors
 		{
-			auto const count = configStaticTree.streamPortOutputStaticModels.size();
+			auto const count = configTree.streamPortOutputModels.size();
 			for (auto index = entity::model::StreamPortIndex(0); index < count; ++index)
 			{
-				auto const& staticModel = entity->getNodeStaticModel(configurationIndex, index, &model::ConfigurationStaticTree::streamPortOutputStaticModels);
+				auto const& staticModel = entity->getNodeStaticModel(configurationIndex, index, &entity::model::ConfigurationTree::streamPortOutputModels);
 				if (staticModel.numberOfMaps == 0)
 				{
 					// TODO: Clause 7.4.44.3 recommands to Lock or Acquire the entity before getting the dynamic audio map
@@ -1787,13 +1787,13 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 	// Check if AEM is supported by this entity
 	if (caps.test(entity::EntityCapability::AemSupported))
 	{
-		auto const& entityStaticTree = entity->getEntityStaticTree();
+		auto const& entityTree = entity->getEntityTree();
 		auto const currentConfigurationIndex = entity->getCurrentConfigurationIndex();
 
 		// Get DynamicModel for each Configuration descriptors
-		for (auto configurationIndex = entity::model::ConfigurationIndex(0u); configurationIndex < entityStaticTree.configurationStaticTrees.size(); ++configurationIndex)
+		for (auto configurationIndex = entity::model::ConfigurationIndex(0u); configurationIndex < entityTree.configurationTrees.size(); ++configurationIndex)
 		{
-			auto const& configStaticTree = entity->getConfigurationStaticTree(configurationIndex);
+			auto const& configTree = entity->getConfigurationTree(configurationIndex);
 			auto& configDynamicModel = entity->getConfigurationNodeDynamicModel(configurationIndex);
 
 			// We can set the currentConfiguration value right now, we know it
@@ -1810,7 +1810,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 
 				// Get DynamicModel for each AudioUnit descriptors
 				{
-					auto const count = configStaticTree.audioUnitStaticModels.size();
+					auto const count = configTree.audioUnitModels.size();
 					for (auto index = entity::model::AudioUnitIndex(0); index < count; ++index)
 					{
 						// Get AudioUnitName
@@ -1821,7 +1821,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				}
 				// Get DynamicModel for each StreamInput descriptors
 				{
-					auto const count = configStaticTree.streamInputStaticModels.size();
+					auto const count = configTree.streamInputModels.size();
 					for (auto index = entity::model::StreamIndex(0); index < count; ++index)
 					{
 						// Get InputStreamName
@@ -1832,7 +1832,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				}
 				// Get DynamicModel for each StreamOutput descriptors
 				{
-					auto const count = configStaticTree.streamOutputStaticModels.size();
+					auto const count = configTree.streamOutputModels.size();
 					for (auto index = entity::model::StreamIndex(0); index < count; ++index)
 					{
 						// Get OutputStreamName
@@ -1843,7 +1843,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				}
 				// Get DynamicModel for each AvbInterface descriptors
 				{
-					auto const count = configStaticTree.avbInterfaceStaticModels.size();
+					auto const count = configTree.avbInterfaceModels.size();
 					for (auto index = entity::model::AvbInterfaceIndex(0); index < count; ++index)
 					{
 						// Get AvbInterfaceName
@@ -1852,7 +1852,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				}
 				// Get DynamicModel for each ClockSource descriptors
 				{
-					auto const count = configStaticTree.clockSourceStaticModels.size();
+					auto const count = configTree.clockSourceModels.size();
 					for (auto index = entity::model::ClockSourceIndex(0); index < count; ++index)
 					{
 						// Get ClockSourceName
@@ -1861,7 +1861,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				}
 				// Get DynamicModel for each MemoryObject descriptors
 				{
-					auto const count = configStaticTree.memoryObjectStaticModels.size();
+					auto const count = configTree.memoryObjectModels.size();
 					for (auto index = entity::model::MemoryObjectIndex(0); index < count; ++index)
 					{
 						// Get MemoryObjectName
@@ -1872,7 +1872,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				}
 				// Get DynamicModel for each AudioCluster descriptors
 				{
-					auto const count = configStaticTree.audioClusterStaticModels.size();
+					auto const count = configTree.audioClusterModels.size();
 					for (auto index = entity::model::ClusterIndex(0); index < count; ++index)
 					{
 						// Get AudioClusterName
@@ -1881,7 +1881,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				}
 				// Get DynamicModel for each ClockDomain descriptors
 				{
-					auto const count = configStaticTree.clockDomainStaticModels.size();
+					auto const count = configTree.clockDomainModels.size();
 					for (auto index = entity::model::ClockDomainIndex(0); index < count; ++index)
 					{
 						// Get ClockDomainName
@@ -1947,7 +1947,7 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const entity) n
 			onPreAdvertiseEntity(*entity);
 
 			// Store EntityModel in the cache for later use
-			EntityModelCache::getInstance().cacheEntityStaticTree(entity->getEntity().getEntityID(), entity->getCurrentConfigurationIndex(), entity->getEntityStaticTree());
+			EntityModelCache::getInstance().cacheEntityTree(entity->getEntity().getEntityID(), entity->getCurrentConfigurationIndex(), entity->getEntityTree());
 
 			// Advertise the entity
 			entity->setAdvertised(true);
@@ -2003,7 +2003,7 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 								auto const& connectionState = streamInputNode.dynamicModel->connectionState;
 
 								// If the Stream is Connected
-								if (connectionState.state == model::StreamConnectionState::State::Connected)
+								if (connectionState.state == entity::model::StreamConnectionState::State::Connected)
 								{
 									// Check against all the Talker's Output Streams
 									for (auto const& streamOutputNodeKV : talkerConfigurationNode.streamOutputs)
@@ -2054,7 +2054,7 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 					auto const& connectionState = streamInputNode.dynamicModel->connectionState;
 
 					// If the Stream is Connected, search for the Talker we are connected to
-					if (connectionState.state == model::StreamConnectionState::State::Connected)
+					if (connectionState.state == entity::model::StreamConnectionState::State::Connected)
 					{
 						// Take a "scoped locked" shared copy of the ControlledEntity
 						auto talkerEntity = getControlledEntityImplGuard(connectionState.talkerStream.entityID, true);
@@ -2099,7 +2099,7 @@ void ControllerImpl::onPreUnadvertiseEntity(ControlledEntityImpl& controlledEnti
 					auto const& connectionState = streamInputNode.dynamicModel->connectionState;
 
 					// If the Stream is Connected, search for the Talker we are connected to
-					if (connectionState.state == model::StreamConnectionState::State::Connected)
+					if (connectionState.state == entity::model::StreamConnectionState::State::Connected)
 					{
 						// Take a "scoped locked" shared copy of the ControlledEntity
 						auto talkerEntity = getControlledEntityImplGuard(connectionState.talkerStream.entityID, true);
@@ -2956,24 +2956,24 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	// Build StreamConnectionState::State
-	auto conState{ model::StreamConnectionState::State::NotConnected };
+	auto conState{ entity::model::StreamConnectionState::State::NotConnected };
 	if (isConnected)
 	{
-		conState = model::StreamConnectionState::State::Connected;
+		conState = entity::model::StreamConnectionState::State::Connected;
 	}
 	else if (flags.test(entity::ConnectionFlag::FastConnect))
 	{
-		conState = model::StreamConnectionState::State::FastConnecting;
+		conState = entity::model::StreamConnectionState::State::FastConnecting;
 	}
 
 	// Build Talker StreamIdentification
 	auto talkerStreamIdentification{ entity::model::StreamIdentification{} };
-	if (conState != model::StreamConnectionState::State::NotConnected)
+	if (conState != entity::model::StreamConnectionState::State::NotConnected)
 	{
 		if (!talkerStream.entityID)
 		{
 			LOG_CONTROLLER_WARN(UniqueIdentifier::getNullUniqueIdentifier(), "Listener StreamState notification advertises being connected but with no Talker Identification (ListenerID={} ListenerIndex={})", utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
-			conState = model::StreamConnectionState::State::NotConnected;
+			conState = entity::model::StreamConnectionState::State::NotConnected;
 		}
 		else
 		{
@@ -2982,7 +2982,7 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 	}
 
 	// Build a StreamConnectionState
-	auto const state = model::StreamConnectionState{ listenerStream, talkerStreamIdentification, conState };
+	auto const state = entity::model::StreamConnectionState{ listenerStream, talkerStreamIdentification, conState };
 
 	// Check if Listener is online so we can update the StreamState
 	{

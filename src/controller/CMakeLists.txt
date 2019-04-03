@@ -22,10 +22,7 @@ set(ADD_PUBLIC_COMPILE_OPTIONS "")
 set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/controller/avdeccController.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntity.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntityCommonModel.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntityDynamicModel.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntityModel.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntityStaticModel.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/exports.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/logItems.hpp
 )
@@ -34,7 +31,6 @@ set (HEADER_FILES_COMMON
 	${CMAKE_CURRENT_BINARY_DIR}/config.h
 	avdeccControllerImpl.hpp
 	avdeccControlledEntityImpl.hpp
-	avdeccControlledEntityModelTree.hpp
 	avdeccControllerLogHelper.hpp
 	avdeccEntityModelCache.hpp
 )

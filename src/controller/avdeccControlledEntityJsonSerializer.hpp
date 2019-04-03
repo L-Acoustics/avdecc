@@ -25,9 +25,6 @@
 
 #pragma once
 
-#include "la/avdecc/controller/internals/avdeccControlledEntity.hpp"
-#include "la/avdecc/controller/internals/exports.hpp"
-
 #include <nlohmann/json.hpp>
 
 #include <string>
@@ -40,11 +37,12 @@ namespace avdecc
 {
 namespace controller
 {
-namespace entitySerializer
+class ControlledEntityImpl;
+namespace jsonSerializer
 {
-json createJsonObject(ControlledEntity const& entity) noexcept;
+json createJsonObject(ControlledEntityImpl const& entity) noexcept;
 
-} // namespace entitySerializer
+} // namespace jsonSerializer
 } // namespace controller
 } // namespace avdecc
 } // namespace la

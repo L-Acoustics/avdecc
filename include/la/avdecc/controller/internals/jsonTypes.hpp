@@ -33,90 +33,6 @@
 
 using json = nlohmann::json;
 
-namespace nlohmann
-{
-template<>
-struct adl_serializer<la::avdecc::controller::model::EntityCounters>
-{
-	static void to_json(json& j, la::avdecc::controller::model::EntityCounters const& counters)
-	{
-		auto object = json::object();
-
-		for (auto const [name, value] : counters)
-		{
-			json const n = name;
-			object[n.get<std::string>()] = value;
-		}
-
-		j = std::move(object);
-	}
-};
-template<>
-struct adl_serializer<la::avdecc::controller::model::AvbInterfaceCounters>
-{
-	static void to_json(json& j, la::avdecc::controller::model::AvbInterfaceCounters const& counters)
-	{
-		auto object = json::object();
-
-		for (auto const [name, value] : counters)
-		{
-			json const n = name;
-			object[n.get<std::string>()] = value;
-		}
-
-		j = std::move(object);
-	}
-};
-template<>
-struct adl_serializer<la::avdecc::controller::model::ClockDomainCounters>
-{
-	static void to_json(json& j, la::avdecc::controller::model::ClockDomainCounters const& counters)
-	{
-		auto object = json::object();
-
-		for (auto const [name, value] : counters)
-		{
-			json const n = name;
-			object[n.get<std::string>()] = value;
-		}
-
-		j = std::move(object);
-	}
-};
-template<>
-struct adl_serializer<la::avdecc::controller::model::StreamInputCounters>
-{
-	static void to_json(json& j, la::avdecc::controller::model::StreamInputCounters const& counters)
-	{
-		auto object = json::object();
-
-		for (auto const [name, value] : counters)
-		{
-			json const n = name;
-			object[n.get<std::string>()] = value;
-		}
-
-		j = std::move(object);
-	}
-};
-template<>
-struct adl_serializer<la::avdecc::controller::model::StreamOutputCounters>
-{
-	static void to_json(json& j, la::avdecc::controller::model::StreamOutputCounters const& counters)
-	{
-		auto object = json::object();
-
-		for (auto const [name, value] : counters)
-		{
-			json const n = name;
-			object[n.get<std::string>()] = value;
-		}
-
-		j = std::move(object);
-	}
-};
-} // namespace nlohmann
-
 namespace la
 {
 namespace avdecc
@@ -294,7 +210,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(ControlledEntity::CompatibilityFlag, {
 																																		{ ControlledEntity::CompatibilityFlag::Misbehaving, "MISBEHAVING" },
 																																	});
 
-namespace entitySerializer
+namespace jsonSerializer
 {
 namespace keyName
 {
@@ -309,24 +225,19 @@ constexpr auto ControlledEntity_AdpInformation = "adp_information";
 constexpr auto ControlledEntity_EntityModel = "entity_model";
 constexpr auto ControlledEntity_MilanInformation = "milan_information";
 constexpr auto ControlledEntity_EntityState = "state";
-constexpr auto ControlledEntity_EntityDescriptor = "entity_descriptor";
-constexpr auto ControlledEntity_ConfigurationDescriptors = "configuration_descriptors";
-constexpr auto ControlledEntity_AudioUnitDescriptors = "audio_unit_descriptors";
-constexpr auto ControlledEntity_StreamInputDescriptors = "stream_input_descriptors";
-constexpr auto ControlledEntity_StreamOutputDescriptors = "stream_output_descriptors";
-constexpr auto ControlledEntity_AvbInterfaceDescriptors = "avb_interface_descriptors";
-constexpr auto ControlledEntity_ClockSourceDescriptors = "clock_source_descriptors";
-constexpr auto ControlledEntity_MemoryObjectDescriptors = "memory_object_descriptors";
-constexpr auto ControlledEntity_LocaleDescriptors = "locale_descriptors";
-constexpr auto ControlledEntity_StringsDescriptors = "strings_descriptors";
-constexpr auto ControlledEntity_AudioClusterDescriptors = "audio_cluster_descriptors";
-constexpr auto ControlledEntity_AudioMapDescriptors = "audio_map_descriptors";
-constexpr auto ControlledEntity_ClockDomainDescriptors = "clock_domain_descriptors";
-constexpr auto ControlledEntity_StaticInformation = "static";
-constexpr auto ControlledEntity_DynamicInformation = "dynamic";
 
 } // namespace keyName
-} // namespace entitySerializer
+
+namespace keyValue
+{
+/* Controller nodes */
+constexpr auto Controller_DumpVersion = std::uint32_t{ 1 };
+
+/* ControlledEntity nodes */
+constexpr auto ControlledEntity_DumpVersion = std::uint32_t{ 1 };
+
+} // namespace keyValue
+} // namespace jsonSerializer
 } // namespace controller
 } // namespace avdecc
 } // namespace la

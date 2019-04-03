@@ -139,10 +139,10 @@ void ControllerImpl::onEntityDescriptorResult(entity::controller::Interface cons
 			if (!!status)
 			{
 				// Search in the AEM cache for the AEM of the active configuration (if not ignored)
-				auto const* const cachedStaticTree = controlledEntity->shouldIgnoreCachedEntityModel() ? nullptr : EntityModelCache::getInstance().getCachedEntityStaticTree(entityID, descriptor.currentConfiguration);
+				auto const* const cachedTree = controlledEntity->shouldIgnoreCachedEntityModel() ? nullptr : EntityModelCache::getInstance().getCachedEntityTree(entityID, descriptor.currentConfiguration);
 
 				// Already cached, no need to get the remaining of EnumerationSteps::GetStaticModel, proceed with EnumerationSteps::GetDescriptorDynamicInfo
-				if (cachedStaticTree && controlledEntity->setCachedEntityStaticTree(*cachedStaticTree, descriptor))
+				if (cachedTree && controlledEntity->setCachedEntityTree(*cachedTree, descriptor))
 				{
 					controlledEntity->addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 				}
@@ -586,14 +586,14 @@ void ControllerImpl::onLocaleDescriptorResult(entity::controller::Interface cons
 			if (!!status)
 			{
 				controlledEntity->setLocaleDescriptor(descriptor, configurationIndex, localeIndex);
-				auto const& configStaticTree = controlledEntity->getConfigurationStaticTree(configurationIndex);
+				auto const& configTree = controlledEntity->getConfigurationTree(configurationIndex);
 				std::uint16_t countLocales{ 0u };
 				{
-					auto const localeIt = configStaticTree.staticModel.descriptorCounts.find(entity::model::DescriptorType::Locale);
-					if (localeIt != configStaticTree.staticModel.descriptorCounts.end())
+					auto const localeIt = configTree.staticModel.descriptorCounts.find(entity::model::DescriptorType::Locale);
+					if (localeIt != configTree.staticModel.descriptorCounts.end())
 						countLocales = localeIt->second;
 				}
-				auto const allLocalesLoaded = configStaticTree.localeStaticModels.size() == countLocales;
+				auto const allLocalesLoaded = configTree.localeModels.size() == countLocales;
 				// We got all locales, now load strings for the desired locale
 				if (allLocalesLoaded)
 				{
@@ -1509,7 +1509,7 @@ void ControllerImpl::onAudioUnitNameResult(entity::controller::Interface const* 
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, audioUnitIndex, &model::ConfigurationDynamicTree::audioUnitDynamicModels, audioUnitName);
+				controlledEntity->setObjectName(configurationIndex, audioUnitIndex, &entity::model::ConfigurationTree::audioUnitModels, audioUnitName);
 			}
 			else
 			{
@@ -1581,7 +1581,7 @@ void ControllerImpl::onInputStreamNameResult(entity::controller::Interface const
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels, streamInputName);
+				controlledEntity->setObjectName(configurationIndex, streamIndex, &entity::model::ConfigurationTree::streamInputModels, streamInputName);
 			}
 			else
 			{
@@ -1654,7 +1654,7 @@ void ControllerImpl::onOutputStreamNameResult(entity::controller::Interface cons
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels, streamOutputName);
+				controlledEntity->setObjectName(configurationIndex, streamIndex, &entity::model::ConfigurationTree::streamOutputModels, streamOutputName);
 			}
 			else
 			{
@@ -1727,7 +1727,7 @@ void ControllerImpl::onAvbInterfaceNameResult(entity::controller::Interface cons
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, avbInterfaceIndex, &model::ConfigurationDynamicTree::avbInterfaceDynamicModels, avbInterfaceName);
+				controlledEntity->setObjectName(configurationIndex, avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels, avbInterfaceName);
 			}
 			else
 			{
@@ -1763,7 +1763,7 @@ void ControllerImpl::onClockSourceNameResult(entity::controller::Interface const
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, clockSourceIndex, &model::ConfigurationDynamicTree::clockSourceDynamicModels, clockSourceName);
+				controlledEntity->setObjectName(configurationIndex, clockSourceIndex, &entity::model::ConfigurationTree::clockSourceModels, clockSourceName);
 			}
 			else
 			{
@@ -1799,7 +1799,7 @@ void ControllerImpl::onMemoryObjectNameResult(entity::controller::Interface cons
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, memoryObjectIndex, &model::ConfigurationDynamicTree::memoryObjectDynamicModels, memoryObjectName);
+				controlledEntity->setObjectName(configurationIndex, memoryObjectIndex, &entity::model::ConfigurationTree::memoryObjectModels, memoryObjectName);
 			}
 			else
 			{
@@ -1871,7 +1871,7 @@ void ControllerImpl::onAudioClusterNameResult(entity::controller::Interface cons
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, audioClusterIndex, &model::ConfigurationDynamicTree::audioClusterDynamicModels, audioClusterName);
+				controlledEntity->setObjectName(configurationIndex, audioClusterIndex, &entity::model::ConfigurationTree::audioClusterModels, audioClusterName);
 			}
 			else
 			{
@@ -1907,7 +1907,7 @@ void ControllerImpl::onClockDomainNameResult(entity::controller::Interface const
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, clockDomainIndex, &model::ConfigurationDynamicTree::clockDomainDynamicModels, clockDomainName);
+				controlledEntity->setObjectName(configurationIndex, clockDomainIndex, &entity::model::ConfigurationTree::clockDomainModels, clockDomainName);
 			}
 			else
 			{

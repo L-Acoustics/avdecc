@@ -275,6 +275,7 @@ public:
 	static LA_AVDECC_API MvuFeaturesFlags const Redundancy;
 
 	LA_AVDECC_API operator std::string() const noexcept;
+	LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION fromString(std::string const& stringValue); // Throws std::invalid_argument if value does not exist
 };
 
 /** ACMP Message Type - Clause 8.2.1.5 */
