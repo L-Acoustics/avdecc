@@ -40,7 +40,7 @@ namespace controller
 class ControlledEntityImpl;
 namespace jsonSerializer
 {
-json createJsonObject(ControlledEntityImpl const& entity) noexcept;
+json createJsonObject(ControlledEntityImpl const& entity); // Throws SerializationException
 
 } // namespace jsonSerializer
 } // namespace controller

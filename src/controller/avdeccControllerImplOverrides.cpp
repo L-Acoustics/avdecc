@@ -2137,7 +2137,7 @@ void ControllerImpl::unlock() noexcept
 }
 
 /* Model serialization methods */
-std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerImpl::serializeAllControlledEntitiesAsReadableJson([[maybe_unused]] std::string const& filePath) const noexcept
+std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerImpl::serializeAllControlledEntitiesAsReadableJson([[maybe_unused]] std::string const& filePath, [[maybe_unused]] bool const continueOnError) const noexcept
 {
 #ifndef ENABLE_AVDECC_FEATURE_JSON
 	return { avdecc::jsonSerializer::SerializationError::NotSupported, "Serialization feature not supported by the library (was not compiled)" };
@@ -2162,23 +2162,33 @@ std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerIm
 	// Lock to protect _controlledEntities
 	std::lock_guard<decltype(_lock)> const lg(_lock);
 
+	auto error = avdecc::jsonSerializer::SerializationError::NoError;
+	auto errorText = std::string{};
 	for (auto const& [entityID, entity] : _controlledEntities)
 	{
 		// Try to serialize
-		auto const entityObject = jsonSerializer::createJsonObject(*entity);
-
-		// Check if there was an error, in which case the JSON object would be an array (of strings) type, containing the error message
-		if (entityObject.is_array())
+		try
 		{
-			return { avdecc::jsonSerializer::SerializationError::SerializationError, static_cast<std::string>(entityObject[0]) };
+			auto const entityObject = jsonSerializer::createJsonObject(*entity);
+
+			object[jsonSerializer::keyName::Controller_Entities].push_back(entityObject);
 		}
-		object[jsonSerializer::keyName::Controller_Entities].push_back(entityObject);
+		catch (avdecc::jsonSerializer::SerializationException const& e)
+		{
+			if (continueOnError)
+			{
+				error = avdecc::jsonSerializer::SerializationError::Incomplete;
+				errorText = e.what();
+				continue;
+			}
+			return { e.getError(), e.what() };
+		}
 	}
 
 	// Everything is fine, write the JSON object to disk
 	of << std::setw(4) << object << std::endl;
 
-	return { avdecc::jsonSerializer::SerializationError::NoError, "" };
+	return { error, errorText };
 #endif // ENABLE_AVDECC_FEATURE_JSON
 }
 
@@ -2206,18 +2216,19 @@ std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerIm
 	}
 
 	// Try to serialize
-	auto const object = jsonSerializer::createJsonObject(*entity);
-
-	// Check if there was an error, in which case the JSON object would be an array (of strings) type, containing the error message
-	if (object.is_array())
+	try
 	{
-		return { avdecc::jsonSerializer::SerializationError::SerializationError, static_cast<std::string>(object[0]) };
+		auto const object = jsonSerializer::createJsonObject(*entity);
+
+		// Everything is fine, write the JSON object to disk
+		ofs << std::setw(4) << object << std::endl;
+
+		return { avdecc::jsonSerializer::SerializationError::NoError, "" };
 	}
-
-	// Everything is fine, write the JSON object to disk
-	ofs << std::setw(4) << object << std::endl;
-
-	return { avdecc::jsonSerializer::SerializationError::NoError, "" };
+	catch (avdecc::jsonSerializer::SerializationException const& e)
+	{
+		return { e.getError(), e.what() };
+	}
 #endif // ENABLE_AVDECC_FEATURE_JSON
 }
 

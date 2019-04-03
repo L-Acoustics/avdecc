@@ -95,7 +95,7 @@ Dumper::Dumper(la::avdecc::protocol::ProtocolInterface::Type const protocolInter
 Dumper::~Dumper() noexcept
 {
 	auto const networkDumpFileName = std::string{ "FullDump.json" };
-	auto const [error, message] = _controller->serializeAllControlledEntitiesAsReadableJson(networkDumpFileName);
+	auto const [error, message] = _controller->serializeAllControlledEntitiesAsReadableJson(networkDumpFileName, true);
 	if (!!error)
 	{
 		outputText("Failed to dump all entities: " + message + "\n");

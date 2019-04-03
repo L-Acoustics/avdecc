@@ -39,7 +39,6 @@ namespace jsonSerializer
 {
 struct Context
 {
-	ConfigurationIndex nextExpectedConfigurationIndex{ 0u };
 	AudioUnitIndex nextExpectedAudioUnitIndex{ 0u };
 	StreamIndex nextExpectedStreamInputIndex{ 0u };
 	StreamIndex nextExpectedStreamOutputIndex{ 0u };
@@ -55,17 +54,26 @@ struct Context
 };
 
 template<bool hasDynamicModel = true, typename FieldPointer>
-nlohmann::json dumpLeafModels(ConfigurationTree const& configTree, SerializationFlags const flags, FieldPointer ConfigurationTree::*const Field, DescriptorIndex& nextExpectedIndex, std::string const& descriptorName)
+nlohmann::json dumpLeafModels(ConfigurationTree const& configTree, SerializationFlags const flags, FieldPointer ConfigurationTree::*const Field, DescriptorIndex& nextExpectedIndex, std::string const& descriptorName, DescriptorIndex const baseIndex, size_t const numberOfIndexes)
 {
 	auto objects = json{};
 
-	for (auto const& [descriptorIndex, models] : (configTree.*Field))
+	for (auto descriptorIndexCounter = DescriptorIndex(0); descriptorIndexCounter < numberOfIndexes; ++descriptorIndexCounter)
+	//for (auto const& [descriptorIndex, models] : (configTree.*Field))
 	{
+		auto const descriptorIndex = DescriptorIndex(descriptorIndexCounter + baseIndex);
 		if (descriptorIndex != nextExpectedIndex)
 		{
 			throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex, "Invalid " + descriptorName + " Descriptor Index: " + std::to_string(descriptorIndex) + " but expected " + std::to_string(nextExpectedIndex) };
 		}
 		++nextExpectedIndex;
+
+		auto const modelsIt = (configTree.*Field).find(descriptorIndex);
+		if (modelsIt == (configTree.*Field).end())
+		{
+			throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex, "Invalid " + descriptorName + " Descriptor Index: " + std::to_string(descriptorIndex) + " (out of range)" };
+		}
+		auto const& models = modelsIt->second;
 
 		auto object = json{};
 
@@ -157,10 +165,11 @@ nlohmann::json dumpStreamPortModels(Context& c, ConfigurationTree const& configT
 		auto streamPort = json{};
 
 		// Dump Static model
+		auto const& staticModel = streamPortModels.staticModel;
 		if (flags.test(SerializationFlag::SerializeStaticModel))
 		{
 			// Dump StreamPort Descriptor Model
-			streamPort[keyName::Node_StaticInformation] = streamPortModels.staticModel;
+			streamPort[keyName::Node_StaticInformation] = staticModel;
 		}
 
 		// Dump Dynamic model
@@ -171,10 +180,10 @@ nlohmann::json dumpStreamPortModels(Context& c, ConfigurationTree const& configT
 		}
 
 		// Dump AudioClusters
-		streamPort[keyName::NodeName_AudioClusterDescriptors] = dumpLeafModels(configTree, flags, &ConfigurationTree::audioClusterModels, c.nextExpectedAudioClusterIndex, "AudioCluster");
+		streamPort[keyName::NodeName_AudioClusterDescriptors] = dumpLeafModels(configTree, flags, &ConfigurationTree::audioClusterModels, c.nextExpectedAudioClusterIndex, "AudioCluster", staticModel.baseCluster, staticModel.numberOfClusters);
 
 		// Dump AudioMaps
-		streamPort[keyName::NodeName_AudioMapDescriptors] = dumpLeafModels<false>(configTree, flags, &ConfigurationTree::audioMapModels, c.nextExpectedAudioMapIndex, "AudioMap");
+		streamPort[keyName::NodeName_AudioMapDescriptors] = dumpLeafModels<false>(configTree, flags, &ConfigurationTree::audioMapModels, c.nextExpectedAudioMapIndex, "AudioMap", staticModel.baseMap, staticModel.numberOfMaps);
 
 		// Dump informative DescriptorIndex
 		streamPort[model::keyName::Node_Informative_Index] = streamPortIndex;
@@ -263,17 +272,21 @@ nlohmann::json dumpLocaleModels(Context& c, ConfigurationTree const& configTree,
 	return locales;
 }
 
-nlohmann::json dumpConfigurationTrees(Context& c, std::map<ConfigurationIndex, ConfigurationTree> const& configTrees, SerializationFlags const flags)
+nlohmann::json dumpConfigurationTrees(std::map<ConfigurationIndex, ConfigurationTree> const& configTrees, SerializationFlags const flags)
 {
 	auto configs = json{};
+	auto nextExpectedConfigurationIndex = ConfigurationIndex{ 0u };
 
 	for (auto const& [configIndex, configTree] : configTrees)
 	{
-		if (configIndex != c.nextExpectedConfigurationIndex)
+		// Start a new Context now, DescriptorIndexes start at 0 for each new configuration
+		auto c = Context{};
+
+		if (configIndex != nextExpectedConfigurationIndex)
 		{
-			throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex, "Invalid Configuration Descriptor Index: " + std::to_string(configIndex) + " but expected " + std::to_string(c.nextExpectedConfigurationIndex) };
+			throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex, "Invalid Configuration Descriptor Index: " + std::to_string(configIndex) + " but expected " + std::to_string(nextExpectedConfigurationIndex) };
 		}
-		++c.nextExpectedConfigurationIndex;
+		++nextExpectedConfigurationIndex;
 
 		auto config = json{};
 
@@ -295,25 +308,25 @@ nlohmann::json dumpConfigurationTrees(Context& c, std::map<ConfigurationIndex, C
 		config[keyName::NodeName_AudioUnitDescriptors] = dumpAudioUnitModels(c, configTree, flags);
 
 		// Dump StreamInputs
-		config[keyName::NodeName_StreamInputDescriptors] = dumpLeafModels(configTree, flags, &ConfigurationTree::streamInputModels, c.nextExpectedStreamInputIndex, "StreamInput");
+		config[keyName::NodeName_StreamInputDescriptors] = dumpLeafModels(configTree, flags, &ConfigurationTree::streamInputModels, c.nextExpectedStreamInputIndex, "StreamInput", 0, configTree.streamInputModels.size());
 
 		// Dump StreamOutputs
-		config[keyName::NodeName_StreamOutputDescriptors] = dumpLeafModels(configTree, flags, &ConfigurationTree::streamOutputModels, c.nextExpectedStreamOutputIndex, "StreamOutput");
+		config[keyName::NodeName_StreamOutputDescriptors] = dumpLeafModels(configTree, flags, &ConfigurationTree::streamOutputModels, c.nextExpectedStreamOutputIndex, "StreamOutput", 0, configTree.streamOutputModels.size());
 
 		// Dump AvbInterfaces
-		config[keyName::NodeName_AvbInterfaceDescriptors] = dumpLeafModels(configTree, flags, &ConfigurationTree::avbInterfaceModels, c.nextExpectedAvbInterfaceIndex, "AvbInterface");
+		config[keyName::NodeName_AvbInterfaceDescriptors] = dumpLeafModels(configTree, flags, &ConfigurationTree::avbInterfaceModels, c.nextExpectedAvbInterfaceIndex, "AvbInterface", 0, configTree.avbInterfaceModels.size());
 
 		// Dump ClockSources
-		config[keyName::NodeName_ClockSourceDescriptors] = dumpLeafModels(configTree, flags, &ConfigurationTree::clockSourceModels, c.nextExpectedClockSourceIndex, "ClockSource");
+		config[keyName::NodeName_ClockSourceDescriptors] = dumpLeafModels(configTree, flags, &ConfigurationTree::clockSourceModels, c.nextExpectedClockSourceIndex, "ClockSource", 0, configTree.clockSourceModels.size());
 
 		// Dump MemoryObjects
-		config[keyName::NodeName_MemoryObjectDescriptors] = dumpLeafModels(configTree, flags, &ConfigurationTree::memoryObjectModels, c.nextExpectedMemoryObjectIndex, "MemoryObject");
+		config[keyName::NodeName_MemoryObjectDescriptors] = dumpLeafModels(configTree, flags, &ConfigurationTree::memoryObjectModels, c.nextExpectedMemoryObjectIndex, "MemoryObject", 0, configTree.memoryObjectModels.size());
 
 		// Dump Locales
 		config[keyName::NodeName_LocaleDescriptors] = dumpLocaleModels(c, configTree, flags);
 
 		// Dump ClockDomains
-		config[keyName::NodeName_ClockDomainDescriptors] = dumpLeafModels(configTree, flags, &ConfigurationTree::clockDomainModels, c.nextExpectedClockDomainIndex, "ClockDomain");
+		config[keyName::NodeName_ClockDomainDescriptors] = dumpLeafModels(configTree, flags, &ConfigurationTree::clockDomainModels, c.nextExpectedClockDomainIndex, "ClockDomain", 0, configTree.clockDomainModels.size());
 
 		// Dump informative DescriptorIndex
 		config[model::keyName::Node_Informative_Index] = configIndex;
@@ -326,7 +339,6 @@ nlohmann::json dumpConfigurationTrees(Context& c, std::map<ConfigurationIndex, C
 
 nlohmann::json dumpEntityTree(EntityTree const& entityTree, SerializationFlags const flags)
 {
-	auto c = Context{};
 	auto entity = json{};
 
 	// Dump Static model
@@ -342,7 +354,7 @@ nlohmann::json dumpEntityTree(EntityTree const& entityTree, SerializationFlags c
 	}
 
 	// Dump Configurations
-	entity[keyName::NodeName_ConfigurationDescriptors] = dumpConfigurationTrees(c, entityTree.configurationTrees, flags);
+	entity[keyName::NodeName_ConfigurationDescriptors] = dumpConfigurationTrees(entityTree.configurationTrees, flags);
 
 	return entity;
 }

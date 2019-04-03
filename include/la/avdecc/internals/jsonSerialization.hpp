@@ -47,7 +47,7 @@ enum class SerializationError
 	AccessDenied = 1, /**< File access denied. */
 	UnknownEntity = 2, /**< Specified entityID unknown. */
 	InvalidDescriptorIndex = 3, /**< A descriptor index of the model has an invalid numbering. */
-	SerializationError = 4, /**< Error during json objects serialization. */
+	Incomplete = 4, /**< Serialization partially done (had errors but continued anyway). */
 	NotSupported = 98, /**< Serialization feature not supported by the library (was not compiled). */
 	InternalError = 99, /**< Internal error, please report the issue. */
 };

@@ -43,7 +43,7 @@ namespace jsonSerializer
 /* ************************************************************ */
 /* Public methods                                               */
 /* ************************************************************ */
-json createJsonObject(ControlledEntityImpl const& entity) noexcept
+json createJsonObject(ControlledEntityImpl const& entity)
 {
 	// Create the object
 	auto object = json{};
@@ -84,7 +84,7 @@ json createJsonObject(ControlledEntityImpl const& entity) noexcept
 	if (e.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
 	{
 		// Dump static and dynamic models
-		object[keyName::ControlledEntity_EntityModel] = la::avdecc::entity::model::jsonSerializer::createJsonObject(entity.getEntityTree(), la::avdecc::entity::model::jsonSerializer::SerializationFlags{ la::avdecc::entity::model::jsonSerializer::SerializationFlag::SerializeStaticModel, la::avdecc::entity::model::jsonSerializer::SerializationFlag::SerializeDynamicModel });
+		object[keyName::ControlledEntity_EntityModel] = entity::model::jsonSerializer::createJsonObject(entity.getEntityTree(), entity::model::jsonSerializer::SerializationFlags{ entity::model::jsonSerializer::SerializationFlag::SerializeStaticModel, entity::model::jsonSerializer::SerializationFlag::SerializeDynamicModel });
 	}
 
 	// Dump Milan information, if present
