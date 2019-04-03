@@ -60,7 +60,8 @@ json createJsonObject(ControlledEntityImpl const& entity) noexcept
 		adp[entity::keyName::Entity_CommonInformation_Node] = e.getCommonInformation();
 
 		// Dump interfaces information
-		for (auto const& [avbInterfaceIndex, intfcInfo] : e.getInterfacesInformation())
+		auto intfcs = json{};
+		for (auto const& [avbInterfaceIndex, intfcInfo] : e.getInterfacesInformation()) // Don't use default std::map serializer, we want to force an array of object that includes the key (AvbInterfaceIndex)
 		{
 			json j = intfcInfo; // Must use operator= instead of constructor to force usage of the to_json overload
 			if (avbInterfaceIndex == entity::Entity::GlobalAvbInterfaceIndex)
@@ -71,8 +72,9 @@ json createJsonObject(ControlledEntityImpl const& entity) noexcept
 			{
 				j[entity::keyName::Entity_InterfaceInformation_AvbInterfaceIndex] = avbInterfaceIndex;
 			}
-			object[entity::keyName::Entity_InterfaceInformation_Node].push_back(j);
+			intfcs.push_back(j);
 		}
+		adp[entity::keyName::Entity_InterfaceInformation_Node] = intfcs;
 	}
 
 	// Dump device compatibility flags
