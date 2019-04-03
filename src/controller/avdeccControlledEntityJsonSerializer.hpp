@@ -38,11 +38,11 @@ namespace avdecc
 namespace controller
 {
 class ControlledEntityImpl;
-namespace entitySerializer
+namespace jsonSerializer
 {
 json createJsonObject(ControlledEntityImpl const& entity) noexcept;
 
-} // namespace entitySerializer
+} // namespace jsonSerializer
 } // namespace controller
 } // namespace avdecc
 } // namespace la

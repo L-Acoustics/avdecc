@@ -24,22 +24,30 @@
 
 #pragma once
 
+#include "la/avdecc/utils.hpp"
+
 #include "exception.hpp"
+#include "entityModelTree.hpp"
+#include "exports.hpp"
 
 #include <exception>
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+#	include <nlohmann/json.hpp>
+#endif // ENABLE_AVDECC_FEATURE_JSON
 
 namespace la
 {
 namespace avdecc
 {
-namespace entitySerializer
+namespace jsonSerializer
 {
 enum class SerializationError
 {
 	NoError = 0,
 	AccessDenied = 1, /**< File access denied. */
 	UnknownEntity = 2, /**< Specified entityID unknown. */
-	SerializationError = 3, /**< Error during json objects serialization. */
+	InvalidDescriptorIndex = 3, /**< A descriptor index of the model has an invalid numbering. */
+	SerializationError = 4, /**< Error during json objects serialization. */
 	NotSupported = 98, /**< Serialization feature not supported by the library (was not compiled). */
 	InternalError = 99, /**< Internal error, please report the issue. */
 };
@@ -53,6 +61,24 @@ enum class DeserializationError
 	DeserializationError = 4, /**< Error during json objects deserialization. */
 	NotSupported = 98, /**< Deserialization feature not supported by the library (was not compiled). */
 	InternalError = 99, /**< Internal error, please report the issue. */
+};
+
+class LA_AVDECC_API SerializationException final : public la::avdecc::Exception
+{
+public:
+	template<class T>
+	SerializationException(SerializationError const error, T&& text) noexcept
+		: la::avdecc::Exception(std::forward<T>(text))
+		, _error(error)
+	{
+	}
+	SerializationError getError() const noexcept
+	{
+		return _error;
+	}
+
+private:
+	SerializationError const _error{ SerializationError::NoError };
 };
 
 class LA_AVDECC_API DeserializationException final : public la::avdecc::Exception
@@ -84,6 +110,28 @@ constexpr bool operator!(DeserializationError const error)
 	return error == DeserializationError::NoError;
 }
 
-} // namespace entitySerializer
+} // namespace jsonSerializer
+
+namespace entity
+{
+namespace model
+{
+namespace jsonSerializer
+{
+enum class SerializationFlag
+{
+	None = 0,
+	SerializeStaticModel = 1u << 0,
+	SerializeDynamicModel = 1u << 1,
+};
+using SerializationFlags = utils::EnumBitfield<SerializationFlag>;
+
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+LA_AVDECC_API nlohmann::json LA_AVDECC_CALL_CONVENTION createJsonObject(EntityTree const& entityTree, SerializationFlags const flags); // Throws SerializationException
+#endif // ENABLE_AVDECC_FEATURE_JSON
+
+} // namespace jsonSerializer
+} // namespace model
+} // namespace entity
 } // namespace avdecc
 } // namespace la

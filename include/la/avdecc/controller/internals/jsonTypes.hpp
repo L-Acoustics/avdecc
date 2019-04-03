@@ -210,7 +210,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(ControlledEntity::CompatibilityFlag, {
 																																		{ ControlledEntity::CompatibilityFlag::Misbehaving, "MISBEHAVING" },
 																																	});
 
-namespace entitySerializer
+namespace jsonSerializer
 {
 namespace keyName
 {
@@ -225,21 +225,6 @@ constexpr auto ControlledEntity_AdpInformation = "adp_information";
 constexpr auto ControlledEntity_EntityModel = "entity_model";
 constexpr auto ControlledEntity_MilanInformation = "milan_information";
 constexpr auto ControlledEntity_EntityState = "state";
-constexpr auto ControlledEntity_EntityDescriptor = "entity_descriptor";
-constexpr auto ControlledEntity_ConfigurationDescriptors = "configuration_descriptors";
-constexpr auto ControlledEntity_AudioUnitDescriptors = "audio_unit_descriptors";
-constexpr auto ControlledEntity_StreamInputDescriptors = "stream_input_descriptors";
-constexpr auto ControlledEntity_StreamOutputDescriptors = "stream_output_descriptors";
-constexpr auto ControlledEntity_AvbInterfaceDescriptors = "avb_interface_descriptors";
-constexpr auto ControlledEntity_ClockSourceDescriptors = "clock_source_descriptors";
-constexpr auto ControlledEntity_MemoryObjectDescriptors = "memory_object_descriptors";
-constexpr auto ControlledEntity_LocaleDescriptors = "locale_descriptors";
-constexpr auto ControlledEntity_StringsDescriptors = "strings_descriptors";
-constexpr auto ControlledEntity_AudioClusterDescriptors = "audio_cluster_descriptors";
-constexpr auto ControlledEntity_AudioMapDescriptors = "audio_map_descriptors";
-constexpr auto ControlledEntity_ClockDomainDescriptors = "clock_domain_descriptors";
-constexpr auto ControlledEntity_StaticInformation = "static";
-constexpr auto ControlledEntity_DynamicInformation = "dynamic";
 
 } // namespace keyName
 
@@ -252,7 +237,7 @@ constexpr auto Controller_DumpVersion = std::uint32_t{ 1 };
 constexpr auto ControlledEntity_DumpVersion = std::uint32_t{ 1 };
 
 } // namespace keyValue
-} // namespace entitySerializer
+} // namespace jsonSerializer
 } // namespace controller
 } // namespace avdecc
 } // namespace la

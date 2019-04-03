@@ -120,8 +120,8 @@ private:
 	virtual void unlock() noexcept override;
 
 	/* Model serialization methods */
-	virtual std::tuple<avdecc::entitySerializer::SerializationError, std::string> serializeAllControlledEntitiesAsReadableJson(std::string const& filePath) const noexcept override;
-	virtual std::tuple<avdecc::entitySerializer::SerializationError, std::string> serializeControlledEntityAsReadableJson(UniqueIdentifier const entityID, std::string const& filePath) const noexcept override;
+	virtual std::tuple<avdecc::jsonSerializer::SerializationError, std::string> serializeAllControlledEntitiesAsReadableJson(std::string const& filePath) const noexcept override;
+	virtual std::tuple<avdecc::jsonSerializer::SerializationError, std::string> serializeControlledEntityAsReadableJson(UniqueIdentifier const entityID, std::string const& filePath) const noexcept override;
 
 	/* ************************************************************ */
 	/* Result handlers                                              */

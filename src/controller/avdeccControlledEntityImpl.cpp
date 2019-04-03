@@ -1919,22 +1919,18 @@ void ControlledEntityImpl::buildEntityModelGraph() const noexcept
 			_entityNode.dynamicModel = &_entityTree.dynamicModel;
 
 			// Build configuration nodes (ConfigurationNode)
-			for (auto& configKV : _entityTree.configurationTrees)
+			for (auto& [configIndex, configTree] : _entityTree.configurationTrees)
 			{
-				auto const configIndex = configKV.first;
-				auto& configTree = configKV.second;
-
 				auto& configNode = _entityNode.configurations[configIndex];
 				initNode(configNode, entity::model::DescriptorType::Configuration, configIndex);
 				configNode.staticModel = &configTree.staticModel;
 				configNode.dynamicModel = &configTree.dynamicModel;
 
 				// Build audio units (AudioUnitNode)
-				for (auto& audioUnitKV : configTree.audioUnitModels)
+				for (auto& [audioUnitIndex, audioUnitModels] : configTree.audioUnitModels)
 				{
-					auto const audioUnitIndex = audioUnitKV.first;
-					auto const& audioUnitStaticModel = audioUnitKV.second.staticModel;
-					auto& audioUnitDynamicModel = audioUnitKV.second.dynamicModel;
+					auto const& audioUnitStaticModel = audioUnitModels.staticModel;
+					auto& audioUnitDynamicModel = audioUnitModels.dynamicModel;
 
 					auto& audioUnitNode = configNode.audioUnits[audioUnitIndex];
 					initNode(audioUnitNode, entity::model::DescriptorType::AudioUnit, audioUnitIndex);
@@ -1998,11 +1994,10 @@ void ControlledEntityImpl::buildEntityModelGraph() const noexcept
 				}
 
 				// Build stream inputs (StreamNode)
-				for (auto& streamKV : configTree.streamInputModels)
+				for (auto& [streamIndex, streamModels] : configTree.streamInputModels)
 				{
-					auto const streamIndex = streamKV.first;
-					auto const& streamStaticModel = streamKV.second.staticModel;
-					auto& streamDynamicModel = streamKV.second.dynamicModel;
+					auto const& streamStaticModel = streamModels.staticModel;
+					auto& streamDynamicModel = streamModels.dynamicModel;
 
 					auto& streamNode = configNode.streamInputs[streamIndex];
 					initNode(streamNode, entity::model::DescriptorType::StreamInput, streamIndex);
@@ -2011,11 +2006,10 @@ void ControlledEntityImpl::buildEntityModelGraph() const noexcept
 				}
 
 				// Build stream outputs (StreamNode)
-				for (auto& streamKV : configTree.streamOutputModels)
+				for (auto& [streamIndex, streamModels] : configTree.streamOutputModels)
 				{
-					auto const streamIndex = streamKV.first;
-					auto const& streamStaticModel = streamKV.second.staticModel;
-					auto& streamDynamicModel = streamKV.second.dynamicModel;
+					auto const& streamStaticModel = streamModels.staticModel;
+					auto& streamDynamicModel = streamModels.dynamicModel;
 
 					auto& streamNode = configNode.streamOutputs[streamIndex];
 					initNode(streamNode, entity::model::DescriptorType::StreamOutput, streamIndex);
@@ -2024,11 +2018,10 @@ void ControlledEntityImpl::buildEntityModelGraph() const noexcept
 				}
 
 				// Build avb interfaces (AvbInterfaceNode)
-				for (auto& interfaceKV : configTree.avbInterfaceModels)
+				for (auto& [interfaceIndex, interfaceModels] : configTree.avbInterfaceModels)
 				{
-					auto const interfaceIndex = interfaceKV.first;
-					auto const& interfaceStaticModel = interfaceKV.second.staticModel;
-					auto& interfaceDynamicModel = interfaceKV.second.dynamicModel;
+					auto const& interfaceStaticModel = interfaceModels.staticModel;
+					auto& interfaceDynamicModel = interfaceModels.dynamicModel;
 
 					auto& interfaceNode = configNode.avbInterfaces[interfaceIndex];
 					initNode(interfaceNode, entity::model::DescriptorType::AvbInterface, interfaceIndex);
@@ -2037,11 +2030,10 @@ void ControlledEntityImpl::buildEntityModelGraph() const noexcept
 				}
 
 				// Build clock sources (ClockSourceNode)
-				for (auto& sourceKV : configTree.clockSourceModels)
+				for (auto& [sourceIndex, sourceModels] : configTree.clockSourceModels)
 				{
-					auto const sourceIndex = sourceKV.first;
-					auto const& sourceStaticModel = sourceKV.second.staticModel;
-					auto& sourceDynamicModel = sourceKV.second.dynamicModel;
+					auto const& sourceStaticModel = sourceModels.staticModel;
+					auto& sourceDynamicModel = sourceModels.dynamicModel;
 
 					auto& sourceNode = configNode.clockSources[sourceIndex];
 					initNode(sourceNode, entity::model::DescriptorType::ClockSource, sourceIndex);
@@ -2050,11 +2042,10 @@ void ControlledEntityImpl::buildEntityModelGraph() const noexcept
 				}
 
 				// Build memory objects (MemoryObjectNode)
-				for (auto& memoryObjectKV : configTree.memoryObjectModels)
+				for (auto& [memoryObjectIndex, memoryObjectModels] : configTree.memoryObjectModels)
 				{
-					auto const memoryObjectIndex = memoryObjectKV.first;
-					auto const& memoryObjectStaticModel = memoryObjectKV.second.staticModel;
-					auto& memoryObjectDynamicModel = memoryObjectKV.second.dynamicModel;
+					auto const& memoryObjectStaticModel = memoryObjectModels.staticModel;
+					auto& memoryObjectDynamicModel = memoryObjectModels.dynamicModel;
 
 					auto& memoryObjectNode = configNode.memoryObjects[memoryObjectIndex];
 					initNode(memoryObjectNode, entity::model::DescriptorType::MemoryObject, memoryObjectIndex);
@@ -2063,10 +2054,9 @@ void ControlledEntityImpl::buildEntityModelGraph() const noexcept
 				}
 
 				// Build locales (LocaleNode)
-				for (auto const& localeKV : configTree.localeModels)
+				for (auto const& [localeIndex, localeModels] : configTree.localeModels)
 				{
-					auto const localeIndex = localeKV.first;
-					auto const& localeStaticModel = localeKV.second.staticModel;
+					auto const& localeStaticModel = localeModels.staticModel;
 
 					auto& localeNode = configNode.locales[localeIndex];
 					initNode(localeNode, entity::model::DescriptorType::Locale, localeIndex);
@@ -2089,11 +2079,10 @@ void ControlledEntityImpl::buildEntityModelGraph() const noexcept
 				}
 
 				// Build clock domains (ClockDomainNode)
-				for (auto& domainKV : configTree.clockDomainModels)
+				for (auto& [domainIndex, domainModels] : configTree.clockDomainModels)
 				{
-					auto const domainIndex = domainKV.first;
-					auto const& domainStaticModel = domainKV.second.staticModel;
-					auto& domainDynamicModel = domainKV.second.dynamicModel;
+					auto const& domainStaticModel = domainModels.staticModel;
+					auto& domainDynamicModel = domainModels.dynamicModel;
 
 					auto& domainNode = configNode.clockDomains[domainIndex];
 					initNode(domainNode, entity::model::DescriptorType::ClockDomain, domainIndex);

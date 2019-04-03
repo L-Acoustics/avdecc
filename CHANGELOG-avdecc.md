@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - Entity Model Tree definition
+- Entity Model dump as readable json
 
 ## [2.9.2] - 2019-05-20
 ### Added

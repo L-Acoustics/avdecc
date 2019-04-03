@@ -229,6 +229,9 @@ if(ENABLE_AVDECC_FEATURE_JSON)
 	list(APPEND PUBLIC_HEADER_FILES
 		${LA_ROOT_DIR}/include/la/avdecc/internals/jsonTypes.hpp
 	)
+	list(APPEND SOURCE_FILES_ENTITY
+		entity/entityModelJsonSerializer.cpp
+	)
 	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DENABLE_AVDECC_FEATURE_JSON")
 endif()
 
@@ -296,7 +299,7 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 
 	# Setup json
 	if(ENABLE_AVDECC_FEATURE_JSON)
-		target_link_libraries(la_avdecc_cxx PRIVATE nlohmann_json)
+		target_link_libraries(la_avdecc_cxx PUBLIC nlohmann_json)
 	endif()
 
 	# Set installation rule
@@ -330,7 +333,7 @@ if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 	
 	# Setup json
 	if(ENABLE_AVDECC_FEATURE_JSON)
-		target_link_libraries(la_avdecc_static PRIVATE nlohmann_json)
+		target_link_libraries(la_avdecc_static PUBLIC nlohmann_json)
 	endif()
 
 	# Set installation rule

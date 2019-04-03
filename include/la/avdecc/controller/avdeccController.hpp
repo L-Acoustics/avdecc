@@ -413,8 +413,8 @@ public:
 	virtual void unlock() noexcept = 0;
 
 	/* Model serialization methods */
-	virtual std::tuple<avdecc::entitySerializer::SerializationError, std::string> serializeAllControlledEntitiesAsReadableJson(std::string const& filePath) const noexcept = 0;
-	virtual std::tuple<avdecc::entitySerializer::SerializationError, std::string> serializeControlledEntityAsReadableJson(UniqueIdentifier const entityID, std::string const& filePath) const noexcept = 0;
+	virtual std::tuple<avdecc::jsonSerializer::SerializationError, std::string> serializeAllControlledEntitiesAsReadableJson(std::string const& filePath) const noexcept = 0;
+	virtual std::tuple<avdecc::jsonSerializer::SerializationError, std::string> serializeControlledEntityAsReadableJson(UniqueIdentifier const entityID, std::string const& filePath) const noexcept = 0;
 
 	// Deleted compiler auto-generated methods
 	Controller(Controller const&) = delete;
