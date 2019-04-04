@@ -350,3 +350,18 @@ TEST(StreamConnectionState, Comparison)
 		EXPECT_NE(s3, s2);
 	}
 }
+
+TEST(Controller, VirtualEntityLoad)
+{
+	//static std::promise<void> commandResultPromise{};
+	{
+		auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en");
+		auto const [error, message] = controller->loadVirtualEntityFromReadableJson("data/SimpleEntity.json", false);
+		EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+		EXPECT_STREQ("", message.c_str());
+	}
+
+	// Wait for the handler to complete
+	//auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(1));
+	//ASSERT_NE(std::future_status::timeout, status);
+}

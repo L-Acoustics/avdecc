@@ -205,6 +205,24 @@ private:
 	std::string _message{};
 };
 
+class LogItemJsonSerializer : public la::avdecc::logger::LogItem
+{
+public:
+	LogItemJsonSerializer(std::string const& message) noexcept
+		: LogItem(Layer::JsonSerializer)
+		, _message(message)
+	{
+	}
+
+	virtual std::string getMessage() const noexcept override
+	{
+		return _message;
+	}
+
+private:
+	std::string _message{};
+};
+
 } // namespace logger
 } // namespace avdecc
 } // namespace la

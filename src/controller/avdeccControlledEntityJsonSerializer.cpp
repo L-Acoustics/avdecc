@@ -43,7 +43,7 @@ namespace jsonSerializer
 /* ************************************************************ */
 /* Public methods                                               */
 /* ************************************************************ */
-json createJsonObject(ControlledEntityImpl const& entity)
+json createJsonObject(ControlledEntityImpl const& entity, bool const ignoreSanityChecks)
 {
 	// Create the object
 	auto object = json{};
@@ -84,7 +84,12 @@ json createJsonObject(ControlledEntityImpl const& entity)
 	if (e.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
 	{
 		// Dump static and dynamic models
-		object[keyName::ControlledEntity_EntityModel] = entity::model::jsonSerializer::createJsonObject(entity.getEntityTree(), entity::model::jsonSerializer::SerializationFlags{ entity::model::jsonSerializer::SerializationFlag::SerializeStaticModel, entity::model::jsonSerializer::SerializationFlag::SerializeDynamicModel });
+		auto flags = entity::model::jsonSerializer::Flags{ entity::model::jsonSerializer::Flag::ProcessStaticModel, entity::model::jsonSerializer::Flag::ProcessDynamicModel };
+		if (ignoreSanityChecks)
+		{
+			flags.set(entity::model::jsonSerializer::Flag::IgnoreSanityChecks);
+		}
+		object[keyName::ControlledEntity_EntityModel] = entity::model::jsonSerializer::createJsonObject(entity.getEntityTree(), flags);
 	}
 
 	// Dump Milan information, if present
@@ -102,9 +107,124 @@ json createJsonObject(ControlledEntityImpl const& entity)
 		state[controller::keyName::ControlledEntityState_LockState] = entity.getLockState();
 		state[controller::keyName::ControlledEntityState_LockingControllerID] = entity.getLockingControllerID();
 		state[controller::keyName::ControlledEntityState_SubscribedUnsol] = entity.isSubscribedToUnsolicitedNotifications();
+		state[controller::keyName::ControlledEntityState_ActiveConfiguration] = entity.getCurrentConfigurationIndex();
 	}
 
 	return object;
+}
+
+void setEntityModel(ControlledEntityImpl& entity, json const& object, entity::model::jsonSerializer::Flags flags)
+{
+	try
+	{
+		// Read AEM if supported
+		if (entity.getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+		{
+			// Read Entity Tree
+			auto entityTree = entity::model::jsonSerializer::createEntityTree(object, flags);
+
+			// Set tree on entity
+			entity.setEntityTree(entityTree);
+		}
+	}
+	catch (json::type_error const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InvalidValue, e.what() };
+	}
+	catch (json::parse_error const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::ParseError, e.what() };
+	}
+	catch (json::out_of_range const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::MissingKey, e.what() };
+	}
+	catch (json::other_error const& e)
+	{
+		if (e.id == 555)
+		{
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InvalidKey, e.what() };
+		}
+		else
+		{
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
+		}
+	}
+	catch (json::exception const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
+	}
+}
+
+void setEntityState(ControlledEntityImpl& entity, json const& object)
+{
+	try
+	{
+		// Everything is optional, except for the current configuration
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityState_AcquireState);
+			if (it != object.end())
+			{
+				entity.setAcquireState(it->get<model::AcquireState>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityState_OwningControllerID);
+			if (it != object.end())
+			{
+				entity.setOwningController(it->get<UniqueIdentifier>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityState_LockState);
+			if (it != object.end())
+			{
+				entity.setLockState(it->get<model::LockState>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityState_LockingControllerID);
+			if (it != object.end())
+			{
+				entity.setLockingController(it->get<UniqueIdentifier>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityState_SubscribedUnsol);
+			if (it != object.end())
+			{
+				entity.setSubscribedToUnsolicitedNotifications(it->get<bool>());
+			}
+		}
+		entity.setCurrentConfiguration(object.at(controller::keyName::ControlledEntityState_ActiveConfiguration).get<entity::model::DescriptorIndex>());
+	}
+	catch (json::type_error const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InvalidValue, e.what() };
+	}
+	catch (json::parse_error const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::ParseError, e.what() };
+	}
+	catch (json::out_of_range const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::MissingKey, e.what() };
+	}
+	catch (json::other_error const& e)
+	{
+		if (e.id == 555)
+		{
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InvalidKey, e.what() };
+		}
+		else
+		{
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
+		}
+	}
+	catch (json::exception const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
+	}
 }
 
 } // namespace jsonSerializer

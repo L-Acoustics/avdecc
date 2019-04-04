@@ -25,6 +25,8 @@
 
 #pragma once
 
+#include <la/avdecc/internals/jsonSerialization.hpp>
+
 #include <nlohmann/json.hpp>
 
 #include <string>
@@ -40,7 +42,9 @@ namespace controller
 class ControlledEntityImpl;
 namespace jsonSerializer
 {
-json createJsonObject(ControlledEntityImpl const& entity); // Throws SerializationException
+json createJsonObject(ControlledEntityImpl const& entity, bool const ignoreSanityChecks); // Throws SerializationException
+void setEntityModel(ControlledEntityImpl& entity, json const& object, entity::model::jsonSerializer::Flags flags); // Throws DeserializationException
+void setEntityState(ControlledEntityImpl& entity, json const& object); // Throws DeserializationException
 
 } // namespace jsonSerializer
 } // namespace controller

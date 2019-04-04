@@ -58,7 +58,12 @@ enum class DeserializationError
 	AccessDenied = 1, /**< File access denied. */
 	UnsupportedDumpVersion = 2, /**< json dump version not supported. */
 	ParseError = 3, /**< Error during json parsing. */
-	DeserializationError = 4, /**< Error during json objects deserialization. */
+	MissingKey = 4, /**< A mandatory Key is missing from the json model. */
+	InvalidKey = 5, /**< Key couldn't be converted from json to field's expected data type. */
+	InvalidValue = 6, /**< Value couldn't be converted from json to field's expected data type. */
+	OtherError = 7, /**< Other json conversion error. */
+	DuplicateEntityID = 8, /**< An Entity already exists with the same EntityID. */
+	NotCompliant = 9, /**< Model is not full compliant with IEEE1722.1 and IgnoreSanityChecks flag was not set. */
 	NotSupported = 98, /**< Deserialization feature not supported by the library (was not compiled). */
 	InternalError = 99, /**< Internal error, please report the issue. */
 };
@@ -118,16 +123,18 @@ namespace model
 {
 namespace jsonSerializer
 {
-enum class SerializationFlag
+enum class Flag
 {
 	None = 0,
-	SerializeStaticModel = 1u << 0,
-	SerializeDynamicModel = 1u << 1,
+	ProcessStaticModel = 1u << 0, /**< READ/WRITE the Static part of the model */
+	ProcessDynamicModel = 1u << 1, /**< READ/WRITE the Dynamic part of the model */
+	IgnoreSanityChecks = 1u << 2, /**< Ignore Sanity Checks for READING/WRITING the model */
 };
-using SerializationFlags = utils::EnumBitfield<SerializationFlag>;
+using Flags = utils::EnumBitfield<Flag>;
 
 #ifdef ENABLE_AVDECC_FEATURE_JSON
-LA_AVDECC_API nlohmann::json LA_AVDECC_CALL_CONVENTION createJsonObject(EntityTree const& entityTree, SerializationFlags const flags); // Throws SerializationException
+LA_AVDECC_API nlohmann::json LA_AVDECC_CALL_CONVENTION createJsonObject(EntityTree const& entityTree, Flags const flags); // Throws SerializationException
+LA_AVDECC_API EntityTree LA_AVDECC_CALL_CONVENTION createEntityTree(nlohmann::json const& object, Flags const flags); // Throws SerializationException
 #endif // ENABLE_AVDECC_FEATURE_JSON
 
 } // namespace jsonSerializer

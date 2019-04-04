@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - Entity Model Tree definition
-- Entity Model dump as readable json
+- Entity Model dump as readable json file
+- Entity Model load from readable json file
 - NetworkInterfaceHelper observer to monitor changes in adapters status
 
 ### Changed

@@ -39,7 +39,7 @@ namespace entity
 {
 namespace model
 {
-struct AudioUnitModels
+struct AudioUnitNodeModels
 {
 	AudioUnitNodeStaticModel staticModel{};
 	AudioUnitNodeDynamicModel dynamicModel{};
@@ -111,7 +111,7 @@ struct ClockDomainNodeModels
 struct ConfigurationTree
 {
 	// Children
-	std::map<AudioUnitIndex, AudioUnitModels> audioUnitModels{};
+	std::map<AudioUnitIndex, AudioUnitNodeModels> audioUnitModels{};
 	std::map<StreamIndex, StreamInputNodeModels> streamInputModels{};
 	std::map<StreamIndex, StreamOutputNodeModels> streamOutputModels{};
 	//std::map<JackIndex, JackNodeModels> jackInputModels{};
@@ -140,8 +140,10 @@ struct ConfigurationTree
 
 struct EntityTree
 {
+	using ConfigurationTrees = std::map<ConfigurationIndex, ConfigurationTree>;
+
 	// Children
-	std::map<ConfigurationIndex, ConfigurationTree> configurationTrees{};
+	ConfigurationTrees configurationTrees{};
 
 	// AEM Static info
 	EntityNodeStaticModel staticModel;

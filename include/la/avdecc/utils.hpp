@@ -769,6 +769,7 @@ template<class Derived, typename DataType, typename = std::enable_if_t<std::is_a
 class TypedDefine
 {
 public:
+	using derived_type = Derived;
 	using value_type = DataType;
 
 	explicit TypedDefine(value_type const value) noexcept
@@ -803,12 +804,12 @@ public:
 
 	friend auto operator&(TypedDefine const& lhs, TypedDefine const& rhs)
 	{
-		return static_cast<Derived>(lhs._value & rhs._value);
+		return static_cast<derived_type>(lhs._value & rhs._value);
 	}
 
 	friend auto operator|(TypedDefine const& lhs, TypedDefine const& rhs)
 	{
-		return static_cast<Derived>(lhs._value | rhs._value);
+		return static_cast<derived_type>(lhs._value | rhs._value);
 	}
 
 	struct Hash
