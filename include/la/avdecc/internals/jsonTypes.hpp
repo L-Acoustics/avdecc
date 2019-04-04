@@ -843,8 +843,8 @@ inline void to_json(json& j, LocalizedStringReference const& ref)
 	if (ref)
 	{
 		auto const [offset, index] = ref.getOffsetIndex();
-		j[keyName::LocalizedStringReference_Index] = offset;
-		j[keyName::LocalizedStringReference_Offset] = index;
+		j[keyName::LocalizedStringReference_Offset] = offset;
+		j[keyName::LocalizedStringReference_Index] = index;
 	}
 }
 

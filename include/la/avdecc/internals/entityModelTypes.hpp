@@ -698,8 +698,8 @@ public:
 
 	/** Constructor to create a LocalizedStringReference from offset and index values. */
 	LocalizedStringReference(std::uint16_t const offset, std::uint8_t const index) noexcept
-		: _value((offset << 3) + (index & 0x07))
 	{
+		setOffsetIndex(offset, index);
 	}
 
 	/** Setter to change the underlying value. */
@@ -724,6 +724,12 @@ public:
 
 		auto const [offset, index] = getOffsetIndex();
 		return ((offset * 7u) + index) & 0xFFFF;
+	}
+
+	/** Setter to change the offset and index values from this LocalizedStringReference. */
+	constexpr void setOffsetIndex(std::uint16_t const offset, std::uint8_t const index) noexcept
+	{
+		_value = (offset << 3) + (index & 0x07);
 	}
 
 	/** Getter to retrieve the offset and index values from this LocalizedStringReference. */
