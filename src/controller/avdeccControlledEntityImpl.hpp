@@ -339,6 +339,7 @@ public:
 	void setMilanInfo(entity::model::MilanInfo const& info) noexcept;
 
 	// Setters of the Model from AEM Descriptors (including DescriptorDynamic info)
+	void setEntityTree(entity::model::EntityTree const& entityTree) noexcept;
 	bool setCachedEntityTree(entity::model::EntityTree const& cachedTree, entity::model::EntityDescriptor const& descriptor) noexcept; // Returns true if the cached EntityTree is accepted (and set) for this entity
 	void setEntityDescriptor(entity::model::EntityDescriptor const& descriptor) noexcept;
 	void setConfigurationDescriptor(entity::model::ConfigurationDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex) noexcept;

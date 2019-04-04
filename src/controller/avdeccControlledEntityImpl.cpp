@@ -1090,6 +1090,11 @@ void ControlledEntityImpl::setMilanInfo(entity::model::MilanInfo const& info) no
 
 
 // Setters of the Model from AEM Descriptors (including DescriptorDynamic info)
+void ControlledEntityImpl::setEntityTree(entity::model::EntityTree const& entityTree) noexcept
+{
+	_entityTree = entityTree;
+}
+
 bool ControlledEntityImpl::setCachedEntityTree(entity::model::EntityTree const& cachedTree, entity::model::EntityDescriptor const& descriptor) noexcept
 {
 	// Check if static information in EntityDescriptor are identical
