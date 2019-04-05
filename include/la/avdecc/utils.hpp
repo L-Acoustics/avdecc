@@ -35,6 +35,7 @@
 #include <iomanip> // setprecision / setfill
 #include <ios> // uppercase
 #include <string> // string
+#include <cstring> // strncmp
 #include <sstream> // stringstream
 #include <limits> // numeric_limits
 #include <stdexcept> // out_of_range

@@ -110,7 +110,13 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 			interface.description = ifa->ifa_name;
 			interface.alias = ifa->ifa_name;
 			interface.type = getInterfaceType(ifa, sck);
-			interface.isActive = (ifa->ifa_flags & (IFF_UP | IFF_RUNNING)) == (IFF_UP | IFF_RUNNING);
+			// Check if interface is enabled
+			interface.isEnabled = (ifa->ifa_flags & IFF_UP) == IFF_UP;
+			// Check if interface is connected
+			interface.isConnected = (ifa->ifa_flags & (IFF_UP | IFF_RUNNING)) == (IFF_UP | IFF_RUNNING);
+			// Is interface Virtual (TODO: Try to detect for other kinds)
+			interface.isVirtual = interface.type == Interface::Type::Loopback;
+
 			// Get the mac address contained in the AF_PACKET specific data
 			auto sll = reinterpret_cast<struct sockaddr_ll*>(ifa->ifa_addr);
 			if (sll->sll_halen == 6)
@@ -132,14 +138,23 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 				auto& interface = intfcIt->second;
 
 				char host[NI_MAXHOST];
-				int s = getnameinfo(ifa->ifa_addr, (family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), host, NI_MAXHOST, nullptr, 0, NI_NUMERICHOST);
-				if (s != 0)
+				auto ret = getnameinfo(ifa->ifa_addr, (family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), host, sizeof(host) - 1, nullptr, 0, NI_NUMERICHOST);
+				if (ret != 0)
 				{
 					continue;
 				}
+				host[NI_MAXHOST - 1] = 0;
+
+				char mask[NI_MAXHOST];
+				ret = getnameinfo(ifa->ifa_netmask, (family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), mask, sizeof(mask) - 1, nullptr, 0, NI_NUMERICHOST);
+				if (ret != 0)
+				{
+					continue;
+				}
+				mask[NI_MAXHOST - 1] = 0;
 
 				// Add the IP address of that interface
-				interface.ipAddresses.push_back(host);
+				interface.ipAddressInfos.emplace_back(IPAddressInfo{ IPAddress{ host }, IPAddress{ mask } });
 			}
 		}
 	}
@@ -147,6 +162,9 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 	// Release the socket
 	close(sck);
 }
+
+void onFirstObserverRegistered() noexcept {}
+void onLastObserverUnregistered() noexcept {}
 
 } // namespace networkInterface
 } // namespace avdecc
