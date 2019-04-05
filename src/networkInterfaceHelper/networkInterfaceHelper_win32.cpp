@@ -450,6 +450,10 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 		}
 	}
 }
+
+void onFirstObserverRegistered() noexcept {}
+void onLastObserverUnregistered() noexcept {}
+
 } // namespace networkInterface
 } // namespace avdecc
 } // namespace la

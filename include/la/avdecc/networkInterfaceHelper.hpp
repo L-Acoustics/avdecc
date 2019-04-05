@@ -28,11 +28,14 @@
 #include "internals/exports.hpp"
 #include "internals/exception.hpp"
 
+#include "utils.hpp"
+
 #include <vector>
 #include <string>
 #include <cstdint>
 #include <array>
 #include <functional>
+#include <mutex>
 
 namespace la
 {
@@ -241,6 +244,18 @@ struct MacAddressHash
 	}
 };
 
+using NetworkInterfaceMonitor = la::avdecc::utils::TypedSubject<struct NetworkInterfaceMonitorTag, std::recursive_mutex>;
+class NetworkInterfaceObserver : public la::avdecc::utils::Observer<NetworkInterfaceMonitor>
+{
+public:
+	virtual ~NetworkInterfaceObserver() noexcept {}
+
+	virtual void onInterfaceAdded(la::avdecc::networkInterface::Interface const& intfc) noexcept = 0;
+	virtual void onInterfaceRemoved(la::avdecc::networkInterface::Interface const& intfc) noexcept = 0;
+	virtual void onInterfaceEnabledStateChanged(la::avdecc::networkInterface::Interface const& intfc, bool const isEnabled) noexcept = 0;
+	virtual void onInterfaceConnectedStateChanged(la::avdecc::networkInterface::Interface const& intfc, bool const isConnected) noexcept = 0;
+};
+
 using EnumerateInterfacesHandler = std::function<void(la::avdecc::networkInterface::Interface const&)>;
 
 /** Refresh the list of network interfaces (automatically done at startup) */
@@ -255,6 +270,10 @@ LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION macAddressToString(MacAddres
 LA_AVDECC_API MacAddress LA_AVDECC_CALL_CONVENTION stringToMacAddress(std::string const& macAddressAsString, char const separator = ':'); // Throws std::invalid_argument if the string cannot be parsed
 /** Returns true if specified MAC address is valid */
 LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION isMacAddressValid(MacAddress const& macAddress) noexcept;
+/** Registers an observer to monitor changes in network interfaces. NetworkInterfaceObserver::onInterfaceAdded will be called before returning from the call, for all already discovered interfaces. */
+LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION registerObserver(NetworkInterfaceObserver* const observer) noexcept;
+/** Unregisters a previously registered network interfaces change observer */
+LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION unregisterObserver(NetworkInterfaceObserver* const observer) noexcept;
 
 } // namespace networkInterface
 } // namespace avdecc

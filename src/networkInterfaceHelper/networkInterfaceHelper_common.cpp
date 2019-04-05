@@ -34,6 +34,8 @@
 #include <algorithm> // remove / copy
 #include <string>
 #include <mutex>
+#include <vector>
+#include <set>
 
 namespace la
 {
@@ -48,12 +50,12 @@ inline auto forceNumeric(T&& t)
 	return +t;
 }
 
+static NetworkInterfaceMonitor s_Monitor{}; // Also serves as lock
 static Interfaces s_NetworkInterfaces{};
-static std::recursive_mutex s_Mutex;
 
 void LA_AVDECC_CALL_CONVENTION refreshInterfaces() noexcept
 {
-	std::lock_guard<decltype(s_Mutex)> const lg(s_Mutex);
+	auto const lg = std::lock_guard(s_Monitor);
 
 	s_NetworkInterfaces.clear();
 	refreshInterfaces(s_NetworkInterfaces);
@@ -61,7 +63,7 @@ void LA_AVDECC_CALL_CONVENTION refreshInterfaces() noexcept
 
 void LA_AVDECC_CALL_CONVENTION enumerateInterfaces(EnumerateInterfacesHandler const& onInterface) noexcept
 {
-	std::lock_guard<decltype(s_Mutex)> const lg(s_Mutex);
+	auto const lg = std::lock_guard(s_Monitor);
 
 	if (onInterface == nullptr)
 		return;
@@ -86,7 +88,7 @@ void LA_AVDECC_CALL_CONVENTION enumerateInterfaces(EnumerateInterfacesHandler co
 
 Interface LA_AVDECC_CALL_CONVENTION getInterfaceByName(std::string const& name)
 {
-	std::lock_guard<decltype(s_Mutex)> const lg(s_Mutex);
+	auto const lg = std::lock_guard(s_Monitor);
 
 	// No interfaces, force a refresh
 	if (s_NetworkInterfaces.empty())
@@ -175,6 +177,139 @@ bool LA_AVDECC_CALL_CONVENTION isMacAddressValid(MacAddress const& macAddress) n
 			return true;
 	}
 	return false;
+}
+
+void LA_AVDECC_CALL_CONVENTION registerObserver(NetworkInterfaceObserver* const observer) noexcept
+{
+	try
+	{
+		s_Monitor.registerObserver(observer);
+
+		// Successfully added the observer and it's the first one
+		if (s_Monitor.countObservers() == 1)
+		{
+			onFirstObserverRegistered();
+		}
+
+		// No interfaces, force a refresh
+		if (s_NetworkInterfaces.empty())
+			refreshInterfaces();
+
+		// Now call the observer for all interfaces
+		for (auto const& intfcKV : s_NetworkInterfaces)
+		{
+			try
+			{
+				observer->onInterfaceAdded(intfcKV.second);
+			}
+			catch (...)
+			{
+				// Ignore exceptions
+			}
+		}
+	}
+	catch (...)
+	{
+		// Ignore exceptions
+	}
+}
+
+void LA_AVDECC_CALL_CONVENTION unregisterObserver(NetworkInterfaceObserver* const observer) noexcept
+{
+	try
+	{
+		s_Monitor.unregisterObserver(observer);
+
+		// Successfully removed the observer and it's the last one
+		if (s_Monitor.countObservers() == 0)
+		{
+			onLastObserverUnregistered();
+		}
+	}
+	catch (...)
+	{
+		// Ignore exceptions
+	}
+}
+
+void onNewInterfacesList(Interfaces&& interfaces) noexcept
+{
+	auto const lg = std::lock_guard(s_Monitor);
+
+	// Compare previous interfaces and new ones
+	auto addedInterfaces = std::vector<std::string>{};
+	auto removedInterfaces = std::vector<std::string>{};
+
+	// Process all previous interfaces and search if it's still present in the new list
+	for (auto const& intfcKV : s_NetworkInterfaces)
+	{
+		if (interfaces.count(intfcKV.first) == 0)
+		{
+			s_Monitor.notifyObservers<NetworkInterfaceObserver>(
+				[&intfcKV](auto* obs)
+				{
+					obs->onInterfaceRemoved(intfcKV.second);
+				});
+		}
+	}
+
+	// Process all new interfaces and search if it was present in the previous list
+	for (auto const& intfcKV : interfaces)
+	{
+		if (s_NetworkInterfaces.count(intfcKV.first) == 0)
+		{
+			s_Monitor.notifyObservers<NetworkInterfaceObserver>(
+				[&intfcKV](auto* obs)
+				{
+					obs->onInterfaceAdded(intfcKV.second);
+				});
+		}
+	}
+
+	// Update the interfaces list
+	s_NetworkInterfaces = std::move(interfaces);
+}
+
+void onEnabledStateChanged(std::string const& interfaceName, bool const isEnabled) noexcept
+{
+	auto const lg = std::lock_guard(s_Monitor);
+
+	// Search the interface matching the name
+	auto intfcIt = s_NetworkInterfaces.find(interfaceName);
+	if (intfcIt != s_NetworkInterfaces.end())
+	{
+		auto& intfc = intfcIt->second;
+		if (intfc.isEnabled != isEnabled)
+		{
+			intfc.isEnabled = isEnabled;
+			s_Monitor.notifyObservers<NetworkInterfaceObserver>(
+				[&intfc](auto* obs)
+				{
+					obs->onInterfaceEnabledStateChanged(intfc, intfc.isEnabled);
+				});
+		}
+	}
+}
+
+void onConnectedStateChanged(std::string const& interfaceName, bool const isConnected) noexcept
+{
+	auto const lg = std::lock_guard(s_Monitor);
+
+	// Search the interface matching the name
+	auto intfcIt = s_NetworkInterfaces.find(interfaceName);
+	if (intfcIt != s_NetworkInterfaces.end())
+	{
+		auto& intfc = intfcIt->second;
+		if (intfc.isConnected != isConnected)
+		{
+			intfc.isConnected = isConnected;
+			s_Monitor.notifyObservers<NetworkInterfaceObserver>(
+				[&intfc](auto* obs)
+				{
+					obs->onInterfaceConnectedStateChanged(intfc, intfc.isConnected);
+				});
+		}
+	}
 }
 
 /* ************************************************************ */
