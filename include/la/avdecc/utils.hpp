@@ -1030,6 +1030,7 @@ public:
 		if (observer == nullptr)
 			throw std::invalid_argument("Observer cannot be nullptr");
 
+		auto isFirst = false;
 		{
 			// Lock observers
 			std::lock_guard<decltype(_mutex)> const lg(_mutex);
@@ -1046,9 +1047,22 @@ public:
 				// Already registered
 			}
 			// Add observer
+			isFirst = _observers.empty();
 			_observers.insert(observer);
 		}
 
+		if (isFirst)
+		{
+			// Inform the subject that the first observer has registered
+			try
+			{
+				const_cast<Subject*>(this)->onFirstObserverRegistered();
+			}
+			catch (...)
+			{
+				// Ignore exceptions in handler
+			}
+		}
 		// Inform the subject that a new observer has registered
 		try
 		{
@@ -1266,23 +1280,41 @@ protected:
 	void removeAllObservers() noexcept
 	{
 		// Unregister from all the observers
-		// Lock observers
-		std::lock_guard<decltype(_mutex)> const lg(_mutex);
-		for (auto const obs : _observers)
 		{
-			try
+			// Lock observers
+			std::lock_guard<decltype(_mutex)> const lg(_mutex);
+			for (auto const obs : _observers)
 			{
-				obs->unregisterSubject(self());
+				try
+				{
+					obs->unregisterSubject(self());
+				}
+				catch (std::invalid_argument const&)
+				{
+					// Ignore error
+				}
 			}
-			catch (std::invalid_argument const&)
-			{
-				// Ignore error
-			}
+			_observers.clear();
+		}
+		// Inform the subject that the last observer has unregistered
+		try
+		{
+			const_cast<Subject*>(this)->onLastObserverUnregistered();
+		}
+		catch (...)
+		{
+			// Ignore exceptions in handler
 		}
 	}
 
+	/** Allow the Subject to be informed when the first observer has registered. */
+	virtual void onFirstObserverRegistered() noexcept {}
 	/** Allow the Subject to be informed when a new observer has registered. */
 	virtual void onObserverRegistered(observer_type* const /*observer*/) noexcept {}
+	/** Allow the Subject to be informed when an observer has unregistered. */
+	virtual void onObserverUnregistered(observer_type* const /*observer*/) noexcept {}
+	/** Allow the Subject to be informed when the last observer has unregistered. */
+	virtual void onLastObserverUnregistered() noexcept {}
 
 	/** Convenience method to return this as the real Derived class type */
 	Derived* self() noexcept
@@ -1301,17 +1333,42 @@ private:
 
 	void removeObserver(observer_type* const observer) const
 	{
-		// Lock observers
-		std::lock_guard<decltype(_mutex)> const lg(_mutex);
-		// Search if observer is registered
-		auto const it = _observers.find(observer);
-		if (it == _observers.end())
-			throw std::invalid_argument("Observer not registered");
-		// Check if we are currently iterating notification
-		if (_iteratingNotify)
-			_toBeRemoved.insert(observer); // Schedule destruction for later
-		else
-			_observers.erase(it); // Remove observer immediately
+		auto isLast = false;
+		{
+			// Lock observers
+			std::lock_guard<decltype(_mutex)> const lg(_mutex);
+			// Search if observer is registered
+			auto const it = _observers.find(observer);
+			if (it == _observers.end())
+				throw std::invalid_argument("Observer not registered");
+			// Check if we are currently iterating notification
+			if (_iteratingNotify)
+				_toBeRemoved.insert(observer); // Schedule destruction for later
+			else
+				_observers.erase(it); // Remove observer immediately
+			isLast = _observers.empty();
+		}
+		// Inform the subject that an observer has unregistered
+		try
+		{
+			const_cast<Subject*>(this)->onObserverUnregistered(observer);
+		}
+		catch (...)
+		{
+			// Ignore exceptions in handler
+		}
+		if (isLast)
+		{
+			// Inform the subject that the last observer has unregistered
+			try
+			{
+				const_cast<Subject*>(this)->onLastObserverUnregistered();
+			}
+			catch (...)
+			{
+				// Ignore exceptions in handler
+			}
+		}
 	}
 
 	// Private variables

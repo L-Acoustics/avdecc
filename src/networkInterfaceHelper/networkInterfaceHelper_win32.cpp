@@ -27,6 +27,7 @@
 #include <memory>
 #include <cstdint> // std::uint8_t
 #include <cstring> // memcpy
+#include <atomic>
 #include <WinSock2.h>
 #include <Iphlpapi.h>
 #include <wbemidl.h>
@@ -153,24 +154,24 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 			auto const comGuard = ComGuard{};
 			if (SUCCEEDED(CoInitializeSecurity(NULL, -1, NULL, NULL, RPC_C_AUTHN_LEVEL_DEFAULT, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE, NULL)))
 			{
-				auto locator = static_cast<IWbemLocator*>(nullptr);
+				auto* locator = static_cast<IWbemLocator*>(nullptr);
 				if (SUCCEEDED(CoCreateInstance(CLSID_WbemAdministrativeLocator, NULL, CLSCTX_INPROC_SERVER, IID_IWbemLocator, reinterpret_cast<void**>(&locator))))
 				{
 					auto const locatorGuard = ComObjectGuard{ locator };
 
-					auto service = static_cast<IWbemServices*>(nullptr);
+					auto* service = static_cast<IWbemServices*>(nullptr);
 					if (SUCCEEDED(locator->ConnectServer(L"root\\StandardCimv2", NULL, NULL, NULL, WBEM_FLAG_CONNECT_USE_MAX_WAIT, NULL, NULL, &service)))
 					{
 						auto const serviceGuard = ComObjectGuard{ service };
 
-						auto adapterEnumerator = static_cast<IEnumWbemClassObject*>(nullptr);
+						auto* adapterEnumerator = static_cast<IEnumWbemClassObject*>(nullptr);
 						if (SUCCEEDED(service->ExecQuery(L"WQL", L"SELECT * FROM MSFT_NetAdapter", WBEM_FLAG_FORWARD_ONLY, NULL, &adapterEnumerator)))
 						{
 							auto const adapterEnumeratorGuard = ComObjectGuard{ adapterEnumerator };
 
 							while (adapterEnumerator)
 							{
-								auto adapter = static_cast<IWbemClassObject*>(nullptr);
+								auto* adapter = static_cast<IWbemClassObject*>(nullptr);
 								auto retcnt = ULONG{ 0u };
 								if (!SUCCEEDED(adapterEnumerator->Next(WBEM_INFINITE, 1L, reinterpret_cast<IWbemClassObject**>(&adapter), &retcnt)))
 								{
@@ -451,8 +452,62 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 	}
 }
 
-void onFirstObserverRegistered() noexcept {}
-void onLastObserverUnregistered() noexcept {}
+static auto s_shouldTerminate = std::atomic_bool{ false };
+static auto s_observerThread = std::thread{};
+
+void onFirstObserverRegistered() noexcept
+{
+	s_shouldTerminate = false;
+
+	s_observerThread = std::thread(
+		[]()
+		{
+			utils::setCurrentThreadName("networkInterfaceHelper::ObserverPolling");
+			auto previousList = Interfaces{};
+			while (!s_shouldTerminate)
+			{
+				auto newList = Interfaces{};
+				refreshInterfaces(newList);
+
+				// Process previous list and check if some property changed
+				for (auto const& [name, previousIntfc] : previousList)
+				{
+					auto const newIntfcIt = newList.find(name);
+					if (newIntfcIt != newList.end())
+					{
+						auto const& newIntfc = newIntfcIt->second;
+						if (previousIntfc.isEnabled != newIntfc.isEnabled)
+						{
+							onEnabledStateChanged(name, newIntfc.isEnabled);
+						}
+						if (previousIntfc.isConnected != newIntfc.isConnected)
+						{
+							onConnectedStateChanged(name, newIntfc.isConnected);
+						}
+					}
+				}
+
+				// Copy the list before it's moved
+				previousList = newList;
+
+				// Check for change in Interface count
+				onNewInterfacesList(std::move(newList));
+
+				// Wait a little bit so we don't burn the CPU
+				std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+			}
+		});
+}
+
+void onLastObserverUnregistered() noexcept
+{
+	s_shouldTerminate = true;
+	if (s_observerThread.joinable())
+	{
+		s_observerThread.join();
+		s_observerThread = {};
+	}
+}
 
 } // namespace networkInterface
 } // namespace avdecc

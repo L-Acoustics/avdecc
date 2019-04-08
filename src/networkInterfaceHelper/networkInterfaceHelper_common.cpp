@@ -50,7 +50,21 @@ inline auto forceNumeric(T&& t)
 	return +t;
 }
 
-static NetworkInterfaceMonitor s_Monitor{}; // Also serves as lock
+class NetworkInterfaceMonitorImpl final : public NetworkInterfaceMonitor
+{
+public:
+private:
+	virtual void onFirstObserverRegistered() noexcept override
+	{
+		networkInterface::onFirstObserverRegistered();
+	}
+	virtual void onLastObserverUnregistered() noexcept override
+	{
+		networkInterface::onLastObserverUnregistered();
+	}
+};
+
+static NetworkInterfaceMonitorImpl s_Monitor{}; // Also serves as lock
 static Interfaces s_NetworkInterfaces{};
 
 void LA_AVDECC_CALL_CONVENTION refreshInterfaces() noexcept
@@ -185,12 +199,6 @@ void LA_AVDECC_CALL_CONVENTION registerObserver(NetworkInterfaceObserver* const 
 	{
 		s_Monitor.registerObserver(observer);
 
-		// Successfully added the observer and it's the first one
-		if (s_Monitor.countObservers() == 1)
-		{
-			onFirstObserverRegistered();
-		}
-
 		// No interfaces, force a refresh
 		if (s_NetworkInterfaces.empty())
 			refreshInterfaces();
@@ -219,12 +227,6 @@ void LA_AVDECC_CALL_CONVENTION unregisterObserver(NetworkInterfaceObserver* cons
 	try
 	{
 		s_Monitor.unregisterObserver(observer);
-
-		// Successfully removed the observer and it's the last one
-		if (s_Monitor.countObservers() == 0)
-		{
-			onLastObserverUnregistered();
-		}
 	}
 	catch (...)
 	{
