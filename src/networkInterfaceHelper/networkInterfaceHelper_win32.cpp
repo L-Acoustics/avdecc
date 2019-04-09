@@ -28,6 +28,7 @@
 #include <cstdint> // std::uint8_t
 #include <cstring> // memcpy
 #include <atomic>
+#include <thread>
 #include <WinSock2.h>
 #include <Iphlpapi.h>
 #include <wbemidl.h>
@@ -148,11 +149,11 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 	// First pass, use WMI API to retrieve all the adapters and most of their information
 	{
 		// https://msdn.microsoft.com/en-us/library/Hh968170%28v=VS.85%29.aspx?f=255&MSPPError=-2147217396
-		HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
-		if (SUCCEEDED(hr))
+		if (SUCCEEDED(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED)))
 		{
 			auto const comGuard = ComGuard{};
-			if (SUCCEEDED(CoInitializeSecurity(NULL, -1, NULL, NULL, RPC_C_AUTHN_LEVEL_DEFAULT, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE, NULL)))
+			auto const hr = CoInitializeSecurity(NULL, -1, NULL, NULL, RPC_C_AUTHN_LEVEL_DEFAULT, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE, NULL);
+			if (SUCCEEDED(hr) || hr == RPC_E_TOO_LATE)
 			{
 				auto* locator = static_cast<IWbemLocator*>(nullptr);
 				if (SUCCEEDED(CoCreateInstance(CLSID_WbemAdministrativeLocator, NULL, CLSCTX_INPROC_SERVER, IID_IWbemLocator, reinterpret_cast<void**>(&locator))))
@@ -243,7 +244,7 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 										continue;
 									}
 
-									i.name = getStringFromWide(deviceID.bstrVal);
+									i.id = getStringFromWide(deviceID.bstrVal);
 								}
 
 								// Get the macAddress of the interface
@@ -355,7 +356,7 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 								}
 
 								// Everything OK, save this interface
-								interfaces[i.name] = i;
+								interfaces[i.id] = i;
 							}
 						}
 					}
@@ -390,7 +391,7 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 				// Create a loopback Interface and setup information
 				auto i = Interface{};
 
-				i.name = adapter->AdapterName;
+				i.id = adapter->AdapterName;
 				i.description = getStringFromWide(adapter->Description);
 				i.alias = getStringFromWide(adapter->FriendlyName);
 				if (adapter->PhysicalAddressLength == i.macAddress.size())

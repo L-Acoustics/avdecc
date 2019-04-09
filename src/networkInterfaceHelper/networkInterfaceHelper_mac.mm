@@ -139,7 +139,7 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 		if (family == AF_LINK)
 		{
 			la::avdecc::networkInterface::Interface interface;
-			interface.name = ifa->ifa_name;
+			interface.id = ifa->ifa_name;
 			interface.description = ifa->ifa_name;
 			interface.alias = ifa->ifa_name;
 			// Get media information
@@ -241,7 +241,7 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 				if (localizedRef)
 				{
 					interface.description = [(__bridge NSString*)localizedRef UTF8String];
-					interface.alias = interface.description + " (" + interface.name + ")";
+					interface.alias = interface.description + " (" + interface.id + ")";
 				}
 			}
 			CFRelease(interfacesArrayRef);

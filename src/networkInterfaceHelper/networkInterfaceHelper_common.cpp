@@ -197,11 +197,14 @@ void LA_AVDECC_CALL_CONVENTION registerObserver(NetworkInterfaceObserver* const 
 {
 	try
 	{
-		s_Monitor.registerObserver(observer);
-
 		// No interfaces, force a refresh
 		if (s_NetworkInterfaces.empty())
+		{
 			refreshInterfaces();
+		}
+
+		// Register observer
+		s_Monitor.registerObserver(observer);
 
 		// Now call the observer for all interfaces
 		for (auto const& intfcKV : s_NetworkInterfaces)

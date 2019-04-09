@@ -41,6 +41,8 @@
 #include <memory>
 #include <string>
 #include <cstring> // memcpy
+#include <atomic>
+#include <thread>
 
 namespace la
 {
@@ -106,7 +108,7 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 		if (family == AF_PACKET && ifa->ifa_data != nullptr)
 		{
 			la::avdecc::networkInterface::Interface interface;
-			interface.name = ifa->ifa_name;
+			interface.id = ifa->ifa_name;
 			interface.description = ifa->ifa_name;
 			interface.alias = ifa->ifa_name;
 			interface.type = getInterfaceType(ifa, sck);
@@ -163,8 +165,62 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 	close(sck);
 }
 
-void onFirstObserverRegistered() noexcept {}
-void onLastObserverUnregistered() noexcept {}
+static auto s_shouldTerminate = std::atomic_bool{ false };
+static auto s_observerThread = std::thread{};
+
+void onFirstObserverRegistered() noexcept
+{
+	s_shouldTerminate = false;
+
+	s_observerThread = std::thread(
+		[]()
+		{
+			utils::setCurrentThreadName("networkInterfaceHelper::ObserverPolling");
+			auto previousList = Interfaces{};
+			while (!s_shouldTerminate)
+			{
+				auto newList = Interfaces{};
+				refreshInterfaces(newList);
+
+				// Process previous list and check if some property changed
+				for (auto const& [name, previousIntfc] : previousList)
+				{
+					auto const newIntfcIt = newList.find(name);
+					if (newIntfcIt != newList.end())
+					{
+						auto const& newIntfc = newIntfcIt->second;
+						if (previousIntfc.isEnabled != newIntfc.isEnabled)
+						{
+							onEnabledStateChanged(name, newIntfc.isEnabled);
+						}
+						if (previousIntfc.isConnected != newIntfc.isConnected)
+						{
+							onConnectedStateChanged(name, newIntfc.isConnected);
+						}
+					}
+				}
+
+				// Copy the list before it's moved
+				previousList = newList;
+
+				// Check for change in Interface count
+				onNewInterfacesList(std::move(newList));
+
+				// Wait a little bit so we don't burn the CPU
+				std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+			}
+		});
+}
+
+void onLastObserverUnregistered() noexcept
+{
+	s_shouldTerminate = true;
+	if (s_observerThread.joinable())
+	{
+		s_observerThread.join();
+		s_observerThread = {};
+	}
+}
 
 } // namespace networkInterface
 } // namespace avdecc

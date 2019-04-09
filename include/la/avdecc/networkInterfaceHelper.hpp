@@ -220,7 +220,7 @@ struct Interface
 		AWDL = 4, /**< Apple Wireless Direct Link */
 	};
 
-	std::string name{}; /** Name of the interface (system chosen) (UTF-8) */
+	std::string id{}; /** Identifier of the interface (system chosen, unique) (UTF-8) */
 	std::string description{}; /** Description of the interface (system chosen) (UTF-8) */
 	std::string alias{}; /** Alias of the interface (often user chosen) (UTF-8) */
 	MacAddress macAddress{}; /** Mac address */

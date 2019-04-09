@@ -1199,7 +1199,7 @@ protected:
 		// Call each observer
 		for (auto it = _observers.begin(); it != _observers.end(); ++it)
 		{
-			// Do call an observer in the to be removed list
+			// Do not call an observer in the to be removed list
 			if (_toBeRemoved.find(*it) != _toBeRemoved.end())
 				continue;
 			// Using try-catch to protect ourself from errors in the handler
