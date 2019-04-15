@@ -359,7 +359,7 @@ int doJob()
 	try
 	{
 		outputText("Selected interface '" + intfc.alias + "' and protocol interface '" + la::avdecc::protocol::ProtocolInterface::typeToString(protocolInterfaceType) + "':\n");
-		auto endPoint = la::avdecc::EndStation::create(protocolInterfaceType, intfc.name);
+		auto endPoint = la::avdecc::EndStation::create(protocolInterfaceType, intfc.id);
 		ControllerDelegate controllerDelegate;
 
 		// Register log observer

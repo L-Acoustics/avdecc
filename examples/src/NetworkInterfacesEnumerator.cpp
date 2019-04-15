@@ -62,7 +62,7 @@ int displayInterfaces()
 	la::avdecc::networkInterface::enumerateInterfaces(
 		[&intNum](la::avdecc::networkInterface::Interface const& intfc) noexcept
 		{
-			std::cout << intNum << ": " << intfc.name << std::endl;
+			std::cout << intNum << ": " << intfc.id << std::endl;
 			std::cout << "  Description:  " << intfc.description << std::endl;
 			std::cout << "  Alias:        " << intfc.alias << std::endl;
 			std::cout << "  MacAddress:   " << intfc.macAddress << std::endl;
