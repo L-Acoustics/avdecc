@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Entity Model Tree definition
 - Entity Model dump as readable json
+- NetworkInterfaceHelper observer to monitor changes in adapters status
+
+### Changed
+- NetworkInterfaceHelper _isActive_ field replace with _isEnabled_ and _isConnected_
 
 ## [2.9.2] - 2019-05-20
 ### Added

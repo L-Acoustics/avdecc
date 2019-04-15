@@ -135,8 +135,8 @@ la::avdecc::networkInterface::Interface chooseNetworkInterface()
 	la::avdecc::networkInterface::enumerateInterfaces(
 		[&interfaces](la::avdecc::networkInterface::Interface const& intfc)
 		{
-			// Only select active interfaces that is not loopback
-			if (intfc.type != la::avdecc::networkInterface::Interface::Type::Loopback && intfc.isActive)
+			// Only select connected, non virtual, ethernet interfaces
+			if (intfc.type == la::avdecc::networkInterface::Interface::Type::Ethernet && intfc.isConnected && !intfc.isVirtual)
 				interfaces.push_back(intfc);
 		});
 

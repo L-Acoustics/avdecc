@@ -1152,7 +1152,7 @@ inline void from_json(json const& j, MilanInfo& info)
 	{
 		auto const str = j.at(keyName::MilanInfo_CertificationVersion).get<std::string>();
 		auto certificationVersion = decltype(info.certificationVersion){ 0u };
-		auto const tokens = utils::splitString(str, '.', true);
+		auto const tokens = utils::tokenizeString(str, '.', true);
 		if (tokens.size() != 4)
 		{
 			throw std::invalid_argument("Invalid Milan CertificationVersion string representation: " + str);

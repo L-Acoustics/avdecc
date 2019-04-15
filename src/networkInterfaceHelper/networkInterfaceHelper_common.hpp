@@ -37,7 +37,22 @@ namespace avdecc
 namespace networkInterface
 {
 using Interfaces = std::unordered_map<std::string, Interface>;
+
+// Methods to be implemented by eachOS-dependant implementation
+/** Force a refresh of the interfaces list */
 void refreshInterfaces(Interfaces& interfaces) noexcept;
+/** When the first observer is registered */
+void onFirstObserverRegistered() noexcept;
+/** When the last observer is unregistered */
+void onLastObserverUnregistered() noexcept;
+
+// Notifications from OS-dependant implementation
+/** When the list of interfaces changed */
+void onNewInterfacesList(Interfaces&& interfaces) noexcept;
+/** When the Enabled state of an interface changed */
+void onEnabledStateChanged(std::string const& interfaceName, bool const isEnabled) noexcept;
+/** When the Connected state of an interface changed */
+void onConnectedStateChanged(std::string const& interfaceName, bool const isConnected) noexcept;
 
 } // namespace networkInterface
 } // namespace avdecc

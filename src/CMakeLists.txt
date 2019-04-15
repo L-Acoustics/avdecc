@@ -218,7 +218,7 @@ endif()
 
 # Set other required base libraries
 if(CMAKE_HOST_APPLE)
-	list(APPEND ADD_LINK_LIBS "-framework Foundation -framework SystemConfiguration")
+	list(APPEND ADD_LINK_LIBS "-framework Foundation -framework SystemConfiguration -framework IOKit")
 endif()
 
 # Features
