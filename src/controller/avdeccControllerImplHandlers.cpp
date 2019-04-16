@@ -476,8 +476,6 @@ void ControllerImpl::onAvbInterfaceDescriptorResult(entity::controller::Interfac
 			if (!!status)
 			{
 				controlledEntity->setAvbInterfaceDescriptor(descriptor, configurationIndex, interfaceIndex);
-				// Initialize the InterfaceLinkStatus to unknown (until we get the counters)
-				updateAvbInterfaceLinkStatus(*controlledEntity, interfaceIndex, ControlledEntity::InterfaceLinkStatus::Unknown);
 			}
 			else
 			{

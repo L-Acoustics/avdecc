@@ -112,7 +112,7 @@ bool ControlledEntityImpl::isStreamOutputRunning(entity::model::ConfigurationInd
 	return isStreamRunningFlag(dynamicModel.streamInfo.streamInfoFlags);
 }
 
-ControlledEntity::InterfaceLinkStatus ControlledEntityImpl::getAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex) const
+ControlledEntity::InterfaceLinkStatus ControlledEntityImpl::getAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex) const noexcept
 {
 	// AEM not supported, unknown status
 	if (!_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
@@ -122,7 +122,9 @@ ControlledEntity::InterfaceLinkStatus ControlledEntityImpl::getAvbInterfaceLinkS
 
 	auto const it = _avbInterfaceLinkStatus.find(avbInterfaceIndex);
 	if (it == _avbInterfaceLinkStatus.end())
-		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid index");
+	{
+		return InterfaceLinkStatus::Unknown;
+	}
 
 	return it->second;
 }

@@ -191,7 +191,7 @@ public:
 	virtual bool isLockedByOther() const noexcept override;
 	virtual bool isStreamInputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const override;
 	virtual bool isStreamOutputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const override;
-	virtual InterfaceLinkStatus getAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex) const override;
+	virtual InterfaceLinkStatus getAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex) const noexcept override;
 	virtual model::AcquireState getAcquireState() const noexcept override;
 	virtual UniqueIdentifier getOwningControllerID() const noexcept override;
 	virtual model::LockState getLockState() const noexcept override;
