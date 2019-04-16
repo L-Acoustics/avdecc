@@ -1000,7 +1000,7 @@ void ControllerImpl::onGetLockedStateResult(entity::controller::Interface const*
 			auto& entity = *controlledEntity;
 			auto const [lockState, lockingController] = getLockedInfoFromStatus(entity, lockingEntity, status, true);
 
-			// Could not determine the AcquiredState
+			// Could not determine the LockState
 			if (lockState == model::LockState::Undefined)
 			{
 				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::LockedState, 0u, 0u, false))
