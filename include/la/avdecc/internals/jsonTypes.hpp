@@ -458,6 +458,12 @@ NLOHMANN_JSON_SERIALIZE_ENUM(StreamOutputCounterValidFlag, {
 																														 { StreamOutputCounterValidFlag::FramesTx, "FRAMES_TX" },
 																													 });
 
+/* MilanInfoFeaturesFlag conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(MilanInfoFeaturesFlag, {
+																											{ MilanInfoFeaturesFlag::None, "UNKNOWN" },
+																											{ MilanInfoFeaturesFlag::Redundancy, "REDUNDANCY" },
+																										});
+
 /* Entity::CommonInformation conversion */
 inline void to_json(json& j, Entity::CommonInformation const& commonInfo)
 {
@@ -1148,7 +1154,7 @@ inline void to_json(json& j, MilanInfo const& info)
 inline void from_json(json const& j, MilanInfo& info)
 {
 	j.at(keyName::MilanInfo_ProtocolVersion).get_to(info.protocolVersion);
-	info.featuresFlags.fromString(j.at(keyName::MilanInfo_Flags).get<std::string>());
+	j.at(keyName::MilanInfo_Flags).get_to(info.featuresFlags);
 	{
 		auto const str = j.at(keyName::MilanInfo_CertificationVersion).get<std::string>();
 		auto certificationVersion = decltype(info.certificationVersion){ 0u };

@@ -395,7 +395,7 @@ inline bool operator!=(AsPath const& lhs, AsPath const& rhs) noexcept
 struct MilanInfo
 {
 	std::uint32_t protocolVersion{ 0u };
-	protocol::MvuFeaturesFlags featuresFlags{ protocol::MvuFeaturesFlags::None };
+	MilanInfoFeaturesFlags featuresFlags{};
 	std::uint32_t certificationVersion{ 0u };
 };
 

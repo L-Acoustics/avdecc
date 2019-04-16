@@ -316,6 +316,14 @@ enum class StreamOutputCounterValidFlag : model::DescriptorCounterValidFlag
 };
 using StreamOutputCounterValidFlags = utils::EnumBitfield<StreamOutputCounterValidFlag>;
 
+/** Milan Info Features Flags - Milan Clause 7.4.1 */
+enum class MilanInfoFeaturesFlag : std::uint32_t
+{
+	None = 0u,
+	Redundancy = 1u << 0, /**< The entity supports the milan redundancy scheme. */
+};
+using MilanInfoFeaturesFlags = utils::EnumBitfield<MilanInfoFeaturesFlag>;
+
 } // namespace entity
 } // namespace avdecc
 } // namespace la

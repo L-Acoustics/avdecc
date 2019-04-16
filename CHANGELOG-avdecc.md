@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 - NetworkInterfaceHelper _isActive_ field replace with _isEnabled_ and _isConnected_
+- _protocol::MvuFeaturesFlags_ TypedDefine moved to _MilanInfoFeaturesFlags_ EnumBitfield
 
 ## [2.9.2] - 2019-05-20
 ### Added

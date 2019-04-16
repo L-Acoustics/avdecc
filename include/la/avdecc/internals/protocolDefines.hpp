@@ -265,19 +265,6 @@ public:
 	LA_AVDECC_API operator std::string() const noexcept;
 };
 
-/** Milan Features Flags - Milan Clause 7.4.1 */
-class MvuFeaturesFlags : public utils::TypedDefine<MvuFeaturesFlags, std::uint32_t>
-{
-public:
-	using TypedDefine::TypedDefine;
-
-	static LA_AVDECC_API MvuFeaturesFlags const None;
-	static LA_AVDECC_API MvuFeaturesFlags const Redundancy;
-
-	LA_AVDECC_API operator std::string() const noexcept;
-	LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION fromString(std::string const& stringValue); // Throws std::invalid_argument if value does not exist
-};
-
 /** ACMP Message Type - Clause 8.2.1.5 */
 class AcmpMessageType : public utils::TypedDefine<AcmpMessageType, std::uint8_t>
 {
