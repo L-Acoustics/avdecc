@@ -29,6 +29,7 @@
 #include <cstring> // memcpy
 #include <atomic>
 #include <thread>
+#include <optional>
 #include <WinSock2.h>
 #include <Iphlpapi.h>
 #include <wbemidl.h>
@@ -95,7 +96,7 @@ Interface::Type getInterfaceType(IFTYPE const ifType)
 	return Interface::Type::None;
 }
 
-class ComGuard
+class ComGuard final
 {
 public:
 	ComGuard() noexcept {}
@@ -103,10 +104,16 @@ public:
 	{
 		CoUninitialize();
 	}
+
+	// Compiler auto-generated methods (move-only class)
+	ComGuard(ComGuard const&) = delete;
+	ComGuard(ComGuard&&) = delete;
+	ComGuard& operator=(ComGuard const&) = delete;
+	ComGuard& operator=(ComGuard&&) = default;
 };
 
 template<typename ComObject>
-class ComObjectGuard
+class ComObjectGuard final
 {
 public:
 	ComObjectGuard(ComObject* ptr) noexcept
@@ -125,7 +132,7 @@ private:
 	ComObject* _ptr{ nullptr };
 };
 
-class VariantGuard
+class VariantGuard final
 {
 public:
 	VariantGuard(VARIANT* var) noexcept
@@ -144,6 +151,24 @@ private:
 	VARIANT* _var{ nullptr };
 };
 
+/** Helper class to force initialization of COM security as soon as possible. */
+class WMIInitializer final
+{
+public:
+	WMIInitializer() noexcept
+	{
+		if (SUCCEEDED(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED)))
+		{
+			_comGuard.emplace();
+			CoInitializeSecurity(NULL, -1, NULL, NULL, RPC_C_AUTHN_LEVEL_DEFAULT, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE, NULL);
+		}
+	}
+
+private:
+	std::optional<ComGuard> _comGuard{ std::nullopt }; // ComGuard to be sure CoUninitialize is called upon program termination
+};
+static auto s_wmiInitializer = WMIInitializer{};
+
 void refreshInterfaces(Interfaces& interfaces) noexcept
 {
 	// First pass, use WMI API to retrieve all the adapters and most of their information
@@ -152,8 +177,8 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 		if (SUCCEEDED(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED)))
 		{
 			auto const comGuard = ComGuard{};
-			auto const hr = CoInitializeSecurity(NULL, -1, NULL, NULL, RPC_C_AUTHN_LEVEL_DEFAULT, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE, NULL);
-			if (SUCCEEDED(hr) || hr == RPC_E_TOO_LATE)
+			//auto const hr = CoInitializeSecurity(NULL, -1, NULL, NULL, RPC_C_AUTHN_LEVEL_DEFAULT, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE, NULL);
+			//if (SUCCEEDED(hr) || hr == RPC_E_TOO_LATE)
 			{
 				auto* locator = static_cast<IWbemLocator*>(nullptr);
 				if (SUCCEEDED(CoCreateInstance(CLSID_WbemAdministrativeLocator, NULL, CLSCTX_INPROC_SERVER, IID_IWbemLocator, reinterpret_cast<void**>(&locator))))
