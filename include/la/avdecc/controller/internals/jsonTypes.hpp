@@ -199,6 +199,7 @@ constexpr auto ControlledEntityState_OwningControllerID = "owning_controller_id"
 constexpr auto ControlledEntityState_LockState = "lock_state";
 constexpr auto ControlledEntityState_LockingControllerID = "locking_controller_id";
 constexpr auto ControlledEntityState_SubscribedUnsol = "subscribed_unsol";
+constexpr auto ControlledEntityState_ActiveConfiguration = "active_configuration";
 
 } // namespace keyName
 

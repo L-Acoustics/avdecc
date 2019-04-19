@@ -95,7 +95,7 @@ Dumper::Dumper(la::avdecc::protocol::ProtocolInterface::Type const protocolInter
 Dumper::~Dumper() noexcept
 {
 	auto const networkDumpFileName = std::string{ "FullDump.json" };
-	auto const [error, message] = _controller->serializeAllControlledEntitiesAsReadableJson(networkDumpFileName, true);
+	auto const [error, message] = _controller->serializeAllControlledEntitiesAsReadableJson(networkDumpFileName, false, false);
 	if (!!error)
 	{
 		outputText("Failed to dump all entities: " + message + "\n");
@@ -126,7 +126,7 @@ void Dumper::onEntityOnline(la::avdecc::controller::Controller const* const cont
 
 	// Dump as JSON
 	{
-		auto const [error, message] = controller->serializeControlledEntityAsReadableJson(entityID, entityDumpFileName);
+		auto const [error, message] = controller->serializeControlledEntityAsReadableJson(entityID, entityDumpFileName, false);
 		if (!!error)
 		{
 			outputText("Failed to dump entity " + entityString + ": " + message + "\n");

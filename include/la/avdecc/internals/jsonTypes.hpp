@@ -29,11 +29,29 @@
 #include "la/avdecc/utils.hpp"
 #include "la/avdecc/avdecc.hpp"
 
+#include "logItems.hpp"
+
 #include <nlohmann/json.hpp>
 
 #include <optional>
 
 using json = nlohmann::json;
+
+namespace la
+{
+namespace avdecc
+{
+namespace logger
+{
+inline void logJsonSerializer(Level const level, std::string const& message)
+{
+	auto const item = LogItemJsonSerializer{ message };
+	Logger::getInstance().logItem(level, &item);
+}
+
+} // namespace logger
+} // namespace avdecc
+} // namespace la
 
 namespace nlohmann
 {
@@ -79,13 +97,32 @@ struct adl_serializer<la::avdecc::entity::model::EntityCounters>
 
 		for (auto const [name, value] : counters)
 		{
-			json const n = name;
+			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
 			object[n.get<std::string>()] = value;
 		}
 
 		j = std::move(object);
 	}
+	static void from_json(json const& j, la::avdecc::entity::model::EntityCounters& counters)
+	{
+		for (auto const& [name, value] : j.items())
+		{
+			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
+			auto const key = n.get<la::avdecc::entity::model::EntityCounters::key_type>();
+			// Check if key is a valid CounterValidFlag enum
+			if (key == la::avdecc::entity::model::EntityCounters::key_type::None)
+			{
+				logJsonSerializer(la::avdecc::logger::Level::Warn, std::string("Unknown EntityCounterValidFlag name: ") + name);
+				counters.insert(std::make_pair(static_cast<la::avdecc::entity::model::EntityCounters::key_type>(la::avdecc::utils::convertFromString<la::avdecc::entity::model::DescriptorCounterValidFlag>(name.c_str())), value.get<la::avdecc::entity::model::EntityCounters::mapped_type>()));
+			}
+			else
+			{
+				counters.insert(std::make_pair(key, value.get<la::avdecc::entity::model::EntityCounters::mapped_type>()));
+			}
+		}
+	}
 };
+
 template<>
 struct adl_serializer<la::avdecc::entity::model::AvbInterfaceCounters>
 {
@@ -95,13 +132,40 @@ struct adl_serializer<la::avdecc::entity::model::AvbInterfaceCounters>
 
 		for (auto const [name, value] : counters)
 		{
-			json const n = name;
-			object[n.get<std::string>()] = value;
+			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
+			auto const key = n.get<std::string>();
+			if (key == "UNKNOWN")
+			{
+				object[la::avdecc::utils::toHexString(la::avdecc::utils::to_integral(name), true, true)] = value;
+			}
+			else
+			{
+				object[key] = value;
+			}
 		}
 
 		j = std::move(object);
 	}
+	static void from_json(json const& j, la::avdecc::entity::model::AvbInterfaceCounters& counters)
+	{
+		for (auto const& [name, value] : j.items())
+		{
+			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
+			auto const key = n.get<la::avdecc::entity::model::AvbInterfaceCounters::key_type>();
+			// Check if key is a valid CounterValidFlag enum
+			if (key == la::avdecc::entity::model::AvbInterfaceCounters::key_type::None)
+			{
+				logJsonSerializer(la::avdecc::logger::Level::Warn, std::string("Unknown AvbInterfaceCounterValidFlag name: ") + name);
+				counters.insert(std::make_pair(static_cast<la::avdecc::entity::model::AvbInterfaceCounters::key_type>(la::avdecc::utils::convertFromString<la::avdecc::entity::model::DescriptorCounterValidFlag>(name.c_str())), value.get<la::avdecc::entity::model::AvbInterfaceCounters::mapped_type>()));
+			}
+			else
+			{
+				counters.insert(std::make_pair(key, value.get<la::avdecc::entity::model::AvbInterfaceCounters::mapped_type>()));
+			}
+		}
+	}
 };
+
 template<>
 struct adl_serializer<la::avdecc::entity::model::ClockDomainCounters>
 {
@@ -111,13 +175,40 @@ struct adl_serializer<la::avdecc::entity::model::ClockDomainCounters>
 
 		for (auto const [name, value] : counters)
 		{
-			json const n = name;
-			object[n.get<std::string>()] = value;
+			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
+			auto const key = n.get<std::string>();
+			if (key == "UNKNOWN")
+			{
+				object[la::avdecc::utils::toHexString(la::avdecc::utils::to_integral(name), true, true)] = value;
+			}
+			else
+			{
+				object[key] = value;
+			}
 		}
 
 		j = std::move(object);
 	}
+	static void from_json(json const& j, la::avdecc::entity::model::ClockDomainCounters& counters)
+	{
+		for (auto const& [name, value] : j.items())
+		{
+			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
+			auto const key = n.get<la::avdecc::entity::model::ClockDomainCounters::key_type>();
+			// Check if key is a valid CounterValidFlag enum
+			if (key == la::avdecc::entity::model::ClockDomainCounters::key_type::None)
+			{
+				logJsonSerializer(la::avdecc::logger::Level::Warn, std::string("Unknown ClockDomainCounterValidFlag name: ") + name);
+				counters.insert(std::make_pair(static_cast<la::avdecc::entity::model::ClockDomainCounters::key_type>(la::avdecc::utils::convertFromString<la::avdecc::entity::model::DescriptorCounterValidFlag>(name.c_str())), value.get<la::avdecc::entity::model::ClockDomainCounters::mapped_type>()));
+			}
+			else
+			{
+				counters.insert(std::make_pair(key, value.get<la::avdecc::entity::model::ClockDomainCounters::mapped_type>()));
+			}
+		}
+	}
 };
+
 template<>
 struct adl_serializer<la::avdecc::entity::model::StreamInputCounters>
 {
@@ -127,13 +218,40 @@ struct adl_serializer<la::avdecc::entity::model::StreamInputCounters>
 
 		for (auto const [name, value] : counters)
 		{
-			json const n = name;
-			object[n.get<std::string>()] = value;
+			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
+			auto const key = n.get<std::string>();
+			if (key == "UNKNOWN")
+			{
+				object[la::avdecc::utils::toHexString(la::avdecc::utils::to_integral(name), true, true)] = value;
+			}
+			else
+			{
+				object[key] = value;
+			}
 		}
 
 		j = std::move(object);
 	}
+	static void from_json(json const& j, la::avdecc::entity::model::StreamInputCounters& counters)
+	{
+		for (auto const& [name, value] : j.items())
+		{
+			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
+			auto const key = n.get<la::avdecc::entity::model::StreamInputCounters::key_type>();
+			// Check if key is a valid CounterValidFlag enum
+			if (key == la::avdecc::entity::model::StreamInputCounters::key_type::None)
+			{
+				logJsonSerializer(la::avdecc::logger::Level::Warn, std::string("Unknown StreamInputCounterValidFlag name: ") + name);
+				counters.insert(std::make_pair(static_cast<la::avdecc::entity::model::StreamInputCounters::key_type>(la::avdecc::utils::convertFromString<la::avdecc::entity::model::DescriptorCounterValidFlag>(name.c_str())), value.get<la::avdecc::entity::model::StreamInputCounters::mapped_type>()));
+			}
+			else
+			{
+				counters.insert(std::make_pair(key, value.get<la::avdecc::entity::model::StreamInputCounters::mapped_type>()));
+			}
+		}
+	}
 };
+
 template<>
 struct adl_serializer<la::avdecc::entity::model::StreamOutputCounters>
 {
@@ -143,13 +261,40 @@ struct adl_serializer<la::avdecc::entity::model::StreamOutputCounters>
 
 		for (auto const [name, value] : counters)
 		{
-			json const n = name;
-			object[n.get<std::string>()] = value;
+			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
+			auto const key = n.get<std::string>();
+			if (key == "UNKNOWN")
+			{
+				object[la::avdecc::utils::toHexString(la::avdecc::utils::to_integral(name), true, true)] = value;
+			}
+			else
+			{
+				object[key] = value;
+			}
 		}
 
 		j = std::move(object);
 	}
+	static void from_json(json const& j, la::avdecc::entity::model::StreamOutputCounters& counters)
+	{
+		for (auto const& [name, value] : j.items())
+		{
+			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
+			auto const key = n.get<la::avdecc::entity::model::StreamOutputCounters::key_type>();
+			// Check if key is a valid CounterValidFlag enum
+			if (key == la::avdecc::entity::model::StreamOutputCounters::key_type::None)
+			{
+				logJsonSerializer(la::avdecc::logger::Level::Warn, std::string("Unknown StreamOutputCounterValidFlag name: ") + name);
+				counters.insert(std::make_pair(static_cast<la::avdecc::entity::model::StreamOutputCounters::key_type>(la::avdecc::utils::convertFromString<la::avdecc::entity::model::DescriptorCounterValidFlag>(name.c_str())), value.get<la::avdecc::entity::model::StreamOutputCounters::mapped_type>()));
+			}
+			else
+			{
+				counters.insert(std::make_pair(key, value.get<la::avdecc::entity::model::StreamOutputCounters::mapped_type>()));
+			}
+		}
+	}
 };
+
 } // namespace nlohmann
 
 namespace la
@@ -158,6 +303,13 @@ namespace avdecc
 {
 namespace utils
 {
+/* TypedDefined conversion */
+template<typename Define, typename DerivedType = typename Define::derived_type, typename ValueType = typename Define::value_type, typename = std::enable_if_t<std::is_base_of_v<TypedDefine<DerivedType, ValueType>, Define>>>
+void from_json(json const& j, Define& value)
+{
+	value.fromString(j.get<std::string>());
+}
+
 /* EnumBitfield conversion */
 template<typename Enum, typename EnumValue = typename Enum::value_type, EnumValue DefaultValue = EnumValue::None, typename = std::enable_if_t<std::is_same_v<Enum, EnumBitfield<EnumValue>>>>
 void to_json(json& j, Enum const& flags)
@@ -166,13 +318,15 @@ void to_json(json& j, Enum const& flags)
 	{
 		json const conv = flag; // Must use operator= instead of constructor to force usage of the to_json overload
 		AVDECC_ASSERT(conv.is_string(), "Converted Enum should be a string (forgot to define the enum using NLOHMANN_JSON_SERIALIZE_ENUM?");
-		if (AVDECC_ASSERT_WITH_RET(conv.get<EnumValue>() != DefaultValue, "Unknown Enum value"))
+		if (conv.get<EnumValue>() != DefaultValue)
 		{
 			j.push_back(flag);
 		}
 		else
 		{
-			j.push_back(utils::toHexString(utils::to_integral(flag), true, true));
+			auto const value = toHexString(utils::to_integral(flag), true, true);
+			logJsonSerializer(la::avdecc::logger::Level::Warn, std::string("Unknown Enum value: ") + value);
+			j.push_back(value);
 		}
 	}
 }
@@ -184,9 +338,22 @@ void from_json(json const& j, Enum& flags)
 		auto const v = o.get<EnumValue>();
 		if (v == DefaultValue)
 		{
-			throw std::invalid_argument("Invalid enum value: " + o.get<std::string>());
+			auto const value = o.get<std::string>();
+			logJsonSerializer(la::avdecc::logger::Level::Warn, std::string("Unknown Enum value: ") + value);
+			using UnderlyingEnumType = typename Enum::underlying_value_type;
+			if constexpr (sizeof(UnderlyingEnumType) == 1)
+			{
+				flags.set(static_cast<EnumValue>(la::avdecc::utils::convertFromString<std::uint16_t>(value.c_str())));
+			}
+			else
+			{
+				flags.set(static_cast<EnumValue>(la::avdecc::utils::convertFromString<UnderlyingEnumType>(value.c_str())));
+			}
 		}
-		flags.set(v);
+		else
+		{
+			flags.set(v);
+		}
 	}
 }
 
@@ -483,15 +650,14 @@ inline void from_json(json const& j, Entity::CommonInformation& commonInfo)
 	j.at(keyName::Entity_CommonInformation_EntityID).get_to(commonInfo.entityID);
 	j.at(keyName::Entity_CommonInformation_EntityModelID).get_to(commonInfo.entityModelID);
 	j.at(keyName::Entity_CommonInformation_EntityCapabilities).get_to(commonInfo.entityCapabilities);
-	j.at(keyName::Entity_CommonInformation_TalkerStreamSources).get_to(commonInfo.talkerStreamSources);
-	j.at(keyName::Entity_CommonInformation_TalkerCapabilities).get_to(commonInfo.talkerCapabilities);
-	j.at(keyName::Entity_CommonInformation_ListenerStreamSinks).get_to(commonInfo.listenerStreamSinks);
-	j.at(keyName::Entity_CommonInformation_ListenerCapabilities).get_to(commonInfo.listenerCapabilities);
-	j.at(keyName::Entity_CommonInformation_ControllerCapabilities).get_to(commonInfo.controllerCapabilities);
+	get_optional_value(j, keyName::Entity_CommonInformation_TalkerStreamSources, commonInfo.talkerStreamSources);
+	get_optional_value(j, keyName::Entity_CommonInformation_TalkerCapabilities, commonInfo.talkerCapabilities);
+	get_optional_value(j, keyName::Entity_CommonInformation_ListenerStreamSinks, commonInfo.listenerStreamSinks);
+	get_optional_value(j, keyName::Entity_CommonInformation_ListenerCapabilities, commonInfo.listenerCapabilities);
+	get_optional_value(j, keyName::Entity_CommonInformation_ControllerCapabilities, commonInfo.controllerCapabilities);
 	get_optional_value(j, keyName::Entity_CommonInformation_IdentifyControlIndex, commonInfo.identifyControlIndex);
 	get_optional_value(j, keyName::Entity_CommonInformation_AssociationID, commonInfo.associationID);
 }
-
 
 /* Entity::InterfaceInformation conversion */
 inline void to_json(json& j, Entity::InterfaceInformation const& intfcInfo)
@@ -512,7 +678,7 @@ inline void from_json(json const& j, Entity::InterfaceInformation& intfcInfo)
 {
 	intfcInfo.macAddress = networkInterface::stringToMacAddress(j.at(keyName::Entity_InterfaceInformation_MacAddress).get<std::string>());
 	j.at(keyName::Entity_InterfaceInformation_ValidTime).get_to(intfcInfo.validTime);
-	j.at(keyName::Entity_InterfaceInformation_AvailableIndex).get_to(intfcInfo.availableIndex);
+	get_optional_value(j, keyName::Entity_InterfaceInformation_AvailableIndex, intfcInfo.availableIndex);
 	get_optional_value(j, keyName::Entity_InterfaceInformation_GptpGrandmasterID, intfcInfo.gptpGrandmasterID);
 	get_optional_value(j, keyName::Entity_InterfaceInformation_GptpDomainNumber, intfcInfo.gptpDomainNumber);
 }
@@ -542,6 +708,7 @@ constexpr auto NodeName_ClockDomainDescriptors = "clock_domain_descriptors";
 constexpr auto Node_Informative_Index = "_index (informative)";
 constexpr auto Node_StaticInformation = "static";
 constexpr auto Node_DynamicInformation = "dynamic";
+constexpr auto Node_NotCompliant = "not_compliant";
 
 /* EntityNode */
 constexpr auto EntityNode_Static_VendorNameString = "vendor_name_string";
@@ -633,7 +800,7 @@ constexpr auto MemoryObjectNode_Dynamic_Length = "length";
 
 /* LocaleNode */
 constexpr auto LocaleNode_Static_LocaleID = "locale_id";
-constexpr auto LocaleNode_Static_BaseStringDescriptor = "base_string_descriptor";
+constexpr auto LocaleNode_Static_Informative_BaseStringDescriptor = "_base_string_descriptor (informative)";
 
 /* StringsNode */
 constexpr auto StringsNode_Static_Strings = "strings";
@@ -836,11 +1003,19 @@ inline void to_json(json& j, SamplingRate const& sr)
 {
 	j = utils::toHexString(sr.getValue(), true, true);
 }
+inline void from_json(json const& j, SamplingRate& sr)
+{
+	sr.setValue(utils::convertFromString<SamplingRate::value_type>(j.get<std::string>().c_str()));
+}
 
 /* StreamFormat conversion */
 inline void to_json(json& j, StreamFormat const& sf)
 {
 	j = utils::toHexString(sf.getValue(), true, true);
+}
+inline void from_json(json const& j, StreamFormat& sf)
+{
+	sf.setValue(utils::convertFromString<StreamFormat::value_type>(j.get<std::string>().c_str()));
 }
 
 /* LocalizedStringReference conversion */
@@ -851,6 +1026,13 @@ inline void to_json(json& j, LocalizedStringReference const& ref)
 		auto const [offset, index] = ref.getOffsetIndex();
 		j[keyName::LocalizedStringReference_Offset] = offset;
 		j[keyName::LocalizedStringReference_Index] = index;
+	}
+}
+inline void from_json(json const& j, LocalizedStringReference& ref)
+{
+	if (!j.is_null())
+	{
+		ref.setOffsetIndex(j.at(keyName::LocalizedStringReference_Offset), j.at(keyName::LocalizedStringReference_Index));
 	}
 }
 
@@ -867,6 +1049,12 @@ inline void to_json(json& j, MsrpMapping const& mapping)
 	j[keyName::MsrpMapping_Priority] = mapping.priority;
 	j[keyName::MsrpMapping_VlanID] = mapping.vlanID;
 }
+inline void from_json(json const& j, MsrpMapping& mapping)
+{
+	j.at(keyName::MsrpMapping_TrafficClass).get_to(mapping.trafficClass);
+	j.at(keyName::MsrpMapping_Priority).get_to(mapping.priority);
+	j.at(keyName::MsrpMapping_VlanID).get_to(mapping.vlanID);
+}
 
 /* AudioMapping conversion */
 inline void to_json(json& j, AudioMapping const& mapping)
@@ -876,12 +1064,24 @@ inline void to_json(json& j, AudioMapping const& mapping)
 	j[keyName::AudioMapping_ClusterOffset] = mapping.clusterOffset;
 	j[keyName::AudioMapping_ClusterChannel] = mapping.clusterChannel;
 }
+inline void from_json(json const& j, AudioMapping& mapping)
+{
+	j.at(keyName::AudioMapping_StreamIndex).get_to(mapping.streamIndex);
+	j.at(keyName::AudioMapping_StreamChannel).get_to(mapping.streamChannel);
+	j.at(keyName::AudioMapping_ClusterOffset).get_to(mapping.clusterOffset);
+	j.at(keyName::AudioMapping_ClusterChannel).get_to(mapping.clusterChannel);
+}
 
 /* StreamIdentification conversion */
 inline void to_json(json& j, StreamIdentification const& stream)
 {
 	j[keyName::StreamIdentification_EntityID] = stream.entityID;
 	j[keyName::StreamIdentification_StreamIndex] = stream.streamIndex;
+}
+inline void from_json(json const& j, StreamIdentification& stream)
+{
+	j.at(keyName::StreamIdentification_EntityID).get_to(stream.entityID);
+	j.at(keyName::StreamIdentification_StreamIndex).get_to(stream.streamIndex);
 }
 
 /* StreamInfo conversion */
@@ -909,6 +1109,27 @@ inline void to_json(json& j, StreamInfo const& info)
 		j[keyName::StreamInfo_AcmpStatus] = *info.acmpStatus;
 	}
 }
+inline void from_json(json const& j, StreamInfo& info)
+{
+	j.at(keyName::StreamInfo_Flags).get_to(info.streamInfoFlags);
+	j.at(keyName::StreamInfo_StreamFormat).get_to(info.streamFormat);
+	get_optional_value(j, keyName::StreamInfo_StreamID, info.streamID);
+	get_optional_value(j, keyName::StreamInfo_MsrpAccumulatedLatency, info.msrpAccumulatedLatency);
+	{
+		auto const it = j.find(keyName::StreamInfo_StreamDestMac);
+		if (it != j.end())
+		{
+			info.streamDestMac = networkInterface::stringToMacAddress(it->get<std::string>());
+		}
+	}
+	get_optional_value(j, keyName::StreamInfo_MsrpFailureCode, info.msrpFailureCode);
+	get_optional_value(j, keyName::StreamInfo_MsrpFailureBridgeID, info.msrpFailureBridgeID);
+	get_optional_value(j, keyName::StreamInfo_StreamVlanID, info.streamVlanID);
+	// Milan additions
+	get_optional_value(j, keyName::StreamInfo_FlagsEx, info.streamInfoFlagsEx);
+	get_optional_value(j, keyName::StreamInfo_ProbingStatus, info.probingStatus);
+	get_optional_value(j, keyName::StreamInfo_AcmpStatus, info.acmpStatus);
+}
 
 /* AvbInfo conversion */
 inline void to_json(json& j, AvbInfo const& info)
@@ -919,11 +1140,23 @@ inline void to_json(json& j, AvbInfo const& info)
 	j[keyName::AvbInfo_Flags] = info.flags;
 	j[keyName::AvbInfo_MsrpMappings] = info.mappings;
 }
+inline void from_json(json const& j, AvbInfo& info)
+{
+	get_optional_value(j, keyName::AvbInfo_GptpGrandmasterID, info.gptpGrandmasterID);
+	get_optional_value(j, keyName::AvbInfo_GptpDomainNumber, info.gptpDomainNumber);
+	get_optional_value(j, keyName::AvbInfo_PropagationDelay, info.propagationDelay);
+	get_optional_value(j, keyName::AvbInfo_Flags, info.flags);
+	get_optional_value(j, keyName::AvbInfo_MsrpMappings, info.mappings);
+}
 
 /* AsPath conversion */
 inline void to_json(json& j, AsPath const& path)
 {
 	j = path.sequence;
+}
+inline void from_json(json const& j, AsPath& path)
+{
+	j.get_to(path.sequence);
 }
 
 /* EntityNodeStaticModel conversion */
@@ -931,6 +1164,11 @@ inline void to_json(json& j, EntityNodeStaticModel const& s)
 {
 	j[keyName::EntityNode_Static_VendorNameString] = s.vendorNameString;
 	j[keyName::EntityNode_Static_ModelNameString] = s.modelNameString;
+}
+inline void from_json(json const& j, EntityNodeStaticModel& s)
+{
+	get_optional_value(j, keyName::EntityNode_Static_VendorNameString, s.vendorNameString);
+	get_optional_value(j, keyName::EntityNode_Static_ModelNameString, s.modelNameString);
 }
 
 /* EntityNodeDynamicModel conversion */
@@ -943,17 +1181,34 @@ inline void to_json(json& j, EntityNodeDynamicModel const& d)
 	j[keyName::EntityNode_Dynamic_CurrentConfiguration] = d.currentConfiguration;
 	j[keyName::EntityNode_Dynamic_Counters] = d.counters;
 }
+inline void from_json(json const& j, EntityNodeDynamicModel& d)
+{
+	j.at(keyName::EntityNode_Dynamic_EntityName).get_to(d.entityName);
+	j.at(keyName::EntityNode_Dynamic_GroupName).get_to(d.groupName);
+	j.at(keyName::EntityNode_Dynamic_FirmwareVersion).get_to(d.firmwareVersion);
+	j.at(keyName::EntityNode_Dynamic_SerialNumber).get_to(d.serialNumber);
+	j.at(keyName::EntityNode_Dynamic_CurrentConfiguration).get_to(d.currentConfiguration);
+	get_optional_value(j, keyName::EntityNode_Dynamic_Counters, d.counters);
+}
 
 /* ConfigurationNodeStaticModel conversion */
 inline void to_json(json& j, ConfigurationNodeStaticModel const& s)
 {
 	j[keyName::ConfigurationNode_Static_LocalizedDescription] = s.localizedDescription;
 }
+inline void from_json(json const& j, ConfigurationNodeStaticModel& s)
+{
+	get_optional_value(j, keyName::ConfigurationNode_Static_LocalizedDescription, s.localizedDescription);
+}
 
 /* ConfigurationNodeDynamicModel conversion */
 inline void to_json(json& j, ConfigurationNodeDynamicModel const& d)
 {
 	j[keyName::ConfigurationNode_Dynamic_ObjectName] = d.objectName;
+}
+inline void from_json(json const& j, ConfigurationNodeDynamicModel& s)
+{
+	get_optional_value(j, keyName::ConfigurationNode_Dynamic_ObjectName, s.objectName);
 }
 
 /* AudioUnitNodeStaticModel conversion */
@@ -963,12 +1218,23 @@ inline void to_json(json& j, AudioUnitNodeStaticModel const& s)
 	j[keyName::AudioUnitNode_Static_ClockDomainIndex] = s.clockDomainIndex;
 	j[keyName::AudioUnitNode_Static_SamplingRates] = s.samplingRates;
 }
+inline void from_json(json const& j, AudioUnitNodeStaticModel& s)
+{
+	get_optional_value(j, keyName::AudioUnitNode_Static_LocalizedDescription, s.localizedDescription);
+	j.at(keyName::AudioUnitNode_Static_ClockDomainIndex).get_to(s.clockDomainIndex);
+	j.at(keyName::AudioUnitNode_Static_SamplingRates).get_to(s.samplingRates);
+}
 
 /* AudioUnitNodeDynamicModel conversion */
 inline void to_json(json& j, AudioUnitNodeDynamicModel const& d)
 {
 	j[keyName::AudioUnitNode_Dynamic_ObjectName] = d.objectName;
 	j[keyName::AudioUnitNode_Dynamic_CurrentSamplingRate] = d.currentSamplingRate;
+}
+inline void from_json(json const& j, AudioUnitNodeDynamicModel& d)
+{
+	get_optional_value(j, keyName::AudioUnitNode_Dynamic_ObjectName, d.objectName);
+	j.at(keyName::AudioUnitNode_Dynamic_CurrentSamplingRate).get_to(d.currentSamplingRate);
 }
 
 /* StreamNodeStaticModel conversion */
@@ -995,6 +1261,26 @@ inline void to_json(json& j, StreamNodeStaticModel const& s)
 	}
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 }
+inline void from_json(json const& j, StreamNodeStaticModel& s)
+{
+	get_optional_value(j, keyName::StreamNode_Static_LocalizedDescription, s.localizedDescription);
+	j.at(keyName::StreamNode_Static_ClockDomainIndex).get_to(s.clockDomainIndex);
+	j.at(keyName::StreamNode_Static_StreamFlags).get_to(s.streamFlags);
+	get_optional_value(j, keyName::StreamNode_Static_BackupTalkerEntityID0, s.backupTalkerEntityID_0);
+	get_optional_value(j, keyName::StreamNode_Static_BackupTalkerUniqueID0, s.backupTalkerUniqueID_0);
+	get_optional_value(j, keyName::StreamNode_Static_BackupTalkerEntityID1, s.backupTalkerEntityID_1);
+	get_optional_value(j, keyName::StreamNode_Static_BackupTalkerUniqueID1, s.backupTalkerUniqueID_1);
+	get_optional_value(j, keyName::StreamNode_Static_BackupTalkerEntityID2, s.backupTalkerEntityID_2);
+	get_optional_value(j, keyName::StreamNode_Static_BackupTalkerUniqueID2, s.backupTalkerUniqueID_2);
+	get_optional_value(j, keyName::StreamNode_Static_BackedupTalkerEntityID, s.backedupTalkerEntityID);
+	get_optional_value(j, keyName::StreamNode_Static_BackedupTalkerUnique, s.backedupTalkerUnique);
+	j.at(keyName::StreamNode_Static_AvbInterfaceIndex).get_to(s.avbInterfaceIndex);
+	j.at(keyName::StreamNode_Static_BufferLength).get_to(s.bufferLength);
+	j.at(keyName::StreamNode_Static_Formats).get_to(s.formats);
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	get_optional_value(j, keyName::StreamNode_Static_RedundantStreams, s.redundantStreams);
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+}
 
 /* StreamInputNodeDynamicModel conversion */
 inline void to_json(json& j, StreamInputNodeDynamicModel const& d)
@@ -1004,6 +1290,13 @@ inline void to_json(json& j, StreamInputNodeDynamicModel const& d)
 	j[keyName::StreamInputNode_Dynamic_ConnectedTalker] = d.connectionState.talkerStream;
 	j[keyName::StreamInputNode_Dynamic_Counters] = d.counters;
 }
+inline void from_json(json const& j, StreamInputNodeDynamicModel& d)
+{
+	get_optional_value(j, keyName::StreamInputNode_Dynamic_ObjectName, d.objectName);
+	j.at(keyName::StreamInputNode_Dynamic_StreamInfo).get_to(d.streamInfo);
+	get_optional_value(j, keyName::StreamInputNode_Dynamic_ConnectedTalker, d.connectionState.talkerStream);
+	get_optional_value(j, keyName::StreamInputNode_Dynamic_Counters, d.counters);
+}
 
 /* StreamOutputNodeDynamicModel conversion */
 inline void to_json(json& j, StreamOutputNodeDynamicModel const& d)
@@ -1011,6 +1304,12 @@ inline void to_json(json& j, StreamOutputNodeDynamicModel const& d)
 	j[keyName::StreamOutputNode_Dynamic_ObjectName] = d.objectName;
 	j[keyName::StreamOutputNode_Dynamic_StreamInfo] = d.streamInfo;
 	j[keyName::StreamOutputNode_Dynamic_Counters] = d.counters;
+}
+inline void from_json(json const& j, StreamOutputNodeDynamicModel& d)
+{
+	get_optional_value(j, keyName::StreamOutputNode_Dynamic_ObjectName, d.objectName);
+	j.at(keyName::StreamOutputNode_Dynamic_StreamInfo).get_to(d.streamInfo);
+	get_optional_value(j, keyName::StreamOutputNode_Dynamic_Counters, d.counters);
 }
 
 /* AvbInterfaceNodeStaticModel conversion */
@@ -1031,6 +1330,23 @@ inline void to_json(json& j, AvbInterfaceNodeStaticModel const& s)
 	j[keyName::AvbInterfaceNode_Static_LogPdelayInterval] = s.logPDelayInterval;
 	j[keyName::AvbInterfaceNode_Static_PortNumber] = s.portNumber;
 }
+inline void from_json(json const& j, AvbInterfaceNodeStaticModel& s)
+{
+	get_optional_value(j, keyName::AvbInterfaceNode_Static_LocalizedDescription, s.localizedDescription);
+	s.macAddress = networkInterface::stringToMacAddress(j.at(keyName::AvbInterfaceNode_Static_MacAddress).get<std::string>());
+	j.at(keyName::AvbInterfaceNode_Static_Flags).get_to(s.interfaceFlags);
+	j.at(keyName::AvbInterfaceNode_Static_ClockIdentity).get_to(s.clockIdentity);
+	j.at(keyName::AvbInterfaceNode_Static_Priority1).get_to(s.priority1);
+	j.at(keyName::AvbInterfaceNode_Static_ClockClass).get_to(s.clockClass);
+	j.at(keyName::AvbInterfaceNode_Static_OffsetScaledLogVariance).get_to(s.offsetScaledLogVariance);
+	j.at(keyName::AvbInterfaceNode_Static_ClockAccuracy).get_to(s.clockAccuracy);
+	j.at(keyName::AvbInterfaceNode_Static_Priority2).get_to(s.priority2);
+	j.at(keyName::AvbInterfaceNode_Static_DomainNumber).get_to(s.domainNumber);
+	j.at(keyName::AvbInterfaceNode_Static_LogSyncInterval).get_to(s.logSyncInterval);
+	j.at(keyName::AvbInterfaceNode_Static_LogAnnounceInterval).get_to(s.logAnnounceInterval);
+	j.at(keyName::AvbInterfaceNode_Static_LogPdelayInterval).get_to(s.logPDelayInterval);
+	j.at(keyName::AvbInterfaceNode_Static_PortNumber).get_to(s.portNumber);
+}
 
 /* AvbInterfaceNodeDynamicModel conversion */
 inline void to_json(json& j, AvbInterfaceNodeDynamicModel const& d)
@@ -1039,6 +1355,13 @@ inline void to_json(json& j, AvbInterfaceNodeDynamicModel const& d)
 	j[keyName::AvbInterfaceNode_Dynamic_AvbInfo] = d.avbInfo;
 	j[keyName::AvbInterfaceNode_Dynamic_AsPath] = d.asPath;
 	j[keyName::AvbInterfaceNode_Dynamic_Counters] = d.counters;
+}
+inline void from_json(json const& j, AvbInterfaceNodeDynamicModel& d)
+{
+	get_optional_value(j, keyName::AvbInterfaceNode_Dynamic_ObjectName, d.objectName);
+	get_optional_value(j, keyName::AvbInterfaceNode_Dynamic_AvbInfo, d.avbInfo);
+	get_optional_value(j, keyName::AvbInterfaceNode_Dynamic_AsPath, d.asPath);
+	get_optional_value(j, keyName::AvbInterfaceNode_Dynamic_Counters, d.counters);
 }
 
 /* ClockSourceNodeStaticModel conversion */
@@ -1049,6 +1372,13 @@ inline void to_json(json& j, ClockSourceNodeStaticModel const& s)
 	j[keyName::ClockSourceNode_Static_ClockSourceLocationType] = s.clockSourceLocationType;
 	j[keyName::ClockSourceNode_Static_ClockSourceLocationIndex] = s.clockSourceLocationIndex;
 }
+inline void from_json(json const& j, ClockSourceNodeStaticModel& s)
+{
+	j.at(keyName::ClockSourceNode_Static_LocalizedDescription).get_to(s.localizedDescription);
+	j.at(keyName::ClockSourceNode_Static_ClockSourceType).get_to(s.clockSourceType);
+	j.at(keyName::ClockSourceNode_Static_ClockSourceLocationType).get_to(s.clockSourceLocationType);
+	j.at(keyName::ClockSourceNode_Static_ClockSourceLocationIndex).get_to(s.clockSourceLocationIndex);
+}
 
 /* ClockSourceNodeDynamicModel conversion */
 inline void to_json(json& j, ClockSourceNodeDynamicModel const& d)
@@ -1056,6 +1386,12 @@ inline void to_json(json& j, ClockSourceNodeDynamicModel const& d)
 	j[keyName::ClockSourceNode_Dynamic_ObjectName] = d.objectName;
 	j[keyName::ClockSourceNode_Dynamic_ClockSourceFlags] = d.clockSourceFlags;
 	j[keyName::ClockSourceNode_Dynamic_ClockSourceIdentifier] = d.clockSourceIdentifier;
+}
+inline void from_json(json const& j, ClockSourceNodeDynamicModel& d)
+{
+	get_optional_value(j, keyName::ClockSourceNode_Dynamic_ObjectName, d.objectName);
+	get_optional_value(j, keyName::ClockSourceNode_Dynamic_ClockSourceFlags, d.clockSourceFlags);
+	get_optional_value(j, keyName::ClockSourceNode_Dynamic_ClockSourceIdentifier, d.clockSourceIdentifier);
 }
 
 /* MemoryObjectNodeStaticModel conversion */
@@ -1068,6 +1404,15 @@ inline void to_json(json& j, MemoryObjectNodeStaticModel const& s)
 	j[keyName::MemoryObjectNode_Static_StartAddress] = utils::toHexString(s.startAddress, true, true);
 	j[keyName::MemoryObjectNode_Static_MaximumLength] = s.maximumLength;
 }
+inline void from_json(json const& j, MemoryObjectNodeStaticModel& s)
+{
+	get_optional_value(j, keyName::MemoryObjectNode_Static_LocalizedDescription, s.localizedDescription);
+	j.at(keyName::MemoryObjectNode_Static_MemoryObjectType).get_to(s.memoryObjectType);
+	j.at(keyName::MemoryObjectNode_Static_TargetDescriptorType).get_to(s.targetDescriptorType);
+	j.at(keyName::MemoryObjectNode_Static_TargetDescriptorIndex).get_to(s.targetDescriptorIndex);
+	s.startAddress = utils::convertFromString<decltype(s.startAddress)>(j.at(keyName::MemoryObjectNode_Static_StartAddress).get<std::string>().c_str());
+	j.at(keyName::MemoryObjectNode_Static_MaximumLength).get_to(s.maximumLength);
+}
 
 /* MemoryObjectNodeDynamicModel conversion */
 inline void to_json(json& j, MemoryObjectNodeDynamicModel const& d)
@@ -1075,18 +1420,31 @@ inline void to_json(json& j, MemoryObjectNodeDynamicModel const& d)
 	j[keyName::MemoryObjectNode_Dynamic_ObjectName] = d.objectName;
 	j[keyName::MemoryObjectNode_Dynamic_Length] = d.length;
 }
+inline void from_json(json const& j, MemoryObjectNodeDynamicModel& d)
+{
+	get_optional_value(j, keyName::MemoryObjectNode_Dynamic_ObjectName, d.objectName);
+	j.at(keyName::MemoryObjectNode_Dynamic_Length).get_to(d.length);
+}
 
 /* LocaleNodeStaticModel conversion */
 inline void to_json(json& j, LocaleNodeStaticModel const& s)
 {
 	j[keyName::LocaleNode_Static_LocaleID] = s.localeID;
-	//j[keyName::LocaleNode_Static_BaseStringDescriptor] = s.baseStringDescriptorIndex; // INFORMATIVE
+	j[keyName::LocaleNode_Static_Informative_BaseStringDescriptor] = s.baseStringDescriptorIndex;
+}
+inline void from_json(json const& j, LocaleNodeStaticModel& s)
+{
+	j.at(keyName::LocaleNode_Static_LocaleID).get_to(s.localeID);
 }
 
 /* StringsNodeStaticModel conversion */
 inline void to_json(json& j, StringsNodeStaticModel const& s)
 {
 	j[keyName::StringsNode_Static_Strings] = s.strings;
+}
+inline void from_json(json const& j, StringsNodeStaticModel& s)
+{
+	j.at(keyName::StringsNode_Static_Strings).get_to(s.strings);
 }
 
 /* StreamPortNodeStaticModel conversion */
@@ -1095,11 +1453,20 @@ inline void to_json(json& j, StreamPortNodeStaticModel const& s)
 	j[keyName::StreamPortNode_Static_ClockDomainIndex] = s.clockDomainIndex;
 	j[keyName::StreamPortNode_Static_Flags] = s.portFlags;
 }
+inline void from_json(json const& j, StreamPortNodeStaticModel& s)
+{
+	j.at(keyName::StreamPortNode_Static_ClockDomainIndex).get_to(s.clockDomainIndex);
+	j.at(keyName::StreamPortNode_Static_Flags).get_to(s.portFlags);
+}
 
 /* StreamPortNodeDynamicModel conversion */
 inline void to_json(json& j, StreamPortNodeDynamicModel const& d)
 {
 	j[keyName::StreamPortNode_Dynamic_DynamicMappings] = d.dynamicAudioMap;
+}
+inline void from_json(json const& j, StreamPortNodeDynamicModel& d)
+{
+	get_optional_value(j, keyName::StreamPortNode_Dynamic_DynamicMappings, d.dynamicAudioMap);
 }
 
 /* AudioClusterNodeStaticModel conversion */
@@ -1114,17 +1481,36 @@ inline void to_json(json& j, AudioClusterNodeStaticModel const& s)
 	j[keyName::AudioClusterNode_Static_ChannelCount] = s.channelCount;
 	j[keyName::AudioClusterNode_Static_Format] = s.format;
 }
+inline void from_json(json const& j, AudioClusterNodeStaticModel& s)
+{
+	get_optional_value(j, keyName::AudioClusterNode_Static_LocalizedDescription, s.localizedDescription);
+	j.at(keyName::AudioClusterNode_Static_SignalType).get_to(s.signalType);
+	j.at(keyName::AudioClusterNode_Static_SignalIndex).get_to(s.signalIndex);
+	j.at(keyName::AudioClusterNode_Static_SignalOutput).get_to(s.signalOutput);
+	j.at(keyName::AudioClusterNode_Static_PathLatency).get_to(s.pathLatency);
+	j.at(keyName::AudioClusterNode_Static_BlockLatency).get_to(s.blockLatency);
+	j.at(keyName::AudioClusterNode_Static_ChannelCount).get_to(s.channelCount);
+	j.at(keyName::AudioClusterNode_Static_Format).get_to(s.format);
+}
 
 /* AudioClusterNodeDynamicModel conversion */
 inline void to_json(json& j, AudioClusterNodeDynamicModel const& d)
 {
 	j[keyName::AudioClusterNode_Dynamic_ObjectName] = d.objectName;
 }
+inline void from_json(json const& j, AudioClusterNodeDynamicModel& d)
+{
+	get_optional_value(j, keyName::AudioClusterNode_Dynamic_ObjectName, d.objectName);
+}
 
 /* AudioMapNodeStaticModel conversion */
 inline void to_json(json& j, AudioMapNodeStaticModel const& s)
 {
 	j[keyName::AudioMapNode_Static_Mappings] = s.mappings;
+}
+inline void from_json(json const& j, AudioMapNodeStaticModel& s)
+{
+	j.at(keyName::AudioMapNode_Static_Mappings).get_to(s.mappings);
 }
 
 /* ClockDomainNodeStaticModel conversion */
@@ -1133,6 +1519,11 @@ inline void to_json(json& j, ClockDomainNodeStaticModel const& s)
 	j[keyName::ClockDomainNode_Static_LocalizedDescription] = s.localizedDescription;
 	j[keyName::ClockDomainNode_Static_ClockSources] = s.clockSources;
 }
+inline void from_json(json const& j, ClockDomainNodeStaticModel& s)
+{
+	get_optional_value(j, keyName::ClockDomainNode_Static_LocalizedDescription, s.localizedDescription);
+	j.at(keyName::ClockDomainNode_Static_ClockSources).get_to(s.clockSources);
+}
 
 /* ClockDomainNodeDynamicModel conversion */
 inline void to_json(json& j, ClockDomainNodeDynamicModel const& d)
@@ -1140,6 +1531,12 @@ inline void to_json(json& j, ClockDomainNodeDynamicModel const& d)
 	j[keyName::ClockDomainNode_Dynamic_ObjectName] = d.objectName;
 	j[keyName::ClockDomainNode_Dynamic_ClockSourceIndex] = d.clockSourceIndex;
 	j[keyName::ClockDomainNode_Dynamic_Counters] = d.counters;
+}
+inline void from_json(json const& j, ClockDomainNodeDynamicModel& d)
+{
+	get_optional_value(j, keyName::ClockDomainNode_Dynamic_ObjectName, d.objectName);
+	j.at(keyName::ClockDomainNode_Dynamic_ClockSourceIndex).get_to(d.clockSourceIndex);
+	get_optional_value(j, keyName::ClockDomainNode_Dynamic_Counters, d.counters);
 }
 
 /* MilanInfo conversion */

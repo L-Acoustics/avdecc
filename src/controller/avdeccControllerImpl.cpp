@@ -22,6 +22,11 @@
 * @author Christophe Calmejane
 */
 
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+#	include "la/avdecc/internals/jsonTypes.hpp"
+#	include "la/avdecc/controller/internals/jsonTypes.hpp"
+#endif // ENABLE_AVDECC_FEATURE_JSON
+
 #include "avdeccControllerImpl.hpp"
 #include "avdeccControllerLogHelper.hpp"
 #include "avdeccEntityModelCache.hpp"
@@ -3082,6 +3087,91 @@ void ControllerImpl::addTalkerStreamConnection(ControlledEntityImpl* const talke
 	// Update our internal cache
 	talkerEntity->addStreamOutputConnection(talkerStreamIndex, listenerStream);
 }
+
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntityFromJson(json const& object)
+{
+	try
+	{
+		// Read information of the dump itself
+		auto const dumpVersion = object.at(jsonSerializer::keyName::ControlledEntity_DumpVersion).get<decltype(jsonSerializer::keyValue::ControlledEntity_DumpVersion)>();
+		if (dumpVersion != jsonSerializer::keyValue::ControlledEntity_DumpVersion)
+		{
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::UnsupportedDumpVersion, std::string("Unsupported dump version: ") + std::to_string(dumpVersion) };
+		}
+
+		auto commonInfo = entity::Entity::CommonInformation{};
+		auto intfcsInfo = entity::Entity::InterfacesInformation{};
+
+		// Read ADP information
+		{
+			auto const& adp = object.at(jsonSerializer::keyName::ControlledEntity_AdpInformation);
+
+			// Read common information
+			adp.at(entity::keyName::Entity_CommonInformation_Node).get_to(commonInfo);
+
+			// Read interfaces information
+			for (auto const& j : adp.at(entity::keyName::Entity_InterfaceInformation_Node))
+			{
+				auto const jIndex = j.at(entity::keyName::Entity_InterfaceInformation_AvbInterfaceIndex);
+				auto const avbInterfaceIndex = jIndex.is_null() ? entity::Entity::GlobalAvbInterfaceIndex : jIndex.get<entity::model::AvbInterfaceIndex>();
+				intfcsInfo.insert(std::make_pair(avbInterfaceIndex, j.get<entity::Entity::InterfaceInformation>()));
+			}
+		}
+
+		auto controlledEntity = std::make_shared<ControlledEntityImpl>(entity::Entity{ commonInfo, intfcsInfo }, _entitiesSharedLockInformation);
+		auto& entity = *controlledEntity;
+
+		// Read device compatibility flags
+		entity.setCompatibilityFlags(object.at(jsonSerializer::keyName::ControlledEntity_CompatibilityFlags).get<ControlledEntity::CompatibilityFlags>());
+
+		// Read Milan information, if present
+		auto milanInfo = std::optional<entity::model::MilanInfo>{};
+		get_optional_value(object, jsonSerializer::keyName::ControlledEntity_MilanInformation, milanInfo);
+		if (milanInfo)
+		{
+			entity.setMilanInfo(*milanInfo);
+		}
+
+		return controlledEntity;
+	}
+	catch (avdecc::Exception const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::MissingKey, e.what() };
+	}
+	catch (json::type_error const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InvalidValue, e.what() };
+	}
+	catch (json::parse_error const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::ParseError, e.what() };
+	}
+	catch (json::out_of_range const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::MissingKey, e.what() };
+	}
+	catch (json::other_error const& e)
+	{
+		if (e.id == 555)
+		{
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InvalidKey, e.what() };
+		}
+		else
+		{
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
+		}
+	}
+	catch (json::exception const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
+	}
+	catch (std::invalid_argument const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InvalidValue, e.what() };
+	}
+}
+#endif // ENABLE_AVDECC_FEATURE_JSON
 
 } // namespace controller
 } // namespace avdecc
