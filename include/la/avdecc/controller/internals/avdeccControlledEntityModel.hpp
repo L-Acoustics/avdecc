@@ -51,7 +51,7 @@ class ControlledEntity;
 
 namespace model
 {
-using VirtualIndex = std::uint32_t;
+using VirtualIndex = std::uint32_t; // We don't use the same type than DescriptorIndex (std::uint16_t). We want to be able to overload based on the type ('using' is not strongly typing our alias)
 
 enum class AcquireState
 {
