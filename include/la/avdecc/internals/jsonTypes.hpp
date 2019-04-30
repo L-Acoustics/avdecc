@@ -1089,11 +1089,11 @@ inline void to_json(json& j, StreamInfo const& info)
 {
 	j[keyName::StreamInfo_Flags] = info.streamInfoFlags;
 	j[keyName::StreamInfo_StreamFormat] = info.streamFormat;
-	j[keyName::StreamInfo_StreamID] = info.streamID;
+	j[keyName::StreamInfo_StreamID] = utils::toHexString(info.streamID, true, true);
 	j[keyName::StreamInfo_MsrpAccumulatedLatency] = info.msrpAccumulatedLatency;
 	j[keyName::StreamInfo_StreamDestMac] = networkInterface::macAddressToString(info.streamDestMac, true);
 	j[keyName::StreamInfo_MsrpFailureCode] = info.msrpFailureCode;
-	j[keyName::StreamInfo_MsrpFailureBridgeID] = info.msrpFailureBridgeID;
+	j[keyName::StreamInfo_MsrpFailureBridgeID] = utils::toHexString(info.msrpFailureBridgeID, true, true);
 	j[keyName::StreamInfo_StreamVlanID] = info.streamVlanID;
 	// Milan additions
 	if (info.streamInfoFlagsEx)
@@ -1113,7 +1113,13 @@ inline void from_json(json const& j, StreamInfo& info)
 {
 	j.at(keyName::StreamInfo_Flags).get_to(info.streamInfoFlags);
 	j.at(keyName::StreamInfo_StreamFormat).get_to(info.streamFormat);
-	get_optional_value(j, keyName::StreamInfo_StreamID, info.streamID);
+	{
+		auto const it = j.find(keyName::StreamInfo_StreamID);
+		if (it != j.end())
+		{
+			info.streamID = utils::convertFromString<decltype(info.streamID)>(it->get<std::string>().c_str());
+		}
+	}
 	get_optional_value(j, keyName::StreamInfo_MsrpAccumulatedLatency, info.msrpAccumulatedLatency);
 	{
 		auto const it = j.find(keyName::StreamInfo_StreamDestMac);
@@ -1123,7 +1129,13 @@ inline void from_json(json const& j, StreamInfo& info)
 		}
 	}
 	get_optional_value(j, keyName::StreamInfo_MsrpFailureCode, info.msrpFailureCode);
-	get_optional_value(j, keyName::StreamInfo_MsrpFailureBridgeID, info.msrpFailureBridgeID);
+	{
+		auto const it = j.find(keyName::StreamInfo_MsrpFailureBridgeID);
+		if (it != j.end())
+		{
+			info.msrpFailureBridgeID = utils::convertFromString<decltype(info.msrpFailureBridgeID)>(it->get<std::string>().c_str());
+		}
+	}
 	get_optional_value(j, keyName::StreamInfo_StreamVlanID, info.streamVlanID);
 	// Milan additions
 	get_optional_value(j, keyName::StreamInfo_FlagsEx, info.streamInfoFlagsEx);
