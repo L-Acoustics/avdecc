@@ -26,6 +26,7 @@
 
 #include "discoveryStateMachine.hpp"
 #include "stateMachineManager.hpp"
+#include "logHelper.hpp"
 
 #include <utility>
 #include <optional>
@@ -265,9 +266,30 @@ DiscoveryStateMachine::EntityUpdateAction DiscoveryStateMachine::updateEntity(en
 	// First check common fields that are not allowed to change from an ADPDU to another
 	auto& commonInfo = entity.getCommonInformation();
 	auto const& newCommonInfo = newEntity.getCommonInformation();
+	auto const& entityID = entity.getEntityID();
 
+	// Check if immutable values changed in CommonInformation
 	if (commonInfo.entityModelID != newCommonInfo.entityModelID || commonInfo.talkerCapabilities != newCommonInfo.talkerCapabilities || commonInfo.talkerStreamSources != newCommonInfo.talkerStreamSources || commonInfo.listenerCapabilities != newCommonInfo.listenerCapabilities || commonInfo.listenerStreamSinks != newCommonInfo.listenerStreamSinks || commonInfo.controllerCapabilities != newCommonInfo.controllerCapabilities || commonInfo.identifyControlIndex != newCommonInfo.identifyControlIndex)
 	{
+		// Log
+		{
+			auto fieldName = std::string{};
+			if (commonInfo.entityModelID != newCommonInfo.entityModelID)
+				fieldName = "entity_model_id";
+			else if (commonInfo.talkerCapabilities != newCommonInfo.talkerCapabilities)
+				fieldName = "talker_capabilities";
+			else if (commonInfo.talkerStreamSources != newCommonInfo.talkerStreamSources)
+				fieldName = "talker_stream_sources";
+			else if (commonInfo.listenerCapabilities != newCommonInfo.listenerCapabilities)
+				fieldName = "listener_capabilities";
+			else if (commonInfo.listenerStreamSinks != newCommonInfo.listenerStreamSinks)
+				fieldName = "listener_stream_sinks";
+			else if (commonInfo.controllerCapabilities != newCommonInfo.controllerCapabilities)
+				fieldName = "controller_capabilities";
+			else if (commonInfo.identifyControlIndex != newCommonInfo.identifyControlIndex)
+				fieldName = "identify_control_index";
+			LOG_CONTROLLER_STATE_MACHINE_INFO(entityID, "Entity immutable ADP field changed ({}). Consider it a different entity by simulating offline/online", fieldName);
+		}
 		// Replace current entity with new one
 		entity = std::move(newEntity);
 		return EntityUpdateAction::NotifyOfflineOnline;
@@ -290,6 +312,15 @@ DiscoveryStateMachine::EntityUpdateAction DiscoveryStateMachine::updateEntity(en
 		// macAddress should not change, and availableIndex should always increment
 		if (interfaceInfo.macAddress != newInterfaceInfo.macAddress || interfaceInfo.availableIndex >= newInterfaceInfo.availableIndex)
 		{
+			// Log
+			if (interfaceInfo.macAddress != newInterfaceInfo.macAddress)
+			{
+				LOG_CONTROLLER_STATE_MACHINE_INFO(entityID, "Entity immutable ADP field changed (mac_address). Consider it a different entity by simulating offline/online");
+			}
+			else if (interfaceInfo.availableIndex >= newInterfaceInfo.availableIndex)
+			{
+				LOG_CONTROLLER_STATE_MACHINE_INFO(entityID, "Entity ADP field incoherently changed (available_index should always increment). Consider it a different entity by simulating offline/online");
+			}
 			// Replace current entity with new one
 			entity = std::move(newEntity);
 			return EntityUpdateAction::NotifyOfflineOnline;
