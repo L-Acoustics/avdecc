@@ -3119,7 +3119,7 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntit
 			}
 		}
 
-		auto controlledEntity = std::make_shared<ControlledEntityImpl>(entity::Entity{ commonInfo, intfcsInfo }, _entitiesSharedLockInformation);
+		auto controlledEntity = std::make_shared<ControlledEntityImpl>(entity::Entity{ commonInfo, intfcsInfo }, _entitiesSharedLockInformation, true);
 		auto& entity = *controlledEntity;
 
 		// Read device compatibility flags

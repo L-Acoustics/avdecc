@@ -72,7 +72,7 @@ void ControllerImpl::onEntityOnline(entity::controller::Interface const* const c
 		auto entityIt = _controlledEntities.find(entityID);
 		if (entityIt == _controlledEntities.end())
 		{
-			controlledEntity = _controlledEntities.insert(std::make_pair(entityID, std::make_shared<ControlledEntityImpl>(entity, _entitiesSharedLockInformation))).first->second;
+			controlledEntity = _controlledEntities.insert(std::make_pair(entityID, std::make_shared<ControlledEntityImpl>(entity, _entitiesSharedLockInformation, false))).first->second;
 		}
 	}
 

@@ -176,10 +176,11 @@ public:
 	static_assert(sizeof(DescriptorDynamicInfoKey) >= sizeof(DescriptorDynamicInfoType) + sizeof(entity::model::DescriptorIndex), "DescriptorDynamicInfoKey size must be greater or equal to DescriptorDynamicInfoType + DescriptorIndex");
 
 	/** Constructor */
-	ControlledEntityImpl(la::avdecc::entity::Entity const& entity, LockInformation::SharedPointer const& sharedLock) noexcept;
+	ControlledEntityImpl(la::avdecc::entity::Entity const& entity, LockInformation::SharedPointer const& sharedLock, bool const isVirtual) noexcept;
 
 	// ControlledEntity overrides
 	// Getters
+	virtual bool isVirtual() const noexcept override;
 	virtual CompatibilityFlags getCompatibilityFlags() const noexcept override;
 	virtual bool gotFatalEnumerationError() const noexcept override;
 	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept override;
@@ -427,11 +428,11 @@ public:
 	// Other Controller restricted methods
 	void buildEntityModelGraph() const noexcept;
 
-	// Defaulted compiler auto-generated methods
+	// Compiler auto-generated methods
 	ControlledEntityImpl(ControlledEntityImpl&&) = default;
 	ControlledEntityImpl(ControlledEntityImpl const&) = default;
-	ControlledEntityImpl& operator=(ControlledEntityImpl const&) = default;
-	ControlledEntityImpl& operator=(ControlledEntityImpl&&) = default;
+	ControlledEntityImpl& operator=(ControlledEntityImpl const&) = delete;
+	ControlledEntityImpl& operator=(ControlledEntityImpl&&) = delete;
 
 protected:
 	template<class NodeType, typename = std::enable_if_t<std::is_base_of<model::Node, NodeType>::value>>
@@ -472,6 +473,7 @@ private:
 
 	// Private variables
 	LockInformation::SharedPointer _sharedLock{ nullptr };
+	bool const _isVirtual{ false };
 	bool _ignoreCachedEntityModel{ false };
 	std::uint16_t _registerUnsolRetryCount{ 0u };
 	std::uint16_t _queryMilanInfoRetryCount{ 0u };

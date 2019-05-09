@@ -47,14 +47,19 @@ static constexpr std::uint16_t QueryRetryMillisecondDelay = 500;
 /* ControlledEntityImpl                                                       */
 /* ************************************************************************** */
 /** Constructor */
-ControlledEntityImpl::ControlledEntityImpl(entity::Entity const& entity, LockInformation::SharedPointer const& sharedLock) noexcept
+ControlledEntityImpl::ControlledEntityImpl(entity::Entity const& entity, LockInformation::SharedPointer const& sharedLock, bool const isVirtual) noexcept
 	: _sharedLock(sharedLock)
+	, _isVirtual(isVirtual)
 	, _entity(entity)
 {
 }
 
 // ControlledEntity overrides
 // Getters
+bool ControlledEntityImpl::isVirtual() const noexcept
+{
+	return _isVirtual;
+}
 ControlledEntity::CompatibilityFlags ControlledEntityImpl::getCompatibilityFlags() const noexcept
 {
 	return _compatibilityFlags;
