@@ -496,12 +496,12 @@
                                     ],
                                     "flags_ex": null,
                                     "msrp_accumulated_latency": 0,
-                                    "msrp_failure_bridge_id": 0,
+                                    "msrp_failure_bridge_id": "0",
                                     "msrp_failure_code": 0,
                                     "probing_status": 0,
                                     "stream_dest_mac": "00:00:00:00:00:00",
                                     "stream_format": "0x020702200200C000",
-                                    "stream_id": 0,
+                                    "stream_id": "0",
                                     "stream_vlan_id": 0
                                 }
                             },
