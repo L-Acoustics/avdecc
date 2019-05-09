@@ -325,12 +325,9 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 				{
 					auto& entity = *controlledEntity;
 
-					// Update acquired state
-					if (!!status)
-					{
-						auto const [acquireState, owningController] = getAcquiredInfoFromStatus(entity, owningEntity, status, false);
-						updateAcquiredState(entity, acquireState, owningController);
-					}
+					// Always update acquired state (status is checked in getAcquiredInfoFromStatus)
+					auto const [acquireState, owningController] = getAcquiredInfoFromStatus(entity, owningEntity, status, false);
+					updateAcquiredState(entity, acquireState, owningController);
 
 					// Invoke result handler
 					utils::invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, owningEntity);
@@ -377,12 +374,9 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 				{
 					auto& entity = *controlledEntity;
 
-					// Update acquired state
-					if (!!status)
-					{
-						auto const [acquireState, owningController] = getAcquiredInfoFromStatus(entity, owningEntity, status, true);
-						updateAcquiredState(entity, acquireState, owningController);
-					}
+					// Always update acquired state (status is checked in getAcquiredInfoFromStatus)
+					auto const [acquireState, owningController] = getAcquiredInfoFromStatus(entity, owningEntity, status, true);
+					updateAcquiredState(entity, acquireState, owningController);
 
 					// Invoke result handler
 					utils::invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, owningEntity);
@@ -438,12 +432,9 @@ void ControllerImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntit
 				{
 					auto& entity = *controlledEntity;
 
-					// Update locked state
-					if (!!status)
-					{
-						auto const [lockState, lockingController] = getLockedInfoFromStatus(entity, lockingEntity, status, false);
-						updateLockedState(entity, lockState, lockingController);
-					}
+					// Always update locked state (status is checked in getLockedInfoFromStatus)
+					auto const [lockState, lockingController] = getLockedInfoFromStatus(entity, lockingEntity, status, false);
+					updateLockedState(entity, lockState, lockingController);
 
 					// Invoke result handler
 					utils::invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, lockingEntity);
@@ -490,12 +481,9 @@ void ControllerImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockE
 				{
 					auto& entity = *controlledEntity;
 
-					// Update locked state
-					if (!!status)
-					{
-						auto const [lockState, lockingController] = getLockedInfoFromStatus(entity, lockingEntity, status, true);
-						updateLockedState(entity, lockState, lockingController);
-					}
+					// Always update locked state (status is checked in getLockedInfoFromStatus)
+					auto const [lockState, lockingController] = getLockedInfoFromStatus(entity, lockingEntity, status, true);
+					updateLockedState(entity, lockState, lockingController);
 
 					// Invoke result handler
 					utils::invokeProtectedHandler(handler, entity.wasAdvertised() ? &entity : nullptr, status, lockingEntity);
