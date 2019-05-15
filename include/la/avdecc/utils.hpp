@@ -364,7 +364,7 @@ public:
 			}
 			return *this;
 		}
-		value_type operator*() noexcept
+		value_type operator*() const noexcept
 		{
 			return static_cast<value_type>(_currentValue);
 		}
