@@ -131,11 +131,11 @@ public:
 	/** Inferiority or equality operator. Throws std::invalid_argument if Type is unsupported. */
 	friend LA_AVDECC_API bool operator<=(IPAddress const& lhs, IPAddress const& rhs);
 
-	/** Increment operator. Throws std::invalid_argument if Type is unsupported. */
-	friend LA_AVDECC_API IPAddress operator+(IPAddress const& lhs, std::size_t const value);
+	/** Increment operator. Throws std::invalid_argument if Type is unsupported. Note: Increment value is currently limited to 32bits. */
+	friend LA_AVDECC_API IPAddress operator+(IPAddress const& lhs, std::uint32_t const value);
 
-	/** Decrement operator. Throws std::invalid_argument if Type is unsupported. */
-	friend LA_AVDECC_API IPAddress operator-(IPAddress const& lhs, std::size_t const value);
+	/** Decrement operator. Throws std::invalid_argument if Type is unsupported. Note: Decrement value is currently limited to 32bits. */
+	friend LA_AVDECC_API IPAddress operator-(IPAddress const& lhs, std::uint32_t const value);
 
 	/** operator++ Throws std::invalid_argument if Type is unsupported. */
 	friend LA_AVDECC_API IPAddress& operator++(IPAddress& lhs);

@@ -513,7 +513,7 @@ bool operator<=(IPAddress const& lhs, IPAddress const& rhs)
 	}
 }
 
-IPAddress operator+(IPAddress const& lhs, std::size_t const value)
+IPAddress operator+(IPAddress const& lhs, std::uint32_t const value)
 {
 	switch (lhs._type)
 	{
@@ -530,7 +530,7 @@ IPAddress operator+(IPAddress const& lhs, std::size_t const value)
 	}
 }
 
-IPAddress operator-(IPAddress const& lhs, std::size_t const value)
+IPAddress operator-(IPAddress const& lhs, std::uint32_t const value)
 {
 	switch (lhs._type)
 	{
