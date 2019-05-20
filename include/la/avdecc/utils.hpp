@@ -235,8 +235,8 @@ public:
 		static constexpr auto EndBit = value_size;
 
 	public:
-		using value_type = value_type;
-		using underlying_value_type = underlying_value_type;
+		using value_type = EnumType;
+		using underlying_value_type = std::underlying_type_t<value_type>;
 		using difference_type = size_t;
 		using iterator_category = std::forward_iterator_tag;
 		using reference = value_type&;
@@ -285,21 +285,9 @@ public:
 			}
 			return *this;
 		}
-		reference operator*() noexcept
+		value_type operator*() noexcept
 		{
-			return *reinterpret_cast<pointer>(&_currentValue);
-		}
-		const_reference operator*() const noexcept
-		{
-			return *reinterpret_cast<const_pointer>(&_currentValue);
-		}
-		pointer operator->() noexcept
-		{
-			return static_cast<pointer>(&_currentValue);
-		}
-		const_pointer operator->() const noexcept
-		{
-			return static_cast<const_pointer>(&_currentValue);
+			return static_cast<value_type>(_currentValue);
 		}
 		bool operator==(self_name const& other) const noexcept
 		{
@@ -368,7 +356,7 @@ public:
 	}
 
 	/** Clears the specified flag. If passed value is not valid (not exactly one bit set), this leads to undefined behavior. */
-	EnumBitfield& reset(value_type const flag) noexcept
+	constexpr EnumBitfield& reset(value_type const flag) noexcept
 	{
 		checkInvalidValue(flag);
 		_value &= ~to_integral(flag);

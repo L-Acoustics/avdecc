@@ -153,6 +153,9 @@ void ControllerImpl::onEntityOffline(entity::controller::Interface const* const 
 		// Entity was advertised to the user, notify observers
 		if (controlledEntity->wasAdvertised())
 		{
+			// Do some final steps before unadvertising entity
+			onPreUnadvertiseEntity(*controlledEntity);
+
 			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityOffline, this, controlledEntity.get());
 			controlledEntity->setAdvertised(false);
 		}
@@ -605,6 +608,18 @@ void ControllerImpl::onAsPathChanged(entity::controller::Interface const* const 
 	}
 }
 
+void ControllerImpl::onEntityCountersChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::EntityCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+		updateEntityCounters(entity, validCounters, counters);
+	}
+}
+
 void ControllerImpl::onAvbInterfaceCountersChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::AvbInterfaceCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) noexcept
 {
 	// Take a "scoped locked" shared copy of the ControlledEntity
@@ -722,6 +737,34 @@ void ControllerImpl::onOperationStatus(entity::controller::Interface const* cons
 	{
 		auto& entity = *controlledEntity;
 		updateOperationStatus(entity, descriptorType, descriptorIndex, operationID, percentComplete);
+	}
+}
+
+/* Identification notifications */
+void ControllerImpl::onEntityIdentifyNotification(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		// Lock to protect _identifications
+		auto const lg = std::lock_guard{ _lock };
+
+		// Get current time
+		auto const currentTime = std::chrono::system_clock::now();
+
+		auto [it, inserted] = _identifications.insert(std::make_pair(entityID, currentTime));
+		if (inserted)
+		{
+			// Notify
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onIdentificationStarted, this, controlledEntity.get());
+		}
+		else
+		{
+			// Update the time
+			it->second = currentTime;
+		}
 	}
 }
 

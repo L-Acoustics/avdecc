@@ -10,8 +10,8 @@ cmake_minimum_required(VERSION 3.12)
 # It should have 3 digits (x.y.z) on main branch, and 4 digits (x.y.z.w) on dev and task branches. The last digit being used as beta label.
 # As soon as an API change occurs in dev or task branch, update the version number by following SemVer rules (so the API breaking changes are not lost/forgotten).
 # Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task) which will be labelled 1.5.0-beta3
-set(LA_AVDECC_VERSION 2.9.1)
-set(LA_AVDECC_CONTROLLER_VERSION 2.9.1)
+set(LA_AVDECC_VERSION 2.9.2)
+set(LA_AVDECC_CONTROLLER_VERSION 2.9.2)
 
 ############ Override from command line "CMake -D<OPTION>=TRUE/FALSE/0/1/ON/OFF"
 
@@ -38,6 +38,7 @@ option(INSTALL_AVDECC_DOC "Install documentation." TRUE)
 option(ENABLE_AVDECC_SIGNING "Enable binaries signing." FALSE)
 # Enable features
 option(ENABLE_AVDECC_FEATURE_REDUNDANCY "Enable 'Network Redundancy' feature as defined by AVnu Alliance." TRUE)
+option(ENABLE_AVDECC_FEATURE_JSON "Enable read/write files in JSON format." TRUE)
 # Compatibility options
 option(ENABLE_AVDECC_USE_FMTLIB "Use fmtlib" TRUE)
 option(ENABLE_AVDECC_CUSTOM_ANY "Use custom std::any instead of c++17 one (for compilers not supporting std::any yet)" TRUE)
@@ -76,6 +77,12 @@ include(${CMAKE_CURRENT_LIST_DIR}/cmake/CommonProjectProperties.cmake)
 # Include fmtlib
 if(ENABLE_AVDECC_USE_FMTLIB)
 	add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/externals/3rdparty/fmtlib)
+endif()
+
+# Include json
+if(ENABLE_AVDECC_FEATURE_JSON)
+	set(JSON_BuildTests OFF CACHE INTERNAL "Disable JSON unit tests")
+	add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/externals/3rdparty/json)
 endif()
 
 ############ Define some variables

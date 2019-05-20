@@ -40,6 +40,7 @@ namespace controller
 {
 namespace model
 {
+using EntityCounters = std::map<entity::EntityCounterValidFlag, entity::model::DescriptorCounter>;
 using AvbInterfaceCounters = std::map<entity::AvbInterfaceCounterValidFlag, entity::model::DescriptorCounter>;
 using ClockDomainCounters = std::map<entity::ClockDomainCounterValidFlag, entity::model::DescriptorCounter>;
 using StreamInputCounters = std::map<entity::StreamInputCounterValidFlag, entity::model::DescriptorCounter>;
@@ -122,9 +123,12 @@ struct ClockDomainNodeDynamicModel
 struct ConfigurationNodeDynamicModel
 {
 	entity::model::AvdeccFixedString objectName{};
-	entity::model::StringsIndex selectedLocaleBaseIndex{ entity::model::StringsIndex{ 0u } }; /** Base StringIndex for the selected locale */
-	std::unordered_map<entity::model::StringsIndex, entity::model::AvdeccFixedString> localizedStrings{}; /** Aggregated copy of all loaded localized strings */
 	bool isActiveConfiguration{ false };
+
+	// Internal variables
+	entity::model::StringsIndex selectedLocaleBaseIndex{ entity::model::StringsIndex{ 0u } }; /** Base StringIndex for the selected locale */
+	entity::model::StringsIndex selectedLocaleCountIndexes{ entity::model::StringsIndex{ 0u } }; /** Count StringIndexes for the selected locale */
+	std::unordered_map<entity::model::StringsIndex, entity::model::AvdeccFixedString> localizedStrings{}; /** Aggregated copy of all loaded localized strings */
 };
 
 struct EntityNodeDynamicModel
@@ -134,6 +138,7 @@ struct EntityNodeDynamicModel
 	entity::model::AvdeccFixedString firmwareVersion{};
 	entity::model::AvdeccFixedString serialNumber{};
 	std::uint16_t currentConfiguration{ 0u };
+	EntityCounters counters{};
 };
 
 } // namespace model

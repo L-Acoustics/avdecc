@@ -119,6 +119,10 @@ private:
 	virtual void lock() noexcept override;
 	virtual void unlock() noexcept override;
 
+	/* Model serialization methods */
+	virtual std::tuple<SerializationError, std::string> serializeAllControlledEntitiesAsReadableJson(std::string const& filePath) const noexcept override;
+	virtual std::tuple<SerializationError, std::string> serializeControlledEntityAsReadableJson(UniqueIdentifier const entityID, std::string const& filePath) const noexcept override;
+
 	/* ************************************************************ */
 	/* Result handlers                                              */
 	/* ************************************************************ */
@@ -148,6 +152,7 @@ private:
 	void onGetStreamPortOutputAudioMapResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings, entity::model::ConfigurationIndex const configurationIndex) noexcept;
 	void onGetAvbInfoResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info, entity::model::ConfigurationIndex const configurationIndex) noexcept;
 	void onGetAsPathResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath, entity::model::ConfigurationIndex const configurationIndex) noexcept;
+	void onGetEntityCountersResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::EntityCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) noexcept;
 	void onGetAvbInterfaceCountersResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::AvbInterfaceCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, entity::model::ConfigurationIndex const configurationIndex) noexcept;
 	void onGetClockDomainCountersResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::ClockDomainCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, entity::model::ConfigurationIndex const configurationIndex) noexcept;
 	void onGetStreamInputCountersResult(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::StreamInputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, entity::model::ConfigurationIndex const configurationIndex) noexcept;
@@ -223,6 +228,7 @@ private:
 	virtual void onStreamOutputStopped(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex) noexcept override;
 	virtual void onAvbInfoChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) noexcept override;
 	virtual void onAsPathChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath) noexcept override;
+	virtual void onEntityCountersChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::EntityCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) noexcept override;
 	virtual void onAvbInterfaceCountersChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::AvbInterfaceCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) noexcept override;
 	virtual void onClockDomainCountersChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::ClockDomainIndex const clockDomainIndex, entity::ClockDomainCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) noexcept override;
 	virtual void onStreamInputCountersChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::StreamInputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) noexcept override;
@@ -233,6 +239,8 @@ private:
 	virtual void onStreamPortOutputAudioMappingsRemoved(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept override;
 	virtual void onMemoryObjectLengthChanged(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) noexcept override;
 	virtual void onOperationStatus(entity::controller::Interface const* const controller, UniqueIdentifier const entityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, std::uint16_t const percentComplete) noexcept override;
+	/* Identification notifications */
+	virtual void onEntityIdentifyNotification(entity::controller::Interface const* const controller, UniqueIdentifier const entityID) noexcept override;
 
 	/* ************************************************************ */
 	/* Private methods used to update AEM and notify observers      */
@@ -241,7 +249,6 @@ private:
 	void updateEntity(ControlledEntityImpl& controlledEntity, entity::Entity const& entity) const noexcept;
 	void addCompatibilityFlag(ControlledEntityImpl& controlledEntity, ControlledEntity::CompatibilityFlag const flag) const noexcept;
 	void removeCompatibilityFlag(ControlledEntityImpl& controlledEntity, ControlledEntity::CompatibilityFlag const flag) const noexcept;
-	void updateMilanInfo(ControlledEntityImpl& controlledEntity, entity::model::MilanInfo const& info) const noexcept;
 	void updateUnsolicitedNotificationsSubscription(ControlledEntityImpl& controlledEntity, bool const isSubscribed) const noexcept;
 	void updateAcquiredState(ControlledEntityImpl& controlledEntity, model::AcquireState const acquireState, UniqueIdentifier const owningEntity) const noexcept;
 	void updateLockedState(ControlledEntityImpl& controlledEntity, model::LockState const lockState, UniqueIdentifier const lockingEntity) const noexcept;
@@ -271,6 +278,7 @@ private:
 	void updateAvbInfo(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) const noexcept;
 	void updateAsPath(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath) const noexcept;
 	void updateAvbInterfaceLinkStatus(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, ControlledEntity::InterfaceLinkStatus const linkStatus) const noexcept;
+	void updateEntityCounters(ControlledEntityImpl& controlledEntity, entity::EntityCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) const noexcept;
 	void updateAvbInterfaceCounters(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::AvbInterfaceCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) const noexcept;
 	void updateClockDomainCounters(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::ClockDomainCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) const noexcept;
 	void updateStreamInputCounters(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::StreamInputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) const noexcept;
@@ -522,6 +530,8 @@ private:
 	void getDynamicInfo(ControlledEntityImpl* const entity) noexcept;
 	void getDescriptorDynamicInfo(ControlledEntityImpl* const entity) noexcept;
 	void checkEnumerationSteps(ControlledEntityImpl* const entity) noexcept;
+	void onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept;
+	void onPreUnadvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept;
 	FailureAction getFailureActionForMvuCommandStatus(entity::ControllerEntity::MvuCommandStatus const status) const noexcept;
 	FailureAction getFailureActionForAemCommandStatus(entity::ControllerEntity::AemCommandStatus const status) const noexcept;
 	FailureAction getFailureActionForControlStatus(entity::ControllerEntity::ControlStatus const status) const noexcept;
@@ -537,7 +547,6 @@ private:
 	void handleTalkerStreamStateNotification(entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, bool const isConnected, entity::ConnectionFlags const flags, bool const changedByOther) const noexcept;
 	void clearTalkerStreamConnections(ControlledEntityImpl* const talkerEntity, entity::model::StreamIndex const talkerStreamIndex) const noexcept;
 	void addTalkerStreamConnection(ControlledEntityImpl* const talkerEntity, entity::model::StreamIndex const talkerStreamIndex, entity::model::StreamIdentification const& listenerStream) const noexcept;
-	void delTalkerStreamConnection(ControlledEntityImpl* const talkerEntity, entity::model::StreamIndex const talkerStreamIndex, entity::model::StreamIdentification const& listenerStream) const noexcept;
 	entity::addressAccess::Tlv makeNextReadDeviceMemoryTlv(std::uint64_t const baseAddress, std::uint64_t const length, std::uint64_t const currentSize) const noexcept;
 	entity::addressAccess::Tlv makeNextWriteDeviceMemoryTlv(std::uint64_t const baseAddress, DeviceMemoryBuffer const& memoryBuffer, std::uint64_t const currentSize) const noexcept;
 	void onUserReadDeviceMemoryResult(UniqueIdentifier const targetEntityID, entity::ControllerEntity::AaCommandStatus const status, entity::addressAccess::Tlvs const& tlvs, std::uint64_t const baseAddress, std::uint64_t const length, ReadDeviceMemoryProgressHandler const& progressHandler, ReadDeviceMemoryCompletionHandler const& completionHandler, DeviceMemoryBuffer&& memoryBuffer) const noexcept;
@@ -550,7 +559,7 @@ private:
 	}
 
 	/** Gets a scoped reference on a ControlledEntitiyImpl */
-	inline SharedControlledEntityImplHolder getSharedControlledEntityImplHolder(UniqueIdentifier const entityID) const noexcept
+	inline SharedControlledEntityImplHolder getSharedControlledEntityImplHolder(UniqueIdentifier const entityID, bool const onlyIfAdvertised = false) const noexcept
 	{
 		// Lock to protect _controlledEntities
 		std::lock_guard<decltype(_lock)> const lg(_lock);
@@ -558,14 +567,17 @@ private:
 		auto const entityIt = _controlledEntities.find(entityID);
 		if (entityIt != _controlledEntities.end())
 		{
-			// Return a reference on the entity while locked
-			return SharedControlledEntityImplHolder{ entityIt->second };
+			if (!onlyIfAdvertised || entityIt->second->wasAdvertised())
+			{
+				// Return a reference on the entity while locked
+				return SharedControlledEntityImplHolder{ entityIt->second };
+			}
 		}
 
 		return {};
 	}
 
-	inline ControlledEntityImplGuard getControlledEntityImplGuard(UniqueIdentifier const entityID, bool const locked = true) const noexcept
+	inline ControlledEntityImplGuard getControlledEntityImplGuard(UniqueIdentifier const entityID, bool const onlyIfAdvertised = false, bool const locked = true) const noexcept
 	{
 		auto entity = SharedControlledEntityImpl{};
 
@@ -576,8 +588,11 @@ private:
 			auto const entityIt = _controlledEntities.find(entityID);
 			if (entityIt != _controlledEntities.end())
 			{
-				// Get a reference on the entity while locked
-				entity = entityIt->second;
+				if (!onlyIfAdvertised || entityIt->second->wasAdvertised())
+				{
+					// Get a reference on the entity while locked
+					entity = entityIt->second;
+				}
 			}
 		}
 
@@ -587,16 +602,16 @@ private:
 	/* ************************************************************ */
 	/* Private members                                              */
 	/* ************************************************************ */
-	mutable std::mutex _lock{}; // A mutex to protect _controlledEntities and _delayedQueries
+	mutable std::mutex _lock{}; // A mutex to protect _controlledEntities, _delayedQueries and _identifications
 	ControlledEntityImpl::LockInformation::SharedPointer _entitiesSharedLockInformation{ std::make_shared<ControlledEntityImpl::LockInformation>() }; // The SharedLockInformation to be used by all managed ControlledEntities
 	std::unordered_map<UniqueIdentifier, SharedControlledEntityImpl, UniqueIdentifier::hash> _controlledEntities;
 	EndStation::UniquePointer _endStation{ nullptr, nullptr };
 	entity::ControllerEntity* _controller{ nullptr };
 	std::string _preferedLocale{ "en-US" };
-	// Delayed queries variables
 	bool _shouldTerminate{ false };
 	DelayedQueries _delayedQueries{};
-	std::thread _delayedQueryThread{};
+	std::unordered_map<UniqueIdentifier, std::chrono::time_point<std::chrono::system_clock>, UniqueIdentifier::hash> _identifications{};
+	std::thread _stateMachinesThread{};
 };
 
 } // namespace controller

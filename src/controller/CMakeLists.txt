@@ -29,7 +29,6 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/exports.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/logItems.hpp
 )
-source_group("Header Files\\Public\\Controller" FILES ${PUBLIC_HEADER_FILES})
 
 set (HEADER_FILES_COMMON
 	${CMAKE_CURRENT_BINARY_DIR}/config.h
@@ -56,6 +55,14 @@ if(ENABLE_AVDECC_FEATURE_REDUNDANCY)
 		list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DENABLE_AVDECC_STRICT_2018_REDUNDANCY")
 	endif()
 endif()
+if(ENABLE_AVDECC_FEATURE_JSON)
+	list(APPEND PUBLIC_HEADER_FILES
+		${LA_ROOT_DIR}/include/la/avdecc/controller/internals/jsonTypes.hpp
+	)
+	list(APPEND SOURCE_FILES_COMMON avdeccControlledEntityJsonSerializer.cpp)
+	list(APPEND HEADER_FILES_COMMON avdeccControlledEntityJsonSerializer.hpp)
+	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DENABLE_AVDECC_FEATURE_JSON")
+endif()
 
 # Other options
 if(ENABLE_AVDECC_CUSTOM_ANY)
@@ -70,6 +77,8 @@ endif()
 
 set (LIB_HEADER_FILES ${HEADER_FILES_COMMON} ${PUBLIC_HEADER_FILES})
 set (LIB_SOURCE_FILES ${SOURCE_FILES_COMMON})
+
+source_group("Header Files\\Public\\Controller" FILES ${PUBLIC_HEADER_FILES})
 
 # C++ dynamic library
 if(BUILD_AVDECC_LIB_SHARED_CXX)
@@ -97,6 +106,11 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 		target_link_libraries(la_avdecc_controller_cxx PRIVATE fmt-header-only)
 	endif()
 
+	# Setup json
+	if(ENABLE_AVDECC_FEATURE_JSON)
+		target_link_libraries(la_avdecc_controller_cxx PRIVATE nlohmann_json)
+	endif()
+
 	# Set installation rule
 	if(INSTALL_AVDECC_LIB_SHARED_CXX)
 		# Sign binary (this is done during installation phase)
@@ -122,6 +136,11 @@ if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 
 	# Setup common options
 	setup_library_options(la_avdecc_controller_static "la_avdecc_controller")
+
+	# Setup json
+	if(ENABLE_AVDECC_FEATURE_JSON)
+		target_link_libraries(la_avdecc_controller_static PRIVATE nlohmann_json)
+	endif()
 
 	# Link with avdecc using static library
 	target_link_libraries(la_avdecc_controller_static PUBLIC la_avdecc_static)

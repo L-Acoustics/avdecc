@@ -471,6 +471,11 @@ void ControllerEntityImpl::getAsPath(UniqueIdentifier const targetEntityID, mode
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getAsPath(targetEntityID, avbInterfaceIndex, handler);
 }
 
+void ControllerEntityImpl::getEntityCounters(UniqueIdentifier const targetEntityID, GetEntityCountersHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getEntityCounters(targetEntityID, handler);
+}
+
 void ControllerEntityImpl::getAvbInterfaceCounters(UniqueIdentifier const targetEntityID, model::AvbInterfaceIndex const avbInterfaceIndex, GetAvbInterfaceCountersHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getAvbInterfaceCounters(targetEntityID, avbInterfaceIndex, handler);
@@ -609,6 +614,11 @@ void ControllerEntityImpl::onRemoteEntityUpdated(protocol::ProtocolInterface* co
 void ControllerEntityImpl::onAecpAemUnsolicitedResponse(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept
 {
 	_controllerCapabilityDelegate->onAecpAemUnsolicitedResponse(pi, aecpdu);
+}
+
+void ControllerEntityImpl::onAecpAemIdentifyNotification(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept
+{
+	_controllerCapabilityDelegate->onAecpAemIdentifyNotification(pi, aecpdu);
 }
 
 /* **** ACMP notifications **** */

@@ -220,6 +220,10 @@ endif()
 if(ENABLE_AVDECC_FEATURE_REDUNDANCY)
 	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DENABLE_AVDECC_FEATURE_REDUNDANCY")
 endif()
+if(ENABLE_AVDECC_FEATURE_JSON)
+	list(APPEND PUBLIC_HEADER_FILES ${LA_ROOT_DIR}/include/la/avdecc/internals/jsonTypes.hpp)
+	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DENABLE_AVDECC_FEATURE_JSON")
+endif()
 
 # Other options
 if(ENABLE_AVDECC_CUSTOM_ANY)
@@ -283,6 +287,11 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 		target_link_libraries(la_avdecc_cxx PRIVATE fmt-header-only)
 	endif()
 
+	# Setup json
+	if(ENABLE_AVDECC_FEATURE_JSON)
+		target_link_libraries(la_avdecc_cxx PRIVATE nlohmann_json)
+	endif()
+
 	# Set installation rule
 	if(INSTALL_AVDECC_LIB_SHARED_CXX)
 		# Sign binary (this is done during installation phase)
@@ -312,6 +321,11 @@ if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 	# Additional include directory (only for build interface)
 	target_include_directories(la_avdecc_static PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>) # Include root source directory for access to private headers
 	
+	# Setup json
+	if(ENABLE_AVDECC_FEATURE_JSON)
+		target_link_libraries(la_avdecc_static PRIVATE nlohmann_json)
+	endif()
+
 	# Set installation rule
 	if(INSTALL_AVDECC_LIB_STATIC)
 		setup_library_install_rules(la_avdecc_static)

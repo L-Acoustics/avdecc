@@ -733,6 +733,14 @@ void AggregateEntityImpl::getAsPath(UniqueIdentifier const targetEntityID, model
 	}
 }
 
+void AggregateEntityImpl::getEntityCounters(UniqueIdentifier const targetEntityID, GetEntityCountersHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getEntityCounters(targetEntityID, handler);
+	}
+}
+
 void AggregateEntityImpl::getAvbInterfaceCounters(UniqueIdentifier const targetEntityID, model::AvbInterfaceIndex const avbInterfaceIndex, GetAvbInterfaceCountersHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
@@ -1022,6 +1030,21 @@ void AggregateEntityImpl::onAecpAemUnsolicitedResponse(protocol::ProtocolInterfa
 	if (_talkerCapabilityDelegate != nullptr)
 	{
 		_talkerCapabilityDelegate->onAecpAemUnsolicitedResponse(pi, aecpdu);
+	}
+}
+void AggregateEntityImpl::onAecpAemIdentifyNotification(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept
+{
+	if (_controllerCapabilityDelegate != nullptr)
+	{
+		_controllerCapabilityDelegate->onAecpAemIdentifyNotification(pi, aecpdu);
+	}
+	if (_listenerCapabilityDelegate != nullptr)
+	{
+		_listenerCapabilityDelegate->onAecpAemIdentifyNotification(pi, aecpdu);
+	}
+	if (_talkerCapabilityDelegate != nullptr)
+	{
+		_talkerCapabilityDelegate->onAecpAemIdentifyNotification(pi, aecpdu);
 	}
 }
 

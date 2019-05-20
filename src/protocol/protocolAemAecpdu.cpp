@@ -37,7 +37,8 @@ namespace protocol
 /* AemAecpdu class definition                              */
 /***********************************************************/
 
-la::avdecc::networkInterface::MacAddress AemAecpdu::Identify_Mac_Address{ { 0x91, 0xe0, 0xf0, 0x01, 0x00, 0x01 } };
+la::avdecc::networkInterface::MacAddress const AemAecpdu::Identify_Mac_Address{ { 0x91, 0xe0, 0xf0, 0x01, 0x00, 0x01 } };
+la::avdecc::UniqueIdentifier const AemAecpdu::Identify_ControllerEntityID{ 0x90E0F0FFFE010001 };
 
 AemAecpdu::AemAecpdu(bool const isResponse) noexcept
 {

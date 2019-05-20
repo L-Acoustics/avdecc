@@ -51,7 +51,7 @@ template<typename... Ts>
 inline std::string format(std::string&& message, Ts&&... /*params*/)
 {
 	// Right now, not formatting anything, just returning the message with untouched format specifiers - Please enable libfmt!
-	return message;
+	return std::move(message);
 }
 
 /** Template to remove at compile time some of the most time-consuming log messages (Trace and Debug) - Forward arguments to the Logger */

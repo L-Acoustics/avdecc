@@ -22,6 +22,7 @@ fi
 
 # Default values
 default_VisualGenerator="Visual Studio 15 2017"
+default_VisualGeneratorArch="Win32"
 default_VisualToolset="v141"
 default_VisualToolchain="x64"
 default_VisualArch="x86"
@@ -29,6 +30,7 @@ default_VisualSdk="8.1"
 
 # 
 cmake_generator=""
+generator_arch=""
 if isMac; then
 	cmake_path="/Applications/CMake.app/Contents/bin/cmake"
 	# CMake.app not found, use cmake from the path
@@ -42,6 +44,7 @@ else
 	cmake_path="cmake"
 	if isWindows; then
 		generator="$default_VisualGenerator"
+		generator_arch="$default_VisualGeneratorArch"
 		toolset="$default_VisualToolset"
 		toolchain="$default_VisualToolchain"
 		platformSdk="$default_VisualSdk"
@@ -60,9 +63,10 @@ fi
 
 outputFolder="./_build"
 cmake_config=""
-add_cmake_opt=""
+add_cmake_opt=()
 outputFolderForced=0
 useVSclang=0
+useVS2019=0
 hasTeamId=0
 doSign=0
 
@@ -81,6 +85,7 @@ do
 				echo " -t <visual toolset> -> Force visual toolset (Default: $toolset)"
 				echo " -tc <visual toolchain> -> Force visual toolchain (Default: $toolchain)"
 				echo " -64 -> Generate the 64 bits version of the project (Default: 32)"
+				echo " -vs2019 -> Compile using VS 2019 compiler instead of the default one"
 				echo " -clang -> Compile using clang for VisualStudio (if predefined toolset do not work, override with -t option INSTEAD of -clang)"
 			fi
 			if isMac; then
@@ -116,7 +121,7 @@ do
 				echo "ERROR: Missing parameter for -a option, see help (-h)"
 				exit 4
 			fi
-			add_cmake_opt="$add_cmake_opt $1"
+			add_cmake_opt+=("$1")
 			;;
 		-b)
 			shift
@@ -173,6 +178,14 @@ do
 				exit 4
 			fi
 			;;
+		-vs2019)
+			if isWindows; then
+				useVS2019=1
+			else
+				echo "ERROR: -vs2019 option is only supported on Windows platform"
+				exit 4
+			fi
+			;;
 		-clang)
 			if isWindows; then
 				useVSclang=1
@@ -188,7 +201,7 @@ do
 					echo "ERROR: Missing parameter for -id option, see help (-h)"
 					exit 4
 				fi
-				add_cmake_opt="$add_cmake_opt -DLA_TEAM_IDENTIFIER=$1"
+				add_cmake_opt+=("-DLA_TEAM_IDENTIFIER=$1")
 				hasTeamId=1
 			else
 				echo "ERROR: -id option is only supported on macOS platform"
@@ -212,7 +225,7 @@ do
 			fi
 			;;
 		-sign)
-			add_cmake_opt="$add_cmake_opt -DENABLE_AVDECC_SIGNING=TRUE"
+			add_cmake_opt+=("-DENABLE_AVDECC_SIGNING=TRUE")
 			doSign=1
 			;;
 		*)
@@ -248,6 +261,12 @@ if isLinux; then
 	fi
 fi
 
+# Using -vs2019 option
+if [ $useVS2019 -eq 1 ]; then
+	generator="Visual Studio 16 2019"
+	toolset="v142"
+fi
+
 # Using -clang option (shortcut to auto-define the toolset)
 if [ $useVSclang -eq 1 ]; then
 	toolset="v141_clang_c2"
@@ -259,6 +278,11 @@ if [[ isWindows && $toolset =~ clang ]]; then
 	platformSdk="10.0"
 fi
 
+generator_arch_option=""
+if [ ! -z "${generator_arch}" ]; then
+	generator_arch_option="-A${generator_arch} "
+fi
+
 toolset_option=""
 if [ ! -z "${toolset}" ]; then
 	if [ ! -z "${toolchain}" ]; then
@@ -268,8 +292,13 @@ if [ ! -z "${toolset}" ]; then
 	fi
 fi
 
+sdk_option=""
+if [ ! -z "${platformSdk}" ]; then
+	sdk_option="-DCMAKE_SYSTEM_VERSION=$platformSdk"
+fi
+
 echo "Generating cmake project..."
-"$cmake_path" -H. -B"${outputFolder}" "-G${generator}" $toolset_option $sdk_option $cmake_opt $add_cmake_opt $cmake_config
+"$cmake_path" -H. -B"${outputFolder}" "-G${generator}" $generator_arch_option $toolset_option $sdk_option $cmake_opt "${add_cmake_opt[@]}" $cmake_config
 
 echo ""
 echo "All done, generated project lies in ${outputFolder}"

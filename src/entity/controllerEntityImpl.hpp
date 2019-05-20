@@ -143,6 +143,7 @@ private:
 	virtual void stopStreamOutput(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, StopStreamOutputHandler const& handler) const noexcept override;
 	virtual void getAvbInfo(UniqueIdentifier const targetEntityID, model::AvbInterfaceIndex const avbInterfaceIndex, GetAvbInfoHandler const& handler) const noexcept override;
 	virtual void getAsPath(UniqueIdentifier const targetEntityID, model::AvbInterfaceIndex const avbInterfaceIndex, GetAsPathHandler const& handler) const noexcept override;
+	virtual void getEntityCounters(UniqueIdentifier const targetEntityID, GetEntityCountersHandler const& handler) const noexcept override;
 	virtual void getAvbInterfaceCounters(UniqueIdentifier const targetEntityID, model::AvbInterfaceIndex const avbInterfaceIndex, GetAvbInterfaceCountersHandler const& handler) const noexcept override;
 	virtual void getClockDomainCounters(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, GetClockDomainCountersHandler const& handler) const noexcept override;
 	virtual void getStreamInputCounters(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, GetStreamInputCountersHandler const& handler) const noexcept override;
@@ -181,6 +182,7 @@ private:
 	/* **** AECP notifications **** */
 	// virtual void onAecpCommand(protocol::ProtocolInterface* const pi, LocalEntity const& entity, protocol::Aecpdu const& aecpdu) noexcept override; Already defined in base class LocalEntityImpl, dispatching through onUnhandledAecpCommand
 	virtual void onAecpAemUnsolicitedResponse(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept override;
+	virtual void onAecpAemIdentifyNotification(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept override;
 	/* **** ACMP notifications **** */
 	virtual void onAcmpCommand(protocol::ProtocolInterface* const pi, protocol::Acmpdu const& acmpdu) noexcept override;
 	virtual void onAcmpResponse(protocol::ProtocolInterface* const pi, protocol::Acmpdu const& acmpdu) noexcept override;

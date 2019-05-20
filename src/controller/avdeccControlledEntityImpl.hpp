@@ -139,6 +139,7 @@ public:
 		OutputStreamInfo, // getStreamOutputInfo (GET_STREAM_INFO)
 		GetAvbInfo, // getAvbInfo (GET_AVB_INFO)
 		GetAsPath, // getAsPath (GET_AS_PATH)
+		GetEntityCounters, // getEntityCounters (GET_COUNTERS)
 		GetAvbInterfaceCounters, // getAvbInterfaceCounters (GET_COUNTERS)
 		GetClockDomainCounters, // getClockDomainCounters (GET_COUNTERS)
 		GetStreamInputCounters, // getStreamInputCounters (GET_COUNTERS)
@@ -194,7 +195,7 @@ public:
 	virtual model::LockState getLockState() const noexcept override;
 	virtual UniqueIdentifier getLockingControllerID() const noexcept override;
 	virtual entity::Entity const& getEntity() const noexcept override;
-	virtual entity::model::MilanInfo const& getMilanInfo() const noexcept override;
+	virtual std::optional<entity::model::MilanInfo> getMilanInfo() const noexcept override;
 
 	virtual model::EntityNode const& getEntityNode() const override;
 	virtual model::ConfigurationNode const& getConfigurationNode(entity::model::ConfigurationIndex const configurationIndex) const override;
@@ -315,7 +316,7 @@ public:
 	std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> setStreamOutputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept; // Returns previous StreamInfo and the new one
 	entity::model::AvbInfo setAvbInfo(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) noexcept; // Returns previous AvbInfo
 	entity::model::AsPath setAsPath(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath) noexcept; // Returns previous AsPath
-	void setSelectedLocaleBaseIndex(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const baseIndex) noexcept;
+	void setSelectedLocaleStringsIndexesRange(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const baseIndex, entity::model::StringsIndex const countIndexes) noexcept;
 	void clearStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) noexcept;
 	void addStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept;
 	void removeStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept;
@@ -324,6 +325,7 @@ public:
 	void removeStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept;
 	void setClockSource(entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex) noexcept;
 	void setMemoryObjectLength(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) noexcept;
+	model::EntityCounters& getEntityCounters() noexcept;
 	model::AvbInterfaceCounters& getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept;
 	model::ClockDomainCounters& getClockDomainCounters(entity::model::ClockDomainIndex const clockDomainIndex) noexcept;
 	model::StreamInputCounters& getStreamInputCounters(entity::model::StreamIndex const streamIndex) noexcept;
@@ -350,7 +352,7 @@ public:
 	void setMemoryObjectDescriptor(entity::model::MemoryObjectDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex) noexcept;
 	void setLocaleDescriptor(entity::model::LocaleDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::LocaleIndex const localeIndex) noexcept;
 	void setStringsDescriptor(entity::model::StringsDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const stringsIndex) noexcept;
-	void setLocalizedStrings(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const stringsIndex, model::AvdeccFixedStrings const& strings) noexcept;
+	void setLocalizedStrings(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const relativeStringsIndex, model::AvdeccFixedStrings const& strings) noexcept;
 	void setStreamPortInputDescriptor(entity::model::StreamPortDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) noexcept;
 	void setStreamPortOutputDescriptor(entity::model::StreamPortDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) noexcept;
 	void setAudioClusterDescriptor(entity::model::AudioClusterDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex) noexcept;
@@ -423,6 +425,9 @@ public:
 		}
 	}
 
+	// Other Controller restricted methods
+	void buildEntityModelGraph() const noexcept;
+
 	// Defaulted compiler auto-generated methods
 	ControlledEntityImpl(ControlledEntityImpl&&) = default;
 	ControlledEntityImpl(ControlledEntityImpl const&) = default;
@@ -462,7 +467,6 @@ protected:
 	}
 
 private:
-	void checkAndBuildEntityModelGraph() const noexcept;
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	void buildRedundancyNodes(model::ConfigurationNode& configNode) const noexcept;
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
@@ -491,13 +495,13 @@ private:
 	model::LockState _lockState{ model::LockState::Undefined };
 	UniqueIdentifier _lockingControllerID{}; // EID of the controller currently locking (who locked) this entity
 	// Milan specific information
-	entity::model::MilanInfo _milanInfo{};
+	std::optional<entity::model::MilanInfo> _milanInfo{ std::nullopt };
 	// Entity variables
 	entity::Entity _entity; // No NSMI, Entity has no default constructor but it has to be passed to the only constructor of this class anyway
 	// Entity Model
 	mutable model::EntityStaticTree _entityStaticTree{}; // Static part of the model as represented by the AVDECC protocol
 	mutable model::EntityDynamicTree _entityDynamicTree{}; // Dynamic part of the model as represented by the AVDECC protocol
-	mutable model::EntityNode _entityNode{}; // Model as represented by the ControlledEntity (tree of references to the model::EntityDescriptor and model::EntityDynamicInfo)
+	mutable model::EntityNode _entityNode{}; // Model as represented by the ControlledEntity (tree of references to the model::EntityStaticTree and model::EntityDynamicTree)
 };
 
 } // namespace controller

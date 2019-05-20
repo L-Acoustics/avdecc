@@ -129,6 +129,7 @@ public:
 	void stopStreamOutput(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, Interface::StopStreamOutputHandler const& handler) const noexcept;
 	void getAvbInfo(UniqueIdentifier const targetEntityID, model::AvbInterfaceIndex const avbInterfaceIndex, Interface::GetAvbInfoHandler const& handler) const noexcept;
 	void getAsPath(UniqueIdentifier const targetEntityID, model::AvbInterfaceIndex const avbInterfaceIndex, Interface::GetAsPathHandler const& handler) const noexcept;
+	void getEntityCounters(UniqueIdentifier const targetEntityID, Interface::GetEntityCountersHandler const& handler) const noexcept;
 	void getAvbInterfaceCounters(UniqueIdentifier const targetEntityID, model::AvbInterfaceIndex const avbInterfaceIndex, Interface::GetAvbInterfaceCountersHandler const& handler) const noexcept;
 	void getClockDomainCounters(UniqueIdentifier const targetEntityID, model::ClockDomainIndex const clockDomainIndex, Interface::GetClockDomainCountersHandler const& handler) const noexcept;
 	void getStreamInputCounters(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, Interface::GetStreamInputCountersHandler const& handler) const noexcept;
@@ -176,6 +177,7 @@ private:
 	/* **** AECP notifications **** */
 	virtual bool onUnhandledAecpCommand(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept override;
 	virtual void onAecpAemUnsolicitedResponse(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept override;
+	virtual void onAecpAemIdentifyNotification(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept override;
 	/* **** ACMP notifications **** */
 	virtual void onAcmpCommand(protocol::ProtocolInterface* const pi, protocol::Acmpdu const& acmpdu) noexcept override;
 	virtual void onAcmpResponse(protocol::ProtocolInterface* const pi, protocol::Acmpdu const& acmpdu) noexcept override;

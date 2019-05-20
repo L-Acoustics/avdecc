@@ -1246,6 +1246,21 @@ void CapabilityDelegate::getAsPath(UniqueIdentifier const targetEntityID, model:
 	}
 }
 
+void CapabilityDelegate::getEntityCounters(UniqueIdentifier const targetEntityID, Interface::GetEntityCountersHandler const& handler) const noexcept
+{
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetCountersCommand(model::DescriptorType::Entity, 0);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, EntityCounterValidFlags{}, model::DescriptorCounters{});
+
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetCounters, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getEntityCounters: {}", e.what());
+	}
+}
+
 void CapabilityDelegate::getAvbInterfaceCounters(UniqueIdentifier const targetEntityID, model::AvbInterfaceIndex const avbInterfaceIndex, Interface::GetAvbInterfaceCountersHandler const& handler) const noexcept
 {
 	try
@@ -1584,6 +1599,12 @@ void CapabilityDelegate::onAecpAemUnsolicitedResponse(protocol::ProtocolInterfac
 			processAemAecpResponse(&aecpdu, nullptr, {});
 		}
 	}
+}
+
+void CapabilityDelegate::onAecpAemIdentifyNotification(protocol::ProtocolInterface* const /*pi*/, protocol::Aecpdu const& aecpdu) noexcept
+{
+	// Forward the event
+	utils::invokeProtectedMethod(&controller::Delegate::onEntityIdentifyNotification, _controllerDelegate, &_controllerInterface, aecpdu.getTargetEntityID());
 }
 
 /* **** ACMP notifications **** */
@@ -2876,6 +2897,21 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				// Notify handlers
 				switch (descriptorType)
 				{
+					case model::DescriptorType::Entity:
+					{
+						EntityCounterValidFlags flags;
+						flags.assign(validFlags);
+						answerCallback.invoke<controller::Interface::GetEntityCountersHandler>(controllerInterface, targetID, status, flags, counters);
+						if (aem.getUnsolicited() && delegate && !!status)
+						{
+							utils::invokeProtectedMethod(&controller::Delegate::onEntityCountersChanged, delegate, controllerInterface, targetID, flags, counters);
+						}
+						if (descriptorIndex != 0)
+						{
+							LOG_CONTROLLER_ENTITY_WARN(targetID, "GET_COUNTERS response for ENTITY descriptor uses a non-0 DescriptorIndex: {}", descriptorIndex);
+						}
+						break;
+					}
 					case model::DescriptorType::AvbInterface:
 					{
 						AvbInterfaceCounterValidFlags flags;

@@ -59,7 +59,7 @@ void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 		// Set ADP fields
 		adpdu.setMessageType(la::avdecc::protocol::AdpMessageType::EntityAvailable);
 		adpdu.setValidTime(10);
-		adpdu.setEntityID(0x0102030405060708);
+		adpdu.setEntityID(la::avdecc::UniqueIdentifier{ 0x0102030405060708 });
 		adpdu.setEntityModelID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
 		adpdu.setEntityCapabilities({});
 		adpdu.setTalkerStreamSources(0u);
@@ -88,7 +88,7 @@ void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 		// Set ACMP fields
 		acmpdu.setMessageType(la::avdecc::protocol::AcmpMessageType::ConnectRxCommand);
 		acmpdu.setStatus(la::avdecc::protocol::AcmpStatus::Success);
-		acmpdu.setControllerEntityID(0x0af700048902f1);
+		acmpdu.setControllerEntityID(la::avdecc::UniqueIdentifier{ 0x0af700048902f1 });
 		acmpdu.setTalkerEntityID(s_TalkerEntityID);
 		acmpdu.setListenerEntityID(s_ListenerEntityID);
 		acmpdu.setTalkerUniqueID(0u);
@@ -117,7 +117,7 @@ void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 		// Set AECP fields
 		aecpdu.setStatus(la::avdecc::protocol::AemAecpStatus::Success);
 		aecpdu.setTargetEntityID(s_TargetEntityID);
-		aecpdu.setControllerEntityID(0x0af700048902f1);
+		aecpdu.setControllerEntityID(la::avdecc::UniqueIdentifier{ 0x0af700048902f1 });
 		aecpdu.setSequenceID(0u);
 		// Set AEM fields
 		aecpdu.setUnsolicited(false);
@@ -291,7 +291,7 @@ int doJob()
 	//	DECLARE_AVDECC_OBSERVER_GUARD(Observer);
 	//};
 
-	auto const protocolInterfaceType = chooseProtocolInterfaceType();
+	auto const protocolInterfaceType = chooseProtocolInterfaceType(la::avdecc::protocol::ProtocolInterface::SupportedProtocolInterfaceTypes{ la::avdecc::protocol::ProtocolInterface::Type::PCap, la::avdecc::protocol::ProtocolInterface::Type::MacOSNative });
 	auto intfc = chooseNetworkInterface();
 
 	if (intfc.type == la::avdecc::networkInterface::Interface::Type::None || protocolInterfaceType == la::avdecc::protocol::ProtocolInterface::Type::None)

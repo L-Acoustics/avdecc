@@ -151,15 +151,17 @@ void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsig
 	try
 	{
 		char buffer[2048];
+		constexpr auto BufferLastCharOffset = static_cast<int>(sizeof(buffer) - 1); // We want the same type than std::snprintf return value
+
 		auto offset = std::snprintf(buffer, sizeof(buffer), "Debug Assertion Failed!\n\nFile: %s\nLine: %u\n\n\t", file, line);
-		if (offset < sizeof(buffer) - 1)
+		if (offset < BufferLastCharOffset)
 		{
 			offset += std::vsnprintf(buffer + offset, sizeof(buffer) - offset, message, arg);
-			buffer[sizeof(buffer) - 1] = 0; // Contrary to std::snprintf, std::vsnprintf does not add \0 if there is not enough room
+			buffer[BufferLastCharOffset] = 0; // Contrary to std::snprintf, std::vsnprintf does not add \0 if there is not enough room
 
 			std::cerr << buffer << std::endl;
 
-			if (offset < sizeof(buffer) - 1)
+			if (offset < BufferLastCharOffset)
 			{
 				offset += std::snprintf(buffer + offset, sizeof(buffer) - offset,
 					"\n"

@@ -151,7 +151,7 @@ entity::Entity const& ControlledEntityImpl::getEntity() const noexcept
 	return _entity;
 }
 
-entity::model::MilanInfo const& ControlledEntityImpl::getMilanInfo() const noexcept
+std::optional<entity::model::MilanInfo> ControlledEntityImpl::getMilanInfo() const noexcept
 {
 	return _milanInfo;
 }
@@ -164,7 +164,6 @@ model::EntityNode const& ControlledEntityImpl::getEntityNode() const
 	if (!_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
 		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
 
-	checkAndBuildEntityModelGraph();
 	return _entityNode;
 }
 
@@ -580,7 +579,12 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 					visitor->visit(this, &configuration, locale);
 
 					// Loop over StringsNode
-					// TODO
+					for (auto const& stringsKV : locale.strings)
+					{
+						auto const& strings = stringsKV.second;
+						// Visit StringsNode (LocaleNode is parent)
+						visitor->visit(this, &configuration, &locale, strings);
+					}
 				}
 
 				// Loop over ClockDomainNode
@@ -866,10 +870,11 @@ entity::model::AsPath ControlledEntityImpl::setAsPath(entity::model::AvbInterfac
 	return previousPath;
 }
 
-void ControlledEntityImpl::setSelectedLocaleBaseIndex(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const baseIndex) noexcept
+void ControlledEntityImpl::setSelectedLocaleStringsIndexesRange(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const baseIndex, entity::model::StringsIndex const countIndexes) noexcept
 {
 	auto& dynamicModel = getConfigurationNodeDynamicModel(configurationIndex);
 	dynamicModel.selectedLocaleBaseIndex = baseIndex;
+	dynamicModel.selectedLocaleCountIndexes = countIndexes;
 }
 
 void ControlledEntityImpl::clearStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) noexcept
@@ -1028,6 +1033,12 @@ void ControlledEntityImpl::setMemoryObjectLength(entity::model::ConfigurationInd
 {
 	auto& dynamicModel = getNodeDynamicModel(configurationIndex, memoryObjectIndex, &model::ConfigurationDynamicTree::memoryObjectDynamicModels);
 	dynamicModel.length = length;
+}
+
+model::EntityCounters& ControlledEntityImpl::getEntityCounters() noexcept
+{
+	auto& entityDynamicTree = getEntityDynamicTree();
+	return entityDynamicTree.dynamicModel.counters;
 }
 
 model::AvbInterfaceCounters& ControlledEntityImpl::getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept
@@ -1412,17 +1423,21 @@ void ControlledEntityImpl::setStringsDescriptor(entity::model::StringsDescriptor
 		m.strings = descriptor.strings;
 	}
 
-	// Copy the strings to the ConfigurationDynamicModel for a quick access
-	setLocalizedStrings(configurationIndex, stringsIndex, descriptor.strings);
+	auto const& configDynamicModel = getConfigurationNodeDynamicModel(configurationIndex);
+	// This StringsIndex is part of the active Locale
+	if (configDynamicModel.selectedLocaleCountIndexes > 0 && stringsIndex >= configDynamicModel.selectedLocaleBaseIndex && stringsIndex < (configDynamicModel.selectedLocaleBaseIndex + configDynamicModel.selectedLocaleCountIndexes))
+	{
+		setLocalizedStrings(configurationIndex, stringsIndex - configDynamicModel.selectedLocaleBaseIndex, descriptor.strings);
+	}
 }
 
-void ControlledEntityImpl::setLocalizedStrings(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const stringsIndex, model::AvdeccFixedStrings const& strings) noexcept
+void ControlledEntityImpl::setLocalizedStrings(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const relativeStringsIndex, model::AvdeccFixedStrings const& strings) noexcept
 {
 	auto& configDynamicModel = getConfigurationNodeDynamicModel(configurationIndex);
 	// Copy the strings to the ConfigurationDynamicModel for a quick access
 	for (auto strIndex = 0u; strIndex < strings.size(); ++strIndex)
 	{
-		auto localizedStringIndex = entity::model::StringsIndex(stringsIndex * strings.size() + strIndex);
+		auto const localizedStringIndex = entity::model::LocalizedStringReference{ relativeStringsIndex, static_cast<std::uint8_t>(strIndex) }.getGlobalOffset();
 		configDynamicModel.localizedStrings[localizedStringIndex] = strings.at(strIndex);
 	}
 }
@@ -1868,6 +1883,8 @@ std::string ControlledEntityImpl::dynamicInfoTypeToString(DynamicInfoType const 
 			return protocol::AemCommandType::GetAvbInfo;
 		case DynamicInfoType::GetAsPath:
 			return protocol::AemCommandType::GetAsPath;
+		case DynamicInfoType::GetEntityCounters:
+			return static_cast<std::string>(protocol::AemCommandType::GetCounters) + " (ENTITY)";
 		case DynamicInfoType::GetAvbInterfaceCounters:
 			return static_cast<std::string>(protocol::AemCommandType::GetCounters) + " (AVB_INTERFACE)";
 		case DynamicInfoType::GetClockDomainCounters:
@@ -1919,12 +1936,14 @@ std::string ControlledEntityImpl::descriptorDynamicInfoTypeToString(DescriptorDy
 }
 
 // Private methods
-void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
+void ControlledEntityImpl::buildEntityModelGraph() const noexcept
 {
 	try
 	{
-#pragma message("TODO: Use a std::optional when available, instead of detecting the non-initialized value from configurations count (xcode clang is still missing optional as of this date)")
-		if (_entityNode.configurations.size() == 0)
+		// Wipe previous graph
+		_entityNode = {};
+
+		// Build a new one
 		{
 			// Build root node (EntityNode)
 			initNode(_entityNode, entity::model::DescriptorType::Entity, 0);
@@ -2087,7 +2106,19 @@ void ControlledEntityImpl::checkAndBuildEntityModelGraph() const noexcept
 					localeNode.staticModel = &localeStaticModel;
 
 					// Build strings (StringsNode)
-					// TODO
+					for (auto stringsIndexCounter = entity::model::StringsIndex(0); stringsIndexCounter < localeStaticModel.numberOfStringDescriptors; ++stringsIndexCounter)
+					{
+						auto const stringsIndex = entity::model::StringsIndex(stringsIndexCounter + localeStaticModel.baseStringDescriptorIndex);
+						auto& stringsNode = localeNode.strings[stringsIndex];
+						initNode(stringsNode, entity::model::DescriptorType::Strings, stringsIndex);
+
+						// Manually searching the Strings to improve performance (not throwing if Strings not loaded for this Locale), ignoring not loaded strings
+						auto const stringsIt = configStaticTree.stringsStaticModels.find(stringsIndex);
+						if (stringsIt != configStaticTree.stringsStaticModels.end())
+						{
+							stringsNode.staticModel = &stringsIt->second;
+						}
+					}
 				}
 
 				// Build clock domains (ClockDomainNode)

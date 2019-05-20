@@ -47,7 +47,7 @@ public:
 	}
 
 	/** Constructor to create a UniqueIdentifier from the underlying value. */
-	UniqueIdentifier(value_type const eui) noexcept
+	explicit UniqueIdentifier(value_type const eui) noexcept
 		: _eui(eui)
 	{
 	}

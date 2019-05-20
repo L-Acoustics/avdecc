@@ -4,6 +4,17 @@ All notable changes to the Avdecc Controller Library will be documented in this 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.9.2] - 2019-05-20
+### Added
+- Support for Identify notifications
+- Full entity and network state dump as readable json
+- Enumeration of STRINGS descriptor
+- Support for Entity Descriptor counters
+
+### Fixed
+- Invalid strings indexes when not using the first locale
+- Talker's connections list accurate again with Milan devices
+
 ## [2.9.1] - 2019-03-13
 ### Changed
 - ControlledEntity visitor reports a more specialized parent class

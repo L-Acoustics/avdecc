@@ -82,6 +82,7 @@ enum class CompileOption : std::uint32_t
 	IgnoreNeitherStaticNorDynamicMappings = 1u << 0,
 	EnableRedundancy = 1u << 15,
 	Strict2018Redundancy = 1u << 16,
+	EnableJsonSupport = 1u << 17,
 };
 using CompileOptions = utils::EnumBitfield<CompileOption>;
 
@@ -178,6 +179,7 @@ public:
 		ListenerStreamInfo,
 		AvbInfo,
 		AsPath,
+		EntityCounters,
 		AvbInterfaceCounters,
 		ClockDomainCounters,
 		StreamInputCounters,
@@ -198,6 +200,15 @@ public:
 		ClockDomainSourceIndex,
 	};
 
+	enum class SerializationError
+	{
+		NoError = 0,
+		AccessDenied = 1, /**< File access denied. */
+		UnknownEntity = 2, /**< Specified entityID unknown. */
+		SerializationError = 3, /**< Error during json serialization. */
+		InternalError = 99, /**< Internal error, please report the issue. */
+	};
+
 	/**
 	* @brief Observer for entity state and query results. All handlers are guaranteed to be mutually exclusively called.
 	* @warning For all handlers, the la::avdecc::controller::ControlledEntity parameter should not be copied, since there
@@ -210,18 +221,24 @@ public:
 		// Global controller notifications
 		virtual void onTransportError(la::avdecc::controller::Controller const* const /*controller*/) noexcept {}
 		virtual void onEntityQueryError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::Controller::QueryCommandError const /*error*/) noexcept {} // Might trigger even if entity is not "online" // Triggered when the controller failed to query all information it needs for an entity to be declared as Online
+
 		// Discovery notifications (ADP)
 		virtual void onEntityOnline(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/) noexcept {}
 		virtual void onEntityOffline(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/) noexcept {}
 		virtual void onEntityCapabilitiesChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/) noexcept {}
 		virtual void onEntityAssociationChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/) noexcept {}
 		virtual void onGptpChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::AvbInterfaceIndex const /*avbInterfaceIndex*/, la::avdecc::UniqueIdentifier const /*grandMasterID*/, std::uint8_t const /*grandMasterDomain*/) noexcept {}
+
 		// Global entity notifications
 		virtual void onUnsolicitedRegistrationChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, bool const /*isSubscribed*/) noexcept {}
 		virtual void onCompatibilityFlagsChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::ControlledEntity::CompatibilityFlags const /*compatibilityFlags*/) noexcept {}
+		virtual void onIdentificationStarted(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/) noexcept {}
+		virtual void onIdentificationStopped(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/) noexcept {}
+
 		// Connection notifications (ACMP)
 		virtual void onStreamConnectionChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::model::StreamConnectionState const& /*state*/, bool const /*changedByOther*/) noexcept {}
 		virtual void onStreamConnectionsChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamIndex const /*streamIndex*/, la::avdecc::controller::model::StreamConnections const& /*connections*/) noexcept {}
+
 		// Entity model notifications (unsolicited AECP or changes this controller sent)
 		virtual void onAcquireStateChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::AcquireState const /*acquireState*/, la::avdecc::UniqueIdentifier const /*owningEntity*/) noexcept {}
 		virtual void onLockStateChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::LockState const /*lockState*/, la::avdecc::UniqueIdentifier const /*lockingEntity*/) noexcept {}
@@ -249,6 +266,7 @@ public:
 		virtual void onAvbInfoChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::AvbInterfaceIndex const /*avbInterfaceIndex*/, la::avdecc::entity::model::AvbInfo const& /*info*/) noexcept {}
 		virtual void onAsPathChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::AvbInterfaceIndex const /*avbInterfaceIndex*/, la::avdecc::entity::model::AsPath const& /*asPath*/) noexcept {}
 		virtual void onAvbInterfaceLinkStatusChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::AvbInterfaceIndex const /*avbInterfaceIndex*/, la::avdecc::controller::ControlledEntity::InterfaceLinkStatus const /*linkStatus*/) noexcept {}
+		virtual void onEntityCountersChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::EntityCounters const& /*counters*/) noexcept {}
 		virtual void onAvbInterfaceCountersChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::AvbInterfaceIndex const /*avbInterfaceIndex*/, la::avdecc::controller::model::AvbInterfaceCounters const& /*counters*/) noexcept {}
 		virtual void onClockDomainCountersChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ClockDomainIndex const /*clockDomainIndex*/, la::avdecc::controller::model::ClockDomainCounters const& /*counters*/) noexcept {}
 		virtual void onStreamInputCountersChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::StreamIndex const /*streamIndex*/, la::avdecc::controller::model::StreamInputCounters const& /*counters*/) noexcept {}
@@ -400,6 +418,10 @@ public:
 	/** BasicLockable concept 'unlock' method for the whole Controller */
 	virtual void unlock() noexcept = 0;
 
+	/* Model serialization methods */
+	virtual std::tuple<SerializationError, std::string> serializeAllControlledEntitiesAsReadableJson(std::string const& filePath) const noexcept = 0;
+	virtual std::tuple<SerializationError, std::string> serializeControlledEntityAsReadableJson(UniqueIdentifier const entityID, std::string const& filePath) const noexcept = 0;
+
 	// Deleted compiler auto-generated methods
 	Controller(Controller const&) = delete;
 	Controller(Controller&&) = delete;
@@ -425,6 +447,11 @@ private:
 constexpr bool operator!(Controller::Error const error)
 {
 	return error == Controller::Error::NoError;
+}
+
+constexpr bool operator!(Controller::SerializationError const error)
+{
+	return error == Controller::SerializationError::NoError;
 }
 
 } // namespace controller

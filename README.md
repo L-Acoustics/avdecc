@@ -18,6 +18,7 @@ We use GitHub issues for tracking requests and bugs.
 * [Google's C++ test framework](https://github.com/google/googletest) to build unit tests
 * [WinPcap Developer's Pack](externals/3rdparty/winpcap/README.md) to build on Windows platform
 * [libfmt](https://github.com/fmtlib/fmt) to format log messages
+* [nlohmann JSON](https://github.com/nlohmann/json) to read and write JSON files
 
 ### <a name="compatibleEntities"></a>Tested AVB entities:
 * L-Acoustics: LA4X, LA12X, P1
@@ -53,7 +54,7 @@ The controller API has 2 interfaces:
 
 ### Windows
 - Windows 8.1
-- Visual Studio 2017 v15.8 or greater (using platform toolset v141)
+- Visual Studio 2017 v15.9 or greater (using platform toolset v141, Windows SDK 8.1)
 - WinPcap 4.1.2 Developer's Pack (see [this file](externals/3rdparty/winpcap/README.md) for more details)
 - GitBash or cygwin
 
@@ -62,7 +63,7 @@ The controller API has 2 interfaces:
 - Xcode 10
 
 ### Linux
-- C++17 compliant compiler
+- C++17 compliant compiler (minimum recommended 8.2.1)
 - Make
 - pcap developer package
 - ncurses developer package (optional, for examples)

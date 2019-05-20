@@ -85,20 +85,17 @@ void outputText(std::string const& str) noexcept
 	}
 }
 
-la::avdecc::protocol::ProtocolInterface::Type chooseProtocolInterfaceType()
+la::avdecc::protocol::ProtocolInterface::Type chooseProtocolInterfaceType(la::avdecc::protocol::ProtocolInterface::SupportedProtocolInterfaceTypes const& allowedTypes)
 {
 	auto protocolInterfaceType{ la::avdecc::protocol::ProtocolInterface::Type::None };
 
 	// Get the list of supported protocol interface types, and ask the user to choose one (if many available)
-	auto protocolInterfaceTypes = la::avdecc::protocol::ProtocolInterface::getSupportedProtocolInterfaceTypes();
+	auto const protocolInterfaceTypes = la::avdecc::protocol::ProtocolInterface::getSupportedProtocolInterfaceTypes() & allowedTypes;
 	if (protocolInterfaceTypes.empty())
 	{
 		outputText(std::string("No protocol interface supported on this computer\n"));
 		return protocolInterfaceType;
 	}
-
-	// Remove Virtual interface
-	protocolInterfaceTypes.reset(la::avdecc::protocol::ProtocolInterface::Type::Virtual);
 
 	if (protocolInterfaceTypes.count() == 1)
 		protocolInterfaceType = protocolInterfaceTypes.at(0);
@@ -138,8 +135,8 @@ la::avdecc::networkInterface::Interface chooseNetworkInterface()
 	la::avdecc::networkInterface::enumerateInterfaces(
 		[&interfaces](la::avdecc::networkInterface::Interface const& intfc)
 		{
-			// Only select interfaces that is not loopback and has at least one IP address
-			if (intfc.type != la::avdecc::networkInterface::Interface::Type::Loopback && !intfc.ipAddresses.empty() && intfc.isActive)
+			// Only select active interfaces that is not loopback
+			if (intfc.type != la::avdecc::networkInterface::Interface::Type::Loopback && intfc.isActive)
 				interfaces.push_back(intfc);
 		});
 
