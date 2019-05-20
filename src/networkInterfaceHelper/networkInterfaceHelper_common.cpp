@@ -197,6 +197,8 @@ void LA_AVDECC_CALL_CONVENTION registerObserver(NetworkInterfaceObserver* const 
 {
 	try
 	{
+		auto const lg = std::lock_guard(s_Monitor);
+
 		// No interfaces, force a refresh
 		if (s_NetworkInterfaces.empty())
 		{
@@ -229,6 +231,8 @@ void LA_AVDECC_CALL_CONVENTION unregisterObserver(NetworkInterfaceObserver* cons
 {
 	try
 	{
+		auto const lg = std::lock_guard(s_Monitor);
+
 		s_Monitor.unregisterObserver(observer);
 	}
 	catch (...)
