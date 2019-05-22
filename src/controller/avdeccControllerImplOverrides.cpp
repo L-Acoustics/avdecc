@@ -24,7 +24,6 @@
 
 #ifdef ENABLE_AVDECC_FEATURE_JSON
 #	include "la/avdecc/internals/jsonTypes.hpp"
-#	include "la/avdecc/controller/internals/jsonTypes.hpp"
 #endif // ENABLE_AVDECC_FEATURE_JSON
 #include "la/avdecc/internals/serialization.hpp"
 
@@ -32,6 +31,7 @@
 #include "avdeccControllerLogHelper.hpp"
 #include "avdeccEntityModelCache.hpp"
 #ifdef ENABLE_AVDECC_FEATURE_JSON
+#	include "avdeccControllerJsonTypes.hpp"
 #	include "avdeccControlledEntityJsonSerializer.hpp"
 #endif // ENABLE_AVDECC_FEATURE_JSON
 
