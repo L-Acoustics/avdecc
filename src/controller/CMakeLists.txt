@@ -52,11 +52,8 @@ if(ENABLE_AVDECC_FEATURE_REDUNDANCY)
 	endif()
 endif()
 if(ENABLE_AVDECC_FEATURE_JSON)
-	list(APPEND PUBLIC_HEADER_FILES
-		${LA_ROOT_DIR}/include/la/avdecc/controller/internals/jsonTypes.hpp
-	)
 	list(APPEND SOURCE_FILES_COMMON avdeccControlledEntityJsonSerializer.cpp)
-	list(APPEND HEADER_FILES_COMMON avdeccControlledEntityJsonSerializer.hpp)
+	list(APPEND HEADER_FILES_COMMON avdeccControlledEntityJsonSerializer.hpp avdeccControllerJsonTypes.hpp)
 	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DENABLE_AVDECC_FEATURE_JSON")
 endif()
 

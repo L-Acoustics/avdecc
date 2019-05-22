@@ -24,8 +24,8 @@
 
 #include "la/avdecc/internals/jsonSerialization.hpp"
 #include "la/avdecc/internals/jsonTypes.hpp"
-#include "la/avdecc/controller/internals/jsonTypes.hpp"
 
+#include "avdeccControllerJsonTypes.hpp"
 #include "avdeccControlledEntityJsonSerializer.hpp"
 #include "avdeccControllerImpl.hpp"
 #include "avdeccControlledEntityImpl.hpp"

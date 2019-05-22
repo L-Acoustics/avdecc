@@ -76,13 +76,13 @@ include(${CMAKE_CURRENT_LIST_DIR}/cmake/CommonProjectProperties.cmake)
 
 # Include fmtlib
 if(ENABLE_AVDECC_USE_FMTLIB)
-	add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/externals/3rdparty/fmtlib)
+	add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/externals/3rdparty/fmtlib EXCLUDE_FROM_ALL)
 endif()
 
 # Include json
 if(ENABLE_AVDECC_FEATURE_JSON)
 	set(JSON_BuildTests OFF CACHE INTERNAL "Disable JSON unit tests")
-	add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/externals/3rdparty/json)
+	add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/externals/3rdparty/json EXCLUDE_FROM_ALL)
 endif()
 
 ############ Define some variables
