@@ -2236,7 +2236,7 @@ std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerIm
 std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> ControllerImpl::loadVirtualEntityFromReadableJson([[maybe_unused]] std::string const& filePath, [[maybe_unused]] bool const ignoreSanityChecks) noexcept
 {
 #ifndef ENABLE_AVDECC_FEATURE_JSON
-	return { avdecc::entitySerializer::DeserializationError::NotSupported, "Deserialization feature not supported by the library (was not compiled)" };
+	return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Deserialization feature not supported by the library (was not compiled)" };
 
 #else // ENABLE_AVDECC_FEATURE_JSON
 
