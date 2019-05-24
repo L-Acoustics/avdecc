@@ -193,6 +193,9 @@ struct IPAddressInfo
 	/** Gets the broadcast IPAddress from specified netmask. Throws std::invalid_argument if either address or netmask is invalid, or if they are not of the same IPAddress::Type */
 	LA_AVDECC_API IPAddress getBroadcastAddress() const;
 
+	/** Returns true if the IPAddressInfo is in the private network range (see https://en.wikipedia.org/wiki/Private_network). Throws std::invalid_argument if either address or netmask is invalid, or if they are not of the same IPAddress::Type */
+	LA_AVDECC_API bool isPrivateNetworkAddress() const;
+
 	/** Equality operator. Returns true if the IPAddressInfo values are equal. */
 	friend LA_AVDECC_API bool operator==(IPAddressInfo const& lhs, IPAddressInfo const& rhs) noexcept;
 

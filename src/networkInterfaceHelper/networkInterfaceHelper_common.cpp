@@ -729,15 +729,60 @@ void IPAddress::buildIPString() noexcept
 /* ************************************************************ */
 /* IPAddressInfo definition                                     */
 /* ************************************************************ */
-IPAddress IPAddressInfo::getNetworkBaseAddress() const
+static void checkValidIPAddressInfo(IPAddress const& address, IPAddress const& netmask)
 {
+	// Check if address and netmask types are identical
 	auto const addressType = address.getType();
 	if (addressType != netmask.getType())
 	{
 		throw std::invalid_argument("address and netmask not of the same Type");
 	}
 
+	// Check if netmask is contiguous
 	switch (addressType)
+	{
+		case IPAddress::Type::V4:
+		{
+			auto packed = endianSwap<Endianness::NetworkEndian, Endianness::HostEndian>(netmask.getIPV4Packed());
+			auto maskStarted = false;
+			for (auto i = 0u; i < (sizeof(IPAddress::value_type_packed_v4) * 8); ++i)
+			{
+				auto const isSet = packed & 0x00000001;
+				// Bit is not set, check if mask was already started
+				if (!isSet)
+				{
+					// Already started
+					if (maskStarted)
+					{
+						throw std::invalid_argument("netmask is not contiguous");
+					}
+				}
+				// Bit is set, start the mask
+				else
+				{
+					maskStarted = true;
+				}
+				packed >>= 1;
+			}
+			// At least one bit must be set
+			if (!maskStarted)
+			{
+				throw std::invalid_argument("netmask cannot be empty");
+			}
+			break;
+		}
+		case IPAddress::Type::V6:
+			throw std::invalid_argument("IPV6 not supported yet");
+		default:
+			throw std::invalid_argument("Invalid Type");
+	}
+}
+
+IPAddress IPAddressInfo::getNetworkBaseAddress() const
+{
+	checkValidIPAddressInfo(address, netmask);
+
+	switch (address.getType())
 	{
 		case IPAddress::Type::V4:
 		{
@@ -752,17 +797,55 @@ IPAddress IPAddressInfo::getNetworkBaseAddress() const
 
 IPAddress IPAddressInfo::getBroadcastAddress() const
 {
-	auto const addressType = address.getType();
-	if (addressType != netmask.getType())
-	{
-		throw std::invalid_argument("ip and netmask not of the same Type");
-	}
+	checkValidIPAddressInfo(address, netmask);
 
-	switch (addressType)
+	switch (address.getType())
 	{
 		case IPAddress::Type::V4:
 		{
 			return IPAddress{ address.getIPV4Packed() | ~netmask.getIPV4Packed() };
+		}
+		case IPAddress::Type::V6:
+			throw std::invalid_argument("IPV6 not supported yet");
+		default:
+			throw std::invalid_argument("Invalid Type");
+	}
+}
+
+bool IPAddressInfo::isPrivateNetworkAddress() const
+{
+	checkValidIPAddressInfo(address, netmask);
+
+	switch (address.getType())
+	{
+		case IPAddress::Type::V4:
+		{
+			auto const isInRange = [](auto const rangeStart, auto const rangeEnd, auto const rangeMask, auto const adrs, auto const mask)
+			{
+				return (adrs >= rangeStart) && (adrs <= rangeEnd) && (mask >= rangeMask);
+			};
+
+			constexpr auto PrivateClassAStart = IPAddress::value_type_packed_v4{ 0x0A000000 }; // 10.0.0.0
+			constexpr auto PrivateClassAEnd = IPAddress::value_type_packed_v4{ 0x0AFFFFFF }; // 10.255.255.255
+			constexpr auto PrivateClassAMask = IPAddress::value_type_packed_v4{ 0xFF000000 }; // 255.0.0.0
+			constexpr auto PrivateClassBStart = IPAddress::value_type_packed_v4{ 0xAC100000 }; // 172.16.0.0
+			constexpr auto PrivateClassBEnd = IPAddress::value_type_packed_v4{ 0xAC1FFFFF }; // 172.31.255.255
+			constexpr auto PrivateClassBMask = IPAddress::value_type_packed_v4{ 0xFFF00000 }; // 255.240.0.0
+			constexpr auto PrivateClassCStart = IPAddress::value_type_packed_v4{ 0xC0A80000 }; // 192.168.0.0
+			constexpr auto PrivateClassCEnd = IPAddress::value_type_packed_v4{ 0xC0A8FFFF }; // 192.168.255.255
+			constexpr auto PrivateClassCMask = IPAddress::value_type_packed_v4{ 0xFFFF0000 }; // 255.255.0.0
+
+			// Get the packed address and mask for easy comparison
+			auto const adrs = endianSwap<Endianness::NetworkEndian, Endianness::HostEndian>(address.getIPV4Packed());
+			auto const mask = endianSwap<Endianness::NetworkEndian, Endianness::HostEndian>(netmask.getIPV4Packed());
+
+			// Check if the address is in any of the ranges
+			if (isInRange(PrivateClassAStart, PrivateClassAEnd, PrivateClassAMask, adrs, mask) || isInRange(PrivateClassBStart, PrivateClassBEnd, PrivateClassBMask, adrs, mask) || isInRange(PrivateClassCStart, PrivateClassCEnd, PrivateClassCMask, adrs, mask))
+			{
+				return true;
+			}
+
+			return false;
 		}
 		case IPAddress::Type::V6:
 			throw std::invalid_argument("IPV6 not supported yet");
