@@ -43,13 +43,6 @@ namespace avdecc
 {
 namespace networkInterface
 {
-template<typename T>
-inline auto forceNumeric(T&& t)
-{
-	// Promote a built-in type to at least (unsigned)int
-	return +t;
-}
-
 class NetworkInterfaceMonitorImpl final : public NetworkInterfaceMonitor
 {
 public:
@@ -141,7 +134,7 @@ std::string LA_AVDECC_CALL_CONVENTION macAddressToString(MacAddress const& macAd
 					ss << separator;
 				}
 			}
-			ss << std::setw(2) << forceNumeric(v); // setw has to be called every time
+			ss << std::setw(2) << utils::forceNumeric(v); // setw has to be called every time
 		}
 
 		return ss.str();
