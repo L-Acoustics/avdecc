@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - NetworkInterfaceHelper _isActive_ field replace with _isEnabled_ and _isConnected_
 - _protocol::MvuFeaturesFlags_ TypedDefine moved to _MilanInfoFeaturesFlags_ EnumBitfield
 
+### Fixed
+- [NetworkInterfaces Helper fully working on win7 and win10](https://github.com/L-Acoustics/avdecc/issues/59)
+
 ## [2.9.2] - 2019-05-20
 ### Added
 - Support for IdentifyNotification in ProtocolInterface and ControllerEntity

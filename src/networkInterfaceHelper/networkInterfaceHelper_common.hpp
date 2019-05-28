@@ -39,8 +39,8 @@ namespace networkInterface
 using Interfaces = std::unordered_map<std::string, Interface>;
 
 // Methods to be implemented by eachOS-dependant implementation
-/** Force a refresh of the interfaces list */
-void refreshInterfaces(Interfaces& interfaces) noexcept;
+/** Block until the first enumeration occured */
+void waitForFirstEnumeration() noexcept;
 /** When the first observer is registered */
 void onFirstObserverRegistered() noexcept;
 /** When the last observer is unregistered */

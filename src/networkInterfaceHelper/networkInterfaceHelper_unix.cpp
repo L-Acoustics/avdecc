@@ -165,6 +165,14 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 	close(sck);
 }
 
+void waitForFirstEnumeration() noexcept
+{
+	// Always force a refresh
+	auto newList = Interfaces{};
+	refreshInterfaces(newList);
+	onNewInterfacesList(std::move(newList));
+}
+
 static auto s_shouldTerminate = std::atomic_bool{ false };
 static auto s_observerThread = std::thread{};
 

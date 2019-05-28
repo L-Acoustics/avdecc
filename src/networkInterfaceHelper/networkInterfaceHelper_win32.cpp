@@ -29,7 +29,10 @@
 #include <cstring> // memcpy
 #include <atomic>
 #include <thread>
+#include <condition_variable>
+#include <mutex>
 #include <optional>
+#include <future>
 #include <WinSock2.h>
 #include <Iphlpapi.h>
 #include <wbemidl.h>
@@ -151,239 +154,222 @@ private:
 	VARIANT* _var{ nullptr };
 };
 
-/** Helper class to force initialization of COM security as soon as possible. */
-class WMIInitializer final
+static bool refreshInterfaces_WMI(Interfaces& interfaces) noexcept
 {
-public:
-	WMIInitializer() noexcept
-	{
-		if (SUCCEEDED(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED)))
-		{
-			_comGuard.emplace();
-			CoInitializeSecurity(NULL, -1, NULL, NULL, RPC_C_AUTHN_LEVEL_DEFAULT, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE, NULL);
-		}
-	}
+	auto wmiSucceeded = false;
 
-private:
-	std::optional<ComGuard> _comGuard{ std::nullopt }; // ComGuard to be sure CoUninitialize is called upon program termination
-};
-static auto s_wmiInitializer = WMIInitializer{};
-
-void refreshInterfaces(Interfaces& interfaces) noexcept
-{
 	// First pass, use WMI API to retrieve all the adapters and most of their information
 	{
 		// https://msdn.microsoft.com/en-us/library/Hh968170%28v=VS.85%29.aspx?f=255&MSPPError=-2147217396
-		if (SUCCEEDED(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED)))
+		auto* locator = static_cast<IWbemLocator*>(nullptr);
+		if (SUCCEEDED(CoCreateInstance(CLSID_WbemAdministrativeLocator, NULL, CLSCTX_INPROC_SERVER, IID_IWbemLocator, reinterpret_cast<void**>(&locator))))
 		{
-			auto const comGuard = ComGuard{};
-			//auto const hr = CoInitializeSecurity(NULL, -1, NULL, NULL, RPC_C_AUTHN_LEVEL_DEFAULT, RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE, NULL);
-			//if (SUCCEEDED(hr) || hr == RPC_E_TOO_LATE)
+			auto const locatorGuard = ComObjectGuard{ locator };
+
+			auto* service = static_cast<IWbemServices*>(nullptr);
+			if (SUCCEEDED(locator->ConnectServer(L"root\\StandardCimv2", NULL, NULL, NULL, WBEM_FLAG_CONNECT_USE_MAX_WAIT, NULL, NULL, &service)))
 			{
-				auto* locator = static_cast<IWbemLocator*>(nullptr);
-				if (SUCCEEDED(CoCreateInstance(CLSID_WbemAdministrativeLocator, NULL, CLSCTX_INPROC_SERVER, IID_IWbemLocator, reinterpret_cast<void**>(&locator))))
+				auto const serviceGuard = ComObjectGuard{ service };
+
+				// Set the security to Impersonate
+				if (SUCCEEDED(CoSetProxyBlanket(service, RPC_C_AUTHN_DEFAULT, RPC_C_AUTHZ_DEFAULT, COLE_DEFAULT_PRINCIPAL, RPC_C_AUTHN_LEVEL_DEFAULT, RPC_C_IMP_LEVEL_IMPERSONATE, COLE_DEFAULT_AUTHINFO, EOAC_DEFAULT)))
 				{
-					auto const locatorGuard = ComObjectGuard{ locator };
-
-					auto* service = static_cast<IWbemServices*>(nullptr);
-					if (SUCCEEDED(locator->ConnectServer(L"root\\StandardCimv2", NULL, NULL, NULL, WBEM_FLAG_CONNECT_USE_MAX_WAIT, NULL, NULL, &service)))
+					auto* adapterEnumerator = static_cast<IEnumWbemClassObject*>(nullptr);
+					if (SUCCEEDED(service->ExecQuery(L"WQL", L"SELECT * FROM MSFT_NetAdapter", WBEM_FLAG_FORWARD_ONLY, NULL, &adapterEnumerator)))
 					{
-						auto const serviceGuard = ComObjectGuard{ service };
+						auto const adapterEnumeratorGuard = ComObjectGuard{ adapterEnumerator };
 
-						auto* adapterEnumerator = static_cast<IEnumWbemClassObject*>(nullptr);
-						if (SUCCEEDED(service->ExecQuery(L"WQL", L"SELECT * FROM MSFT_NetAdapter", WBEM_FLAG_FORWARD_ONLY, NULL, &adapterEnumerator)))
+						while (adapterEnumerator)
 						{
-							auto const adapterEnumeratorGuard = ComObjectGuard{ adapterEnumerator };
-
-							while (adapterEnumerator)
+							auto* adapter = static_cast<IWbemClassObject*>(nullptr);
+							auto retcnt = ULONG{ 0u };
+							if (!SUCCEEDED(adapterEnumerator->Next(WBEM_INFINITE, 1L, reinterpret_cast<IWbemClassObject**>(&adapter), &retcnt)))
 							{
-								auto* adapter = static_cast<IWbemClassObject*>(nullptr);
-								auto retcnt = ULONG{ 0u };
-								if (!SUCCEEDED(adapterEnumerator->Next(WBEM_INFINITE, 1L, reinterpret_cast<IWbemClassObject**>(&adapter), &retcnt)))
+								adapterEnumerator = nullptr;
+								continue;
+							}
+
+							auto const adapterGuard = ComObjectGuard{ adapter };
+
+							// No more adapters
+							if (retcnt == 0)
+							{
+								adapterEnumerator = nullptr;
+								continue;
+							}
+
+							// Check if interface is hidden
+							{
+								VARIANT hidden;
+								if (!SUCCEEDED(adapter->Get(L"Hidden", 0, &hidden, NULL, NULL)))
 								{
-									adapterEnumerator = nullptr;
 									continue;
 								}
 
-								auto const adapterGuard = ComObjectGuard{ adapter };
-
-								// No more adapters
-								if (retcnt == 0)
+								auto const hiddenGuard = VariantGuard{ &hidden };
+								// Only process visible adapters
+								if (hidden.vt != VT_BOOL || hidden.boolVal)
 								{
-									adapterEnumerator = nullptr;
+									continue;
+								}
+							}
+
+							// Create a new Interface
+							Interface i;
+
+							// Get the type of interface
+							{
+								VARIANT interfaceType;
+								// We absolutely need the type of interface
+								if (!SUCCEEDED(adapter->Get(L"InterfaceType", 0, &interfaceType, NULL, NULL)))
+								{
 									continue;
 								}
 
-								// Check if interface is hidden
-								{
-									VARIANT hidden;
-									if (!SUCCEEDED(adapter->Get(L"Hidden", 0, &hidden, NULL, NULL)))
-									{
-										continue;
-									}
+								auto const interfaceTypeGuard = VariantGuard{ &interfaceType };
+								// vt seems to be VT_I4 although the doc says it should be VT_UINT or VT_UI4, thus not checking!
 
-									auto const hiddenGuard = VariantGuard{ &hidden };
-									// Only process visible adapters
-									if (hidden.vt != VT_BOOL || hidden.boolVal)
-									{
-										continue;
-									}
+								auto const type = getInterfaceType(static_cast<IFTYPE>(interfaceType.uintVal));
+								// Only process supported interface types
+								if (type == Interface::Type::None)
+								{
+									continue;
 								}
 
-								// Create a new Interface
-								Interface i;
+								i.type = type;
+							}
 
-								// Get the type of interface
+							// Get the interface ID
+							{
+								VARIANT deviceID;
+								// We absolutely need the interface ID
+								if (!SUCCEEDED(adapter->Get(L"DeviceID", 0, &deviceID, NULL, NULL)))
 								{
-									VARIANT interfaceType;
-									// We absolutely need the type of interface
-									if (!SUCCEEDED(adapter->Get(L"InterfaceType", 0, &interfaceType, NULL, NULL)))
-									{
-										continue;
-									}
+									continue;
+								}
 
-									auto const interfaceTypeGuard = VariantGuard{ &interfaceType };
+								if (deviceID.vt != VT_BSTR)
+								{
+									continue;
+								}
+
+								i.id = getStringFromWide(deviceID.bstrVal);
+							}
+
+							// Get the macAddress of the interface
+							{
+								VARIANT macAddress;
+								// We absolutely need the macAddress of the interface
+								if (!SUCCEEDED(adapter->Get(L"PermanentAddress", 0, &macAddress, NULL, NULL)))
+								{
+									continue;
+								}
+
+								auto const macAddressGuard = VariantGuard{ &macAddress };
+								if (macAddress.vt != VT_BSTR)
+								{
+									continue;
+								}
+
+								auto const mac = getStringFromWide(macAddress.bstrVal);
+								// Only process adapters with a MAC address
+								if (mac.empty())
+								{
+									continue;
+								}
+
+								try
+								{
+									i.macAddress = stringToMacAddress(mac, '\0');
+								}
+								catch (...)
+								{
+									// Failed to convert macAddress, ignore this interface
+									continue;
+								}
+							}
+
+							// Optionally get the Description of the interface
+							{
+								VARIANT interfaceDescription;
+								if (SUCCEEDED(adapter->Get(L"InterfaceDescription", 0, &interfaceDescription, NULL, NULL)))
+								{
+									auto const interfaceDescriptionGuard = VariantGuard{ &interfaceDescription };
+									if (interfaceDescription.vt == VT_BSTR)
+									{
+										i.description = getStringFromWide(interfaceDescription.bstrVal);
+									}
+								}
+							}
+
+							// Optionally get the Friendly name of the interface
+							{
+								VARIANT friendlyName;
+								if (SUCCEEDED(adapter->Get(L"Name", 0, &friendlyName, NULL, NULL)))
+								{
+									auto const friendlyNameGuard = VariantGuard{ &friendlyName };
+									if (friendlyName.vt == VT_BSTR)
+									{
+										i.alias = getStringFromWide(friendlyName.bstrVal);
+									}
+								}
+							}
+
+							// Optionally get the Enabled State of the interface
+							{
+								VARIANT state;
+								if (SUCCEEDED(adapter->Get(L"State", 0, &state, NULL, NULL)))
+								{
+									auto const stateGuard = VariantGuard{ &state };
 									// vt seems to be VT_I4 although the doc says it should be VT_UINT or VT_UI4, thus not checking!
 
-									auto const type = getInterfaceType(static_cast<IFTYPE>(interfaceType.uintVal));
-									// Only process supported interface types
-									if (type == Interface::Type::None)
-									{
-										continue;
-									}
+									//Unknown(0)
+									//Present(1)
+									//Started(2)
+									//Disabled(3)
 
-									i.type = type;
+									i.isEnabled = state.uintVal == 2;
 								}
-
-								// Get the interface ID
+								else
 								{
-									VARIANT deviceID;
-									// We absolutely need the interface ID
-									if (!SUCCEEDED(adapter->Get(L"DeviceID", 0, &deviceID, NULL, NULL)))
-									{
-										continue;
-									}
-
-									if (deviceID.vt != VT_BSTR)
-									{
-										continue;
-									}
-
-									i.id = getStringFromWide(deviceID.bstrVal);
+									i.isEnabled = true; // In case we don't know, assume it's enabled
 								}
-
-								// Get the macAddress of the interface
-								{
-									VARIANT macAddress;
-									// We absolutely need the macAddress of the interface
-									if (!SUCCEEDED(adapter->Get(L"PermanentAddress", 0, &macAddress, NULL, NULL)))
-									{
-										continue;
-									}
-
-									auto const macAddressGuard = VariantGuard{ &macAddress };
-									if (macAddress.vt != VT_BSTR)
-									{
-										continue;
-									}
-
-									auto const mac = getStringFromWide(macAddress.bstrVal);
-									// Only process adapters with a MAC address
-									if (mac.empty())
-									{
-										continue;
-									}
-
-									try
-									{
-										i.macAddress = stringToMacAddress(mac, '\0');
-									}
-									catch (...)
-									{
-										// Failed to convert macAddress, ignore this interface
-										continue;
-									}
-								}
-
-								// Optionally get the Description of the interface
-								{
-									VARIANT interfaceDescription;
-									if (SUCCEEDED(adapter->Get(L"InterfaceDescription", 0, &interfaceDescription, NULL, NULL)))
-									{
-										auto const interfaceDescriptionGuard = VariantGuard{ &interfaceDescription };
-										if (interfaceDescription.vt == VT_BSTR)
-										{
-											i.description = getStringFromWide(interfaceDescription.bstrVal);
-										}
-									}
-								}
-
-								// Optionally get the Friendly name of the interface
-								{
-									VARIANT friendlyName;
-									if (SUCCEEDED(adapter->Get(L"Name", 0, &friendlyName, NULL, NULL)))
-									{
-										auto const friendlyNameGuard = VariantGuard{ &friendlyName };
-										if (friendlyName.vt == VT_BSTR)
-										{
-											i.alias = getStringFromWide(friendlyName.bstrVal);
-										}
-									}
-								}
-
-								// Optionally get the Enabled State of the interface
-								{
-									VARIANT state;
-									if (SUCCEEDED(adapter->Get(L"State", 0, &state, NULL, NULL)))
-									{
-										auto const stateGuard = VariantGuard{ &state };
-										// vt seems to be VT_I4 although the doc says it should be VT_UINT or VT_UI4, thus not checking!
-
-										//Unknown(0)
-										//Present(1)
-										//Started(2)
-										//Disabled(3)
-
-										i.isEnabled = state.uintVal == 2;
-									}
-									else
-									{
-										i.isEnabled = true; // In case we don't know, assume it's enabled
-									}
-								}
-
-								// Optionally get the Operational Status of the interface
-								{
-									VARIANT operationalStatus;
-									if (SUCCEEDED(adapter->Get(L"InterfaceOperationalStatus", 0, &operationalStatus, NULL, NULL)))
-									{
-										auto const operationalStatusGuard = VariantGuard{ &operationalStatus };
-										// vt seems to be VT_I4 although the doc says it should be VT_UINT or VT_UI4, thus not checking!
-
-										i.isConnected = static_cast<IF_OPER_STATUS>(operationalStatus.uintVal) == IfOperStatusUp;
-									}
-									else
-									{
-										i.isConnected = true; // In case we don't know, assume it's connected
-									}
-								}
-
-								{
-									VARIANT isVirtual;
-									if (SUCCEEDED(adapter->Get(L"Virtual", 0, &isVirtual, NULL, NULL)))
-									{
-										auto const isVirtualGuard = VariantGuard{ &isVirtual };
-										if (isVirtual.vt == VT_BOOL)
-										{
-											i.isVirtual = isVirtual.boolVal;
-										}
-									}
-								}
-
-								// Everything OK, save this interface
-								interfaces[i.id] = i;
 							}
+
+							// Optionally get the Operational Status of the interface
+							{
+								VARIANT operationalStatus;
+								if (SUCCEEDED(adapter->Get(L"InterfaceOperationalStatus", 0, &operationalStatus, NULL, NULL)))
+								{
+									auto const operationalStatusGuard = VariantGuard{ &operationalStatus };
+									// vt seems to be VT_I4 although the doc says it should be VT_UINT or VT_UI4, thus not checking!
+
+									i.isConnected = static_cast<IF_OPER_STATUS>(operationalStatus.uintVal) == IfOperStatusUp;
+								}
+								else
+								{
+									i.isConnected = true; // In case we don't know, assume it's connected
+								}
+							}
+
+							{
+								VARIANT isVirtual;
+								if (SUCCEEDED(adapter->Get(L"Virtual", 0, &isVirtual, NULL, NULL)))
+								{
+									auto const isVirtualGuard = VariantGuard{ &isVirtual };
+									if (isVirtual.vt == VT_BOOL)
+									{
+										i.isVirtual = isVirtual.boolVal;
+									}
+								}
+							}
+
+							// Everything OK, save this interface
+							interfaces[i.id] = i;
 						}
+
+						// Only if WMI succeeded that we will try it again
+						wmiSucceeded = true;
 					}
 				}
 			}
@@ -391,6 +377,7 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 	}
 
 	// Second pass, get the IP configuration for all discovered adapters
+	if (wmiSucceeded)
 	{
 		ULONG ulSize = 0;
 		ULONG family = AF_INET; // AF_UNSPEC for ipV4 and ipV6, AF_INET6 for ipV6 only
@@ -399,7 +386,7 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 		auto buffer = std::make_unique<std::uint8_t[]>(ulSize);
 		if (GetAdaptersAddresses(family, GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_GATEWAYS, nullptr, (PIP_ADAPTER_ADDRESSES)buffer.get(), &ulSize) != ERROR_SUCCESS)
 		{
-			return;
+			return false;
 		}
 
 		for (auto adapter = reinterpret_cast<PIP_ADAPTER_ADDRESSES>(buffer.get()); adapter != nullptr; adapter = adapter->Next)
@@ -476,64 +463,220 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 			}
 		}
 	}
+
+	return wmiSucceeded;
 }
 
-static auto s_shouldTerminate = std::atomic_bool{ false };
-static auto s_observerThread = std::thread{};
-
-void onFirstObserverRegistered() noexcept
+static void refreshInterfaces_WinAPI(Interfaces& interfaces) noexcept
 {
-	s_shouldTerminate = false;
+	// Unfortunately, GetAdaptersAddresses (even GetAdaptersInfo) is very limited and can only retrieve NICs that have IP enabled (and are active)
 
-	s_observerThread = std::thread(
-		[]()
-		{
-			utils::setCurrentThreadName("networkInterfaceHelper::ObserverPolling");
-			auto previousList = Interfaces{};
-			while (!s_shouldTerminate)
-			{
-				auto newList = Interfaces{};
-				refreshInterfaces(newList);
+	ULONG ulSize = 0;
+	ULONG family = AF_INET; // AF_UNSPEC for ipV4 and ipV6, AF_INET6 for ipV6 only
 
-				// Process previous list and check if some property changed
-				for (auto const& [name, previousIntfc] : previousList)
-				{
-					auto const newIntfcIt = newList.find(name);
-					if (newIntfcIt != newList.end())
-					{
-						auto const& newIntfc = newIntfcIt->second;
-						if (previousIntfc.isEnabled != newIntfc.isEnabled)
-						{
-							onEnabledStateChanged(name, newIntfc.isEnabled);
-						}
-						if (previousIntfc.isConnected != newIntfc.isConnected)
-						{
-							onConnectedStateChanged(name, newIntfc.isConnected);
-						}
-					}
-				}
-
-				// Copy the list before it's moved
-				previousList = newList;
-
-				// Check for change in Interface count
-				onNewInterfacesList(std::move(newList));
-
-				// Wait a little bit so we don't burn the CPU
-				std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-			}
-		});
-}
-
-void onLastObserverUnregistered() noexcept
-{
-	s_shouldTerminate = true;
-	if (s_observerThread.joinable())
+	GetAdaptersAddresses(family, GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_GATEWAYS, nullptr, nullptr, &ulSize); // Make an initial call to get the needed size to allocate
+	auto buffer = std::make_unique<std::uint8_t[]>(ulSize);
+	if (GetAdaptersAddresses(family, GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_GATEWAYS, nullptr, (PIP_ADAPTER_ADDRESSES)buffer.get(), &ulSize) != ERROR_SUCCESS)
 	{
-		s_observerThread.join();
-		s_observerThread = {};
+		return;
+	}
+
+	for (auto adapter = reinterpret_cast<PIP_ADAPTER_ADDRESSES>(buffer.get()); adapter != nullptr; adapter = adapter->Next)
+	{
+		auto const type = getInterfaceType(adapter->IfType);
+		// Only process supported interface types
+		if (type == Interface::Type::None)
+		{
+			continue;
+		}
+
+		auto i = Interface{};
+
+		i.id = adapter->AdapterName;
+		i.description = getStringFromWide(adapter->Description);
+		i.alias = getStringFromWide(adapter->FriendlyName);
+		if (adapter->PhysicalAddressLength == i.macAddress.size())
+			std::memcpy(i.macAddress.data(), adapter->PhysicalAddress, adapter->PhysicalAddressLength);
+		i.type = type;
+		i.isEnabled = true; // GetAdaptersAddresses (even GetAdaptersInfo) can only retrieve NICs that are active, so it's always Enabled
+		i.isConnected = adapter->OperStatus == IfOperStatusUp;
+		i.isVirtual = type == Interface::Type::Loopback; // GetAdaptersAddresses (even GetAdaptersInfo) cannot get the Virtual information (that WMI can), so only define Loopback as virtual
+
+		// Retrieve IP addresses
+		for (auto ua = adapter->FirstUnicastAddress; ua != nullptr; ua = ua->Next)
+		{
+			auto const isIPv6 = ua->Address.lpSockaddr->sa_family == AF_INET6;
+			if (isIPv6)
+			{
+				std::array<char, 46> ip;
+				RtlIpv6AddressToStringA(&reinterpret_cast<struct sockaddr_in6*>(ua->Address.lpSockaddr)->sin6_addr, ip.data());
+				try
+				{
+					i.ipAddressInfos.push_back(IPAddressInfo{ IPAddress{ std::string(ip.data()) }, IPAddress{ makePackedMaskV6(ua->OnLinkPrefixLength) } });
+				}
+				catch (...)
+				{
+				}
+			}
+			else
+			{
+				i.ipAddressInfos.push_back(IPAddressInfo{ IPAddress{ reinterpret_cast<struct sockaddr_in*>(ua->Address.lpSockaddr)->sin_addr.S_un.S_addr }, IPAddress{ makePackedMaskV4(ua->OnLinkPrefixLength) } });
+			}
+		}
+
+		// Retrieve Gateways
+		for (auto ga = adapter->FirstGatewayAddress; ga != nullptr; ga = ga->Next)
+		{
+			auto const isIPv6 = ga->Address.lpSockaddr->sa_family == AF_INET6;
+			if (isIPv6)
+			{
+				std::array<char, 46> ip;
+				RtlIpv6AddressToStringA(&reinterpret_cast<struct sockaddr_in6*>(ga->Address.lpSockaddr)->sin6_addr, ip.data());
+				try
+				{
+					i.gateways.push_back(IPAddress{ std::string(ip.data()) });
+				}
+				catch (...)
+				{
+				}
+			}
+			else
+			{
+				i.gateways.push_back(IPAddress{ reinterpret_cast<struct sockaddr_in*>(ga->Address.lpSockaddr)->sin_addr.S_un.S_addr });
+			}
+		}
+
+		// Add it to the list, so we can get its IP addresses
+		interfaces.emplace(adapter->AdapterName, std::move(i));
 	}
 }
+
+class WMIInitializer final
+{
+public:
+	WMIInitializer()
+	{
+		// Using CreateThread as it's the only safe option to create a thread in a DllMain
+		_thread = CreateThread(nullptr, 0, threadFunction, this, 0, nullptr);
+	}
+
+	~WMIInitializer() noexcept
+	{
+		_shouldTerminate = true;
+		if (_thread)
+		{
+			WaitForSingleObject(_thread, INFINITE);
+			_thread = nullptr;
+		}
+	}
+
+	static DWORD WINAPI threadFunction(LPVOID lParam) noexcept
+	{
+		auto* self = static_cast<WMIInitializer*>(lParam);
+
+		utils::setCurrentThreadName("networkInterfaceHelper::InterfacesPolling");
+
+		// Try to initialize COM
+		if (SUCCEEDED(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED)))
+		{
+			self->_comGuard.emplace();
+		}
+
+		auto previousList = Interfaces{};
+		while (!self->_shouldTerminate)
+		{
+			auto newList = Interfaces{};
+
+			if (self->_comGuard.has_value())
+			{
+				if (!refreshInterfaces_WMI(newList))
+				{
+					// WMI failed, never try this again
+					self->_comGuard.reset();
+
+					// Clear the list, just in case we managed to get some information
+					newList.clear();
+				}
+			}
+
+			// Cannot use WMI, use an alternative method (less powerful)
+			if (!self->_comGuard.has_value())
+			{
+				refreshInterfaces_WinAPI(newList);
+			}
+
+			// Process previous list and check if some property changed
+			for (auto const& [name, previousIntfc] : previousList)
+			{
+				auto const newIntfcIt = newList.find(name);
+				if (newIntfcIt != newList.end())
+				{
+					auto const& newIntfc = newIntfcIt->second;
+					if (previousIntfc.isEnabled != newIntfc.isEnabled)
+					{
+						onEnabledStateChanged(name, newIntfc.isEnabled);
+					}
+					if (previousIntfc.isConnected != newIntfc.isConnected)
+					{
+						onConnectedStateChanged(name, newIntfc.isConnected);
+					}
+				}
+			}
+
+			// Copy the list before it's moved
+			previousList = newList;
+
+			// Check for change in Interface count
+			onNewInterfacesList(std::move(newList));
+
+			// Set that we enumerated at least once
+			self->_enumeratedOnce = true;
+			self->_syncCondVar.notify_all();
+
+			// Wait a little bit so we don't burn the CPU
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		}
+
+		// Terminate the thread properly
+		ExitThread(0);
+	}
+
+	void waitForFirstEnumeration() noexcept
+	{
+		// Check if enumeration was run at least once
+		if (!_enumeratedOnce)
+		{
+			// Never ran, wait for it to run at least once
+			auto lock = std::unique_lock{ _syncLock };
+			_syncCondVar.wait(lock,
+				[this]
+				{
+					return !!_enumeratedOnce;
+				});
+		}
+	}
+
+private:
+	HANDLE _thread{ nullptr };
+	std::mutex _syncLock{};
+	std::condition_variable _syncCondVar{};
+	std::atomic_bool _enumeratedOnce{ false };
+	bool _shouldTerminate{ false };
+	std::thread _enumerateThread{};
+	std::optional<ComGuard> _comGuard{ std::nullopt }; // ComGuard to be sure CoUninitialize is called upon program termination
+};
+
+static auto s_wmiInitializer = WMIInitializer{};
+
+
+void waitForFirstEnumeration() noexcept
+{
+	s_wmiInitializer.waitForFirstEnumeration();
+}
+
+void onFirstObserverRegistered() noexcept {}
+
+void onLastObserverUnregistered() noexcept {}
 
 } // namespace networkInterface
 } // namespace avdecc

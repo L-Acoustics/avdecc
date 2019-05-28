@@ -60,24 +60,15 @@ private:
 static NetworkInterfaceMonitorImpl s_Monitor{}; // Also serves as lock
 static Interfaces s_NetworkInterfaces{};
 
-void LA_AVDECC_CALL_CONVENTION refreshInterfaces() noexcept
-{
-	auto const lg = std::lock_guard(s_Monitor);
-
-	s_NetworkInterfaces.clear();
-	refreshInterfaces(s_NetworkInterfaces);
-}
-
 void LA_AVDECC_CALL_CONVENTION enumerateInterfaces(EnumerateInterfacesHandler const& onInterface) noexcept
 {
-	auto const lg = std::lock_guard(s_Monitor);
-
 	if (onInterface == nullptr)
 		return;
 
-	// No interfaces, force a refresh
-	if (s_NetworkInterfaces.empty())
-		refreshInterfaces();
+	// Wait until first enumeration occured
+	waitForFirstEnumeration();
+
+	auto const lg = std::lock_guard(s_Monitor);
 
 	// Now enumerate all interfaces
 	for (auto const& intfcKV : s_NetworkInterfaces)
@@ -95,11 +86,10 @@ void LA_AVDECC_CALL_CONVENTION enumerateInterfaces(EnumerateInterfacesHandler co
 
 Interface LA_AVDECC_CALL_CONVENTION getInterfaceByName(std::string const& name)
 {
-	auto const lg = std::lock_guard(s_Monitor);
+	// Wait until first enumeration occured
+	waitForFirstEnumeration();
 
-	// No interfaces, force a refresh
-	if (s_NetworkInterfaces.empty())
-		refreshInterfaces();
+	auto const lg = std::lock_guard(s_Monitor);
 
 	// Search specified interface name in the list
 	auto const it = s_NetworkInterfaces.find(name);
@@ -188,15 +178,12 @@ bool LA_AVDECC_CALL_CONVENTION isMacAddressValid(MacAddress const& macAddress) n
 
 void LA_AVDECC_CALL_CONVENTION registerObserver(NetworkInterfaceObserver* const observer) noexcept
 {
+	// Wait until first enumeration occured
+	waitForFirstEnumeration();
+
 	try
 	{
 		auto const lg = std::lock_guard(s_Monitor);
-
-		// No interfaces, force a refresh
-		if (s_NetworkInterfaces.empty())
-		{
-			refreshInterfaces();
-		}
 
 		// Register observer
 		s_Monitor.registerObserver(observer);
