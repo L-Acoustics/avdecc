@@ -167,10 +167,14 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 
 void waitForFirstEnumeration() noexcept
 {
-	// Always force a refresh
-	auto newList = Interfaces{};
-	refreshInterfaces(newList);
-	onNewInterfacesList(std::move(newList));
+	static std::once_flag once;
+	std::call_once(once,
+		[]()
+		{
+			auto newList = Interfaces{};
+			refreshInterfaces(newList);
+			onNewInterfacesList(std::move(newList));
+		});
 }
 
 static auto s_shouldTerminate = std::atomic_bool{ false };
