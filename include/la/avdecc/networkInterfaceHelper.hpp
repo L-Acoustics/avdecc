@@ -263,7 +263,7 @@ using EnumerateInterfacesHandler = std::function<void(la::avdecc::networkInterfa
 
 /** Enumerates network interfaces. The specified handler is called for each found interface */
 LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION enumerateInterfaces(EnumerateInterfacesHandler const& onInterface) noexcept;
-/** Retrieve a copy of an interface from it's name. Throws Exception if no interface exists with that name. */
+/** Retrieve a copy of an interface from it's name. Throws std::invalid_argument if no interface exists with that name. */
 LA_AVDECC_API Interface LA_AVDECC_CALL_CONVENTION getInterfaceByName(std::string const& name);
 /** Converts the specified MAC address to string (in the form: xx:xx:xx:xx:xx:xx, or any chosen separator which can be empty if \0 is given) */
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION macAddressToString(MacAddress const& macAddress, bool const upperCase = true, char const separator = ':') noexcept;

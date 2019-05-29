@@ -94,7 +94,7 @@ Interface LA_AVDECC_CALL_CONVENTION getInterfaceByName(std::string const& name)
 	// Search specified interface name in the list
 	auto const it = s_NetworkInterfaces.find(name);
 	if (it == s_NetworkInterfaces.end())
-		throw Exception("getInterfaceByName() error: No interface found with specified name");
+		throw std::invalid_argument("getInterfaceByName() error: No interface found with specified name");
 	return it->second;
 }
 
