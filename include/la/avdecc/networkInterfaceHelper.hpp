@@ -261,8 +261,6 @@ public:
 
 using EnumerateInterfacesHandler = std::function<void(la::avdecc::networkInterface::Interface const&)>;
 
-/** Refresh the list of network interfaces (automatically done at startup) */
-LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION refreshInterfaces() noexcept;
 /** Enumerates network interfaces. The specified handler is called for each found interface */
 LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION enumerateInterfaces(EnumerateInterfacesHandler const& onInterface) noexcept;
 /** Retrieve a copy of an interface from it's name. Throws Exception if no interface exists with that name. */

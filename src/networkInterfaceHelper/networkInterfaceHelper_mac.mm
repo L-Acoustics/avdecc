@@ -249,6 +249,18 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 	}
 }
 
+void waitForFirstEnumeration() noexcept
+{
+	static std::once_flag once;
+	std::call_once(once,
+		[]()
+		{
+			auto newList = Interfaces{};
+			refreshInterfaces(newList);
+			onNewInterfacesList(std::move(newList));
+		});
+}
+
 static IONotificationPortRef s_notificationPort = nullptr;
 static io_iterator_t s_controllerMatchIterator = 0;
 static io_iterator_t s_controllerTerminateIterator = 0;
