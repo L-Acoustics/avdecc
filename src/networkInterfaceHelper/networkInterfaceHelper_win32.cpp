@@ -54,7 +54,7 @@ namespace avdecc
 {
 namespace networkInterface
 {
-inline IPAddress::value_type_packed_v4 makePackedMaskV4(std::uint8_t CountBits)
+inline IPAddress::value_type_packed_v4 makePackedMaskV4(std::uint8_t CountBits) noexcept
 {
 	if (CountBits >= 32)
 	{
@@ -63,7 +63,7 @@ inline IPAddress::value_type_packed_v4 makePackedMaskV4(std::uint8_t CountBits)
 	return ~(~IPAddress::value_type_packed_v4(0) << CountBits);
 }
 
-inline IPAddress::value_type_packed_v4 makePackedMaskV6(std::uint8_t CountBits)
+inline IPAddress::value_type_packed_v4 makePackedMaskV6(std::uint8_t CountBits) noexcept
 {
 #pragma message("TODO: Use value_type_packed_v6")
 	if (CountBits >= 128)
@@ -73,15 +73,26 @@ inline IPAddress::value_type_packed_v4 makePackedMaskV6(std::uint8_t CountBits)
 	return ~(~IPAddress::value_type_packed_v4(0) << CountBits);
 }
 
-std::string getStringFromWide(PWCHAR wide)
+static std::string wideCharToUTF8(PWCHAR const wide) noexcept
 {
-	char multiByte[1024];
-	if (WideCharToMultiByte(CP_UTF8, 0, wide, -1, multiByte, sizeof(multiByte), NULL, NULL) == 0)
-		return std::string();
-	return std::string(multiByte);
+	// All APIs calling this method have to provide a NULL-terminated PWCHAR
+	auto const wideLength = wcsnlen_s(wide, 1024); // Compute the size, in characters, of the wide string
+
+	if (wideLength != 0)
+	{
+		auto const sizeNeeded = WideCharToMultiByte(CP_UTF8, 0, wide, static_cast<int>(wideLength), nullptr, 0, nullptr, nullptr);
+		auto result = std::string(static_cast<std::string::size_type>(sizeNeeded), std::string::value_type{ 0 }); // Brace-initialization constructor prevents the use of {}
+
+		if (WideCharToMultiByte(CP_UTF8, 0, wide, static_cast<int>(wideLength), result.data(), sizeNeeded, nullptr, nullptr) > 0)
+		{
+			return result;
+		}
+	}
+
+	return {};
 }
 
-Interface::Type getInterfaceType(IFTYPE const ifType)
+static Interface::Type getInterfaceType(IFTYPE const ifType) noexcept
 {
 	switch (ifType)
 	{
@@ -253,7 +264,7 @@ static bool refreshInterfaces_WMI(Interfaces& interfaces) noexcept
 									continue;
 								}
 
-								i.id = getStringFromWide(deviceID.bstrVal);
+								i.id = wideCharToUTF8(deviceID.bstrVal);
 							}
 
 							// Get the macAddress of the interface
@@ -271,7 +282,7 @@ static bool refreshInterfaces_WMI(Interfaces& interfaces) noexcept
 									continue;
 								}
 
-								auto const mac = getStringFromWide(macAddress.bstrVal);
+								auto const mac = wideCharToUTF8(macAddress.bstrVal);
 								// Only process adapters with a MAC address
 								if (mac.empty())
 								{
@@ -297,7 +308,7 @@ static bool refreshInterfaces_WMI(Interfaces& interfaces) noexcept
 									auto const interfaceDescriptionGuard = VariantGuard{ &interfaceDescription };
 									if (interfaceDescription.vt == VT_BSTR)
 									{
-										i.description = getStringFromWide(interfaceDescription.bstrVal);
+										i.description = wideCharToUTF8(interfaceDescription.bstrVal);
 									}
 								}
 							}
@@ -310,7 +321,7 @@ static bool refreshInterfaces_WMI(Interfaces& interfaces) noexcept
 									auto const friendlyNameGuard = VariantGuard{ &friendlyName };
 									if (friendlyName.vt == VT_BSTR)
 									{
-										i.alias = getStringFromWide(friendlyName.bstrVal);
+										i.alias = wideCharToUTF8(friendlyName.bstrVal);
 									}
 								}
 							}
@@ -404,8 +415,8 @@ static bool refreshInterfaces_WMI(Interfaces& interfaces) noexcept
 				auto i = Interface{};
 
 				i.id = adapter->AdapterName;
-				i.description = getStringFromWide(adapter->Description);
-				i.alias = getStringFromWide(adapter->FriendlyName);
+				i.description = wideCharToUTF8(adapter->Description);
+				i.alias = wideCharToUTF8(adapter->FriendlyName);
 				if (adapter->PhysicalAddressLength == i.macAddress.size())
 					std::memcpy(i.macAddress.data(), adapter->PhysicalAddress, adapter->PhysicalAddressLength);
 				i.type = Interface::Type::Loopback;
@@ -493,8 +504,8 @@ static void refreshInterfaces_WinAPI(Interfaces& interfaces) noexcept
 		auto i = Interface{};
 
 		i.id = adapter->AdapterName;
-		i.description = getStringFromWide(adapter->Description);
-		i.alias = getStringFromWide(adapter->FriendlyName);
+		i.description = wideCharToUTF8(adapter->Description);
+		i.alias = wideCharToUTF8(adapter->FriendlyName);
 		if (adapter->PhysicalAddressLength == i.macAddress.size())
 			std::memcpy(i.macAddress.data(), adapter->PhysicalAddress, adapter->PhysicalAddressLength);
 		i.type = type;
