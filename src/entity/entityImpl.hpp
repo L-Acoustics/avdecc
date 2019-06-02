@@ -356,7 +356,7 @@ public:
 		}
 	}
 
-	static void sendAcmpCommand(protocol::ProtocolInterface const* const pi, protocol::AcmpMessageType const messageType, UniqueIdentifier const controllerEntityID, UniqueIdentifier const talkerEntityID, model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, model::StreamIndex const listenerStreamIndex, uint16_t const connectionIndex, std::function<void(la::avdecc::protocol::Acmpdu const*, LocalEntity::ControlStatus)> const& onResult) noexcept
+	static void sendAcmpCommand(protocol::ProtocolInterface const* const pi, protocol::AcmpMessageType const messageType, UniqueIdentifier const controllerEntityID, UniqueIdentifier const talkerEntityID, model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, model::StreamIndex const listenerStreamIndex, std::uint16_t const connectionIndex, std::function<void(la::avdecc::protocol::Acmpdu const*, LocalEntity::ControlStatus)> const& onResult) noexcept
 	{
 		try
 		{

@@ -556,7 +556,7 @@ void ControllerEntityImpl::getListenerStreamState(model::StreamIdentification co
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getListenerStreamState(listenerStream, handler);
 }
 
-void ControllerEntityImpl::getTalkerStreamConnection(model::StreamIdentification const& talkerStream, uint16_t const connectionIndex, GetTalkerStreamConnectionHandler const& handler) const noexcept
+void ControllerEntityImpl::getTalkerStreamConnection(model::StreamIdentification const& talkerStream, std::uint16_t const connectionIndex, GetTalkerStreamConnectionHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getTalkerStreamConnection(talkerStream, connectionIndex, handler);
 }
