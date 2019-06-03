@@ -154,6 +154,14 @@ public:
 	/** Get connections information about a talker's stream */
 	virtual entity::model::StreamConnections const& getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 
+	// Statistics
+	virtual std::uint64_t getAecpRetryCounter() const noexcept = 0;
+	virtual std::uint64_t getAecpTimeoutCounter() const noexcept = 0;
+	virtual std::uint64_t getAecpUnexpectedResponseCounter() const noexcept = 0;
+	virtual std::chrono::milliseconds const& getAecpResponseAverageTime() const noexcept = 0;
+	virtual std::uint64_t getAemAecpUnsolicitedCounter() const noexcept = 0;
+	virtual std::chrono::milliseconds const& getEnumerationTime() const noexcept = 0;
+
 	// Visitor method
 	virtual void accept(model::EntityModelVisitor* const visitor) const noexcept = 0;
 

@@ -107,6 +107,28 @@ int doJob()
 			}
 		}
 
+		/* **** Statistics **** */
+		virtual void onAecpRetry(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const& entityID) noexcept override
+		{
+			outputText(std::string{ "[" } + la::avdecc::utils::toHexString(entityID, true) + "] AECP retry\n");
+		}
+		virtual void onAecpTimeout(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const& entityID) noexcept override
+		{
+			outputText(std::string{ "[" } + la::avdecc::utils::toHexString(entityID, true) + "] AECP timed out\n");
+		}
+		virtual void onAecpUnexpectedResponse(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const& entityID) noexcept override
+		{
+			outputText(std::string{ "[" } + la::avdecc::utils::toHexString(entityID, true) + "] AECP unexpected response\n");
+		}
+		virtual void onAecpResponseTime(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const& entityID, std::chrono::milliseconds const& responseTime) noexcept override
+		{
+			outputText(std::string{ "[" } + la::avdecc::utils::toHexString(entityID, true) + "] AECP response time: " + std::to_string(responseTime.count()) + " msec\n");
+		}
+		virtual void onAemAecpUnsolicitedReceived(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const& entityID) noexcept override
+		{
+			outputText(std::string{ "[" } + la::avdecc::utils::toHexString(entityID, true) + "] AEM unsolicited message\n");
+		}
+
 		// Result handlers
 		/* Enumeration and Control Protocol (AECP) */
 		void onEntityAvailableResult(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status) noexcept

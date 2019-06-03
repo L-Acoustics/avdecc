@@ -519,7 +519,7 @@ void ControllerEntityImpl::getMemoryObjectLength(UniqueIdentifier const targetEn
 }
 
 /* Enumeration and Control Protocol (AECP) AA */
-void ControllerEntityImpl::addressAccess(la::avdecc::UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, AddressAccessHandler const& handler) const noexcept
+void ControllerEntityImpl::addressAccess(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, AddressAccessHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).addressAccess(targetEntityID, tlvs, handler);
 }
@@ -632,6 +632,27 @@ void ControllerEntityImpl::onAcmpCommand(protocol::ProtocolInterface* const pi, 
 void ControllerEntityImpl::onAcmpResponse(protocol::ProtocolInterface* const pi, protocol::Acmpdu const& acmpdu) noexcept
 {
 	_controllerCapabilityDelegate->onAcmpResponse(pi, acmpdu);
+}
+
+/* **** Statistics **** */
+void ControllerEntityImpl::onAecpRetry(protocol::ProtocolInterface* const pi, UniqueIdentifier const& entityID) noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).onAecpRetry(pi, entityID);
+}
+
+void ControllerEntityImpl::onAecpTimeout(protocol::ProtocolInterface* const pi, UniqueIdentifier const& entityID) noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).onAecpTimeout(pi, entityID);
+}
+
+void ControllerEntityImpl::onAecpUnexpectedResponse(protocol::ProtocolInterface* const pi, UniqueIdentifier const& entityID) noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).onAecpUnexpectedResponse(pi, entityID);
+}
+
+void ControllerEntityImpl::onAecpResponseTime(protocol::ProtocolInterface* const pi, UniqueIdentifier const& entityID, std::chrono::milliseconds const& responseTime) noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).onAecpResponseTime(pi, entityID, responseTime);
 }
 
 /* ************************************************************************** */

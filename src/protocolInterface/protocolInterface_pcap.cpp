@@ -327,20 +327,20 @@ private:
 	/* stateMachine::ProtocolInterfaceDelegate overrides            */
 	/* ************************************************************ */
 	/* **** AECP notifications **** */
-	virtual void onAecpCommand(la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override
+	virtual void onAecpCommand(Aecpdu const& aecpdu) noexcept override
 	{
 		// Notify observers
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpCommand, this, aecpdu);
 	}
 
 	/* **** ACMP notifications **** */
-	virtual void onAcmpCommand(la::avdecc::protocol::Acmpdu const& acmpdu) noexcept override
+	virtual void onAcmpCommand(Acmpdu const& acmpdu) noexcept override
 	{
 		// Notify observers
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAcmpCommand, this, acmpdu);
 	}
 
-	virtual void onAcmpResponse(la::avdecc::protocol::Acmpdu const& acmpdu) noexcept override
+	virtual void onAcmpResponse(Acmpdu const& acmpdu) noexcept override
 	{
 		// Notify observers
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAcmpResponse, this, acmpdu);
@@ -426,7 +426,7 @@ private:
 	/* ************************************************************ */
 	/* stateMachine::DiscoveryStateMachine::Delegate overrides      */
 	/* ************************************************************ */
-	virtual void onLocalEntityOnline(la::avdecc::entity::Entity const& entity) noexcept override
+	virtual void onLocalEntityOnline(entity::Entity const& entity) noexcept override
 	{
 		// Notify observers
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onLocalEntityOnline, this, entity);
@@ -438,13 +438,13 @@ private:
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onLocalEntityOffline, this, entityID);
 	}
 
-	virtual void onLocalEntityUpdated(la::avdecc::entity::Entity const& entity) noexcept override
+	virtual void onLocalEntityUpdated(entity::Entity const& entity) noexcept override
 	{
 		// Notify observers
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onLocalEntityUpdated, this, entity);
 	}
 
-	virtual void onRemoteEntityOnline(la::avdecc::entity::Entity const& entity) noexcept override
+	virtual void onRemoteEntityOnline(entity::Entity const& entity) noexcept override
 	{
 		// Notify observers
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityOnline, this, entity);
@@ -456,7 +456,7 @@ private:
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityOffline, this, entityID);
 	}
 
-	virtual void onRemoteEntityUpdated(la::avdecc::entity::Entity const& entity) noexcept override
+	virtual void onRemoteEntityUpdated(entity::Entity const& entity) noexcept override
 	{
 		// Notify observers
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityUpdated, this, entity);
@@ -471,10 +471,30 @@ private:
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpAemUnsolicitedResponse, this, aecpdu);
 	}
 
-	virtual void onAecpAemIdentifyNotification(la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override
+	virtual void onAecpAemIdentifyNotification(Aecpdu const& aecpdu) noexcept override
 	{
 		// Notify observers
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpAemIdentifyNotification, this, aecpdu);
+	}
+	virtual void onAecpRetry(UniqueIdentifier const& entityID) noexcept override
+	{
+		// Notify observers
+		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpRetry, this, entityID);
+	}
+	virtual void onAecpTimeout(UniqueIdentifier const& entityID) noexcept override
+	{
+		// Notify observers
+		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpTimeout, this, entityID);
+	}
+	virtual void onAecpUnexpectedResponse(UniqueIdentifier const& entityID) noexcept override
+	{
+		// Notify observers
+		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpUnexpectedResponse, this, entityID);
+	}
+	virtual void onAecpResponseTime(UniqueIdentifier const& entityID, std::chrono::milliseconds const& responseTime) noexcept override
+	{
+		// Notify observers
+		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpResponseTime, this, entityID, responseTime);
 	}
 
 	/* ************************************************************ */
@@ -639,12 +659,12 @@ private:
 		}
 		catch ([[maybe_unused]] std::invalid_argument const& e)
 		{
-			LOG_PROTOCOL_INTERFACE_WARN(la::avdecc::networkInterface::MacAddress{}, la::avdecc::networkInterface::MacAddress{}, std::string("ProtocolInterfacePCap: Packet dropped: ") + e.what());
+			LOG_PROTOCOL_INTERFACE_WARN(networkInterface::MacAddress{}, networkInterface::MacAddress{}, std::string("ProtocolInterfacePCap: Packet dropped: ") + e.what());
 		}
 		catch (...)
 		{
 			AVDECC_ASSERT(false, "Unknown exception");
-			LOG_PROTOCOL_INTERFACE_WARN(la::avdecc::networkInterface::MacAddress{}, la::avdecc::networkInterface::MacAddress{}, "ProtocolInterfacePCap: Packet dropped due to unknown exception");
+			LOG_PROTOCOL_INTERFACE_WARN(networkInterface::MacAddress{}, networkInterface::MacAddress{}, "ProtocolInterfacePCap: Packet dropped due to unknown exception");
 		}
 	}
 

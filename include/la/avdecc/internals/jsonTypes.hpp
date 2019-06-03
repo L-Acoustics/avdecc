@@ -34,6 +34,7 @@
 #include <nlohmann/json.hpp>
 
 #include <optional>
+#include <chrono>
 
 using json = nlohmann::json;
 
@@ -75,6 +76,19 @@ struct adl_serializer<std::optional<T>>
 		{
 			opt = j.get<T>();
 		}
+	}
+};
+
+template<>
+struct adl_serializer<std::chrono::milliseconds>
+{
+	static void to_json(json& j, std::chrono::milliseconds const& value)
+	{
+		j = value.count();
+	}
+	static void from_json(json const& j, std::chrono::milliseconds& value)
+	{
+		value = std::chrono::milliseconds{ j.get<std::chrono::milliseconds::rep>() };
 	}
 };
 

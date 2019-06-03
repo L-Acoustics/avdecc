@@ -45,6 +45,7 @@ namespace jsonSerializer
 json createJsonObject(ControlledEntityImpl const& entity, bool const ignoreSanityChecks); // Throws SerializationException
 void setEntityModel(ControlledEntityImpl& entity, json const& object, entity::model::jsonSerializer::Flags flags); // Throws DeserializationException
 void setEntityState(ControlledEntityImpl& entity, json const& object); // Throws DeserializationException
+void setEntityStatistics(ControlledEntityImpl& entity, json const& object); // Throws DeserializationException
 
 } // namespace jsonSerializer
 } // namespace controller

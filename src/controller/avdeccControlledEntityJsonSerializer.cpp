@@ -110,6 +110,17 @@ json createJsonObject(ControlledEntityImpl const& entity, bool const ignoreSanit
 		state[controller::keyName::ControlledEntityState_ActiveConfiguration] = entity.getCurrentConfigurationIndex();
 	}
 
+	// Dump Entity Statistics
+	{
+		auto& statistics = object[keyName::ControlledEntity_Statistics];
+		statistics[controller::keyName::ControlledEntityStatistics_AecpRetryCounter] = entity.getAecpRetryCounter();
+		statistics[controller::keyName::ControlledEntityStatistics_AecpTimeoutCounter] = entity.getAecpTimeoutCounter();
+		statistics[controller::keyName::ControlledEntityStatistics_AecpUnexpectedResponseCounter] = entity.getAecpUnexpectedResponseCounter();
+		statistics[controller::keyName::ControlledEntityStatistics_AecpResponseAverageTime] = entity.getAecpResponseAverageTime();
+		statistics[controller::keyName::ControlledEntityStatistics_AemAecpUnsolicitedCounter] = entity.getAemAecpUnsolicitedCounter();
+		statistics[controller::keyName::ControlledEntityStatistics_EnumerationTime] = entity.getEnumerationTime();
+	}
+
 	return object;
 }
 
@@ -197,6 +208,83 @@ void setEntityState(ControlledEntityImpl& entity, json const& object)
 			}
 		}
 		entity.setCurrentConfiguration(object.at(controller::keyName::ControlledEntityState_ActiveConfiguration).get<entity::model::DescriptorIndex>());
+	}
+	catch (json::type_error const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InvalidValue, e.what() };
+	}
+	catch (json::parse_error const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::ParseError, e.what() };
+	}
+	catch (json::out_of_range const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::MissingKey, e.what() };
+	}
+	catch (json::other_error const& e)
+	{
+		if (e.id == 555)
+		{
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InvalidKey, e.what() };
+		}
+		else
+		{
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
+		}
+	}
+	catch (json::exception const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
+	}
+}
+
+void setEntityStatistics(ControlledEntityImpl& entity, json const& object)
+{
+	try
+	{
+		// Everything is optional
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityStatistics_AecpRetryCounter);
+			if (it != object.end())
+			{
+				entity.setAecpRetryCounter(it->get<std::uint64_t>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityStatistics_AecpTimeoutCounter);
+			if (it != object.end())
+			{
+				entity.setAecpTimeoutCounter(it->get<std::uint64_t>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityStatistics_AecpUnexpectedResponseCounter);
+			if (it != object.end())
+			{
+				entity.setAecpUnexpectedResponseCounter(it->get<std::uint64_t>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityStatistics_AecpResponseAverageTime);
+			if (it != object.end())
+			{
+				entity.setAecpResponseAverageTime(it->get<std::chrono::milliseconds>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityStatistics_AemAecpUnsolicitedCounter);
+			if (it != object.end())
+			{
+				entity.setAemAecpUnsolicitedCounter(it->get<std::uint64_t>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityStatistics_EnumerationTime);
+			if (it != object.end())
+			{
+				entity.setEnumerationTime(it->get<std::chrono::milliseconds>());
+			}
+		}
 	}
 	catch (json::type_error const& e)
 	{

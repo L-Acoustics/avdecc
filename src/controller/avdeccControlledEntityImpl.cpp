@@ -434,6 +434,37 @@ entity::model::StreamConnections const& ControlledEntityImpl::getStreamOutputCon
 	return dynamicModel.connections;
 }
 
+// Statistics
+std::uint64_t ControlledEntityImpl::getAecpRetryCounter() const noexcept
+{
+	return _aecpRetryCounter;
+}
+
+std::uint64_t ControlledEntityImpl::getAecpTimeoutCounter() const noexcept
+{
+	return _aecpTimeoutCounter;
+}
+
+std::uint64_t ControlledEntityImpl::getAecpUnexpectedResponseCounter() const noexcept
+{
+	return _aecpUnexpectedResponseCounter;
+}
+
+std::chrono::milliseconds const& ControlledEntityImpl::getAecpResponseAverageTime() const noexcept
+{
+	return _aecpResponseAverageTime;
+}
+
+std::uint64_t ControlledEntityImpl::getAemAecpUnsolicitedCounter() const noexcept
+{
+	return _aemAecpUnsolicitedCounter;
+}
+
+std::chrono::milliseconds const& ControlledEntityImpl::getEnumerationTime() const noexcept
+{
+	return _enumerationTime;
+}
+
 // Visitor method
 void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) const noexcept
 {
@@ -711,7 +742,37 @@ entity::model::ConfigurationNodeDynamicModel& ControlledEntityImpl::getConfigura
 	return getConfigurationTree(configurationIndex).dynamicModel;
 }
 
-// Setters of the DescriptorDynamic info, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist, Exception::InvalidDescriptorIndex if descriptorIndex is invalid
+entity::model::EntityCounters& ControlledEntityImpl::getEntityCounters() noexcept
+{
+	auto& entityTree = getEntityTree();
+	return entityTree.dynamicModel.counters;
+}
+
+entity::model::AvbInterfaceCounters& ControlledEntityImpl::getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept
+{
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels);
+	return dynamicModel.counters;
+}
+
+entity::model::ClockDomainCounters& ControlledEntityImpl::getClockDomainCounters(entity::model::ClockDomainIndex const clockDomainIndex) noexcept
+{
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), clockDomainIndex, &entity::model::ConfigurationTree::clockDomainModels);
+	return dynamicModel.counters;
+}
+
+entity::model::StreamInputCounters& ControlledEntityImpl::getStreamInputCounters(entity::model::StreamIndex const streamIndex) noexcept
+{
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels);
+	return dynamicModel.counters;
+}
+
+entity::model::StreamOutputCounters& ControlledEntityImpl::getStreamOutputCounters(entity::model::StreamIndex const streamIndex) noexcept
+{
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
+	return dynamicModel.counters;
+}
+
+// Setters of the DescriptorDynamic info, default constructing if not existing
 void ControlledEntityImpl::setEntityName(entity::model::AvdeccFixedString const& name) noexcept
 {
 	_entityTree.dynamicModel.entityName = name;
@@ -1011,37 +1072,7 @@ void ControlledEntityImpl::setMemoryObjectLength(entity::model::ConfigurationInd
 	dynamicModel.length = length;
 }
 
-entity::model::EntityCounters& ControlledEntityImpl::getEntityCounters() noexcept
-{
-	auto& entityTree = getEntityTree();
-	return entityTree.dynamicModel.counters;
-}
-
-entity::model::AvbInterfaceCounters& ControlledEntityImpl::getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept
-{
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels);
-	return dynamicModel.counters;
-}
-
-entity::model::ClockDomainCounters& ControlledEntityImpl::getClockDomainCounters(entity::model::ClockDomainIndex const clockDomainIndex) noexcept
-{
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), clockDomainIndex, &entity::model::ConfigurationTree::clockDomainModels);
-	return dynamicModel.counters;
-}
-
-entity::model::StreamInputCounters& ControlledEntityImpl::getStreamInputCounters(entity::model::StreamIndex const streamIndex) noexcept
-{
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels);
-	return dynamicModel.counters;
-}
-
-entity::model::StreamOutputCounters& ControlledEntityImpl::getStreamOutputCounters(entity::model::StreamIndex const streamIndex) noexcept
-{
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
-	return dynamicModel.counters;
-}
-
-// Setters (of the model, not the physical entity)
+// Setters of the global state
 void ControlledEntityImpl::setEntity(entity::Entity const& entity) noexcept
 {
 	_entity = entity;
@@ -1095,6 +1126,36 @@ void ControlledEntityImpl::setMilanInfo(entity::model::MilanInfo const& info) no
 	_milanInfo = info;
 }
 
+// Setters of the Statistics
+void ControlledEntityImpl::setAecpRetryCounter(std::uint64_t const value) noexcept
+{
+	_aecpRetryCounter = value;
+}
+
+void ControlledEntityImpl::setAecpTimeoutCounter(std::uint64_t const value) noexcept
+{
+	_aecpTimeoutCounter = value;
+}
+
+void ControlledEntityImpl::setAecpUnexpectedResponseCounter(std::uint64_t const value) noexcept
+{
+	_aecpUnexpectedResponseCounter = value;
+}
+
+void ControlledEntityImpl::setAecpResponseAverageTime(std::chrono::milliseconds const& value) noexcept
+{
+	_aecpResponseAverageTime = value;
+}
+
+void ControlledEntityImpl::setAemAecpUnsolicitedCounter(std::uint64_t const value) noexcept
+{
+	_aemAecpUnsolicitedCounter = value;
+}
+
+void ControlledEntityImpl::setEnumerationTime(std::chrono::milliseconds const& value) noexcept
+{
+	_enumerationTime = value;
+}
 
 // Setters of the Model from AEM Descriptors (including DescriptorDynamic info)
 void ControlledEntityImpl::setEntityTree(entity::model::EntityTree const& entityTree) noexcept
@@ -1515,6 +1576,50 @@ void ControlledEntityImpl::setClockDomainDescriptor(entity::model::ClockDomainDe
 		m.objectName = descriptor.objectName;
 		m.clockSourceIndex = descriptor.clockSourceIndex;
 	}
+}
+
+// Setters of statistics
+std::uint64_t ControlledEntityImpl::incrementAecpRetryCounter() noexcept
+{
+	++_aecpRetryCounter;
+	return _aecpRetryCounter;
+}
+
+std::uint64_t ControlledEntityImpl::incrementAecpTimeoutCounter() noexcept
+{
+	++_aecpTimeoutCounter;
+	return _aecpTimeoutCounter;
+}
+
+std::uint64_t ControlledEntityImpl::incrementAecpUnexpectedResponseCounter() noexcept
+{
+	++_aecpUnexpectedResponseCounter;
+	return _aecpUnexpectedResponseCounter;
+}
+
+std::chrono::milliseconds const& ControlledEntityImpl::updateAecpResponseTimeAverage(std::chrono::milliseconds const& responseTime) noexcept
+{
+	++_aecpResponsesCount;
+	_aecpResponseTimeSum += responseTime;
+	_aecpResponseAverageTime = _aecpResponseTimeSum / _aecpResponsesCount;
+
+	return _aecpResponseAverageTime;
+}
+
+std::uint64_t ControlledEntityImpl::incrementAemAecpUnsolicitedCounter() noexcept
+{
+	++_aemAecpUnsolicitedCounter;
+	return _aemAecpUnsolicitedCounter;
+}
+
+void ControlledEntityImpl::setStartEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& startTime) noexcept
+{
+	_enumerationStartTime = std::move(startTime);
+}
+
+void ControlledEntityImpl::setEndEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& endTime) noexcept
+{
+	_enumerationTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - _enumerationStartTime);
 }
 
 // Expected RegisterUnsol query methods

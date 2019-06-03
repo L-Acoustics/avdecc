@@ -99,6 +99,9 @@ void ControllerImpl::onEntityOnline(entity::controller::Interface const* const c
 		// Set Steps
 		controlledEntity->setEnumerationSteps(steps);
 
+		// Save the time we start enumeration
+		controlledEntity->setStartEnumerationTime(std::chrono::steady_clock::now());
+
 		// Check first enumeration step
 		checkEnumerationSteps(controlledEntity.get());
 	}
@@ -764,6 +767,113 @@ void ControllerImpl::onEntityIdentifyNotification(entity::controller::Interface 
 		{
 			// Update the time
 			it->second = currentTime;
+		}
+	}
+}
+
+/* **** Statistics **** */
+void ControllerImpl::onAecpRetry(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const& entityID) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+
+		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+		auto const value = entity.incrementAecpRetryCounter();
+
+		// Entity was advertised to the user, notify observers
+		if (entity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAecpRetryCounterChanged, this, &entity, value);
+		}
+	}
+}
+
+void ControllerImpl::onAecpTimeout(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const& entityID) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+
+		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+		auto const value = entity.incrementAecpTimeoutCounter();
+
+		// Entity was advertised to the user, notify observers
+		if (entity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAecpTimeoutCounterChanged, this, &entity, value);
+		}
+	}
+}
+
+void ControllerImpl::onAecpUnexpectedResponse(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const& entityID) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+
+		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+		auto const value = entity.incrementAecpUnexpectedResponseCounter();
+
+		// Entity was advertised to the user, notify observers
+		if (entity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAecpUnexpectedResponseCounterChanged, this, &entity, value);
+		}
+	}
+}
+
+void ControllerImpl::onAecpResponseTime(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const& entityID, std::chrono::milliseconds const& responseTime) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+
+		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+		auto const& previous = entity.getAecpResponseAverageTime();
+		auto const& value = entity.updateAecpResponseTimeAverage(responseTime);
+
+		// Entity was advertised to the user, notify observers
+		if (entity.wasAdvertised() && previous != value)
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAecpResponseAverageTimeChanged, this, &entity, value);
+		}
+	}
+}
+
+void ControllerImpl::onAemAecpUnsolicitedReceived(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const& entityID) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+
+		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+		auto const value = entity.incrementAemAecpUnsolicitedCounter();
+
+		// Entity was advertised to the user, notify observers
+		if (entity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAemAecpUnsolicitedCounterChanged, this, &entity, value);
 		}
 	}
 }

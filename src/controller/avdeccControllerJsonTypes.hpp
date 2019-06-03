@@ -201,6 +201,14 @@ constexpr auto ControlledEntityState_LockingControllerID = "locking_controller_i
 constexpr auto ControlledEntityState_SubscribedUnsol = "subscribed_unsol";
 constexpr auto ControlledEntityState_ActiveConfiguration = "active_configuration";
 
+/* ControlledEntityStatistics */
+constexpr auto ControlledEntityStatistics_AecpRetryCounter = "aecp_retry_counter";
+constexpr auto ControlledEntityStatistics_AecpTimeoutCounter = "aecp_timeout_counter";
+constexpr auto ControlledEntityStatistics_AecpUnexpectedResponseCounter = "aecp_unexpected_response_counter";
+constexpr auto ControlledEntityStatistics_AecpResponseAverageTime = "aecp_response_average_time";
+constexpr auto ControlledEntityStatistics_AemAecpUnsolicitedCounter = "aem_aecp_unsolicited_counter";
+constexpr auto ControlledEntityStatistics_EnumerationTime = "enumeration_time";
+
 } // namespace keyName
 
 /* ControlledEntity::CompatibilityFlag conversion */
@@ -226,6 +234,7 @@ constexpr auto ControlledEntity_AdpInformation = "adp_information";
 constexpr auto ControlledEntity_EntityModel = "entity_model";
 constexpr auto ControlledEntity_MilanInformation = "milan_information";
 constexpr auto ControlledEntity_EntityState = "state";
+constexpr auto ControlledEntity_Statistics = "statistics";
 
 } // namespace keyName
 

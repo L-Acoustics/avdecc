@@ -129,6 +129,15 @@ public:
 		virtual void onAcmpCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept {}
 		/** Notification for when an ACMP Response is received, even for none of the locally registered entities and for responses already processed by the CommandStateMachine (meaning the sendAcmpCommand result handler have already been called). */
 		virtual void onAcmpResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept {}
+		/* **** Statistics **** */
+		/** Notification for when an AECP Command was resent due to a timeout (ControllerStateMachine only). If the retry time out again, then onAecpTimeout will be called. */
+		virtual void onAecpRetry(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const& /*entityID*/) noexcept {}
+		/** Notification for when an AECP Command timed out (not called when onAecpRetry is called). */
+		virtual void onAecpTimeout(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const& /*entityID*/) noexcept {}
+		/** Notification for when an AECP Response is received but is not expected (might have already timed out). */
+		virtual void onAecpUnexpectedResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const& /*entityID*/) noexcept {}
+		/** Notification for when an AECP Response is received (not an Unsolicited one) along with the time elapsed between the send and the receive. */
+		virtual void onAecpResponseTime(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const& /*entityID*/, std::chrono::milliseconds const& /*responseTime*/) noexcept {}
 	};
 
 	/**
