@@ -25,6 +25,27 @@ This file describes the coding style and guidelines used by this repository, whi
 - Always declare function parameters as const (so they cannot be changed inside the function), except for obvious reasons (references, movable objects and pointers that are mutable)
 - Always declare variables as const if they never change
 
+### Header inclusion order
+- Current library public headers (using "")
+- Current library private headers (using "")
+- Other non-standard libraries public headers (using <>)
+- Standard libraries public headers (using <>)
+
+Separate each category with an empty line feed.
+
+Example:
+```c++
+#include "la/avdecc/avdecc.hpp"
+
+#include "entity.hpp"
+
+#include <windows.h>
+#include <boost/boost.hpp>
+
+#include <vector>
+```
+
+
 ### Unsorted
 - Don't use function parameter to return a value (except for in/out _objects_, but never for _simple types_), use the return value of the function (use pair/tuple/struct/optional if required). Except if absolutely required.
 - [A non-owning pointer passed to a function should be declared as _&_ if required and _*_ if optional](https://youtu.be/xnqTKD8uD64?t=956)
