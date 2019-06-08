@@ -45,83 +45,100 @@ namespace jsonSerializer
 /* ************************************************************ */
 json createJsonObject(ControlledEntityImpl const& entity, bool const ignoreSanityChecks)
 {
-	// Create the object
-	auto object = json{};
-	auto const& e = entity.getEntity();
-
-	// Dump information of the dump itself
-	object[keyName::ControlledEntity_DumpVersion] = keyValue::ControlledEntity_DumpVersion;
-
-	// Dump ADP information
+	try
 	{
-		auto& adp = object[keyName::ControlledEntity_AdpInformation];
+		// Create the object
+		auto object = json{};
+		auto const& e = entity.getEntity();
 
-		// Dump common information
-		adp[entity::keyName::Entity_CommonInformation_Node] = e.getCommonInformation();
+		// Dump information of the dump itself
+		object[keyName::ControlledEntity_DumpVersion] = keyValue::ControlledEntity_DumpVersion;
 
-		// Dump interfaces information
-		auto intfcs = json{};
-		for (auto const& [avbInterfaceIndex, intfcInfo] : e.getInterfacesInformation()) // Don't use default std::map serializer, we want to force an array of object that includes the key (AvbInterfaceIndex)
+		// Dump ADP information
 		{
-			json j = intfcInfo; // Must use operator= instead of constructor to force usage of the to_json overload
-			if (avbInterfaceIndex == entity::Entity::GlobalAvbInterfaceIndex)
+			auto& adp = object[keyName::ControlledEntity_AdpInformation];
+
+			// Dump common information
+			adp[entity::keyName::Entity_CommonInformation_Node] = e.getCommonInformation();
+
+			// Dump interfaces information
+			auto intfcs = json{};
+			for (auto const& [avbInterfaceIndex, intfcInfo] : e.getInterfacesInformation()) // Don't use default std::map serializer, we want to force an array of object that includes the key (AvbInterfaceIndex)
 			{
-				j[entity::keyName::Entity_InterfaceInformation_AvbInterfaceIndex] = nullptr;
+				json j = intfcInfo; // Must use operator= instead of constructor to force usage of the to_json overload
+				if (avbInterfaceIndex == entity::Entity::GlobalAvbInterfaceIndex)
+				{
+					j[entity::keyName::Entity_InterfaceInformation_AvbInterfaceIndex] = nullptr;
+				}
+				else
+				{
+					j[entity::keyName::Entity_InterfaceInformation_AvbInterfaceIndex] = avbInterfaceIndex;
+				}
+				intfcs.push_back(j);
 			}
-			else
-			{
-				j[entity::keyName::Entity_InterfaceInformation_AvbInterfaceIndex] = avbInterfaceIndex;
-			}
-			intfcs.push_back(j);
+			adp[entity::keyName::Entity_InterfaceInformation_Node] = intfcs;
 		}
-		adp[entity::keyName::Entity_InterfaceInformation_Node] = intfcs;
-	}
 
-	// Dump device compatibility flags
-	object[keyName::ControlledEntity_CompatibilityFlags] = entity.getCompatibilityFlags();
+		// Dump device compatibility flags
+		object[keyName::ControlledEntity_CompatibilityFlags] = entity.getCompatibilityFlags();
 
-	// Dump AEM if supported
-	if (e.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
-	{
-		// Dump static and dynamic models
-		auto flags = entity::model::jsonSerializer::Flags{ entity::model::jsonSerializer::Flag::ProcessStaticModel, entity::model::jsonSerializer::Flag::ProcessDynamicModel };
-		if (ignoreSanityChecks)
+		// Dump AEM if supported
+		if (e.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
 		{
-			flags.set(entity::model::jsonSerializer::Flag::IgnoreSanityChecks);
+			// Dump static and dynamic models
+			auto flags = entity::model::jsonSerializer::Flags{ entity::model::jsonSerializer::Flag::ProcessStaticModel, entity::model::jsonSerializer::Flag::ProcessDynamicModel };
+			if (ignoreSanityChecks)
+			{
+				flags.set(entity::model::jsonSerializer::Flag::IgnoreSanityChecks);
+			}
+			object[keyName::ControlledEntity_EntityModel] = entity::model::jsonSerializer::createJsonObject(entity.getEntityTree(), flags);
 		}
-		object[keyName::ControlledEntity_EntityModel] = entity::model::jsonSerializer::createJsonObject(entity.getEntityTree(), flags);
-	}
 
-	// Dump Milan information, if present
-	auto const milanInfo = entity.getMilanInfo();
-	if (milanInfo)
+		// Dump Milan information, if present
+		auto const milanInfo = entity.getMilanInfo();
+		if (milanInfo)
+		{
+			object[keyName::ControlledEntity_MilanInformation] = *milanInfo;
+		}
+
+		// Dump Entity State
+		{
+			auto& state = object[keyName::ControlledEntity_EntityState];
+			state[controller::keyName::ControlledEntityState_AcquireState] = entity.getAcquireState();
+			state[controller::keyName::ControlledEntityState_OwningControllerID] = entity.getOwningControllerID();
+			state[controller::keyName::ControlledEntityState_LockState] = entity.getLockState();
+			state[controller::keyName::ControlledEntityState_LockingControllerID] = entity.getLockingControllerID();
+			state[controller::keyName::ControlledEntityState_SubscribedUnsol] = entity.isSubscribedToUnsolicitedNotifications();
+			state[controller::keyName::ControlledEntityState_ActiveConfiguration] = entity.getCurrentConfigurationIndex();
+		}
+
+		// Dump Entity Statistics
+		{
+			auto& statistics = object[keyName::ControlledEntity_Statistics];
+			statistics[controller::keyName::ControlledEntityStatistics_AecpRetryCounter] = entity.getAecpRetryCounter();
+			statistics[controller::keyName::ControlledEntityStatistics_AecpTimeoutCounter] = entity.getAecpTimeoutCounter();
+			statistics[controller::keyName::ControlledEntityStatistics_AecpUnexpectedResponseCounter] = entity.getAecpUnexpectedResponseCounter();
+			statistics[controller::keyName::ControlledEntityStatistics_AecpResponseAverageTime] = entity.getAecpResponseAverageTime();
+			statistics[controller::keyName::ControlledEntityStatistics_AemAecpUnsolicitedCounter] = entity.getAemAecpUnsolicitedCounter();
+			statistics[controller::keyName::ControlledEntityStatistics_EnumerationTime] = entity.getEnumerationTime();
+		}
+
+		return object;
+	}
+	catch (json::exception const& e)
 	{
-		object[keyName::ControlledEntity_MilanInformation] = *milanInfo;
+		AVDECC_ASSERT(false, "json::exception is not expected to be thrown here");
+		throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InternalError, e.what() };
 	}
-
-	// Dump Entity State
+	catch (avdecc::jsonSerializer::SerializationException const&)
 	{
-		auto& state = object[keyName::ControlledEntity_EntityState];
-		state[controller::keyName::ControlledEntityState_AcquireState] = entity.getAcquireState();
-		state[controller::keyName::ControlledEntityState_OwningControllerID] = entity.getOwningControllerID();
-		state[controller::keyName::ControlledEntityState_LockState] = entity.getLockState();
-		state[controller::keyName::ControlledEntityState_LockingControllerID] = entity.getLockingControllerID();
-		state[controller::keyName::ControlledEntityState_SubscribedUnsol] = entity.isSubscribedToUnsolicitedNotifications();
-		state[controller::keyName::ControlledEntityState_ActiveConfiguration] = entity.getCurrentConfigurationIndex();
+		throw; // Rethrow, this is already the correct exception type
 	}
-
-	// Dump Entity Statistics
+	catch (...)
 	{
-		auto& statistics = object[keyName::ControlledEntity_Statistics];
-		statistics[controller::keyName::ControlledEntityStatistics_AecpRetryCounter] = entity.getAecpRetryCounter();
-		statistics[controller::keyName::ControlledEntityStatistics_AecpTimeoutCounter] = entity.getAecpTimeoutCounter();
-		statistics[controller::keyName::ControlledEntityStatistics_AecpUnexpectedResponseCounter] = entity.getAecpUnexpectedResponseCounter();
-		statistics[controller::keyName::ControlledEntityStatistics_AecpResponseAverageTime] = entity.getAecpResponseAverageTime();
-		statistics[controller::keyName::ControlledEntityStatistics_AemAecpUnsolicitedCounter] = entity.getAemAecpUnsolicitedCounter();
-		statistics[controller::keyName::ControlledEntityStatistics_EnumerationTime] = entity.getEnumerationTime();
+		AVDECC_ASSERT(false, "Exception type other than avdecc::jsonSerializer::SerializationException are not expected to be thrown here");
+		throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InternalError, "Exception type other than avdecc::jsonSerializer::SerializationException are not expected to be thrown here." };
 	}
-
-	return object;
 }
 
 void setEntityModel(ControlledEntityImpl& entity, json const& object, entity::model::jsonSerializer::Flags flags)
@@ -138,32 +155,19 @@ void setEntityModel(ControlledEntityImpl& entity, json const& object, entity::mo
 			entity.setEntityTree(entityTree);
 		}
 	}
-	catch (json::type_error const& e)
-	{
-		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InvalidValue, e.what() };
-	}
-	catch (json::parse_error const& e)
-	{
-		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::ParseError, e.what() };
-	}
-	catch (json::out_of_range const& e)
-	{
-		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::MissingKey, e.what() };
-	}
-	catch (json::other_error const& e)
-	{
-		if (e.id == 555)
-		{
-			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InvalidKey, e.what() };
-		}
-		else
-		{
-			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
-		}
-	}
 	catch (json::exception const& e)
 	{
-		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
+		AVDECC_ASSERT(false, "json::exception is not expected to be thrown here");
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InternalError, e.what() };
+	}
+	catch (avdecc::jsonSerializer::DeserializationException const&)
+	{
+		throw; // Rethrow, this is already the correct exception type
+	}
+	catch (...)
+	{
+		AVDECC_ASSERT(false, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here");
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InternalError, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here." };
 	}
 }
 
@@ -235,6 +239,15 @@ void setEntityState(ControlledEntityImpl& entity, json const& object)
 	catch (json::exception const& e)
 	{
 		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
+	}
+	catch (avdecc::jsonSerializer::DeserializationException const&)
+	{
+		throw; // Rethrow, this is already the correct exception type
+	}
+	catch (...)
+	{
+		AVDECC_ASSERT(false, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here");
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InternalError, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here." };
 	}
 }
 
@@ -312,6 +325,15 @@ void setEntityStatistics(ControlledEntityImpl& entity, json const& object)
 	catch (json::exception const& e)
 	{
 		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
+	}
+	catch (avdecc::jsonSerializer::DeserializationException const&)
+	{
+		throw; // Rethrow, this is already the correct exception type
+	}
+	catch (...)
+	{
+		AVDECC_ASSERT(false, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here");
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InternalError, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here." };
 	}
 }
 

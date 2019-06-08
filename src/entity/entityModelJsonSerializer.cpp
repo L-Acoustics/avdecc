@@ -409,18 +409,36 @@ json dumpEntityTree(EntityTree const& entityTree, Flags const flags, bool& gotSa
 
 json LA_AVDECC_CALL_CONVENTION createJsonObject(EntityTree const& entityTree, Flags const flags)
 {
-	auto object = json{};
-	auto gotSanityCheckError = false;
-
-	object[keyName::NodeName_EntityDescriptor] = dumpEntityTree(entityTree, flags, gotSanityCheckError);
-
-	// If sanity checks failed
-	if (gotSanityCheckError)
+	try
 	{
-		object[keyName::Node_NotCompliant] = true;
-	}
+		auto object = json{};
+		auto gotSanityCheckError = false;
 
-	return object;
+		object[keyName::NodeName_EntityDescriptor] = dumpEntityTree(entityTree, flags, gotSanityCheckError);
+
+		// If sanity checks failed
+		if (gotSanityCheckError)
+		{
+			object[keyName::Node_NotCompliant] = true;
+		}
+
+		return object;
+	}
+	catch (json::exception const& e)
+	{
+		AVDECC_ASSERT(false, "json::exception is not expected to be thrown here");
+		throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InternalError, e.what() };
+	}
+	catch (avdecc::jsonSerializer::SerializationException const&)
+	{
+		throw; // Rethrow, this is already the correct exception type
+	}
+	catch (...)
+	{
+		// Check that only SerializationException exception type propagate outside the shared library, otherwise it will be sliced and the caller won't be able to catch it properly (on macOS)
+		AVDECC_ASSERT(false, "Exception type other than avdecc::jsonSerializer::SerializationException should not propagate");
+		throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InternalError, "Exception type other than avdecc::jsonSerializer::SerializationException should not propagate." };
+	}
 }
 
 /* ************************************************************ */
@@ -700,17 +718,57 @@ EntityTree readEntityTree(json const& object, Flags const flags)
 
 EntityTree LA_AVDECC_CALL_CONVENTION createEntityTree(json const& object, Flags const flags)
 {
-	// Check for compliance
+	try
 	{
-		auto notCompliant = false;
-		get_optional_value(object, keyName::Node_NotCompliant, notCompliant);
-		if (notCompliant && !flags.test(Flag::IgnoreSanityChecks))
+		// Check for compliance
 		{
-			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::NotCompliant, "Model is not full compliant with IEEE1722.1." };
+			auto notCompliant = false;
+			get_optional_value(object, keyName::Node_NotCompliant, notCompliant);
+			if (notCompliant && !flags.test(Flag::IgnoreSanityChecks))
+			{
+				throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::NotCompliant, "Model is not full compliant with IEEE1722.1." };
+			}
+		}
+
+		return readEntityTree(object.at(keyName::NodeName_EntityDescriptor), flags);
+	}
+	catch (json::type_error const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InvalidValue, e.what() };
+	}
+	catch (json::parse_error const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::ParseError, e.what() };
+	}
+	catch (json::out_of_range const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::MissingKey, e.what() };
+	}
+	catch (json::other_error const& e)
+	{
+		if (e.id == 555)
+		{
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InvalidKey, e.what() };
+		}
+		else
+		{
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
 		}
 	}
-
-	return readEntityTree(object.at(keyName::NodeName_EntityDescriptor), flags);
+	catch (json::exception const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
+	}
+	catch (avdecc::jsonSerializer::DeserializationException const&)
+	{
+		throw; // Rethrow, this is already the correct exception type
+	}
+	catch (...)
+	{
+		// Check that only DeserializationException exception type propagate outside the shared library, otherwise it will be sliced and the caller won't be able to catch it properly (on macOS)
+		AVDECC_ASSERT(false, "Exception type other than avdecc::jsonSerializer::DeserializationException should not propagate.");
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InternalError, "Exception type other than avdecc::jsonSerializer::DeserializationException should not propagate." };
+	}
 }
 
 } // namespace jsonSerializer
