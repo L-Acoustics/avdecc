@@ -133,8 +133,11 @@ enum class Flag
 using Flags = utils::EnumBitfield<Flag>;
 
 #ifdef ENABLE_AVDECC_FEATURE_JSON
+// Serialization methods
 LA_AVDECC_API nlohmann::json LA_AVDECC_CALL_CONVENTION createJsonObject(EntityTree const& entityTree, Flags const flags); // Throws SerializationException
-LA_AVDECC_API EntityTree LA_AVDECC_CALL_CONVENTION createEntityTree(nlohmann::json const& object, Flags const flags); // Throws SerializationException
+
+// Deserialization methods
+LA_AVDECC_API EntityTree LA_AVDECC_CALL_CONVENTION createEntityTree(nlohmann::json const& object, Flags const flags); // Throws DeserializationException
 #endif // ENABLE_AVDECC_FEATURE_JSON
 
 } // namespace jsonSerializer

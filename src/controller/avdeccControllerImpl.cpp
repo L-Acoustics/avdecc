@@ -1966,6 +1966,9 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 	auto const& e = controlledEntity.getEntity();
 	auto const entityID = e.getEntityID();
 
+	// Save the enumeration time
+	controlledEntity.setEndEnumerationTime(std::chrono::steady_clock::now());
+
 	// If AEM is supported, build the Entity Model Graph
 	if (e.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
 	{
@@ -3121,6 +3124,9 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntit
 
 		auto controlledEntity = std::make_shared<ControlledEntityImpl>(entity::Entity{ commonInfo, intfcsInfo }, _entitiesSharedLockInformation, true);
 		auto& entity = *controlledEntity;
+
+		// Start Enumeration timer
+		entity.setStartEnumerationTime(std::chrono::steady_clock::now());
 
 		// Read device compatibility flags
 		entity.setCompatibilityFlags(object.at(jsonSerializer::keyName::ControlledEntity_CompatibilityFlags).get<ControlledEntity::CompatibilityFlags>());

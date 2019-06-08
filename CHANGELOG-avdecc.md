@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Entity Model dump as readable json file
 - Entity Model load from readable json file
 - NetworkInterfaceHelper observer to monitor changes in adapters status
+- [Controller statistics counters](https://github.com/L-Acoustics/avdecc/issues/41)
 
 ### Changed
 - NetworkInterfaceHelper _isActive_ field replace with _isEnabled_ and _isConnected_
@@ -17,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - [NetworkInterfaces Helper fully working on win7 and win10](https://github.com/L-Acoustics/avdecc/issues/59)
+- json::Exception being thrown across shared library boundary
 
 ## [2.9.2] - 2019-05-20
 ### Added

@@ -233,7 +233,7 @@ public:
 	static LocalEntity::MvuCommandStatus convertErrorToMvuCommandStatus(protocol::ProtocolInterface::Error const error) noexcept;
 	static LocalEntity::ControlStatus convertErrorToControlStatus(protocol::ProtocolInterface::Error const error) noexcept;
 
-	static void sendAemAecpCommand(protocol::ProtocolInterface const* const pi, UniqueIdentifier const controllerEntityID, UniqueIdentifier const targetEntityID, networkInterface::MacAddress targetMacAddress, protocol::AemCommandType const commandType, void const* const payload, size_t const payloadLength, std::function<void(la::avdecc::protocol::Aecpdu const*, LocalEntity::AemCommandStatus)> const& onResult) noexcept
+	static void sendAemAecpCommand(protocol::ProtocolInterface const* const pi, UniqueIdentifier const controllerEntityID, UniqueIdentifier const targetEntityID, networkInterface::MacAddress targetMacAddress, protocol::AemCommandType const commandType, void const* const payload, size_t const payloadLength, std::function<void(protocol::Aecpdu const*, LocalEntity::AemCommandStatus)> const& onResult) noexcept
 	{
 		try
 		{
@@ -255,7 +255,7 @@ public:
 			aem->setCommandSpecificData(payload, payloadLength);
 
 			auto const error = pi->sendAecpCommand(std::move(frame),
-				[onResult](la::avdecc::protocol::Aecpdu const* response, protocol::ProtocolInterface::Error const error) noexcept
+				[onResult](protocol::Aecpdu const* response, protocol::ProtocolInterface::Error const error) noexcept
 				{
 					utils::invokeProtectedHandler(onResult, response, convertErrorToAemCommandStatus(error));
 				});
@@ -274,7 +274,7 @@ public:
 		}
 	}
 
-	static void sendAaAecpCommand(protocol::ProtocolInterface const* const pi, UniqueIdentifier const controllerEntityID, UniqueIdentifier const targetEntityID, networkInterface::MacAddress targetMacAddress, addressAccess::Tlvs const& tlvs, std::function<void(la::avdecc::protocol::Aecpdu const*, LocalEntity::AaCommandStatus)> const& onResult) noexcept
+	static void sendAaAecpCommand(protocol::ProtocolInterface const* const pi, UniqueIdentifier const controllerEntityID, UniqueIdentifier const targetEntityID, networkInterface::MacAddress targetMacAddress, addressAccess::Tlvs const& tlvs, std::function<void(protocol::Aecpdu const*, LocalEntity::AaCommandStatus)> const& onResult) noexcept
 	{
 		try
 		{
@@ -297,7 +297,7 @@ public:
 			}
 
 			auto const error = pi->sendAecpCommand(std::move(frame),
-				[onResult](la::avdecc::protocol::Aecpdu const* response, protocol::ProtocolInterface::Error const error) noexcept
+				[onResult](protocol::Aecpdu const* response, protocol::ProtocolInterface::Error const error) noexcept
 				{
 					utils::invokeProtectedHandler(onResult, response, convertErrorToAaCommandStatus(error));
 				});
@@ -316,7 +316,7 @@ public:
 		}
 	}
 
-	static void sendMvuAecpCommand(protocol::ProtocolInterface const* const pi, UniqueIdentifier const controllerEntityID, UniqueIdentifier const targetEntityID, networkInterface::MacAddress targetMacAddress, protocol::MvuCommandType const commandType, void const* const payload, size_t const payloadLength, std::function<void(la::avdecc::protocol::Aecpdu const*, LocalEntity::MvuCommandStatus)> const& onResult) noexcept
+	static void sendMvuAecpCommand(protocol::ProtocolInterface const* const pi, UniqueIdentifier const controllerEntityID, UniqueIdentifier const targetEntityID, networkInterface::MacAddress targetMacAddress, protocol::MvuCommandType const commandType, void const* const payload, size_t const payloadLength, std::function<void(protocol::Aecpdu const*, LocalEntity::MvuCommandStatus)> const& onResult) noexcept
 	{
 		try
 		{
@@ -337,7 +337,7 @@ public:
 			mvu->setCommandSpecificData(payload, payloadLength);
 
 			auto const error = pi->sendAecpCommand(std::move(frame),
-				[onResult](la::avdecc::protocol::Aecpdu const* response, protocol::ProtocolInterface::Error const error) noexcept
+				[onResult](protocol::Aecpdu const* response, protocol::ProtocolInterface::Error const error) noexcept
 				{
 					utils::invokeProtectedHandler(onResult, response, convertErrorToMvuCommandStatus(error));
 				});
@@ -356,7 +356,7 @@ public:
 		}
 	}
 
-	static void sendAcmpCommand(protocol::ProtocolInterface const* const pi, protocol::AcmpMessageType const messageType, UniqueIdentifier const controllerEntityID, UniqueIdentifier const talkerEntityID, model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, model::StreamIndex const listenerStreamIndex, std::uint16_t const connectionIndex, std::function<void(la::avdecc::protocol::Acmpdu const*, LocalEntity::ControlStatus)> const& onResult) noexcept
+	static void sendAcmpCommand(protocol::ProtocolInterface const* const pi, protocol::AcmpMessageType const messageType, UniqueIdentifier const controllerEntityID, UniqueIdentifier const talkerEntityID, model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, model::StreamIndex const listenerStreamIndex, std::uint16_t const connectionIndex, std::function<void(protocol::Acmpdu const*, LocalEntity::ControlStatus)> const& onResult) noexcept
 	{
 		try
 		{

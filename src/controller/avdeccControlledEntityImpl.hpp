@@ -236,6 +236,14 @@ public:
 	/** Get connections information about a talker's stream */
 	virtual entity::model::StreamConnections const& getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const override; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 
+	// Statistics
+	virtual std::uint64_t getAecpRetryCounter() const noexcept override;
+	virtual std::uint64_t getAecpTimeoutCounter() const noexcept override;
+	virtual std::uint64_t getAecpUnexpectedResponseCounter() const noexcept override;
+	virtual std::chrono::milliseconds const& getAecpResponseAverageTime() const noexcept override;
+	virtual std::uint64_t getAemAecpUnsolicitedCounter() const noexcept override;
+	virtual std::chrono::milliseconds const& getEnumerationTime() const noexcept override;
+
 	// Const Tree getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist
 	entity::model::EntityTree const& getEntityTree() const;
 	entity::model::ConfigurationTree const& getConfigurationTree(entity::model::ConfigurationIndex const configurationIndex) const;
@@ -294,8 +302,13 @@ public:
 		auto& configTree = getConfigurationTree(configurationIndex);
 		return (configTree.*Field)[index].dynamicModel;
 	}
+	entity::model::EntityCounters& getEntityCounters() noexcept;
+	entity::model::AvbInterfaceCounters& getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept;
+	entity::model::ClockDomainCounters& getClockDomainCounters(entity::model::ClockDomainIndex const clockDomainIndex) noexcept;
+	entity::model::StreamInputCounters& getStreamInputCounters(entity::model::StreamIndex const streamIndex) noexcept;
+	entity::model::StreamOutputCounters& getStreamOutputCounters(entity::model::StreamIndex const streamIndex) noexcept;
 
-	// Setters of the DescriptorDynamic info, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist, Exception::InvalidDescriptorIndex if descriptorIndex is invalid
+	// Setters of the DescriptorDynamic info, default constructing if not existing
 	void setEntityName(entity::model::AvdeccFixedString const& name) noexcept;
 	void setEntityGroupName(entity::model::AvdeccFixedString const& name) noexcept;
 	void setCurrentConfiguration(entity::model::ConfigurationIndex const configurationIndex) noexcept;
@@ -324,13 +337,8 @@ public:
 	void removeStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) noexcept;
 	void setClockSource(entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex) noexcept;
 	void setMemoryObjectLength(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) noexcept;
-	entity::model::EntityCounters& getEntityCounters() noexcept;
-	entity::model::AvbInterfaceCounters& getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept;
-	entity::model::ClockDomainCounters& getClockDomainCounters(entity::model::ClockDomainIndex const clockDomainIndex) noexcept;
-	entity::model::StreamInputCounters& getStreamInputCounters(entity::model::StreamIndex const streamIndex) noexcept;
-	entity::model::StreamOutputCounters& getStreamOutputCounters(entity::model::StreamIndex const streamIndex) noexcept;
 
-	// Setters (of the model, not the physical entity)
+	// Setters of the global state
 	void setEntity(entity::Entity const& entity) noexcept;
 	InterfaceLinkStatus setAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex, InterfaceLinkStatus const linkStatus) noexcept; // Returns previous link status
 	void setAcquireState(model::AcquireState const state) noexcept;
@@ -338,6 +346,14 @@ public:
 	void setLockState(model::LockState const state) noexcept;
 	void setLockingController(UniqueIdentifier const controllerID) noexcept;
 	void setMilanInfo(entity::model::MilanInfo const& info) noexcept;
+
+	// Setters of the Statistics
+	void setAecpRetryCounter(std::uint64_t const value) noexcept;
+	void setAecpTimeoutCounter(std::uint64_t const value) noexcept;
+	void setAecpUnexpectedResponseCounter(std::uint64_t const value) noexcept;
+	void setAecpResponseAverageTime(std::chrono::milliseconds const& value) noexcept;
+	void setAemAecpUnsolicitedCounter(std::uint64_t const value) noexcept;
+	void setEnumerationTime(std::chrono::milliseconds const& value) noexcept;
 
 	// Setters of the Model from AEM Descriptors (including DescriptorDynamic info)
 	void setEntityTree(entity::model::EntityTree const& entityTree) noexcept;
@@ -358,6 +374,15 @@ public:
 	void setAudioClusterDescriptor(entity::model::AudioClusterDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex) noexcept;
 	void setAudioMapDescriptor(entity::model::AudioMapDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex) noexcept;
 	void setClockDomainDescriptor(entity::model::ClockDomainDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) noexcept;
+
+	// Setters of statistics
+	std::uint64_t incrementAecpRetryCounter() noexcept;
+	std::uint64_t incrementAecpTimeoutCounter() noexcept;
+	std::uint64_t incrementAecpUnexpectedResponseCounter() noexcept;
+	std::chrono::milliseconds const& updateAecpResponseTimeAverage(std::chrono::milliseconds const& responseTime) noexcept;
+	std::uint64_t incrementAemAecpUnsolicitedCounter() noexcept;
+	void setStartEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& startTime) noexcept;
+	void setEndEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& endTime) noexcept;
 
 	// Expected RegisterUnsol query methods
 	bool checkAndClearExpectedRegisterUnsol() noexcept;
@@ -502,6 +527,16 @@ private:
 	// Entity Model
 	mutable entity::model::EntityTree _entityTree{}; // Tree of the model as represented by the AVDECC protocol
 	mutable model::EntityNode _entityNode{}; // Model as represented by the ControlledEntity (tree of references to the model::EntityStaticTree and model::EntityDynamicTree)
+	// Statistics
+	std::uint64_t _aecpRetryCounter{ 0ull };
+	std::uint64_t _aecpTimeoutCounter{ 0ull };
+	std::uint64_t _aecpUnexpectedResponseCounter{ 0ull };
+	std::uint64_t _aecpResponsesCount{ 0ull }; // Intermediate variable used by _aecpResponseAverageTime
+	std::chrono::milliseconds _aecpResponseTimeSum{}; // Intermediate variable used by _aecpResponseAverageTime
+	std::chrono::milliseconds _aecpResponseAverageTime{};
+	std::uint64_t _aemAecpUnsolicitedCounter{ 0ull };
+	std::chrono::time_point<std::chrono::steady_clock> _enumerationStartTime{}; // Intermediate variable used by _enumerationTime
+	std::chrono::milliseconds _enumerationTime{};
 };
 
 } // namespace controller

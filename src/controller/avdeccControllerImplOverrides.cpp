@@ -2299,7 +2299,17 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 		// Set the Entity Model for our virtual entity
 		jsonSerializer::setEntityModel(entity, object.at(jsonSerializer::keyName::ControlledEntity_EntityModel), flags);
 
+		// Set the Entity State
 		jsonSerializer::setEntityState(entity, object.at(jsonSerializer::keyName::ControlledEntity_EntityState));
+
+		// Set the Statistics
+		{
+			auto const it = object.find(jsonSerializer::keyName::ControlledEntity_Statistics);
+			if (it != object.end())
+			{
+				jsonSerializer::setEntityStatistics(entity, *it);
+			}
+		}
 
 		// Choose a locale
 		chooseLocale(&entity, entity.getCurrentConfigurationIndex());

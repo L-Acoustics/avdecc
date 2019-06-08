@@ -1384,7 +1384,7 @@ void CapabilityDelegate::getMemoryObjectLength(UniqueIdentifier const targetEnti
 }
 
 /* Enumeration and Control Protocol (AECP) AA */
-void CapabilityDelegate::addressAccess(la::avdecc::UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, Interface::AddressAccessHandler const& handler) const noexcept
+void CapabilityDelegate::addressAccess(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, Interface::AddressAccessHandler const& handler) const noexcept
 {
 	try
 	{
@@ -1599,6 +1599,8 @@ void CapabilityDelegate::onAecpAemUnsolicitedResponse(protocol::ProtocolInterfac
 		{
 			// Process AEM message without any error or answer callbacks, it's not an expected response
 			processAemAecpResponse(&aecpdu, nullptr, {});
+			// Statistics
+			utils::invokeProtectedMethod(&controller::Delegate::onAemAecpUnsolicitedReceived, _controllerDelegate, &_controllerInterface, aecpdu.getTargetEntityID());
 		}
 	}
 }
@@ -1627,6 +1629,34 @@ void CapabilityDelegate::onAcmpResponse(protocol::ProtocolInterface* const /*pi*
 	{
 		processAcmpResponse(&acmpdu, LocalEntityImpl<>::OnACMPErrorCallback(), LocalEntityImpl<>::AnswerCallback(), true);
 	}
+}
+
+/* ************************************************************************** */
+/* Controller notifications                                                   */
+/* ************************************************************************** */
+/* **** Statistics **** */
+void CapabilityDelegate::onAecpRetry(protocol::ProtocolInterface* const /*pi*/, UniqueIdentifier const& entityID) noexcept
+{
+	// Statistics
+	utils::invokeProtectedMethod(&controller::Delegate::onAecpRetry, _controllerDelegate, &_controllerInterface, entityID);
+}
+
+void CapabilityDelegate::onAecpTimeout(protocol::ProtocolInterface* const /*pi*/, UniqueIdentifier const& entityID) noexcept
+{
+	// Statistics
+	utils::invokeProtectedMethod(&controller::Delegate::onAecpTimeout, _controllerDelegate, &_controllerInterface, entityID);
+}
+
+void CapabilityDelegate::onAecpUnexpectedResponse(protocol::ProtocolInterface* const /*pi*/, UniqueIdentifier const& entityID) noexcept
+{
+	// Statistics
+	utils::invokeProtectedMethod(&controller::Delegate::onAecpUnexpectedResponse, _controllerDelegate, &_controllerInterface, entityID);
+}
+
+void CapabilityDelegate::onAecpResponseTime(protocol::ProtocolInterface* const /*pi*/, UniqueIdentifier const& entityID, std::chrono::milliseconds const& responseTime) noexcept
+{
+	// Statistics
+	utils::invokeProtectedMethod(&controller::Delegate::onAecpResponseTime, _controllerDelegate, &_controllerInterface, entityID, responseTime);
 }
 
 /* ************************************************************************** */

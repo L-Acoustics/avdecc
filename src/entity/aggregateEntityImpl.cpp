@@ -808,7 +808,7 @@ void AggregateEntityImpl::getMemoryObjectLength(UniqueIdentifier const targetEnt
 }
 
 /* Enumeration and Control Protocol (AECP) AA */
-void AggregateEntityImpl::addressAccess(la::avdecc::UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, AddressAccessHandler const& handler) const noexcept
+void AggregateEntityImpl::addressAccess(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, AddressAccessHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{
@@ -1081,6 +1081,43 @@ void AggregateEntityImpl::onAcmpResponse(protocol::ProtocolInterface* const pi, 
 	{
 		_talkerCapabilityDelegate->onAcmpResponse(pi, acmpdu);
 	}
+}
+
+/* **** Statistics **** */
+void AggregateEntityImpl::onAecpRetry(protocol::ProtocolInterface* const pi, UniqueIdentifier const& entityID) noexcept
+{
+	if (_controllerCapabilityDelegate != nullptr)
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).onAecpRetry(pi, entityID);
+	}
+	// Listener and Talker don't implement retry mechanism
+}
+
+void AggregateEntityImpl::onAecpTimeout(protocol::ProtocolInterface* const pi, UniqueIdentifier const& entityID) noexcept
+{
+	if (_controllerCapabilityDelegate != nullptr)
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).onAecpTimeout(pi, entityID);
+	}
+	// Listener and Talker don't implement retry mechanism
+}
+
+void AggregateEntityImpl::onAecpUnexpectedResponse(protocol::ProtocolInterface* const pi, UniqueIdentifier const& entityID) noexcept
+{
+	if (_controllerCapabilityDelegate != nullptr)
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).onAecpUnexpectedResponse(pi, entityID);
+	}
+	// Listener and Talker don't implement retry mechanism
+}
+
+void AggregateEntityImpl::onAecpResponseTime(protocol::ProtocolInterface* const pi, UniqueIdentifier const& entityID, std::chrono::milliseconds const& responseTime) noexcept
+{
+	if (_controllerCapabilityDelegate != nullptr)
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).onAecpResponseTime(pi, entityID, responseTime);
+	}
+	// Listener and Talker don't really care about statistics
 }
 
 /* ************************************************************************** */

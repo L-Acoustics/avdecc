@@ -100,7 +100,8 @@ void CommandStateMachine::checkInflightCommandsTimeoutExpiracy() noexcept
 	auto const lg = std::lock_guard{ *_manager };
 
 	// Get current time
-	auto const now = std::chrono::system_clock::now();
+	auto const now = std::chrono::steady_clock::now();
+
 	auto* const protocolInterface = _manager->getProtocolInterfaceDelegate();
 
 	// Iterate over all locally registered command entities
@@ -114,7 +115,7 @@ void CommandStateMachine::checkInflightCommandsTimeoutExpiracy() noexcept
 			for (auto it = inflight.begin(); it != inflight.end(); /* Iterate inside the loop */)
 			{
 				auto& command = *it;
-				if (now > command.timeout)
+				if (now > command.timeoutTime)
 				{
 					auto error = ProtocolInterface::Error::NoError;
 					// Timeout expired, check if we retried yet
@@ -124,11 +125,15 @@ void CommandStateMachine::checkInflightCommandsTimeoutExpiracy() noexcept
 						command.retried = true;
 						error = protocolInterface->sendMessage(static_cast<Aecpdu const&>(*command.command));
 						resetAecpCommandTimeoutValue(command);
+						// Statistics
+						utils::invokeProtectedMethod(&Delegate::onAecpRetry, _delegate, targetEntityID);
 						LOG_CONTROLLER_STATE_MACHINE_DEBUG(targetEntityID, std::string("AECP command with sequenceID ") + std::to_string(command.sequenceID) + " timed out, trying again");
 					}
 					else
 					{
 						error = ProtocolInterface::Error::Timeout;
+						// Statistics
+						utils::invokeProtectedMethod(&Delegate::onAecpTimeout, _delegate, targetEntityID);
 						LOG_CONTROLLER_STATE_MACHINE_DEBUG(targetEntityID, std::string("AECP command with sequenceID ") + std::to_string(command.sequenceID) + " timed out 2 times");
 					}
 
@@ -140,7 +145,9 @@ void CommandStateMachine::checkInflightCommandsTimeoutExpiracy() noexcept
 					}
 				}
 				else
+				{
 					++it;
+				}
 			}
 		}
 
@@ -148,7 +155,7 @@ void CommandStateMachine::checkInflightCommandsTimeoutExpiracy() noexcept
 		for (auto it = localEntityInfo.inflightAcmpCommands.begin(); it != localEntityInfo.inflightAcmpCommands.end(); /* Iterate inside the loop */)
 		{
 			auto& command = it->second;
-			if (now > command.timeout)
+			if (now > command.timeoutTime)
 			{
 				auto error = ProtocolInterface::Error::NoError;
 				// Timeout expired, check if we retried yet
@@ -172,7 +179,9 @@ void CommandStateMachine::checkInflightCommandsTimeoutExpiracy() noexcept
 				}
 			}
 			else
+			{
 				++it;
+			}
 		}
 
 		// Notify scheduled errors
@@ -188,6 +197,9 @@ void CommandStateMachine::handleAecpResponse(Aecpdu const& aecpdu) noexcept
 {
 	// Lock
 	auto const lg = std::lock_guard{ *_manager };
+
+	// Get current time
+	auto const now = std::chrono::steady_clock::now();
 
 	auto* const protocolInterface = _manager->getProtocolInterfaceDelegate();
 	auto const controllerID = aecpdu.getControllerEntityID();
@@ -250,9 +262,14 @@ void CommandStateMachine::handleAecpResponse(Aecpdu const& aecpdu) noexcept
 
 					// Call completion handler
 					utils::invokeProtectedHandler(aecpQuery.resultHandler, &aecpdu, ProtocolInterface::Error::NoError);
+
+					// Statistics
+					utils::invokeProtectedMethod(&Delegate::onAecpResponseTime, _delegate, targetID, std::chrono::duration_cast<std::chrono::milliseconds>(now - aecpQuery.sendTime));
 				}
 				else
 				{
+					// Statistics
+					utils::invokeProtectedMethod(&Delegate::onAecpUnexpectedResponse, _delegate, targetID);
 					LOG_CONTROLLER_STATE_MACHINE_DEBUG(targetID, std::string("AECP command with sequenceID ") + std::to_string(sequenceID) + " unexpected (timed out already?)");
 				}
 			}
@@ -431,7 +448,8 @@ void CommandStateMachine::resetAecpCommandTimeoutValue(AecpCommandInfo& command)
 		timeout = it->second;
 	}
 
-	command.timeout = std::chrono::system_clock::now() + std::chrono::milliseconds(timeout);
+	command.sendTime = std::chrono::steady_clock::now();
+	command.timeoutTime = command.sendTime + std::chrono::milliseconds(timeout);
 }
 
 void CommandStateMachine::resetAcmpCommandTimeoutValue(AcmpCommandInfo& command) const noexcept
@@ -453,7 +471,8 @@ void CommandStateMachine::resetAcmpCommandTimeoutValue(AcmpCommandInfo& command)
 		timeout = it->second;
 	}
 
-	command.timeout = std::chrono::system_clock::now() + std::chrono::milliseconds(timeout);
+	command.sendTime = std::chrono::steady_clock::now();
+	command.timeoutTime = command.sendTime + std::chrono::milliseconds(timeout);
 }
 
 AecpSequenceID CommandStateMachine::getNextAecpSequenceID(CommandEntityInfo& info) noexcept
