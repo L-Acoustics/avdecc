@@ -302,12 +302,13 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 		target_link_libraries(la_avdecc_cxx PUBLIC nlohmann_json)
 	endif()
 
+	# Sign binary (this is done during installation phase, either from this project or from a project including this one)
+	if(ENABLE_AVDECC_SIGNING)
+		sign_target(la_avdecc_cxx)
+	endif()
+
 	# Set installation rule
 	if(INSTALL_AVDECC_LIB_SHARED_CXX)
-		# Sign binary (this is done during installation phase)
-		if(ENABLE_AVDECC_SIGNING)
-			sign_target(la_avdecc_cxx)
-		endif()
 		setup_library_install_rules(la_avdecc_cxx)
 	endif()
 endif()
