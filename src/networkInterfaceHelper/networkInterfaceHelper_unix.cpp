@@ -60,7 +60,7 @@ Interface::Type getInterfaceType(struct ifaddrs const* const ifa, int const sock
 	{
 		struct iwreq wrq;
 		memset(&wrq, 0, sizeof(wrq));
-		strncpy(wrq.ifr_name, ifa->ifa_name, IFNAMSIZ);
+		strncpy(wrq.ifr_name, ifa->ifa_name, IFNAMSIZ - 1);
 		if (ioctl(sock, SIOCGIWNAME, &wrq) != -1)
 		{
 			// TODO: Might not be 802.11 only, find a way to differenciate wireless protocols... maybe with  "wrq.u.name" with partial string match, but it may not be standard
