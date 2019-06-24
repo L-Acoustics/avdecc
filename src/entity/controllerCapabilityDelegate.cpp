@@ -23,9 +23,11 @@
 */
 
 #include "la/avdecc/utils.hpp"
+
 #include "controllerCapabilityDelegate.hpp"
 #include "protocol/protocolAemPayloads.hpp"
 #include "protocol/protocolMvuPayloads.hpp"
+
 #include <exception>
 #include <chrono>
 #include <thread>
@@ -1382,7 +1384,7 @@ void CapabilityDelegate::getMemoryObjectLength(UniqueIdentifier const targetEnti
 }
 
 /* Enumeration and Control Protocol (AECP) AA */
-void CapabilityDelegate::addressAccess(la::avdecc::UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, Interface::AddressAccessHandler const& handler) const noexcept
+void CapabilityDelegate::addressAccess(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, Interface::AddressAccessHandler const& handler) const noexcept
 {
 	try
 	{
@@ -1443,7 +1445,7 @@ void CapabilityDelegate::getListenerStreamState(model::StreamIdentification cons
 	sendAcmpCommand(protocol::AcmpMessageType::GetRxStateCommand, UniqueIdentifier::getNullUniqueIdentifier(), model::StreamIndex(0), listenerStream.entityID, listenerStream.streamIndex, std::uint16_t(0), errorCallback, handler);
 }
 
-void CapabilityDelegate::getTalkerStreamConnection(model::StreamIdentification const& talkerStream, uint16_t const connectionIndex, Interface::GetTalkerStreamConnectionHandler const& handler) const noexcept
+void CapabilityDelegate::getTalkerStreamConnection(model::StreamIdentification const& talkerStream, std::uint16_t const connectionIndex, Interface::GetTalkerStreamConnectionHandler const& handler) const noexcept
 {
 	auto errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_controllerInterface, talkerStream, model::StreamIdentification{}, connectionIndex, entity::ConnectionFlags{}, std::placeholders::_1);
 	sendAcmpCommand(protocol::AcmpMessageType::GetTxConnectionCommand, talkerStream.entityID, talkerStream.streamIndex, UniqueIdentifier::getNullUniqueIdentifier(), model::StreamIndex(0), connectionIndex, errorCallback, handler);
@@ -1597,6 +1599,8 @@ void CapabilityDelegate::onAecpAemUnsolicitedResponse(protocol::ProtocolInterfac
 		{
 			// Process AEM message without any error or answer callbacks, it's not an expected response
 			processAemAecpResponse(&aecpdu, nullptr, {});
+			// Statistics
+			utils::invokeProtectedMethod(&controller::Delegate::onAemAecpUnsolicitedReceived, _controllerDelegate, &_controllerInterface, aecpdu.getTargetEntityID());
 		}
 	}
 }
@@ -1625,6 +1629,34 @@ void CapabilityDelegate::onAcmpResponse(protocol::ProtocolInterface* const /*pi*
 	{
 		processAcmpResponse(&acmpdu, LocalEntityImpl<>::OnACMPErrorCallback(), LocalEntityImpl<>::AnswerCallback(), true);
 	}
+}
+
+/* ************************************************************************** */
+/* Controller notifications                                                   */
+/* ************************************************************************** */
+/* **** Statistics **** */
+void CapabilityDelegate::onAecpRetry(protocol::ProtocolInterface* const /*pi*/, UniqueIdentifier const& entityID) noexcept
+{
+	// Statistics
+	utils::invokeProtectedMethod(&controller::Delegate::onAecpRetry, _controllerDelegate, &_controllerInterface, entityID);
+}
+
+void CapabilityDelegate::onAecpTimeout(protocol::ProtocolInterface* const /*pi*/, UniqueIdentifier const& entityID) noexcept
+{
+	// Statistics
+	utils::invokeProtectedMethod(&controller::Delegate::onAecpTimeout, _controllerDelegate, &_controllerInterface, entityID);
+}
+
+void CapabilityDelegate::onAecpUnexpectedResponse(protocol::ProtocolInterface* const /*pi*/, UniqueIdentifier const& entityID) noexcept
+{
+	// Statistics
+	utils::invokeProtectedMethod(&controller::Delegate::onAecpUnexpectedResponse, _controllerDelegate, &_controllerInterface, entityID);
+}
+
+void CapabilityDelegate::onAecpResponseTime(protocol::ProtocolInterface* const /*pi*/, UniqueIdentifier const& entityID, std::chrono::milliseconds const& responseTime) noexcept
+{
+	// Statistics
+	utils::invokeProtectedMethod(&controller::Delegate::onAecpResponseTime, _controllerDelegate, &_controllerInterface, entityID, responseTime);
 }
 
 /* ************************************************************************** */
@@ -1754,7 +1786,7 @@ void CapabilityDelegate::sendMvuAecpCommand(UniqueIdentifier const targetEntityI
 		});
 }
 
-void CapabilityDelegate::sendAcmpCommand(protocol::AcmpMessageType const messageType, UniqueIdentifier const talkerEntityID, model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, model::StreamIndex const listenerStreamIndex, uint16_t const connectionIndex, LocalEntityImpl<>::OnACMPErrorCallback const& onErrorCallback, LocalEntityImpl<>::AnswerCallback const& answerCallback) const noexcept
+void CapabilityDelegate::sendAcmpCommand(protocol::AcmpMessageType const messageType, UniqueIdentifier const talkerEntityID, model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, model::StreamIndex const listenerStreamIndex, std::uint16_t const connectionIndex, LocalEntityImpl<>::OnACMPErrorCallback const& onErrorCallback, LocalEntityImpl<>::AnswerCallback const& answerCallback) const noexcept
 {
 	LocalEntityImpl<>::sendAcmpCommand(_protocolInterface, messageType, _controllerID, talkerEntityID, talkerStreamIndex, listenerEntityID, listenerStreamIndex, connectionIndex,
 		[this, onErrorCallback, answerCallback](protocol::Acmpdu const* const response, LocalEntity::ControlStatus const status)

@@ -26,7 +26,9 @@
 #pragma once
 
 #include "la/avdecc/utils.hpp"
+
 #include "exports.hpp"
+
 #include <cstdint>
 
 namespace la
@@ -263,18 +265,6 @@ public:
 	LA_AVDECC_API operator std::string() const noexcept;
 };
 
-/** Milan Features Flags - Milan Clause 7.4.1 */
-class MvuFeaturesFlags : public utils::TypedDefine<MvuFeaturesFlags, std::uint32_t>
-{
-public:
-	using TypedDefine::TypedDefine;
-
-	static LA_AVDECC_API MvuFeaturesFlags const None;
-	static LA_AVDECC_API MvuFeaturesFlags const Redundancy;
-
-	LA_AVDECC_API operator std::string() const noexcept;
-};
-
 /** ACMP Message Type - Clause 8.2.1.5 */
 class AcmpMessageType : public utils::TypedDefine<AcmpMessageType, std::uint8_t>
 {
@@ -305,6 +295,8 @@ class AcmpStatus : public utils::TypedDefine<AcmpStatus, std::uint8_t>
 public:
 	using TypedDefine::TypedDefine;
 
+	LA_AVDECC_API AcmpStatus() noexcept;
+
 	static LA_AVDECC_API AcmpStatus const Success;
 	static LA_AVDECC_API AcmpStatus const ListenerUnknownID;
 	static LA_AVDECC_API AcmpStatus const TalkerUnknownID;
@@ -325,6 +317,7 @@ public:
 	static LA_AVDECC_API AcmpStatus const NotSupported;
 
 	LA_AVDECC_API operator std::string() const noexcept;
+	LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION fromString(std::string const& stringValue); // Throws std::invalid_argument if value does not exist
 };
 
 /** ACMP UniqueID - Clause 8.2.1.12 and 8.2.1.13 */

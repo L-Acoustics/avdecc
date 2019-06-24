@@ -23,7 +23,9 @@
 */
 
 #include "la/avdecc/internals/logItems.hpp"
+
 #include "pcapInterface.hpp"
+
 #include <cassert>
 #include <string>
 

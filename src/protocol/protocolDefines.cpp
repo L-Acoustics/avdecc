@@ -24,6 +24,7 @@
 
 #include "la/avdecc/internals/protocolDefines.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
+
 #include <unordered_map>
 
 namespace la
@@ -336,24 +337,6 @@ MvuCommandType::operator std::string() const noexcept
 	return it->second;
 }
 
-/** Milan Features Flags - Milan Clause 7.4.1 */
-MvuFeaturesFlags const MvuFeaturesFlags::None{ 0x00000000 };
-MvuFeaturesFlags const MvuFeaturesFlags::Redundancy{ 0x00000001 };
-
-MvuFeaturesFlags::operator std::string() const noexcept
-{
-	static std::unordered_map<MvuFeaturesFlags::value_type, std::string> s_MvuFeaturesFlagsMapping = {
-		{ MvuFeaturesFlags::None.getValue(), "NONE" },
-		{ MvuFeaturesFlags::Redundancy.getValue(), "REDUNDANCY" },
-	};
-
-	auto const& it = s_MvuFeaturesFlagsMapping.find(getValue());
-	if (it == s_MvuFeaturesFlagsMapping.end())
-		return "INVALID_FEATURE_FLAG";
-	return it->second;
-}
-
-
 /** ACMP Message Type - Clause 8.2.1.5 */
 AcmpMessageType const AcmpMessageType::ConnectTxCommand{ 0 };
 AcmpMessageType const AcmpMessageType::ConnectTxResponse{ 1 };
@@ -418,35 +401,53 @@ AcmpStatus const AcmpStatus::IncompatibleRequest{ 17 };
 /* 18-30 reserved for future use */
 AcmpStatus const AcmpStatus::NotSupported{ 31 };
 
+static std::unordered_map<AcmpStatus::value_type, std::string> s_AcmpStatusMapping = {
+	{ AcmpStatus::Success.getValue(), "SUCCESS" },
+	{ AcmpStatus::ListenerUnknownID.getValue(), "LISTENER_UNKNOWN_ID" },
+	{ AcmpStatus::TalkerUnknownID.getValue(), "TALKER_UNKNOWN_ID" },
+	{ AcmpStatus::TalkerDestMacFail.getValue(), "TALKER_DEST_MAC_FAIL" },
+	{ AcmpStatus::TalkerNoStreamIndex.getValue(), "TALKER_NO_STREAM_INDEX" },
+	{ AcmpStatus::TalkerNoBandwidth.getValue(), "TALKER_NO_BANDWIDTH" },
+	{ AcmpStatus::TalkerExclusive.getValue(), "TALKER_EXCLUSIVE" },
+	{ AcmpStatus::ListenerTalkerTimeout.getValue(), "LISTENER_TALKER_TIMEOUT" },
+	{ AcmpStatus::ListenerExclusive.getValue(), "LISTENER_EXCLUSIVE" },
+	{ AcmpStatus::StateUnavailable.getValue(), "STATE_UNAVAILABLE" },
+	{ AcmpStatus::NotConnected.getValue(), "NOT_CONNECTED" },
+	{ AcmpStatus::NoSuchConnection.getValue(), "NO_SUCH_CONNECTION" },
+	{ AcmpStatus::CouldNotSendMessage.getValue(), "COULD_NOT_SEND_MESSAGE" },
+	{ AcmpStatus::TalkerMisbehaving.getValue(), "TALKER_MISBEHAVING" },
+	{ AcmpStatus::ListenerMisbehaving.getValue(), "LISTENER_MISBEHAVING" },
+	/* 15 reserved for future use */
+	{ AcmpStatus::ControllerNotAuthorized.getValue(), "CONTROLLER_NOT_AUTHORIZED" },
+	{ AcmpStatus::IncompatibleRequest.getValue(), "INCOMPATIBLE_REQUEST" },
+	/* 18-30 reserved for future use */
+	{ AcmpStatus::NotSupported.getValue(), "NOT_SUPPORTED" },
+};
+
+AcmpStatus::AcmpStatus() noexcept
+	: TypedDefine(AcmpStatus::NotSupported)
+{
+}
+
 AcmpStatus::operator std::string() const noexcept
 {
-	static std::unordered_map<AcmpStatus::value_type, std::string> s_AcmpStatusMapping = {
-		{ AcmpStatus::Success.getValue(), "SUCCESS" },
-		{ AcmpStatus::ListenerUnknownID.getValue(), "LISTENER_UNKNOWN_ID" },
-		{ AcmpStatus::TalkerUnknownID.getValue(), "TALKER_UNKNOWN_ID" },
-		{ AcmpStatus::TalkerDestMacFail.getValue(), "TALKER_DEST_MAC_FAIL" },
-		{ AcmpStatus::TalkerNoStreamIndex.getValue(), "TALKER_NO_STREAM_INDEX" },
-		{ AcmpStatus::TalkerNoBandwidth.getValue(), "TALKER_NO_BANDWIDTH" },
-		{ AcmpStatus::TalkerExclusive.getValue(), "TALKER_EXCLUSIVE" },
-		{ AcmpStatus::ListenerTalkerTimeout.getValue(), "LISTENER_TALKER_TIMEOUT" },
-		{ AcmpStatus::ListenerExclusive.getValue(), "LISTENER_EXCLUSIVE" },
-		{ AcmpStatus::StateUnavailable.getValue(), "STATE_UNAVAILABLE" },
-		{ AcmpStatus::NotConnected.getValue(), "NOT_CONNECTED" },
-		{ AcmpStatus::NoSuchConnection.getValue(), "NO_SUCH_CONNECTION" },
-		{ AcmpStatus::CouldNotSendMessage.getValue(), "COULD_NOT_SEND_MESSAGE" },
-		{ AcmpStatus::TalkerMisbehaving.getValue(), "TALKER_MISBEHAVING" },
-		{ AcmpStatus::ListenerMisbehaving.getValue(), "LISTENER_MISBEHAVING" },
-		/* 15 reserved for future use */
-		{ AcmpStatus::ControllerNotAuthorized.getValue(), "CONTROLLER_NOT_AUTHORIZED" },
-		{ AcmpStatus::IncompatibleRequest.getValue(), "INCOMPATIBLE_REQUEST" },
-		/* 18-30 reserved for future use */
-		{ AcmpStatus::NotSupported.getValue(), "NOT_SUPPORTED" },
-	};
-
 	auto const& it = s_AcmpStatusMapping.find(getValue());
 	if (it == s_AcmpStatusMapping.end())
 		return "INVALID_STATUS";
 	return it->second;
+}
+
+void LA_AVDECC_CALL_CONVENTION AcmpStatus::fromString(std::string const& stringValue)
+{
+	for (auto const& [key, value] : s_AcmpStatusMapping)
+	{
+		if (value == stringValue)
+		{
+			setValue(key);
+			return;
+		}
+	}
+	throw std::invalid_argument("Unknown AcmpStatus string representation: " + stringValue);
 }
 
 } // namespace protocol

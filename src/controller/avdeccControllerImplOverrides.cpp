@@ -22,12 +22,19 @@
 * @author Christophe Calmejane
 */
 
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+#	include "la/avdecc/internals/jsonTypes.hpp"
+#endif // ENABLE_AVDECC_FEATURE_JSON
+#include "la/avdecc/internals/serialization.hpp"
+
 #include "avdeccControllerImpl.hpp"
 #include "avdeccControllerLogHelper.hpp"
 #include "avdeccEntityModelCache.hpp"
-#include "avdeccControlledEntityJsonSerializer.hpp"
-#include "la/avdecc/internals/serialization.hpp"
-#include "la/avdecc/controller/internals/jsonTypes.hpp"
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+#	include "avdeccControllerJsonTypes.hpp"
+#	include "avdeccControlledEntityJsonSerializer.hpp"
+#endif // ENABLE_AVDECC_FEATURE_JSON
+
 #include <cstdlib> // free / malloc
 #include <cstring> // strerror
 #include <cerrno> // errno
@@ -318,7 +325,7 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 				{
 					auto& entity = *controlledEntity;
 
-					// Update acquired state
+					// Always update acquired state (status is checked in getAcquiredInfoFromStatus)
 					auto const [acquireState, owningController] = getAcquiredInfoFromStatus(entity, owningEntity, status, false);
 					updateAcquiredState(entity, acquireState, owningController);
 
@@ -367,7 +374,7 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 				{
 					auto& entity = *controlledEntity;
 
-					// Update acquired state
+					// Always update acquired state (status is checked in getAcquiredInfoFromStatus)
 					auto const [acquireState, owningController] = getAcquiredInfoFromStatus(entity, owningEntity, status, true);
 					updateAcquiredState(entity, acquireState, owningController);
 
@@ -425,7 +432,7 @@ void ControllerImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntit
 				{
 					auto& entity = *controlledEntity;
 
-					// Update locked state
+					// Always update locked state (status is checked in getLockedInfoFromStatus)
 					auto const [lockState, lockingController] = getLockedInfoFromStatus(entity, lockingEntity, status, false);
 					updateLockedState(entity, lockState, lockingController);
 
@@ -474,7 +481,7 @@ void ControllerImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockE
 				{
 					auto& entity = *controlledEntity;
 
-					// Update locked state
+					// Always update locked state (status is checked in getLockedInfoFromStatus)
 					auto const [lockState, lockingController] = getLockedInfoFromStatus(entity, lockingEntity, status, true);
 					updateLockedState(entity, lockState, lockingController);
 
@@ -1946,7 +1953,7 @@ void ControllerImpl::connectStream(entity::model::StreamIdentification const& ta
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->connectStream(talkerStream, listenerStream,
-			[this, handler](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
+			[this, handler](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 			{
 				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User connectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
@@ -1980,7 +1987,7 @@ void ControllerImpl::disconnectStream(entity::model::StreamIdentification const&
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->disconnectStream(talkerStream, listenerStream,
-			[this, handler](entity::controller::Interface const* const /*controller*/, [[maybe_unused]] entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
+			[this, handler](entity::controller::Interface const* const /*controller*/, [[maybe_unused]] entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 			{
 #if _MSC_VER < 1920
 #	pragma message("REMOVE THIS WHEN the required version to build is VS 2019")
@@ -2006,7 +2013,7 @@ void ControllerImpl::disconnectStream(entity::model::StreamIdentification const&
 					// In that case, we have to query the listener stream state in order to know the actual connection state
 					// Also don't notify the result handler right now, wait for getListenerStreamState answer
 					_controller->getListenerStreamState(listenerStream,
-						[this, handler, disconnectStatus = status](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
+						[this, handler, disconnectStatus = status](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 						{
 							entity::ControllerEntity::ControlStatus controlStatus{ disconnectStatus };
 							// In a GET_RX_STATE_RESPONSE message, the connectionCount is set to 1 if the stream is connected and 0 if not connected (See Marc Illouz clarification document, and hopefully someday as a corrigendum)
@@ -2048,7 +2055,7 @@ void ControllerImpl::disconnectTalkerStream(entity::model::StreamIdentification 
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectTalkerStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={})", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->disconnectTalkerStream(talkerStream, listenerStream,
-			[this, handler](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
+			[this, handler](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 			{
 				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectTalkerStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
@@ -2084,7 +2091,7 @@ void ControllerImpl::getListenerStreamState(entity::model::StreamIdentification 
 		LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User getListenerStreamState (ListenerID={} ListenerIndex={})", utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex);
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->getListenerStreamState(listenerStream,
-			[this, handler](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
+			[this, handler](entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 			{
 				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User getListenerStreamState (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
@@ -2104,7 +2111,7 @@ void ControllerImpl::getListenerStreamState(entity::model::StreamIdentification 
 	}
 	else
 	{
-		utils::invokeProtectedHandler(handler, nullptr, nullptr, entity::model::StreamIndex(0), entity::model::StreamIndex(0), uint16_t(0), entity::ConnectionFlags{}, entity::ControllerEntity::ControlStatus::UnknownEntity);
+		utils::invokeProtectedHandler(handler, nullptr, nullptr, entity::model::StreamIndex(0), entity::model::StreamIndex(0), std::uint16_t(0), entity::ConnectionFlags{}, entity::ControllerEntity::ControlStatus::UnknownEntity);
 	}
 }
 
@@ -2130,76 +2137,211 @@ void ControllerImpl::unlock() noexcept
 }
 
 /* Model serialization methods */
-std::tuple<Controller::SerializationError, std::string> ControllerImpl::serializeAllControlledEntitiesAsReadableJson(std::string const& filePath) const noexcept
+std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerImpl::serializeAllControlledEntitiesAsReadableJson([[maybe_unused]] std::string const& filePath, [[maybe_unused]] bool const ignoreSanityChecks, [[maybe_unused]] bool const continueOnError) const noexcept
 {
+#ifndef ENABLE_AVDECC_FEATURE_JSON
+	return { avdecc::jsonSerializer::SerializationError::NotSupported, "Serialization feature not supported by the library (was not compiled)" };
+
+#else // ENABLE_AVDECC_FEATURE_JSON
+
 	// Try to open the output file
 	std::ofstream of{ filePath };
 
 	// Failed to open file to writting
 	if (!of.is_open())
 	{
-		return { SerializationError::AccessDenied, std::strerror(errno) };
+		return { avdecc::jsonSerializer::SerializationError::AccessDenied, std::strerror(errno) };
 	}
 
 	// Create the object
 	auto object = json{};
 
 	// Dump information of the dump itself
-	object[entitySerializer::keyName::Controller_DumpVersion] = 1;
+	object[jsonSerializer::keyName::Controller_DumpVersion] = jsonSerializer::keyValue::Controller_DumpVersion;
 
 	// Lock to protect _controlledEntities
 	std::lock_guard<decltype(_lock)> const lg(_lock);
 
+	auto error = avdecc::jsonSerializer::SerializationError::NoError;
+	auto errorText = std::string{};
 	for (auto const& [entityID, entity] : _controlledEntities)
 	{
 		// Try to serialize
-		auto const entityObject = entitySerializer::createJsonObject(*entity);
-
-		// Check if there was an error, in which case the JSON object would be an array (of strings) type, containing the error message
-		if (entityObject.is_array())
+		try
 		{
-			return { SerializationError::SerializationError, static_cast<std::string>(entityObject[0]) };
+			auto const entityObject = jsonSerializer::createJsonObject(*entity, ignoreSanityChecks);
+
+			object[jsonSerializer::keyName::Controller_Entities].push_back(entityObject);
 		}
-		object[entitySerializer::keyName::Controller_Entities].push_back(entityObject);
+		catch (avdecc::jsonSerializer::SerializationException const& e)
+		{
+			if (continueOnError)
+			{
+				error = avdecc::jsonSerializer::SerializationError::Incomplete;
+				errorText = e.what();
+				continue;
+			}
+			return { e.getError(), e.what() };
+		}
 	}
 
 	// Everything is fine, write the JSON object to disk
 	of << std::setw(4) << object << std::endl;
 
-	return { SerializationError::NoError, "" };
+	return { error, errorText };
+#endif // ENABLE_AVDECC_FEATURE_JSON
 }
 
-std::tuple<Controller::SerializationError, std::string> ControllerImpl::serializeControlledEntityAsReadableJson(UniqueIdentifier const entityID, std::string const& filePath) const noexcept
+std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerImpl::serializeControlledEntityAsReadableJson([[maybe_unused]] UniqueIdentifier const entityID, [[maybe_unused]] std::string const& filePath, [[maybe_unused]] bool const ignoreSanityChecks) const noexcept
 {
+#ifndef ENABLE_AVDECC_FEATURE_JSON
+	return { avdecc::jsonSerializer::SerializationError::NotSupported, "Serialization feature not supported by the library (was not compiled)" };
+
+#else // ENABLE_AVDECC_FEATURE_JSON
+
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto const entity = getControlledEntityImplGuard(entityID, true);
 	if (!entity)
 	{
-		return { SerializationError::UnknownEntity, "Entity offline" };
+		return { avdecc::jsonSerializer::SerializationError::UnknownEntity, "Entity offline" };
 	}
 
 	// Try to open the output file
-	std::ofstream of{ filePath };
+	std::ofstream ofs{ filePath };
 
 	// Failed to open file to writting
-	if (!of.is_open())
+	if (!ofs.is_open())
 	{
-		return { SerializationError::AccessDenied, std::strerror(errno) };
+		return { avdecc::jsonSerializer::SerializationError::AccessDenied, std::strerror(errno) };
 	}
 
 	// Try to serialize
-	auto const object = entitySerializer::createJsonObject(*entity);
-
-	// Check if there was an error, in which case the JSON object would be an array (of strings) type, containing the error message
-	if (object.is_array())
+	try
 	{
-		return { SerializationError::SerializationError, static_cast<std::string>(object[0]) };
+		auto const object = jsonSerializer::createJsonObject(*entity, ignoreSanityChecks);
+
+		// Everything is fine, write the JSON object to disk
+		ofs << std::setw(4) << object << std::endl;
+
+		return { avdecc::jsonSerializer::SerializationError::NoError, "" };
+	}
+	catch (avdecc::jsonSerializer::SerializationException const& e)
+	{
+		return { e.getError(), e.what() };
+	}
+#endif // ENABLE_AVDECC_FEATURE_JSON
+}
+
+/* Model deserialization methods */
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> ControllerImpl::loadVirtualEntityFromReadableJson([[maybe_unused]] std::string const& filePath, [[maybe_unused]] bool const ignoreSanityChecks) noexcept
+{
+#ifndef ENABLE_AVDECC_FEATURE_JSON
+	return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Deserialization feature not supported by the library (was not compiled)" };
+
+#else // ENABLE_AVDECC_FEATURE_JSON
+
+	// Try to open the input file
+	std::ifstream ifs{ filePath };
+
+	// Failed to open file to writting
+	if (!ifs.is_open())
+	{
+		return { avdecc::jsonSerializer::DeserializationError::AccessDenied, std::strerror(errno) };
 	}
 
-	// Everything is fine, write the JSON object to disk
-	of << std::setw(4) << object << std::endl;
+	// Load the JSON object from disk
+	auto object = json{};
+	try
+	{
+		ifs >> object;
+	}
+	catch (json::type_error const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::InvalidValue, e.what() };
+	}
+	catch (json::parse_error const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::ParseError, e.what() };
+	}
+	catch (json::out_of_range const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::MissingKey, e.what() };
+	}
+	catch (json::other_error const& e)
+	{
+		if (e.id == 555)
+		{
+			return { avdecc::jsonSerializer::DeserializationError::InvalidKey, e.what() };
+		}
+		else
+		{
+			return { avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
+		}
+	}
+	catch (json::exception const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
+	}
 
-	return { SerializationError::NoError, "" };
+	// Try to deserialize
+	try
+	{
+		auto controlledEntity = createControlledEntityFromJson(object);
+
+		auto& entity = *controlledEntity;
+
+		auto flags = entity::model::jsonSerializer::Flags{ entity::model::jsonSerializer::Flag::ProcessStaticModel, entity::model::jsonSerializer::Flag::ProcessDynamicModel };
+		if (ignoreSanityChecks)
+		{
+			flags.set(entity::model::jsonSerializer::Flag::IgnoreSanityChecks);
+		}
+
+		// Set the Entity Model for our virtual entity
+		jsonSerializer::setEntityModel(entity, object.at(jsonSerializer::keyName::ControlledEntity_EntityModel), flags);
+
+		// Set the Entity State
+		jsonSerializer::setEntityState(entity, object.at(jsonSerializer::keyName::ControlledEntity_EntityState));
+
+		// Set the Statistics
+		{
+			auto const it = object.find(jsonSerializer::keyName::ControlledEntity_Statistics);
+			if (it != object.end())
+			{
+				jsonSerializer::setEntityStatistics(entity, *it);
+			}
+		}
+
+		// Choose a locale
+		chooseLocale(&entity, entity.getCurrentConfigurationIndex());
+
+		// Add the entity
+		auto const entityID = entity.getEntity().getEntityID();
+		{
+			// Lock to protect _controlledEntities
+			std::lock_guard<decltype(_lock)> const lg(_lock);
+
+			auto entityIt = _controlledEntities.find(entityID);
+			if (entityIt != _controlledEntities.end())
+			{
+				return { avdecc::jsonSerializer::DeserializationError::DuplicateEntityID, utils::toHexString(entityID, true) };
+			}
+			_controlledEntities.insert(std::make_pair(entityID, controlledEntity));
+		}
+
+		// Ready to advertise
+		{
+			auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), to simulate being called from a Networking Thread. THIS IS A HACK!
+			checkEnumerationSteps(&entity);
+		}
+		LOG_CONTROLLER_INFO(_controller->getEntityID(), "Successfully loaded virtual entity with ID {}", utils::toHexString(entityID, true));
+	}
+	catch (avdecc::jsonSerializer::DeserializationException const& e)
+	{
+		return { e.getError(), e.what() };
+	}
+
+	return { avdecc::jsonSerializer::DeserializationError::NoError, "" };
+#endif // ENABLE_AVDECC_FEATURE_JSON
 }
 
 } // namespace controller

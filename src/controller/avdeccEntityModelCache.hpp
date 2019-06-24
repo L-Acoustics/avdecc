@@ -24,7 +24,8 @@
 
 #pragma once
 
-#include "avdeccControlledEntityModelTree.hpp"
+#include <la/avdecc/internals/entityModelTree.hpp>
+
 #include <unordered_map>
 
 namespace la
@@ -53,10 +54,9 @@ public:
 	}
 
 	// TODO: If we want to add a clearCache method, we'll have to add locking to this class
-	// because clearCache would probably not be called from the same thread than getCachedEntityStaticTree and cacheEntityStaticTree.
+	// because clearCache would probably not be called from the same thread than getCachedEntityTree and cacheEntityTree.
 	// Also we should return a copy of the data (pair<bool, Tree> or std::optional) so the lock is release with valid data
-
-	model::EntityStaticTree const* getCachedEntityStaticTree(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex) const noexcept
+	entity::model::EntityTree const* getCachedEntityTree(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex) const noexcept
 	{
 		if (_isEnabled)
 		{
@@ -75,7 +75,7 @@ public:
 		return nullptr;
 	}
 
-	void cacheEntityStaticTree(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, model::EntityStaticTree const& staticTree) noexcept
+	void cacheEntityTree(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::EntityTree const& tree) noexcept
 	{
 		if (_isEnabled)
 		{
@@ -85,14 +85,66 @@ public:
 			auto modelIt = entityModel.find(configurationIndex);
 			if (modelIt == entityModel.end())
 			{
-				entityModel.insert(std::make_pair(configurationIndex, staticTree));
+				// Make a copy of the tree
+				auto cachedTree = tree;
+
+				// Wipe all the dynamic model
+				cachedTree.dynamicModel = {};
+				for (auto& configKV : cachedTree.configurationTrees)
+				{
+					auto& config = configKV.second;
+					config.dynamicModel = {};
+					for (auto& KV : config.audioUnitModels)
+					{
+						KV.second.dynamicModel = {};
+					}
+					for (auto& KV : config.streamInputModels)
+					{
+						KV.second.dynamicModel = {};
+					}
+					for (auto& KV : config.streamOutputModels)
+					{
+						KV.second.dynamicModel = {};
+					}
+					for (auto& KV : config.avbInterfaceModels)
+					{
+						KV.second.dynamicModel = {};
+					}
+					for (auto& KV : config.clockSourceModels)
+					{
+						KV.second.dynamicModel = {};
+					}
+					for (auto& KV : config.memoryObjectModels)
+					{
+						KV.second.dynamicModel = {};
+					}
+					for (auto& KV : config.streamPortInputModels)
+					{
+						KV.second.dynamicModel = {};
+					}
+					for (auto& KV : config.streamPortOutputModels)
+					{
+						KV.second.dynamicModel = {};
+					}
+					for (auto& KV : config.audioClusterModels)
+					{
+						KV.second.dynamicModel = {};
+					}
+					for (auto& KV : config.clockDomainModels)
+					{
+						KV.second.dynamicModel = {};
+					}
+				}
+
+				// Move it to the cache
+				entityModel.insert(std::make_pair(configurationIndex, std::move(cachedTree)));
 			}
 		}
 	}
 
 private:
-	using StaticEntityModel = std::unordered_map<entity::model::ConfigurationIndex, model::EntityStaticTree>;
-	std::unordered_map<UniqueIdentifier, StaticEntityModel, la::avdecc::UniqueIdentifier::hash> _modelCache{};
+	using ConfigurationModels = std::unordered_map<entity::model::ConfigurationIndex, entity::model::EntityTree>;
+	std::unordered_map<UniqueIdentifier, ConfigurationModels, la::avdecc::UniqueIdentifier::hash> _modelCache{};
 	bool _isEnabled{ false };
 };
 

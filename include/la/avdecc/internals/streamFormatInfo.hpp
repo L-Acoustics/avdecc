@@ -27,6 +27,7 @@
 
 #include "entityModel.hpp"
 #include "exports.hpp"
+
 #include <cstdint>
 #include <memory>
 

@@ -31,6 +31,9 @@
 /** Entity model definition */
 #include "internals/entityModel.hpp"
 
+/** Entity model tree definition */
+#include "internals/entityModelTree.hpp"
+
 /** ProtocolInterface definition */
 #include "internals/protocolInterface.hpp"
 
@@ -66,7 +69,7 @@ namespace avdecc
 * (either added, removed or signature modification).
 * Any other change (including templates, inline methods, defines, typedefs, ...) are considered a modification of the interface.
 */
-constexpr std::uint32_t InterfaceVersion = 209;
+constexpr std::uint32_t InterfaceVersion = 210;
 
 /**
 * @brief Checks if the library is compatible with specified interface version.

@@ -26,6 +26,7 @@
 #pragma once
 
 #include "internals/exports.hpp"
+
 #include <string>
 
 namespace la
@@ -45,6 +46,7 @@ enum class Layer
 	ControllerEntity = 5,
 	ControllerStateMachine = 6,
 	Controller = 7,
+	JsonSerializer = 8,
 	FirstUserLayer = 100,
 };
 

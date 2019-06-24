@@ -22,9 +22,13 @@
 * @author Christophe Calmejane
 */
 
-#include "avdeccControlledEntityJsonSerializer.hpp"
+#include "la/avdecc/internals/jsonSerialization.hpp"
 #include "la/avdecc/internals/jsonTypes.hpp"
-#include "la/avdecc/controller/internals/jsonTypes.hpp"
+
+#include "avdeccControllerJsonTypes.hpp"
+#include "avdeccControlledEntityJsonSerializer.hpp"
+#include "avdeccControllerImpl.hpp"
+#include "avdeccControlledEntityImpl.hpp"
 
 using json = nlohmann::json;
 
@@ -34,1069 +38,306 @@ namespace avdecc
 {
 namespace controller
 {
-namespace entitySerializer
+namespace jsonSerializer
 {
-class Visitor : public model::EntityModelVisitor
+/* ************************************************************ */
+/* Public methods                                               */
+/* ************************************************************ */
+json createJsonObject(ControlledEntityImpl const& entity, bool const ignoreSanityChecks)
 {
-public:
-	Visitor(json& object)
-		: _object(object)
+	try
 	{
-	}
+		// Create the object
+		auto object = json{};
+		auto const& e = entity.getEntity();
 
-	bool operator!() const noexcept
-	{
-		return !_serializationError.empty();
-	}
+		// Dump information of the dump itself
+		object[keyName::ControlledEntity_DumpVersion] = keyValue::ControlledEntity_DumpVersion;
 
-	std::string const& getSerializationError() const noexcept
-	{
-		return _serializationError;
-	}
-
-	// Defaulted compiler auto-generated methods
-	virtual ~Visitor() noexcept = default;
-	Visitor(Visitor&&) = default;
-	Visitor(Visitor const&) = default;
-	Visitor& operator=(Visitor const&) = default;
-	Visitor& operator=(Visitor&&) = default;
-
-private:
-	// model::EntityModelVisitor overrides
-	virtual void visit(ControlledEntity const* const /*entity*/, model::EntityNode const& node) noexcept override
-	{
-		auto& jnode = _object[keyName::ControlledEntity_EntityDescriptor];
-
-		// Static model
-		if (node.staticModel)
+		// Dump ADP information
 		{
-			auto const& s = *node.staticModel;
-			auto jstatic = json{};
+			auto& adp = object[keyName::ControlledEntity_AdpInformation];
 
-			jstatic[model::keyName::EntityNode_Static_VendorNameString] = s.vendorNameString;
-			jstatic[model::keyName::EntityNode_Static_ModelNameString] = s.modelNameString;
+			// Dump common information
+			adp[entity::keyName::Entity_CommonInformation_Node] = e.getCommonInformation();
 
-			jnode[keyName::ControlledEntity_StaticInformation] = jstatic;
-		}
-
-		// Dynamic model
-		if (node.dynamicModel)
-		{
-			auto const& d = *node.dynamicModel;
-			auto jdynamic = json{};
-
-			jdynamic[model::keyName::EntityNode_Dynamic_EntityName] = d.entityName;
-			jdynamic[model::keyName::EntityNode_Dynamic_GroupName] = d.groupName;
-			jdynamic[model::keyName::EntityNode_Dynamic_FirmwareVersion] = d.firmwareVersion;
-			jdynamic[model::keyName::EntityNode_Dynamic_SerialNumber] = d.serialNumber;
-			jdynamic[model::keyName::EntityNode_Dynamic_CurrentConfiguration] = d.currentConfiguration;
-			jdynamic[model::keyName::EntityNode_Dynamic_Counters] = d.counters;
-
-			jnode[keyName::ControlledEntity_DynamicInformation] = jdynamic;
-		}
-	}
-
-	virtual void visit(ControlledEntity const* const /*entity*/, model::EntityNode const* const /*parent*/, model::ConfigurationNode const& node) noexcept override
-	{
-		// Check no previous error
-		if (!_serializationError.empty())
-		{
-			return;
-		}
-
-		// Search the JSON parent
-		auto const& jparentIt = _object.find(keyName::ControlledEntity_EntityDescriptor);
-		if (!AVDECC_ASSERT_WITH_RET(jparentIt != _object.end(), "JSON parent node not found"))
-		{
-			_serializationError = "JSON parent node not found (Entity)";
-			return;
-		}
-
-		// Validate index
-		if (_nextExpectedConfigurationIndex != node.descriptorIndex)
-		{
-			_serializationError = "ConfigurationIndex is not the expected one";
-			return;
-		}
-
-		// Update next expected index
-		++_nextExpectedConfigurationIndex;
-
-		// Create JSON node
-		auto& jconfigs = jparentIt->operator[](keyName::ControlledEntity_ConfigurationDescriptors);
-		auto jnode = json{};
-
-		jnode[model::keyName::Node_Informative_Index] = node.descriptorIndex;
-
-		// Static model
-		if (node.staticModel)
-		{
-			auto const& s = *node.staticModel;
-			auto jstatic = json{};
-
-			jstatic[model::keyName::ConfigurationNode_Static_LocalizedDescription] = s.localizedDescription;
-
-			jnode[keyName::ControlledEntity_StaticInformation] = jstatic;
-		}
-
-		// Dynamic model
-		if (node.dynamicModel)
-		{
-			auto const& d = *node.dynamicModel;
-			auto jdynamic = json{};
-
-			jdynamic[model::keyName::ConfigurationNode_Dynamic_ObjectName] = d.objectName;
-
-			jnode[keyName::ControlledEntity_DynamicInformation] = jdynamic;
-		}
-
-		// Save the node
-		jconfigs.push_back(jnode);
-	}
-
-	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::AudioUnitNode const& node) noexcept override
-	{
-		// Check no previous error
-		if (!_serializationError.empty())
-		{
-			return;
-		}
-
-		// Search the JSON parent
-		auto& jconfigs = _object[keyName::ControlledEntity_EntityDescriptor][keyName::ControlledEntity_ConfigurationDescriptors];
-		try
-		{
-			auto& jconfig = jconfigs.at(parent->descriptorIndex);
-
-			// Validate index
-			if (_nextExpectedAudioUnitIndex != node.descriptorIndex)
+			// Dump interfaces information
+			auto intfcs = json{};
+			for (auto const& [avbInterfaceIndex, intfcInfo] : e.getInterfacesInformation()) // Don't use default std::map serializer, we want to force an array of object that includes the key (AvbInterfaceIndex)
 			{
-				_serializationError = "AudioUnitIndex is not the expected one";
-				return;
-			}
-
-			// Update next expected index
-			++_nextExpectedAudioUnitIndex;
-
-			// Create JSON node
-			auto& junits = jconfig[keyName::ControlledEntity_AudioUnitDescriptors];
-			auto jnode = json{};
-
-			jnode[model::keyName::Node_Informative_Index] = node.descriptorIndex;
-
-			// Static model
-			if (node.staticModel)
-			{
-				auto const& s = *node.staticModel;
-				auto jstatic = json{};
-
-				jstatic[model::keyName::AudioUnitNode_Static_LocalizedDescription] = s.localizedDescription;
-				jstatic[model::keyName::AudioUnitNode_Static_ClockDomainIndex] = s.clockDomainIndex;
-				jstatic[model::keyName::AudioUnitNode_Static_SamplingRates] = s.samplingRates;
-
-				jnode[keyName::ControlledEntity_StaticInformation] = jstatic;
-			}
-
-			// Dynamic model
-			if (node.dynamicModel)
-			{
-				auto const& d = *node.dynamicModel;
-				auto jdynamic = json{};
-
-				jdynamic[model::keyName::AudioUnitNode_Dynamic_ObjectName] = d.objectName;
-				jdynamic[model::keyName::AudioUnitNode_Dynamic_CurrentSamplingRate] = d.currentSamplingRate;
-
-				jnode[keyName::ControlledEntity_DynamicInformation] = jdynamic;
-			}
-
-			// Save the node
-			junits.push_back(jnode);
-		}
-		catch (json::exception const&)
-		{
-			_serializationError = "JSON parent node not found (Configuration)";
-			return;
-		}
-	}
-
-	json JsonizeStreamNodeStaticModel(model::StreamNodeStaticModel const& model)
-	{
-		auto jstatic = json{};
-
-		jstatic[model::keyName::StreamNode_Static_LocalizedDescription] = model.localizedDescription;
-		jstatic[model::keyName::StreamNode_Static_ClockDomainIndex] = model.clockDomainIndex;
-		jstatic[model::keyName::StreamNode_Static_StreamFlags] = model.streamFlags;
-		jstatic[model::keyName::StreamNode_Static_BackupTalkerEntityID0] = model.backupTalkerEntityID_0;
-		jstatic[model::keyName::StreamNode_Static_BackupTalkerUniqueID0] = model.backupTalkerUniqueID_0;
-		jstatic[model::keyName::StreamNode_Static_BackupTalkerEntityID1] = model.backupTalkerEntityID_1;
-		jstatic[model::keyName::StreamNode_Static_BackupTalkerUniqueID1] = model.backupTalkerUniqueID_1;
-		jstatic[model::keyName::StreamNode_Static_BackupTalkerEntityID2] = model.backupTalkerEntityID_2;
-		jstatic[model::keyName::StreamNode_Static_BackupTalkerUniqueID2] = model.backupTalkerUniqueID_2;
-		jstatic[model::keyName::StreamNode_Static_BackedupTalkerEntityID] = model.backedupTalkerEntityID;
-		jstatic[model::keyName::StreamNode_Static_BackedupTalkerUnique] = model.backedupTalkerUnique;
-		jstatic[model::keyName::StreamNode_Static_AvbInterfaceIndex] = model.avbInterfaceIndex;
-		jstatic[model::keyName::StreamNode_Static_BufferLength] = model.bufferLength;
-		jstatic[model::keyName::StreamNode_Static_Formats] = model.formats;
-#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-		if (!model.redundantStreams.empty())
-		{
-			jstatic[model::keyName::StreamNode_Static_RedundantStreams] = model.redundantStreams;
-		}
-#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
-
-		return jstatic;
-	}
-
-	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::StreamInputNode const& node) noexcept override
-	{
-		// Check no previous error
-		if (!_serializationError.empty())
-		{
-			return;
-		}
-
-		// Search the JSON parent
-		auto& jconfigs = _object[keyName::ControlledEntity_EntityDescriptor][keyName::ControlledEntity_ConfigurationDescriptors];
-		try
-		{
-			auto& jconfig = jconfigs.at(parent->descriptorIndex);
-
-			// Validate index
-			if (_nextExpectedStreamInputIndex != node.descriptorIndex)
-			{
-				_serializationError = "StreamInputIndex is not the expected one";
-				return;
-			}
-
-			// Update next expected index
-			++_nextExpectedStreamInputIndex;
-
-			// Create JSON node
-			auto& jstreams = jconfig[keyName::ControlledEntity_StreamInputDescriptors];
-			auto jnode = json{};
-
-			jnode[model::keyName::Node_Informative_Index] = node.descriptorIndex;
-
-			// Static model
-			if (node.staticModel)
-			{
-				jnode[keyName::ControlledEntity_StaticInformation] = JsonizeStreamNodeStaticModel(*node.staticModel);
-			}
-
-			// Dynamic model
-			if (node.dynamicModel)
-			{
-				auto const& d = *node.dynamicModel;
-				auto jdynamic = json{};
-
-				jdynamic[model::keyName::StreamInputNode_Dynamic_ObjectName] = d.objectName;
-				jdynamic[model::keyName::StreamInputNode_Dynamic_StreamInfo] = d.streamInfo;
-				jdynamic[model::keyName::StreamInputNode_Dynamic_ConnectedTalker] = d.connectionState.talkerStream;
-				jdynamic[model::keyName::StreamInputNode_Dynamic_Counters] = d.counters;
-
-				jnode[keyName::ControlledEntity_DynamicInformation] = jdynamic;
-			}
-
-			// Save the node
-			jstreams.push_back(jnode);
-		}
-		catch (json::exception const&)
-		{
-			_serializationError = "JSON parent node not found (Configuration)";
-			return;
-		}
-	}
-
-	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::StreamOutputNode const& node) noexcept override
-	{
-		// Check no previous error
-		if (!_serializationError.empty())
-		{
-			return;
-		}
-
-		// Search the JSON parent
-		auto& jconfigs = _object[keyName::ControlledEntity_EntityDescriptor][keyName::ControlledEntity_ConfigurationDescriptors];
-		try
-		{
-			auto& jconfig = jconfigs.at(parent->descriptorIndex);
-
-			// Validate index
-			if (_nextExpectedStreamOutputIndex != node.descriptorIndex)
-			{
-				_serializationError = "StreamOutputIndex is not the expected one";
-				return;
-			}
-
-			// Update next expected index
-			++_nextExpectedStreamOutputIndex;
-
-			// Create JSON node
-			auto& jstreams = jconfig[keyName::ControlledEntity_StreamOutputDescriptors];
-			auto jnode = json{};
-
-			jnode[model::keyName::Node_Informative_Index] = node.descriptorIndex;
-
-			// Static model
-			if (node.staticModel)
-			{
-				jnode[keyName::ControlledEntity_StaticInformation] = JsonizeStreamNodeStaticModel(*node.staticModel);
-			}
-
-			// Dynamic model
-			if (node.dynamicModel)
-			{
-				auto const& d = *node.dynamicModel;
-				auto jdynamic = json{};
-
-				jdynamic[model::keyName::StreamOutputNode_Dynamic_ObjectName] = d.objectName;
-				jdynamic[model::keyName::StreamOutputNode_Dynamic_StreamInfo] = d.streamInfo;
-				jdynamic[model::keyName::StreamOutputNode_Dynamic_Counters] = d.counters;
-
-				jnode[keyName::ControlledEntity_DynamicInformation] = jdynamic;
-			}
-
-			// Save the node
-			jstreams.push_back(jnode);
-		}
-		catch (json::exception const&)
-		{
-			_serializationError = "JSON parent node not found (Configuration)";
-			return;
-		}
-	}
-
-	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::AvbInterfaceNode const& node) noexcept override
-	{
-		// Check no previous error
-		if (!_serializationError.empty())
-		{
-			return;
-		}
-
-		// Search the JSON parent
-		auto& jconfigs = _object[keyName::ControlledEntity_EntityDescriptor][keyName::ControlledEntity_ConfigurationDescriptors];
-		try
-		{
-			auto& jconfig = jconfigs.at(parent->descriptorIndex);
-
-			// Validate index
-			if (_nextExpectedAvbInterfaceIndex != node.descriptorIndex)
-			{
-				_serializationError = "AvbInterfaceIndex is not the expected one";
-				return;
-			}
-
-			// Update next expected index
-			++_nextExpectedAvbInterfaceIndex;
-
-			// Create JSON node
-			auto& jinterfaces = jconfig[keyName::ControlledEntity_AvbInterfaceDescriptors];
-			auto jnode = json{};
-
-			jnode[model::keyName::Node_Informative_Index] = node.descriptorIndex;
-
-			// Static model
-			if (node.staticModel)
-			{
-				auto const& s = *node.staticModel;
-				auto jstatic = json{};
-
-				jstatic[model::keyName::AvbInterfaceNode_Static_LocalizedDescription] = s.localizedDescription;
-				jstatic[model::keyName::AvbInterfaceNode_Static_MacAddress] = networkInterface::macAddressToString(s.macAddress, true);
-				jstatic[model::keyName::AvbInterfaceNode_Static_Flags] = s.interfaceFlags;
-				jstatic[model::keyName::AvbInterfaceNode_Static_ClockIdentity] = s.clockIdentity;
-				jstatic[model::keyName::AvbInterfaceNode_Static_Priority1] = s.priority1;
-				jstatic[model::keyName::AvbInterfaceNode_Static_ClockClass] = s.clockClass;
-				jstatic[model::keyName::AvbInterfaceNode_Static_OffsetScaledLogVariance] = s.offsetScaledLogVariance;
-				jstatic[model::keyName::AvbInterfaceNode_Static_ClockAccuracy] = s.clockAccuracy;
-				jstatic[model::keyName::AvbInterfaceNode_Static_Priority2] = s.priority2;
-				jstatic[model::keyName::AvbInterfaceNode_Static_DomainNumber] = s.domainNumber;
-				jstatic[model::keyName::AvbInterfaceNode_Static_LogSyncInterval] = s.logSyncInterval;
-				jstatic[model::keyName::AvbInterfaceNode_Static_LogAnnounceInterval] = s.logAnnounceInterval;
-				jstatic[model::keyName::AvbInterfaceNode_Static_LogPdelayInterval] = s.logPDelayInterval;
-				jstatic[model::keyName::AvbInterfaceNode_Static_PortNumber] = s.portNumber;
-
-				jnode[keyName::ControlledEntity_StaticInformation] = jstatic;
-			}
-
-			// Dynamic model
-			if (node.dynamicModel)
-			{
-				auto const& d = *node.dynamicModel;
-				auto jdynamic = json{};
-
-				jdynamic[model::keyName::AvbInterfaceNode_Dynamic_ObjectName] = d.objectName;
-				jdynamic[model::keyName::AvbInterfaceNode_Dynamic_AvbInfo] = d.avbInfo;
-				jdynamic[model::keyName::AvbInterfaceNode_Dynamic_AsPath] = d.asPath;
-				jdynamic[model::keyName::AvbInterfaceNode_Dynamic_Counters] = d.counters;
-
-				jnode[keyName::ControlledEntity_DynamicInformation] = jdynamic;
-			}
-
-			// Save the node
-			jinterfaces.push_back(jnode);
-		}
-		catch (json::exception const&)
-		{
-			_serializationError = "JSON parent node not found (Configuration)";
-			return;
-		}
-	}
-
-	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::ClockSourceNode const& node) noexcept override
-	{
-		// Check no previous error
-		if (!_serializationError.empty())
-		{
-			return;
-		}
-
-		// Search the JSON parent
-		auto& jconfigs = _object[keyName::ControlledEntity_EntityDescriptor][keyName::ControlledEntity_ConfigurationDescriptors];
-		try
-		{
-			auto& jconfig = jconfigs.at(parent->descriptorIndex);
-
-			// Validate index
-			if (_nextExpectedClockSourceIndex != node.descriptorIndex)
-			{
-				_serializationError = "ClockSourceIndex is not the expected one";
-				return;
-			}
-
-			// Update next expected index
-			++_nextExpectedClockSourceIndex;
-
-			// Create JSON node
-			auto& jsources = jconfig[keyName::ControlledEntity_ClockSourceDescriptors];
-			auto jnode = json{};
-
-			jnode[model::keyName::Node_Informative_Index] = node.descriptorIndex;
-
-			// Static model
-			if (node.staticModel)
-			{
-				auto const& s = *node.staticModel;
-				auto jstatic = json{};
-
-				jstatic[model::keyName::ClockSourceNode_Static_LocalizedDescription] = s.localizedDescription;
-				jstatic[model::keyName::ClockSourceNode_Static_ClockSourceType] = s.clockSourceType;
-				jstatic[model::keyName::ClockSourceNode_Static_ClockSourceLocationType] = s.clockSourceLocationType;
-				jstatic[model::keyName::ClockSourceNode_Static_ClockSourceLocationIndex] = s.clockSourceLocationIndex;
-
-				jnode[keyName::ControlledEntity_StaticInformation] = jstatic;
-			}
-
-			// Dynamic model
-			if (node.dynamicModel)
-			{
-				auto const& d = *node.dynamicModel;
-				auto jdynamic = json{};
-
-				jdynamic[model::keyName::ClockSourceNode_Dynamic_ObjectName] = d.objectName;
-				jdynamic[model::keyName::ClockSourceNode_Dynamic_ClockSourceFlags] = d.clockSourceFlags;
-				jdynamic[model::keyName::ClockSourceNode_Dynamic_ClockSourceIdentifier] = d.clockSourceIdentifier;
-
-				jnode[keyName::ControlledEntity_DynamicInformation] = jdynamic;
-			}
-
-			// Save the node
-			jsources.push_back(jnode);
-		}
-		catch (json::exception const&)
-		{
-			_serializationError = "JSON parent node not found (Configuration)";
-			return;
-		}
-	}
-
-	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::MemoryObjectNode const& node) noexcept override
-	{
-		// Check no previous error
-		if (!_serializationError.empty())
-		{
-			return;
-		}
-
-		// Search the JSON parent
-		auto& jconfigs = _object[keyName::ControlledEntity_EntityDescriptor][keyName::ControlledEntity_ConfigurationDescriptors];
-		try
-		{
-			auto& jconfig = jconfigs.at(parent->descriptorIndex);
-
-			// Validate index
-			if (_nextExpectedMemoryObjectIndex != node.descriptorIndex)
-			{
-				_serializationError = "MemoryObjectIndex is not the expected one";
-				return;
-			}
-
-			// Update next expected index
-			++_nextExpectedMemoryObjectIndex;
-
-			// Create JSON node
-			auto& jobjects = jconfig[keyName::ControlledEntity_MemoryObjectDescriptors];
-			auto jnode = json{};
-
-			jnode[model::keyName::Node_Informative_Index] = node.descriptorIndex;
-
-			// Static model
-			if (node.staticModel)
-			{
-				auto const& s = *node.staticModel;
-				auto jstatic = json{};
-
-				jstatic[model::keyName::MemoryObjectNode_Static_LocalizedDescription] = s.localizedDescription;
-				jstatic[model::keyName::MemoryObjectNode_Static_MemoryObjectType] = s.memoryObjectType;
-				jstatic[model::keyName::MemoryObjectNode_Static_TargetDescriptorType] = s.targetDescriptorType;
-				jstatic[model::keyName::MemoryObjectNode_Static_TargetDescriptorIndex] = s.targetDescriptorIndex;
-				jstatic[model::keyName::MemoryObjectNode_Static_StartAddress] = utils::toHexString(s.startAddress, true, true);
-				jstatic[model::keyName::MemoryObjectNode_Static_MaximumLength] = s.maximumLength;
-
-				jnode[keyName::ControlledEntity_StaticInformation] = jstatic;
-			}
-
-			// Dynamic model
-			if (node.dynamicModel)
-			{
-				auto const& d = *node.dynamicModel;
-				auto jdynamic = json{};
-
-				jdynamic[model::keyName::MemoryObjectNode_Dynamic_ObjectName] = d.objectName;
-				jdynamic[model::keyName::MemoryObjectNode_Dynamic_Length] = d.length;
-
-				jnode[keyName::ControlledEntity_DynamicInformation] = jdynamic;
-			}
-
-			// Save the node
-			jobjects.push_back(jnode);
-		}
-		catch (json::exception const&)
-		{
-			_serializationError = "JSON parent node not found (Configuration)";
-			return;
-		}
-	}
-
-	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::LocaleNode const& node) noexcept override
-	{
-		// Check no previous error
-		if (!_serializationError.empty())
-		{
-			return;
-		}
-
-		// Search the JSON parent
-		auto& jconfigs = _object[keyName::ControlledEntity_EntityDescriptor][keyName::ControlledEntity_ConfigurationDescriptors];
-		try
-		{
-			auto& jconfig = jconfigs.at(parent->descriptorIndex);
-
-			// Validate index
-			if (_nextExpectedLocaleIndex != node.descriptorIndex)
-			{
-				_serializationError = "LocaleIndex is not the expected one";
-				return;
-			}
-
-			// Update next expected index
-			++_nextExpectedLocaleIndex;
-
-			// Create JSON node
-			auto& jlocales = jconfig[keyName::ControlledEntity_LocaleDescriptors];
-			auto jnode = json{};
-
-			jnode[model::keyName::Node_Informative_Index] = node.descriptorIndex;
-
-			// Static model
-			if (node.staticModel)
-			{
-				auto const& s = *node.staticModel;
-				auto jstatic = json{};
-
-				jstatic[model::keyName::LocaleNode_Static_LocaleID] = s.localeID;
-				jstatic[model::keyName::LocaleNode_Static_BaseStringDescriptor] = s.baseStringDescriptorIndex;
-
-				jnode[keyName::ControlledEntity_StaticInformation] = jstatic;
-			}
-
-			// Save the node
-			jlocales.push_back(jnode);
-		}
-		catch (json::exception const&)
-		{
-			_serializationError = "JSON parent node not found (Configuration)";
-			return;
-		}
-	}
-
-	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::LocaleNode const* const parent, model::StringsNode const& node) noexcept override
-	{
-		// Check no previous error
-		if (!_serializationError.empty())
-		{
-			return;
-		}
-
-		// Search the JSON grand-parent
-		auto& jconfigs = _object[keyName::ControlledEntity_EntityDescriptor][keyName::ControlledEntity_ConfigurationDescriptors];
-		try
-		{
-			auto& jconfig = jconfigs.at(grandParent->descriptorIndex);
-
-			// Search the JSON parent
-			auto& jlocales = jconfig[keyName::ControlledEntity_LocaleDescriptors];
-			try
-			{
-				auto& jlocale = jlocales.at(parent->descriptorIndex);
-
-				// Validate index
-				if (_nextExpectedStringsIndex != node.descriptorIndex)
+				json j = intfcInfo; // Must use operator= instead of constructor to force usage of the to_json overload
+				if (avbInterfaceIndex == entity::Entity::GlobalAvbInterfaceIndex)
 				{
-					_serializationError = "StringsIndex is not the expected one";
-					return;
+					j[entity::keyName::Entity_InterfaceInformation_AvbInterfaceIndex] = nullptr;
 				}
-
-				// Update next expected index
-				++_nextExpectedStringsIndex;
-
-				// Create JSON node
-				auto& jstrings = jlocale[keyName::ControlledEntity_StringsDescriptors];
-				auto jnode = json{};
-
-				jnode[model::keyName::Node_Informative_Index] = node.descriptorIndex;
-
-				// Static model
-				if (node.staticModel)
+				else
 				{
-					auto const& s = *node.staticModel;
-					auto jstatic = json{};
-
-					jstatic[model::keyName::StringsNode_Static_Strings] = s.strings;
-
-					jnode[keyName::ControlledEntity_StaticInformation] = jstatic;
+					j[entity::keyName::Entity_InterfaceInformation_AvbInterfaceIndex] = avbInterfaceIndex;
 				}
-
-				// Save the node
-				jstrings.push_back(jnode);
+				intfcs.push_back(j);
 			}
-			catch (json::exception const&)
-			{
-				_serializationError = "JSON parent node not found (Locale)";
-				return;
-			}
+			adp[entity::keyName::Entity_InterfaceInformation_Node] = intfcs;
 		}
-		catch (json::exception const&)
+
+		// Dump device compatibility flags
+		object[keyName::ControlledEntity_CompatibilityFlags] = entity.getCompatibilityFlags();
+
+		// Dump AEM if supported
+		if (e.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
 		{
-			_serializationError = "JSON grand-parent node not found (Configuration)";
-			return;
+			// Dump static and dynamic models
+			auto flags = entity::model::jsonSerializer::Flags{ entity::model::jsonSerializer::Flag::ProcessStaticModel, entity::model::jsonSerializer::Flag::ProcessDynamicModel };
+			if (ignoreSanityChecks)
+			{
+				flags.set(entity::model::jsonSerializer::Flag::IgnoreSanityChecks);
+			}
+			object[keyName::ControlledEntity_EntityModel] = entity::model::jsonSerializer::createJsonObject(entity.getEntityTree(), flags);
 		}
-	}
 
-	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::AudioUnitNode const* const parent, model::StreamPortNode const& node) noexcept override
+		// Dump Milan information, if present
+		auto const milanInfo = entity.getMilanInfo();
+		if (milanInfo)
+		{
+			object[keyName::ControlledEntity_MilanInformation] = *milanInfo;
+		}
+
+		// Dump Entity State
+		{
+			auto& state = object[keyName::ControlledEntity_EntityState];
+			state[controller::keyName::ControlledEntityState_AcquireState] = entity.getAcquireState();
+			state[controller::keyName::ControlledEntityState_OwningControllerID] = entity.getOwningControllerID();
+			state[controller::keyName::ControlledEntityState_LockState] = entity.getLockState();
+			state[controller::keyName::ControlledEntityState_LockingControllerID] = entity.getLockingControllerID();
+			state[controller::keyName::ControlledEntityState_SubscribedUnsol] = entity.isSubscribedToUnsolicitedNotifications();
+			state[controller::keyName::ControlledEntityState_ActiveConfiguration] = entity.getCurrentConfigurationIndex();
+		}
+
+		// Dump Entity Statistics
+		{
+			auto& statistics = object[keyName::ControlledEntity_Statistics];
+			statistics[controller::keyName::ControlledEntityStatistics_AecpRetryCounter] = entity.getAecpRetryCounter();
+			statistics[controller::keyName::ControlledEntityStatistics_AecpTimeoutCounter] = entity.getAecpTimeoutCounter();
+			statistics[controller::keyName::ControlledEntityStatistics_AecpUnexpectedResponseCounter] = entity.getAecpUnexpectedResponseCounter();
+			statistics[controller::keyName::ControlledEntityStatistics_AecpResponseAverageTime] = entity.getAecpResponseAverageTime();
+			statistics[controller::keyName::ControlledEntityStatistics_AemAecpUnsolicitedCounter] = entity.getAemAecpUnsolicitedCounter();
+			statistics[controller::keyName::ControlledEntityStatistics_EnumerationTime] = entity.getEnumerationTime();
+		}
+
+		return object;
+	}
+	catch (json::exception const& e)
 	{
-		// Check no previous error
-		if (!_serializationError.empty())
-		{
-			return;
-		}
-
-		// Search the JSON grand-parent
-		auto& jconfigs = _object[keyName::ControlledEntity_EntityDescriptor][keyName::ControlledEntity_ConfigurationDescriptors];
-		try
-		{
-			auto& jconfig = jconfigs.at(grandParent->descriptorIndex);
-
-			// Search the JSON parent
-			auto& junits = jconfig[keyName::ControlledEntity_AudioUnitDescriptors];
-			try
-			{
-				auto& junit = junits.at(parent->descriptorIndex);
-
-				// Validate index
-				auto& nextExpectedIndex = node.descriptorType == entity::model::DescriptorType::StreamPortInput ? _nextExpectedStreamPortInputIndex : _nextExpectedStreamPortOutputIndex;
-				if (nextExpectedIndex != node.descriptorIndex)
-				{
-					_serializationError = "StreamPortIndex is not the expected one";
-					return;
-				}
-
-				// Update next expected index
-				++nextExpectedIndex;
-
-				// Create JSON node
-				auto const streamPortTypeName = node.descriptorType == entity::model::DescriptorType::StreamPortInput ? "stream_port_input_descriptors" : "stream_port_output_descriptors";
-				auto& jports = junit[streamPortTypeName];
-				auto jnode = json{};
-
-				jnode[model::keyName::Node_Informative_Index] = node.descriptorIndex;
-
-				// Static model
-				if (node.staticModel)
-				{
-					auto const& s = *node.staticModel;
-					auto jstatic = json{};
-
-					jstatic[model::keyName::StreamPortNode_Static_ClockDomainIndex] = s.clockDomainIndex;
-					jstatic[model::keyName::StreamPortNode_Static_Flags] = s.portFlags;
-
-					jnode[keyName::ControlledEntity_StaticInformation] = jstatic;
-				}
-
-				// Dynamic model
-				if (node.dynamicModel)
-				{
-					auto const& d = *node.dynamicModel;
-					auto jdynamic = json{};
-
-					if (node.staticModel && node.staticModel->hasDynamicAudioMap)
-					{
-						jdynamic[model::keyName::StreamPortNode_Dynamic_DynamicMappings] = d.dynamicAudioMap;
-					}
-
-					jnode[keyName::ControlledEntity_DynamicInformation] = jdynamic;
-				}
-
-				// Save the node
-				jports.push_back(jnode);
-			}
-			catch (json::exception const&)
-			{
-				_serializationError = "JSON parent node not found (AudioUnit)";
-				return;
-			}
-		}
-		catch (json::exception const&)
-		{
-			_serializationError = "JSON grand-parent node not found (Configuration)";
-			return;
-		}
+		AVDECC_ASSERT(false, "json::exception is not expected to be thrown here");
+		throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InternalError, e.what() };
 	}
-
-	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandGrandParent, model::AudioUnitNode const* const grandParent, model::StreamPortNode const* const parent, model::AudioClusterNode const& node) noexcept override
+	catch (avdecc::jsonSerializer::SerializationException const&)
 	{
-		// Check no previous error
-		if (!_serializationError.empty())
-		{
-			return;
-		}
-
-		// Search the JSON grand-grand-parent
-		auto& jconfigs = _object[keyName::ControlledEntity_EntityDescriptor][keyName::ControlledEntity_ConfigurationDescriptors];
-		try
-		{
-			auto& jconfig = jconfigs.at(grandGrandParent->descriptorIndex);
-
-			// Search the JSON grand-parent
-			auto& junits = jconfig[keyName::ControlledEntity_AudioUnitDescriptors];
-			try
-			{
-				auto& junit = junits.at(grandParent->descriptorIndex);
-
-				// Search the JSON parent
-				auto const streamPortTypeName = parent->descriptorType == entity::model::DescriptorType::StreamPortInput ? "stream_port_input_descriptors" : "stream_port_output_descriptors";
-				auto& jports = junit[streamPortTypeName];
-				try
-				{
-					auto& jport = jports.at(parent->descriptorIndex);
-
-					// Validate index
-					if (_nextExpectedAudioClusterIndex != node.descriptorIndex)
-					{
-						_serializationError = "AudioClusterIndex is not the expected one";
-						return;
-					}
-
-					// Update next expected index
-					++_nextExpectedAudioClusterIndex;
-
-					// Create JSON node
-					auto& jclusters = jport[keyName::ControlledEntity_AudioClusterDescriptors];
-					auto jnode = json{};
-
-					jnode[model::keyName::Node_Informative_Index] = node.descriptorIndex;
-
-					// Static model
-					if (node.staticModel)
-					{
-						auto const& s = *node.staticModel;
-						auto jstatic = json{};
-
-						jstatic[model::keyName::AudioClusterNode_Static_LocalizedDescription] = s.localizedDescription;
-						jstatic[model::keyName::AudioClusterNode_Static_SignalType] = s.signalType;
-						jstatic[model::keyName::AudioClusterNode_Static_SignalIndex] = s.signalIndex;
-						jstatic[model::keyName::AudioClusterNode_Static_SignalOutput] = s.signalOutput;
-						jstatic[model::keyName::AudioClusterNode_Static_PathLatency] = s.pathLatency;
-						jstatic[model::keyName::AudioClusterNode_Static_BlockLatency] = s.blockLatency;
-						jstatic[model::keyName::AudioClusterNode_Static_ChannelCount] = s.channelCount;
-						jstatic[model::keyName::AudioClusterNode_Static_Format] = s.format;
-
-						jnode[keyName::ControlledEntity_StaticInformation] = jstatic;
-					}
-
-					// Dynamic model
-					if (node.dynamicModel)
-					{
-						auto const& d = *node.dynamicModel;
-						auto jdynamic = json{};
-
-						jdynamic[model::keyName::AudioClusterNode_Dynamic_ObjectName] = d.objectName;
-
-						jnode[keyName::ControlledEntity_DynamicInformation] = jdynamic;
-					}
-
-					// Save the node
-					jclusters.push_back(jnode);
-				}
-				catch (json::exception const&)
-				{
-					_serializationError = "JSON parent node not found (StreamPort)";
-					return;
-				}
-			}
-			catch (json::exception const&)
-			{
-				_serializationError = "JSON parent node not found (AudioUnit)";
-				return;
-			}
-		}
-		catch (json::exception const&)
-		{
-			_serializationError = "JSON grand-parent node not found (Configuration)";
-			return;
-		}
+		throw; // Rethrow, this is already the correct exception type
 	}
-
-	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandGrandParent, model::AudioUnitNode const* const grandParent, model::StreamPortNode const* const parent, model::AudioMapNode const& node) noexcept override
+	catch (...)
 	{
-		// Check no previous error
-		if (!_serializationError.empty())
-		{
-			return;
-		}
-
-		// Search the JSON grand-grand-parent
-		auto& jconfigs = _object[keyName::ControlledEntity_EntityDescriptor][keyName::ControlledEntity_ConfigurationDescriptors];
-		try
-		{
-			auto& jconfig = jconfigs.at(grandGrandParent->descriptorIndex);
-
-			// Search the JSON grand-parent
-			auto& junits = jconfig[keyName::ControlledEntity_AudioUnitDescriptors];
-			try
-			{
-				auto& junit = junits.at(grandParent->descriptorIndex);
-
-				// Search the JSON parent
-				auto const streamPortTypeName = parent->descriptorType == entity::model::DescriptorType::StreamPortInput ? "stream_port_input_descriptors" : "stream_port_output_descriptors";
-				auto& jports = junit[streamPortTypeName];
-				try
-				{
-					auto& jport = jports.at(parent->descriptorIndex);
-
-					// Validate index
-					if (_nextExpectedAudioMapIndex != node.descriptorIndex)
-					{
-						_serializationError = "AudioMapIndex is not the expected one";
-						return;
-					}
-
-					// Update next expected index
-					++_nextExpectedAudioMapIndex;
-
-					// Create JSON node
-					auto& jmaps = jport[keyName::ControlledEntity_AudioMapDescriptors];
-					auto jnode = json{};
-
-					jnode[model::keyName::Node_Informative_Index] = node.descriptorIndex;
-
-					// Static model
-					if (node.staticModel)
-					{
-						auto const& s = *node.staticModel;
-						auto jstatic = json{};
-
-						jstatic[model::keyName::AudioMapNode_Static_Mappings] = s.mappings;
-
-						jnode[keyName::ControlledEntity_StaticInformation] = jstatic;
-					}
-
-					// Save the node
-					jmaps.push_back(jnode);
-				}
-				catch (json::exception const&)
-				{
-					_serializationError = "JSON parent node not found (StreamPort)";
-					return;
-				}
-			}
-			catch (json::exception const&)
-			{
-				_serializationError = "JSON parent node not found (AudioUnit)";
-				return;
-			}
-		}
-		catch (json::exception const&)
-		{
-			_serializationError = "JSON grand-parent node not found (Configuration)";
-			return;
-		}
+		AVDECC_ASSERT(false, "Exception type other than avdecc::jsonSerializer::SerializationException are not expected to be thrown here");
+		throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InternalError, "Exception type other than avdecc::jsonSerializer::SerializationException are not expected to be thrown here." };
 	}
-
-	virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::ClockDomainNode const& node) noexcept override
-	{
-		// Check no previous error
-		if (!_serializationError.empty())
-		{
-			return;
-		}
-
-		// Search the JSON parent
-		auto& jconfigs = _object[keyName::ControlledEntity_EntityDescriptor][keyName::ControlledEntity_ConfigurationDescriptors];
-		try
-		{
-			auto& jconfig = jconfigs.at(parent->descriptorIndex);
-
-			// Validate index
-			if (_nextExpectedClockDomainIndex != node.descriptorIndex)
-			{
-				_serializationError = "ClockDomainIndex is not the expected one";
-				return;
-			}
-
-			// Update next expected index
-			++_nextExpectedClockDomainIndex;
-
-			// Create JSON node
-			auto& jdomains = jconfig[keyName::ControlledEntity_ClockDomainDescriptors];
-			auto jnode = json{};
-
-			jnode[model::keyName::Node_Informative_Index] = node.descriptorIndex;
-
-			// Static model
-			if (node.staticModel)
-			{
-				auto const& s = *node.staticModel;
-				auto jstatic = json{};
-
-				jstatic[model::keyName::ClockDomainNode_Static_LocalizedDescription] = s.localizedDescription;
-				jstatic[model::keyName::ClockDomainNode_Static_ClockSources] = s.clockSources;
-
-				jnode[keyName::ControlledEntity_StaticInformation] = jstatic;
-			}
-
-			// Dynamic model
-			if (node.dynamicModel)
-			{
-				auto const& d = *node.dynamicModel;
-				auto jdynamic = json{};
-
-				jdynamic[model::keyName::ClockDomainNode_Dynamic_ObjectName] = d.objectName;
-				jdynamic[model::keyName::ClockDomainNode_Dynamic_ClockSourceIndex] = d.clockSourceIndex;
-				jdynamic[model::keyName::ClockDomainNode_Dynamic_Counters] = d.counters;
-
-				jnode[keyName::ControlledEntity_DynamicInformation] = jdynamic;
-			}
-
-			// Save the node
-			jdomains.push_back(jnode);
-		}
-		catch (json::exception const&)
-		{
-			_serializationError = "JSON parent node not found (Configuration)";
-			return;
-		}
-	}
-
-	// Private members
-	json& _object; // NSDMI not possible for a reference
-	std::string _serializationError{};
-	entity::model::ConfigurationIndex _nextExpectedConfigurationIndex{ 0u };
-	entity::model::AudioUnitIndex _nextExpectedAudioUnitIndex{ 0u };
-	entity::model::StreamIndex _nextExpectedStreamInputIndex{ 0u };
-	entity::model::StreamIndex _nextExpectedStreamOutputIndex{ 0u };
-	entity::model::AvbInterfaceIndex _nextExpectedAvbInterfaceIndex{ 0u };
-	entity::model::ClockSourceIndex _nextExpectedClockSourceIndex{ 0u };
-	entity::model::MemoryObjectIndex _nextExpectedMemoryObjectIndex{ 0u };
-	entity::model::LocaleIndex _nextExpectedLocaleIndex{ 0u };
-	entity::model::StringsIndex _nextExpectedStringsIndex{ 0u };
-	entity::model::StreamPortIndex _nextExpectedStreamPortInputIndex{ 0u };
-	entity::model::StreamPortIndex _nextExpectedStreamPortOutputIndex{ 0u };
-	entity::model::ClusterIndex _nextExpectedAudioClusterIndex{ 0u };
-	entity::model::MapIndex _nextExpectedAudioMapIndex{ 0u };
-	entity::model::ClockDomainIndex _nextExpectedClockDomainIndex{ 0u };
-};
-
-
-json createJsonObject(ControlledEntity const& entity) noexcept
-{
-	// Create the object
-	auto object = json{};
-	auto const& e = entity.getEntity();
-
-	// Dump information of the dump itself
-	object[keyName::ControlledEntity_DumpVersion] = 1;
-
-	// Dump device compatibility flags
-	object[keyName::ControlledEntity_CompatibilityFlags] = entity.getCompatibilityFlags();
-
-	// Dump ADP information
-	{
-		auto& adp = object[keyName::ControlledEntity_AdpInformation];
-
-		// Dump common information
-		adp[entity::keyName::Entity_CommonInformation_Node] = e.getCommonInformation();
-
-		// Dump interfaces information
-		for (auto const& [avbInterfaceIndex, intfcInfo] : e.getInterfacesInformation())
-		{
-			json j = intfcInfo; // Must use operator= instead of constructor to force usage of the to_json overload
-			if (avbInterfaceIndex == entity::Entity::GlobalAvbInterfaceIndex)
-			{
-				j[entity::keyName::Entity_InterfaceInformation_AvbInterfaceIndex] = nullptr;
-			}
-			else
-			{
-				j[entity::keyName::Entity_InterfaceInformation_AvbInterfaceIndex] = avbInterfaceIndex;
-			}
-			object[entity::keyName::Entity_InterfaceInformation_Node].push_back(j);
-		}
-	}
-
-	// Dump AEM if supported
-	if (e.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
-	{
-		auto& j = object[keyName::ControlledEntity_EntityModel];
-		auto v = Visitor{ j };
-		entity.accept(&v);
-		if (!v)
-		{
-			return json{ v.getSerializationError() };
-		}
-	}
-
-	// Dump Milan information, if present
-	auto const milanInfo = entity.getMilanInfo();
-	if (milanInfo)
-	{
-		object[keyName::ControlledEntity_MilanInformation] = *milanInfo;
-	}
-
-	// Entity State
-	{
-		auto& state = object[keyName::ControlledEntity_EntityState];
-		state[controller::keyName::ControlledEntityState_AcquireState] = entity.getAcquireState();
-		state[controller::keyName::ControlledEntityState_OwningControllerID] = entity.getOwningControllerID();
-		state[controller::keyName::ControlledEntityState_LockState] = entity.getLockState();
-		state[controller::keyName::ControlledEntityState_LockingControllerID] = entity.getLockingControllerID();
-		state[controller::keyName::ControlledEntityState_SubscribedUnsol] = entity.isSubscribedToUnsolicitedNotifications();
-	}
-
-	return object;
 }
 
-} // namespace entitySerializer
+void setEntityModel(ControlledEntityImpl& entity, json const& object, entity::model::jsonSerializer::Flags flags)
+{
+	try
+	{
+		// Read AEM if supported
+		if (entity.getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+		{
+			// Read Entity Tree
+			auto entityTree = entity::model::jsonSerializer::createEntityTree(object, flags);
+
+			// Set tree on entity
+			entity.setEntityTree(entityTree);
+		}
+	}
+	catch (json::exception const& e)
+	{
+		AVDECC_ASSERT(false, "json::exception is not expected to be thrown here");
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InternalError, e.what() };
+	}
+	catch (avdecc::jsonSerializer::DeserializationException const&)
+	{
+		throw; // Rethrow, this is already the correct exception type
+	}
+	catch (...)
+	{
+		AVDECC_ASSERT(false, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here");
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InternalError, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here." };
+	}
+}
+
+void setEntityState(ControlledEntityImpl& entity, json const& object)
+{
+	try
+	{
+		// Everything is optional, except for the current configuration
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityState_AcquireState);
+			if (it != object.end())
+			{
+				entity.setAcquireState(it->get<model::AcquireState>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityState_OwningControllerID);
+			if (it != object.end())
+			{
+				entity.setOwningController(it->get<UniqueIdentifier>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityState_LockState);
+			if (it != object.end())
+			{
+				entity.setLockState(it->get<model::LockState>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityState_LockingControllerID);
+			if (it != object.end())
+			{
+				entity.setLockingController(it->get<UniqueIdentifier>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityState_SubscribedUnsol);
+			if (it != object.end())
+			{
+				entity.setSubscribedToUnsolicitedNotifications(it->get<bool>());
+			}
+		}
+		entity.setCurrentConfiguration(object.at(controller::keyName::ControlledEntityState_ActiveConfiguration).get<entity::model::DescriptorIndex>());
+	}
+	catch (json::type_error const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InvalidValue, e.what() };
+	}
+	catch (json::parse_error const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::ParseError, e.what() };
+	}
+	catch (json::out_of_range const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::MissingKey, e.what() };
+	}
+	catch (json::other_error const& e)
+	{
+		if (e.id == 555)
+		{
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InvalidKey, e.what() };
+		}
+		else
+		{
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
+		}
+	}
+	catch (json::exception const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
+	}
+	catch (avdecc::jsonSerializer::DeserializationException const&)
+	{
+		throw; // Rethrow, this is already the correct exception type
+	}
+	catch (...)
+	{
+		AVDECC_ASSERT(false, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here");
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InternalError, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here." };
+	}
+}
+
+void setEntityStatistics(ControlledEntityImpl& entity, json const& object)
+{
+	try
+	{
+		// Everything is optional
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityStatistics_AecpRetryCounter);
+			if (it != object.end())
+			{
+				entity.setAecpRetryCounter(it->get<std::uint64_t>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityStatistics_AecpTimeoutCounter);
+			if (it != object.end())
+			{
+				entity.setAecpTimeoutCounter(it->get<std::uint64_t>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityStatistics_AecpUnexpectedResponseCounter);
+			if (it != object.end())
+			{
+				entity.setAecpUnexpectedResponseCounter(it->get<std::uint64_t>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityStatistics_AecpResponseAverageTime);
+			if (it != object.end())
+			{
+				entity.setAecpResponseAverageTime(it->get<std::chrono::milliseconds>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityStatistics_AemAecpUnsolicitedCounter);
+			if (it != object.end())
+			{
+				entity.setAemAecpUnsolicitedCounter(it->get<std::uint64_t>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityStatistics_EnumerationTime);
+			if (it != object.end())
+			{
+				entity.setEnumerationTime(it->get<std::chrono::milliseconds>());
+			}
+		}
+	}
+	catch (json::type_error const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InvalidValue, e.what() };
+	}
+	catch (json::parse_error const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::ParseError, e.what() };
+	}
+	catch (json::out_of_range const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::MissingKey, e.what() };
+	}
+	catch (json::other_error const& e)
+	{
+		if (e.id == 555)
+		{
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InvalidKey, e.what() };
+		}
+		else
+		{
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
+		}
+	}
+	catch (json::exception const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
+	}
+	catch (avdecc::jsonSerializer::DeserializationException const&)
+	{
+		throw; // Rethrow, this is already the correct exception type
+	}
+	catch (...)
+	{
+		AVDECC_ASSERT(false, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here");
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InternalError, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here." };
+	}
+}
+
+} // namespace jsonSerializer
 } // namespace controller
 } // namespace avdecc
 } // namespace la

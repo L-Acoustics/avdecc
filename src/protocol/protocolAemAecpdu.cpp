@@ -23,7 +23,9 @@
 */
 
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
+
 #include "logHelper.hpp"
+
 #include <cassert>
 #include <string>
 

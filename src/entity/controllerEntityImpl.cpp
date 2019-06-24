@@ -23,9 +23,11 @@
 */
 
 #include "la/avdecc/utils.hpp"
+
 #include "logHelper.hpp"
 #include "controllerEntityImpl.hpp"
 #include "controllerCapabilityDelegate.hpp"
+
 #include <exception>
 #include <cassert>
 #include <chrono>
@@ -517,7 +519,7 @@ void ControllerEntityImpl::getMemoryObjectLength(UniqueIdentifier const targetEn
 }
 
 /* Enumeration and Control Protocol (AECP) AA */
-void ControllerEntityImpl::addressAccess(la::avdecc::UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, AddressAccessHandler const& handler) const noexcept
+void ControllerEntityImpl::addressAccess(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, AddressAccessHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).addressAccess(targetEntityID, tlvs, handler);
 }
@@ -554,7 +556,7 @@ void ControllerEntityImpl::getListenerStreamState(model::StreamIdentification co
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getListenerStreamState(listenerStream, handler);
 }
 
-void ControllerEntityImpl::getTalkerStreamConnection(model::StreamIdentification const& talkerStream, uint16_t const connectionIndex, GetTalkerStreamConnectionHandler const& handler) const noexcept
+void ControllerEntityImpl::getTalkerStreamConnection(model::StreamIdentification const& talkerStream, std::uint16_t const connectionIndex, GetTalkerStreamConnectionHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getTalkerStreamConnection(talkerStream, connectionIndex, handler);
 }
@@ -630,6 +632,27 @@ void ControllerEntityImpl::onAcmpCommand(protocol::ProtocolInterface* const pi, 
 void ControllerEntityImpl::onAcmpResponse(protocol::ProtocolInterface* const pi, protocol::Acmpdu const& acmpdu) noexcept
 {
 	_controllerCapabilityDelegate->onAcmpResponse(pi, acmpdu);
+}
+
+/* **** Statistics **** */
+void ControllerEntityImpl::onAecpRetry(protocol::ProtocolInterface* const pi, UniqueIdentifier const& entityID) noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).onAecpRetry(pi, entityID);
+}
+
+void ControllerEntityImpl::onAecpTimeout(protocol::ProtocolInterface* const pi, UniqueIdentifier const& entityID) noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).onAecpTimeout(pi, entityID);
+}
+
+void ControllerEntityImpl::onAecpUnexpectedResponse(protocol::ProtocolInterface* const pi, UniqueIdentifier const& entityID) noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).onAecpUnexpectedResponse(pi, entityID);
+}
+
+void ControllerEntityImpl::onAecpResponseTime(protocol::ProtocolInterface* const pi, UniqueIdentifier const& entityID, std::chrono::milliseconds const& responseTime) noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).onAecpResponseTime(pi, entityID, responseTime);
 }
 
 /* ************************************************************************** */

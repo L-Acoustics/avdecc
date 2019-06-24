@@ -23,7 +23,9 @@
 */
 
 #include "la/avdecc/internals/protocolInterface.hpp"
+
 #include "endStationImpl.hpp"
+
 // Entities
 #include "entity/controllerEntityImpl.hpp"
 #include "entity/aggregateEntityImpl.hpp"

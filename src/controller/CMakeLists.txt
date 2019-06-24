@@ -22,10 +22,7 @@ set(ADD_PUBLIC_COMPILE_OPTIONS "")
 set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/controller/avdeccController.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntity.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntityCommonModel.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntityDynamicModel.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntityModel.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntityStaticModel.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/exports.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/logItems.hpp
 )
@@ -34,7 +31,6 @@ set (HEADER_FILES_COMMON
 	${CMAKE_CURRENT_BINARY_DIR}/config.h
 	avdeccControllerImpl.hpp
 	avdeccControlledEntityImpl.hpp
-	avdeccControlledEntityModelTree.hpp
 	avdeccControllerLogHelper.hpp
 	avdeccEntityModelCache.hpp
 )
@@ -56,11 +52,8 @@ if(ENABLE_AVDECC_FEATURE_REDUNDANCY)
 	endif()
 endif()
 if(ENABLE_AVDECC_FEATURE_JSON)
-	list(APPEND PUBLIC_HEADER_FILES
-		${LA_ROOT_DIR}/include/la/avdecc/controller/internals/jsonTypes.hpp
-	)
 	list(APPEND SOURCE_FILES_COMMON avdeccControlledEntityJsonSerializer.cpp)
-	list(APPEND HEADER_FILES_COMMON avdeccControlledEntityJsonSerializer.hpp)
+	list(APPEND HEADER_FILES_COMMON avdeccControlledEntityJsonSerializer.hpp avdeccControllerJsonTypes.hpp)
 	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DENABLE_AVDECC_FEATURE_JSON")
 endif()
 
@@ -111,12 +104,13 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 		target_link_libraries(la_avdecc_controller_cxx PRIVATE nlohmann_json)
 	endif()
 
+	# Sign binary (this is done during installation phase, either from this project or from a project including this one)
+	if(ENABLE_AVDECC_SIGNING)
+		sign_target(la_avdecc_controller_cxx)
+	endif()
+
 	# Set installation rule
 	if(INSTALL_AVDECC_LIB_SHARED_CXX)
-		# Sign binary (this is done during installation phase)
-		if(ENABLE_AVDECC_SIGNING)
-			sign_target(la_avdecc_controller_cxx)
-		endif()
 		setup_library_install_rules(la_avdecc_controller_cxx)
 	endif()
 endif()

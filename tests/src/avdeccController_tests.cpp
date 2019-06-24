@@ -181,7 +181,7 @@ TEST(Controller, RedundantStreams)
 		auto const commonInformation{ la::avdecc::entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported }, 0u, la::avdecc::entity::TalkerCapabilities{}, 0u, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented }, std::nullopt, std::nullopt } };
 		auto const interfaceInfo{ la::avdecc::entity::Entity::InterfaceInformation{ la::avdecc::networkInterface::MacAddress{}, 31u, 0u, std::nullopt, std::nullopt } };
 		auto const e{ la::avdecc::entity::Entity{ commonInformation, la::avdecc::entity::Entity::InterfacesInformation{ { la::avdecc::entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } } } };
-		la::avdecc::controller::ControlledEntityImpl entity{ e, sharedLock };
+		la::avdecc::controller::ControlledEntityImpl entity{ e, sharedLock, false };
 
 		entity.setEntityDescriptor(la::avdecc::entity::model::EntityDescriptor{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported }, 0, la::avdecc::entity::TalkerCapabilities{}, 0, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{}, 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), std::string("Test entity"), la::avdecc::entity::model::LocalizedStringReference{}, la::avdecc::entity::model::LocalizedStringReference{}, std::string("Test firmware"), std::string("Test group"), std::string("Test serial number"), 1, 0 });
 		entity.setConfigurationDescriptor(la::avdecc::entity::model::ConfigurationDescriptor{ std::string("Test configuration"), la::avdecc::entity::model::LocalizedStringReference{}, { { la::avdecc::entity::model::DescriptorType::StreamInput, std::uint16_t{ 4 } } } }, 0);
@@ -220,7 +220,7 @@ TEST(Controller, RedundantStreams)
 		auto const commonInformation{ la::avdecc::entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported }, 0u, la::avdecc::entity::TalkerCapabilities{}, 0u, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented }, std::nullopt, std::nullopt } };
 		auto const interfaceInfo{ la::avdecc::entity::Entity::InterfaceInformation{ la::avdecc::networkInterface::MacAddress{}, 31u, 0u, std::nullopt, std::nullopt } };
 		auto const e{ la::avdecc::entity::Entity{ commonInformation, la::avdecc::entity::Entity::InterfacesInformation{ { la::avdecc::entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } } } };
-		la::avdecc::controller::ControlledEntityImpl entity{ e, sharedLock };
+		la::avdecc::controller::ControlledEntityImpl entity{ e, sharedLock, false };
 
 		entity.setEntityDescriptor(la::avdecc::entity::model::EntityDescriptor{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported }, 0, la::avdecc::entity::TalkerCapabilities{}, 0, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{}, 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), std::string("Test entity"), la::avdecc::entity::model::LocalizedStringReference{}, la::avdecc::entity::model::LocalizedStringReference{}, std::string("Test firmware"), std::string("Test group"), std::string("Test serial number"), 1, 0 });
 		entity.setConfigurationDescriptor(la::avdecc::entity::model::ConfigurationDescriptor{ std::string("Test configuration"), la::avdecc::entity::model::LocalizedStringReference{}, { { la::avdecc::entity::model::DescriptorType::StreamInput, std::uint16_t{ 2 } } } }, 0);
@@ -239,7 +239,7 @@ TEST(Controller, RedundantStreams)
 		auto const commonInformation{ la::avdecc::entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported }, 0u, la::avdecc::entity::TalkerCapabilities{}, 0u, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented }, std::nullopt, std::nullopt } };
 		auto const interfaceInfo{ la::avdecc::entity::Entity::InterfaceInformation{ la::avdecc::networkInterface::MacAddress{}, 31u, 0u, std::nullopt, std::nullopt } };
 		auto const e{ la::avdecc::entity::Entity{ commonInformation, la::avdecc::entity::Entity::InterfacesInformation{ { la::avdecc::entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } } } };
-		la::avdecc::controller::ControlledEntityImpl entity{ e, sharedLock };
+		la::avdecc::controller::ControlledEntityImpl entity{ e, sharedLock, false };
 
 		entity.setEntityDescriptor(la::avdecc::entity::model::EntityDescriptor{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported }, 0, la::avdecc::entity::TalkerCapabilities{}, 0, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{}, 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), std::string("Test entity"), la::avdecc::entity::model::LocalizedStringReference{}, la::avdecc::entity::model::LocalizedStringReference{}, std::string("Test firmware"), std::string("Test group"), std::string("Test serial number"), 1, 0 });
 		entity.setConfigurationDescriptor(la::avdecc::entity::model::ConfigurationDescriptor{ std::string("Test configuration"), la::avdecc::entity::model::LocalizedStringReference{}, { { la::avdecc::entity::model::DescriptorType::StreamInput, std::uint16_t{ 2 } } } }, 0);
@@ -258,7 +258,7 @@ TEST(Controller, RedundantStreams)
 		auto const commonInformation{ la::avdecc::entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported }, 0u, la::avdecc::entity::TalkerCapabilities{}, 0u, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented }, std::nullopt, std::nullopt } };
 		auto const interfaceInfo{ la::avdecc::entity::Entity::InterfaceInformation{ la::avdecc::networkInterface::MacAddress{}, 31u, 0u, std::nullopt, std::nullopt } };
 		auto const e{ la::avdecc::entity::Entity{ commonInformation, la::avdecc::entity::Entity::InterfacesInformation{ { la::avdecc::entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } } } };
-		la::avdecc::controller::ControlledEntityImpl entity{ e, sharedLock };
+		la::avdecc::controller::ControlledEntityImpl entity{ e, sharedLock, false };
 
 		entity.setEntityDescriptor(la::avdecc::entity::model::EntityDescriptor{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported }, 0, la::avdecc::entity::TalkerCapabilities{}, 0, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{}, 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), std::string("Test entity"), la::avdecc::entity::model::LocalizedStringReference{}, la::avdecc::entity::model::LocalizedStringReference{}, std::string("Test firmware"), std::string("Test group"), std::string("Test serial number"), 1, 0 });
 		entity.setConfigurationDescriptor(la::avdecc::entity::model::ConfigurationDescriptor{ std::string("Test configuration"), la::avdecc::entity::model::LocalizedStringReference{}, { { la::avdecc::entity::model::DescriptorType::StreamInput, std::uint16_t{ 2 } } } }, 0);
@@ -277,7 +277,7 @@ TEST(Controller, RedundantStreams)
 		auto const commonInformation{ la::avdecc::entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported }, 0u, la::avdecc::entity::TalkerCapabilities{}, 0u, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented }, std::nullopt, std::nullopt } };
 		auto const interfaceInfo{ la::avdecc::entity::Entity::InterfaceInformation{ la::avdecc::networkInterface::MacAddress{}, 31u, 0u, std::nullopt, std::nullopt } };
 		auto const e{ la::avdecc::entity::Entity{ commonInformation, la::avdecc::entity::Entity::InterfacesInformation{ { la::avdecc::entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } } } };
-		la::avdecc::controller::ControlledEntityImpl entity{ e, sharedLock };
+		la::avdecc::controller::ControlledEntityImpl entity{ e, sharedLock, false };
 
 		entity.setEntityDescriptor(la::avdecc::entity::model::EntityDescriptor{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported }, 0, la::avdecc::entity::TalkerCapabilities{}, 0, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{}, 0, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), std::string("Test entity"), la::avdecc::entity::model::LocalizedStringReference{}, la::avdecc::entity::model::LocalizedStringReference{}, std::string("Test firmware"), std::string("Test group"), std::string("Test serial number"), 1, 0 });
 		entity.setConfigurationDescriptor(la::avdecc::entity::model::ConfigurationDescriptor{ std::string("Test configuration"), la::avdecc::entity::model::LocalizedStringReference{}, { { la::avdecc::entity::model::DescriptorType::StreamInput, std::uint16_t{ 3 } } } }, 0);
@@ -322,9 +322,9 @@ TEST(StreamConnectionState, Comparison)
 {
 	// Not connected
 	{
-		auto const s1{ la::avdecc::controller::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamIdentification{}, la::avdecc::controller::model::StreamConnectionState::State::NotConnected } };
-		auto const s2{ la::avdecc::controller::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamIdentification{ la::avdecc::UniqueIdentifier{ 0x1 }, 1 }, la::avdecc::controller::model::StreamConnectionState::State::NotConnected } };
-		auto const s3{ la::avdecc::controller::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{ la::avdecc::UniqueIdentifier{ 0x1 }, 1 }, la::avdecc::entity::model::StreamIdentification{}, la::avdecc::controller::model::StreamConnectionState::State::NotConnected } };
+		auto const s1{ la::avdecc::entity::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamConnectionState::State::NotConnected } };
+		auto const s2{ la::avdecc::entity::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamIdentification{ la::avdecc::UniqueIdentifier{ 0x1 }, 1 }, la::avdecc::entity::model::StreamConnectionState::State::NotConnected } };
+		auto const s3{ la::avdecc::entity::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{ la::avdecc::UniqueIdentifier{ 0x1 }, 1 }, la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamConnectionState::State::NotConnected } };
 		EXPECT_EQ(s2, s1) << "Talker StreamIdentification ignored when not connected";
 		EXPECT_NE(s3, s1);
 		EXPECT_NE(s3, s2);
@@ -332,9 +332,9 @@ TEST(StreamConnectionState, Comparison)
 
 	// FastConnecting
 	{
-		auto const s1{ la::avdecc::controller::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamIdentification{}, la::avdecc::controller::model::StreamConnectionState::State::FastConnecting } };
-		auto const s2{ la::avdecc::controller::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamIdentification{ la::avdecc::UniqueIdentifier{ 0x1 }, 1 }, la::avdecc::controller::model::StreamConnectionState::State::FastConnecting } };
-		auto const s3{ la::avdecc::controller::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{ la::avdecc::UniqueIdentifier{ 0x1 }, 1 }, la::avdecc::entity::model::StreamIdentification{}, la::avdecc::controller::model::StreamConnectionState::State::FastConnecting } };
+		auto const s1{ la::avdecc::entity::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamConnectionState::State::FastConnecting } };
+		auto const s2{ la::avdecc::entity::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamIdentification{ la::avdecc::UniqueIdentifier{ 0x1 }, 1 }, la::avdecc::entity::model::StreamConnectionState::State::FastConnecting } };
+		auto const s3{ la::avdecc::entity::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{ la::avdecc::UniqueIdentifier{ 0x1 }, 1 }, la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamConnectionState::State::FastConnecting } };
 		EXPECT_NE(s2, s1) << "Talker StreamIdentification not ignored when fast connecting";
 		EXPECT_NE(s3, s1);
 		EXPECT_NE(s3, s2);
@@ -342,11 +342,26 @@ TEST(StreamConnectionState, Comparison)
 
 	// Connected
 	{
-		auto const s1{ la::avdecc::controller::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamIdentification{}, la::avdecc::controller::model::StreamConnectionState::State::Connected } };
-		auto const s2{ la::avdecc::controller::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamIdentification{ la::avdecc::UniqueIdentifier{ 0x1 }, 1 }, la::avdecc::controller::model::StreamConnectionState::State::Connected } };
-		auto const s3{ la::avdecc::controller::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{ la::avdecc::UniqueIdentifier{ 0x1 }, 1 }, la::avdecc::entity::model::StreamIdentification{}, la::avdecc::controller::model::StreamConnectionState::State::Connected } };
+		auto const s1{ la::avdecc::entity::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamConnectionState::State::Connected } };
+		auto const s2{ la::avdecc::entity::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamIdentification{ la::avdecc::UniqueIdentifier{ 0x1 }, 1 }, la::avdecc::entity::model::StreamConnectionState::State::Connected } };
+		auto const s3{ la::avdecc::entity::model::StreamConnectionState{ la::avdecc::entity::model::StreamIdentification{ la::avdecc::UniqueIdentifier{ 0x1 }, 1 }, la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamConnectionState::State::Connected } };
 		EXPECT_NE(s2, s1) << "Talker StreamIdentification not ignored when connected";
 		EXPECT_NE(s3, s1);
 		EXPECT_NE(s3, s2);
 	}
+}
+
+TEST(Controller, VirtualEntityLoad)
+{
+	//static std::promise<void> commandResultPromise{};
+	{
+		auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en");
+		auto const [error, message] = controller->loadVirtualEntityFromReadableJson("data/SimpleEntity.json", false);
+		EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+		EXPECT_STREQ("", message.c_str());
+	}
+
+	// Wait for the handler to complete
+	//auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(1));
+	//ASSERT_NE(std::future_status::timeout, status);
 }

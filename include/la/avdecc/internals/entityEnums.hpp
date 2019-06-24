@@ -26,7 +26,9 @@
 #pragma once
 
 #include "la/avdecc/utils.hpp"
+
 #include "entityModelTypes.hpp"
+
 #include <cstdint>
 #include <string>
 
@@ -313,6 +315,14 @@ enum class StreamOutputCounterValidFlag : model::DescriptorCounterValidFlag
 	FramesTx = 1u << 4, /**< Incremented at the end of every observation interval during which at least one Stream Data AVTPDU has been transmitted on this STREAM_OUTPUT. The duration of the observation interval is implementation-specific and shall be less than or equal to 1 second. */
 };
 using StreamOutputCounterValidFlags = utils::EnumBitfield<StreamOutputCounterValidFlag>;
+
+/** Milan Info Features Flags - Milan Clause 7.4.1 */
+enum class MilanInfoFeaturesFlag : std::uint32_t
+{
+	None = 0u,
+	Redundancy = 1u << 0, /**< The entity supports the milan redundancy scheme. */
+};
+using MilanInfoFeaturesFlags = utils::EnumBitfield<MilanInfoFeaturesFlag>;
 
 } // namespace entity
 } // namespace avdecc

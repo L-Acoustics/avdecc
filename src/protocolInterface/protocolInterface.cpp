@@ -59,7 +59,7 @@ ProtocolInterface::ProtocolInterface(std::string const& networkInterfaceName)
 
 		_networkInterfaceMacAddress = interface.macAddress;
 	}
-	catch (la::avdecc::Exception const&)
+	catch (std::invalid_argument const&)
 	{
 		throw Exception(Error::InterfaceNotFound, "No interface found with specified name");
 	}

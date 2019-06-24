@@ -72,7 +72,7 @@ void ControllerImpl::onEntityOnline(entity::controller::Interface const* const c
 		auto entityIt = _controlledEntities.find(entityID);
 		if (entityIt == _controlledEntities.end())
 		{
-			controlledEntity = _controlledEntities.insert(std::make_pair(entityID, std::make_shared<ControlledEntityImpl>(entity, _entitiesSharedLockInformation))).first->second;
+			controlledEntity = _controlledEntities.insert(std::make_pair(entityID, std::make_shared<ControlledEntityImpl>(entity, _entitiesSharedLockInformation, false))).first->second;
 		}
 	}
 
@@ -98,6 +98,9 @@ void ControllerImpl::onEntityOnline(entity::controller::Interface const* const c
 
 		// Set Steps
 		controlledEntity->setEnumerationSteps(steps);
+
+		// Save the time we start enumeration
+		controlledEntity->setStartEnumerationTime(std::chrono::steady_clock::now());
 
 		// Check first enumeration step
 		checkEnumerationSteps(controlledEntity.get());
@@ -163,7 +166,7 @@ void ControllerImpl::onEntityOffline(entity::controller::Interface const* const 
 }
 
 /* Connection Management Protocol sniffed messages (ACMP) */
-void ControllerImpl::onControllerConnectResponseSniffed(entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept
+void ControllerImpl::onControllerConnectResponseSniffed(entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept
 {
 	if (!!status)
 	{
@@ -173,7 +176,7 @@ void ControllerImpl::onControllerConnectResponseSniffed(entity::controller::Inte
 	// We don't care about sniffed errors
 }
 
-void ControllerImpl::onControllerDisconnectResponseSniffed(entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& /*talkerStream*/, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept
+void ControllerImpl::onControllerDisconnectResponseSniffed(entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& /*talkerStream*/, entity::model::StreamIdentification const& listenerStream, std::uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept
 {
 	if (!!status || status == entity::ControllerEntity::ControlStatus::NotConnected)
 	{
@@ -183,7 +186,7 @@ void ControllerImpl::onControllerDisconnectResponseSniffed(entity::controller::I
 	// We don't care about sniffed errors
 }
 
-void ControllerImpl::onListenerConnectResponseSniffed(entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept
+void ControllerImpl::onListenerConnectResponseSniffed(entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept
 {
 	if (!!status)
 	{
@@ -193,7 +196,7 @@ void ControllerImpl::onListenerConnectResponseSniffed(entity::controller::Interf
 	// We don't care about sniffed errors
 }
 
-void ControllerImpl::onListenerDisconnectResponseSniffed(entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept
+void ControllerImpl::onListenerDisconnectResponseSniffed(entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept
 {
 	if (!!status)
 	{
@@ -203,7 +206,7 @@ void ControllerImpl::onListenerDisconnectResponseSniffed(entity::controller::Int
 	// We don't care about sniffed errors
 }
 
-void ControllerImpl::onGetListenerStreamStateResponseSniffed(entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept
+void ControllerImpl::onGetListenerStreamStateResponseSniffed(entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status) noexcept
 {
 	if (!!status)
 	{
@@ -764,6 +767,113 @@ void ControllerImpl::onEntityIdentifyNotification(entity::controller::Interface 
 		{
 			// Update the time
 			it->second = currentTime;
+		}
+	}
+}
+
+/* **** Statistics **** */
+void ControllerImpl::onAecpRetry(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const& entityID) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+
+		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+		auto const value = entity.incrementAecpRetryCounter();
+
+		// Entity was advertised to the user, notify observers
+		if (entity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAecpRetryCounterChanged, this, &entity, value);
+		}
+	}
+}
+
+void ControllerImpl::onAecpTimeout(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const& entityID) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+
+		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+		auto const value = entity.incrementAecpTimeoutCounter();
+
+		// Entity was advertised to the user, notify observers
+		if (entity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAecpTimeoutCounterChanged, this, &entity, value);
+		}
+	}
+}
+
+void ControllerImpl::onAecpUnexpectedResponse(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const& entityID) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+
+		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+		auto const value = entity.incrementAecpUnexpectedResponseCounter();
+
+		// Entity was advertised to the user, notify observers
+		if (entity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAecpUnexpectedResponseCounterChanged, this, &entity, value);
+		}
+	}
+}
+
+void ControllerImpl::onAecpResponseTime(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const& entityID, std::chrono::milliseconds const& responseTime) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+
+		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+		auto const& previous = entity.getAecpResponseAverageTime();
+		auto const& value = entity.updateAecpResponseTimeAverage(responseTime);
+
+		// Entity was advertised to the user, notify observers
+		if (entity.wasAdvertised() && previous != value)
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAecpResponseAverageTimeChanged, this, &entity, value);
+		}
+	}
+}
+
+void ControllerImpl::onAemAecpUnsolicitedReceived(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const& entityID) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+
+		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+		auto const value = entity.incrementAemAecpUnsolicitedCounter();
+
+		// Entity was advertised to the user, notify observers
+		if (entity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAemAecpUnsolicitedCounterChanged, this, &entity, value);
 		}
 	}
 }

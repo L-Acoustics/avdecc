@@ -25,13 +25,17 @@
 
 #pragma once
 
+#include "internals/exports.hpp"
+#include "internals/exception.hpp"
+
+#include "utils.hpp"
+
 #include <vector>
 #include <string>
 #include <cstdint>
 #include <array>
 #include <functional>
-#include "internals/exports.hpp"
-#include "internals/exception.hpp"
+#include <mutex>
 
 namespace la
 {
@@ -41,6 +45,173 @@ namespace networkInterface
 {
 using MacAddress = std::array<std::uint8_t, 6>;
 
+/* ************************************************************ */
+/* IPAddress class declaration                                  */
+/* ************************************************************ */
+class LA_AVDECC_API IPAddress final
+{
+public:
+	using value_type_v4 = std::array<std::uint8_t, 4>; // "a.b.c.d" -> [0] = d, [1] = c, [2] = b, [3] = a
+	using value_type_v6 = std::array<std::uint16_t, 8>; // "aa::bb::cc::dd::ee::ff::gg::hh" -> [0] = hh, [1] = gg, ..., [7] = aa
+	using value_type_packed_v4 = std::uint32_t; // Packed version of an IP V4 in network-byte-order (ie. big-endian)
+
+	enum class Type
+	{
+		None,
+		V4,
+		V6,
+	};
+
+	/** Default constructor. */
+	IPAddress() noexcept;
+
+	/** Constructor from value_type_v4. */
+	explicit IPAddress(value_type_v4 const ipv4) noexcept;
+
+	/** Constructor from value_type_v6. */
+	explicit IPAddress(value_type_v6 const ipv6) noexcept;
+
+	/** Constructor from a value_type_packed_v4. */
+	explicit IPAddress(value_type_packed_v4 const ipv4) noexcept;
+
+	/** Constructor from a string. */
+	explicit IPAddress(std::string const& ipString);
+
+	/** Destructor. */
+	~IPAddress() noexcept;
+
+	/** Setter to change the IP value. */
+	void setValue(value_type_v4 const ipv4) noexcept;
+
+	/** Setter to change the IP value. */
+	void setValue(value_type_v6 const ipv6) noexcept;
+
+	/** Setter to change the IP value. */
+	void setValue(value_type_packed_v4 const ipv4) noexcept;
+
+	/** Getter to retrieve the Type of address. */
+	Type getType() const noexcept;
+
+	/** Getter to retrieve the IP value. Throws std::invalid_argument if IPAddress is not a Type::V4. */
+	value_type_v4 getIPV4() const;
+
+	/** Getter to retrieve the IP value. Throws std::invalid_argument if IPAddress is not a Type::V6. */
+	value_type_v6 getIPV6() const;
+
+	/** Getter to retrieve the IP value in the packed format. Throws std::invalid_argument if IPAddress is not a Type::V6. */
+	value_type_packed_v4 getIPV4Packed() const;
+
+	/** True if the IPAddress contains a value, false otherwise. */
+	bool isValid() const noexcept;
+
+	/** IPV4 operator (equivalent to getIPV4()). Throws std::invalid_argument if IPAddress is not a Type::V4. */
+	explicit operator value_type_v4() const;
+
+	/** IPV6 operator (equivalent to getIPV6()). Throws std::invalid_argument if IPAddress is not a Type::V6. */
+	explicit operator value_type_v6() const;
+
+	/** IPV4 operator (equivalent to getIPV4()). Throws std::invalid_argument if IPAddress is not a Type::V4. */
+	explicit operator value_type_packed_v4() const;
+
+	/** IPAddress validity bool operator (equivalent to isValid()). */
+	explicit operator bool() const noexcept;
+
+	/** std::string convertion operator. */
+	explicit operator std::string() const noexcept;
+
+	/** Equality operator. Returns true if the IPAddress values are equal. */
+	friend LA_AVDECC_API bool operator==(IPAddress const& lhs, IPAddress const& rhs) noexcept;
+
+	/** Non equality operator. */
+	friend LA_AVDECC_API bool operator!=(IPAddress const& lhs, IPAddress const& rhs) noexcept;
+
+	/** Inferiority operator. Throws std::invalid_argument if Type is unsupported. */
+	friend LA_AVDECC_API bool operator<(IPAddress const& lhs, IPAddress const& rhs);
+
+	/** Inferiority or equality operator. Throws std::invalid_argument if Type is unsupported. */
+	friend LA_AVDECC_API bool operator<=(IPAddress const& lhs, IPAddress const& rhs);
+
+	/** Increment operator. Throws std::invalid_argument if Type is unsupported. Note: Increment value is currently limited to 32bits. */
+	friend LA_AVDECC_API IPAddress operator+(IPAddress const& lhs, std::uint32_t const value);
+
+	/** Decrement operator. Throws std::invalid_argument if Type is unsupported. Note: Decrement value is currently limited to 32bits. */
+	friend LA_AVDECC_API IPAddress operator-(IPAddress const& lhs, std::uint32_t const value);
+
+	/** operator++ Throws std::invalid_argument if Type is unsupported. */
+	friend LA_AVDECC_API IPAddress& operator++(IPAddress& lhs);
+
+	/** operator-- Throws std::invalid_argument if Type is unsupported. */
+	friend LA_AVDECC_API IPAddress& operator--(IPAddress& lhs);
+
+	/** operator& Throws std::invalid_argument if Type is unsupported. */
+	friend LA_AVDECC_API IPAddress operator&(IPAddress const& lhs, IPAddress const& rhs);
+
+	/** operator| Throws std::invalid_argument if Type is unsupported. */
+	friend LA_AVDECC_API IPAddress operator|(IPAddress const& lhs, IPAddress const& rhs);
+
+	/** Pack an IP of Type::V4. */
+	static value_type_packed_v4 pack(value_type_v4 const ipv4) noexcept;
+
+	/** Unpack an IP of Type::V4. */
+	static value_type_v4 unpack(value_type_packed_v4 const ipv4) noexcept;
+
+	/** Hash functor to be used for std::hash */
+	struct LA_AVDECC_API hash
+	{
+		std::size_t operator()(IPAddress const& ip) const;
+	};
+
+	// Defaulted compiler auto-generated methods
+	IPAddress(IPAddress&&) = default;
+	IPAddress(IPAddress const&) = default;
+	IPAddress& operator=(IPAddress const&) = default;
+	IPAddress& operator=(IPAddress&&) = default;
+
+private:
+	// Private methods
+	void buildIPString() noexcept;
+	// Private defines
+	static constexpr size_t IPStringMaxLength = 40u;
+	// Private variables
+	Type _type{ Type::None };
+	value_type_v4 _ipv4{};
+	value_type_v6 _ipv6{};
+	std::array<std::string::value_type, IPStringMaxLength> _ipString{};
+};
+
+/* ************************************************************ */
+/* IPAddressInfo declaration                                    */
+/* ************************************************************ */
+struct IPAddressInfo
+{
+	IPAddress address{};
+	IPAddress netmask{};
+
+	/** Gets the network base IPAddress from specified netmask. Throws std::invalid_argument if either address or netmask is invalid, or if they are not of the same IPAddress::Type */
+	LA_AVDECC_API IPAddress getNetworkBaseAddress() const;
+
+	/** Gets the broadcast IPAddress from specified netmask. Throws std::invalid_argument if either address or netmask is invalid, or if they are not of the same IPAddress::Type */
+	LA_AVDECC_API IPAddress getBroadcastAddress() const;
+
+	/** Returns true if the IPAddressInfo is in the private network range (see https://en.wikipedia.org/wiki/Private_network). Throws std::invalid_argument if either address or netmask is invalid, or if they are not of the same IPAddress::Type */
+	LA_AVDECC_API bool isPrivateNetworkAddress() const;
+
+	/** Equality operator. Returns true if the IPAddressInfo values are equal. */
+	friend LA_AVDECC_API bool operator==(IPAddressInfo const& lhs, IPAddressInfo const& rhs) noexcept;
+
+	/** Non equality operator. */
+	friend LA_AVDECC_API bool operator!=(IPAddressInfo const& lhs, IPAddressInfo const& rhs) noexcept;
+
+	/** Inferiority operator. Throws std::invalid_argument if IPAddress::Type of either address or netmask is unsupported. */
+	friend LA_AVDECC_API bool operator<(IPAddressInfo const& lhs, IPAddressInfo const& rhs);
+
+	/** Inferiority or equality operator. Throws std::invalid_argument if IPAddress::Type of either address or netmask is unsupported. */
+	friend LA_AVDECC_API bool operator<=(IPAddressInfo const& lhs, IPAddressInfo const& rhs);
+};
+
+/* ************************************************************ */
+/* Interface declaration                                        */
+/* ************************************************************ */
 struct Interface
 {
 	enum class Type
@@ -52,16 +223,19 @@ struct Interface
 		AWDL = 4, /**< Apple Wireless Direct Link */
 	};
 
-	std::string name{}; /** Name of the interface (system chosen) (UTF-8) */
+	std::string id{}; /** Identifier of the interface (system chosen, unique) (UTF-8) */
 	std::string description{}; /** Description of the interface (system chosen) (UTF-8) */
-	std::string alias{}; /** Alias of the interface (user chosen) (UTF-8) */
+	std::string alias{}; /** Alias of the interface (often user chosen) (UTF-8) */
 	MacAddress macAddress{}; /** Mac address */
-	std::vector<std::string> ipAddresses{}; /** List of IP addresses attached to this interface */
-	std::vector<std::string> gateways{}; /** List of Gateways available for this interface */
+	std::vector<IPAddressInfo> ipAddressInfos{}; /** List of IPAddressInfo attached to this interface */
+	std::vector<IPAddress> gateways{}; /** List of Gateways available for this interface */
 	Type type{ Type::None }; /** The type of interface */
-	bool isActive{ false }; /** True if this interface is active */
+	bool isEnabled{ false }; /** True if this interface is enabled */
+	bool isConnected{ false }; /** True if this interface is connected to a working network (able to send and receive packets) */
+	bool isVirtual{ false }; /** True if this interface is emulating a physical adapter (Like BlueTooth, VirtualMachine, or Software Loopback) */
 };
 
+/** MacAddress hash functor to be used for std::hash */
 struct MacAddressHash
 {
 	size_t operator()(MacAddress const& mac) const
@@ -73,18 +247,34 @@ struct MacAddressHash
 	}
 };
 
+using NetworkInterfaceMonitor = la::avdecc::utils::TypedSubject<struct NetworkInterfaceMonitorTag, std::recursive_mutex>;
+class NetworkInterfaceObserver : public la::avdecc::utils::Observer<NetworkInterfaceMonitor>
+{
+public:
+	virtual ~NetworkInterfaceObserver() noexcept {}
+
+	virtual void onInterfaceAdded(la::avdecc::networkInterface::Interface const& intfc) noexcept = 0;
+	virtual void onInterfaceRemoved(la::avdecc::networkInterface::Interface const& intfc) noexcept = 0;
+	virtual void onInterfaceEnabledStateChanged(la::avdecc::networkInterface::Interface const& intfc, bool const isEnabled) noexcept = 0;
+	virtual void onInterfaceConnectedStateChanged(la::avdecc::networkInterface::Interface const& intfc, bool const isConnected) noexcept = 0;
+};
+
 using EnumerateInterfacesHandler = std::function<void(la::avdecc::networkInterface::Interface const&)>;
 
-/** Refresh the list of network interfaces (automatically done at startup) */
-LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION refreshInterfaces() noexcept;
 /** Enumerates network interfaces. The specified handler is called for each found interface */
 LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION enumerateInterfaces(EnumerateInterfacesHandler const& onInterface) noexcept;
-/** Retrieve a copy of an interface from it's name. Throws Exception if no interface exists with that name. */
+/** Retrieve a copy of an interface from it's name. Throws std::invalid_argument if no interface exists with that name. */
 LA_AVDECC_API Interface LA_AVDECC_CALL_CONVENTION getInterfaceByName(std::string const& name);
-/** Converts the specified MAC address to string (in the form: xx:xx:xx:xx:xx:xx) */
-LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION macAddressToString(MacAddress const& macAddress, bool const upperCase = true) noexcept;
+/** Converts the specified MAC address to string (in the form: xx:xx:xx:xx:xx:xx, or any chosen separator which can be empty if \0 is given) */
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION macAddressToString(MacAddress const& macAddress, bool const upperCase = true, char const separator = ':') noexcept;
+/** Converts the string representation of a MAC address to a MacAddress (from the form: xx:xx:xx:xx:xx:xx or XX:XX:XX:XX:XX:XX, or any chosen separator which can be empty if \0 is given) */
+LA_AVDECC_API MacAddress LA_AVDECC_CALL_CONVENTION stringToMacAddress(std::string const& macAddressAsString, char const separator = ':'); // Throws std::invalid_argument if the string cannot be parsed
 /** Returns true if specified MAC address is valid */
 LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION isMacAddressValid(MacAddress const& macAddress) noexcept;
+/** Registers an observer to monitor changes in network interfaces. NetworkInterfaceObserver::onInterfaceAdded will be called before returning from the call, for all already discovered interfaces. */
+LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION registerObserver(NetworkInterfaceObserver* const observer) noexcept;
+/** Unregisters a previously registered network interfaces change observer */
+LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION unregisterObserver(NetworkInterfaceObserver* const observer) noexcept;
 
 } // namespace networkInterface
 } // namespace avdecc

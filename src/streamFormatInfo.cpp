@@ -23,6 +23,7 @@
 */
 
 #include "la/avdecc/internals/streamFormatInfo.hpp"
+
 #include <cstdint>
 #include <type_traits>
 

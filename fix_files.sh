@@ -1,6 +1,6 @@
 #!/bin/bash
 
-FIX_FILES_VERSION="1.3"
+FIX_FILES_VERSION="1.4"
 
 echo "Fix-Files version $FIX_FILES_VERSION"
 echo ""
@@ -73,7 +73,7 @@ function applyLineEndings()
 {
 	local filePattern="$1"
 	
-	find . -iname "$filePattern" -not -path "./3rdparty/*" -not -path "./externals/*" -not -path "./_*" -exec dos2unix {} \;
+	find . -iname "$filePattern" -not -path "./3rdparty/*" -not -path "./installer/*.in" -not -path "./externals/*" -not -path "./_*" -exec dos2unix {} \;
 }
 
 if [[ $do_clang_format -eq 1 && -f ./.clang-format ]]; then
@@ -94,7 +94,7 @@ if [[ $do_clang_format -eq 1 && -f ./.clang-format ]]; then
 	fi
 fi
 
-if [ $do_chmod -eq 1 ]; then
+if [ $do_line_endings -eq 1 ]; then
 	which dos2unix &> /dev/null
 	if [ $? -eq 0 ]; then
 		applyLineEndings "*.[chi]pp"
@@ -106,12 +106,13 @@ if [ $do_chmod -eq 1 ]; then
 		applyLineEndings "*.cmake"
 		applyLineEndings "*.md"
 		applyLineEndings "*.sh"
+		applyLineEndings "*.qs"
 	else
 		echo "dos2unix command not found, not changing file line endings"
 	fi
 fi
 
-if [ $do_line_endings -eq 1 ]; then
+if [ $do_chmod -eq 1 ]; then
 	which chmod &> /dev/null
 	if [ $? -eq 0 ]; then
 		# Text/source files (non-executable)
@@ -126,6 +127,7 @@ if [ $do_line_endings -eq 1 ]; then
 		applyFileAttributes "*.md" "a-x"
 		applyFileAttributes "*.patch" "a-x"
 		applyFileAttributes "*.ui" "a-x"
+		applyFileAttributes "*.qs" "a-x"
 
 		# Other files (non-executable)
 		applyFileAttributes "*.svg" "a-x"

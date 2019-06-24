@@ -95,7 +95,7 @@ Dumper::Dumper(la::avdecc::protocol::ProtocolInterface::Type const protocolInter
 Dumper::~Dumper() noexcept
 {
 	auto const networkDumpFileName = std::string{ "FullDump.json" };
-	auto const [error, message] = _controller->serializeAllControlledEntitiesAsReadableJson(networkDumpFileName);
+	auto const [error, message] = _controller->serializeAllControlledEntitiesAsReadableJson(networkDumpFileName, false, false);
 	if (!!error)
 	{
 		outputText("Failed to dump all entities: " + message + "\n");
@@ -126,7 +126,7 @@ void Dumper::onEntityOnline(la::avdecc::controller::Controller const* const cont
 
 	// Dump as JSON
 	{
-		auto const [error, message] = controller->serializeControlledEntityAsReadableJson(entityID, entityDumpFileName);
+		auto const [error, message] = controller->serializeControlledEntityAsReadableJson(entityID, entityDumpFileName, false);
 		if (!!error)
 		{
 			outputText("Failed to dump entity " + entityString + ": " + message + "\n");
@@ -159,7 +159,7 @@ int doJob()
 	{
 		outputText("Selected interface '" + intfc.alias + "' and protocol interface '" + la::avdecc::protocol::ProtocolInterface::typeToString(protocolInterfaceType) + "', waiting for entities for 10 seconds...\n");
 
-		Dumper dumper(protocolInterfaceType, intfc.name, 0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), "en");
+		Dumper dumper(protocolInterfaceType, intfc.id, 0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), "en");
 
 		std::this_thread::sleep_for(std::chrono::seconds(10));
 

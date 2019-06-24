@@ -18,14 +18,15 @@
 */
 
 /**
-* @file avdeccControlledEntityCommonModel.hpp
+* @file entityModelTreeCommon.hpp
 * @author Christophe Calmejane
-* @brief Avdecc common entity model for a #la::avdecc::controller::ControlledEntity.
+* @brief Avdecc entity model tree common definitions.
 */
 
 #pragma once
 
-#include <la/avdecc/avdecc.hpp>
+#include "entityModel.hpp"
+
 #include <set>
 #include <array>
 #include <unordered_map>
@@ -35,7 +36,7 @@ namespace la
 {
 namespace avdecc
 {
-namespace controller
+namespace entity
 {
 namespace model
 {
@@ -47,8 +48,8 @@ struct StreamConnectionState
 		FastConnecting = 1,
 		Connected = 2,
 	};
-	entity::model::StreamIdentification listenerStream{}; /** Always valid */
-	entity::model::StreamIdentification talkerStream{}; /** Only valid if state != State::NotConnected */
+	StreamIdentification listenerStream{}; /** Always valid */
+	StreamIdentification talkerStream{}; /** Only valid if state != State::NotConnected */
 	State state{ State::NotConnected };
 };
 
@@ -67,17 +68,17 @@ constexpr bool operator!=(StreamConnectionState const& lhs, StreamConnectionStat
 	return !(lhs == rhs);
 }
 
-using StreamConnections = std::set<entity::model::StreamIdentification>;
-using StreamFormats = std::set<entity::model::StreamFormat>;
+using StreamConnections = std::set<StreamIdentification>;
+using StreamFormats = std::set<StreamFormat>;
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-using RedundantStreams = std::set<entity::model::StreamIndex>;
+using RedundantStreams = std::set<StreamIndex>;
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
-using SamplingRates = std::set<entity::model::SamplingRate>;
-using AvdeccFixedStrings = std::array<entity::model::AvdeccFixedString, 7>;
-using ClockSources = std::vector<entity::model::ClockSourceIndex>;
-using DescriptorCounts = std::unordered_map<entity::model::DescriptorType, std::uint16_t, utils::EnumClassHash>;
+using SamplingRates = std::set<SamplingRate>;
+using AvdeccFixedStrings = std::array<AvdeccFixedString, 7>;
+using ClockSources = std::vector<ClockSourceIndex>;
+using DescriptorCounts = std::unordered_map<DescriptorType, std::uint16_t, utils::EnumClassHash>;
 
 } // namespace model
-} // namespace controller
+} // namespace entity
 } // namespace avdecc
 } // namespace la

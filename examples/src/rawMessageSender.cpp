@@ -302,7 +302,7 @@ int doJob()
 	try
 	{
 		outputText("Selected interface '" + intfc.alias + "' and protocol interface '" + la::avdecc::protocol::ProtocolInterface::typeToString(protocolInterfaceType) + "':\n");
-		auto pi = la::avdecc::protocol::ProtocolInterface::create(protocolInterfaceType, intfc.name);
+		auto pi = la::avdecc::protocol::ProtocolInterface::create(protocolInterfaceType, intfc.id);
 
 		// Test sending raw messages
 		sendRawMessages(*pi);

@@ -23,6 +23,7 @@
 */
 
 #include "la/avdecc/utils.hpp"
+
 #if defined(_WIN32)
 #	include <Windows.h>
 #endif // _WIN32

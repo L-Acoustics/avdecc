@@ -23,7 +23,9 @@
 */
 
 #include "la/avdecc/internals/protocolAvtpdu.hpp"
+
 #include "logHelper.hpp"
+
 #include <cassert>
 
 namespace la

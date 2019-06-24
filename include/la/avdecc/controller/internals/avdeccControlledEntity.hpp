@@ -29,8 +29,10 @@
 #include <la/avdecc/utils.hpp>
 #include <la/avdecc/watchDog.hpp>
 #include <la/avdecc/internals/exception.hpp>
+
 #include "avdeccControlledEntityModel.hpp"
 #include "exports.hpp"
+
 #include <string>
 #include <memory>
 #include <mutex>
@@ -102,6 +104,7 @@ public:
 	};
 
 	// Getters
+	virtual bool isVirtual() const noexcept = 0; // True if the entity is a virtual one (la::avdecc::controller::Controller methods won't succeed due to the entity not actually been discovered)
 	virtual CompatibilityFlags getCompatibilityFlags() const noexcept = 0;
 	virtual bool gotFatalEnumerationError() const noexcept = 0; // True if the controller had a fatal error during entity information retrieval (leading to Exception::Type::EnumerationError if any throwing method is called).
 	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept = 0;
@@ -113,7 +116,7 @@ public:
 	virtual bool isLockedByOther() const noexcept = 0; // Is entity locked by another controller
 	virtual bool isStreamInputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 	virtual bool isStreamOutputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
-	virtual InterfaceLinkStatus getAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex) const = 0;
+	virtual InterfaceLinkStatus getAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex) const noexcept = 0; // Returns InterfaceLinkStatus::Unknown if EM not supported by the Entity, avbInterfaceIndex does not exist, or the Entity does not support AVB_INTERFACE_COUNTERS
 	virtual model::AcquireState getAcquireState() const noexcept = 0;
 	virtual UniqueIdentifier getOwningControllerID() const noexcept = 0;
 	virtual model::LockState getLockState() const noexcept = 0;
@@ -139,17 +142,25 @@ public:
 	//virtual model::AudioMapNode const& getAudioMapNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if audioUnitIndex, streamPortIndex or MapIndex do not exist
 	virtual model::ClockDomainNode const& getClockDomainNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if clockDomainIndex do not exist
 
-	virtual model::LocaleNodeStaticModel const* findLocaleNode(entity::model::ConfigurationIndex const configurationIndex, std::string const& locale) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
+	virtual entity::model::LocaleNodeStaticModel const* findLocaleNode(entity::model::ConfigurationIndex const configurationIndex, std::string const& locale) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
 	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::LocalizedStringReference const& stringReference) const noexcept = 0; // Get localized string or empty string if not found, in current configuration descriptor
 	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocalizedStringReference const& stringReference) const noexcept = 0; // Get localized string or empty string if not found // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
 
 	/** Get connected information about a listener's stream (TalkerID and StreamIndex might be filled even if isConnected is not true, in case of FastConnect) */
-	virtual model::StreamConnectionState const& getConnectedSinkState(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
+	virtual entity::model::StreamConnectionState const& getConnectedSinkState(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 	virtual entity::model::AudioMappings const& getStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
 	virtual entity::model::AudioMappings const& getStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
 
 	/** Get connections information about a talker's stream */
-	virtual model::StreamConnections const& getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
+	virtual entity::model::StreamConnections const& getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
+
+	// Statistics
+	virtual std::uint64_t getAecpRetryCounter() const noexcept = 0;
+	virtual std::uint64_t getAecpTimeoutCounter() const noexcept = 0;
+	virtual std::uint64_t getAecpUnexpectedResponseCounter() const noexcept = 0;
+	virtual std::chrono::milliseconds const& getAecpResponseAverageTime() const noexcept = 0;
+	virtual std::uint64_t getAemAecpUnsolicitedCounter() const noexcept = 0;
+	virtual std::chrono::milliseconds const& getEnumerationTime() const noexcept = 0;
 
 	// Visitor method
 	virtual void accept(model::EntityModelVisitor* const visitor) const noexcept = 0;

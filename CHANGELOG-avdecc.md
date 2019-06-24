@@ -4,6 +4,22 @@ All notable changes to the Avdecc Library will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.10.0] - 2019-06-24
+### Added
+- Entity Model Tree definition
+- Entity Model dump as readable json file
+- Entity Model load from readable json file
+- NetworkInterfaceHelper observer to monitor changes in adapters status
+- [Controller statistics counters](https://github.com/L-Acoustics/avdecc/issues/41)
+
+### Changed
+- NetworkInterfaceHelper _isActive_ field replace with _isEnabled_ and _isConnected_
+- _protocol::MvuFeaturesFlags_ TypedDefine moved to _MilanInfoFeaturesFlags_ EnumBitfield
+
+### Fixed
+- [NetworkInterfaces Helper fully working on win7 and win10](https://github.com/L-Acoustics/avdecc/issues/59)
+- json::Exception being thrown across shared library boundary
+
 ## [2.9.2] - 2019-05-20
 ### Added
 - Support for IdentifyNotification in ProtocolInterface and ControllerEntity

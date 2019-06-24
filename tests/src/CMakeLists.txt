@@ -22,6 +22,7 @@ set(TESTS_SOURCE
 	instrumentationObserver.hpp
 	logger_tests.cpp
 	memoryBuffer_tests.cpp
+	networkInterface_tests.cpp
 	protocolAvtpdu_tests.cpp
 	protocolInterface_pcap_tests.cpp
 	protocolInterface_virtual_tests.cpp
@@ -49,6 +50,15 @@ set_target_properties(Tests PROPERTIES FOLDER "Tests")
 
 # Link with required libraries
 target_link_libraries(Tests PRIVATE ${LINK_LIBRARIES} ${ADD_LINK_LIBRARIES})
+
+# Copy test data
+add_custom_command(
+	TARGET Tests
+	POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/../data ${CMAKE_BINARY_DIR}/tests/src/data
+	COMMENT "Copying Tests data to output folder"
+	VERBATIM
+)
 
 # Set installation rule
 if(INSTALL_AVDECC_TESTS)

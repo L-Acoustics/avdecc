@@ -4,10 +4,17 @@ All notable changes to the Avdecc Controller Library will be documented in this 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.10.0] - 2019-06-24
+### Added
+- Load of entity from readable json file and injection as virtual entity
+
+### Removed
+- Entity Model Tree definition (moved to low level library)
+
 ## [2.9.2] - 2019-05-20
 ### Added
 - Support for Identify notifications
-- Full entity and network state dump as readable json
+- Full entity and network state dump as readable json file
 - Enumeration of STRINGS descriptor
 - Support for Entity Descriptor counters
 

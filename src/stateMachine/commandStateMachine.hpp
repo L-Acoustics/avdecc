@@ -52,6 +52,11 @@ public:
 		/* **** AECP notifications **** */
 		virtual void onAecpAemUnsolicitedResponse(la::avdecc::protocol::Aecpdu const& aecpdu) noexcept = 0;
 		virtual void onAecpAemIdentifyNotification(la::avdecc::protocol::Aecpdu const& aecpdu) noexcept = 0;
+		/* **** Statistics **** */
+		virtual void onAecpRetry(la::avdecc::UniqueIdentifier const& entityID) noexcept = 0;
+		virtual void onAecpTimeout(la::avdecc::UniqueIdentifier const& entityID) noexcept = 0;
+		virtual void onAecpUnexpectedResponse(la::avdecc::UniqueIdentifier const& entityID) noexcept = 0;
+		virtual void onAecpResponseTime(la::avdecc::UniqueIdentifier const& entityID, std::chrono::milliseconds const& responseTime) noexcept = 0;
 	};
 
 	CommandStateMachine(Manager* manager, Delegate* const delegate) noexcept;
@@ -70,7 +75,8 @@ private:
 	struct AecpCommandInfo
 	{
 		AecpSequenceID sequenceID{ 0 };
-		std::chrono::time_point<std::chrono::system_clock> timeout{};
+		std::chrono::time_point<std::chrono::steady_clock> sendTime{};
+		std::chrono::time_point<std::chrono::steady_clock> timeoutTime{};
 		bool retried{ false };
 		Aecpdu::UniquePointer command{ nullptr, nullptr };
 		ProtocolInterface::AecpCommandResultHandler resultHandler{};
@@ -90,7 +96,8 @@ private:
 	struct AcmpCommandInfo
 	{
 		AcmpSequenceID sequenceID{ 0 };
-		std::chrono::time_point<std::chrono::system_clock> timeout{};
+		std::chrono::time_point<std::chrono::steady_clock> sendTime{};
+		std::chrono::time_point<std::chrono::steady_clock> timeoutTime{};
 		bool retried{ false };
 		Acmpdu::UniquePointer command{ nullptr, nullptr };
 		ProtocolInterface::AcmpCommandResultHandler resultHandler{};
