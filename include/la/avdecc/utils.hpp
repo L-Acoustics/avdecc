@@ -38,7 +38,7 @@
 #include <cstring> // strncmp
 #include <sstream> // stringstream
 #include <limits> // numeric_limits
-#include <stdexcept> // out_of_range
+#include <stdexcept> // out_of_range / invalid_argument
 #include <set>
 #include <vector>
 #include <mutex>

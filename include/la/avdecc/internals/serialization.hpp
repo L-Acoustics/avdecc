@@ -34,7 +34,7 @@
 
 #include <cstdint>
 #include <type_traits>
-#include <exception>
+#include <stdexcept> // invalid_argument
 #include <array>
 #include <cstring> // memcpy
 

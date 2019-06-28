@@ -31,6 +31,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <stdexcept> // invalid_argument
 
 namespace la
 {
