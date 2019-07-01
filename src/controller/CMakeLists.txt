@@ -26,6 +26,11 @@ if(WIN32)
 	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DNOMINMAX")
 endif()
 
+# Define PCH files for windows
+if(WIN32)
+	set(PCH_FILES ${PCH_HEADER_NAME} ${PCH_SOURCE_NAME})
+endif()
+
 set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/controller/avdeccController.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntity.hpp
@@ -35,7 +40,6 @@ set (PUBLIC_HEADER_FILES
 )
 
 set (HEADER_FILES_COMMON
-	${PCH_HEADER_NAME}
 	${CMAKE_CURRENT_BINARY_DIR}/config.h
 	avdeccControllerImpl.hpp
 	avdeccControlledEntityImpl.hpp
@@ -44,7 +48,6 @@ set (HEADER_FILES_COMMON
 )
 
 set (SOURCE_FILES_COMMON
-	${PCH_SOURCE_NAME}
 	avdeccController.cpp
 	avdeccControllerImpl.cpp
 	avdeccControllerImplDelegateOverrides.cpp
@@ -85,7 +88,7 @@ source_group("Header Files\\Public\\Controller" FILES ${PUBLIC_HEADER_FILES})
 # C++ dynamic library
 if(BUILD_AVDECC_LIB_SHARED_CXX)
 	set (LIB_SHARED_CXX_SOURCE_FILES ${LIB_SOURCE_FILES})
-	add_library(la_avdecc_controller_cxx SHARED ${LIB_HEADER_FILES} ${LIB_SHARED_CXX_SOURCE_FILES} ${SHARED_LIBRARY_FILES})
+	add_library(la_avdecc_controller_cxx SHARED ${LIB_HEADER_FILES} ${LIB_SHARED_CXX_SOURCE_FILES} ${SHARED_LIBRARY_FILES} ${PCH_FILES})
 	if(ADD_PRIVATE_COMPILE_OPTIONS)
 		target_compile_options(la_avdecc_controller_cxx PRIVATE ${ADD_PRIVATE_COMPILE_OPTIONS})
 	endif()
@@ -129,7 +132,7 @@ endif()
 
 # Runtime-shared static library
 if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
-	add_library(la_avdecc_controller_static STATIC ${LIB_HEADER_FILES} ${LIB_SOURCE_FILES})
+	add_library(la_avdecc_controller_static STATIC ${LIB_HEADER_FILES} ${LIB_SOURCE_FILES} ${PCH_FILES})
 	if(ADD_PRIVATE_COMPILE_OPTIONS)
 		target_compile_options(la_avdecc_controller_static PRIVATE ${ADD_PRIVATE_COMPILE_OPTIONS})
 	endif()

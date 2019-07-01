@@ -26,6 +26,11 @@ if(WIN32)
 	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DNOMINMAX")
 endif()
 
+# Define PCH files for windows
+if(WIN32)
+	set(PCH_FILES ${PCH_HEADER_NAME} ${PCH_SOURCE_NAME})
+endif()
+
 # Network interface helper
 if(WIN32)
 	set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER
@@ -148,14 +153,12 @@ set (SOURCE_FILES_ENTITY
 
 # Common files
 set (HEADER_FILES_COMMON
-	${PCH_HEADER_NAME}
 	${CMAKE_CURRENT_BINARY_DIR}/config.h
 	endStationImpl.hpp
 	logHelper.hpp
 )
 
 set (SOURCE_FILES_COMMON
-	${PCH_SOURCE_NAME}
 	avdecc.cpp
 	endStationImpl.cpp
 	logger.cpp
@@ -283,7 +286,7 @@ set (LIB_SOURCE_FILES ${SOURCE_FILES_COMMON} ${SOURCE_FILES_PROTOCOL} ${SOURCE_F
 # C++ dynamic library
 if(BUILD_AVDECC_LIB_SHARED_CXX)
 	set (LIB_SHARED_CXX_SOURCE_FILES ${LIB_SOURCE_FILES})
-	add_library(la_avdecc_cxx SHARED ${LIB_HEADER_FILES} ${LIB_SHARED_CXX_SOURCE_FILES} ${SHARED_LIBRARY_FILES})
+	add_library(la_avdecc_cxx SHARED ${LIB_HEADER_FILES} ${LIB_SHARED_CXX_SOURCE_FILES} ${SHARED_LIBRARY_FILES} ${PCH_FILES})
 	if(ADD_PRIVATE_COMPILE_OPTIONS)
 		target_compile_options(la_avdecc_cxx PRIVATE ${ADD_PRIVATE_COMPILE_OPTIONS})
 	endif()
@@ -327,7 +330,7 @@ endif()
 
 # Runtime-shared static library
 if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
-	add_library(la_avdecc_static STATIC ${LIB_HEADER_FILES} ${LIB_SOURCE_FILES})
+	add_library(la_avdecc_static STATIC ${LIB_HEADER_FILES} ${LIB_SOURCE_FILES} ${PCH_FILES})
 	if(ADD_PRIVATE_COMPILE_OPTIONS)
 		target_compile_options(la_avdecc_static PUBLIC ${ADD_PRIVATE_COMPILE_OPTIONS}) # For a static library, no compile option is really private (using private APIs is possible, thus we need to know the options)
 	endif()
