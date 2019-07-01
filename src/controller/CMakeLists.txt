@@ -18,6 +18,13 @@ endif()
 set(ADD_LINK_LIBS "")
 set(ADD_PRIVATE_COMPILE_OPTIONS "")
 set(ADD_PUBLIC_COMPILE_OPTIONS "")
+set(PCH_HEADER_NAME "pch.hpp")
+set(PCH_SOURCE_NAME "pch.cpp")
+
+# Disable windows MINMAX
+if(WIN32)
+	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DNOMINMAX")
+endif()
 
 set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/controller/avdeccController.hpp
@@ -28,6 +35,7 @@ set (PUBLIC_HEADER_FILES
 )
 
 set (HEADER_FILES_COMMON
+	${PCH_HEADER_NAME}
 	${CMAKE_CURRENT_BINARY_DIR}/config.h
 	avdeccControllerImpl.hpp
 	avdeccControlledEntityImpl.hpp
@@ -36,6 +44,7 @@ set (HEADER_FILES_COMMON
 )
 
 set (SOURCE_FILES_COMMON
+	${PCH_SOURCE_NAME}
 	avdeccController.cpp
 	avdeccControllerImpl.cpp
 	avdeccControllerImplDelegateOverrides.cpp
@@ -87,6 +96,9 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 		target_link_libraries(la_avdecc_controller_cxx PRIVATE ${ADD_LINK_LIBS})
 	endif()
 
+	# Enable precompiled headers
+	set_precompiled_headers(la_avdecc_controller_cxx ${PCH_HEADER_NAME} ${PCH_SOURCE_NAME})
+
 	# Setup common options
 	setup_library_options(la_avdecc_controller_cxx "la_avdecc_controller")
 
@@ -127,6 +139,9 @@ if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 	if(ADD_LINK_LIBS)
 		target_link_libraries(la_avdecc_controller_static PUBLIC ${ADD_LINK_LIBS})
 	endif()
+
+	# Enable precompiled headers
+	set_precompiled_headers(la_avdecc_controller_static ${PCH_HEADER_NAME} ${PCH_SOURCE_NAME})
 
 	# Setup common options
 	setup_library_options(la_avdecc_controller_static "la_avdecc_controller")

@@ -18,6 +18,13 @@ endif()
 set(ADD_LINK_LIBS "")
 set(ADD_PRIVATE_COMPILE_OPTIONS "")
 set(ADD_PUBLIC_COMPILE_OPTIONS "")
+set(PCH_HEADER_NAME "pch.hpp")
+set(PCH_SOURCE_NAME "pch.cpp")
+
+# Disable windows MINMAX
+if(WIN32)
+	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DNOMINMAX")
+endif()
 
 # Network interface helper
 if(WIN32)
@@ -141,12 +148,14 @@ set (SOURCE_FILES_ENTITY
 
 # Common files
 set (HEADER_FILES_COMMON
+	${PCH_HEADER_NAME}
 	${CMAKE_CURRENT_BINARY_DIR}/config.h
 	endStationImpl.hpp
 	logHelper.hpp
 )
 
 set (SOURCE_FILES_COMMON
+	${PCH_SOURCE_NAME}
 	avdecc.cpp
 	endStationImpl.cpp
 	logger.cpp
@@ -285,6 +294,9 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 		target_link_libraries(la_avdecc_cxx PRIVATE ${ADD_LINK_LIBS})
 	endif()
 
+	# Enable precompiled headers
+	set_precompiled_headers(la_avdecc_cxx ${PCH_HEADER_NAME} ${PCH_SOURCE_NAME})
+
 	# Setup common options
 	setup_library_options(la_avdecc_cxx "la_avdecc")
 
@@ -325,6 +337,9 @@ if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 	if(ADD_LINK_LIBS)
 		target_link_libraries(la_avdecc_static PUBLIC ${ADD_LINK_LIBS})
 	endif()
+
+	# Enable precompiled headers
+	set_precompiled_headers(la_avdecc_static ${PCH_HEADER_NAME} ${PCH_SOURCE_NAME})
 
 	# Setup common library options
 	setup_library_options(la_avdecc_static "la_avdecc")
