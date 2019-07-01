@@ -22,13 +22,13 @@
 * @author Christophe Calmejane
 */
 
-#include "la/avdecc/internals/jsonSerialization.hpp"
-#include "la/avdecc/internals/jsonTypes.hpp"
 
 #include "avdeccControllerJsonTypes.hpp"
 #include "avdeccControlledEntityJsonSerializer.hpp"
 #include "avdeccControllerImpl.hpp"
 #include "avdeccControlledEntityImpl.hpp"
+
+#include <la/avdecc/internals/jsonTypes.hpp>
 
 using json = nlohmann::json;
 

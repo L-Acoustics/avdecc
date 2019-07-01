@@ -11,7 +11,7 @@ function(set_maximum_warnings TARGET_NAME)
 		# Don't use Wall on MSVC, it prints too many stupid warnings
 		target_compile_options(${TARGET_NAME} PRIVATE /W4 /WX)
 	endif()
-endfunction(set_maximum_warnings)
+endfunction()
 
 ###############################################################################
 # Set the DEBUG define in debug mode
@@ -20,7 +20,7 @@ endfunction(set_maximum_warnings)
 function(set_debug_define TARGET_NAME)
 	# Flags to add for DEBUG
 	target_compile_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Debug>:-DDEBUG>)
-endfunction(set_debug_define)
+endfunction()
 
 ###############################################################################
 # Remove VisualStudio useless deprecated warnings (CRT, CRT_SECURE, WINSOCK)
@@ -30,7 +30,7 @@ function(remove_vs_deprecated_warnings TARGET_NAME)
 	if(MSVC)
 		target_compile_options(${TARGET_NAME} PRIVATE -D_CRT_SECURE_NO_DEPRECATE -D_CRT_SECURE_NO_WARNINGS -D_WINSOCK_DEPRECATED_NO_WARNINGS)
 	endif()
-endfunction(remove_vs_deprecated_warnings)
+endfunction()
 
 ###############################################################################
 # Returns TRUE if TARGET is a macOS bundle application
@@ -43,7 +43,7 @@ function(is_macos_bundle TARGET_NAME IS_BUNDLE)
 		endif()
 	endif()
 	set(${IS_BUNDLE} FALSE PARENT_SCOPE)
-endfunction(is_macos_bundle)
+endfunction()
 
 ###############################################################################
 # Force symbols file generation for build configs (pdb or dSYM)
@@ -79,7 +79,7 @@ function(force_symbols_file TARGET_NAME)
 			)
 		endif()
 	endif()
-endfunction(force_symbols_file)
+endfunction()
 
 ###############################################################################
 # Copy symbol files to a common location.
@@ -111,7 +111,7 @@ function(copy_symbols TARGET_NAME)
 			endif()
 		endif()
 	endif()
-endfunction(copy_symbols)
+endfunction()
 
 ###############################################################################
 # Setup symbols for a target.
@@ -121,7 +121,18 @@ function(setup_symbols TARGET_NAME)
 
 	# Copy symbols to a common location
 	copy_symbols(${TARGET_NAME})
-endfunction(setup_symbols)
+endfunction()
+
+###############################################################################
+# Set Precompiled Headers on a target
+function(set_precompiled_headers TARGET_NAME HEADER_NAME SOURCE_NAME)
+	if(CMAKE_HOST_WIN32 AND MSVC)
+		# -Yu: Use Precompiled Header; -FI: Force Include Precompiled Header
+		target_compile_options(${TARGET_NAME} PRIVATE -Yu${HEADER_NAME} -FI${HEADER_NAME})
+		# -Yc: Create Precompiled Headers, needed to create the PCH itself
+		set_source_files_properties(${SOURCE_NAME} PROPERTIES COMPILE_FLAGS -Yc${HEADER_NAME})
+	endif()
+endfunction()
 
 ###############################################################################
 # Setup common options for a library target
@@ -197,7 +208,7 @@ function(setup_library_options TARGET_NAME BASE_LIB_NAME)
 	# Setup debug symbols
 	setup_symbols(${TARGET_NAME})
 
-endfunction(setup_library_options)
+endfunction()
 
 ###############################################################################
 # Setup common install rules for a library target
@@ -220,7 +231,7 @@ function(setup_library_install_rules TARGET_NAME)
 		message(FATAL_ERROR "Unsupported target type for setup_library_install_rules macro: ${targetType}")
 	endif()
 
-endfunction(setup_library_install_rules)
+endfunction()
 
 ###############################################################################
 # Setup macOS bundle information
@@ -236,7 +247,7 @@ function(setup_bundle_information TARGET_NAME)
 				MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
 				MACOSX_BUNDLE_COPYRIGHT "${LA_PROJECT_READABLE_COPYRIGHT}")
 	endif()
-endfunction(setup_bundle_information)
+endfunction()
 
 ###############################################################################
 # Setup common options for an executable target.
@@ -287,7 +298,7 @@ function(setup_executable_options TARGET_NAME)
 	
 	target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}" "${LA_ROOT_DIR}/include")
 
-endfunction(setup_executable_options)
+endfunction()
 
 ###############################################################################
 # Sign a binary.
@@ -344,7 +355,7 @@ function(sign_target TARGET_NAME)
 		)
 	endif()
 
-endfunction(sign_target)
+endfunction()
 
 ###############################################################################
 # Copy the runtime part of MODULE_NAME to the output folder of TARGET_NAME for
@@ -374,7 +385,7 @@ function(copy_runtime TARGET_NAME MODULE_NAME)
 		COMMENT "Copying ${MODULE_NAME} shared library to ${TARGET_NAME} output folder for easy debug"
 		VERBATIM
 	)
-endfunction(copy_runtime)
+endfunction()
 
 ###############################################################################
 # Setup common variables for a project

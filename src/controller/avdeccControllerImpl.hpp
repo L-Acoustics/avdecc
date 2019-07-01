@@ -27,7 +27,7 @@
 #include "la/avdecc/controller/avdeccController.hpp"
 #include "la/avdecc/memoryBuffer.hpp"
 #ifdef ENABLE_AVDECC_FEATURE_JSON
-#	include "la/avdecc/internals/jsonSerialization.hpp"
+#	include <la/avdecc/internals/jsonSerialization.hpp>
 #endif // ENABLE_AVDECC_FEATURE_JSON
 
 #include "avdeccControlledEntityImpl.hpp"

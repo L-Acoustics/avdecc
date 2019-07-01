@@ -22,11 +22,6 @@
 * @author Christophe Calmejane
 */
 
-#ifdef ENABLE_AVDECC_FEATURE_JSON
-#	include "la/avdecc/internals/jsonTypes.hpp"
-#endif // ENABLE_AVDECC_FEATURE_JSON
-#include "la/avdecc/internals/serialization.hpp"
-
 #include "avdeccControllerImpl.hpp"
 #include "avdeccControllerLogHelper.hpp"
 #include "avdeccEntityModelCache.hpp"
@@ -34,6 +29,11 @@
 #	include "avdeccControllerJsonTypes.hpp"
 #	include "avdeccControlledEntityJsonSerializer.hpp"
 #endif // ENABLE_AVDECC_FEATURE_JSON
+
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+#	include <la/avdecc/internals/jsonTypes.hpp>
+#endif // ENABLE_AVDECC_FEATURE_JSON
+#include <la/avdecc/internals/serialization.hpp>
 
 #include <cstdlib> // free / malloc
 #include <cstring> // strerror
