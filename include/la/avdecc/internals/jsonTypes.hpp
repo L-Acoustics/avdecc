@@ -790,7 +790,9 @@ constexpr auto AvbInterfaceNode_Static_LogAnnounceInterval = "log_announce_inter
 constexpr auto AvbInterfaceNode_Static_LogPdelayInterval = "log_pdelay_interval";
 constexpr auto AvbInterfaceNode_Static_PortNumber = "port_number";
 constexpr auto AvbInterfaceNode_Dynamic_ObjectName = "object_name";
-constexpr auto AvbInterfaceNode_Dynamic_AvbInfo = "avb_info";
+constexpr auto AvbInterfaceNode_Dynamic_GptpGrandmasterID = "gptp_grandmaster_id";
+constexpr auto AvbInterfaceNode_Dynamic_GptpDomainNumber = "gptp_domain_number";
+constexpr auto AvbInterfaceNode_Dynamic_AvbInterfaceInfo = "avb_interface_info";
 constexpr auto AvbInterfaceNode_Dynamic_AsPath = "as_path";
 constexpr auto AvbInterfaceNode_Dynamic_Counters = "counters";
 
@@ -878,12 +880,10 @@ constexpr auto StreamInfo_FlagsEx = "flags_ex";
 constexpr auto StreamInfo_ProbingStatus = "probing_status";
 constexpr auto StreamInfo_AcmpStatus = "acmp_status";
 
-/* AvbInfo */
-constexpr auto AvbInfo_GptpGrandmasterID = "gptp_grandmaster_id";
-constexpr auto AvbInfo_GptpDomainNumber = "gptp_domain_number";
-constexpr auto AvbInfo_PropagationDelay = "propagation_delay";
-constexpr auto AvbInfo_Flags = "flags";
-constexpr auto AvbInfo_MsrpMappings = "msrp_mappings";
+/* AvbInterfaceInfo */
+constexpr auto AvbInterfaceInfo_PropagationDelay = "propagation_delay";
+constexpr auto AvbInterfaceInfo_Flags = "flags";
+constexpr auto AvbInterfaceInfo_MsrpMappings = "msrp_mappings";
 
 /* MilanInfo */
 constexpr auto MilanInfo_ProtocolVersion = "protocol_version";
@@ -1158,22 +1158,18 @@ inline void from_json(json const& j, StreamInfo& info)
 	get_optional_value(j, keyName::StreamInfo_AcmpStatus, info.acmpStatus);
 }
 
-/* AvbInfo conversion */
-inline void to_json(json& j, AvbInfo const& info)
+/* AvbInterfaceInfo conversion */
+inline void to_json(json& j, AvbInterfaceInfo const& info)
 {
-	j[keyName::AvbInfo_GptpGrandmasterID] = info.gptpGrandmasterID;
-	j[keyName::AvbInfo_GptpDomainNumber] = info.gptpDomainNumber;
-	j[keyName::AvbInfo_PropagationDelay] = info.propagationDelay;
-	j[keyName::AvbInfo_Flags] = info.flags;
-	j[keyName::AvbInfo_MsrpMappings] = info.mappings;
+	j[keyName::AvbInterfaceInfo_PropagationDelay] = info.propagationDelay;
+	j[keyName::AvbInterfaceInfo_Flags] = info.flags;
+	j[keyName::AvbInterfaceInfo_MsrpMappings] = info.mappings;
 }
-inline void from_json(json const& j, AvbInfo& info)
+inline void from_json(json const& j, AvbInterfaceInfo& info)
 {
-	get_optional_value(j, keyName::AvbInfo_GptpGrandmasterID, info.gptpGrandmasterID);
-	get_optional_value(j, keyName::AvbInfo_GptpDomainNumber, info.gptpDomainNumber);
-	get_optional_value(j, keyName::AvbInfo_PropagationDelay, info.propagationDelay);
-	get_optional_value(j, keyName::AvbInfo_Flags, info.flags);
-	get_optional_value(j, keyName::AvbInfo_MsrpMappings, info.mappings);
+	j.at(keyName::AvbInterfaceInfo_PropagationDelay).get_to(info.propagationDelay);
+	j.at(keyName::AvbInterfaceInfo_Flags).get_to(info.flags);
+	j.at(keyName::AvbInterfaceInfo_MsrpMappings).get_to(info.mappings);
 }
 
 /* AsPath conversion */
@@ -1379,14 +1375,18 @@ inline void from_json(json const& j, AvbInterfaceNodeStaticModel& s)
 inline void to_json(json& j, AvbInterfaceNodeDynamicModel const& d)
 {
 	j[keyName::AvbInterfaceNode_Dynamic_ObjectName] = d.objectName;
-	j[keyName::AvbInterfaceNode_Dynamic_AvbInfo] = d.avbInfo;
+	j[keyName::AvbInterfaceNode_Dynamic_GptpGrandmasterID] = d.gptpGrandmasterID;
+	j[keyName::AvbInterfaceNode_Dynamic_GptpDomainNumber] = d.gptpDomainNumber;
+	j[keyName::AvbInterfaceNode_Dynamic_AvbInterfaceInfo] = d.avbInterfaceInfo;
 	j[keyName::AvbInterfaceNode_Dynamic_AsPath] = d.asPath;
 	j[keyName::AvbInterfaceNode_Dynamic_Counters] = d.counters;
 }
 inline void from_json(json const& j, AvbInterfaceNodeDynamicModel& d)
 {
 	get_optional_value(j, keyName::AvbInterfaceNode_Dynamic_ObjectName, d.objectName);
-	get_optional_value(j, keyName::AvbInterfaceNode_Dynamic_AvbInfo, d.avbInfo);
+	j.at(keyName::AvbInterfaceNode_Dynamic_GptpGrandmasterID).get_to(d.gptpGrandmasterID);
+	j.at(keyName::AvbInterfaceNode_Dynamic_GptpDomainNumber).get_to(d.gptpDomainNumber);
+	get_optional_value(j, keyName::AvbInterfaceNode_Dynamic_AvbInterfaceInfo, d.avbInterfaceInfo);
 	get_optional_value(j, keyName::AvbInterfaceNode_Dynamic_AsPath, d.asPath);
 	get_optional_value(j, keyName::AvbInterfaceNode_Dynamic_Counters, d.counters);
 }

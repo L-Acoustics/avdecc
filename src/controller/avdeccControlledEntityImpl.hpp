@@ -304,6 +304,23 @@ public:
 		auto& configTree = getConfigurationTree(configurationIndex);
 		return (configTree.*Field)[index].dynamicModel;
 	}
+	template<typename FieldPointer>
+	auto& getModels(entity::model::ConfigurationIndex const configurationIndex, FieldPointer entity::model::ConfigurationTree::*Field) noexcept
+	{
+		AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
+
+		auto& entityTree = getEntityTree();
+		auto configIt = entityTree.configurationTrees.find(configurationIndex);
+		if (configIt != entityTree.configurationTrees.end())
+		{
+			auto& configTree = configIt->second;
+			return configTree.*Field;
+		}
+
+		// We return a reference, so we have to create a static empty model in case we don't have one so we can return a reference to it
+		static auto s_Empty = FieldPointer{};
+		return s_Empty;
+	}
 	entity::model::EntityCounters& getEntityCounters() noexcept;
 	entity::model::AvbInterfaceCounters& getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept;
 	entity::model::ClockDomainCounters& getClockDomainCounters(entity::model::ClockDomainIndex const clockDomainIndex) noexcept;
@@ -328,7 +345,7 @@ public:
 	bool addStreamOutputConnection(entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream) noexcept; // Returns true if effectively added
 	bool delStreamOutputConnection(entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream) noexcept; // Returns true if effectively removed
 	std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> setStreamOutputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept; // Returns previous StreamInfo and the new one
-	entity::model::AvbInfo setAvbInfo(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) noexcept; // Returns previous AvbInfo
+	entity::model::AvbInterfaceInfo setAvbInterfaceInfo(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInterfaceInfo const& info) noexcept; // Returns previous AvbInterfaceInfo
 	entity::model::AsPath setAsPath(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath) noexcept; // Returns previous AsPath
 	void setSelectedLocaleStringsIndexesRange(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const baseIndex, entity::model::StringsIndex const countIndexes) noexcept;
 	void clearStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) noexcept;

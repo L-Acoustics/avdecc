@@ -1164,7 +1164,10 @@ void ControllerImpl::onGetAvbInfoResult(entity::controller::Interface const* con
 		{
 			if (!!status)
 			{
-				controlledEntity->setAvbInfo(avbInterfaceIndex, info);
+				auto& entity = *controlledEntity;
+
+				// Use the "update**" method, there are many things to do
+				updateAvbInfo(entity, avbInterfaceIndex, info);
 			}
 			else
 			{

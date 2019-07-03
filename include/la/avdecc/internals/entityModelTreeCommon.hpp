@@ -68,6 +68,24 @@ constexpr bool operator!=(StreamConnectionState const& lhs, StreamConnectionStat
 	return !(lhs == rhs);
 }
 
+/** A subset of AvbInfo */
+struct AvbInterfaceInfo
+{
+	std::uint32_t propagationDelay{ 0u };
+	AvbInfoFlags flags{};
+	entity::model::MsrpMappings mappings{};
+};
+
+constexpr bool operator==(AvbInterfaceInfo const& lhs, AvbInterfaceInfo const& rhs) noexcept
+{
+	return (lhs.propagationDelay == rhs.propagationDelay) && (lhs.flags == rhs.flags) && (lhs.mappings == rhs.mappings);
+}
+
+constexpr bool operator!=(AvbInterfaceInfo const& lhs, AvbInterfaceInfo const& rhs) noexcept
+{
+	return !(lhs == rhs);
+}
+
 using StreamConnections = std::set<StreamIdentification>;
 using StreamFormats = std::set<StreamFormat>;
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY

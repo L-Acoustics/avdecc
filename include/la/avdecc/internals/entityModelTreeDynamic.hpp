@@ -31,6 +31,7 @@
 #include <unordered_map>
 #include <cstdint>
 #include <map>
+#include <optional>
 
 namespace la
 {
@@ -73,7 +74,9 @@ struct StreamOutputNodeDynamicModel : public StreamNodeDynamicModel
 struct AvbInterfaceNodeDynamicModel
 {
 	AvdeccFixedString objectName{};
-	AvbInfo avbInfo{};
+	UniqueIdentifier gptpGrandmasterID{};
+	std::uint8_t gptpDomainNumber{ 0u };
+	std::optional<AvbInterfaceInfo> avbInterfaceInfo{ std::nullopt };
 	AsPath asPath{};
 	AvbInterfaceCounters counters{};
 };

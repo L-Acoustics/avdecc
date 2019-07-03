@@ -244,14 +244,14 @@
                                     "0x001B92FFFF000000",
                                     "0x001B92FFFF000002"
                                 ],
-                                "avb_info": {
+                                "gptp_domain_number": 0,
+                                "gptp_grandmaster_id": "0x001B92FFFF000000",
+                                "avb_interface_info": {
                                     "flags": [
                                         "AS_CAPABLE",
                                         "GPTP_ENABLED",
                                         "SRP_ENABLED"
                                     ],
-                                    "gptp_domain_number": 0,
-                                    "gptp_grandmaster_id": "0x001B92FFFF000000",
                                     "msrp_mappings": [
                                         {
                                             "priority": 3,
@@ -299,14 +299,14 @@
                                     "0x001B92FFFF010000",
                                     "0x001B92FFFF000002"
                                 ],
-                                "avb_info": {
+                                "gptp_domain_number": 0,
+                                "gptp_grandmaster_id": "0x001B92FFFF010000",
+                                "avb_interface_info": {
                                     "flags": [
                                         "AS_CAPABLE",
                                         "GPTP_ENABLED",
                                         "SRP_ENABLED"
                                     ],
-                                    "gptp_domain_number": 0,
-                                    "gptp_grandmaster_id": "0x001B92FFFF010000",
                                     "msrp_mappings": [
                                         {
                                             "priority": 3,

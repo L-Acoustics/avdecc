@@ -927,17 +927,17 @@ std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> Controlle
 	return { previousInfo, dynamicModel.streamInfo };
 }
 
-entity::model::AvbInfo ControlledEntityImpl::setAvbInfo(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) noexcept
+entity::model::AvbInterfaceInfo ControlledEntityImpl::setAvbInterfaceInfo(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInterfaceInfo const& info) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels);
 
 	// Save previous AvbInfo
-	auto previousInfo = dynamicModel.avbInfo;
+	auto previousInfo = dynamicModel.avbInterfaceInfo;
 
-	// Set AvbInfo
-	dynamicModel.avbInfo = info;
+	// Set AvbInterfaceInfo
+	dynamicModel.avbInterfaceInfo = info;
 
-	return previousInfo;
+	return previousInfo ? *previousInfo : entity::model::AvbInterfaceInfo{};
 }
 
 entity::model::AsPath ControlledEntityImpl::setAsPath(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath) noexcept
