@@ -77,8 +77,8 @@ struct AvbInterfaceNodeDynamicModel
 	UniqueIdentifier gptpGrandmasterID{};
 	std::uint8_t gptpDomainNumber{ 0u };
 	std::optional<AvbInterfaceInfo> avbInterfaceInfo{ std::nullopt };
-	AsPath asPath{};
 	AvbInterfaceCounters counters{};
+	std::optional<AsPath> asPath{ std::nullopt };
 };
 
 struct ClockSourceNodeDynamicModel

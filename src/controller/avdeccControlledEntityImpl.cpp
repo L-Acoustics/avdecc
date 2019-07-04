@@ -950,7 +950,7 @@ entity::model::AsPath ControlledEntityImpl::setAsPath(entity::model::AvbInterfac
 	// Set AsPath
 	dynamicModel.asPath = asPath;
 
-	return previousPath;
+	return previousPath ? *previousPath : entity::model::AsPath{};
 }
 
 void ControlledEntityImpl::setSelectedLocaleStringsIndexesRange(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const baseIndex, entity::model::StringsIndex const countIndexes) noexcept
