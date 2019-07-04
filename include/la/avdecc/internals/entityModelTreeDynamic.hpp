@@ -62,13 +62,13 @@ struct StreamNodeDynamicModel
 struct StreamInputNodeDynamicModel : public StreamNodeDynamicModel
 {
 	model::StreamConnectionState connectionState{};
-	StreamInputCounters counters{};
+	std::optional<StreamInputCounters> counters{ std::nullopt };
 };
 
 struct StreamOutputNodeDynamicModel : public StreamNodeDynamicModel
 {
 	model::StreamConnections connections{};
-	StreamOutputCounters counters{};
+	std::optional<StreamOutputCounters> counters{ std::nullopt };
 };
 
 struct AvbInterfaceNodeDynamicModel
@@ -77,8 +77,8 @@ struct AvbInterfaceNodeDynamicModel
 	UniqueIdentifier gptpGrandmasterID{};
 	std::uint8_t gptpDomainNumber{ 0u };
 	std::optional<AvbInterfaceInfo> avbInterfaceInfo{ std::nullopt };
-	AvbInterfaceCounters counters{};
 	std::optional<AsPath> asPath{ std::nullopt };
+	std::optional<AvbInterfaceCounters> counters{ std::nullopt };
 };
 
 struct ClockSourceNodeDynamicModel
@@ -120,7 +120,7 @@ struct ClockDomainNodeDynamicModel
 {
 	AvdeccFixedString objectName{};
 	ClockSourceIndex clockSourceIndex{ ClockSourceIndex(0u) };
-	ClockDomainCounters counters{};
+	std::optional<ClockDomainCounters> counters{ std::nullopt };
 };
 
 struct ConfigurationNodeDynamicModel
@@ -141,7 +141,7 @@ struct EntityNodeDynamicModel
 	AvdeccFixedString firmwareVersion{};
 	AvdeccFixedString serialNumber{};
 	std::uint16_t currentConfiguration{ 0u };
-	EntityCounters counters{};
+	std::optional<EntityCounters> counters{ std::nullopt };
 };
 
 } // namespace model

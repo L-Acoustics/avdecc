@@ -791,31 +791,56 @@ entity::model::ConfigurationNodeDynamicModel& ControlledEntityImpl::getConfigura
 entity::model::EntityCounters& ControlledEntityImpl::getEntityCounters() noexcept
 {
 	auto& entityTree = getEntityTree();
-	return entityTree.dynamicModel.counters;
+	// Create counters if they don't exist yet
+	if (!entityTree.dynamicModel.counters)
+	{
+		entityTree.dynamicModel.counters = entity::model::EntityCounters{};
+	}
+	return *entityTree.dynamicModel.counters;
 }
 
 entity::model::AvbInterfaceCounters& ControlledEntityImpl::getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels);
-	return dynamicModel.counters;
+	// Create counters if they don't exist yet
+	if (!dynamicModel.counters)
+	{
+		dynamicModel.counters = entity::model::AvbInterfaceCounters{};
+	}
+	return *dynamicModel.counters;
 }
 
 entity::model::ClockDomainCounters& ControlledEntityImpl::getClockDomainCounters(entity::model::ClockDomainIndex const clockDomainIndex) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), clockDomainIndex, &entity::model::ConfigurationTree::clockDomainModels);
-	return dynamicModel.counters;
+	// Create counters if they don't exist yet
+	if (!dynamicModel.counters)
+	{
+		dynamicModel.counters = entity::model::ClockDomainCounters{};
+	}
+	return *dynamicModel.counters;
 }
 
 entity::model::StreamInputCounters& ControlledEntityImpl::getStreamInputCounters(entity::model::StreamIndex const streamIndex) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels);
-	return dynamicModel.counters;
+	// Create counters if they don't exist yet
+	if (!dynamicModel.counters)
+	{
+		dynamicModel.counters = entity::model::StreamInputCounters{};
+	}
+	return *dynamicModel.counters;
 }
 
 entity::model::StreamOutputCounters& ControlledEntityImpl::getStreamOutputCounters(entity::model::StreamIndex const streamIndex) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
-	return dynamicModel.counters;
+	// Create counters if they don't exist yet
+	if (!dynamicModel.counters)
+	{
+		dynamicModel.counters = entity::model::StreamOutputCounters{};
+	}
+	return *dynamicModel.counters;
 }
 
 // Setters of the DescriptorDynamic info, default constructing if not existing
