@@ -33,6 +33,7 @@
 #include <mutex>
 #include <optional>
 #include <future>
+#include <chrono>
 #include <WinSock2.h>
 #include <Iphlpapi.h>
 #include <wbemidl.h>
@@ -594,58 +595,66 @@ public:
 		}
 
 		auto previousList = Interfaces{};
+		auto nextCheck = std::chrono::time_point<std::chrono::system_clock>{};
 		while (!self->_shouldTerminate)
 		{
-			auto newList = Interfaces{};
-
-			if (self->_comGuard.has_value())
+			auto const now = std::chrono::system_clock::now();
+			if (now >= nextCheck)
 			{
-				if (!refreshInterfaces_WMI(newList))
+				auto newList = Interfaces{};
+
+				if (self->_comGuard.has_value())
 				{
-					// WMI failed, never try this again
-					self->_comGuard.reset();
-
-					// Clear the list, just in case we managed to get some information
-					newList.clear();
-				}
-			}
-
-			// Cannot use WMI, use an alternative method (less powerful)
-			if (!self->_comGuard.has_value())
-			{
-				refreshInterfaces_WinAPI(newList);
-			}
-
-			// Process previous list and check if some property changed
-			for (auto const& [name, previousIntfc] : previousList)
-			{
-				auto const newIntfcIt = newList.find(name);
-				if (newIntfcIt != newList.end())
-				{
-					auto const& newIntfc = newIntfcIt->second;
-					if (previousIntfc.isEnabled != newIntfc.isEnabled)
+					if (!refreshInterfaces_WMI(newList))
 					{
-						onEnabledStateChanged(name, newIntfc.isEnabled);
-					}
-					if (previousIntfc.isConnected != newIntfc.isConnected)
-					{
-						onConnectedStateChanged(name, newIntfc.isConnected);
+						// WMI failed, never try this again
+						self->_comGuard.reset();
+
+						// Clear the list, just in case we managed to get some information
+						newList.clear();
 					}
 				}
+
+				// Cannot use WMI, use an alternative method (less powerful)
+				if (!self->_comGuard.has_value())
+				{
+					refreshInterfaces_WinAPI(newList);
+				}
+
+				// Process previous list and check if some property changed
+				for (auto const& [name, previousIntfc] : previousList)
+				{
+					auto const newIntfcIt = newList.find(name);
+					if (newIntfcIt != newList.end())
+					{
+						auto const& newIntfc = newIntfcIt->second;
+						if (previousIntfc.isEnabled != newIntfc.isEnabled)
+						{
+							onEnabledStateChanged(name, newIntfc.isEnabled);
+						}
+						if (previousIntfc.isConnected != newIntfc.isConnected)
+						{
+							onConnectedStateChanged(name, newIntfc.isConnected);
+						}
+					}
+				}
+
+				// Copy the list before it's moved
+				previousList = newList;
+
+				// Check for change in Interface count
+				onNewInterfacesList(std::move(newList));
+
+				// Set that we enumerated at least once
+				self->_enumeratedOnce = true;
+				self->_syncCondVar.notify_all();
+
+				// Setup next check time
+				nextCheck = now + std::chrono::milliseconds(1000);
 			}
-
-			// Copy the list before it's moved
-			previousList = newList;
-
-			// Check for change in Interface count
-			onNewInterfacesList(std::move(newList));
-
-			// Set that we enumerated at least once
-			self->_enumeratedOnce = true;
-			self->_syncCondVar.notify_all();
 
 			// Wait a little bit so we don't burn the CPU
-			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 		}
 
 		// Terminate the thread properly
