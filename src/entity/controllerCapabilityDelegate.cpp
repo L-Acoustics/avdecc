@@ -2995,7 +2995,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 			}
 		},
 		// Get Audio Map
-		{ protocol::AemCommandType::GetAudioMap.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::GetAudioMap.getValue(), []([[maybe_unused]] controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -3015,18 +3015,22 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				if (descriptorType == model::DescriptorType::StreamPortInput)
 				{
 					answerCallback.invoke<controller::Interface::GetStreamPortInputAudioMapHandler>(controllerInterface, targetID, status, descriptorIndex, numberOfMaps, mapIndex, mappings);
+#ifdef ALLOW_GET_AUDIO_MAP_UNSOL
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
 						utils::invokeProtectedMethod(&controller::Delegate::onStreamPortInputAudioMappingsChanged, delegate, controllerInterface, targetID, descriptorIndex, numberOfMaps, mapIndex, mappings);
 					}
+#endif // ALLOW_GET_AUDIO_MAP_UNSOL
 				}
 				else if (descriptorType == model::DescriptorType::StreamPortOutput)
 				{
 					answerCallback.invoke<controller::Interface::GetStreamPortOutputAudioMapHandler>(controllerInterface, targetID, status, descriptorIndex, numberOfMaps, mapIndex, mappings);
+#ifdef ALLOW_GET_AUDIO_MAP_UNSOL
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
 						utils::invokeProtectedMethod(&controller::Delegate::onStreamPortOutputAudioMappingsChanged, delegate, controllerInterface, targetID, descriptorIndex, numberOfMaps, mapIndex, mappings);
 					}
+#endif
 				}
 				else
 					throw InvalidDescriptorTypeException();

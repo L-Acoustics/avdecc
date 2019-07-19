@@ -80,6 +80,10 @@ std::vector<CompileOptionInfo> LA_AVDECC_CALL_CONVENTION getCompileOptionsInfo()
 	options.emplace_back(CompileOptionInfo{ CompileOption::IgnoreInvalidNonSuccessAemResponses, "IINSAR", "Ignore Invalid Non Success AEM Responses" });
 #endif // IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES
 
+#ifdef ALLOW_GET_AUDIO_MAP_UNSOL
+	options.emplace_back(CompileOptionInfo{ CompileOption::AllowGetAudioMapUnsol, "AGAMU", "Allow Get Audio Map Unsolicited Notifications" });
+#endif // ALLOW_GET_AUDIO_MAP_UNSOL
+
 #ifdef ALLOW_SEND_BIG_AECP_PAYLOADS
 	options.emplace_back(CompileOptionInfo{ CompileOption::AllowSendBigAecpPayloads, "ASBAP", "Allow Send Big AECP payloads" });
 #endif // ALLOW_SEND_BIG_AECP_PAYLOADS

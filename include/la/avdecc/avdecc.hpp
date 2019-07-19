@@ -99,8 +99,9 @@ enum class CompileOption : std::uint32_t
 	None = 0,
 	IgnoreInvalidControlDataLength = 1u << 0,
 	IgnoreInvalidNonSuccessAemResponses = 1u << 1,
-	AllowSendBigAecpPayloads = 1u << 2,
-	AllowRecvBigAecpPayloads = 1u << 3,
+	AllowGetAudioMapUnsol = 1u << 2,
+	AllowSendBigAecpPayloads = 1u << 3,
+	AllowRecvBigAecpPayloads = 1u << 4,
 	EnableRedundancy = 1u << 15,
 	EnableJsonSupport = 1u << 16,
 };
