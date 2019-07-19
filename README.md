@@ -50,7 +50,7 @@ The controller API has 2 interfaces:
 ## Minimum requirements for compilation
 
 ### All platforms
-- CMake 3.12
+- CMake 3.13
 
 ### Windows
 - Windows 8.1
