@@ -416,3 +416,4 @@ endmacro(setup_project)
 ###############################################################################
 # Global variables (must stay at the end of the file)
 set(LA_ROOT_DIR "${PROJECT_SOURCE_DIR}") # Folder containing the main CMakeLists.txt for the repository including this file
+set(LA_TOP_LEVEL_BINARY_DIR "${PROJECT_BINARY_DIR}") # Folder containing the top level binary files (CMake root output folder)
