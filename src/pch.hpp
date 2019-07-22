@@ -36,8 +36,6 @@
 #include "la/avdecc/internals/entityModel.hpp"
 #include "la/avdecc/internals/entityModelTypes.hpp"
 #include "la/avdecc/internals/instrumentationNotifier.hpp"
-#include "la/avdecc/internals/jsonSerialization.hpp"
-#include "la/avdecc/internals/jsonTypes.hpp"
 #include "la/avdecc/internals/logItems.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
 #include "la/avdecc/internals/protocolAcmpdu.hpp"
@@ -51,6 +49,10 @@
 #include "la/avdecc/internals/protocolVuAecpdu.hpp"
 #include "la/avdecc/internals/serialization.hpp"
 #include "la/avdecc/internals/streamFormatInfo.hpp"
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+#include "la/avdecc/internals/jsonSerialization.hpp"
+#include "la/avdecc/internals/jsonTypes.hpp"
+#endif // ENABLE_AVDECC_FEATURE_JSON
 
 #ifdef HAVE_PROTOCOL_INTERFACE_PCAP
 // We must include pcap now, because of winsock.h and windows.h
