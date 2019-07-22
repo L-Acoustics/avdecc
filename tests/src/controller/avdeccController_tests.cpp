@@ -18,7 +18,7 @@
 */
 
 /**
-* @file controller_tests.cpp
+* @file avdeccController_tests.cpp.cpp
 * @author Christophe Calmejane
 */
 

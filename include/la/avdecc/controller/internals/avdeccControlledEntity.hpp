@@ -148,8 +148,14 @@ public:
 
 	/** Get connected information about a listener's stream (TalkerID and StreamIndex might be filled even if isConnected is not true, in case of FastConnect) */
 	virtual entity::model::StreamConnectionState const& getConnectedSinkState(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
+	/** Get the current AudioMappings for the specified Input StreamPortIndex. Might return redundant mappings as well as primary ones. If you want the non-redundant mappings only, you should use getStreamPortInputNonRedundantAudioMappings instead. */
 	virtual entity::model::AudioMappings const& getStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
+	/** Get the current AudioMappings for the specified Input StreamPortIndex. Only return the primary mappings, not the redundant ones. */
+	virtual entity::model::AudioMappings getStreamPortInputNonRedundantAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
+	/** Get the current AudioMappings for the specified Output StreamPortIndex. Might return redundant mappings as well as primary ones. If you want the non-redundant mappings only, you should use getStreamPortOutputNonRedundantAudioMappings instead. */
 	virtual entity::model::AudioMappings const& getStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
+	/** Get the current AudioMappings for the specified Output StreamPortIndex. Only return the primary mappings, not the redundant ones. */
+	virtual entity::model::AudioMappings getStreamPortOutputNonRedundantAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
 
 	/** Get connections information about a talker's stream */
 	virtual entity::model::StreamConnections const& getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist

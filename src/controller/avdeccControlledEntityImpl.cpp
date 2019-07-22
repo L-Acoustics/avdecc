@@ -413,6 +413,29 @@ entity::model::AudioMappings const& ControlledEntityImpl::getStreamPortInputAudi
 	return dynamicModel.dynamicAudioMap;
 }
 
+entity::model::AudioMappings ControlledEntityImpl::getStreamPortInputNonRedundantAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const
+{
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	// Get the current mappings
+	auto const& mappings = getStreamPortInputAudioMappings(streamPortIndex);
+	auto nonRedundantMappings = decltype(mappings){};
+
+	// For each mapping, add only if not secondary stream
+	for (auto const& map : mappings)
+	{
+		if (!isRedundantSecondaryStreamInput(map.streamIndex))
+		{
+			nonRedundantMappings.push_back(map);
+		}
+	}
+
+	return nonRedundantMappings;
+#else // !ENABLE_AVDECC_FEATURE_REDUNDANCY
+	// Return a copy of the current mappings
+	return getStreamPortInputAudioMappings(streamPortIndex);
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+}
+
 entity::model::AudioMappings const& ControlledEntityImpl::getStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const
 {
 	auto const currentConfiguration = getCurrentConfigurationIndex();
@@ -425,6 +448,29 @@ entity::model::AudioMappings const& ControlledEntityImpl::getStreamPortOutputAud
 	// Return dynamic mappings for this stream port
 	auto const& dynamicModel = getNodeDynamicModel(currentConfiguration, streamPortIndex, &entity::model::ConfigurationTree::streamPortOutputModels);
 	return dynamicModel.dynamicAudioMap;
+}
+
+entity::model::AudioMappings ControlledEntityImpl::getStreamPortOutputNonRedundantAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const
+{
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	// Get the current mappings
+	auto const& mappings = getStreamPortOutputAudioMappings(streamPortIndex);
+	auto nonRedundantMappings = decltype(mappings){};
+
+	// For each mapping, add only if not secondary stream
+	for (auto const& map : mappings)
+	{
+		if (!isRedundantSecondaryStreamOutput(map.streamIndex))
+		{
+			nonRedundantMappings.push_back(map);
+		}
+	}
+
+	return nonRedundantMappings;
+#else // !ENABLE_AVDECC_FEATURE_REDUNDANCY
+	// Return a copy of the current mappings
+	return getStreamPortOutputAudioMappings(streamPortIndex);
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 }
 
 entity::model::StreamConnections const& ControlledEntityImpl::getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const
@@ -941,9 +987,9 @@ void ControlledEntityImpl::addStreamPortInputAudioMappings(entity::model::Stream
 		}
 		else // Otherwise, replace the previous mapping (or add it as well, if redundancy feature is not enabled)
 		{
+			// Note: Not able to check if the stream is redundant (using the redundant property of the stream or the cached Primary/Secondary indexes) since we might receive mappings before having had the time to retrieve the descriptor or build the cache
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 			// StreamChannel must be the same and StreamIndex must be different, in redundancy
-			// Note: Not able to check if the stream is redundant (using the redundant property of the stream) since we might receive mappings before having had the time to retrieve the descriptor
 			if ((foundIt->streamIndex != map.streamIndex) && (foundIt->streamChannel == map.streamChannel))
 			{
 				dynamicMap.push_back(map);
@@ -1001,7 +1047,7 @@ void ControlledEntityImpl::addStreamPortOutputAudioMappings(entity::model::Strea
 	// Process audio mappings
 	for (auto const& map : mappings)
 	{
-		// Search for another mapping associated to the same destination (stream), which is not allowed except in redundancy
+		// Search for another mapping associated to the same destination (stream), which is not allowed
 		auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(),
 			[&map](entity::model::AudioMapping const& mapping)
 			{
@@ -1010,26 +1056,18 @@ void ControlledEntityImpl::addStreamPortOutputAudioMappings(entity::model::Strea
 		// Not found, add the new mapping
 		if (foundIt == dynamicMap.end())
 		{
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+			// TODO: If StreamIndex is redundant and the other Stream Pair is already in the map, validate it's the same ClusterIndex and ClusterChannel
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 			dynamicMap.push_back(map);
 		}
-		else // Otherwise, replace the previous mapping (or add it as well, if redundancy feature is not enabled)
+		else // Otherwise, replace the previous mapping
 		{
-#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-			// clusterChannel must be the same and clusterOffset must be different, in redundancy
-			// Note: Not able to check if the stream is redundant (using the redundant property of the stream) since we might receive mappings before having had the time to retrieve the descriptor
-			if ((foundIt->clusterOffset != map.clusterOffset) && (foundIt->clusterChannel == map.clusterChannel))
+			if (*foundIt != map)
 			{
-				dynamicMap.push_back(map);
-			}
-			else
-#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
-			{
-				if (*foundIt != map)
-				{
-					LOG_CONTROLLER_WARN(_entity.getEntityID(), std::string("Duplicate StreamPortOutput AudioMappings found: ") + std::to_string(foundIt->streamIndex) + ":" + std::to_string(foundIt->streamChannel) + ":" + std::to_string(foundIt->clusterOffset) + ":" + std::to_string(foundIt->clusterChannel) + " replaced by " + std::to_string(map.streamIndex) + ":" + std::to_string(map.streamChannel) + ":" + std::to_string(map.clusterOffset) + ":" + std::to_string(map.clusterChannel));
-					foundIt->clusterOffset = map.clusterOffset;
-					foundIt->clusterChannel = map.clusterChannel;
-				}
+				LOG_CONTROLLER_WARN(_entity.getEntityID(), std::string("Duplicate StreamPortOutput AudioMappings found: ") + std::to_string(foundIt->streamIndex) + ":" + std::to_string(foundIt->streamChannel) + ":" + std::to_string(foundIt->clusterOffset) + ":" + std::to_string(foundIt->clusterChannel) + " replaced by " + std::to_string(map.streamIndex) + ":" + std::to_string(map.streamChannel) + ":" + std::to_string(map.clusterOffset) + ":" + std::to_string(map.clusterChannel));
+				foundIt->clusterOffset = map.clusterOffset;
+				foundIt->clusterChannel = map.clusterChannel;
 			}
 		}
 	}
@@ -1941,6 +1979,26 @@ void ControlledEntityImpl::setAdvertised(bool const wasAdvertised) noexcept
 	_advertised = wasAdvertised;
 }
 
+bool ControlledEntityImpl::isRedundantPrimaryStreamInput(entity::model::StreamIndex const streamIndex) const noexcept
+{
+	return _redundantPrimaryStreamInputs.count(streamIndex) != 0;
+}
+
+bool ControlledEntityImpl::isRedundantPrimaryStreamOutput(entity::model::StreamIndex const streamIndex) const noexcept
+{
+	return _redundantPrimaryStreamOutputs.count(streamIndex) != 0;
+}
+
+bool ControlledEntityImpl::isRedundantSecondaryStreamInput(entity::model::StreamIndex const streamIndex) const noexcept
+{
+	return _redundantSecondaryStreamInputs.count(streamIndex) != 0;
+}
+
+bool ControlledEntityImpl::isRedundantSecondaryStreamOutput(entity::model::StreamIndex const streamIndex) const noexcept
+{
+	return _redundantSecondaryStreamOutputs.count(streamIndex) != 0;
+}
+
 // Static methods
 std::string ControlledEntityImpl::dynamicInfoTypeToString(DynamicInfoType const dynamicInfoType) noexcept
 {
@@ -2021,7 +2079,7 @@ std::string ControlledEntityImpl::descriptorDynamicInfoTypeToString(DescriptorDy
 }
 
 // Private methods
-void ControlledEntityImpl::buildEntityModelGraph() const noexcept
+void ControlledEntityImpl::buildEntityModelGraph() noexcept
 {
 	try
 	{
@@ -2233,11 +2291,11 @@ void ControlledEntityImpl::buildEntityModelGraph() const noexcept
 }
 
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-class RedundantHelper : ControlledEntityImpl
+class RedundantHelper : public ControlledEntityImpl
 {
 public:
 	template<typename StreamNodeType>
-	static void buildRedundancyNodesByType(la::avdecc::UniqueIdentifier entityID, std::map<entity::model::StreamIndex, StreamNodeType>& streams, std::map<model::VirtualIndex, model::RedundantStreamNode>& redundantStreams)
+	static void buildRedundancyNodesByType(la::avdecc::UniqueIdentifier entityID, std::map<entity::model::StreamIndex, StreamNodeType>& streams, std::map<model::VirtualIndex, model::RedundantStreamNode>& redundantStreams, RedundantStreamCategory& redundantPrimaryStreams, RedundantStreamCategory& redundantSecondaryStreams)
 	{
 		for (auto& streamNodeKV : streams)
 		{
@@ -2351,18 +2409,24 @@ public:
 						redundantNode->isRedundant = true; // Set this StreamNode as part of a valid redundant stream association
 					}
 
+					auto redundantStreamIt = redundantStreamNodes.begin();
 					// Defined the primary stream
-					redundantStreamNode.primaryStream = redundantStreamNodes.begin()->second;
+					redundantStreamNode.primaryStream = redundantStreamIt->second;
+
+					// Cache Primary and Secondary StreamIndexes
+					redundantPrimaryStreams.insert(redundantStreamIt->second->descriptorIndex);
+					++redundantStreamIt;
+					redundantSecondaryStreams.insert(redundantStreamIt->second->descriptorIndex);
 				}
 			}
 		}
 	}
 };
 
-void ControlledEntityImpl::buildRedundancyNodes(model::ConfigurationNode& configNode) const noexcept
+void ControlledEntityImpl::buildRedundancyNodes(model::ConfigurationNode& configNode) noexcept
 {
-	RedundantHelper::buildRedundancyNodesByType(_entity.getEntityID(), configNode.streamInputs, configNode.redundantStreamInputs);
-	RedundantHelper::buildRedundancyNodesByType(_entity.getEntityID(), configNode.streamOutputs, configNode.redundantStreamOutputs);
+	RedundantHelper::buildRedundancyNodesByType(_entity.getEntityID(), configNode.streamInputs, configNode.redundantStreamInputs, _redundantPrimaryStreamInputs, _redundantSecondaryStreamInputs);
+	RedundantHelper::buildRedundancyNodesByType(_entity.getEntityID(), configNode.streamOutputs, configNode.redundantStreamOutputs, _redundantPrimaryStreamOutputs, _redundantSecondaryStreamOutputs);
 }
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 

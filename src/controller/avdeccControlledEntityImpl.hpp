@@ -231,7 +231,9 @@ public:
 	/** Get connected information about a listener's stream (TalkerID and StreamIndex might be filled even if isConnected is not true, in case of FastConnect) */
 	virtual entity::model::StreamConnectionState const& getConnectedSinkState(entity::model::StreamIndex const streamIndex) const override; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 	virtual entity::model::AudioMappings const& getStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const override; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
+	virtual entity::model::AudioMappings getStreamPortInputNonRedundantAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const override; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
 	virtual entity::model::AudioMappings const& getStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const override; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
+	virtual entity::model::AudioMappings getStreamPortOutputNonRedundantAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const override; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
 
 	/** Get connections information about a talker's stream */
 	virtual entity::model::StreamConnections const& getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const override; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
@@ -428,6 +430,10 @@ public:
 	void setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept;
 	bool wasAdvertised() const noexcept;
 	void setAdvertised(bool const wasAdvertised) noexcept;
+	bool isRedundantPrimaryStreamInput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Primary Stream (false for Secondary and non-redundant streams)
+	bool isRedundantPrimaryStreamOutput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Primary Stream (false for Secondary and non-redundant streams)
+	bool isRedundantSecondaryStreamInput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
+	bool isRedundantSecondaryStreamOutput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
 
 	// Static methods
 	static std::string dynamicInfoTypeToString(DynamicInfoType const dynamicInfoType) noexcept;
@@ -451,7 +457,7 @@ public:
 	}
 
 	// Other Controller restricted methods
-	void buildEntityModelGraph() const noexcept;
+	void buildEntityModelGraph() noexcept;
 
 	// Compiler auto-generated methods
 	ControlledEntityImpl(ControlledEntityImpl&&) = default;
@@ -460,6 +466,8 @@ public:
 	ControlledEntityImpl& operator=(ControlledEntityImpl&&) = delete;
 
 protected:
+	using RedundantStreamCategory = std::unordered_set<entity::model::StreamIndex>;
+
 	template<class NodeType, typename = std::enable_if_t<std::is_base_of<model::Node, NodeType>::value>>
 	static constexpr size_t getHashCode(NodeType const* const node) noexcept
 	{
@@ -493,7 +501,7 @@ protected:
 
 private:
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-	void buildRedundancyNodes(model::ConfigurationNode& configNode) const noexcept;
+	void buildRedundancyNodes(model::ConfigurationNode& configNode) noexcept;
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 	// Private variables
@@ -525,8 +533,13 @@ private:
 	// Entity variables
 	entity::Entity _entity; // No NSMI, Entity has no default constructor but it has to be passed to the only constructor of this class anyway
 	// Entity Model
-	mutable entity::model::EntityTree _entityTree{}; // Tree of the model as represented by the AVDECC protocol
-	mutable model::EntityNode _entityNode{}; // Model as represented by the ControlledEntity (tree of references to the model::EntityStaticTree and model::EntityDynamicTree)
+	entity::model::EntityTree _entityTree{}; // Tree of the model as represented by the AVDECC protocol
+	model::EntityNode _entityNode{}; // Model as represented by the ControlledEntity (tree of references to the model::EntityStaticTree and model::EntityDynamicTree)
+	// Cached Information
+	RedundantStreamCategory _redundantPrimaryStreamInputs{}; // Cached indexes of all Redundant Primary Streams (a non-redundant stream won't be listed here)
+	RedundantStreamCategory _redundantPrimaryStreamOutputs{}; // Cached indexes of all Redundant Primary Streams (a non-redundant stream won't be listed here)
+	RedundantStreamCategory _redundantSecondaryStreamInputs{}; // Cached indexes of all Redundant Secondary Streams
+	RedundantStreamCategory _redundantSecondaryStreamOutputs{}; // Cached indexes of all Redundant Secondary Streams
 	// Statistics
 	std::uint64_t _aecpRetryCounter{ 0ull };
 	std::uint64_t _aecpTimeoutCounter{ 0ull };

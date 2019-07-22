@@ -34,10 +34,14 @@ list(APPEND ADD_LINK_LIBRARIES la_avdecc_static)
 
 if(BUILD_AVDECC_CONTROLLER)
 	list(APPEND TESTS_SOURCE
-		avdeccController_tests.cpp
+		controller/avdeccController_tests.cpp
+		controller/avdeccControlledEntity_tests.cpp
 	)
 	list(APPEND ADD_LINK_LIBRARIES la_avdecc_controller_static)
 endif()
+
+# Group source files
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX "Source Files" FILES ${TESTS_SOURCE})
 
 # Define target
 add_executable(Tests ${TESTS_SOURCE})
