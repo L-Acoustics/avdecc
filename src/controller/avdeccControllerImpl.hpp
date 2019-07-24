@@ -259,7 +259,6 @@ private:
 	/* ************************************************************ */
 	/* Private methods used to update AEM and notify observers      */
 	/* ************************************************************ */
-	void setEntityAndNotify(ControlledEntityImpl& controlledEntity, entity::Entity const& entity) const noexcept;
 	void updateEntity(ControlledEntityImpl& controlledEntity, entity::Entity const& entity) const noexcept;
 	void addCompatibilityFlag(ControlledEntityImpl& controlledEntity, ControlledEntity::CompatibilityFlag const flag) const noexcept;
 	void removeCompatibilityFlag(ControlledEntityImpl& controlledEntity, ControlledEntity::CompatibilityFlag const flag) const noexcept;

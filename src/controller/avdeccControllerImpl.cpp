@@ -40,26 +40,6 @@ namespace controller
 /* ************************************************************ */
 /* Private methods used to update AEM and notify observers      */
 /* ************************************************************ */
-void ControllerImpl::setEntityAndNotify(ControlledEntityImpl& controlledEntity, entity::Entity const& entity) const noexcept
-{
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
-
-	// Get previous entity info, so we can check what changed
-	auto oldEntity = controlledEntity.getEntity();
-
-	// Update entity info
-	controlledEntity.setEntity(entity);
-
-	// Only do checks if entity was advertised to the user (we already changed the values anyway)
-	if (controlledEntity.wasAdvertised())
-	{
-		// Check if Capabilities changed
-		if (oldEntity.getEntityCapabilities() != entity.getEntityCapabilities())
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityCapabilitiesChanged, this, &controlledEntity);
-		}
-	}
-}
 void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity::Entity const& entity) const noexcept
 {
 	// Get previous entity info, so we can check what changed
@@ -662,15 +642,19 @@ void ControllerImpl::updateGptpInformation(ControlledEntityImpl& controlledEntit
 		// Search which InterfaceInformation matches this AvbInterfaceIndex (searching by Index, or by MacAddress in case the Index was not specified in ADP)
 		for (auto& [interfaceIndex, interfaceInfo] : entity.getInterfacesInformation())
 		{
-			// Match with the passed AvbInterfaceIndex, or with macAddress if this ADP is the GlobalAvbInterfaceIndex
-			if (interfaceIndex == avbInterfaceIndex || (interfaceIndex == entity::Entity::GlobalAvbInterfaceIndex && macAddress == interfaceInfo.macAddress))
+			// Do we even have gPTP info on this InterfaceInfo
+			if (interfaceInfo.gptpGrandmasterID)
 			{
-				// Alter InterfaceInfo with new gPTP info
-				if (interfaceInfo.gptpGrandmasterID != gptpGrandmasterID || interfaceInfo.gptpDomainNumber != gptpDomainNumber)
+				// Match with the passed AvbInterfaceIndex, or with macAddress if this ADP is the GlobalAvbInterfaceIndex
+				if (interfaceIndex == avbInterfaceIndex || (interfaceIndex == entity::Entity::GlobalAvbInterfaceIndex && macAddress == interfaceInfo.macAddress))
 				{
-					interfaceInfo.gptpGrandmasterID = gptpGrandmasterID;
-					interfaceInfo.gptpDomainNumber = gptpDomainNumber;
-					infoChanged |= true;
+					// Alter InterfaceInfo with new gPTP info
+					if (*interfaceInfo.gptpGrandmasterID != gptpGrandmasterID || *interfaceInfo.gptpDomainNumber != gptpDomainNumber)
+					{
+						interfaceInfo.gptpGrandmasterID = gptpGrandmasterID;
+						interfaceInfo.gptpDomainNumber = gptpDomainNumber;
+						infoChanged |= true;
+					}
 				}
 			}
 		}
