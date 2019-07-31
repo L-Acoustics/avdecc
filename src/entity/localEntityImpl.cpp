@@ -60,7 +60,7 @@ std::string LA_AVDECC_CALL_CONVENTION LocalEntity::statusToString(AemCommandStat
 			AVDECC_ASSERT(false, "Should not happen");
 			return "The AVDECC Entity is processing the command and will send a second response at a later time with the result of the command.";
 		case AemCommandStatus::EntityMisbehaving:
-			return "The AVDECC Entity is generated an internal error while trying to process the command.";
+			return "The AVDECC Entity generated an internal error while trying to process the command.";
 		case AemCommandStatus::NotSupported:
 			return "The command is implemented but the target of the command is not supported. For example trying to set the value of a read - only Control.";
 		case AemCommandStatus::StreamIsRunning:
