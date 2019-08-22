@@ -108,13 +108,13 @@ bool ControlledEntityImpl::isLockedByOther() const noexcept
 bool ControlledEntityImpl::isStreamInputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const
 {
 	auto const& dynamicModel = getNodeDynamicModel(configurationIndex, streamIndex, &entity::model::ConfigurationTree::streamInputModels);
-	return isStreamRunningFlag(dynamicModel.streamInfo.streamInfoFlags);
+	return dynamicModel.isStreamRunning ? *dynamicModel.isStreamRunning : true;
 }
 
 bool ControlledEntityImpl::isStreamOutputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const
 {
 	auto const& dynamicModel = getNodeDynamicModel(configurationIndex, streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
-	return isStreamRunningFlag(dynamicModel.streamInfo.streamInfoFlags);
+	return dynamicModel.isStreamRunning ? *dynamicModel.isStreamRunning : true;
 }
 
 ControlledEntity::InterfaceLinkStatus ControlledEntityImpl::getAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex) const noexcept
@@ -791,31 +791,56 @@ entity::model::ConfigurationNodeDynamicModel& ControlledEntityImpl::getConfigura
 entity::model::EntityCounters& ControlledEntityImpl::getEntityCounters() noexcept
 {
 	auto& entityTree = getEntityTree();
-	return entityTree.dynamicModel.counters;
+	// Create counters if they don't exist yet
+	if (!entityTree.dynamicModel.counters)
+	{
+		entityTree.dynamicModel.counters = entity::model::EntityCounters{};
+	}
+	return *entityTree.dynamicModel.counters;
 }
 
 entity::model::AvbInterfaceCounters& ControlledEntityImpl::getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels);
-	return dynamicModel.counters;
+	// Create counters if they don't exist yet
+	if (!dynamicModel.counters)
+	{
+		dynamicModel.counters = entity::model::AvbInterfaceCounters{};
+	}
+	return *dynamicModel.counters;
 }
 
 entity::model::ClockDomainCounters& ControlledEntityImpl::getClockDomainCounters(entity::model::ClockDomainIndex const clockDomainIndex) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), clockDomainIndex, &entity::model::ConfigurationTree::clockDomainModels);
-	return dynamicModel.counters;
+	// Create counters if they don't exist yet
+	if (!dynamicModel.counters)
+	{
+		dynamicModel.counters = entity::model::ClockDomainCounters{};
+	}
+	return *dynamicModel.counters;
 }
 
 entity::model::StreamInputCounters& ControlledEntityImpl::getStreamInputCounters(entity::model::StreamIndex const streamIndex) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels);
-	return dynamicModel.counters;
+	// Create counters if they don't exist yet
+	if (!dynamicModel.counters)
+	{
+		dynamicModel.counters = entity::model::StreamInputCounters{};
+	}
+	return *dynamicModel.counters;
 }
 
 entity::model::StreamOutputCounters& ControlledEntityImpl::getStreamOutputCounters(entity::model::StreamIndex const streamIndex) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
-	return dynamicModel.counters;
+	// Create counters if they don't exist yet
+	if (!dynamicModel.counters)
+	{
+		dynamicModel.counters = entity::model::StreamOutputCounters{};
+	}
+	return *dynamicModel.counters;
 }
 
 // Setters of the DescriptorDynamic info, default constructing if not existing
@@ -868,26 +893,6 @@ entity::model::StreamConnectionState ControlledEntityImpl::setStreamInputConnect
 	return previousState;
 }
 
-std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> ControlledEntityImpl::setStreamInputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept
-{
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels);
-
-	// Save previous StreamInfo
-	auto previousInfo = dynamicModel.streamInfo;
-
-	// Set StreamInfo
-	dynamicModel.streamInfo = info;
-
-	// We should always have a valid value in the StreamFormat (was properly initialized), so don't overwrite it if it's not valid in the new info
-	if (!dynamicModel.streamInfo.streamFormat)
-	{
-		dynamicModel.streamInfo.streamFormat = previousInfo.streamFormat;
-		dynamicModel.streamInfo.streamInfoFlags.set(entity::StreamInfoFlag::StreamFormatValid); // Force the flag as well
-	}
-
-	return { previousInfo, dynamicModel.streamInfo };
-}
-
 void ControlledEntityImpl::clearStreamOutputConnections(entity::model::StreamIndex const streamIndex) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
@@ -907,37 +912,17 @@ bool ControlledEntityImpl::delStreamOutputConnection(entity::model::StreamIndex 
 	return dynamicModel.connections.erase(listenerStream) > 0;
 }
 
-std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> ControlledEntityImpl::setStreamOutputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept
-{
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
-
-	// Save previous StreamInfo
-	auto previousInfo = dynamicModel.streamInfo;
-
-	// Set StreamInfo
-	dynamicModel.streamInfo = info;
-
-	// We should always have a valid value in the StreamFormat (was properly initialized), so don't overwrite it if it's not valid in the new info
-	if (!dynamicModel.streamInfo.streamFormat)
-	{
-		dynamicModel.streamInfo.streamFormat = previousInfo.streamFormat;
-		dynamicModel.streamInfo.streamInfoFlags.set(entity::StreamInfoFlag::StreamFormatValid); // Force the flag as well
-	}
-
-	return { previousInfo, dynamicModel.streamInfo };
-}
-
-entity::model::AvbInfo ControlledEntityImpl::setAvbInfo(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) noexcept
+entity::model::AvbInterfaceInfo ControlledEntityImpl::setAvbInterfaceInfo(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInterfaceInfo const& info) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels);
 
 	// Save previous AvbInfo
-	auto previousInfo = dynamicModel.avbInfo;
+	auto previousInfo = dynamicModel.avbInterfaceInfo;
 
-	// Set AvbInfo
-	dynamicModel.avbInfo = info;
+	// Set AvbInterfaceInfo
+	dynamicModel.avbInterfaceInfo = info;
 
-	return previousInfo;
+	return previousInfo ? *previousInfo : entity::model::AvbInterfaceInfo{};
 }
 
 entity::model::AsPath ControlledEntityImpl::setAsPath(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath) noexcept
@@ -950,7 +935,7 @@ entity::model::AsPath ControlledEntityImpl::setAsPath(entity::model::AvbInterfac
 	// Set AsPath
 	dynamicModel.asPath = asPath;
 
-	return previousPath;
+	return previousPath ? *previousPath : entity::model::AsPath{};
 }
 
 void ControlledEntityImpl::setSelectedLocaleStringsIndexesRange(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const baseIndex, entity::model::StringsIndex const countIndexes) noexcept
@@ -1361,8 +1346,7 @@ void ControlledEntityImpl::setStreamInputDescriptor(entity::model::StreamDescrip
 		m.connectionState.listenerStream = entity::model::StreamIdentification{ _entity.getEntityID(), streamIndex }; // We always are the other endpoint of a connection, initialize this now
 		// Changeable fields through commands
 		m.objectName = descriptor.objectName;
-		m.streamInfo.streamFormat = descriptor.currentFormat; // Copy the streamFormat, but we should get the complete StreamInfo soon
-		m.streamInfo.streamInfoFlags.set(entity::StreamInfoFlag::StreamFormatValid);
+		m.streamFormat = descriptor.currentFormat;
 	}
 }
 
@@ -1397,8 +1381,7 @@ void ControlledEntityImpl::setStreamOutputDescriptor(entity::model::StreamDescri
 		auto& m = getNodeDynamicModel(configurationIndex, streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
 		// Changeable fields through commands
 		m.objectName = descriptor.objectName;
-		m.streamInfo.streamFormat = descriptor.currentFormat; // Copy the streamFormat, but we should get the complete StreamInfo soon
-		m.streamInfo.streamInfoFlags.set(entity::StreamInfoFlag::StreamFormatValid);
+		m.streamFormat = descriptor.currentFormat;
 	}
 }
 

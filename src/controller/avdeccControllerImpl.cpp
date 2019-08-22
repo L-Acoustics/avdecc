@@ -30,6 +30,7 @@
 #	include "avdeccControllerJsonTypes.hpp"
 #	include <la/avdecc/internals/jsonTypes.hpp>
 #endif // ENABLE_AVDECC_FEATURE_JSON
+#include <la/avdecc/internals/streamFormatInfo.hpp>
 
 namespace la
 {
@@ -40,51 +41,34 @@ namespace controller
 /* ************************************************************ */
 /* Private methods used to update AEM and notify observers      */
 /* ************************************************************ */
-void ControllerImpl::setEntityAndNotify(ControlledEntityImpl& controlledEntity, entity::Entity const& entity) const noexcept
-{
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
-
-	// Get previous entity info, so we can check what changed
-	auto oldEntity = controlledEntity.getEntity();
-
-	// Update entity info
-	controlledEntity.setEntity(entity);
-
-	// Only do checks if entity was advertised to the user (we already changed the values anyway)
-	if (controlledEntity.wasAdvertised())
-	{
-		// Check if Capabilities changed
-		if (oldEntity.getEntityCapabilities() != entity.getEntityCapabilities())
-		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityCapabilitiesChanged, this, &controlledEntity);
-		}
-	}
-}
 void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity::Entity const& entity) const noexcept
 {
-	// Set the new Entity and notify if it changed
-	setEntityAndNotify(controlledEntity, entity);
+	// Get previous entity info, so we can check what changed
+	auto oldEntity = controlledEntity.getEntity();
 
 	// For each interface, check if gPTP info changed (if we have the info)
 	for (auto const& infoKV : entity.getInterfacesInformation())
 	{
-		auto const avbInterfaceIndex = infoKV.first;
+		auto const& information = infoKV.second;
 
-		// Only non-global interface indexes have an AvbInterface descriptor we can update
-		if (avbInterfaceIndex != entity::Entity::GlobalAvbInterfaceIndex)
+		// Only if we have valid gPTP information
+		if (information.gptpGrandmasterID)
 		{
-			auto const& information = infoKV.second;
+			auto const avbInterfaceIndex = infoKV.first;
 
-			if (information.gptpGrandmasterID)
+			// Get Old Information
+			try
 			{
-				// Build an AvbInfo and forward to updateAvbInfo (which will check for changes)
-				auto const& avbInterfaceDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels);
-
-				// Copy the AvbInfo and update it with the new values we got from the ADPDU
-				auto info = avbInterfaceDynamicModel.avbInfo;
-				info.gptpGrandmasterID = *information.gptpGrandmasterID;
-				info.gptpDomainNumber = *information.gptpDomainNumber;
-				setAvbInfoAndNotify(controlledEntity, avbInterfaceIndex, info);
+				auto const& oldInfo = oldEntity.getInterfaceInformation(avbInterfaceIndex);
+				// gPTP changed (or didn't have)
+				if (!oldInfo.gptpGrandmasterID || *oldInfo.gptpGrandmasterID != *information.gptpGrandmasterID || *oldInfo.gptpDomainNumber != *information.gptpDomainNumber)
+				{
+					updateGptpInformation(controlledEntity, avbInterfaceIndex, information.macAddress, *information.gptpGrandmasterID, *information.gptpDomainNumber);
+				}
+			}
+			catch (la::avdecc::Exception const&)
+			{
+				AVDECC_ASSERT(false, "Should have previous information when updateEntity is triggered (otherwise it should have been entityOnline or entityOffline");
 			}
 		}
 	}
@@ -92,6 +76,15 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 	// Set the new AssociationID and notify if it changed
 	auto const associationID = entity.getAssociationID();
 	setAssociationAndNotify(controlledEntity, associationID ? *associationID : UniqueIdentifier::getNullUniqueIdentifier());
+
+	// Check if Capabilities changed
+	if (oldEntity.getEntityCapabilities() != entity.getEntityCapabilities())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityCapabilitiesChanged, this, &controlledEntity);
+	}
+
+	// Update the full entity info (for information not separately handled)
+	controlledEntity.setEntity(entity);
 }
 
 void ControllerImpl::addCompatibilityFlag(ControlledEntityImpl& controlledEntity, ControlledEntity::CompatibilityFlag const flag) const noexcept
@@ -247,49 +240,64 @@ void ControllerImpl::updateStreamInputFormat(ControlledEntityImpl& controlledEnt
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	auto const& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels);
+	auto& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels);
 
-	// Make a copy of current StreamInfo, change affected field and notify changes
-	auto newInfo = streamDynamicModel.streamInfo;
-	newInfo.streamFormat = streamFormat;
-	newInfo.streamInfoFlags.set(entity::StreamInfoFlag::StreamFormatValid);
-	updateStreamInputInfo(controlledEntity, streamIndex, newInfo, false, false); // No need to check again for StreamFormat or Milan Extended Information
+	if (streamDynamicModel.streamFormat != streamFormat)
+	{
+		streamDynamicModel.streamFormat = streamFormat;
+
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputFormatChanged, this, &controlledEntity, streamIndex, streamFormat);
+		}
+	}
 }
 
 void ControllerImpl::updateStreamOutputFormat(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	auto const& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
+	auto& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
 
-	// Make a copy of current StreamInfo, change affected field and notify changes
-	auto newInfo = streamDynamicModel.streamInfo;
-	newInfo.streamFormat = streamFormat;
-	newInfo.streamInfoFlags.set(entity::StreamInfoFlag::StreamFormatValid);
-	updateStreamOutputInfo(controlledEntity, streamIndex, newInfo, false, false); // No need to check again for StreamFormat or Milan Extended Information
+	if (streamDynamicModel.streamFormat != streamFormat)
+	{
+		streamDynamicModel.streamFormat = streamFormat;
+
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputFormatChanged, this, &controlledEntity, streamIndex, streamFormat);
+		}
+	}
 }
 
 void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const streamFormatRequired, bool const milanExtendedRequired) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
+	auto hasStreamFormat = info.streamInfoFlags.test(entity::StreamInfoFlag::StreamFormatValid);
+
 	// Try to detect non compliant entities
 	if (streamFormatRequired)
 	{
-		auto streamFormat = info.streamInfoFlags.test(entity::StreamInfoFlag::StreamFormatValid) ? std::optional<entity::model::StreamFormat>{ info.streamFormat } : std::nullopt;
-		if (!streamFormat)
+		// No StreamFormatValid bit
+		if (!hasStreamFormat)
 		{
 			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit not set in GET_STREAM_INFO response");
 			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
-			// But if we have a valid streamFormat in the field, use it
-			if (!!info.streamFormat)
+			// Check if we have something that looks like a valid streamFormat in the field
+			auto const formatType = entity::model::StreamFormatInfo::create(info.streamFormat)->getType();
+			if (formatType != entity::model::StreamFormatInfo::Type::None && formatType != entity::model::StreamFormatInfo::Type::Unsupported)
 			{
-				streamFormat = info.streamFormat;
+				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit set but stream_format field appears to contain a valid value in GET_STREAM_INFO response");
 			}
 		}
-		if (!info.streamFormat)
+		// Or Invalid StreamFormat
+		else if (!info.streamFormat)
 		{
-			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "stream_format field not set in GET_STREAM_INFO response");
+			hasStreamFormat = false;
+			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit set but invalid stream_format field in GET_STREAM_INFO response");
 			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 		}
 	}
@@ -303,35 +311,95 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 		}
 	}
 
-	// Update StreamInfo
-	auto const [previousInfo, newInfo] = controlledEntity.setStreamInputInfo(streamIndex, info);
-
-	// Entity was advertised to the user, notify observers (check if info actually changed)
-	if (controlledEntity.wasAdvertised() && previousInfo != newInfo)
+	// Update each individual part of StreamInfo
+	if (hasStreamFormat)
 	{
-		// Check if Running Status changed (since it's a separate Controller event)
+		updateStreamInputFormat(controlledEntity, streamIndex, info.streamFormat);
+	}
+	updateStreamInputRunningStatus(controlledEntity, streamIndex, !info.streamInfoFlags.test(entity::StreamInfoFlag::StreamingWait));
+
+	// Get a copy of previous StreamDynamicInfo
+	auto& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels);
+	auto dynamicInfo = streamDynamicModel.streamDynamicInfo ? *streamDynamicModel.streamDynamicInfo : entity::model::StreamDynamicInfo{};
+	auto changed = false;
+
+	// Update each field checking for a change
+	auto const updateFieldFromFlag = [&changed, flags = info.streamInfoFlags](auto& field, auto const flag)
+	{
+		auto const newValue = flags.test(flag);
+		if (field != newValue)
 		{
-			auto const previousRunning = ControlledEntityImpl::isStreamRunningFlag(previousInfo.streamInfoFlags);
-			auto const isRunning = ControlledEntityImpl::isStreamRunningFlag(newInfo.streamInfoFlags);
-
-			// Running status changed, notify observers
-			if (previousRunning != isRunning)
-			{
-				if (isRunning)
-					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputStarted, this, &controlledEntity, streamIndex);
-				else
-					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputStopped, this, &controlledEntity, streamIndex);
-			}
+			field = newValue;
+			changed = true;
 		}
-
-		// Check if StreamFormat changed (since it's a separate Controller event)
-		if (previousInfo.streamFormat != newInfo.streamFormat)
+	};
+	auto const updateFieldFromValue = [&changed](auto& field, auto const newValue)
+	{
+		if (field != newValue)
 		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputFormatChanged, this, &controlledEntity, streamIndex, newInfo.streamFormat);
+			field = newValue;
+			changed = true;
 		}
+	};
+	auto const updateOptionalFieldFromValue = [&changed](auto& field, auto const newValue)
+	{
+		if (field != newValue)
+		{
+			field = newValue;
+			changed = true;
+		}
+	};
+	updateFieldFromFlag(dynamicInfo.isClassB, entity::StreamInfoFlag::ClassB);
+	updateFieldFromFlag(dynamicInfo.hasSavedState, entity::StreamInfoFlag::SavedState);
+	updateFieldFromFlag(dynamicInfo.doesSupportEncrypted, entity::StreamInfoFlag::SupportsEncrypted);
+	updateFieldFromFlag(dynamicInfo.arePdusEncrypted, entity::StreamInfoFlag::EncryptedPdu);
+	updateFieldFromFlag(dynamicInfo.hasTalkerFailed, entity::StreamInfoFlag::TalkerFailed);
+	updateFieldFromValue(dynamicInfo._streamInfoFlags, info.streamInfoFlags);
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamIDValid))
+	{
+		updateFieldFromValue(dynamicInfo.streamID, info.streamID);
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpAccLatValid))
+	{
+		updateFieldFromValue(dynamicInfo.msrpAccumulatedLatency, info.msrpAccumulatedLatency);
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamDestMacValid))
+	{
+		updateFieldFromValue(dynamicInfo.streamDestMac, info.streamDestMac);
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpFailureValid))
+	{
+		updateFieldFromValue(dynamicInfo.msrpFailureCode, info.msrpFailureCode);
+		updateFieldFromValue(dynamicInfo.msrpFailureBridgeID, info.msrpFailureBridgeID);
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamVlanIDValid))
+	{
+		updateFieldFromValue(dynamicInfo.streamVlanID, info.streamVlanID);
+	}
+	// Milan additions
+	if (info.streamInfoFlagsEx)
+	{
+		updateOptionalFieldFromValue(dynamicInfo.streamInfoFlagsEx, *info.streamInfoFlagsEx);
+	}
+	if (info.probingStatus)
+	{
+		updateOptionalFieldFromValue(dynamicInfo.probingStatus, *info.probingStatus);
+	}
+	if (info.acmpStatus)
+	{
+		updateOptionalFieldFromValue(dynamicInfo.acmpStatus, *info.acmpStatus);
+	}
 
-		// Notify global StreamInfo change
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputInfoChanged, this, &controlledEntity, streamIndex, newInfo);
+	if (changed)
+	{
+		// Update StreamDynamicInfo
+		streamDynamicModel.streamDynamicInfo = std::move(dynamicInfo);
+
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputDynamicInfoChanged, this, &controlledEntity, streamIndex, *streamDynamicModel.streamDynamicInfo);
+		}
 	}
 }
 
@@ -339,23 +407,28 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
+	auto hasStreamFormat = info.streamInfoFlags.test(entity::StreamInfoFlag::StreamFormatValid);
+
 	// Try to detect non compliant entities
 	if (streamFormatRequired)
 	{
-		auto streamFormat = info.streamInfoFlags.test(entity::StreamInfoFlag::StreamFormatValid) ? std::optional<entity::model::StreamFormat>{ info.streamFormat } : std::nullopt;
-		if (!streamFormat)
+		// No StreamFormatValid bit
+		if (!hasStreamFormat)
 		{
 			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit not set in GET_STREAM_INFO response");
 			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
-			// But if we have a valid streamFormat in the field, use it
-			if (!!info.streamFormat)
+			// Check if we have something that looks like a valid streamFormat in the field
+			auto const formatType = entity::model::StreamFormatInfo::create(info.streamFormat)->getType();
+			if (formatType != entity::model::StreamFormatInfo::Type::None && formatType != entity::model::StreamFormatInfo::Type::Unsupported)
 			{
-				streamFormat = info.streamFormat;
+				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit set but stream_format field appears to contain a valid value in GET_STREAM_INFO response");
 			}
 		}
-		if (!info.streamFormat)
+		// Or Invalid StreamFormat
+		else if (!info.streamFormat)
 		{
-			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "stream_format field not set in GET_STREAM_INFO response");
+			hasStreamFormat = false;
+			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit set but invalid stream_format field in GET_STREAM_INFO response");
 			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 		}
 	}
@@ -369,35 +442,95 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 		}
 	}
 
-	// Update StreamInfo
-	auto const [previousInfo, newInfo] = controlledEntity.setStreamOutputInfo(streamIndex, info);
-
-	// Entity was advertised to the user, notify observers (check if info actually changed)
-	if (controlledEntity.wasAdvertised() && previousInfo != newInfo)
+	// Update each individual part of StreamInfo
+	if (hasStreamFormat)
 	{
-		// Check if Running Status changed (since it's a separate Controller event)
+		updateStreamOutputFormat(controlledEntity, streamIndex, info.streamFormat);
+	}
+	updateStreamOutputRunningStatus(controlledEntity, streamIndex, !info.streamInfoFlags.test(entity::StreamInfoFlag::StreamingWait));
+
+	// Get a copy of previous StreamDynamicInfo
+	auto& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
+	auto dynamicInfo = streamDynamicModel.streamDynamicInfo ? *streamDynamicModel.streamDynamicInfo : entity::model::StreamDynamicInfo{};
+	auto changed = false;
+
+	// Update each field checking for a change
+	auto const updateFieldFromFlag = [&changed, flags = info.streamInfoFlags](auto& field, auto const flag)
+	{
+		auto const newValue = flags.test(flag);
+		if (field != newValue)
 		{
-			auto const previousRunning = ControlledEntityImpl::isStreamRunningFlag(previousInfo.streamInfoFlags);
-			auto const isRunning = ControlledEntityImpl::isStreamRunningFlag(newInfo.streamInfoFlags);
-
-			// Running status changed, notify observers
-			if (previousRunning != isRunning)
-			{
-				if (isRunning)
-					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputStarted, this, &controlledEntity, streamIndex);
-				else
-					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputStopped, this, &controlledEntity, streamIndex);
-			}
+			field = newValue;
+			changed = true;
 		}
-
-		// Check if StreamFormat changed (since it's a separate Controller event)
-		if (previousInfo.streamFormat != newInfo.streamFormat)
+	};
+	auto const updateFieldFromValue = [&changed](auto& field, auto const newValue)
+	{
+		if (field != newValue)
 		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputFormatChanged, this, &controlledEntity, streamIndex, newInfo.streamFormat);
+			field = newValue;
+			changed = true;
 		}
+	};
+	auto const updateOptionalFieldFromValue = [&changed](auto& field, auto const newValue)
+	{
+		if (field != newValue)
+		{
+			field = newValue;
+			changed = true;
+		}
+	};
+	updateFieldFromFlag(dynamicInfo.isClassB, entity::StreamInfoFlag::ClassB);
+	updateFieldFromFlag(dynamicInfo.hasSavedState, entity::StreamInfoFlag::SavedState);
+	updateFieldFromFlag(dynamicInfo.doesSupportEncrypted, entity::StreamInfoFlag::SupportsEncrypted);
+	updateFieldFromFlag(dynamicInfo.arePdusEncrypted, entity::StreamInfoFlag::EncryptedPdu);
+	updateFieldFromFlag(dynamicInfo.hasTalkerFailed, entity::StreamInfoFlag::TalkerFailed);
+	updateFieldFromValue(dynamicInfo._streamInfoFlags, info.streamInfoFlags);
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamIDValid))
+	{
+		updateFieldFromValue(dynamicInfo.streamID, info.streamID);
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpAccLatValid))
+	{
+		updateFieldFromValue(dynamicInfo.msrpAccumulatedLatency, info.msrpAccumulatedLatency);
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamDestMacValid))
+	{
+		updateFieldFromValue(dynamicInfo.streamDestMac, info.streamDestMac);
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpFailureValid))
+	{
+		updateFieldFromValue(dynamicInfo.msrpFailureCode, info.msrpFailureCode);
+		updateFieldFromValue(dynamicInfo.msrpFailureBridgeID, info.msrpFailureBridgeID);
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamVlanIDValid))
+	{
+		updateFieldFromValue(dynamicInfo.streamVlanID, info.streamVlanID);
+	}
+	// Milan additions
+	if (info.streamInfoFlagsEx)
+	{
+		updateOptionalFieldFromValue(dynamicInfo.streamInfoFlagsEx, *info.streamInfoFlagsEx);
+	}
+	if (info.probingStatus)
+	{
+		updateOptionalFieldFromValue(dynamicInfo.probingStatus, *info.probingStatus);
+	}
+	if (info.acmpStatus)
+	{
+		updateOptionalFieldFromValue(dynamicInfo.acmpStatus, *info.acmpStatus);
+	}
 
-		// Notify global StreamInfo change
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputInfoChanged, this, &controlledEntity, streamIndex, newInfo);
+	if (changed)
+	{
+		// Update StreamDynamicInfo
+		streamDynamicModel.streamDynamicInfo = std::move(dynamicInfo);
+
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputDynamicInfoChanged, this, &controlledEntity, streamIndex, *streamDynamicModel.streamDynamicInfo);
+		}
 	}
 }
 
@@ -563,28 +696,28 @@ void ControllerImpl::setAssociationAndNotify(ControlledEntityImpl& controlledEnt
 	}
 }
 
-void ControllerImpl::updateAssociationID(ControlledEntityImpl& controlledEntity, UniqueIdentifier const associationID) const noexcept
-{
-	// Set the new AssociationID and notify if it changed
-	setAssociationAndNotify(controlledEntity, associationID);
-
-	// Update the Entity as well
-	auto entity = controlledEntity.getEntity(); // Copy the entity so we can alter values in the copy and not the original
-	auto const caps = entity.getEntityCapabilities();
-
-	if (!caps.test(entity::EntityCapability::AssociationIDSupported))
-	{
-		LOG_CONTROLLER_WARN(entity.getEntityID(), "Entity changed its ASSOCIATION_ID but it said ASSOCIATION_ID_NOT_SUPPORTED in ADPDU");
-		return;
-	}
-
-	// Only update the Entity if AssociationIDValid flag was not set in ADPDU
-	if (caps.test(entity::EntityCapability::AssociationIDValid))
-	{
-		entity.setAssociationID(associationID);
-		setEntityAndNotify(controlledEntity, entity);
-	}
-}
+//void ControllerImpl::updateAssociationID(ControlledEntityImpl& controlledEntity, UniqueIdentifier const associationID) const noexcept
+//{
+//	// Set the new AssociationID and notify if it changed
+//	setAssociationAndNotify(controlledEntity, associationID);
+//
+//	// Update the Entity as well
+//	auto entity = controlledEntity.getEntity(); // Copy the entity so we can alter values in the copy and not the original
+//	auto const caps = entity.getEntityCapabilities();
+//
+//	if (!caps.test(entity::EntityCapability::AssociationIDSupported))
+//	{
+//		LOG_CONTROLLER_WARN(entity.getEntityID(), "Entity changed its ASSOCIATION_ID but it said ASSOCIATION_ID_NOT_SUPPORTED in ADPDU");
+//		return;
+//	}
+//
+//	// Only update the Entity if AssociationIDValid flag was not set in ADPDU
+//	if (caps.test(entity::EntityCapability::AssociationIDValid))
+//	{
+//		entity.setAssociationID(associationID);
+//		setEntityAndNotify(controlledEntity, entity);
+//	}
+//}
 
 void ControllerImpl::updateAudioUnitSamplingRate(ControlledEntityImpl& controlledEntity, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate) const noexcept
 {
@@ -616,78 +749,139 @@ void ControllerImpl::updateStreamInputRunningStatus(ControlledEntityImpl& contro
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	auto const& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels);
+	auto& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels);
 
-	// Make a copy of current StreamInfo, change affected field and notify changes
-	auto newInfo = streamDynamicModel.streamInfo;
-	ControlledEntityImpl::setStreamRunningFlag(newInfo.streamInfoFlags, isRunning);
-	updateStreamInputInfo(controlledEntity, streamIndex, newInfo, false, false); // No need to check again for StreamFormat or Milan Extended Information
+	// Never initialized or changed
+	if (!streamDynamicModel.isStreamRunning || *streamDynamicModel.isStreamRunning != isRunning)
+	{
+		streamDynamicModel.isStreamRunning = isRunning;
+
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			// Running status changed, notify observers
+			if (isRunning)
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputStarted, this, &controlledEntity, streamIndex);
+			}
+			else
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputStopped, this, &controlledEntity, streamIndex);
+			}
+		}
+	}
 }
 
 void ControllerImpl::updateStreamOutputRunningStatus(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, bool const isRunning) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	auto const& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
+	auto& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
 
-	// Make a copy of current StreamInfo, change affected field and notify changes
-	auto newInfo = streamDynamicModel.streamInfo;
-	ControlledEntityImpl::setStreamRunningFlag(newInfo.streamInfoFlags, isRunning);
-	updateStreamOutputInfo(controlledEntity, streamIndex, newInfo, false, false); // No need to check again for StreamFormat or Milan Extended Information
+	// Never initialized or changed
+	if (!streamDynamicModel.isStreamRunning || *streamDynamicModel.isStreamRunning != isRunning)
+	{
+		streamDynamicModel.isStreamRunning = isRunning;
+
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			// Running status changed, notify observers
+			if (isRunning)
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputStarted, this, &controlledEntity, streamIndex);
+			}
+			else
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputStopped, this, &controlledEntity, streamIndex);
+			}
+		}
+	}
 }
 
-void ControllerImpl::setAvbInfoAndNotify(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) const noexcept
+void ControllerImpl::updateGptpInformation(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, networkInterface::MacAddress const& macAddress, UniqueIdentifier const& gptpGrandmasterID, std::uint8_t const gptpDomainNumber) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	// Update AvbInfo
-	auto const previousInfo = controlledEntity.setAvbInfo(avbInterfaceIndex, info);
+	auto infoChanged = false;
+
+	// First update gPTP Info in ADP structures
+	auto& entity = controlledEntity.getEntity();
+	auto const caps = entity.getEntityCapabilities();
+	if (caps.test(entity::EntityCapability::GptpSupported))
+	{
+		// Search which InterfaceInformation matches this AvbInterfaceIndex (searching by Index, or by MacAddress in case the Index was not specified in ADP)
+		for (auto& [interfaceIndex, interfaceInfo] : entity.getInterfacesInformation())
+		{
+			// Do we even have gPTP info on this InterfaceInfo
+			if (interfaceInfo.gptpGrandmasterID)
+			{
+				// Match with the passed AvbInterfaceIndex, or with macAddress if this ADP is the GlobalAvbInterfaceIndex
+				if (interfaceIndex == avbInterfaceIndex || (interfaceIndex == entity::Entity::GlobalAvbInterfaceIndex && macAddress == interfaceInfo.macAddress))
+				{
+					// Alter InterfaceInfo with new gPTP info
+					if (*interfaceInfo.gptpGrandmasterID != gptpGrandmasterID || *interfaceInfo.gptpDomainNumber != gptpDomainNumber)
+					{
+						interfaceInfo.gptpGrandmasterID = gptpGrandmasterID;
+						interfaceInfo.gptpDomainNumber = gptpDomainNumber;
+						infoChanged |= true;
+					}
+				}
+			}
+		}
+	}
+
+	// Then update gPTP Info in existing AvbDescriptors (don't create if not created yet)
+	auto& avbDescriptorModels = controlledEntity.getModels(controlledEntity.getCurrentConfigurationIndex(), &entity::model::ConfigurationTree::avbInterfaceModels);
+	for (auto& [interfaceIndex, avbInterfaceModel] : avbDescriptorModels)
+	{
+		// Match with the passed AvbInterfaceIndex, or with macAddress if passed AvbInterfaceIndex is the GlobalAvbInterfaceIndex
+		if (interfaceIndex == avbInterfaceIndex || (avbInterfaceIndex == entity::Entity::GlobalAvbInterfaceIndex && macAddress == avbInterfaceModel.staticModel.macAddress))
+		{
+			// Alter InterfaceInfo with new gPTP info
+			if (avbInterfaceModel.dynamicModel.gptpGrandmasterID != gptpGrandmasterID || avbInterfaceModel.dynamicModel.gptpDomainNumber != gptpDomainNumber)
+			{
+				avbInterfaceModel.dynamicModel.gptpGrandmasterID = gptpGrandmasterID;
+				avbInterfaceModel.dynamicModel.gptpDomainNumber = gptpDomainNumber;
+				infoChanged |= true;
+			}
+		}
+	}
 
 	// Only do checks if entity was advertised to the user (we already changed the values anyway)
 	if (controlledEntity.wasAdvertised())
 	{
 		// Info changed
-		if (previousInfo != info)
+		if (infoChanged)
 		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAvbInfoChanged, this, &controlledEntity, avbInterfaceIndex, info);
-
-			// Check if gPTP changed (since it's a separate Controller event)
-			if (previousInfo.gptpGrandmasterID != info.gptpGrandmasterID || previousInfo.gptpDomainNumber != info.gptpDomainNumber)
-			{
-				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onGptpChanged, this, &controlledEntity, avbInterfaceIndex, info.gptpGrandmasterID, info.gptpDomainNumber);
-			}
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onGptpChanged, this, &controlledEntity, avbInterfaceIndex, gptpGrandmasterID, gptpDomainNumber);
 		}
 	}
 }
 
 void ControllerImpl::updateAvbInfo(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) const noexcept
 {
-	// Set the new AvbInfo and notify if it changed
-	setAvbInfoAndNotify(controlledEntity, avbInterfaceIndex, info);
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	// Only update if we have valid gPTP information
-	if (info.flags.test(entity::AvbInfoFlag::GptpEnabled))
+	// Build AvbInterfaceInfo structure
+	auto const avbInterfaceInfo = entity::model::AvbInterfaceInfo{ info.propagationDelay, info.flags, info.mappings };
+
+	// Update AvbInterfaceInfo
+	auto const previousInfo = controlledEntity.setAvbInterfaceInfo(avbInterfaceIndex, avbInterfaceInfo);
+
+	// Only do checks if entity was advertised to the user (we already changed the values anyway)
+	if (controlledEntity.wasAdvertised())
 	{
-		auto entity = controlledEntity.getEntity(); // Copy the entity so we can alter values in the copy and not the original
-		auto const caps = entity.getEntityCapabilities();
-		if (caps.test(entity::EntityCapability::GptpSupported))
+		// Info changed
+		if (previousInfo != avbInterfaceInfo)
 		{
-			try
-			{
-				auto& interfaceInfo = entity.getInterfaceInformation(avbInterfaceIndex);
-				interfaceInfo.gptpGrandmasterID = info.gptpGrandmasterID;
-				interfaceInfo.gptpDomainNumber = info.gptpDomainNumber;
-				setEntityAndNotify(controlledEntity, entity);
-			}
-			catch (la::avdecc::Exception const&)
-			{
-			}
-			catch (...)
-			{
-				AVDECC_ASSERT(false, "Unhandled exception");
-			}
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAvbInterfaceInfoChanged, this, &controlledEntity, avbInterfaceIndex, avbInterfaceInfo);
 		}
 	}
+
+	// Update gPTP info
+	auto const& macAddress = controlledEntity.getNodeStaticModel(controlledEntity.getCurrentConfigurationIndex(), avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels).macAddress;
+	updateGptpInformation(controlledEntity, avbInterfaceIndex, macAddress, info.gptpGrandmasterID, info.gptpDomainNumber);
 }
 
 void ControllerImpl::updateAsPath(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath) const noexcept

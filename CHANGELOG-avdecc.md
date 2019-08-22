@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - Precompiled headers on windows
+- Improved protocol warning messages
 
 ## [2.10.0] - 2019-06-24
 ### Added

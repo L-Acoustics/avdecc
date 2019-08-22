@@ -765,13 +765,17 @@ constexpr auto StreamNode_Static_RedundantStreams = "redundant_streams";
 
 /* StreamInputNode */
 constexpr auto StreamInputNode_Dynamic_ObjectName = "object_name";
-constexpr auto StreamInputNode_Dynamic_StreamInfo = "stream_info";
+constexpr auto StreamInputNode_Dynamic_StreamFormat = "stream_format";
+constexpr auto StreamInputNode_Dynamic_StreamRunning = "stream_running";
+constexpr auto StreamInputNode_Dynamic_StreamDynamicInfo = "stream_dynamic_info";
 constexpr auto StreamInputNode_Dynamic_ConnectedTalker = "connected_talker";
 constexpr auto StreamInputNode_Dynamic_Counters = "counters";
 
 /* StreamOutputNode */
 constexpr auto StreamOutputNode_Dynamic_ObjectName = "object_name";
-constexpr auto StreamOutputNode_Dynamic_StreamInfo = "stream_info";
+constexpr auto StreamOutputNode_Dynamic_StreamFormat = "stream_format";
+constexpr auto StreamOutputNode_Dynamic_StreamRunning = "stream_running";
+constexpr auto StreamOutputNode_Dynamic_StreamDynamicInfo = "stream_dynamic_info";
 constexpr auto StreamOutputNode_Dynamic_Counters = "counters";
 
 /* AvbInterfaceNode */
@@ -790,7 +794,9 @@ constexpr auto AvbInterfaceNode_Static_LogAnnounceInterval = "log_announce_inter
 constexpr auto AvbInterfaceNode_Static_LogPdelayInterval = "log_pdelay_interval";
 constexpr auto AvbInterfaceNode_Static_PortNumber = "port_number";
 constexpr auto AvbInterfaceNode_Dynamic_ObjectName = "object_name";
-constexpr auto AvbInterfaceNode_Dynamic_AvbInfo = "avb_info";
+constexpr auto AvbInterfaceNode_Dynamic_GptpGrandmasterID = "gptp_grandmaster_id";
+constexpr auto AvbInterfaceNode_Dynamic_GptpDomainNumber = "gptp_domain_number";
+constexpr auto AvbInterfaceNode_Dynamic_AvbInterfaceInfo = "avb_interface_info";
 constexpr auto AvbInterfaceNode_Dynamic_AsPath = "as_path";
 constexpr auto AvbInterfaceNode_Dynamic_Counters = "counters";
 
@@ -865,25 +871,27 @@ constexpr auto AudioMapping_ClusterChannel = "cluster_channel";
 constexpr auto StreamIdentification_EntityID = "entity_id";
 constexpr auto StreamIdentification_StreamIndex = "stream_index";
 
-/* StreamInfo */
-constexpr auto StreamInfo_Flags = "flags";
-constexpr auto StreamInfo_StreamFormat = "stream_format";
-constexpr auto StreamInfo_StreamID = "stream_id";
-constexpr auto StreamInfo_MsrpAccumulatedLatency = "msrp_accumulated_latency";
-constexpr auto StreamInfo_StreamDestMac = "stream_dest_mac";
-constexpr auto StreamInfo_MsrpFailureCode = "msrp_failure_code";
-constexpr auto StreamInfo_MsrpFailureBridgeID = "msrp_failure_bridge_id";
-constexpr auto StreamInfo_StreamVlanID = "stream_vlan_id";
-constexpr auto StreamInfo_FlagsEx = "flags_ex";
-constexpr auto StreamInfo_ProbingStatus = "probing_status";
-constexpr auto StreamInfo_AcmpStatus = "acmp_status";
+/* StreamDynamicInfo */
+constexpr auto StreamDynamicInfo_IsClassB = "is_class_b";
+constexpr auto StreamDynamicInfo_HasSavedState = "has_saved_state";
+constexpr auto StreamDynamicInfo_DoesSupportEncrypted = "does_support_encrypted";
+constexpr auto StreamDynamicInfo_ArePdusEncrypted = "are_pdus_encrypted";
+constexpr auto StreamDynamicInfo_HasTalkerFailed = "has_talker_failed";
+constexpr auto StreamDynamicInfo_Flags = "last_received_flags";
+constexpr auto StreamDynamicInfo_StreamID = "stream_id";
+constexpr auto StreamDynamicInfo_MsrpAccumulatedLatency = "msrp_accumulated_latency";
+constexpr auto StreamDynamicInfo_StreamDestMac = "stream_dest_mac";
+constexpr auto StreamDynamicInfo_MsrpFailureCode = "msrp_failure_code";
+constexpr auto StreamDynamicInfo_MsrpFailureBridgeID = "msrp_failure_bridge_id";
+constexpr auto StreamDynamicInfo_StreamVlanID = "stream_vlan_id";
+constexpr auto StreamDynamicInfo_FlagsEx = "flags_ex";
+constexpr auto StreamDynamicInfo_ProbingStatus = "probing_status";
+constexpr auto StreamDynamicInfo_AcmpStatus = "acmp_status";
 
-/* AvbInfo */
-constexpr auto AvbInfo_GptpGrandmasterID = "gptp_grandmaster_id";
-constexpr auto AvbInfo_GptpDomainNumber = "gptp_domain_number";
-constexpr auto AvbInfo_PropagationDelay = "propagation_delay";
-constexpr auto AvbInfo_Flags = "flags";
-constexpr auto AvbInfo_MsrpMappings = "msrp_mappings";
+/* AvbInterfaceInfo */
+constexpr auto AvbInterfaceInfo_PropagationDelay = "propagation_delay";
+constexpr auto AvbInterfaceInfo_Flags = "flags";
+constexpr auto AvbInterfaceInfo_MsrpMappings = "msrp_mappings";
 
 /* MilanInfo */
 constexpr auto MilanInfo_ProtocolVersion = "protocol_version";
@@ -1099,81 +1107,85 @@ inline void from_json(json const& j, StreamIdentification& stream)
 	j.at(keyName::StreamIdentification_StreamIndex).get_to(stream.streamIndex);
 }
 
-/* StreamInfo conversion */
-inline void to_json(json& j, StreamInfo const& info)
+/* StreamDynamicInfo conversion */
+inline void to_json(json& j, StreamDynamicInfo const& info)
 {
-	j[keyName::StreamInfo_Flags] = info.streamInfoFlags;
-	j[keyName::StreamInfo_StreamFormat] = info.streamFormat;
-	j[keyName::StreamInfo_StreamID] = utils::toHexString(info.streamID, true, true);
-	j[keyName::StreamInfo_MsrpAccumulatedLatency] = info.msrpAccumulatedLatency;
-	j[keyName::StreamInfo_StreamDestMac] = networkInterface::macAddressToString(info.streamDestMac, true);
-	j[keyName::StreamInfo_MsrpFailureCode] = info.msrpFailureCode;
-	j[keyName::StreamInfo_MsrpFailureBridgeID] = utils::toHexString(info.msrpFailureBridgeID, true, true);
-	j[keyName::StreamInfo_StreamVlanID] = info.streamVlanID;
+	j[keyName::StreamDynamicInfo_IsClassB] = info.isClassB;
+	j[keyName::StreamDynamicInfo_HasSavedState] = info.hasSavedState;
+	j[keyName::StreamDynamicInfo_DoesSupportEncrypted] = info.doesSupportEncrypted;
+	j[keyName::StreamDynamicInfo_ArePdusEncrypted] = info.arePdusEncrypted;
+	j[keyName::StreamDynamicInfo_HasTalkerFailed] = info.hasTalkerFailed;
+	j[keyName::StreamDynamicInfo_Flags] = info._streamInfoFlags;
+	if (info.streamID)
+	{
+		j[keyName::StreamDynamicInfo_StreamID] = utils::toHexString(*info.streamID, true, true);
+	}
+	j[keyName::StreamDynamicInfo_MsrpAccumulatedLatency] = info.msrpAccumulatedLatency;
+	if (info.streamDestMac)
+	{
+		j[keyName::StreamDynamicInfo_StreamDestMac] = networkInterface::macAddressToString(*info.streamDestMac, true);
+	}
+	j[keyName::StreamDynamicInfo_MsrpFailureCode] = info.msrpFailureCode;
+	if (info.msrpFailureBridgeID)
+	{
+		j[keyName::StreamDynamicInfo_MsrpFailureBridgeID] = utils::toHexString(*info.msrpFailureBridgeID, true, true);
+	}
+	j[keyName::StreamDynamicInfo_StreamVlanID] = info.streamVlanID;
 	// Milan additions
-	if (info.streamInfoFlagsEx)
-	{
-		j[keyName::StreamInfo_FlagsEx] = *info.streamInfoFlagsEx;
-	}
-	if (info.probingStatus)
-	{
-		j[keyName::StreamInfo_ProbingStatus] = *info.probingStatus;
-	}
-	if (info.acmpStatus)
-	{
-		j[keyName::StreamInfo_AcmpStatus] = *info.acmpStatus;
-	}
+	j[keyName::StreamDynamicInfo_FlagsEx] = info.streamInfoFlagsEx;
+	j[keyName::StreamDynamicInfo_ProbingStatus] = info.probingStatus;
+	j[keyName::StreamDynamicInfo_AcmpStatus] = info.acmpStatus;
 }
-inline void from_json(json const& j, StreamInfo& info)
+inline void from_json(json const& j, StreamDynamicInfo& info)
 {
-	j.at(keyName::StreamInfo_Flags).get_to(info.streamInfoFlags);
-	j.at(keyName::StreamInfo_StreamFormat).get_to(info.streamFormat);
+	j.at(keyName::StreamDynamicInfo_IsClassB).get_to(info.isClassB);
+	j.at(keyName::StreamDynamicInfo_HasSavedState).get_to(info.hasSavedState);
+	j.at(keyName::StreamDynamicInfo_DoesSupportEncrypted).get_to(info.doesSupportEncrypted);
+	j.at(keyName::StreamDynamicInfo_ArePdusEncrypted).get_to(info.arePdusEncrypted);
+	j.at(keyName::StreamDynamicInfo_HasTalkerFailed).get_to(info.hasTalkerFailed);
+	get_optional_value(j, keyName::StreamDynamicInfo_Flags, info._streamInfoFlags);
 	{
-		auto const it = j.find(keyName::StreamInfo_StreamID);
+		auto const it = j.find(keyName::StreamDynamicInfo_StreamID);
 		if (it != j.end())
 		{
-			info.streamID = utils::convertFromString<decltype(info.streamID)>(it->get<std::string>().c_str());
+			info.streamID = utils::convertFromString<decltype(info.streamID)::value_type>(it->get<std::string>().c_str());
 		}
 	}
-	get_optional_value(j, keyName::StreamInfo_MsrpAccumulatedLatency, info.msrpAccumulatedLatency);
+	get_optional_value(j, keyName::StreamDynamicInfo_MsrpAccumulatedLatency, info.msrpAccumulatedLatency);
 	{
-		auto const it = j.find(keyName::StreamInfo_StreamDestMac);
+		auto const it = j.find(keyName::StreamDynamicInfo_StreamDestMac);
 		if (it != j.end())
 		{
 			info.streamDestMac = networkInterface::stringToMacAddress(it->get<std::string>());
 		}
 	}
-	get_optional_value(j, keyName::StreamInfo_MsrpFailureCode, info.msrpFailureCode);
+	get_optional_value(j, keyName::StreamDynamicInfo_MsrpFailureCode, info.msrpFailureCode);
 	{
-		auto const it = j.find(keyName::StreamInfo_MsrpFailureBridgeID);
+		auto const it = j.find(keyName::StreamDynamicInfo_MsrpFailureBridgeID);
 		if (it != j.end())
 		{
-			info.msrpFailureBridgeID = utils::convertFromString<decltype(info.msrpFailureBridgeID)>(it->get<std::string>().c_str());
+			info.msrpFailureBridgeID = utils::convertFromString<decltype(info.msrpFailureBridgeID)::value_type>(it->get<std::string>().c_str());
 		}
 	}
-	get_optional_value(j, keyName::StreamInfo_StreamVlanID, info.streamVlanID);
+	get_optional_value(j, keyName::StreamDynamicInfo_StreamVlanID, info.streamVlanID);
 	// Milan additions
-	get_optional_value(j, keyName::StreamInfo_FlagsEx, info.streamInfoFlagsEx);
-	get_optional_value(j, keyName::StreamInfo_ProbingStatus, info.probingStatus);
-	get_optional_value(j, keyName::StreamInfo_AcmpStatus, info.acmpStatus);
+	get_optional_value(j, keyName::StreamDynamicInfo_FlagsEx, info.streamInfoFlagsEx);
+	get_optional_value(j, keyName::StreamDynamicInfo_ProbingStatus, info.probingStatus);
+	get_optional_value(j, keyName::StreamDynamicInfo_AcmpStatus, info.acmpStatus);
 }
 
-/* AvbInfo conversion */
-inline void to_json(json& j, AvbInfo const& info)
+/* AvbInterfaceInfo conversion */
+inline void to_json(json& j, AvbInterfaceInfo const& info)
 {
-	j[keyName::AvbInfo_GptpGrandmasterID] = info.gptpGrandmasterID;
-	j[keyName::AvbInfo_GptpDomainNumber] = info.gptpDomainNumber;
-	j[keyName::AvbInfo_PropagationDelay] = info.propagationDelay;
-	j[keyName::AvbInfo_Flags] = info.flags;
-	j[keyName::AvbInfo_MsrpMappings] = info.mappings;
+	j[keyName::AvbInterfaceInfo_PropagationDelay] = info.propagationDelay;
+	j[keyName::AvbInterfaceInfo_Flags] = info.flags;
+	j[keyName::AvbInterfaceInfo_MsrpMappings] = info.mappings;
 }
-inline void from_json(json const& j, AvbInfo& info)
+inline void from_json(json const& j, AvbInterfaceInfo& info)
 {
-	get_optional_value(j, keyName::AvbInfo_GptpGrandmasterID, info.gptpGrandmasterID);
-	get_optional_value(j, keyName::AvbInfo_GptpDomainNumber, info.gptpDomainNumber);
-	get_optional_value(j, keyName::AvbInfo_PropagationDelay, info.propagationDelay);
-	get_optional_value(j, keyName::AvbInfo_Flags, info.flags);
-	get_optional_value(j, keyName::AvbInfo_MsrpMappings, info.mappings);
+	j.at(keyName::AvbInterfaceInfo_PropagationDelay).get_to(info.propagationDelay);
+	j.at(keyName::AvbInterfaceInfo_Flags).get_to(info.flags);
+	j.at(keyName::AvbInterfaceInfo_MsrpMappings).get_to(info.mappings);
 }
 
 /* AsPath conversion */
@@ -1313,14 +1325,18 @@ inline void from_json(json const& j, StreamNodeStaticModel& s)
 inline void to_json(json& j, StreamInputNodeDynamicModel const& d)
 {
 	j[keyName::StreamInputNode_Dynamic_ObjectName] = d.objectName;
-	j[keyName::StreamInputNode_Dynamic_StreamInfo] = d.streamInfo;
+	j[keyName::StreamInputNode_Dynamic_StreamFormat] = d.streamFormat;
+	j[keyName::StreamInputNode_Dynamic_StreamRunning] = d.isStreamRunning;
+	j[keyName::StreamInputNode_Dynamic_StreamDynamicInfo] = d.streamDynamicInfo;
 	j[keyName::StreamInputNode_Dynamic_ConnectedTalker] = d.connectionState.talkerStream;
 	j[keyName::StreamInputNode_Dynamic_Counters] = d.counters;
 }
 inline void from_json(json const& j, StreamInputNodeDynamicModel& d)
 {
 	get_optional_value(j, keyName::StreamInputNode_Dynamic_ObjectName, d.objectName);
-	j.at(keyName::StreamInputNode_Dynamic_StreamInfo).get_to(d.streamInfo);
+	j.at(keyName::StreamInputNode_Dynamic_StreamFormat).get_to(d.streamFormat);
+	get_optional_value(j, keyName::StreamInputNode_Dynamic_StreamRunning, d.isStreamRunning);
+	get_optional_value(j, keyName::StreamInputNode_Dynamic_StreamDynamicInfo, d.streamDynamicInfo);
 	get_optional_value(j, keyName::StreamInputNode_Dynamic_ConnectedTalker, d.connectionState.talkerStream);
 	get_optional_value(j, keyName::StreamInputNode_Dynamic_Counters, d.counters);
 }
@@ -1329,13 +1345,17 @@ inline void from_json(json const& j, StreamInputNodeDynamicModel& d)
 inline void to_json(json& j, StreamOutputNodeDynamicModel const& d)
 {
 	j[keyName::StreamOutputNode_Dynamic_ObjectName] = d.objectName;
-	j[keyName::StreamOutputNode_Dynamic_StreamInfo] = d.streamInfo;
+	j[keyName::StreamOutputNode_Dynamic_StreamFormat] = d.streamFormat;
+	j[keyName::StreamOutputNode_Dynamic_StreamRunning] = d.isStreamRunning;
+	j[keyName::StreamOutputNode_Dynamic_StreamDynamicInfo] = d.streamDynamicInfo;
 	j[keyName::StreamOutputNode_Dynamic_Counters] = d.counters;
 }
 inline void from_json(json const& j, StreamOutputNodeDynamicModel& d)
 {
 	get_optional_value(j, keyName::StreamOutputNode_Dynamic_ObjectName, d.objectName);
-	j.at(keyName::StreamOutputNode_Dynamic_StreamInfo).get_to(d.streamInfo);
+	j.at(keyName::StreamOutputNode_Dynamic_StreamFormat).get_to(d.streamFormat);
+	get_optional_value(j, keyName::StreamOutputNode_Dynamic_StreamRunning, d.isStreamRunning);
+	get_optional_value(j, keyName::StreamOutputNode_Dynamic_StreamDynamicInfo, d.streamDynamicInfo);
 	get_optional_value(j, keyName::StreamOutputNode_Dynamic_Counters, d.counters);
 }
 
@@ -1379,14 +1399,18 @@ inline void from_json(json const& j, AvbInterfaceNodeStaticModel& s)
 inline void to_json(json& j, AvbInterfaceNodeDynamicModel const& d)
 {
 	j[keyName::AvbInterfaceNode_Dynamic_ObjectName] = d.objectName;
-	j[keyName::AvbInterfaceNode_Dynamic_AvbInfo] = d.avbInfo;
+	j[keyName::AvbInterfaceNode_Dynamic_GptpGrandmasterID] = d.gptpGrandmasterID;
+	j[keyName::AvbInterfaceNode_Dynamic_GptpDomainNumber] = d.gptpDomainNumber;
+	j[keyName::AvbInterfaceNode_Dynamic_AvbInterfaceInfo] = d.avbInterfaceInfo;
 	j[keyName::AvbInterfaceNode_Dynamic_AsPath] = d.asPath;
 	j[keyName::AvbInterfaceNode_Dynamic_Counters] = d.counters;
 }
 inline void from_json(json const& j, AvbInterfaceNodeDynamicModel& d)
 {
 	get_optional_value(j, keyName::AvbInterfaceNode_Dynamic_ObjectName, d.objectName);
-	get_optional_value(j, keyName::AvbInterfaceNode_Dynamic_AvbInfo, d.avbInfo);
+	j.at(keyName::AvbInterfaceNode_Dynamic_GptpGrandmasterID).get_to(d.gptpGrandmasterID);
+	j.at(keyName::AvbInterfaceNode_Dynamic_GptpDomainNumber).get_to(d.gptpDomainNumber);
+	get_optional_value(j, keyName::AvbInterfaceNode_Dynamic_AvbInterfaceInfo, d.avbInterfaceInfo);
 	get_optional_value(j, keyName::AvbInterfaceNode_Dynamic_AsPath, d.asPath);
 	get_optional_value(j, keyName::AvbInterfaceNode_Dynamic_Counters, d.counters);
 }

@@ -26,8 +26,3 @@
 #include "stateMachine/commandStateMachine.hpp"
 
 #include <gtest/gtest.h>
-
-TEST(CommandStateMachine, InvalidDelegate)
-{
-	EXPECT_THROW(la::avdecc::protocol::stateMachine::CommandStateMachine(nullptr, nullptr);, la::avdecc::Exception);
-}

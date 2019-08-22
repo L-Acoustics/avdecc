@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Precompiled headers on windows
 - ControlledEntity::getStreamPortInputNonRedundantAudioMappings (and Output equivalent)
+- ControlledEntity StreamNodeDynamicModel now uses StreamDynamicInfo instead of StreamInfo
+- ControlledEntity AvbInterfaceNodeDynamicModel now uses AvbInterfaceInfo instead of AvbInfo
 
 ## [2.10.0] - 2019-06-24
 ### Added
