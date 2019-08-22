@@ -726,19 +726,24 @@
                                     "stream_index": 0
                                 },
                                 "object_name": "Nominal",
-                                "stream_info": {
+                                "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",
-                                    "flags": null,
+                                    "are_pdus_encrypted": false,
+                                    "does_support_encrypted": false,
                                     "flags_ex": null,
+                                    "has_saved_state": false,
+                                    "has_talker_failed": false,
+                                    "is_class_b": false,
                                     "msrp_accumulated_latency": 0,
                                     "msrp_failure_bridge_id": "0x0000000000000000",
                                     "msrp_failure_code": 0,
                                     "probing_status": 0,
                                     "stream_dest_mac": "00:00:00:00:00:00",
-                                    "stream_format": "0x020702200200C000",
                                     "stream_id": "0x0000000000000000",
-                                    "stream_vlan_id": 0
-                                }
+                                    "stream_vlan_id": null
+                                },
+                                "stream_format": "0x020702200200C000",
+                                "stream_running": true
                             },
                             "static": {
                                 "avb_interface_index": 0,
@@ -776,19 +781,24 @@
                                     "stream_index": 0
                                 },
                                 "object_name": "Other Format",
-                                "stream_info": {
+                                "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",
-                                    "flags": null,
+                                    "are_pdus_encrypted": false,
+                                    "does_support_encrypted": false,
                                     "flags_ex": null,
+                                    "has_saved_state": false,
+                                    "has_talker_failed": false,
+                                    "is_class_b": false,
                                     "msrp_accumulated_latency": 0,
                                     "msrp_failure_bridge_id": "0x0000000000000000",
                                     "msrp_failure_code": 0,
                                     "probing_status": 0,
                                     "stream_dest_mac": "00:00:00:00:00:00",
-                                    "stream_format": "0x020702200180C000",
                                     "stream_id": "0x0000000000000000",
-                                    "stream_vlan_id": 0
-                                }
+                                    "stream_vlan_id": null
+                                },
+                                "stream_format": "0x020702200180C000",
+                                "stream_running": true
                             },
                             "static": {
                                 "avb_interface_index": 0,
@@ -826,19 +836,24 @@
                                     "stream_index": 0
                                 },
                                 "object_name": "Other Domain",
-                                "stream_info": {
+                                "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",
-                                    "flags": null,
+                                    "are_pdus_encrypted": false,
+                                    "does_support_encrypted": false,
                                     "flags_ex": null,
+                                    "has_saved_state": false,
+                                    "has_talker_failed": false,
+                                    "is_class_b": false,
                                     "msrp_accumulated_latency": 0,
                                     "msrp_failure_bridge_id": "0x0000000000000000",
                                     "msrp_failure_code": 0,
                                     "probing_status": 0,
                                     "stream_dest_mac": "00:00:00:00:00:00",
-                                    "stream_format": "0x020702200200C000",
                                     "stream_id": "0x0000000000000000",
-                                    "stream_vlan_id": 0
-                                }
+                                    "stream_vlan_id": null
+                                },
+                                "stream_format": "0x020702200200C000",
+                                "stream_running": true
                             },
                             "static": {
                                 "avb_interface_index": 1,
@@ -876,19 +891,24 @@
                                     "stream_index": 0
                                 },
                                 "object_name": "Other Format / Domain",
-                                "stream_info": {
+                                "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",
-                                    "flags": null,
+                                    "are_pdus_encrypted": false,
+                                    "does_support_encrypted": false,
                                     "flags_ex": null,
+                                    "has_saved_state": false,
+                                    "has_talker_failed": false,
+                                    "is_class_b": false,
                                     "msrp_accumulated_latency": 0,
                                     "msrp_failure_bridge_id": "0x0000000000000000",
                                     "msrp_failure_code": 0,
                                     "probing_status": 0,
                                     "stream_dest_mac": "00:00:00:00:00:00",
-                                    "stream_format": "0x020702200180C000",
                                     "stream_id": "0x0000000000000000",
-                                    "stream_vlan_id": 0
-                                }
+                                    "stream_vlan_id": null
+                                },
+                                "stream_format": "0x020702200180C000",
+                                "stream_running": true
                             },
                             "static": {
                                 "avb_interface_index": 1,
@@ -926,19 +946,24 @@
                                     "stream_index": 0
                                 },
                                 "object_name": "Nominal Pri",
-                                "stream_info": {
+                                "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",
-                                    "flags": null,
+                                    "are_pdus_encrypted": false,
+                                    "does_support_encrypted": false,
                                     "flags_ex": null,
+                                    "has_saved_state": false,
+                                    "has_talker_failed": false,
+                                    "is_class_b": false,
                                     "msrp_accumulated_latency": 0,
                                     "msrp_failure_bridge_id": "0x0000000000000000",
                                     "msrp_failure_code": 0,
                                     "probing_status": 0,
                                     "stream_dest_mac": "00:00:00:00:00:00",
-                                    "stream_format": "0x020702200200C000",
                                     "stream_id": "0x0000000000000000",
-                                    "stream_vlan_id": 0
-                                }
+                                    "stream_vlan_id": null
+                                },
+                                "stream_format": "0x020702200200C000",
+                                "stream_running": true
                             },
                             "static": {
                                 "avb_interface_index": 0,
@@ -979,19 +1004,24 @@
                                     "stream_index": 0
                                 },
                                 "object_name": "Nominal Sec",
-                                "stream_info": {
+                                "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",
-                                    "flags": null,
+                                    "are_pdus_encrypted": false,
+                                    "does_support_encrypted": false,
                                     "flags_ex": null,
+                                    "has_saved_state": false,
+                                    "has_talker_failed": false,
+                                    "is_class_b": false,
                                     "msrp_accumulated_latency": 0,
                                     "msrp_failure_bridge_id": "0x0000000000000000",
                                     "msrp_failure_code": 0,
                                     "probing_status": 0,
                                     "stream_dest_mac": "00:00:00:00:00:00",
-                                    "stream_format": "0x020702200200C000",
                                     "stream_id": "0x0000000000000000",
-                                    "stream_vlan_id": 0
-                                }
+                                    "stream_vlan_id": null
+                                },
+                                "stream_format": "0x020702200200C000",
+                                "stream_running": true
                             },
                             "static": {
                                 "avb_interface_index": 1,
@@ -1032,19 +1062,24 @@
                                     "stream_index": 0
                                 },
                                 "object_name": "Other Format Pri",
-                                "stream_info": {
+                                "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",
-                                    "flags": null,
+                                    "are_pdus_encrypted": false,
+                                    "does_support_encrypted": false,
                                     "flags_ex": null,
+                                    "has_saved_state": false,
+                                    "has_talker_failed": false,
+                                    "is_class_b": false,
                                     "msrp_accumulated_latency": 0,
                                     "msrp_failure_bridge_id": "0x0000000000000000",
                                     "msrp_failure_code": 0,
                                     "probing_status": 0,
                                     "stream_dest_mac": "00:00:00:00:00:00",
-                                    "stream_format": "0x020702200180C000",
                                     "stream_id": "0x0000000000000000",
-                                    "stream_vlan_id": 0
-                                }
+                                    "stream_vlan_id": null
+                                },
+                                "stream_format": "0x020702200180C000",
+                                "stream_running": true
                             },
                             "static": {
                                 "avb_interface_index": 0,
@@ -1085,19 +1120,24 @@
                                     "stream_index": 0
                                 },
                                 "object_name": "Other Format Sec",
-                                "stream_info": {
+                                "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",
-                                    "flags": null,
+                                    "are_pdus_encrypted": false,
+                                    "does_support_encrypted": false,
                                     "flags_ex": null,
+                                    "has_saved_state": false,
+                                    "has_talker_failed": false,
+                                    "is_class_b": false,
                                     "msrp_accumulated_latency": 0,
                                     "msrp_failure_bridge_id": "0x0000000000000000",
                                     "msrp_failure_code": 0,
                                     "probing_status": 0,
                                     "stream_dest_mac": "00:00:00:00:00:00",
-                                    "stream_format": "0x020702200180C000",
                                     "stream_id": "0x0000000000000000",
-                                    "stream_vlan_id": 0
-                                }
+                                    "stream_vlan_id": null
+                                },
+                                "stream_format": "0x020702200180C000",
+                                "stream_running": true
                             },
                             "static": {
                                 "avb_interface_index": 1,
@@ -1136,19 +1176,24 @@
                             "_index (informative)": 0,
                             "dynamic": {
                                 "object_name": "Nominal",
-                                "stream_info": {
+                                "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",
-                                    "flags": null,
+                                    "are_pdus_encrypted": false,
+                                    "does_support_encrypted": false,
                                     "flags_ex": null,
+                                    "has_saved_state": false,
+                                    "has_talker_failed": false,
+                                    "is_class_b": false,
                                     "msrp_accumulated_latency": 2000000,
                                     "msrp_failure_bridge_id": "0x0000000000000000",
                                     "msrp_failure_code": 0,
                                     "probing_status": 0,
                                     "stream_dest_mac": "00:00:00:00:00:00",
-                                    "stream_format": "0x020702200200C000",
                                     "stream_id": "0x001B920222BF0003",
                                     "stream_vlan_id": 2
-                                }
+                                },
+                                "stream_format": "0x020702200200C000",
+                                "stream_running": true
                             },
                             "static": {
                                 "avb_interface_index": 0,
@@ -1181,19 +1226,24 @@
                             "_index (informative)": 1,
                             "dynamic": {
                                 "object_name": "Other Format",
-                                "stream_info": {
+                                "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",
-                                    "flags": null,
+                                    "are_pdus_encrypted": false,
+                                    "does_support_encrypted": false,
                                     "flags_ex": null,
+                                    "has_saved_state": false,
+                                    "has_talker_failed": false,
+                                    "is_class_b": false,
                                     "msrp_accumulated_latency": 2000000,
                                     "msrp_failure_bridge_id": "0x0000000000000000",
                                     "msrp_failure_code": 0,
                                     "probing_status": 0,
                                     "stream_dest_mac": "00:00:00:00:00:00",
-                                    "stream_format": "0x020702200180C000",
                                     "stream_id": "0x001B920222BF0004",
-                                    "stream_vlan_id": 0
-                                }
+                                    "stream_vlan_id": 2
+                                },
+                                "stream_format": "0x020702200180C000",
+                                "stream_running": true
                             },
                             "static": {
                                 "avb_interface_index": 0,
@@ -1226,19 +1276,24 @@
                             "_index (informative)": 2,
                             "dynamic": {
                                 "object_name": "Other Domain",
-                                "stream_info": {
+                                "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",
-                                    "flags": null,
+                                    "are_pdus_encrypted": false,
+                                    "does_support_encrypted": false,
                                     "flags_ex": null,
+                                    "has_saved_state": false,
+                                    "has_talker_failed": false,
+                                    "is_class_b": false,
                                     "msrp_accumulated_latency": 2000000,
                                     "msrp_failure_bridge_id": "0x0000000000000000",
                                     "msrp_failure_code": 0,
                                     "probing_status": 0,
                                     "stream_dest_mac": "00:00:00:00:00:00",
-                                    "stream_format": "0x020702200200C000",
                                     "stream_id": "0x001B920222BF0003",
                                     "stream_vlan_id": 2
-                                }
+                                },
+                                "stream_format": "0x020702200200C000",
+                                "stream_running": true
                             },
                             "static": {
                                 "avb_interface_index": 1,
@@ -1271,19 +1326,24 @@
                             "_index (informative)": 3,
                             "dynamic": {
                                 "object_name": "Nominal Pri",
-                                "stream_info": {
+                                "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",
-                                    "flags": null,
+                                    "are_pdus_encrypted": false,
+                                    "does_support_encrypted": false,
                                     "flags_ex": null,
+                                    "has_saved_state": false,
+                                    "has_talker_failed": false,
+                                    "is_class_b": false,
                                     "msrp_accumulated_latency": 2000000,
                                     "msrp_failure_bridge_id": "0x0000000000000000",
                                     "msrp_failure_code": 0,
                                     "probing_status": 0,
                                     "stream_dest_mac": "00:00:00:00:00:00",
-                                    "stream_format": "0x020702200200C000",
                                     "stream_id": "0x001B920222BF0003",
                                     "stream_vlan_id": 2
-                                }
+                                },
+                                "stream_format": "0x020702200200C000",
+                                "stream_running": true
                             },
                             "static": {
                                 "avb_interface_index": 0,
@@ -1319,19 +1379,24 @@
                             "_index (informative)": 4,
                             "dynamic": {
                                 "object_name": "Nominal Sec",
-                                "stream_info": {
+                                "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",
-                                    "flags": null,
+                                    "are_pdus_encrypted": false,
+                                    "does_support_encrypted": false,
                                     "flags_ex": null,
+                                    "has_saved_state": false,
+                                    "has_talker_failed": false,
+                                    "is_class_b": false,
                                     "msrp_accumulated_latency": 2000000,
                                     "msrp_failure_bridge_id": "0x0000000000000000",
                                     "msrp_failure_code": 0,
                                     "probing_status": 0,
                                     "stream_dest_mac": "00:00:00:00:00:00",
-                                    "stream_format": "0x020702200200C000",
                                     "stream_id": "0x001B920222BF0003",
                                     "stream_vlan_id": 2
-                                }
+                                },
+                                "stream_format": "0x020702200200C000",
+                                "stream_running": true
                             },
                             "static": {
                                 "avb_interface_index": 1,

@@ -56,7 +56,9 @@ struct AudioUnitNodeDynamicModel
 struct StreamNodeDynamicModel
 {
 	AvdeccFixedString objectName{};
-	StreamInfo streamInfo{};
+	StreamFormat streamFormat{};
+	std::optional<bool> isStreamRunning{ std::nullopt };
+	std::optional<StreamDynamicInfo> streamDynamicInfo{ std::nullopt };
 };
 
 struct StreamInputNodeDynamicModel : public StreamNodeDynamicModel

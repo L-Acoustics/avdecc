@@ -340,11 +340,9 @@ public:
 	}
 	void setSamplingRate(entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate) noexcept;
 	entity::model::StreamConnectionState setStreamInputConnectionState(entity::model::StreamIndex const streamIndex, entity::model::StreamConnectionState const& state) noexcept;
-	std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> setStreamInputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept; // Returns previous StreamInfo and the new one
 	void clearStreamOutputConnections(entity::model::StreamIndex const streamIndex) noexcept;
 	bool addStreamOutputConnection(entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream) noexcept; // Returns true if effectively added
 	bool delStreamOutputConnection(entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream) noexcept; // Returns true if effectively removed
-	std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> setStreamOutputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept; // Returns previous StreamInfo and the new one
 	entity::model::AvbInterfaceInfo setAvbInterfaceInfo(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInterfaceInfo const& info) noexcept; // Returns previous AvbInterfaceInfo
 	entity::model::AsPath setAsPath(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath) noexcept; // Returns previous AsPath
 	void setSelectedLocaleStringsIndexesRange(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const baseIndex, entity::model::StringsIndex const countIndexes) noexcept;
@@ -455,23 +453,6 @@ public:
 	// Static methods
 	static std::string dynamicInfoTypeToString(DynamicInfoType const dynamicInfoType) noexcept;
 	static std::string descriptorDynamicInfoTypeToString(DescriptorDynamicInfoType const descriptorDynamicInfoType) noexcept;
-
-	// Other usefull manipulation methods
-	static inline bool isStreamRunningFlag(entity::StreamInfoFlags const flags) noexcept
-	{
-		return !flags.test(entity::StreamInfoFlag::StreamingWait);
-	}
-	static inline void setStreamRunningFlag(entity::StreamInfoFlags& flags, bool const isRunning) noexcept
-	{
-		if (isRunning)
-		{
-			flags.reset(entity::StreamInfoFlag::StreamingWait);
-		}
-		else
-		{
-			flags.set(entity::StreamInfoFlag::StreamingWait);
-		}
-	}
 
 	// Other Controller restricted methods
 	void buildEntityModelGraph() noexcept;

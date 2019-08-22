@@ -485,25 +485,24 @@
                                     "UNSUPPORTED_FORMAT": 0
                                 },
                                 "object_name": "Audio Stream",
-                                "stream_info": {
+                                "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",
-                                    "flags": [
-                                        "MSRP_FAILURE_VALID",
-                                        "STREAM_DEST_MAC_VALID",
-                                        "MSRP_ACC_LAT_VALID",
-                                        "STREAM_ID_VALID",
-                                        "STREAM_FORMAT_VALID"
-                                    ],
+                                    "are_pdus_encrypted": false,
+                                    "does_support_encrypted": false,
                                     "flags_ex": null,
+                                    "has_saved_state": false,
+                                    "has_talker_failed": false,
+                                    "is_class_b": false,
                                     "msrp_accumulated_latency": 0,
-                                    "msrp_failure_bridge_id": "0",
+                                    "msrp_failure_bridge_id": "0x0000000000000000",
                                     "msrp_failure_code": 0,
                                     "probing_status": 0,
                                     "stream_dest_mac": "00:00:00:00:00:00",
-                                    "stream_format": "0x020702200200C000",
-                                    "stream_id": "0",
-                                    "stream_vlan_id": 0
-                                }
+                                    "stream_id": "0x0000000000000000",
+                                    "stream_vlan_id": null
+                                },
+                                "stream_format": "0x020702200200C000",
+                                "stream_running": true
                             },
                             "static": {
                                 "avb_interface_index": 0,

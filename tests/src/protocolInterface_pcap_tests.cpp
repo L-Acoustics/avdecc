@@ -29,6 +29,24 @@
 #include <future>
 #include <chrono>
 #include <iostream>
+#include <string>
+
+static la::avdecc::networkInterface::Interface getFirstInterface()
+{
+	auto interface = la::avdecc::networkInterface::Interface{};
+
+	// COMMENTED CODE TO FORCE ALL TESTS USING THIS TO BE DISABLED AUTOMATICALLY ;)
+
+	//la::avdecc::networkInterface::enumerateInterfaces(
+	//	[&interface](la::avdecc::networkInterface::Interface const& intfc)
+	//	{
+	//		if (intfc.type == la::avdecc::networkInterface::Interface::Type::Ethernet && intfc.isEnabled && interface.type == la::avdecc::networkInterface::Interface::Type::None)
+	//		{
+	//			interface = intfc;
+	//		}
+	//	});
+	return interface;
+}
 
 TEST(ProtocolInterfacePCap, InvalidName)
 {
@@ -78,13 +96,19 @@ TEST(ProtocolInterfacePCap, TransportError)
 		DECLARE_AVDECC_OBSERVER_GUARD(Observer);
 	};
 
-	Observer obs;
-	auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfacePcap>(la::avdecc::protocol::ProtocolInterfacePcap::createRawProtocolInterfacePcap("\\Device\\NPF_{1AC618CE-7A20-4B2D-BCFB-DE0DFC7C4089}"));
-	intfc->registerObserver(&obs);
+	auto const interface = getFirstInterface();
+	if (interface.type != la::avdecc::networkInterface::Interface::Type::None)
+	{
+		std::cout << "Using interface " << interface.alias << std::endl;
 
-	auto status = entityOnlinePromise.get_future().wait_for(std::chrono::seconds(5));
-	ASSERT_NE(std::future_status::timeout, status) << "Failed to detect an online entity... stopping the test";
+		Observer obs;
+		auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfacePcap>(la::avdecc::protocol::ProtocolInterfacePcap::createRawProtocolInterfacePcap(interface.id));
+		intfc->registerObserver(&obs);
 
-	status = completedPromise.get_future().wait_for(std::chrono::seconds(60));
-	ASSERT_NE(std::future_status::timeout, status) << "Either deadlock or you didn't follow instructions quickly enough";
+		auto status = entityOnlinePromise.get_future().wait_for(std::chrono::seconds(5));
+		ASSERT_NE(std::future_status::timeout, status) << "Failed to detect an online entity... stopping the test";
+
+		status = completedPromise.get_future().wait_for(std::chrono::seconds(60));
+		ASSERT_NE(std::future_status::timeout, status) << "Either deadlock or you didn't follow instructions quickly enough";
+	}
 }
