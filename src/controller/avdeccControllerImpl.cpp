@@ -2146,7 +2146,7 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const entity) n
 			onPreAdvertiseEntity(*entity);
 
 			// Store EntityModel in the cache for later use
-			EntityModelCache::getInstance().cacheEntityTree(entity->getEntity().getEntityID(), entity->getCurrentConfigurationIndex(), entity->getEntityTree());
+			EntityModelCache::getInstance().cacheEntityTree(entity->getEntity().getEntityModelID(), entity->getCurrentConfigurationIndex(), entity->getEntityTree());
 
 			// Advertise the entity
 			entity->setAdvertised(true);

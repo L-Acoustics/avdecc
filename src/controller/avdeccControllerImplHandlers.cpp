@@ -139,7 +139,7 @@ void ControllerImpl::onEntityDescriptorResult(entity::controller::Interface cons
 			if (!!status)
 			{
 				// Search in the AEM cache for the AEM of the active configuration (if not ignored)
-				auto const* const cachedTree = controlledEntity->shouldIgnoreCachedEntityModel() ? nullptr : EntityModelCache::getInstance().getCachedEntityTree(entityID, descriptor.currentConfiguration);
+				auto const* const cachedTree = controlledEntity->shouldIgnoreCachedEntityModel() ? nullptr : EntityModelCache::getInstance().getCachedEntityTree(descriptor.entityModelID, descriptor.currentConfiguration);
 
 				// Already cached, no need to get the remaining of EnumerationSteps::GetStaticModel, proceed with EnumerationSteps::GetDescriptorDynamicInfo
 				if (cachedTree && controlledEntity->setCachedEntityTree(*cachedTree, descriptor))
