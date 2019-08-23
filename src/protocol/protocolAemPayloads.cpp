@@ -239,7 +239,7 @@ entity::model::EntityDescriptor deserializeReadEntityDescriptorResponse(AemAecpd
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_ENTITY_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_ENTITY_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -286,7 +286,7 @@ entity::model::ConfigurationDescriptor deserializeReadConfigurationDescriptorRes
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_CONFIGURATION_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_CONFIGURATION_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -354,7 +354,7 @@ entity::model::AudioUnitDescriptor deserializeReadAudioUnitDescriptorResponse(Ae
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AUDIO_UNIT_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AUDIO_UNIT_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -448,7 +448,7 @@ entity::model::StreamDescriptor deserializeReadStreamDescriptorResponse(AemAecpd
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_STREAM_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_STREAM_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -480,7 +480,7 @@ entity::model::JackDescriptor deserializeReadJackDescriptorResponse(AemAecpdu::P
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_JACK_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_JACK_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -518,7 +518,7 @@ entity::model::AvbInterfaceDescriptor deserializeReadAvbInterfaceDescriptorRespo
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AVB_INTERFACE_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AVB_INTERFACE_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -551,7 +551,7 @@ entity::model::ClockSourceDescriptor deserializeReadClockSourceDescriptorRespons
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_CLOCK_SOURCE_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_CLOCK_SOURCE_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -585,7 +585,7 @@ entity::model::MemoryObjectDescriptor deserializeReadMemoryObjectDescriptorRespo
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_MEMORY_OBJECT_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_MEMORY_OBJECT_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -615,7 +615,7 @@ entity::model::LocaleDescriptor deserializeReadLocaleDescriptorResponse(AemAecpd
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_LOCALE_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_LOCALE_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -647,7 +647,7 @@ entity::model::StringsDescriptor deserializeReadStringsDescriptorResponse(AemAec
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_STRINGS_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_STRINGS_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -679,7 +679,7 @@ entity::model::StreamPortDescriptor deserializeReadStreamPortDescriptorResponse(
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_STREAM_PORT_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_STREAM_PORT_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -711,7 +711,7 @@ entity::model::ExternalPortDescriptor deserializeReadExternalPortDescriptorRespo
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_EXTERNAL_PORT_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_EXTERNAL_PORT_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -743,7 +743,7 @@ entity::model::InternalPortDescriptor deserializeReadInternalPortDescriptorRespo
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_INTERNAL_PORT_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_INTERNAL_PORT_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -776,7 +776,7 @@ entity::model::AudioClusterDescriptor deserializeReadAudioClusterDescriptorRespo
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AUDIO_CLUSTER_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AUDIO_CLUSTER_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -826,7 +826,7 @@ entity::model::AudioMapDescriptor deserializeReadAudioMapDescriptorResponse(AemA
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AUDIO_MAP_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AUDIO_MAP_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -879,7 +879,7 @@ entity::model::ClockDomainDescriptor deserializeReadClockDomainDescriptorRespons
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_CLOCK_DOMAIN_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_CLOCK_DOMAIN_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
