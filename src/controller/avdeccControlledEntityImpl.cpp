@@ -80,9 +80,9 @@ bool ControlledEntityImpl::isAcquired() const noexcept
 	return _acquireState == model::AcquireState::Acquired;
 }
 
-bool ControlledEntityImpl::isAcquiring() const noexcept
+bool ControlledEntityImpl::isAcquireCommandInProgress() const noexcept
 {
-	return _acquireState == model::AcquireState::TryAcquire;
+	return _acquireState == model::AcquireState::AcquireInProgress || _acquireState == model::AcquireState::ReleaseInProgress;
 }
 
 bool ControlledEntityImpl::isAcquiredByOther() const noexcept
@@ -95,9 +95,9 @@ bool ControlledEntityImpl::isLocked() const noexcept
 	return _lockState == model::LockState::Locked;
 }
 
-bool ControlledEntityImpl::isLocking() const noexcept
+bool ControlledEntityImpl::isLockCommandInProgress() const noexcept
 {
-	return _lockState == model::LockState::TryLock;
+	return _lockState == model::LockState::LockInProgress || _lockState == model::LockState::UnlockInProgress;
 }
 
 bool ControlledEntityImpl::isLockedByOther() const noexcept

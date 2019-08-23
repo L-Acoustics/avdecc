@@ -298,13 +298,24 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User acquireEntity (isPersistent={} DescriptorType={} DescriptorIndex={})", isPersistent, utils::to_integral(descriptorType), descriptorIndex);
 
-		// Already acquired or acquiring, don't do anything (we want to try to acquire if it's flagged as acquired by another controller, in case it went offline without notice)
-		if (controlledEntity->isAcquired() || controlledEntity->isAcquiring())
+		// Already acquired, notify of the success without sending a message
+		if (controlledEntity->isAcquired())
 		{
-			LOG_CONTROLLER_TRACE(targetEntityID, "User acquireEntity not sent because entity is {}", (controlledEntity->isAcquired() ? "already acquired" : "being acquired"));
+			LOG_CONTROLLER_TRACE(targetEntityID, "User acquireEntity not sent because entity is already acquired");
+			utils::invokeProtectedHandler(handler, controlledEntity.get(), entity::ControllerEntity::AemCommandStatus::Success, controlledEntity->getOwningControllerID());
 			return;
 		}
-		controlledEntity->setAcquireState(model::AcquireState::TryAcquire);
+
+		// Already trying to acquire or release, notify we are busy
+		if (controlledEntity->isAcquireCommandInProgress())
+		{
+			LOG_CONTROLLER_TRACE(targetEntityID, "User acquireEntity not sent because entity is being acquired or released");
+			utils::invokeProtectedHandler(handler, controlledEntity.get(), entity::ControllerEntity::AemCommandStatus::Busy, controlledEntity->getOwningControllerID());
+			return;
+		}
+
+		// Try to acquire for all other cases, especially if it's acquired by another controller (in case it went offline without notice)
+		controlledEntity->setAcquireState(model::AcquireState::AcquireInProgress);
 		controlledEntity.reset(); // We have to relinquish the ownership of the ControlledEntity before calling the controller
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->acquireEntity(targetEntityID, isPersistent, descriptorType, descriptorIndex,
@@ -349,12 +360,23 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 	auto const descriptorType{ entity::model::DescriptorType::Entity };
 	auto const descriptorIndex{ entity::model::DescriptorIndex{ 0u } };
 
-	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID, true);
 
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User releaseEntity (DescriptorType={} DescriptorIndex={})", utils::to_integral(descriptorType), descriptorIndex);
+
+		// Already trying to acquire or release, notify we are busy
+		if (controlledEntity->isAcquireCommandInProgress())
+		{
+			LOG_CONTROLLER_TRACE(targetEntityID, "User releaseEntity not sent because entity is being acquired or released");
+			utils::invokeProtectedHandler(handler, controlledEntity.get(), entity::ControllerEntity::AemCommandStatus::Busy, controlledEntity->getOwningControllerID());
+			return;
+		}
+
+		controlledEntity->setAcquireState(model::AcquireState::ReleaseInProgress);
+		controlledEntity.reset(); // We have to relinquish the ownership of the ControlledEntity before calling the controller
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->releaseEntity(targetEntityID, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
@@ -405,13 +427,24 @@ void ControllerImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntit
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User lockEntity (DescriptorType={} DescriptorIndex={})", utils::to_integral(descriptorType), descriptorIndex);
 
-		// Already locked or locking, don't do anything (we want to try to lock if it's flagged as locked by another controller, in case it went offline without notice)
-		if (controlledEntity->isLocked() || controlledEntity->isLocking())
+		// Already locked, notify of the success without sending a message
+		if (controlledEntity->isLocked())
 		{
-			LOG_CONTROLLER_TRACE(targetEntityID, "User lockEntity not sent because entity is {}", (controlledEntity->isLocked() ? "already locked" : "being locked"));
+			LOG_CONTROLLER_TRACE(targetEntityID, "User lockEntity not sent because entity is already locked");
+			utils::invokeProtectedHandler(handler, controlledEntity.get(), entity::ControllerEntity::AemCommandStatus::Success, controlledEntity->getLockingControllerID());
 			return;
 		}
-		controlledEntity->setLockState(model::LockState::TryLock);
+
+		// Already trying to lock or unlock, notify we are busy
+		if (controlledEntity->isLockCommandInProgress())
+		{
+			LOG_CONTROLLER_TRACE(targetEntityID, "User lockEntity not sent because entity is being locked or unlocked");
+			utils::invokeProtectedHandler(handler, controlledEntity.get(), entity::ControllerEntity::AemCommandStatus::Busy, controlledEntity->getLockingControllerID());
+			return;
+		}
+
+		// Try to lock for all other cases, especially if it's locked by another controller (in case it went offline without notice)
+		controlledEntity->setLockState(model::LockState::LockInProgress);
 		controlledEntity.reset(); // We have to relinquish the ownership of the ControlledEntity before calling the controller
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->lockEntity(targetEntityID, descriptorType, descriptorIndex,
@@ -456,12 +489,23 @@ void ControllerImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockE
 	auto const descriptorType{ entity::model::DescriptorType::Entity };
 	auto const descriptorIndex{ entity::model::DescriptorIndex{ 0u } };
 
-	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID, true);
 
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User unlockEntity (DescriptorType={} DescriptorIndex={})", utils::to_integral(descriptorType), descriptorIndex);
+
+		// Already trying to lock or unlock, notify we are busy
+		if (controlledEntity->isLockCommandInProgress())
+		{
+			LOG_CONTROLLER_TRACE(targetEntityID, "User unlockEntity not sent because entity is being locked or unlocked");
+			utils::invokeProtectedHandler(handler, controlledEntity.get(), entity::ControllerEntity::AemCommandStatus::Busy, controlledEntity->getLockingControllerID());
+			return;
+		}
+
+		controlledEntity->setLockState(model::LockState::UnlockInProgress);
+		controlledEntity.reset(); // We have to relinquish the ownership of the ControlledEntity before calling the controller
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->unlockEntity(targetEntityID, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const lockingEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
