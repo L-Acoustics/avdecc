@@ -77,7 +77,7 @@ struct StreamDynamicInfo
 	bool arePdusEncrypted{ false }; /** Indicates that the Stream is using encrypted PDUs. */
 	bool hasTalkerFailed{ false }; /** Indicates that the Listener has registered an SRP Talker Failed attribute for the Stream. */
 	StreamInfoFlags _streamInfoFlags{}; /** LECAGY FIELD - Last received StreamInfoFlags */
-	std::optional<std::uint64_t> streamID{ std::nullopt };
+	std::optional<UniqueIdentifier> streamID{ std::nullopt };
 	std::optional<std::uint32_t> msrpAccumulatedLatency{ std::nullopt };
 	std::optional<la::avdecc::networkInterface::MacAddress> streamDestMac{ std::nullopt };
 	std::optional<std::uint8_t> msrpFailureCode{ std::nullopt };

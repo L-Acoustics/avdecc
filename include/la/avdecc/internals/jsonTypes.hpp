@@ -1118,7 +1118,7 @@ inline void to_json(json& j, StreamDynamicInfo const& info)
 	j[keyName::StreamDynamicInfo_Flags] = info._streamInfoFlags;
 	if (info.streamID)
 	{
-		j[keyName::StreamDynamicInfo_StreamID] = utils::toHexString(*info.streamID, true, true);
+		j[keyName::StreamDynamicInfo_StreamID] = *info.streamID;
 	}
 	j[keyName::StreamDynamicInfo_MsrpAccumulatedLatency] = info.msrpAccumulatedLatency;
 	if (info.streamDestMac)
@@ -1148,7 +1148,7 @@ inline void from_json(json const& j, StreamDynamicInfo& info)
 		auto const it = j.find(keyName::StreamDynamicInfo_StreamID);
 		if (it != j.end())
 		{
-			info.streamID = utils::convertFromString<decltype(info.streamID)::value_type>(it->get<std::string>().c_str());
+			it->get_to(info.streamID);
 		}
 	}
 	get_optional_value(j, keyName::StreamDynamicInfo_MsrpAccumulatedLatency, info.msrpAccumulatedLatency);
