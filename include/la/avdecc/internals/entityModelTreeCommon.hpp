@@ -81,7 +81,7 @@ struct StreamDynamicInfo
 	std::optional<std::uint32_t> msrpAccumulatedLatency{ std::nullopt };
 	std::optional<la::avdecc::networkInterface::MacAddress> streamDestMac{ std::nullopt };
 	std::optional<std::uint8_t> msrpFailureCode{ std::nullopt };
-	std::optional<std::uint64_t> msrpFailureBridgeID{ std::nullopt };
+	std::optional<BridgeIdentifier> msrpFailureBridgeID{ std::nullopt };
 	std::optional<std::uint16_t> streamVlanID{ std::nullopt };
 	// Milan additions
 	std::optional<StreamInfoFlagsEx> streamInfoFlagsEx{ std::nullopt };
