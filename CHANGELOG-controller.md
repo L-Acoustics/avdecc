@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - ControlledEntity::getStreamPortInputNonRedundantAudioMappings (and Output equivalent)
 - ControlledEntity StreamNodeDynamicModel now uses StreamDynamicInfo instead of StreamInfo
 - ControlledEntity AvbInterfaceNodeDynamicModel now uses AvbInterfaceInfo instead of AvbInfo
+- Controller::requestExclusiveAccess method
 
 ### Fixed
 - [Incorrect usage of the AEM cache feature](https://github.com/L-Acoustics/avdecc/issues/62)

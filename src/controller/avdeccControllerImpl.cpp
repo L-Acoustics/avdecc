@@ -206,6 +206,12 @@ void ControllerImpl::updateAcquiredState(ControlledEntityImpl& controlledEntity,
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
 	{
+		// If the Entity is getting released, check for any owned ExclusiveAccess tokens and invalidate them
+		if (acquireState == model::AcquireState::NotAcquired)
+		{
+			removeExclusiveAccessTokens(controlledEntity.getEntity().getEntityID(), ExclusiveAccessToken::AccessType::Acquire);
+		}
+
 		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAcquireStateChanged, this, &controlledEntity, acquireState, owningEntity);
 	}
 }
@@ -220,6 +226,12 @@ void ControllerImpl::updateLockedState(ControlledEntityImpl& controlledEntity, m
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
 	{
+		// If the Entity is getting unlocked, check for any owned ExclusiveAccess tokens and invalidate them
+		if (lockState == model::LockState::NotLocked)
+		{
+			removeExclusiveAccessTokens(controlledEntity.getEntity().getEntityID(), ExclusiveAccessToken::AccessType::Lock);
+		}
+
 		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onLockStateChanged, this, &controlledEntity, lockState, lockingEntity);
 	}
 }
@@ -1189,6 +1201,64 @@ void ControllerImpl::updateOperationStatus(ControlledEntityImpl& controlledEntit
 /* ************************************************************ */
 /* Private methods                                              */
 /* ************************************************************ */
+void ControllerImpl::removeExclusiveAccessTokens(UniqueIdentifier const entityID, ExclusiveAccessToken::AccessType const type) const noexcept
+{
+	auto tokensToInvalidate = decltype(_exclusiveAccessTokens)::mapped_type{};
+
+	// PersistentAcquire and Acquire should be handled identically
+	auto typeToCheck = type;
+	if (typeToCheck == ExclusiveAccessToken::AccessType::PersistentAcquire)
+	{
+		typeToCheck = ExclusiveAccessToken::AccessType::Acquire;
+	}
+
+	// Remove all matching ExclusiveAccessTokens, under lock
+	{
+		// Lock to protect data members
+		auto const lg = std::lock_guard{ _lock };
+
+		// Get tokens for specified EntityID
+		if (auto const tokensIt = _exclusiveAccessTokens.find(entityID); tokensIt != _exclusiveAccessTokens.end())
+		{
+			auto& tokens = tokensIt->second;
+			// Remove tokens matching type
+			for (auto it = tokens.begin(); it != tokens.end(); /* Iterate inside the loop */)
+			{
+				auto* const token = *it;
+
+				// PersistentAcquire and Acquire should be handled identically
+				auto tokenType = token->getAccessType();
+				if (tokenType == ExclusiveAccessToken::AccessType::PersistentAcquire)
+				{
+					tokenType = ExclusiveAccessToken::AccessType::Acquire;
+				}
+				if (tokenType == type)
+				{
+					tokensToInvalidate.insert(token);
+					// Remove from the list
+					it = tokens.erase(it);
+				}
+				else
+				{
+					++it;
+				}
+			}
+
+			// Remove the reference from our list of tokens
+			if (tokens.empty())
+			{
+				_exclusiveAccessTokens.erase(tokensIt);
+			}
+		}
+	}
+
+	// Invalidate tokens outside the lock
+	for (auto* token : tokensToInvalidate)
+	{
+		token->invalidateToken();
+	}
+}
+
 bool ControllerImpl::areControlledEntitiesSelfLocked() const noexcept
 {
 	return _entitiesSharedLockInformation->isSelfLocked();

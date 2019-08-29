@@ -40,6 +40,8 @@
 #include <cerrno> // errno
 #include <unordered_set>
 #include <fstream>
+#include <mutex>
+#include <memory>
 
 namespace la
 {
@@ -201,6 +203,50 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 		});
 }
 
+void ControllerImpl::unregisterExclusiveAccessToken(UniqueIdentifier const entityID, ExclusiveAccessTokenImpl* const token) const noexcept
+{
+	auto shouldRelease{ false };
+	{
+		auto const lg = std::lock_guard{ _lock };
+
+		// Search our reference to the specified entityID/token
+		auto const tokensIt = _exclusiveAccessTokens.find(entityID);
+		// The token might no longer be stored, in case the controller was destroyed and recreated before the token got destroyed
+		if (tokensIt != _exclusiveAccessTokens.end())
+		{
+			auto& tokens = tokensIt->second;
+			// Remove the reference from our list of tokens
+			AVDECC_ASSERT_WITH_RET(tokens.erase(token) == 1, "Token reference not found for the specified entityID");
+			if (tokens.empty())
+			{
+				shouldRelease = true;
+				_exclusiveAccessTokens.erase(tokensIt);
+			}
+		}
+	}
+
+	if (shouldRelease)
+	{
+		switch (token->getAccessType())
+		{
+			case ExclusiveAccessToken::AccessType::Acquire:
+			case ExclusiveAccessToken::AccessType::PersistentAcquire:
+			{
+				releaseEntity(entityID, nullptr);
+				break;
+			}
+			case ExclusiveAccessToken::AccessType::Lock:
+			{
+				unlockEntity(entityID, nullptr);
+				break;
+			}
+			default:
+				AVDECC_ASSERT(false, "Unknown AccessType");
+				break;
+		}
+	}
+}
+
 ControllerImpl::~ControllerImpl()
 {
 	AVDECC_ASSERT(!areControlledEntitiesSelfLocked(), "No ControlledEntity should be locked during this call. relinquish the ownership (with .reset()) before calling this method");
@@ -210,18 +256,26 @@ ControllerImpl::~ControllerImpl()
 
 	// Wait for the thread to complete its pending tasks
 	if (_stateMachinesThread.joinable())
+	{
 		_stateMachinesThread.join();
+	}
 
 	// First, remove ourself from the controller's delegate, we don't want notifications anymore (even if one is coming before the end of the destructor, it's not a big deal, _controlledEntities will be empty)
 	_controller->setControllerDelegate(nullptr);
 
-	decltype(_controlledEntities) controlledEntities;
+	auto controlledEntities = decltype(_controlledEntities){};
+	auto exclusiveAccessTokens = decltype(_exclusiveAccessTokens){};
 
-	// Move all controlled Entities (under lock), we don't want them to be accessible during destructor
+	// Move all controlled Entities and ExclusiveAccessTokens (under lock), we don't want them to be accessible during destructor
 	{
-		// Lock to protect _controlledEntities
+		// Lock to protect data members
 		auto const lg = std::lock_guard{ _lock };
+
+		// Move Controlled Entities
 		controlledEntities = std::move(_controlledEntities);
+
+		// Move ExclusiveAccessTokens
+		exclusiveAccessTokens = std::move(_exclusiveAccessTokens);
 	}
 
 	// Notify all entities they are going offline
@@ -234,17 +288,31 @@ ControllerImpl::~ControllerImpl()
 		}
 	}
 
+	// Invalidate all tokens
+	for (auto& tokensKV : exclusiveAccessTokens)
+	{
+		for (auto* const token : tokensKV.second)
+		{
+			token->invalidateToken();
+		}
+	}
+
 	// Remove all observers, we don't want to trigger notifications for upcoming actions
 	removeAllObservers();
 
-	// Try to release all acquired entities by this controller before destroying everything
+	// Try to release all acquired/locked entities by this controller before destroying everything
 	for (auto const& entityKV : controlledEntities)
 	{
 		auto const& controlledEntity = entityKV.second;
-		if (controlledEntity->isAcquired())
+		if (controlledEntity->isAcquired() || controlledEntity->isAcquireCommandInProgress())
 		{
 			auto const& entityID = entityKV.first;
 			_controller->releaseEntity(entityID, entity::model::DescriptorType::Entity, 0u, nullptr); // We don't need the result handler, let's just hope our message was properly sent and received!
+		}
+		if (controlledEntity->isLocked() || controlledEntity->isLockCommandInProgress())
+		{
+			auto const& entityID = entityKV.first;
+			_controller->unlockEntity(entityID, entity::model::DescriptorType::Entity, 0u, nullptr); // We don't need the result handler, let's just hope our message was properly sent and received!
 		}
 	}
 }
@@ -2168,6 +2236,59 @@ ControlledEntityGuard ControllerImpl::getControlledEntityGuard(UniqueIdentifier 
 		return ControlledEntityGuard{ entity.release() };
 	}
 	return {};
+}
+
+void ControllerImpl::requestExclusiveAccess(UniqueIdentifier const entityID, ExclusiveAccessToken::AccessType const type, RequestExclusiveAccessResultHandler&& handler) const noexcept
+{
+	// Helper lambda
+	auto const onResult = [this, entityID, type, handler = std::move(handler)](ControlledEntity const* const entity, entity::ControllerEntity::AemCommandStatus const status)
+	{
+		auto token = ExclusiveAccessToken::UniquePointer{ nullptr, nullptr };
+
+		if (status == entity::ControllerEntity::AemCommandStatus::Success)
+		{
+			// Lock to protect data members
+			auto const lg = std::lock_guard{ _lock };
+
+			// Get or create tokens list for this entityID
+			auto& tokens = _exclusiveAccessTokens[entityID];
+
+			// Create a new token and store a raw pointer to it
+			token = ExclusiveAccessTokenImpl::create(this, entityID, type);
+			tokens.insert(static_cast<ExclusiveAccessTokenImpl*>(token.get()));
+		}
+
+		// Notify handler
+		la::avdecc::utils::invokeProtectedHandler(handler, entity, status, std::move(token));
+	};
+
+	// Request exclusive access based on specified type
+	switch (type)
+	{
+		case ExclusiveAccessToken::AccessType::Acquire:
+		case ExclusiveAccessToken::AccessType::PersistentAcquire:
+		{
+			acquireEntity(entityID, type == ExclusiveAccessToken::AccessType::PersistentAcquire,
+				[onResult = std::move(onResult)](auto const* const entity, auto const status, auto const /*owningEntity*/)
+				{
+					onResult(entity, status);
+				});
+			break;
+		}
+		case ExclusiveAccessToken::AccessType::Lock:
+		{
+			lockEntity(entityID,
+				[onResult = std::move(onResult)](auto const* const entity, auto const status, auto const /*lockingEntity*/)
+				{
+					onResult(entity, status);
+				});
+			break;
+		}
+		default:
+			AVDECC_ASSERT(false, "Unknown AccessType");
+			onResult(nullptr, la::avdecc::entity::ControllerEntity::AemCommandStatus::InternalError);
+			break;
+	}
 }
 
 void ControllerImpl::lock() noexcept
