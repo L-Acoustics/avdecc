@@ -26,6 +26,8 @@
 
 #include <unordered_map>
 #include <thread>
+#include <string>
+#include <iostream>
 #ifdef _WIN32
 #	include <Windows.h>
 #endif // _WIN32
@@ -42,6 +44,7 @@ private:
 	struct WatchInfo
 	{
 		std::chrono::milliseconds maximumInterval{ 0u };
+		std::thread::id threadId{};
 		std::chrono::time_point<std::chrono::system_clock> lastAlive{ std::chrono::system_clock::now() };
 		bool ignore{ false };
 	};
@@ -75,7 +78,11 @@ public:
 							if (!watchInfo.ignore && std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - watchInfo.lastAlive).count() > watchInfo.maximumInterval.count())
 							{
 								_observers.notifyObserversMethod<Observer>(&Observer::onIntervalExceeded, name, watchInfo.maximumInterval);
-								AVDECC_ASSERT(false, "WatchDog event '" + name + "' exceeded the maximum allowed time. Deadlock?");
+
+								auto stream = std::stringstream{};
+								stream << "WatchDog event '" << name << "' exceeded the maximum allowed time (ThreadId: 0x" << std::hex << watchInfo.threadId << "). Deadlock?";
+								AVDECC_ASSERT(false, stream.str());
+
 								watchInfo.ignore = true;
 							}
 						}
@@ -116,13 +123,13 @@ private:
 	virtual void registerWatch(std::string const& name, std::chrono::milliseconds const maximumInterval) noexcept override
 	{
 		auto const lg = std::lock_guard{ _lock };
-		_watched[name] = { maximumInterval };
+		_watched[name] = { maximumInterval, std::this_thread::get_id() };
 	}
 
 	virtual void unregisterWatch(std::string const& name) noexcept override
 	{
 		auto const lg = std::lock_guard{ _lock };
-		_watched.erase(name);
+		AVDECC_ASSERT(_watched.erase(name) == 1, "Cannot unregisterWatch, 'name' not found");
 	}
 
 	virtual void alive(std::string const& name) noexcept override
@@ -131,6 +138,7 @@ private:
 		auto const watchIt = _watched.find(name);
 		if (watchIt != _watched.end())
 		{
+			watchIt->second.threadId = std::this_thread::get_id();
 			watchIt->second.lastAlive = std::chrono::system_clock::now();
 		}
 	}

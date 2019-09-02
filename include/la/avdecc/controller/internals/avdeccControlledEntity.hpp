@@ -233,6 +233,7 @@ public:
 	/** Releases the Guarded ControlledEntity (and the exclusive access to it). */
 	void reset() noexcept
 	{
+		unregisterWatchdog();
 		unlock();
 		_controlledEntity = nullptr;
 	}
@@ -243,12 +244,55 @@ public:
 	// Destructor visibility required
 	~ControlledEntityGuard()
 	{
+		unregisterWatchdog();
 		unlock();
 	}
 
+	// Swap method
+	friend void swap(ControlledEntityGuard& lhs, ControlledEntityGuard& rhs)
+	{
+		using std::swap;
+
+		// Watchdog 'key' is based on 'this', so when swapping we have to unregister then re-register so the key is changed
+		auto const leftHasEntity = !!lhs._controlledEntity;
+		auto const rightHasEntity = !!rhs._controlledEntity;
+		if (leftHasEntity)
+		{
+			lhs.unregisterWatchdog();
+		}
+		if (rightHasEntity)
+		{
+			rhs.unregisterWatchdog();
+		}
+
+		// Swap everything
+		swap(lhs._controlledEntity, rhs._controlledEntity);
+		swap(lhs._watchDogSharedPointer, rhs._watchDogSharedPointer);
+		swap(lhs._watchDog, rhs._watchDog);
+
+		// Re-register
+		if (leftHasEntity)
+		{
+			// But using the new location (lhs swapped with rhs)
+			rhs.registerWatchdog();
+		}
+		if (rightHasEntity)
+		{
+			// But using the new location (rhs swapped with lhs)
+			lhs.registerWatchdog();
+		}
+	}
+
 	// Allow move semantics
-	ControlledEntityGuard(ControlledEntityGuard&&) = default;
-	ControlledEntityGuard& operator=(ControlledEntityGuard&&) = default;
+	ControlledEntityGuard(ControlledEntityGuard&& other)
+	{
+		swap(*this, other);
+	}
+
+	ControlledEntityGuard& operator=(ControlledEntityGuard&& other)
+	{
+		swap(*this, other);
+	}
 
 	// Disallow copy
 	ControlledEntityGuard(ControlledEntityGuard const&) = delete;
@@ -261,9 +305,22 @@ private:
 	ControlledEntityGuard(SharedControlledEntity&& entity)
 		: _controlledEntity(std::move(entity))
 	{
+		registerWatchdog();
+	}
+
+	void registerWatchdog() noexcept
+	{
 		if (_controlledEntity)
 		{
-			_watchDog.registerWatch("avdecc::controller::ControlledEntityGuard::" + utils::toHexString(reinterpret_cast<size_t>(this)), std::chrono::milliseconds{ 500u });
+			_watchDog.get().registerWatch("avdecc::controller::ControlledEntityGuard::" + utils::toHexString(reinterpret_cast<size_t>(this)), std::chrono::milliseconds{ 500u });
+		}
+	}
+
+	void unregisterWatchdog() noexcept
+	{
+		if (_controlledEntity)
+		{
+			_watchDog.get().unregisterWatch("avdecc::controller::ControlledEntityGuard::" + utils::toHexString(reinterpret_cast<size_t>(this)));
 		}
 	}
 
@@ -271,7 +328,6 @@ private:
 	{
 		if (_controlledEntity)
 		{
-			_watchDog.unregisterWatch("avdecc::controller::ControlledEntityGuard::" + utils::toHexString(reinterpret_cast<size_t>(this)));
 			// We can unlock, we got ownership (and locked state) during construction
 			_controlledEntity->unlock();
 		}
@@ -279,7 +335,7 @@ private:
 
 	SharedControlledEntity _controlledEntity{ nullptr };
 	watchDog::WatchDog::SharedPointer _watchDogSharedPointer{ watchDog::WatchDog::getInstance() };
-	watchDog::WatchDog& _watchDog{ *_watchDogSharedPointer };
+	std::reference_wrapper<watchDog::WatchDog> _watchDog{ *_watchDogSharedPointer };
 };
 
 } // namespace controller

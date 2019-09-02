@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - [Incorrect usage of the AEM cache feature](https://github.com/L-Acoustics/avdecc/issues/62)
+- ControlledEntityGuard move constructor not properly changing WatchDog information
 
 ## [2.10.0] - 2019-06-24
 ### Added
