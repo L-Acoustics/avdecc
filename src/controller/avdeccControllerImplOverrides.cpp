@@ -40,6 +40,8 @@
 #include <cerrno> // errno
 #include <unordered_set>
 #include <fstream>
+#include <mutex>
+#include <memory>
 
 namespace la
 {
@@ -201,6 +203,50 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 		});
 }
 
+void ControllerImpl::unregisterExclusiveAccessToken(UniqueIdentifier const entityID, ExclusiveAccessTokenImpl* const token) const noexcept
+{
+	auto shouldRelease{ false };
+	{
+		auto const lg = std::lock_guard{ _lock };
+
+		// Search our reference to the specified entityID/token
+		auto const tokensIt = _exclusiveAccessTokens.find(entityID);
+		// The token might no longer be stored, in case the controller was destroyed and recreated before the token got destroyed
+		if (tokensIt != _exclusiveAccessTokens.end())
+		{
+			auto& tokens = tokensIt->second;
+			// Remove the reference from our list of tokens
+			AVDECC_ASSERT_WITH_RET(tokens.erase(token) == 1, "Token reference not found for the specified entityID");
+			if (tokens.empty())
+			{
+				shouldRelease = true;
+				_exclusiveAccessTokens.erase(tokensIt);
+			}
+		}
+	}
+
+	if (shouldRelease)
+	{
+		switch (token->getAccessType())
+		{
+			case ExclusiveAccessToken::AccessType::Acquire:
+			case ExclusiveAccessToken::AccessType::PersistentAcquire:
+			{
+				releaseEntity(entityID, nullptr);
+				break;
+			}
+			case ExclusiveAccessToken::AccessType::Lock:
+			{
+				unlockEntity(entityID, nullptr);
+				break;
+			}
+			default:
+				AVDECC_ASSERT(false, "Unknown AccessType");
+				break;
+		}
+	}
+}
+
 ControllerImpl::~ControllerImpl()
 {
 	AVDECC_ASSERT(!areControlledEntitiesSelfLocked(), "No ControlledEntity should be locked during this call. relinquish the ownership (with .reset()) before calling this method");
@@ -210,18 +256,26 @@ ControllerImpl::~ControllerImpl()
 
 	// Wait for the thread to complete its pending tasks
 	if (_stateMachinesThread.joinable())
+	{
 		_stateMachinesThread.join();
+	}
 
 	// First, remove ourself from the controller's delegate, we don't want notifications anymore (even if one is coming before the end of the destructor, it's not a big deal, _controlledEntities will be empty)
 	_controller->setControllerDelegate(nullptr);
 
-	decltype(_controlledEntities) controlledEntities;
+	auto controlledEntities = decltype(_controlledEntities){};
+	auto exclusiveAccessTokens = decltype(_exclusiveAccessTokens){};
 
-	// Move all controlled Entities (under lock), we don't want them to be accessible during destructor
+	// Move all controlled Entities and ExclusiveAccessTokens (under lock), we don't want them to be accessible during destructor
 	{
-		// Lock to protect _controlledEntities
+		// Lock to protect data members
 		auto const lg = std::lock_guard{ _lock };
+
+		// Move Controlled Entities
 		controlledEntities = std::move(_controlledEntities);
+
+		// Move ExclusiveAccessTokens
+		exclusiveAccessTokens = std::move(_exclusiveAccessTokens);
 	}
 
 	// Notify all entities they are going offline
@@ -234,17 +288,31 @@ ControllerImpl::~ControllerImpl()
 		}
 	}
 
+	// Invalidate all tokens
+	for (auto& tokensKV : exclusiveAccessTokens)
+	{
+		for (auto* const token : tokensKV.second)
+		{
+			token->invalidateToken();
+		}
+	}
+
 	// Remove all observers, we don't want to trigger notifications for upcoming actions
 	removeAllObservers();
 
-	// Try to release all acquired entities by this controller before destroying everything
+	// Try to release all acquired/locked entities by this controller before destroying everything
 	for (auto const& entityKV : controlledEntities)
 	{
 		auto const& controlledEntity = entityKV.second;
-		if (controlledEntity->isAcquired())
+		if (controlledEntity->isAcquired() || controlledEntity->isAcquireCommandInProgress())
 		{
 			auto const& entityID = entityKV.first;
 			_controller->releaseEntity(entityID, entity::model::DescriptorType::Entity, 0u, nullptr); // We don't need the result handler, let's just hope our message was properly sent and received!
+		}
+		if (controlledEntity->isLocked() || controlledEntity->isLockCommandInProgress())
+		{
+			auto const& entityID = entityKV.first;
+			_controller->unlockEntity(entityID, entity::model::DescriptorType::Entity, 0u, nullptr); // We don't need the result handler, let's just hope our message was properly sent and received!
 		}
 	}
 }
@@ -298,13 +366,24 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User acquireEntity (isPersistent={} DescriptorType={} DescriptorIndex={})", isPersistent, utils::to_integral(descriptorType), descriptorIndex);
 
-		// Already acquired or acquiring, don't do anything (we want to try to acquire if it's flagged as acquired by another controller, in case it went offline without notice)
-		if (controlledEntity->isAcquired() || controlledEntity->isAcquiring())
+		// Already acquired, notify of the success without sending a message
+		if (controlledEntity->isAcquired())
 		{
-			LOG_CONTROLLER_TRACE(targetEntityID, "User acquireEntity not sent because entity is {}", (controlledEntity->isAcquired() ? "already acquired" : "being acquired"));
+			LOG_CONTROLLER_TRACE(targetEntityID, "User acquireEntity not sent because entity is already acquired");
+			utils::invokeProtectedHandler(handler, controlledEntity.get(), entity::ControllerEntity::AemCommandStatus::Success, controlledEntity->getOwningControllerID());
 			return;
 		}
-		controlledEntity->setAcquireState(model::AcquireState::TryAcquire);
+
+		// Already trying to acquire or release, notify we are busy
+		if (controlledEntity->isAcquireCommandInProgress())
+		{
+			LOG_CONTROLLER_TRACE(targetEntityID, "User acquireEntity not sent because entity is being acquired or released");
+			utils::invokeProtectedHandler(handler, controlledEntity.get(), entity::ControllerEntity::AemCommandStatus::Busy, controlledEntity->getOwningControllerID());
+			return;
+		}
+
+		// Try to acquire for all other cases, especially if it's acquired by another controller (in case it went offline without notice)
+		controlledEntity->setAcquireState(model::AcquireState::AcquireInProgress);
 		controlledEntity.reset(); // We have to relinquish the ownership of the ControlledEntity before calling the controller
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->acquireEntity(targetEntityID, isPersistent, descriptorType, descriptorIndex,
@@ -349,12 +428,23 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 	auto const descriptorType{ entity::model::DescriptorType::Entity };
 	auto const descriptorIndex{ entity::model::DescriptorIndex{ 0u } };
 
-	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID, true);
 
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User releaseEntity (DescriptorType={} DescriptorIndex={})", utils::to_integral(descriptorType), descriptorIndex);
+
+		// Already trying to acquire or release, notify we are busy
+		if (controlledEntity->isAcquireCommandInProgress())
+		{
+			LOG_CONTROLLER_TRACE(targetEntityID, "User releaseEntity not sent because entity is being acquired or released");
+			utils::invokeProtectedHandler(handler, controlledEntity.get(), entity::ControllerEntity::AemCommandStatus::Busy, controlledEntity->getOwningControllerID());
+			return;
+		}
+
+		controlledEntity->setAcquireState(model::AcquireState::ReleaseInProgress);
+		controlledEntity.reset(); // We have to relinquish the ownership of the ControlledEntity before calling the controller
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->releaseEntity(targetEntityID, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
@@ -405,13 +495,24 @@ void ControllerImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntit
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User lockEntity (DescriptorType={} DescriptorIndex={})", utils::to_integral(descriptorType), descriptorIndex);
 
-		// Already locked or locking, don't do anything (we want to try to lock if it's flagged as locked by another controller, in case it went offline without notice)
-		if (controlledEntity->isLocked() || controlledEntity->isLocking())
+		// Already locked, notify of the success without sending a message
+		if (controlledEntity->isLocked())
 		{
-			LOG_CONTROLLER_TRACE(targetEntityID, "User lockEntity not sent because entity is {}", (controlledEntity->isLocked() ? "already locked" : "being locked"));
+			LOG_CONTROLLER_TRACE(targetEntityID, "User lockEntity not sent because entity is already locked");
+			utils::invokeProtectedHandler(handler, controlledEntity.get(), entity::ControllerEntity::AemCommandStatus::Success, controlledEntity->getLockingControllerID());
 			return;
 		}
-		controlledEntity->setLockState(model::LockState::TryLock);
+
+		// Already trying to lock or unlock, notify we are busy
+		if (controlledEntity->isLockCommandInProgress())
+		{
+			LOG_CONTROLLER_TRACE(targetEntityID, "User lockEntity not sent because entity is being locked or unlocked");
+			utils::invokeProtectedHandler(handler, controlledEntity.get(), entity::ControllerEntity::AemCommandStatus::Busy, controlledEntity->getLockingControllerID());
+			return;
+		}
+
+		// Try to lock for all other cases, especially if it's locked by another controller (in case it went offline without notice)
+		controlledEntity->setLockState(model::LockState::LockInProgress);
 		controlledEntity.reset(); // We have to relinquish the ownership of the ControlledEntity before calling the controller
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->lockEntity(targetEntityID, descriptorType, descriptorIndex,
@@ -456,12 +557,23 @@ void ControllerImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockE
 	auto const descriptorType{ entity::model::DescriptorType::Entity };
 	auto const descriptorIndex{ entity::model::DescriptorIndex{ 0u } };
 
-	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
-	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID, true);
 
 	if (controlledEntity)
 	{
 		LOG_CONTROLLER_TRACE(targetEntityID, "User unlockEntity (DescriptorType={} DescriptorIndex={})", utils::to_integral(descriptorType), descriptorIndex);
+
+		// Already trying to lock or unlock, notify we are busy
+		if (controlledEntity->isLockCommandInProgress())
+		{
+			LOG_CONTROLLER_TRACE(targetEntityID, "User unlockEntity not sent because entity is being locked or unlocked");
+			utils::invokeProtectedHandler(handler, controlledEntity.get(), entity::ControllerEntity::AemCommandStatus::Busy, controlledEntity->getLockingControllerID());
+			return;
+		}
+
+		controlledEntity->setLockState(model::LockState::UnlockInProgress);
+		controlledEntity.reset(); // We have to relinquish the ownership of the ControlledEntity before calling the controller
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->unlockEntity(targetEntityID, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const lockingEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
@@ -2124,6 +2236,59 @@ ControlledEntityGuard ControllerImpl::getControlledEntityGuard(UniqueIdentifier 
 		return ControlledEntityGuard{ entity.release() };
 	}
 	return {};
+}
+
+void ControllerImpl::requestExclusiveAccess(UniqueIdentifier const entityID, ExclusiveAccessToken::AccessType const type, RequestExclusiveAccessResultHandler&& handler) const noexcept
+{
+	// Helper lambda
+	auto const onResult = [this, entityID, type, handler = std::move(handler)](ControlledEntity const* const entity, entity::ControllerEntity::AemCommandStatus const status)
+	{
+		auto token = ExclusiveAccessToken::UniquePointer{ nullptr, nullptr };
+
+		if (status == entity::ControllerEntity::AemCommandStatus::Success)
+		{
+			// Lock to protect data members
+			auto const lg = std::lock_guard{ _lock };
+
+			// Get or create tokens list for this entityID
+			auto& tokens = _exclusiveAccessTokens[entityID];
+
+			// Create a new token and store a raw pointer to it
+			token = ExclusiveAccessTokenImpl::create(this, entityID, type);
+			tokens.insert(static_cast<ExclusiveAccessTokenImpl*>(token.get()));
+		}
+
+		// Notify handler
+		la::avdecc::utils::invokeProtectedHandler(handler, entity, status, std::move(token));
+	};
+
+	// Request exclusive access based on specified type
+	switch (type)
+	{
+		case ExclusiveAccessToken::AccessType::Acquire:
+		case ExclusiveAccessToken::AccessType::PersistentAcquire:
+		{
+			acquireEntity(entityID, type == ExclusiveAccessToken::AccessType::PersistentAcquire,
+				[onResult = std::move(onResult)](auto const* const entity, auto const status, auto const /*owningEntity*/)
+				{
+					onResult(entity, status);
+				});
+			break;
+		}
+		case ExclusiveAccessToken::AccessType::Lock:
+		{
+			lockEntity(entityID,
+				[onResult = std::move(onResult)](auto const* const entity, auto const status, auto const /*lockingEntity*/)
+				{
+					onResult(entity, status);
+				});
+			break;
+		}
+		default:
+			AVDECC_ASSERT(false, "Unknown AccessType");
+			onResult(nullptr, la::avdecc::entity::ControllerEntity::AemCommandStatus::InternalError);
+			break;
+	}
 }
 
 void ControllerImpl::lock() noexcept

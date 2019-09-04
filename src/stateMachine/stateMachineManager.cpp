@@ -301,7 +301,7 @@ ProtocolInterface::Error Manager::unregisterLocalEntity(entity::LocalEntity& ent
 
 	auto removed = false;
 
-	for (auto it = std::begin(_localEntities); it != std::end(_localEntities); /* Iterate inside the loop */)
+	for (auto it = _localEntities.begin(); it != _localEntities.end(); /* Iterate inside the loop */)
 	{
 		if (&it->second == &entity)
 		{
@@ -312,7 +312,9 @@ ProtocolInterface::Error Manager::unregisterLocalEntity(entity::LocalEntity& ent
 			removed = true;
 		}
 		else
+		{
 			++it;
+		}
 	}
 
 	// Not found

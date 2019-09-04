@@ -40,6 +40,7 @@
 #include <chrono>
 #include <deque>
 #include <tuple>
+#include <set>
 
 namespace la
 {
@@ -47,12 +48,19 @@ namespace avdecc
 {
 namespace controller
 {
+class ExclusiveAccessTokenImpl;
+
+/* ************************************************************************** */
+/* ControllerImpl class definition                                            */
+/* ************************************************************************** */
 class ControllerImpl final : public Controller, private entity::controller::Delegate
 {
 public:
 	using SharedControlledEntityImpl = std::shared_ptr<ControlledEntityImpl>;
 
 	ControllerImpl(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale);
+
+	void unregisterExclusiveAccessToken(la::avdecc::UniqueIdentifier const entityID, ExclusiveAccessTokenImpl* const token) const noexcept;
 
 private:
 	virtual ~ControllerImpl() override;
@@ -120,6 +128,8 @@ private:
 	virtual void getListenerStreamState(entity::model::StreamIdentification const& listenerStream, GetListenerStreamStateHandler const& handler) const noexcept override;
 
 	virtual ControlledEntityGuard getControlledEntityGuard(UniqueIdentifier const entityID) const noexcept override;
+
+	virtual void requestExclusiveAccess(UniqueIdentifier const entityID, ExclusiveAccessToken::AccessType const type, RequestExclusiveAccessResultHandler&& handler) const noexcept override;
 
 	virtual void lock() noexcept override;
 	virtual void unlock() noexcept override;
@@ -527,6 +537,7 @@ private:
 	/* ************************************************************ */
 	/* Private methods                                              */
 	/* ************************************************************ */
+	void removeExclusiveAccessTokens(UniqueIdentifier const entityID, ExclusiveAccessToken::AccessType const type) const noexcept;
 	bool areControlledEntitiesSelfLocked() const noexcept;
 	std::tuple<model::AcquireState, UniqueIdentifier> getAcquiredInfoFromStatus(ControlledEntityImpl& entity, UniqueIdentifier const owningEntity, entity::ControllerEntity::AemCommandStatus const status, bool const releaseEntityResult) const noexcept;
 	std::tuple<model::LockState, UniqueIdentifier> getLockedInfoFromStatus(ControlledEntityImpl& entity, UniqueIdentifier const lockingEntity, entity::ControllerEntity::AemCommandStatus const status, bool const unlockEntityResult) const noexcept;
@@ -618,7 +629,7 @@ private:
 	/* ************************************************************ */
 	/* Private members                                              */
 	/* ************************************************************ */
-	mutable std::mutex _lock{}; // A mutex to protect _controlledEntities, _delayedQueries and _identifications
+	mutable std::mutex _lock{}; // A mutex to protect all sensitive data members
 	ControlledEntityImpl::LockInformation::SharedPointer _entitiesSharedLockInformation{ std::make_shared<ControlledEntityImpl::LockInformation>() }; // The SharedLockInformation to be used by all managed ControlledEntities
 	std::unordered_map<UniqueIdentifier, SharedControlledEntityImpl, UniqueIdentifier::hash> _controlledEntities;
 	EndStation::UniquePointer _endStation{ nullptr, nullptr };
@@ -627,7 +638,63 @@ private:
 	bool _shouldTerminate{ false };
 	DelayedQueries _delayedQueries{};
 	std::unordered_map<UniqueIdentifier, std::chrono::time_point<std::chrono::system_clock>, UniqueIdentifier::hash> _identifications{};
+	mutable std::unordered_map<UniqueIdentifier, std::set<ExclusiveAccessTokenImpl*>, UniqueIdentifier::hash> _exclusiveAccessTokens{};
 	std::thread _stateMachinesThread{};
+};
+
+/* ************************************************************************** */
+/* ExclusiveAccessTokenImpl class definition                                  */
+/* ************************************************************************** */
+class ExclusiveAccessTokenImpl final : public Controller::ExclusiveAccessToken
+{
+public:
+	static UniquePointer create(ControllerImpl const* const controller, la::avdecc::UniqueIdentifier const entityID, AccessType const type)
+	{
+		auto deleter = [](ExclusiveAccessToken* self)
+		{
+			static_cast<ExclusiveAccessTokenImpl*>(self)->destroy();
+		};
+		return UniquePointer(new ExclusiveAccessTokenImpl(controller, entityID, type), deleter);
+	}
+
+	AccessType getAccessType() const noexcept
+	{
+		return _type;
+	}
+
+	void invalidateToken() noexcept
+	{
+		auto const lg = std::lock_guard{ _lock };
+
+		_controller = nullptr;
+	}
+
+private:
+	ExclusiveAccessTokenImpl(ControllerImpl const* const controller, la::avdecc::UniqueIdentifier const entityID, AccessType const type) noexcept
+		: _controller(controller)
+		, _entityID(entityID)
+		, _type(type)
+	{
+	}
+	virtual ~ExclusiveAccessTokenImpl() override
+	{
+		auto const lg = std::lock_guard{ _lock };
+
+		if (_controller)
+		{
+			_controller->unregisterExclusiveAccessToken(_entityID, this);
+		}
+	}
+	void destroy() noexcept
+	{
+		delete this;
+	}
+
+	// Private members
+	std::mutex _lock{};
+	ControllerImpl const* _controller{ nullptr };
+	la::avdecc::UniqueIdentifier _entityID{ la::avdecc::UniqueIdentifier::getUninitializedUniqueIdentifier() };
+	AccessType _type{ AccessType::Acquire };
 };
 
 } // namespace controller

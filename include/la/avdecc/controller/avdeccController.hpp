@@ -280,6 +280,29 @@ public:
 		virtual void onAemAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept {}
 	};
 
+	class ExclusiveAccessToken
+	{
+	public:
+		using UniquePointer = std::unique_ptr<ExclusiveAccessToken, void (*)(ExclusiveAccessToken*)>;
+
+		enum class AccessType
+		{
+			Acquire = 0,
+			PersistentAcquire = 1,
+			Lock = 2,
+		};
+
+		// Deleted compiler auto-generated methods
+		ExclusiveAccessToken(ExclusiveAccessToken&&) = delete;
+		ExclusiveAccessToken(ExclusiveAccessToken const&) = delete;
+		ExclusiveAccessToken& operator=(ExclusiveAccessToken const&) = delete;
+		ExclusiveAccessToken& operator=(ExclusiveAccessToken&&) = delete;
+
+	protected:
+		ExclusiveAccessToken() = default;
+		virtual ~ExclusiveAccessToken() = default;
+	};
+
 	/* Enumeration and Control Protocol (AECP) AEM handlers. WARNING: The 'entity' parameter might be nullptr even if 'status' is AemCommandStatus::Success, in case the unit goes offline right after processing our command. */
 	using AcquireEntityHandler = std::function<void(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const owningEntity)>;
 	using ReleaseEntityHandler = std::function<void(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const owningEntity)>;
@@ -324,6 +347,8 @@ public:
 	using DisconnectStreamHandler = std::function<void(la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::StreamIndex const listenerStreamIndex, la::avdecc::entity::ControllerEntity::ControlStatus const status)>;
 	using DisconnectTalkerStreamHandler = std::function<void(la::avdecc::entity::ControllerEntity::ControlStatus const status)>;
 	using GetListenerStreamStateHandler = std::function<void(la::avdecc::controller::ControlledEntity const* const talkerEntity, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::StreamIndex const talkerStreamIndex, la::avdecc::entity::model::StreamIndex const listenerStreamIndex, std::uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::ControllerEntity::ControlStatus const status)>;
+	/* Other handlers */
+	using RequestExclusiveAccessResultHandler = std::function<void(la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::controller::Controller::ExclusiveAccessToken::UniquePointer&& token)>;
 
 	/**
 	* @brief Factory method to create a new Controller.
@@ -414,6 +439,9 @@ public:
 
 	/** Gets a lock guarded ControlledEntity. While the returned object is in the scope, you are guaranteed to have exclusive access on the ControlledEntity. The returned guard should not be kept or held for more than a few milliseconds. */
 	virtual ControlledEntityGuard getControlledEntityGuard(UniqueIdentifier const entityID) const noexcept = 0;
+
+	/** Requests an ExclusiveAccessToken for the specified entityID. If the call succeeded (AemCommandStatus::Success), a valid token will be returned. The handler will always be called, either before the call returns or asynchronously. */
+	virtual void requestExclusiveAccess(UniqueIdentifier const entityID, ExclusiveAccessToken::AccessType const type, RequestExclusiveAccessResultHandler&& handler) const noexcept = 0;
 
 	/** BasicLockable concept 'lock' method for the whole Controller */
 	virtual void lock() noexcept = 0;

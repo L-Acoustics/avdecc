@@ -55,22 +55,24 @@ using VirtualIndex = std::uint32_t; // We don't use the same type than Descripto
 
 enum class AcquireState
 {
-	Undefined,
-	NotSupported,
-	NotAcquired,
-	TryAcquire,
-	Acquired,
-	AcquiredByOther,
+	Undefined, /**< State undefined */
+	NotSupported, /**< Acquire is not supported by this Entity */
+	NotAcquired, /**< Entity is not acquired (at all) */
+	AcquireInProgress, /**< Currently trying to acquire the Entity (not acquired by us, but *possibly* by another controller) */
+	Acquired, /**< Entity is acquired by us */
+	AcquiredByOther, /**< Entity is acquired by another controller */
+	ReleaseInProgress, /**< Currently trying to release the entity (still *possibly* acquired by us) */
 };
 
 enum class LockState
 {
-	Undefined,
-	NotSupported,
-	NotLocked,
-	TryLock,
-	Locked,
-	LockedByOther,
+	Undefined, /**< State undefined */
+	NotSupported, /**< Lock is not supported by this Entity */
+	NotLocked, /**< Entity is not locked (at all) */
+	LockInProgress, /**< Currently trying to lock the Entity (not locked by us, but *possibly* by another controller) */
+	Locked, /**< Entity is locked by us */
+	LockedByOther, /**< Entity is locked by another controller */
+	UnlockInProgress, /**< Currently trying to unlock the entity (still *possibly locked by us) */
 };
 
 struct Node

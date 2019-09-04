@@ -174,9 +174,10 @@ NLOHMANN_JSON_SERIALIZE_ENUM(AcquireState, {
 																						 { AcquireState::Undefined, "UNKNOWN" },
 																						 { AcquireState::NotSupported, "NOT_SUPPORTED" },
 																						 { AcquireState::NotAcquired, "NOT_ACQUIRED" },
-																						 { AcquireState::TryAcquire, "TRY_ACQUIRE" },
+																						 { AcquireState::AcquireInProgress, "ACQUIRE_IN_PROGRESS" },
 																						 { AcquireState::Acquired, "ACQUIRED" },
 																						 { AcquireState::AcquiredByOther, "ACQUIRED_BY_OTHER" },
+																						 { AcquireState::ReleaseInProgress, "RELEASE_IN_PROGRESS" },
 																					 });
 
 /* LockState conversion */
@@ -184,9 +185,10 @@ NLOHMANN_JSON_SERIALIZE_ENUM(LockState, {
 																					{ LockState::Undefined, "UNKNOWN" },
 																					{ LockState::NotSupported, "NOT_SUPPORTED" },
 																					{ LockState::NotLocked, "NOT_LOCKED" },
-																					{ LockState::TryLock, "TRY_LOCK" },
+																					{ LockState::LockInProgress, "LOCK_IN_PROGRESS" },
 																					{ LockState::Locked, "LOCKED" },
 																					{ LockState::LockedByOther, "LOCKED_BY_OTHER" },
+																					{ LockState::UnlockInProgress, "UNLOCK_IN_PROGRESS" },
 																				});
 
 } // namespace model

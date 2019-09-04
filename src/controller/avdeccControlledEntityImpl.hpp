@@ -185,10 +185,10 @@ public:
 	virtual bool gotFatalEnumerationError() const noexcept override;
 	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept override;
 	virtual bool isAcquired() const noexcept override;
-	virtual bool isAcquiring() const noexcept override;
+	virtual bool isAcquireCommandInProgress() const noexcept override;
 	virtual bool isAcquiredByOther() const noexcept override;
 	virtual bool isLocked() const noexcept override;
-	virtual bool isLocking() const noexcept override;
+	virtual bool isLockCommandInProgress() const noexcept override;
 	virtual bool isLockedByOther() const noexcept override;
 	virtual bool isStreamInputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const override;
 	virtual bool isStreamOutputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const override;
