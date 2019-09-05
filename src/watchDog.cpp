@@ -129,7 +129,7 @@ private:
 	virtual void unregisterWatch(std::string const& name) noexcept override
 	{
 		auto const lg = std::lock_guard{ _lock };
-		AVDECC_ASSERT(_watched.erase(name) == 1, "Cannot unregisterWatch, 'name' not found");
+		AVDECC_ASSERT_WITH_RET(_watched.erase(name) == 1, "Cannot unregisterWatch, 'name' not found");
 	}
 
 	virtual void alive(std::string const& name) noexcept override
