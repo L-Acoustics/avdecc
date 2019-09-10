@@ -32,6 +32,10 @@
 #endif // ENABLE_AVDECC_FEATURE_JSON
 #include <la/avdecc/internals/streamFormatInfo.hpp>
 
+// According to clarification (from IEEE1722.1 call) a device should always send the complete, up-to-date, status in a GET/SET_STREAM_INFO response (either unsolicited or not)
+// This means that we should always replace the previously stored StreamInfo data with the last one received
+#define REPLACE_STREAM_INFO
+
 namespace la
 {
 namespace avdecc
@@ -330,6 +334,54 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 	}
 	updateStreamInputRunningStatus(controlledEntity, streamIndex, !info.streamInfoFlags.test(entity::StreamInfoFlag::StreamingWait));
 
+#ifdef REPLACE_STREAM_INFO
+	// Create a new StreamDynamicInfo
+	auto dynamicInfo = entity::model::StreamDynamicInfo{};
+
+	// Update each field
+	dynamicInfo.isClassB = info.streamInfoFlags.test(entity::StreamInfoFlag::ClassB);
+	dynamicInfo.hasSavedState = info.streamInfoFlags.test(entity::StreamInfoFlag::SavedState);
+	dynamicInfo.doesSupportEncrypted = info.streamInfoFlags.test(entity::StreamInfoFlag::SupportsEncrypted);
+	dynamicInfo.arePdusEncrypted = info.streamInfoFlags.test(entity::StreamInfoFlag::EncryptedPdu);
+	dynamicInfo.hasTalkerFailed = info.streamInfoFlags.test(entity::StreamInfoFlag::TalkerFailed);
+	dynamicInfo._streamInfoFlags = info.streamInfoFlags;
+
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamIDValid))
+	{
+		dynamicInfo.streamID = info.streamID;
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpAccLatValid))
+	{
+		dynamicInfo.msrpAccumulatedLatency = info.msrpAccumulatedLatency;
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamDestMacValid))
+	{
+		dynamicInfo.streamDestMac = info.streamDestMac;
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpFailureValid))
+	{
+		dynamicInfo.msrpFailureCode = info.msrpFailureCode;
+		dynamicInfo.msrpFailureBridgeID = info.msrpFailureBridgeID;
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamVlanIDValid))
+	{
+		dynamicInfo.streamVlanID = info.streamVlanID;
+	}
+	// Milan additions
+	dynamicInfo.streamInfoFlagsEx = info.streamInfoFlagsEx;
+	dynamicInfo.probingStatus = info.probingStatus;
+	dynamicInfo.acmpStatus = info.acmpStatus;
+
+	// Update StreamDynamicInfo
+	auto& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels);
+	streamDynamicModel.streamDynamicInfo = std::move(dynamicInfo);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputDynamicInfoChanged, this, &controlledEntity, streamIndex, *streamDynamicModel.streamDynamicInfo);
+	}
+#else
 	// Get a copy of previous StreamDynamicInfo
 	auto& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels);
 	auto dynamicInfo = streamDynamicModel.streamDynamicInfo ? *streamDynamicModel.streamDynamicInfo : entity::model::StreamDynamicInfo{};
@@ -413,6 +465,7 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputDynamicInfoChanged, this, &controlledEntity, streamIndex, *streamDynamicModel.streamDynamicInfo);
 		}
 	}
+#endif
 }
 
 void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, bool const streamFormatRequired, bool const milanExtendedRequired) const noexcept
@@ -461,6 +514,54 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 	}
 	updateStreamOutputRunningStatus(controlledEntity, streamIndex, !info.streamInfoFlags.test(entity::StreamInfoFlag::StreamingWait));
 
+#ifdef REPLACE_STREAM_INFO
+	// Create a new StreamDynamicInfo
+	auto dynamicInfo = entity::model::StreamDynamicInfo{};
+
+	// Update each field
+	dynamicInfo.isClassB = info.streamInfoFlags.test(entity::StreamInfoFlag::ClassB);
+	dynamicInfo.hasSavedState = info.streamInfoFlags.test(entity::StreamInfoFlag::SavedState);
+	dynamicInfo.doesSupportEncrypted = info.streamInfoFlags.test(entity::StreamInfoFlag::SupportsEncrypted);
+	dynamicInfo.arePdusEncrypted = info.streamInfoFlags.test(entity::StreamInfoFlag::EncryptedPdu);
+	dynamicInfo.hasTalkerFailed = info.streamInfoFlags.test(entity::StreamInfoFlag::TalkerFailed);
+	dynamicInfo._streamInfoFlags = info.streamInfoFlags;
+
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamIDValid))
+	{
+		dynamicInfo.streamID = info.streamID;
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpAccLatValid))
+	{
+		dynamicInfo.msrpAccumulatedLatency = info.msrpAccumulatedLatency;
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamDestMacValid))
+	{
+		dynamicInfo.streamDestMac = info.streamDestMac;
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::MsrpFailureValid))
+	{
+		dynamicInfo.msrpFailureCode = info.msrpFailureCode;
+		dynamicInfo.msrpFailureBridgeID = info.msrpFailureBridgeID;
+	}
+	if (info.streamInfoFlags.test(entity::StreamInfoFlag::StreamVlanIDValid))
+	{
+		dynamicInfo.streamVlanID = info.streamVlanID;
+	}
+	// Milan additions
+	dynamicInfo.streamInfoFlagsEx = info.streamInfoFlagsEx;
+	dynamicInfo.probingStatus = info.probingStatus;
+	dynamicInfo.acmpStatus = info.acmpStatus;
+
+	// Update StreamDynamicInfo
+	auto& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
+	streamDynamicModel.streamDynamicInfo = std::move(dynamicInfo);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputDynamicInfoChanged, this, &controlledEntity, streamIndex, *streamDynamicModel.streamDynamicInfo);
+	}
+#else
 	// Get a copy of previous StreamDynamicInfo
 	auto& streamDynamicModel = controlledEntity.getNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
 	auto dynamicInfo = streamDynamicModel.streamDynamicInfo ? *streamDynamicModel.streamDynamicInfo : entity::model::StreamDynamicInfo{};
@@ -544,6 +645,7 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputDynamicInfoChanged, this, &controlledEntity, streamIndex, *streamDynamicModel.streamDynamicInfo);
 		}
 	}
+#endif
 }
 
 void ControllerImpl::updateEntityName(ControlledEntityImpl& controlledEntity, entity::model::AvdeccFixedString const& entityName) const noexcept
