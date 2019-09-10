@@ -69,7 +69,7 @@ namespace avdecc
 * (either added, removed or signature modification).
 * Any other change (including templates, inline methods, defines, typedefs, ...) are considered a modification of the interface.
 */
-constexpr std::uint32_t InterfaceVersion = 210;
+constexpr std::uint32_t InterfaceVersion = 211;
 
 /**
 * @brief Checks if the library is compatible with specified interface version.
@@ -99,8 +99,9 @@ enum class CompileOption : std::uint32_t
 	None = 0,
 	IgnoreInvalidControlDataLength = 1u << 0,
 	IgnoreInvalidNonSuccessAemResponses = 1u << 1,
-	AllowSendBigAecpPayloads = 1u << 2,
-	AllowRecvBigAecpPayloads = 1u << 3,
+	AllowGetAudioMapUnsol = 1u << 2,
+	AllowSendBigAecpPayloads = 1u << 3,
+	AllowRecvBigAecpPayloads = 1u << 4,
 	EnableRedundancy = 1u << 15,
 	EnableJsonSupport = 1u << 16,
 };

@@ -109,10 +109,10 @@ public:
 	virtual bool gotFatalEnumerationError() const noexcept = 0; // True if the controller had a fatal error during entity information retrieval (leading to Exception::Type::EnumerationError if any throwing method is called).
 	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept = 0;
 	virtual bool isAcquired() const noexcept = 0; // Is entity acquired by the controller it's attached to
-	virtual bool isAcquiring() const noexcept = 0; // Is the attached controller trying to acquire the entity
+	virtual bool isAcquireCommandInProgress() const noexcept = 0; // Is the attached controller trying to acquire or release the entity
 	virtual bool isAcquiredByOther() const noexcept = 0; // Is entity acquired by another controller
 	virtual bool isLocked() const noexcept = 0; // Is entity locked by the controller it's attached to
-	virtual bool isLocking() const noexcept = 0; // Is the attached controller trying to lock the entity
+	virtual bool isLockCommandInProgress() const noexcept = 0; // Is the attached controller trying to lock or unlock the entity
 	virtual bool isLockedByOther() const noexcept = 0; // Is entity locked by another controller
 	virtual bool isStreamInputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 	virtual bool isStreamOutputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
@@ -148,8 +148,14 @@ public:
 
 	/** Get connected information about a listener's stream (TalkerID and StreamIndex might be filled even if isConnected is not true, in case of FastConnect) */
 	virtual entity::model::StreamConnectionState const& getConnectedSinkState(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
+	/** Get the current AudioMappings for the specified Input StreamPortIndex. Might return redundant mappings as well as primary ones. If you want the non-redundant mappings only, you should use getStreamPortInputNonRedundantAudioMappings instead. */
 	virtual entity::model::AudioMappings const& getStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
+	/** Get the current AudioMappings for the specified Input StreamPortIndex. Only return the primary mappings, not the redundant ones. */
+	virtual entity::model::AudioMappings getStreamPortInputNonRedundantAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
+	/** Get the current AudioMappings for the specified Output StreamPortIndex. Might return redundant mappings as well as primary ones. If you want the non-redundant mappings only, you should use getStreamPortOutputNonRedundantAudioMappings instead. */
 	virtual entity::model::AudioMappings const& getStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
+	/** Get the current AudioMappings for the specified Output StreamPortIndex. Only return the primary mappings, not the redundant ones. */
+	virtual entity::model::AudioMappings getStreamPortOutputNonRedundantAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
 
 	/** Get connections information about a talker's stream */
 	virtual entity::model::StreamConnections const& getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
@@ -227,6 +233,7 @@ public:
 	/** Releases the Guarded ControlledEntity (and the exclusive access to it). */
 	void reset() noexcept
 	{
+		unregisterWatchdog();
 		unlock();
 		_controlledEntity = nullptr;
 	}
@@ -237,12 +244,55 @@ public:
 	// Destructor visibility required
 	~ControlledEntityGuard()
 	{
+		unregisterWatchdog();
 		unlock();
 	}
 
+	// Swap method
+	friend void swap(ControlledEntityGuard& lhs, ControlledEntityGuard& rhs)
+	{
+		using std::swap;
+
+		// Watchdog 'key' is based on 'this', so when swapping we have to unregister then re-register so the key is changed
+		auto const leftHasEntity = !!lhs._controlledEntity;
+		auto const rightHasEntity = !!rhs._controlledEntity;
+		if (leftHasEntity)
+		{
+			lhs.unregisterWatchdog();
+		}
+		if (rightHasEntity)
+		{
+			rhs.unregisterWatchdog();
+		}
+
+		// Swap everything
+		swap(lhs._controlledEntity, rhs._controlledEntity);
+		swap(lhs._watchDogSharedPointer, rhs._watchDogSharedPointer);
+		swap(lhs._watchDog, rhs._watchDog);
+
+		// Re-register
+		if (leftHasEntity)
+		{
+			// But using the new location (lhs swapped with rhs)
+			rhs.registerWatchdog();
+		}
+		if (rightHasEntity)
+		{
+			// But using the new location (rhs swapped with lhs)
+			lhs.registerWatchdog();
+		}
+	}
+
 	// Allow move semantics
-	ControlledEntityGuard(ControlledEntityGuard&&) = default;
-	ControlledEntityGuard& operator=(ControlledEntityGuard&&) = default;
+	ControlledEntityGuard(ControlledEntityGuard&& other)
+	{
+		swap(*this, other);
+	}
+
+	ControlledEntityGuard& operator=(ControlledEntityGuard&& other)
+	{
+		swap(*this, other);
+	}
 
 	// Disallow copy
 	ControlledEntityGuard(ControlledEntityGuard const&) = delete;
@@ -255,9 +305,22 @@ private:
 	ControlledEntityGuard(SharedControlledEntity&& entity)
 		: _controlledEntity(std::move(entity))
 	{
+		registerWatchdog();
+	}
+
+	void registerWatchdog() noexcept
+	{
 		if (_controlledEntity)
 		{
-			_watchDog.registerWatch("avdecc::controller::ControlledEntityGuard::" + utils::toHexString(reinterpret_cast<size_t>(this)), std::chrono::milliseconds{ 500u });
+			_watchDog.get().registerWatch("avdecc::controller::ControlledEntityGuard::" + utils::toHexString(reinterpret_cast<size_t>(this)), std::chrono::milliseconds{ 500u });
+		}
+	}
+
+	void unregisterWatchdog() noexcept
+	{
+		if (_controlledEntity)
+		{
+			_watchDog.get().unregisterWatch("avdecc::controller::ControlledEntityGuard::" + utils::toHexString(reinterpret_cast<size_t>(this)));
 		}
 	}
 
@@ -265,7 +328,6 @@ private:
 	{
 		if (_controlledEntity)
 		{
-			_watchDog.unregisterWatch("avdecc::controller::ControlledEntityGuard::" + utils::toHexString(reinterpret_cast<size_t>(this)));
 			// We can unlock, we got ownership (and locked state) during construction
 			_controlledEntity->unlock();
 		}
@@ -273,7 +335,7 @@ private:
 
 	SharedControlledEntity _controlledEntity{ nullptr };
 	watchDog::WatchDog::SharedPointer _watchDogSharedPointer{ watchDog::WatchDog::getInstance() };
-	watchDog::WatchDog& _watchDog{ *_watchDogSharedPointer };
+	std::reference_wrapper<watchDog::WatchDog> _watchDog{ *_watchDogSharedPointer };
 };
 
 } // namespace controller

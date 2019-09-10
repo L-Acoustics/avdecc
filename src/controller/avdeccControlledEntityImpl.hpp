@@ -185,10 +185,10 @@ public:
 	virtual bool gotFatalEnumerationError() const noexcept override;
 	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept override;
 	virtual bool isAcquired() const noexcept override;
-	virtual bool isAcquiring() const noexcept override;
+	virtual bool isAcquireCommandInProgress() const noexcept override;
 	virtual bool isAcquiredByOther() const noexcept override;
 	virtual bool isLocked() const noexcept override;
-	virtual bool isLocking() const noexcept override;
+	virtual bool isLockCommandInProgress() const noexcept override;
 	virtual bool isLockedByOther() const noexcept override;
 	virtual bool isStreamInputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const override;
 	virtual bool isStreamOutputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const override;
@@ -231,7 +231,9 @@ public:
 	/** Get connected information about a listener's stream (TalkerID and StreamIndex might be filled even if isConnected is not true, in case of FastConnect) */
 	virtual entity::model::StreamConnectionState const& getConnectedSinkState(entity::model::StreamIndex const streamIndex) const override; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 	virtual entity::model::AudioMappings const& getStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const override; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
+	virtual entity::model::AudioMappings getStreamPortInputNonRedundantAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const override; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
 	virtual entity::model::AudioMappings const& getStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const override; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
+	virtual entity::model::AudioMappings getStreamPortOutputNonRedundantAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const override; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
 
 	/** Get connections information about a talker's stream */
 	virtual entity::model::StreamConnections const& getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const override; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
@@ -302,6 +304,23 @@ public:
 		auto& configTree = getConfigurationTree(configurationIndex);
 		return (configTree.*Field)[index].dynamicModel;
 	}
+	template<typename FieldPointer>
+	auto& getModels(entity::model::ConfigurationIndex const configurationIndex, FieldPointer entity::model::ConfigurationTree::*Field) noexcept
+	{
+		AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
+
+		auto& entityTree = getEntityTree();
+		auto configIt = entityTree.configurationTrees.find(configurationIndex);
+		if (configIt != entityTree.configurationTrees.end())
+		{
+			auto& configTree = configIt->second;
+			return configTree.*Field;
+		}
+
+		// We return a reference, so we have to create a static empty model in case we don't have one so we can return a reference to it
+		static auto s_Empty = FieldPointer{};
+		return s_Empty;
+	}
 	entity::model::EntityCounters& getEntityCounters() noexcept;
 	entity::model::AvbInterfaceCounters& getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept;
 	entity::model::ClockDomainCounters& getClockDomainCounters(entity::model::ClockDomainIndex const clockDomainIndex) noexcept;
@@ -321,12 +340,10 @@ public:
 	}
 	void setSamplingRate(entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate) noexcept;
 	entity::model::StreamConnectionState setStreamInputConnectionState(entity::model::StreamIndex const streamIndex, entity::model::StreamConnectionState const& state) noexcept;
-	std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> setStreamInputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept; // Returns previous StreamInfo and the new one
 	void clearStreamOutputConnections(entity::model::StreamIndex const streamIndex) noexcept;
 	bool addStreamOutputConnection(entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream) noexcept; // Returns true if effectively added
 	bool delStreamOutputConnection(entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream) noexcept; // Returns true if effectively removed
-	std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> setStreamOutputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept; // Returns previous StreamInfo and the new one
-	entity::model::AvbInfo setAvbInfo(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) noexcept; // Returns previous AvbInfo
+	entity::model::AvbInterfaceInfo setAvbInterfaceInfo(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInterfaceInfo const& info) noexcept; // Returns previous AvbInterfaceInfo
 	entity::model::AsPath setAsPath(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath) noexcept; // Returns previous AsPath
 	void setSelectedLocaleStringsIndexesRange(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const baseIndex, entity::model::StringsIndex const countIndexes) noexcept;
 	void clearStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) noexcept;
@@ -428,30 +445,17 @@ public:
 	void setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept;
 	bool wasAdvertised() const noexcept;
 	void setAdvertised(bool const wasAdvertised) noexcept;
+	bool isRedundantPrimaryStreamInput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Primary Stream (false for Secondary and non-redundant streams)
+	bool isRedundantPrimaryStreamOutput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Primary Stream (false for Secondary and non-redundant streams)
+	bool isRedundantSecondaryStreamInput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
+	bool isRedundantSecondaryStreamOutput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
 
 	// Static methods
 	static std::string dynamicInfoTypeToString(DynamicInfoType const dynamicInfoType) noexcept;
 	static std::string descriptorDynamicInfoTypeToString(DescriptorDynamicInfoType const descriptorDynamicInfoType) noexcept;
 
-	// Other usefull manipulation methods
-	static inline bool isStreamRunningFlag(entity::StreamInfoFlags const flags) noexcept
-	{
-		return !flags.test(entity::StreamInfoFlag::StreamingWait);
-	}
-	static inline void setStreamRunningFlag(entity::StreamInfoFlags& flags, bool const isRunning) noexcept
-	{
-		if (isRunning)
-		{
-			flags.reset(entity::StreamInfoFlag::StreamingWait);
-		}
-		else
-		{
-			flags.set(entity::StreamInfoFlag::StreamingWait);
-		}
-	}
-
 	// Other Controller restricted methods
-	void buildEntityModelGraph() const noexcept;
+	void buildEntityModelGraph() noexcept;
 
 	// Compiler auto-generated methods
 	ControlledEntityImpl(ControlledEntityImpl&&) = default;
@@ -460,6 +464,8 @@ public:
 	ControlledEntityImpl& operator=(ControlledEntityImpl&&) = delete;
 
 protected:
+	using RedundantStreamCategory = std::unordered_set<entity::model::StreamIndex>;
+
 	template<class NodeType, typename = std::enable_if_t<std::is_base_of<model::Node, NodeType>::value>>
 	static constexpr size_t getHashCode(NodeType const* const node) noexcept
 	{
@@ -493,7 +499,7 @@ protected:
 
 private:
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-	void buildRedundancyNodes(model::ConfigurationNode& configNode) const noexcept;
+	void buildRedundancyNodes(model::ConfigurationNode& configNode) noexcept;
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 	// Private variables
@@ -525,8 +531,13 @@ private:
 	// Entity variables
 	entity::Entity _entity; // No NSMI, Entity has no default constructor but it has to be passed to the only constructor of this class anyway
 	// Entity Model
-	mutable entity::model::EntityTree _entityTree{}; // Tree of the model as represented by the AVDECC protocol
-	mutable model::EntityNode _entityNode{}; // Model as represented by the ControlledEntity (tree of references to the model::EntityStaticTree and model::EntityDynamicTree)
+	entity::model::EntityTree _entityTree{}; // Tree of the model as represented by the AVDECC protocol
+	model::EntityNode _entityNode{}; // Model as represented by the ControlledEntity (tree of references to the model::EntityStaticTree and model::EntityDynamicTree)
+	// Cached Information
+	RedundantStreamCategory _redundantPrimaryStreamInputs{}; // Cached indexes of all Redundant Primary Streams (a non-redundant stream won't be listed here)
+	RedundantStreamCategory _redundantPrimaryStreamOutputs{}; // Cached indexes of all Redundant Primary Streams (a non-redundant stream won't be listed here)
+	RedundantStreamCategory _redundantSecondaryStreamInputs{}; // Cached indexes of all Redundant Secondary Streams
+	RedundantStreamCategory _redundantSecondaryStreamOutputs{}; // Cached indexes of all Redundant Secondary Streams
 	// Statistics
 	std::uint64_t _aecpRetryCounter{ 0ull };
 	std::uint64_t _aecpTimeoutCounter{ 0ull };

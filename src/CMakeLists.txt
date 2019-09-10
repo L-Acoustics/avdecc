@@ -18,6 +18,18 @@ endif()
 set(ADD_LINK_LIBS "")
 set(ADD_PRIVATE_COMPILE_OPTIONS "")
 set(ADD_PUBLIC_COMPILE_OPTIONS "")
+set(PCH_HEADER_NAME "pch.hpp")
+set(PCH_SOURCE_NAME "pch.cpp")
+
+# Disable windows MINMAX
+if(WIN32)
+	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DNOMINMAX")
+endif()
+
+# Define PCH files for windows
+if(WIN32)
+	set(PCH_FILES ${PCH_HEADER_NAME} ${PCH_SOURCE_NAME})
+endif()
 
 # Network interface helper
 if(WIN32)
@@ -248,6 +260,9 @@ endif()
 if(IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES)
 	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DIGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES")
 endif()
+if(ALLOW_GET_AUDIO_MAP_UNSOL)
+	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DALLOW_GET_AUDIO_MAP_UNSOL")
+endif()
 if(ALLOW_SEND_BIG_AECP_PAYLOADS)
 	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DALLOW_SEND_BIG_AECP_PAYLOADS")
 endif()
@@ -274,7 +289,7 @@ set (LIB_SOURCE_FILES ${SOURCE_FILES_COMMON} ${SOURCE_FILES_PROTOCOL} ${SOURCE_F
 # C++ dynamic library
 if(BUILD_AVDECC_LIB_SHARED_CXX)
 	set (LIB_SHARED_CXX_SOURCE_FILES ${LIB_SOURCE_FILES})
-	add_library(la_avdecc_cxx SHARED ${LIB_HEADER_FILES} ${LIB_SHARED_CXX_SOURCE_FILES} ${SHARED_LIBRARY_FILES})
+	add_library(la_avdecc_cxx SHARED ${LIB_HEADER_FILES} ${LIB_SHARED_CXX_SOURCE_FILES} ${SHARED_LIBRARY_FILES} ${PCH_FILES})
 	if(ADD_PRIVATE_COMPILE_OPTIONS)
 		target_compile_options(la_avdecc_cxx PRIVATE ${ADD_PRIVATE_COMPILE_OPTIONS})
 	endif()
@@ -284,6 +299,9 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 	if(ADD_LINK_LIBS)
 		target_link_libraries(la_avdecc_cxx PRIVATE ${ADD_LINK_LIBS})
 	endif()
+
+	# Enable precompiled headers
+	set_precompiled_headers(la_avdecc_cxx ${PCH_HEADER_NAME} ${PCH_SOURCE_NAME})
 
 	# Setup common options
 	setup_library_options(la_avdecc_cxx "la_avdecc")
@@ -315,7 +333,7 @@ endif()
 
 # Runtime-shared static library
 if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
-	add_library(la_avdecc_static STATIC ${LIB_HEADER_FILES} ${LIB_SOURCE_FILES})
+	add_library(la_avdecc_static STATIC ${LIB_HEADER_FILES} ${LIB_SOURCE_FILES} ${PCH_FILES})
 	if(ADD_PRIVATE_COMPILE_OPTIONS)
 		target_compile_options(la_avdecc_static PUBLIC ${ADD_PRIVATE_COMPILE_OPTIONS}) # For a static library, no compile option is really private (using private APIs is possible, thus we need to know the options)
 	endif()
@@ -325,6 +343,9 @@ if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 	if(ADD_LINK_LIBS)
 		target_link_libraries(la_avdecc_static PUBLIC ${ADD_LINK_LIBS})
 	endif()
+
+	# Enable precompiled headers
+	set_precompiled_headers(la_avdecc_static ${PCH_HEADER_NAME} ${PCH_SOURCE_NAME})
 
 	# Setup common library options
 	setup_library_options(la_avdecc_static "la_avdecc")

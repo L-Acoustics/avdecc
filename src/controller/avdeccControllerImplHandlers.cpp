@@ -139,7 +139,7 @@ void ControllerImpl::onEntityDescriptorResult(entity::controller::Interface cons
 			if (!!status)
 			{
 				// Search in the AEM cache for the AEM of the active configuration (if not ignored)
-				auto const* const cachedTree = controlledEntity->shouldIgnoreCachedEntityModel() ? nullptr : EntityModelCache::getInstance().getCachedEntityTree(entityID, descriptor.currentConfiguration);
+				auto const* const cachedTree = controlledEntity->shouldIgnoreCachedEntityModel() ? nullptr : EntityModelCache::getInstance().getCachedEntityTree(descriptor.entityModelID, descriptor.currentConfiguration);
 
 				// Already cached, no need to get the remaining of EnumerationSteps::GetStaticModel, proceed with EnumerationSteps::GetDescriptorDynamicInfo
 				if (cachedTree && controlledEntity->setCachedEntityTree(*cachedTree, descriptor))
@@ -1162,9 +1162,11 @@ void ControllerImpl::onGetAvbInfoResult(entity::controller::Interface const* con
 	{
 		if (controlledEntity->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInfo, avbInterfaceIndex))
 		{
+			auto& entity = *controlledEntity;
 			if (!!status)
 			{
-				controlledEntity->setAvbInfo(avbInterfaceIndex, info);
+				// Use the "update**" method, there are many things to do
+				updateAvbInfo(entity, avbInterfaceIndex, info);
 			}
 			else
 			{
@@ -1173,6 +1175,29 @@ void ControllerImpl::onGetAvbInfoResult(entity::controller::Interface const* con
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AvbInfo);
 					return;
+				}
+
+				// Special case for gPTP info, we always want to have valid gPTP information in the AvbInterfaceDescriptor model (updated when an ADP is received, or GET_AVB_INFO unsolicited)
+				// So we have to retrieve the matching ADP information to force an update of the cached model
+				auto const& macAddress = entity.getNodeStaticModel(configurationIndex, avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels).macAddress;
+				auto& e = controlledEntity->getEntity();
+				auto const caps = e.getEntityCapabilities();
+				if (caps.test(entity::EntityCapability::GptpSupported))
+				{
+					// Search which InterfaceInformation matches this AvbInterfaceIndex (searching by Index, or by MacAddress in case the Index was not specified in ADP)
+					for (auto& [interfaceIndex, interfaceInfo] : e.getInterfacesInformation())
+					{
+						// Do we even have gPTP info on this InterfaceInfo
+						if (interfaceInfo.gptpGrandmasterID)
+						{
+							// Match with the passed AvbInterfaceIndex, or with macAddress if this ADP is the GlobalAvbInterfaceIndex
+							if (interfaceIndex == avbInterfaceIndex || (interfaceIndex == entity::Entity::GlobalAvbInterfaceIndex && macAddress == interfaceInfo.macAddress))
+							{
+								// Force InterfaceInfo with these gPTP info
+								updateGptpInformation(entity, avbInterfaceIndex, macAddress, *interfaceInfo.gptpGrandmasterID, *interfaceInfo.gptpDomainNumber);
+							}
+						}
+					}
 				}
 			}
 		}

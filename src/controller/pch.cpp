@@ -18,11 +18,8 @@
 */
 
 /**
-* @file commandStateMachine_tests.cpp
+* @file pch.cpp
 * @author Christophe Calmejane
 */
 
-// Internal API
-#include "stateMachine/commandStateMachine.hpp"
-
-#include <gtest/gtest.h>
+#include "pch.hpp"

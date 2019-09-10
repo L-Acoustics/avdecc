@@ -56,11 +56,11 @@ public:
 	// TODO: If we want to add a clearCache method, we'll have to add locking to this class
 	// because clearCache would probably not be called from the same thread than getCachedEntityTree and cacheEntityTree.
 	// Also we should return a copy of the data (pair<bool, Tree> or std::optional) so the lock is release with valid data
-	entity::model::EntityTree const* getCachedEntityTree(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex) const noexcept
+	entity::model::EntityTree const* getCachedEntityTree(UniqueIdentifier const entityModelID, entity::model::ConfigurationIndex const configurationIndex) const noexcept
 	{
-		if (_isEnabled)
+		if (_isEnabled && entityModelID)
 		{
-			auto const entityModelIt = _modelCache.find(entityID);
+			auto const entityModelIt = _modelCache.find(entityModelID);
 			if (entityModelIt != _modelCache.end())
 			{
 				auto const& entityModel = entityModelIt->second;
@@ -75,11 +75,11 @@ public:
 		return nullptr;
 	}
 
-	void cacheEntityTree(UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::EntityTree const& tree) noexcept
+	void cacheEntityTree(UniqueIdentifier const entityModelID, entity::model::ConfigurationIndex const configurationIndex, entity::model::EntityTree const& tree) noexcept
 	{
-		if (_isEnabled)
+		if (_isEnabled && entityModelID)
 		{
-			auto& entityModel = _modelCache[entityID];
+			auto& entityModel = _modelCache[entityModelID];
 
 			// Cache the EntityModel but only if not already in cache
 			auto modelIt = entityModel.find(configurationIndex);

@@ -333,11 +333,11 @@ struct StreamInfo
 {
 	StreamInfoFlags streamInfoFlags{};
 	StreamFormat streamFormat{};
-	std::uint64_t streamID{ 0u };
+	UniqueIdentifier streamID{ 0u };
 	std::uint32_t msrpAccumulatedLatency{ 0u };
 	la::avdecc::networkInterface::MacAddress streamDestMac{};
 	std::uint8_t msrpFailureCode{ 0u };
-	std::uint64_t msrpFailureBridgeID{ 0u };
+	BridgeIdentifier msrpFailureBridgeID{ 0u };
 	std::uint16_t streamVlanID{ 0u };
 	// Milan additions
 	std::optional<StreamInfoFlagsEx> streamInfoFlagsEx{ std::nullopt };

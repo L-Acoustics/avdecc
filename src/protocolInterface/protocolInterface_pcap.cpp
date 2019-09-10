@@ -72,8 +72,11 @@ public:
 		auto const pcapInterfaceName = networkInterfaceName;
 #endif // _WIN32
 		auto pcap = _pcapLibrary.open_live((pcapInterfaceName).c_str(), 65536, 1, 5, errbuf.data());
+		// Failed to open interface (might be disabled)
 		if (pcap == nullptr)
+		{
 			throw Exception(Error::TransportError, errbuf.data());
+		}
 
 		// Configure pcap filtering to ignore packets of other protocols
 		struct bpf_program fcode;

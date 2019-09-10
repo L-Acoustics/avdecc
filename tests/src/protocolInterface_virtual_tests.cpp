@@ -111,90 +111,90 @@ TEST(ProtocolInterfaceVirtual, SendMessage)
 	ASSERT_NE(std::future_status::timeout, status);
 }
 
-TEST(ProtocolInterfaceVirtual, TransportError)
-{
-	static std::promise<void> entityOnlinePromise;
-	static std::promise<void> transportErrorPromise;
-	static std::promise<void> entityOfflinePromise;
-	static std::promise<void> completedPromise;
-
-	class Observer : public la::avdecc::protocol::ProtocolInterface::Observer, public la::avdecc::InstrumentationNotifier::Observer
-	{
-	private:
-		// la::avdecc::protocol::ProtocolInterface::Observer overrides
-		virtual void onTransportError(la::avdecc::protocol::ProtocolInterface* const pi) noexcept override
-		{
-			// This is the ProtocolInterface Capture thread
-			transportErrorPromise.set_value();
-			// Wait for onRemoteEntityOffline pre notify before continuing
-			auto status = entityOfflinePromise.get_future().wait_for(std::chrono::milliseconds(50));
-			ASSERT_NE(std::future_status::timeout, status);
-			// Now we are sure ProtocolInterface (from avdecc::CommandStateMachine thread) wants to acquire the observers lock, but we currently own this lock
-			// So let's call something that wants to acquire the CommandStateMachine and see if we deadlock or not
-			pi->lock(); // This will use CSM's lock
-			pi->unlock();
-		}
-		virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override
-		{
-			entityOnlinePromise.set_value();
-		}
-		// la::avdecc::InstrumentationNotifier::Observer overrides
-		virtual void onEvent(std::string const& eventName) noexcept override
-		{
-			if (eventName == "ProtocolInterfaceVirtual::onRemoteEntityOffline::PreNotify")
-			{
-				entityOfflinePromise.set_value();
-				// Wait for transport error before continuing
-				auto status = transportErrorPromise.get_future().wait_for(std::chrono::milliseconds(50));
-				ASSERT_NE(std::future_status::timeout, status);
-			}
-			else if (eventName == "ProtocolInterfaceVirtual::onRemoteEntityOffline::PostNotify")
-			{
-				completedPromise.set_value();
-			}
-		}
-		DECLARE_AVDECC_OBSERVER_GUARD_NAME(la::avdecc::protocol::ProtocolInterface::Observer, _guard1);
-		DECLARE_AVDECC_OBSERVER_GUARD_NAME(la::avdecc::InstrumentationNotifier::Observer, _guard2);
-	};
-
-	Observer obs;
-	la::avdecc::InstrumentationNotifier::getInstance().registerObserver(&obs);
-	auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }));
-	intfc->registerObserver(&obs);
-
-	// Build adpdu frame
-	auto adpdu = la::avdecc::protocol::Adpdu{};
-	// Set Ether2 fields
-	adpdu.setSrcAddress(intfc->getMacAddress());
-	adpdu.setDestAddress(la::avdecc::protocol::Adpdu::Multicast_Mac_Address);
-	// Set ADP fields
-	adpdu.setMessageType(la::avdecc::protocol::AdpMessageType::EntityAvailable);
-	adpdu.setValidTime(0);
-	adpdu.setEntityID(la::avdecc::UniqueIdentifier{ 0x0001020304050607 });
-	adpdu.setEntityModelID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
-	adpdu.setEntityCapabilities({});
-	adpdu.setTalkerStreamSources(0);
-	adpdu.setTalkerCapabilities({});
-	adpdu.setListenerStreamSinks(0);
-	adpdu.setListenerCapabilities({});
-	adpdu.setControllerCapabilities(la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented });
-	adpdu.setAvailableIndex(0);
-	adpdu.setGptpGrandmasterID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
-	adpdu.setGptpDomainNumber(0);
-	adpdu.setIdentifyControlIndex(0);
-	adpdu.setInterfaceIndex(0);
-	adpdu.setAssociationID(la::avdecc::UniqueIdentifier{});
-
-	// Send the adp message
-	intfc->sendAdpMessage(adpdu);
-
-	auto status = entityOnlinePromise.get_future().wait_for(std::chrono::milliseconds(50));
-	ASSERT_NE(std::future_status::timeout, status);
-
-	// Force a transport error
-	auto const& virtIntfc = static_cast<la::avdecc::protocol::ProtocolInterfaceVirtual const&>(*intfc);
-	virtIntfc.forceTransportError();
-
-	status = completedPromise.get_future().wait_for(std::chrono::seconds(1));
-	ASSERT_NE(std::future_status::timeout, status) << "Deadlock!";
-}
+//TEST(ProtocolInterfaceVirtual, TransportError)
+//{
+//	static std::promise<void> entityOnlinePromise;
+//	static std::promise<void> transportErrorPromise;
+//	static std::promise<void> entityOfflinePromise;
+//	static std::promise<void> completedPromise;
+//
+//	class Observer : public la::avdecc::protocol::ProtocolInterface::Observer, public la::avdecc::InstrumentationNotifier::Observer
+//	{
+//	private:
+//		// la::avdecc::protocol::ProtocolInterface::Observer overrides
+//		virtual void onTransportError(la::avdecc::protocol::ProtocolInterface* const pi) noexcept override
+//		{
+//			// This is the ProtocolInterface Capture thread
+//			transportErrorPromise.set_value();
+//			// Wait for onRemoteEntityOffline pre notify before continuing
+//			auto status = entityOfflinePromise.get_future().wait_for(std::chrono::milliseconds(50));
+//			ASSERT_NE(std::future_status::timeout, status);
+//			// Now we are sure ProtocolInterface (from avdecc::CommandStateMachine thread) wants to acquire the observers lock, but we currently own this lock
+//			// So let's call something that wants to acquire the CommandStateMachine and see if we deadlock or not
+//			pi->lock(); // This will use CSM's lock
+//			pi->unlock();
+//		}
+//		virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override
+//		{
+//			entityOnlinePromise.set_value();
+//		}
+//		// la::avdecc::InstrumentationNotifier::Observer overrides
+//		virtual void onEvent(std::string const& eventName) noexcept override
+//		{
+//			if (eventName == "ProtocolInterfaceVirtual::onRemoteEntityOffline::PreNotify")
+//			{
+//				entityOfflinePromise.set_value();
+//				// Wait for transport error before continuing
+//				auto status = transportErrorPromise.get_future().wait_for(std::chrono::milliseconds(50));
+//				ASSERT_NE(std::future_status::timeout, status);
+//			}
+//			else if (eventName == "ProtocolInterfaceVirtual::onRemoteEntityOffline::PostNotify")
+//			{
+//				completedPromise.set_value();
+//			}
+//		}
+//		DECLARE_AVDECC_OBSERVER_GUARD_NAME(la::avdecc::protocol::ProtocolInterface::Observer, _guard1);
+//		DECLARE_AVDECC_OBSERVER_GUARD_NAME(la::avdecc::InstrumentationNotifier::Observer, _guard2);
+//	};
+//
+//	Observer obs;
+//	la::avdecc::InstrumentationNotifier::getInstance().registerObserver(&obs);
+//	auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }));
+//	intfc->registerObserver(&obs);
+//
+//	// Build adpdu frame
+//	auto adpdu = la::avdecc::protocol::Adpdu{};
+//	// Set Ether2 fields
+//	adpdu.setSrcAddress(intfc->getMacAddress());
+//	adpdu.setDestAddress(la::avdecc::protocol::Adpdu::Multicast_Mac_Address);
+//	// Set ADP fields
+//	adpdu.setMessageType(la::avdecc::protocol::AdpMessageType::EntityAvailable);
+//	adpdu.setValidTime(0);
+//	adpdu.setEntityID(la::avdecc::UniqueIdentifier{ 0x0001020304050607 });
+//	adpdu.setEntityModelID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
+//	adpdu.setEntityCapabilities({});
+//	adpdu.setTalkerStreamSources(0);
+//	adpdu.setTalkerCapabilities({});
+//	adpdu.setListenerStreamSinks(0);
+//	adpdu.setListenerCapabilities({});
+//	adpdu.setControllerCapabilities(la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented });
+//	adpdu.setAvailableIndex(0);
+//	adpdu.setGptpGrandmasterID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
+//	adpdu.setGptpDomainNumber(0);
+//	adpdu.setIdentifyControlIndex(0);
+//	adpdu.setInterfaceIndex(0);
+//	adpdu.setAssociationID(la::avdecc::UniqueIdentifier{});
+//
+//	// Send the adp message
+//	intfc->sendAdpMessage(adpdu);
+//
+//	auto status = entityOnlinePromise.get_future().wait_for(std::chrono::milliseconds(50));
+//	ASSERT_NE(std::future_status::timeout, status);
+//
+//	// Force a transport error
+//	auto const& virtIntfc = static_cast<la::avdecc::protocol::ProtocolInterfaceVirtual const&>(*intfc);
+//	virtIntfc.forceTransportError();
+//
+//	status = completedPromise.get_future().wait_for(std::chrono::seconds(1));
+//	ASSERT_NE(std::future_status::timeout, status) << "Deadlock!";
+//}

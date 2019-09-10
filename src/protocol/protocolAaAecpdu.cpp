@@ -42,7 +42,7 @@ namespace protocol
 AaAecpdu::AaAecpdu(bool const isResponse) noexcept
 {
 	Aecpdu::setMessageType(isResponse ? AecpMessageType::AddressAccessResponse : AecpMessageType::AddressAccessCommand);
-	Aecpdu::setAecpSpecificDataLength(AaAecpdu::HeaderLength);
+	Aecpdu::setAecpSpecificDataLength(HeaderLength);
 }
 
 AaAecpdu::~AaAecpdu() noexcept {}
@@ -81,6 +81,19 @@ void LA_AVDECC_CALL_CONVENTION AaAecpdu::deserialize(DeserializationBuffer& buff
 	{
 		LOG_SERIALIZATION_ERROR(_srcAddress, "AaAecpdu::deserialize error: Not enough data in buffer");
 		throw std::invalid_argument("Not enough data to deserialize");
+	}
+
+	// Check is there are less advertised data than the required minimum
+	auto constexpr minCDL = HeaderLength + Aecpdu::HeaderLength;
+	if (_controlDataLength < minCDL)
+	{
+#if defined(IGNORE_INVALID_CONTROL_DATA_LENGTH)
+		// Allow this packet to go through, the ControlData specific unpacker will trap any error if the message is further ill-formed
+		LOG_SERIALIZATION_DEBUG(_srcAddress, "AaAecpdu::deserialize error: ControlDataLength field minimum value for AA-AECPDU is {}. Only {} bytes advertised", minCDL, _controlDataLength);
+#else // !IGNORE_INVALID_CONTROL_DATA_LENGTH
+		LOG_SERIALIZATION_WARN(_srcAddress, "AaAecpdu::deserialize error: ControlDataLength field minimum value for AA-AECPDU is {}. Only {} bytes advertised", minCDL, _controlDataLength);
+		throw std::invalid_argument("ControlDataLength field value too small for AA-AECPDU");
+#endif // IGNORE_INVALID_CONTROL_DATA_LENGTH
 	}
 
 	// Check if there is more advertised data than actual bytes in the buffer

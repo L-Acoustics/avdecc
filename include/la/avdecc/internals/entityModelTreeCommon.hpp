@@ -68,6 +68,55 @@ constexpr bool operator!=(StreamConnectionState const& lhs, StreamConnectionStat
 	return !(lhs == rhs);
 }
 
+/** A subset of StreamInfo */
+struct StreamDynamicInfo
+{
+	bool isClassB{ false }; /** Indicates that the Stream is Class B instead of Class A (default 0 is class A). */
+	bool hasSavedState{ false }; /** Connection has saved ACMP state. */
+	bool doesSupportEncrypted{ false }; /** Indicates that the Stream supports streaming with encrypted PDUs. */
+	bool arePdusEncrypted{ false }; /** Indicates that the Stream is using encrypted PDUs. */
+	bool hasTalkerFailed{ false }; /** Indicates that the Listener has registered an SRP Talker Failed attribute for the Stream. */
+	StreamInfoFlags _streamInfoFlags{}; /** LECAGY FIELD - Last received StreamInfoFlags */
+	std::optional<UniqueIdentifier> streamID{ std::nullopt };
+	std::optional<std::uint32_t> msrpAccumulatedLatency{ std::nullopt };
+	std::optional<la::avdecc::networkInterface::MacAddress> streamDestMac{ std::nullopt };
+	std::optional<std::uint8_t> msrpFailureCode{ std::nullopt };
+	std::optional<BridgeIdentifier> msrpFailureBridgeID{ std::nullopt };
+	std::optional<std::uint16_t> streamVlanID{ std::nullopt };
+	// Milan additions
+	std::optional<StreamInfoFlagsEx> streamInfoFlagsEx{ std::nullopt };
+	std::optional<ProbingStatus> probingStatus{ std::nullopt };
+	std::optional<protocol::AcmpStatus> acmpStatus{ std::nullopt };
+};
+
+constexpr bool operator==(StreamDynamicInfo const& lhs, StreamDynamicInfo const& rhs) noexcept
+{
+	return (lhs.isClassB == rhs.isClassB) && (lhs.hasSavedState == rhs.hasSavedState) && (lhs.doesSupportEncrypted == rhs.doesSupportEncrypted) && (lhs.arePdusEncrypted == rhs.arePdusEncrypted) && (lhs.hasTalkerFailed == rhs.hasTalkerFailed) && (lhs._streamInfoFlags == rhs._streamInfoFlags) && (lhs.streamID == rhs.streamID) && (lhs.msrpAccumulatedLatency == rhs.msrpAccumulatedLatency) && (lhs.streamDestMac == rhs.streamDestMac) && (lhs.msrpFailureCode == rhs.msrpFailureCode) && (lhs.msrpFailureBridgeID == rhs.msrpFailureBridgeID) && (lhs.streamVlanID == rhs.streamVlanID) && (lhs.streamInfoFlagsEx == rhs.streamInfoFlagsEx) && (lhs.probingStatus == rhs.probingStatus) && (lhs.acmpStatus == rhs.acmpStatus);
+}
+
+constexpr bool operator!=(StreamDynamicInfo const& lhs, StreamDynamicInfo const& rhs) noexcept
+{
+	return !(lhs == rhs);
+}
+
+/** A subset of AvbInfo */
+struct AvbInterfaceInfo
+{
+	std::uint32_t propagationDelay{ 0u };
+	AvbInfoFlags flags{};
+	entity::model::MsrpMappings mappings{};
+};
+
+constexpr bool operator==(AvbInterfaceInfo const& lhs, AvbInterfaceInfo const& rhs) noexcept
+{
+	return (lhs.propagationDelay == rhs.propagationDelay) && (lhs.flags == rhs.flags) && (lhs.mappings == rhs.mappings);
+}
+
+constexpr bool operator!=(AvbInterfaceInfo const& lhs, AvbInterfaceInfo const& rhs) noexcept
+{
+	return !(lhs == rhs);
+}
+
 using StreamConnections = std::set<StreamIdentification>;
 using StreamFormats = std::set<StreamFormat>;
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY

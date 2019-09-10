@@ -309,46 +309,48 @@ public:
 	enum class AemCommandStatus : std::uint16_t
 	{
 		// AVDECC Protocol Error Codes
-		Success = 0,
-		NotImplemented = 1,
-		NoSuchDescriptor = 2,
-		LockedByOther = 3,
-		AcquiredByOther = 4,
-		NotAuthenticated = 5,
-		AuthenticationDisabled = 6,
-		BadArguments = 7,
-		NoResources = 8,
-		InProgress = 9,
-		EntityMisbehaving = 10,
-		NotSupported = 11,
-		StreamIsRunning = 12,
+		Success = 0, /**< The AVDECC Entity successfully performed the command and has valid results. */
+		NotImplemented = 1, /**< The AVDECC Entity does not support the command type. */
+		NoSuchDescriptor = 2, /**< A descriptor with the descriptor_type and descriptor_index specified does not exist. */
+		LockedByOther = 3, /**< The AVDECC Entity has been locked by another AVDECC Controller. */
+		AcquiredByOther = 4, /**< The AVDECC Entity has been acquired by another AVDECC Controller. */
+		NotAuthenticated = 5, /**< The AVDECC Controller is not authenticated with the AVDECC Entity. */
+		AuthenticationDisabled = 6, /**< The AVDECC Controller is trying to use an authentication command when authentication isn't enable on the AVDECC Entity. */
+		BadArguments = 7, /**< One or more of the values in the fields of the frame were deemed to be bad by the AVDECC Entity (unsupported, incorrect combination, etc.). */
+		NoResources = 8, /**< The AVDECC Entity cannot complete the command because it does not have the resources to support it. */
+		InProgress = 9, /**< The AVDECC Entity is processing the command and will send a second response at a later time with the result of the command. */
+		EntityMisbehaving = 10, /**< The AVDECC Entity generated an internal error while trying to process the command. */
+		NotSupported = 11, /**< The command is implemented but the target of the command is not supported. For example trying to set the value of a read - only Control. */
+		StreamIsRunning = 12, /**< The Stream is currently streaming and the command is one which cannot be executed on an Active Stream. */
 		// Library Error Codes
-		NetworkError = 995,
-		ProtocolError = 996,
-		TimedOut = 997,
-		UnknownEntity = 998,
-		InternalError = 999,
+		Busy = 93, /**< The library is busy, try again later */
+		NetworkError = 995, /**< Network error */
+		ProtocolError = 996, /**< Failed to unpack the message due to an error in the protocol */
+		TimedOut = 997, /**< The command timed out */
+		UnknownEntity = 998, /**< The entity has not been detected on the network */
+		InternalError = 999, /**< Internal library error, please report this */
 	};
 
 	/** Status code returned by all AA (AECP) command methods. */
 	enum class AaCommandStatus : std::uint16_t
 	{
 		// AVDECC Protocol Error Codes
-		Success = 0,
-		NotImplemented = 1,
-		AddressTooLow = 2,
-		AddressTooHigh = 3,
-		AddressInvalid = 4,
-		TlvInvalid = 5,
-		DataInvalid = 6,
-		Unsupported = 7,
+		Success = 0, /**< The AVDECC Entity successfully performed the command and has valid results. */
+		NotImplemented = 1, /**< The AVDECC Entity does not support the command type. */
+		AddressTooLow = 2, /**< The value in the address field is below the start of the memory map. */
+		AddressTooHigh = 3, /**< The value in the address field is above the end of the memory map. */
+		AddressInvalid = 4, /**< The value in the address field is within the memory map but is part of an invalid region. */
+		TlvInvalid = 5, /**< One or more of the TLVs were invalid. No TLVs have been processed. */
+		DataInvalid = 6, /**< The data for writing is invalid .*/
+		Unsupported = 7, /**< A requested action was unsupported. Typically used when an unknown EXECUTE was encountered or if EXECUTE is not supported. */
 		// Library Error Codes
-		Aborted = 994,
-		NetworkError = 995,
-		ProtocolError = 996,
-		TimedOut = 997,
-		UnknownEntity = 998,
-		InternalError = 999,
+		Busy = 93, /**< The library is busy, try again later */
+		Aborted = 994, /**< Request aborted */
+		NetworkError = 995, /**< Network error */
+		ProtocolError = 996, /**< Failed to unpack the message due to an error in the protocol */
+		TimedOut = 997, /**< The command timed out */
+		UnknownEntity = 998, /**< The entity has not been detected on the network */
+		InternalError = 999, /**< Internal library error, please report this */
 	};
 
 	/** Status code returned by all MVU (AECP) command methods. */

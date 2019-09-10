@@ -133,30 +133,6 @@
                                     "audio_map_descriptors": null,
                                     "dynamic": {
                                         "dynamic_mappings": [
-                                            {
-                                                "cluster_channel": 0,
-                                                "cluster_offset": 0,
-                                                "stream_channel": 0,
-                                                "stream_index": 0
-                                            },
-                                            {
-                                                "cluster_channel": 0,
-                                                "cluster_offset": 1,
-                                                "stream_channel": 1,
-                                                "stream_index": 0
-                                            },
-                                            {
-                                                "cluster_channel": 0,
-                                                "cluster_offset": 2,
-                                                "stream_channel": 2,
-                                                "stream_index": 0
-                                            },
-                                            {
-                                                "cluster_channel": 0,
-                                                "cluster_offset": 3,
-                                                "stream_channel": 3,
-                                                "stream_index": 0
-                                            }
                                         ]
                                     },
                                     "static": {
@@ -171,62 +147,116 @@
                             "stream_port_output_descriptors": null
                         }
                     ],
-                    "avb_interface_descriptors": [
-                        {
-                            "_index (informative)": 0,
-                            "dynamic": {
-                                "as_path": [
-                                    "0x001B92FFFF000001"
-                                ],
-                                "gptp_domain_number": 0,
-                                "gptp_grandmaster_id": "0x001B92FFFF000001",
-                                "avb_interface_info": {
-                                    "flags": [
-                                        "AS_CAPABLE",
-                                        "GPTP_ENABLED",
-                                        "SRP_ENABLED"
-                                    ],
-                                    "msrp_mappings": [
-                                        {
-                                            "priority": 3,
-                                            "traffic_class": 6,
-                                            "vlan_id": 2
-                                        }
-                                    ],
-                                    "propagation_delay": 0
-                                },
-                                "counters": {
-                                    "GPTP_GM_CHANGED": 1,
-                                    "LINK_DOWN": 0,
-                                    "LINK_UP": 1
-                                },
-                                "object_name": ""
-                            },
-                            "static": {
-                                "clock_accuracy": 254,
-                                "clock_class": 248,
-                                "clock_identity": "0x001B92FFFF000001",
-                                "domain_number": 0,
-                                "flags": [
-                                    "GPTP_GRANDMASTER_SUPPORTED",
-                                    "GPTP_SUPPORTED",
-                                    "SRP_SUPPORTED"
-                                ],
-                                "localized_description": {
-                                    "index": 4,
-                                    "offset": 5
-                                },
-                                "log_announce_interval": 0,
-                                "log_pdelay_interval": 0,
-                                "log_sync_interval": 253,
-                                "mac_address": "00:1B:92:00:00:01",
-                                "offset_scaled_log_variance": 17258,
-                                "port_number": 1,
-                                "priority1": 248,
-                                "priority2": 248
+                  "avb_interface_descriptors": [
+                    {
+                      "_index (informative)": 0,
+                      "dynamic": {
+                        "as_path": [
+                          "0x001B92FFFF000001"
+                        ],
+                        "gptp_domain_number": 0,
+                        "gptp_grandmaster_id": "0x001B92FFFF000001",
+                        "avb_interface_info": {
+                          "flags": [
+                            "AS_CAPABLE",
+                            "GPTP_ENABLED",
+                            "SRP_ENABLED"
+                          ],
+                          "msrp_mappings": [
+                            {
+                              "priority": 3,
+                              "traffic_class": 6,
+                              "vlan_id": 2
                             }
-                        }
-                    ],
+                          ],
+                          "propagation_delay": 0
+                        },
+                        "counters": {
+                          "GPTP_GM_CHANGED": 1,
+                          "LINK_DOWN": 0,
+                          "LINK_UP": 1
+                        },
+                        "object_name": "AVB Primary Interface"
+                      },
+                      "static": {
+                        "clock_accuracy": 254,
+                        "clock_class": 248,
+                        "clock_identity": "0x001B92FFFF000001",
+                        "domain_number": 0,
+                        "flags": [
+                          "GPTP_GRANDMASTER_SUPPORTED",
+                          "GPTP_SUPPORTED",
+                          "SRP_SUPPORTED"
+                        ],
+                        "localized_description": {
+                          "index": 4,
+                          "offset": 5
+                        },
+                        "log_announce_interval": 0,
+                        "log_pdelay_interval": 0,
+                        "log_sync_interval": 253,
+                        "mac_address": "00:1B:92:00:00:01",
+                        "offset_scaled_log_variance": 17258,
+                        "port_number": 1,
+                        "priority1": 248,
+                        "priority2": 248
+                      }
+                    },
+                    {
+                      "_index (informative)": 1,
+                      "dynamic": {
+                        "as_path": [
+                          "0x001B92FFFF000101"
+                        ],
+                        "gptp_domain_number": 0,
+                        "gptp_grandmaster_id": "0x001B92FFFF000101",
+                        "avb_interface_info": {
+                          "flags": [
+                            "AS_CAPABLE",
+                            "GPTP_ENABLED",
+                            "SRP_ENABLED"
+                          ],
+                          "msrp_mappings": [
+                            {
+                              "priority": 3,
+                              "traffic_class": 6,
+                              "vlan_id": 2
+                            }
+                          ],
+                          "propagation_delay": 0
+                        },
+                        "counters": {
+                          "GPTP_GM_CHANGED": 1,
+                          "LINK_DOWN": 0,
+                          "LINK_UP": 1
+                        },
+                        "object_name": "AVB Secondary Interface"
+                      },
+                      "static": {
+                        "clock_accuracy": 254,
+                        "clock_class": 248,
+                        "clock_identity": "0x001B92FFFF000101",
+                        "domain_number": 0,
+                        "flags": [
+                          "GPTP_GRANDMASTER_SUPPORTED",
+                          "GPTP_SUPPORTED",
+                          "SRP_SUPPORTED"
+                        ],
+                        "localized_description": {
+                          "index": 4,
+                          "offset": 5
+                        },
+                        "log_announce_interval": 0,
+                        "log_pdelay_interval": 0,
+                        "log_sync_interval": 253,
+                        "mac_address": "00:1B:92:00:01:01",
+                        "offset_scaled_log_variance": 17258,
+                        "port_number": 1,
+                        "priority1": 248,
+                        "priority2": 248
+                      }
+                    }
+                  ],
                     "clock_domain_descriptors": [
                         {
                             "_index (informative)": 0,
@@ -484,7 +514,99 @@
                                     "TIMESTAMP_VALID": 0,
                                     "UNSUPPORTED_FORMAT": 0
                                 },
-                                "object_name": "Audio Stream",
+                                "object_name": "Audio Secondary Stream",
+                                "stream_dynamic_info": {
+                                    "acmp_status": "SUCCESS",
+                                    "are_pdus_encrypted": false,
+                                    "does_support_encrypted": false,
+                                    "flags_ex": null,
+                                    "has_saved_state": false,
+                                    "has_talker_failed": false,
+                                    "is_class_b": false,
+                                    "msrp_accumulated_latency": 0,
+                                    "msrp_failure_bridge_id": "0x0000000000000000",
+                                    "msrp_failure_code": 0,
+                                    "probing_status": 0,
+                                    "stream_dest_mac": "00:00:00:00:00:00",
+                                    "stream_id": "0x0000000000000000",
+                                    "stream_vlan_id": null
+                                },
+                                "stream_format": "0x020702200200C000",
+                                "stream_running": true
+                            },
+                            "static": {
+                                "avb_interface_index": 1,
+                                "backedup_talker_entity_id": "0x0000000000000000",
+                                "backedup_talker_unique": 0,
+                                "backup_talker_entity_id_0": "0x0000000000000000",
+                                "backup_talker_entity_id_1": "0x0000000000000000",
+                                "backup_talker_entity_id_2": "0x0000000000000000",
+                                "backup_talker_unique_id_0": 0,
+                                "backup_talker_unique_id_1": 0,
+                                "backup_talker_unique_id_2": 0,
+                                "buffer_length": 2166000,
+                                "clock_domain_index": 0,
+                                "formats": [
+                                    "0x00A0020140000100",
+                                    "0x00A0020240000200",
+                                    "0x00A0020440000400",
+                                    "0x00A0020640000600",
+                                    "0x00A0020840000800",
+                                    "0x00A0020860000800",
+                                    "0x00A0040140000100",
+                                    "0x00A0040240000200",
+                                    "0x00A0040440000400",
+                                    "0x00A0040640000600",
+                                    "0x00A0040840000800",
+                                    "0x00A0040860000800",
+                                    "0x0205022000406000",
+                                    "0x0205022000806000",
+                                    "0x0205022001006000",
+                                    "0x0205022001806000",
+                                    "0x0205022002006000",
+                                    "0x020702200040C000",
+                                    "0x020702200080C000",
+                                    "0x020702200100C000",
+                                    "0x020702200180C000",
+                                    "0x020702200200C000",
+                                    "0x0215022002006000",
+                                    "0x021702200200C000"
+                                ],
+                                "localized_description": {
+                                    "index": 5,
+                                    "offset": 0
+                                },
+                                "redundant_streams": [
+                                    1
+                                ],
+                                "stream_flags": [
+                                    "CLOCK_SYNC_SOURCE",
+                                    "CLASS_A"
+                                ]
+                            }
+                        },
+                        {
+                            "_index (informative)": 1,
+                            "dynamic": {
+                                "connected_talker": {
+                                    "entity_id": "0xFFFFFFFFFFFFFFFF",
+                                    "stream_index": 0
+                                },
+                                "counters": {
+                                    "EARLY_TIMESTAMP": 0,
+                                    "FRAMES_RX": 0,
+                                    "LATE_TIMESTAMP": 0,
+                                    "MEDIA_LOCKED": 0,
+                                    "MEDIA_RESET": 0,
+                                    "MEDIA_UNLOCKED": 0,
+                                    "SEQ_NUM_MISMATCH": 0,
+                                    "STREAM_INTERRUPTED": 0,
+                                    "TIMESTAMP_NOT_VALID": 0,
+                                    "TIMESTAMP_UNCERTAIN": 0,
+                                    "TIMESTAMP_VALID": 0,
+                                    "UNSUPPORTED_FORMAT": 0
+                                },
+                                "object_name": "Audio Primary Stream",
                                 "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",
                                     "are_pdus_encrypted": false,
@@ -546,6 +668,9 @@
                                     "index": 5,
                                     "offset": 0
                                 },
+                                "redundant_streams": [
+                                    0
+                                ],
                                 "stream_flags": [
                                     "CLOCK_SYNC_SOURCE",
                                     "CLASS_A"
@@ -578,7 +703,9 @@
     },
     "milan_information": {
         "certification_version": "1.0.0.0",
-        "flags": null,
+      "flags": [
+        "REDUNDANCY"
+      ],
         "protocol_version": 1
     },
     "state": {

@@ -45,7 +45,7 @@ la::avdecc::UniqueIdentifier const AemAecpdu::Identify_ControllerEntityID{ 0x90E
 AemAecpdu::AemAecpdu(bool const isResponse) noexcept
 {
 	Aecpdu::setMessageType(isResponse ? AecpMessageType::AemResponse : AecpMessageType::AemCommand);
-	Aecpdu::setAecpSpecificDataLength(AemAecpdu::HeaderLength);
+	Aecpdu::setAecpSpecificDataLength(HeaderLength);
 }
 
 AemAecpdu::~AemAecpdu() noexcept {}
@@ -75,7 +75,7 @@ void LA_AVDECC_CALL_CONVENTION AemAecpdu::setCommandSpecificData(void const* con
 		std::memcpy(_commandSpecificData.data(), commandSpecificData, _commandSpecificDataLength);
 	}
 	// Don't forget to update parent's specific data length field
-	setAecpSpecificDataLength(AemAecpdu::HeaderLength + commandSpecificDataLength);
+	setAecpSpecificDataLength(HeaderLength + commandSpecificDataLength);
 }
 
 bool LA_AVDECC_CALL_CONVENTION AemAecpdu::getUnsolicited() const noexcept
@@ -137,7 +137,23 @@ void LA_AVDECC_CALL_CONVENTION AemAecpdu::deserialize(DeserializationBuffer& buf
 	_unsolicited = ((u_ct & 0x8000) >> 15) != 0;
 	_commandType = static_cast<AemCommandType>(u_ct & 0x7fff);
 
-	_commandSpecificDataLength = _controlDataLength - AemAecpdu::HeaderLength - Aecpdu::HeaderLength;
+	// Check is there are less advertised data than the required minimum (we can do it after we (tried) unpacked as it would have thrown in case the buffer was too small)
+	auto constexpr minCDL = HeaderLength + Aecpdu::HeaderLength;
+	if (_controlDataLength < minCDL)
+	{
+#if defined(IGNORE_INVALID_CONTROL_DATA_LENGTH)
+		// Allow this packet to go through, the ControlData specific unpacker will trap any error if the message is further ill-formed
+		LOG_SERIALIZATION_DEBUG(_srcAddress, "AemAecpdu::deserialize error: ControlDataLength field minimum value for AEM-AECPDU is {}. AemCommandType {} ({}) only advertise {} bytes", minCDL, std::string(_commandType), utils::toHexString(_commandType.getValue()), _controlDataLength);
+		_commandSpecificDataLength = 0u;
+#else // !IGNORE_INVALID_CONTROL_DATA_LENGTH
+		LOG_SERIALIZATION_WARN(_srcAddress, "AemAecpdu::deserialize error: ControlDataLength field minimum value for AEM-AECPDU is {}. AemCommandType {} ({}) only advertise {} bytes", minCDL, std::string(_commandType), utils::toHexString(_commandType.getValue()), _controlDataLength);
+		throw std::invalid_argument("ControlDataLength field value too small for AEM-AECPDU");
+#endif // IGNORE_INVALID_CONTROL_DATA_LENGTH
+	}
+	else
+	{
+		_commandSpecificDataLength = _controlDataLength - minCDL;
+	}
 
 	// Check if there is more advertised data than actual bytes in the buffer (not checking earlier since we want to get as much information as possible from the packet to display a proper log message)
 	auto const remainingBytes = buffer.remaining();
@@ -148,7 +164,7 @@ void LA_AVDECC_CALL_CONVENTION AemAecpdu::deserialize(DeserializationBuffer& buf
 		_commandSpecificDataLength = remainingBytes;
 		LOG_SERIALIZATION_DEBUG(_srcAddress, "AemAecpdu::deserialize error: ControlDataLength field advertises more bytes than remaining bytes in buffer for AemCommandType " + std::string(_commandType) + " (" + utils::toHexString(_commandType.getValue()) + ")");
 #else // !IGNORE_INVALID_CONTROL_DATA_LENGTH
-		LOG_SERIALIZATION_WARN(_srcAddress, "AemAecpdu::deserialize error: ControlDataLength field advertises more bytes than remaining bytes in buffer for AemCommandType " + std::string(_commandType) + " (" + la::avdecc::toHexString(_commandType.getValue()) + ")");
+		LOG_SERIALIZATION_WARN(_srcAddress, "AemAecpdu::deserialize error: ControlDataLength field advertises more bytes than remaining bytes in buffer for AemCommandType " + std::string(_commandType) + " (" + utils::toHexString(_commandType.getValue()) + ")");
 #endif // IGNORE_INVALID_CONTROL_DATA_LENGTH
 	}
 
@@ -164,7 +180,9 @@ void LA_AVDECC_CALL_CONVENTION AemAecpdu::deserialize(DeserializationBuffer& buf
 #ifdef DEBUG
 	// Do not log this error in release, it might happen too often if an entity is bugged or if the message contains data this version of the library do not unpack
 	if (buffer.remaining() != 0 && buffer.usedBytes() >= EthernetPayloadMinimumSize)
-		LOG_SERIALIZATION_TRACE(_srcAddress, "AemAecpdu::deserialize warning: Remaining bytes in buffer for AemCommandType " + std::string(_commandType) + " (" + utils::toHexString(_commandType.getValue()) + ")");
+	{
+		LOG_SERIALIZATION_TRACE(_srcAddress, "AemAecpdu::deserialize warning: Remaining bytes in buffer for AemCommandType {} ({}): {}", std::string(_commandType), utils::toHexString(_commandType.getValue()), buffer.remaining());
+	}
 #endif // DEBUG
 }
 

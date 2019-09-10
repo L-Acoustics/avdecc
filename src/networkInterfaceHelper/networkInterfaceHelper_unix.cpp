@@ -43,6 +43,7 @@
 #include <cstring> // memcpy
 #include <atomic>
 #include <thread>
+#include <chrono>
 
 namespace la
 {
@@ -189,37 +190,45 @@ void onFirstObserverRegistered() noexcept
 		{
 			utils::setCurrentThreadName("networkInterfaceHelper::ObserverPolling");
 			auto previousList = Interfaces{};
+			auto nextCheck = std::chrono::time_point<std::chrono::system_clock>{};
 			while (!s_shouldTerminate)
 			{
-				auto newList = Interfaces{};
-				refreshInterfaces(newList);
-
-				// Process previous list and check if some property changed
-				for (auto const& [name, previousIntfc] : previousList)
+				auto const now = std::chrono::system_clock::now();
+				if (now >= nextCheck)
 				{
-					auto const newIntfcIt = newList.find(name);
-					if (newIntfcIt != newList.end())
+					auto newList = Interfaces{};
+					refreshInterfaces(newList);
+
+					// Process previous list and check if some property changed
+					for (auto const& [name, previousIntfc] : previousList)
 					{
-						auto const& newIntfc = newIntfcIt->second;
-						if (previousIntfc.isEnabled != newIntfc.isEnabled)
+						auto const newIntfcIt = newList.find(name);
+						if (newIntfcIt != newList.end())
 						{
-							onEnabledStateChanged(name, newIntfc.isEnabled);
-						}
-						if (previousIntfc.isConnected != newIntfc.isConnected)
-						{
-							onConnectedStateChanged(name, newIntfc.isConnected);
+							auto const& newIntfc = newIntfcIt->second;
+							if (previousIntfc.isEnabled != newIntfc.isEnabled)
+							{
+								onEnabledStateChanged(name, newIntfc.isEnabled);
+							}
+							if (previousIntfc.isConnected != newIntfc.isConnected)
+							{
+								onConnectedStateChanged(name, newIntfc.isConnected);
+							}
 						}
 					}
+
+					// Copy the list before it's moved
+					previousList = newList;
+
+					// Check for change in Interface count
+					onNewInterfacesList(std::move(newList));
+
+					// Setup next check time
+					nextCheck = now + std::chrono::milliseconds(1000);
 				}
 
-				// Copy the list before it's moved
-				previousList = newList;
-
-				// Check for change in Interface count
-				onNewInterfacesList(std::move(newList));
-
 				// Wait a little bit so we don't burn the CPU
-				std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+				std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			}
 		});
 }

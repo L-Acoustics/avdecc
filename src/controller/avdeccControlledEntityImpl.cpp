@@ -80,9 +80,9 @@ bool ControlledEntityImpl::isAcquired() const noexcept
 	return _acquireState == model::AcquireState::Acquired;
 }
 
-bool ControlledEntityImpl::isAcquiring() const noexcept
+bool ControlledEntityImpl::isAcquireCommandInProgress() const noexcept
 {
-	return _acquireState == model::AcquireState::TryAcquire;
+	return _acquireState == model::AcquireState::AcquireInProgress || _acquireState == model::AcquireState::ReleaseInProgress;
 }
 
 bool ControlledEntityImpl::isAcquiredByOther() const noexcept
@@ -95,9 +95,9 @@ bool ControlledEntityImpl::isLocked() const noexcept
 	return _lockState == model::LockState::Locked;
 }
 
-bool ControlledEntityImpl::isLocking() const noexcept
+bool ControlledEntityImpl::isLockCommandInProgress() const noexcept
 {
-	return _lockState == model::LockState::TryLock;
+	return _lockState == model::LockState::LockInProgress || _lockState == model::LockState::UnlockInProgress;
 }
 
 bool ControlledEntityImpl::isLockedByOther() const noexcept
@@ -108,13 +108,13 @@ bool ControlledEntityImpl::isLockedByOther() const noexcept
 bool ControlledEntityImpl::isStreamInputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const
 {
 	auto const& dynamicModel = getNodeDynamicModel(configurationIndex, streamIndex, &entity::model::ConfigurationTree::streamInputModels);
-	return isStreamRunningFlag(dynamicModel.streamInfo.streamInfoFlags);
+	return dynamicModel.isStreamRunning ? *dynamicModel.isStreamRunning : true;
 }
 
 bool ControlledEntityImpl::isStreamOutputRunning(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const
 {
 	auto const& dynamicModel = getNodeDynamicModel(configurationIndex, streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
-	return isStreamRunningFlag(dynamicModel.streamInfo.streamInfoFlags);
+	return dynamicModel.isStreamRunning ? *dynamicModel.isStreamRunning : true;
 }
 
 ControlledEntity::InterfaceLinkStatus ControlledEntityImpl::getAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex) const noexcept
@@ -413,6 +413,29 @@ entity::model::AudioMappings const& ControlledEntityImpl::getStreamPortInputAudi
 	return dynamicModel.dynamicAudioMap;
 }
 
+entity::model::AudioMappings ControlledEntityImpl::getStreamPortInputNonRedundantAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const
+{
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	// Get the current mappings
+	auto const& mappings = getStreamPortInputAudioMappings(streamPortIndex);
+	auto nonRedundantMappings = decltype(mappings){};
+
+	// For each mapping, add only if not secondary stream
+	for (auto const& map : mappings)
+	{
+		if (!isRedundantSecondaryStreamInput(map.streamIndex))
+		{
+			nonRedundantMappings.push_back(map);
+		}
+	}
+
+	return nonRedundantMappings;
+#else // !ENABLE_AVDECC_FEATURE_REDUNDANCY
+	// Return a copy of the current mappings
+	return getStreamPortInputAudioMappings(streamPortIndex);
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+}
+
 entity::model::AudioMappings const& ControlledEntityImpl::getStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const
 {
 	auto const currentConfiguration = getCurrentConfigurationIndex();
@@ -425,6 +448,29 @@ entity::model::AudioMappings const& ControlledEntityImpl::getStreamPortOutputAud
 	// Return dynamic mappings for this stream port
 	auto const& dynamicModel = getNodeDynamicModel(currentConfiguration, streamPortIndex, &entity::model::ConfigurationTree::streamPortOutputModels);
 	return dynamicModel.dynamicAudioMap;
+}
+
+entity::model::AudioMappings ControlledEntityImpl::getStreamPortOutputNonRedundantAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const
+{
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	// Get the current mappings
+	auto const& mappings = getStreamPortOutputAudioMappings(streamPortIndex);
+	auto nonRedundantMappings = decltype(mappings){};
+
+	// For each mapping, add only if not secondary stream
+	for (auto const& map : mappings)
+	{
+		if (!isRedundantSecondaryStreamOutput(map.streamIndex))
+		{
+			nonRedundantMappings.push_back(map);
+		}
+	}
+
+	return nonRedundantMappings;
+#else // !ENABLE_AVDECC_FEATURE_REDUNDANCY
+	// Return a copy of the current mappings
+	return getStreamPortOutputAudioMappings(streamPortIndex);
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 }
 
 entity::model::StreamConnections const& ControlledEntityImpl::getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const
@@ -745,31 +791,56 @@ entity::model::ConfigurationNodeDynamicModel& ControlledEntityImpl::getConfigura
 entity::model::EntityCounters& ControlledEntityImpl::getEntityCounters() noexcept
 {
 	auto& entityTree = getEntityTree();
-	return entityTree.dynamicModel.counters;
+	// Create counters if they don't exist yet
+	if (!entityTree.dynamicModel.counters)
+	{
+		entityTree.dynamicModel.counters = entity::model::EntityCounters{};
+	}
+	return *entityTree.dynamicModel.counters;
 }
 
 entity::model::AvbInterfaceCounters& ControlledEntityImpl::getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels);
-	return dynamicModel.counters;
+	// Create counters if they don't exist yet
+	if (!dynamicModel.counters)
+	{
+		dynamicModel.counters = entity::model::AvbInterfaceCounters{};
+	}
+	return *dynamicModel.counters;
 }
 
 entity::model::ClockDomainCounters& ControlledEntityImpl::getClockDomainCounters(entity::model::ClockDomainIndex const clockDomainIndex) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), clockDomainIndex, &entity::model::ConfigurationTree::clockDomainModels);
-	return dynamicModel.counters;
+	// Create counters if they don't exist yet
+	if (!dynamicModel.counters)
+	{
+		dynamicModel.counters = entity::model::ClockDomainCounters{};
+	}
+	return *dynamicModel.counters;
 }
 
 entity::model::StreamInputCounters& ControlledEntityImpl::getStreamInputCounters(entity::model::StreamIndex const streamIndex) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels);
-	return dynamicModel.counters;
+	// Create counters if they don't exist yet
+	if (!dynamicModel.counters)
+	{
+		dynamicModel.counters = entity::model::StreamInputCounters{};
+	}
+	return *dynamicModel.counters;
 }
 
 entity::model::StreamOutputCounters& ControlledEntityImpl::getStreamOutputCounters(entity::model::StreamIndex const streamIndex) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
-	return dynamicModel.counters;
+	// Create counters if they don't exist yet
+	if (!dynamicModel.counters)
+	{
+		dynamicModel.counters = entity::model::StreamOutputCounters{};
+	}
+	return *dynamicModel.counters;
 }
 
 // Setters of the DescriptorDynamic info, default constructing if not existing
@@ -822,26 +893,6 @@ entity::model::StreamConnectionState ControlledEntityImpl::setStreamInputConnect
 	return previousState;
 }
 
-std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> ControlledEntityImpl::setStreamInputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept
-{
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels);
-
-	// Save previous StreamInfo
-	auto previousInfo = dynamicModel.streamInfo;
-
-	// Set StreamInfo
-	dynamicModel.streamInfo = info;
-
-	// We should always have a valid value in the StreamFormat (was properly initialized), so don't overwrite it if it's not valid in the new info
-	if (!dynamicModel.streamInfo.streamFormat)
-	{
-		dynamicModel.streamInfo.streamFormat = previousInfo.streamFormat;
-		dynamicModel.streamInfo.streamInfoFlags.set(entity::StreamInfoFlag::StreamFormatValid); // Force the flag as well
-	}
-
-	return { previousInfo, dynamicModel.streamInfo };
-}
-
 void ControlledEntityImpl::clearStreamOutputConnections(entity::model::StreamIndex const streamIndex) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
@@ -861,37 +912,17 @@ bool ControlledEntityImpl::delStreamOutputConnection(entity::model::StreamIndex 
 	return dynamicModel.connections.erase(listenerStream) > 0;
 }
 
-std::pair<entity::model::StreamInfo, entity::model::StreamInfo const&> ControlledEntityImpl::setStreamOutputInfo(entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info) noexcept
-{
-	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
-
-	// Save previous StreamInfo
-	auto previousInfo = dynamicModel.streamInfo;
-
-	// Set StreamInfo
-	dynamicModel.streamInfo = info;
-
-	// We should always have a valid value in the StreamFormat (was properly initialized), so don't overwrite it if it's not valid in the new info
-	if (!dynamicModel.streamInfo.streamFormat)
-	{
-		dynamicModel.streamInfo.streamFormat = previousInfo.streamFormat;
-		dynamicModel.streamInfo.streamInfoFlags.set(entity::StreamInfoFlag::StreamFormatValid); // Force the flag as well
-	}
-
-	return { previousInfo, dynamicModel.streamInfo };
-}
-
-entity::model::AvbInfo ControlledEntityImpl::setAvbInfo(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) noexcept
+entity::model::AvbInterfaceInfo ControlledEntityImpl::setAvbInterfaceInfo(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInterfaceInfo const& info) noexcept
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels);
 
 	// Save previous AvbInfo
-	auto previousInfo = dynamicModel.avbInfo;
+	auto previousInfo = dynamicModel.avbInterfaceInfo;
 
-	// Set AvbInfo
-	dynamicModel.avbInfo = info;
+	// Set AvbInterfaceInfo
+	dynamicModel.avbInterfaceInfo = info;
 
-	return previousInfo;
+	return previousInfo ? *previousInfo : entity::model::AvbInterfaceInfo{};
 }
 
 entity::model::AsPath ControlledEntityImpl::setAsPath(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath) noexcept
@@ -904,7 +935,7 @@ entity::model::AsPath ControlledEntityImpl::setAsPath(entity::model::AvbInterfac
 	// Set AsPath
 	dynamicModel.asPath = asPath;
 
-	return previousPath;
+	return previousPath ? *previousPath : entity::model::AsPath{};
 }
 
 void ControlledEntityImpl::setSelectedLocaleStringsIndexesRange(entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const baseIndex, entity::model::StringsIndex const countIndexes) noexcept
@@ -941,9 +972,9 @@ void ControlledEntityImpl::addStreamPortInputAudioMappings(entity::model::Stream
 		}
 		else // Otherwise, replace the previous mapping (or add it as well, if redundancy feature is not enabled)
 		{
+			// Note: Not able to check if the stream is redundant (using the redundant property of the stream or the cached Primary/Secondary indexes) since we might receive mappings before having had the time to retrieve the descriptor or build the cache
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 			// StreamChannel must be the same and StreamIndex must be different, in redundancy
-			// Note: Not able to check if the stream is redundant (using the redundant property of the stream) since we might receive mappings before having had the time to retrieve the descriptor
 			if ((foundIt->streamIndex != map.streamIndex) && (foundIt->streamChannel == map.streamChannel))
 			{
 				dynamicMap.push_back(map);
@@ -1001,7 +1032,7 @@ void ControlledEntityImpl::addStreamPortOutputAudioMappings(entity::model::Strea
 	// Process audio mappings
 	for (auto const& map : mappings)
 	{
-		// Search for another mapping associated to the same destination (stream), which is not allowed except in redundancy
+		// Search for another mapping associated to the same destination (stream), which is not allowed
 		auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(),
 			[&map](entity::model::AudioMapping const& mapping)
 			{
@@ -1010,26 +1041,18 @@ void ControlledEntityImpl::addStreamPortOutputAudioMappings(entity::model::Strea
 		// Not found, add the new mapping
 		if (foundIt == dynamicMap.end())
 		{
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+			// TODO: If StreamIndex is redundant and the other Stream Pair is already in the map, validate it's the same ClusterIndex and ClusterChannel
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 			dynamicMap.push_back(map);
 		}
-		else // Otherwise, replace the previous mapping (or add it as well, if redundancy feature is not enabled)
+		else // Otherwise, replace the previous mapping
 		{
-#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-			// clusterChannel must be the same and clusterOffset must be different, in redundancy
-			// Note: Not able to check if the stream is redundant (using the redundant property of the stream) since we might receive mappings before having had the time to retrieve the descriptor
-			if ((foundIt->clusterOffset != map.clusterOffset) && (foundIt->clusterChannel == map.clusterChannel))
+			if (*foundIt != map)
 			{
-				dynamicMap.push_back(map);
-			}
-			else
-#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
-			{
-				if (*foundIt != map)
-				{
-					LOG_CONTROLLER_WARN(_entity.getEntityID(), std::string("Duplicate StreamPortOutput AudioMappings found: ") + std::to_string(foundIt->streamIndex) + ":" + std::to_string(foundIt->streamChannel) + ":" + std::to_string(foundIt->clusterOffset) + ":" + std::to_string(foundIt->clusterChannel) + " replaced by " + std::to_string(map.streamIndex) + ":" + std::to_string(map.streamChannel) + ":" + std::to_string(map.clusterOffset) + ":" + std::to_string(map.clusterChannel));
-					foundIt->clusterOffset = map.clusterOffset;
-					foundIt->clusterChannel = map.clusterChannel;
-				}
+				LOG_CONTROLLER_WARN(_entity.getEntityID(), std::string("Duplicate StreamPortOutput AudioMappings found: ") + std::to_string(foundIt->streamIndex) + ":" + std::to_string(foundIt->streamChannel) + ":" + std::to_string(foundIt->clusterOffset) + ":" + std::to_string(foundIt->clusterChannel) + " replaced by " + std::to_string(map.streamIndex) + ":" + std::to_string(map.streamChannel) + ":" + std::to_string(map.clusterOffset) + ":" + std::to_string(map.clusterChannel));
+				foundIt->clusterOffset = map.clusterOffset;
+				foundIt->clusterChannel = map.clusterChannel;
 			}
 		}
 	}
@@ -1323,8 +1346,7 @@ void ControlledEntityImpl::setStreamInputDescriptor(entity::model::StreamDescrip
 		m.connectionState.listenerStream = entity::model::StreamIdentification{ _entity.getEntityID(), streamIndex }; // We always are the other endpoint of a connection, initialize this now
 		// Changeable fields through commands
 		m.objectName = descriptor.objectName;
-		m.streamInfo.streamFormat = descriptor.currentFormat; // Copy the streamFormat, but we should get the complete StreamInfo soon
-		m.streamInfo.streamInfoFlags.set(entity::StreamInfoFlag::StreamFormatValid);
+		m.streamFormat = descriptor.currentFormat;
 	}
 }
 
@@ -1359,8 +1381,7 @@ void ControlledEntityImpl::setStreamOutputDescriptor(entity::model::StreamDescri
 		auto& m = getNodeDynamicModel(configurationIndex, streamIndex, &entity::model::ConfigurationTree::streamOutputModels);
 		// Changeable fields through commands
 		m.objectName = descriptor.objectName;
-		m.streamInfo.streamFormat = descriptor.currentFormat; // Copy the streamFormat, but we should get the complete StreamInfo soon
-		m.streamInfo.streamInfoFlags.set(entity::StreamInfoFlag::StreamFormatValid);
+		m.streamFormat = descriptor.currentFormat;
 	}
 }
 
@@ -1941,6 +1962,26 @@ void ControlledEntityImpl::setAdvertised(bool const wasAdvertised) noexcept
 	_advertised = wasAdvertised;
 }
 
+bool ControlledEntityImpl::isRedundantPrimaryStreamInput(entity::model::StreamIndex const streamIndex) const noexcept
+{
+	return _redundantPrimaryStreamInputs.count(streamIndex) != 0;
+}
+
+bool ControlledEntityImpl::isRedundantPrimaryStreamOutput(entity::model::StreamIndex const streamIndex) const noexcept
+{
+	return _redundantPrimaryStreamOutputs.count(streamIndex) != 0;
+}
+
+bool ControlledEntityImpl::isRedundantSecondaryStreamInput(entity::model::StreamIndex const streamIndex) const noexcept
+{
+	return _redundantSecondaryStreamInputs.count(streamIndex) != 0;
+}
+
+bool ControlledEntityImpl::isRedundantSecondaryStreamOutput(entity::model::StreamIndex const streamIndex) const noexcept
+{
+	return _redundantSecondaryStreamOutputs.count(streamIndex) != 0;
+}
+
 // Static methods
 std::string ControlledEntityImpl::dynamicInfoTypeToString(DynamicInfoType const dynamicInfoType) noexcept
 {
@@ -2021,7 +2062,7 @@ std::string ControlledEntityImpl::descriptorDynamicInfoTypeToString(DescriptorDy
 }
 
 // Private methods
-void ControlledEntityImpl::buildEntityModelGraph() const noexcept
+void ControlledEntityImpl::buildEntityModelGraph() noexcept
 {
 	try
 	{
@@ -2233,11 +2274,11 @@ void ControlledEntityImpl::buildEntityModelGraph() const noexcept
 }
 
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-class RedundantHelper : ControlledEntityImpl
+class RedundantHelper : public ControlledEntityImpl
 {
 public:
 	template<typename StreamNodeType>
-	static void buildRedundancyNodesByType(la::avdecc::UniqueIdentifier entityID, std::map<entity::model::StreamIndex, StreamNodeType>& streams, std::map<model::VirtualIndex, model::RedundantStreamNode>& redundantStreams)
+	static void buildRedundancyNodesByType(la::avdecc::UniqueIdentifier entityID, std::map<entity::model::StreamIndex, StreamNodeType>& streams, std::map<model::VirtualIndex, model::RedundantStreamNode>& redundantStreams, RedundantStreamCategory& redundantPrimaryStreams, RedundantStreamCategory& redundantSecondaryStreams)
 	{
 		for (auto& streamNodeKV : streams)
 		{
@@ -2351,18 +2392,24 @@ public:
 						redundantNode->isRedundant = true; // Set this StreamNode as part of a valid redundant stream association
 					}
 
+					auto redundantStreamIt = redundantStreamNodes.begin();
 					// Defined the primary stream
-					redundantStreamNode.primaryStream = redundantStreamNodes.begin()->second;
+					redundantStreamNode.primaryStream = redundantStreamIt->second;
+
+					// Cache Primary and Secondary StreamIndexes
+					redundantPrimaryStreams.insert(redundantStreamIt->second->descriptorIndex);
+					++redundantStreamIt;
+					redundantSecondaryStreams.insert(redundantStreamIt->second->descriptorIndex);
 				}
 			}
 		}
 	}
 };
 
-void ControlledEntityImpl::buildRedundancyNodes(model::ConfigurationNode& configNode) const noexcept
+void ControlledEntityImpl::buildRedundancyNodes(model::ConfigurationNode& configNode) noexcept
 {
-	RedundantHelper::buildRedundancyNodesByType(_entity.getEntityID(), configNode.streamInputs, configNode.redundantStreamInputs);
-	RedundantHelper::buildRedundancyNodesByType(_entity.getEntityID(), configNode.streamOutputs, configNode.redundantStreamOutputs);
+	RedundantHelper::buildRedundancyNodesByType(_entity.getEntityID(), configNode.streamInputs, configNode.redundantStreamInputs, _redundantPrimaryStreamInputs, _redundantSecondaryStreamInputs);
+	RedundantHelper::buildRedundancyNodesByType(_entity.getEntityID(), configNode.streamOutputs, configNode.redundantStreamOutputs, _redundantPrimaryStreamOutputs, _redundantSecondaryStreamOutputs);
 }
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 

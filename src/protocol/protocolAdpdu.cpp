@@ -78,6 +78,18 @@ void LA_AVDECC_CALL_CONVENTION Adpdu::deserialize(DeserializationBuffer& buffer)
 		throw std::invalid_argument("Not enough data to deserialize");
 	}
 
+	// Check is there are less advertised data than the required minimum
+	if (_controlDataLength < Length)
+	{
+#if defined(IGNORE_INVALID_CONTROL_DATA_LENGTH)
+		// Allow this packet to go through, the ControlData specific unpacker will trap any error if the message is further ill-formed
+		LOG_SERIALIZATION_DEBUG(_srcAddress, "Adpdu::deserialize error: ControlDataLength field minimum value for ADPDU is {}. Only {} bytes advertised", Length, _controlDataLength);
+#else // !IGNORE_INVALID_CONTROL_DATA_LENGTH
+		LOG_SERIALIZATION_WARN(_srcAddress, "Adpdu::deserialize error: ControlDataLength field minimum value for ADPDU is {}. Only {} bytes advertised", Length, _controlDataLength);
+		throw std::invalid_argument("ControlDataLength field value too small for ADPDU");
+#endif // IGNORE_INVALID_CONTROL_DATA_LENGTH
+	}
+
 	// Check if there is more advertised data than actual bytes in the buffer
 	if (_controlDataLength > beginRemainingBytes)
 	{
@@ -106,7 +118,9 @@ void LA_AVDECC_CALL_CONVENTION Adpdu::deserialize(DeserializationBuffer& buffer)
 #ifdef DEBUG
 	// Do not log this error in release, it might happen too often if an entity is bugged or if the message contains data this version of the library do not unpack
 	if (buffer.remaining() != 0 && buffer.usedBytes() >= EthernetPayloadMinimumSize)
-		LOG_SERIALIZATION_TRACE(_srcAddress, "Adpdu::deserialize warning: Remaining bytes in buffer for AdpMessageType " + std::string(getMessageType()) + " (" + utils::toHexString(getMessageType().getValue()) + ")");
+	{
+		LOG_SERIALIZATION_TRACE(_srcAddress, "Adpdu::deserialize warning: Remaining bytes in buffer for AdpMessageType {} ({}): {}", std::string(getMessageType()), utils::toHexString(getMessageType().getValue()), buffer.remaining());
+	}
 #endif // DEBUG
 }
 

@@ -51,13 +51,13 @@ ProtocolInterface::ProtocolInterface(std::string const& networkInterfaceName)
 {
 	try
 	{
-		auto const interface = la::avdecc::networkInterface::getInterfaceByName(networkInterfaceName);
+		auto const intfc = la::avdecc::networkInterface::getInterfaceByName(networkInterfaceName);
 
 		// Check we have a valid mac address
-		if (!la::avdecc::networkInterface::isMacAddressValid(interface.macAddress))
+		if (!la::avdecc::networkInterface::isMacAddressValid(intfc.macAddress))
 			throw Exception(Error::InvalidParameters, "Network interface has an invalid mac address");
 
-		_networkInterfaceMacAddress = interface.macAddress;
+		_networkInterfaceMacAddress = intfc.macAddress;
 	}
 	catch (std::invalid_argument const&)
 	{

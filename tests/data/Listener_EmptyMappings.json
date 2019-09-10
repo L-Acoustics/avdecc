@@ -133,30 +133,6 @@
                                     "audio_map_descriptors": null,
                                     "dynamic": {
                                         "dynamic_mappings": [
-                                            {
-                                                "cluster_channel": 0,
-                                                "cluster_offset": 0,
-                                                "stream_channel": 0,
-                                                "stream_index": 0
-                                            },
-                                            {
-                                                "cluster_channel": 0,
-                                                "cluster_offset": 1,
-                                                "stream_channel": 1,
-                                                "stream_index": 0
-                                            },
-                                            {
-                                                "cluster_channel": 0,
-                                                "cluster_offset": 2,
-                                                "stream_channel": 2,
-                                                "stream_index": 0
-                                            },
-                                            {
-                                                "cluster_channel": 0,
-                                                "cluster_offset": 3,
-                                                "stream_channel": 3,
-                                                "stream_index": 0
-                                            }
                                         ]
                                     },
                                     "static": {
