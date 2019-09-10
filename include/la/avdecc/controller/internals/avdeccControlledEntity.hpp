@@ -292,6 +292,7 @@ public:
 	ControlledEntityGuard& operator=(ControlledEntityGuard&& other)
 	{
 		swap(*this, other);
+		return *this;
 	}
 
 	// Disallow copy
