@@ -43,7 +43,7 @@ namespace jsonSerializer
 /* ************************************************************ */
 /* Public methods                                               */
 /* ************************************************************ */
-json createJsonObject(ControlledEntityImpl const& entity, bool const ignoreSanityChecks)
+json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSerializer::Flags const flags)
 {
 	try
 	{
@@ -55,6 +55,7 @@ json createJsonObject(ControlledEntityImpl const& entity, bool const ignoreSanit
 		object[keyName::ControlledEntity_DumpVersion] = keyValue::ControlledEntity_DumpVersion;
 
 		// Dump ADP information
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessADP))
 		{
 			auto& adp = object[keyName::ControlledEntity_AdpInformation];
 
@@ -80,28 +81,30 @@ json createJsonObject(ControlledEntityImpl const& entity, bool const ignoreSanit
 		}
 
 		// Dump device compatibility flags
-		object[keyName::ControlledEntity_CompatibilityFlags] = entity.getCompatibilityFlags();
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessCompatibility))
+		{
+			object[keyName::ControlledEntity_CompatibilityFlags] = entity.getCompatibilityFlags();
+		}
 
 		// Dump AEM if supported
-		if (e.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+		if (e.getEntityCapabilities().test(entity::EntityCapability::AemSupported) && (flags.test(entity::model::jsonSerializer::Flag::ProcessStaticModel) || flags.test(entity::model::jsonSerializer::Flag::ProcessDynamicModel)))
 		{
-			// Dump static and dynamic models
-			auto flags = entity::model::jsonSerializer::Flags{ entity::model::jsonSerializer::Flag::ProcessStaticModel, entity::model::jsonSerializer::Flag::ProcessDynamicModel };
-			if (ignoreSanityChecks)
-			{
-				flags.set(entity::model::jsonSerializer::Flag::IgnoreSanityChecks);
-			}
+			// Dump model(s)
 			object[keyName::ControlledEntity_EntityModel] = entity::model::jsonSerializer::createJsonObject(entity.getEntityTree(), flags);
 		}
 
 		// Dump Milan information, if present
-		auto const milanInfo = entity.getMilanInfo();
-		if (milanInfo)
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessMilan))
 		{
-			object[keyName::ControlledEntity_MilanInformation] = *milanInfo;
+			auto const milanInfo = entity.getMilanInfo();
+			if (milanInfo)
+			{
+				object[keyName::ControlledEntity_MilanInformation] = *milanInfo;
+			}
 		}
 
 		// Dump Entity State
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessState))
 		{
 			auto& state = object[keyName::ControlledEntity_EntityState];
 			state[controller::keyName::ControlledEntityState_AcquireState] = entity.getAcquireState();
@@ -113,6 +116,7 @@ json createJsonObject(ControlledEntityImpl const& entity, bool const ignoreSanit
 		}
 
 		// Dump Entity Statistics
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessStatistics))
 		{
 			auto& statistics = object[keyName::ControlledEntity_Statistics];
 			statistics[controller::keyName::ControlledEntityStatistics_AecpRetryCounter] = entity.getAecpRetryCounter();

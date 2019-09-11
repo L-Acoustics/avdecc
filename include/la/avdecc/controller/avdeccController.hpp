@@ -450,13 +450,13 @@ public:
 
 	/* Model serialization methods */
 	/** Serializes all discovered ControlledEntities as a readable JSON file. If 'continueOnError' is specified and some error(s) occured, SerializationError::Incomplete will be returned. */
-	virtual std::tuple<avdecc::jsonSerializer::SerializationError, std::string> serializeAllControlledEntitiesAsReadableJson(std::string const& filePath, bool const ignoreSanityChecks, bool const continueOnError) const noexcept = 0;
+	virtual std::tuple<avdecc::jsonSerializer::SerializationError, std::string> serializeAllControlledEntitiesAsReadableJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError) const noexcept = 0;
 	/** Serializes specified ControlledEntity as a readable JSON file. */
-	virtual std::tuple<avdecc::jsonSerializer::SerializationError, std::string> serializeControlledEntityAsReadableJson(UniqueIdentifier const entityID, std::string const& filePath, bool const ignoreSanityChecks) const noexcept = 0;
+	virtual std::tuple<avdecc::jsonSerializer::SerializationError, std::string> serializeControlledEntityAsReadableJson(UniqueIdentifier const entityID, std::string const& filePath, entity::model::jsonSerializer::Flags const flags) const noexcept = 0;
 
 	/* Model deserialization methods */
 	/** Deserializes a readable JSON file representing an entity, and loads it as a virtual ControlledEntity. */
-	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadVirtualEntityFromReadableJson(std::string const& filePath, bool const ignoreSanityChecks) noexcept = 0;
+	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadVirtualEntityFromReadableJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags) noexcept = 0;
 
 	// Deleted compiler auto-generated methods
 	Controller(Controller const&) = delete;

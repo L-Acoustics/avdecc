@@ -35,6 +35,8 @@
 #	include <nlohmann/json.hpp>
 #endif // ENABLE_AVDECC_FEATURE_JSON
 
+#include <cstdint>
+
 namespace la
 {
 namespace avdecc
@@ -123,12 +125,18 @@ namespace model
 {
 namespace jsonSerializer
 {
-enum class Flag
+enum class Flag : std::uint16_t
 {
 	None = 0,
-	ProcessStaticModel = 1u << 0, /**< READ/WRITE the Static part of the model */
-	ProcessDynamicModel = 1u << 1, /**< READ/WRITE the Dynamic part of the model */
-	IgnoreSanityChecks = 1u << 2, /**< Ignore Sanity Checks for READING/WRITING the model */
+	ProcessADP = 1u << 0, /**< READ/WRITE ADP information */
+	ProcessStaticModel = 1u << 1, /**< READ/WRITE AEM Static information */
+	ProcessDynamicModel = 1u << 2, /**< READ/WRITE AEM Dynamic information */
+	ProcessMilan = 1u << 3, /**< READ/WRITE Milan information */
+	ProcessState = 1u << 4, /**< READ/WRITE Global Entity State */
+	ProcessStatistics = 1u << 5, /**< READ/WRITE Global Entity Statistics */
+	ProcessCompatibility = 1u << 6, /**< READ/WRITE Entity Compatibility */
+
+	IgnoreAEMSanityChecks = 1u << 15, /**< Ignore AEM Sanity Checks when READING or WRITING */
 };
 using Flags = utils::EnumBitfield<Flag>;
 

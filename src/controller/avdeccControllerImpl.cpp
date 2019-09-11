@@ -3458,7 +3458,7 @@ void ControllerImpl::addTalkerStreamConnection(ControlledEntityImpl* const talke
 }
 
 #ifdef ENABLE_AVDECC_FEATURE_JSON
-ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntityFromJson(json const& object)
+ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntityFromJson(json const& object, entity::model::jsonSerializer::Flags const flags)
 {
 	try
 	{
@@ -3473,6 +3473,7 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntit
 		auto intfcsInfo = entity::Entity::InterfacesInformation{};
 
 		// Read ADP information
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessADP))
 		{
 			auto const& adp = object.at(jsonSerializer::keyName::ControlledEntity_AdpInformation);
 
@@ -3495,14 +3496,20 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntit
 		entity.setStartEnumerationTime(std::chrono::steady_clock::now());
 
 		// Read device compatibility flags
-		entity.setCompatibilityFlags(object.at(jsonSerializer::keyName::ControlledEntity_CompatibilityFlags).get<ControlledEntity::CompatibilityFlags>());
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessCompatibility))
+		{
+			entity.setCompatibilityFlags(object.at(jsonSerializer::keyName::ControlledEntity_CompatibilityFlags).get<ControlledEntity::CompatibilityFlags>());
+		}
 
 		// Read Milan information, if present
-		auto milanInfo = std::optional<entity::model::MilanInfo>{};
-		get_optional_value(object, jsonSerializer::keyName::ControlledEntity_MilanInformation, milanInfo);
-		if (milanInfo)
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessMilan))
 		{
-			entity.setMilanInfo(*milanInfo);
+			auto milanInfo = std::optional<entity::model::MilanInfo>{};
+			get_optional_value(object, jsonSerializer::keyName::ControlledEntity_MilanInformation, milanInfo);
+			if (milanInfo)
+			{
+				entity.setMilanInfo(*milanInfo);
+			}
 		}
 
 		return controlledEntity;

@@ -72,7 +72,7 @@ json dumpLeafModels(Context& c, ConfigurationTree const& configTree, Flags const
 		auto const descriptorIndex = DescriptorIndex(descriptorIndexCounter + baseIndex);
 		if (descriptorIndex != nextExpectedIndex)
 		{
-			if (!flags.test(Flag::IgnoreSanityChecks))
+			if (!flags.test(Flag::IgnoreAEMSanityChecks))
 			{
 				throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex, "Invalid " + descriptorName + " Descriptor Index: " + std::to_string(descriptorIndex) + " but expected " + std::to_string(nextExpectedIndex) };
 			}
@@ -166,7 +166,7 @@ json dumpStreamPortModels(Context& c, ConfigurationTree const& configTree, Flags
 		auto const streamPortIndex = StreamPortIndex(streamPortIndexCounter + baseStreamPort);
 		if (streamPortIndex != nextExpectedIndex)
 		{
-			if (!flags.test(Flag::IgnoreSanityChecks))
+			if (!flags.test(Flag::IgnoreAEMSanityChecks))
 			{
 				throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex, "Invalid StreamPort Descriptor Index: " + std::to_string(streamPortIndex) + " but expected " + std::to_string(nextExpectedIndex) };
 			}
@@ -224,7 +224,7 @@ json dumpAudioUnitModels(Context& c, ConfigurationTree const& configTree, Flags 
 	{
 		if (audioUnitIndex != c.nextExpectedAudioUnitIndex)
 		{
-			if (!flags.test(Flag::IgnoreSanityChecks))
+			if (!flags.test(Flag::IgnoreAEMSanityChecks))
 			{
 				throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex, "Invalid AudioUnit Descriptor Index: " + std::to_string(audioUnitIndex) + " but expected " + std::to_string(c.nextExpectedAudioUnitIndex) };
 			}
@@ -275,7 +275,7 @@ json dumpLocaleModels(Context& c, ConfigurationTree const& configTree, Flags con
 	{
 		if (localeIndex != c.nextExpectedLocaleIndex)
 		{
-			if (!flags.test(Flag::IgnoreSanityChecks))
+			if (!flags.test(Flag::IgnoreAEMSanityChecks))
 			{
 				throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex, "Invalid Locale Descriptor Index: " + std::to_string(localeIndex) + " but expected " + std::to_string(c.nextExpectedLocaleIndex) };
 			}
@@ -320,7 +320,7 @@ json dumpConfigurationTrees(std::map<ConfigurationIndex, ConfigurationTree> cons
 
 		if (configIndex != nextExpectedConfigurationIndex)
 		{
-			if (!flags.test(Flag::IgnoreSanityChecks))
+			if (!flags.test(Flag::IgnoreAEMSanityChecks))
 			{
 				throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex, "Invalid Configuration Descriptor Index: " + std::to_string(configIndex) + " but expected " + std::to_string(nextExpectedConfigurationIndex) };
 			}
@@ -724,7 +724,7 @@ EntityTree LA_AVDECC_CALL_CONVENTION createEntityTree(json const& object, Flags 
 		{
 			auto notCompliant = false;
 			get_optional_value(object, keyName::Node_NotCompliant, notCompliant);
-			if (notCompliant && !flags.test(Flag::IgnoreSanityChecks))
+			if (notCompliant && !flags.test(Flag::IgnoreAEMSanityChecks))
 			{
 				throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::NotCompliant, "Model is not full compliant with IEEE1722.1." };
 			}

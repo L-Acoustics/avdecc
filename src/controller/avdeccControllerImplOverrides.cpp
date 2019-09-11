@@ -2302,21 +2302,12 @@ void ControllerImpl::unlock() noexcept
 }
 
 /* Model serialization methods */
-std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerImpl::serializeAllControlledEntitiesAsReadableJson([[maybe_unused]] std::string const& filePath, [[maybe_unused]] bool const ignoreSanityChecks, [[maybe_unused]] bool const continueOnError) const noexcept
+std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerImpl::serializeAllControlledEntitiesAsReadableJson([[maybe_unused]] std::string const& filePath, [[maybe_unused]] entity::model::jsonSerializer::Flags const flags, [[maybe_unused]] bool const continueOnError) const noexcept
 {
 #ifndef ENABLE_AVDECC_FEATURE_JSON
 	return { avdecc::jsonSerializer::SerializationError::NotSupported, "Serialization feature not supported by the library (was not compiled)" };
 
 #else // ENABLE_AVDECC_FEATURE_JSON
-
-	// Try to open the output file
-	std::ofstream of{ filePath };
-
-	// Failed to open file to writting
-	if (!of.is_open())
-	{
-		return { avdecc::jsonSerializer::SerializationError::AccessDenied, std::strerror(errno) };
-	}
 
 	// Create the object
 	auto object = json{};
@@ -2334,7 +2325,7 @@ std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerIm
 		// Try to serialize
 		try
 		{
-			auto const entityObject = jsonSerializer::createJsonObject(*entity, ignoreSanityChecks);
+			auto const entityObject = jsonSerializer::createJsonObject(*entity, flags);
 
 			object[jsonSerializer::keyName::Controller_Entities].push_back(entityObject);
 		}
@@ -2350,6 +2341,15 @@ std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerIm
 		}
 	}
 
+	// Try to open the output file
+	std::ofstream of{ filePath };
+
+	// Failed to open file to writting
+	if (!of.is_open())
+	{
+		return { avdecc::jsonSerializer::SerializationError::AccessDenied, std::strerror(errno) };
+	}
+
 	// Everything is fine, write the JSON object to disk
 	of << std::setw(4) << object << std::endl;
 
@@ -2357,7 +2357,7 @@ std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerIm
 #endif // ENABLE_AVDECC_FEATURE_JSON
 }
 
-std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerImpl::serializeControlledEntityAsReadableJson([[maybe_unused]] UniqueIdentifier const entityID, [[maybe_unused]] std::string const& filePath, [[maybe_unused]] bool const ignoreSanityChecks) const noexcept
+std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerImpl::serializeControlledEntityAsReadableJson([[maybe_unused]] UniqueIdentifier const entityID, [[maybe_unused]] std::string const& filePath, [[maybe_unused]] entity::model::jsonSerializer::Flags const flags) const noexcept
 {
 #ifndef ENABLE_AVDECC_FEATURE_JSON
 	return { avdecc::jsonSerializer::SerializationError::NotSupported, "Serialization feature not supported by the library (was not compiled)" };
@@ -2371,19 +2371,20 @@ std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerIm
 		return { avdecc::jsonSerializer::SerializationError::UnknownEntity, "Entity offline" };
 	}
 
-	// Try to open the output file
-	std::ofstream ofs{ filePath };
-
-	// Failed to open file to writting
-	if (!ofs.is_open())
-	{
-		return { avdecc::jsonSerializer::SerializationError::AccessDenied, std::strerror(errno) };
-	}
-
 	// Try to serialize
 	try
 	{
-		auto const object = jsonSerializer::createJsonObject(*entity, ignoreSanityChecks);
+		// Try to serialize
+		auto const object = jsonSerializer::createJsonObject(*entity, flags);
+
+		// Try to open the output file
+		std::ofstream ofs{ filePath };
+
+		// Failed to open file to writting
+		if (!ofs.is_open())
+		{
+			return { avdecc::jsonSerializer::SerializationError::AccessDenied, std::strerror(errno) };
+		}
 
 		// Everything is fine, write the JSON object to disk
 		ofs << std::setw(4) << object << std::endl;
@@ -2398,7 +2399,7 @@ std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerIm
 }
 
 /* Model deserialization methods */
-std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> ControllerImpl::loadVirtualEntityFromReadableJson([[maybe_unused]] std::string const& filePath, [[maybe_unused]] bool const ignoreSanityChecks) noexcept
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> ControllerImpl::loadVirtualEntityFromReadableJson([[maybe_unused]] std::string const& filePath, [[maybe_unused]] entity::model::jsonSerializer::Flags const flags) noexcept
 {
 #ifndef ENABLE_AVDECC_FEATURE_JSON
 	return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Deserialization feature not supported by the library (was not compiled)" };
@@ -2451,23 +2452,24 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 	// Try to deserialize
 	try
 	{
-		auto controlledEntity = createControlledEntityFromJson(object);
+		auto controlledEntity = createControlledEntityFromJson(object, flags);
 
 		auto& entity = *controlledEntity;
 
-		auto flags = entity::model::jsonSerializer::Flags{ entity::model::jsonSerializer::Flag::ProcessStaticModel, entity::model::jsonSerializer::Flag::ProcessDynamicModel };
-		if (ignoreSanityChecks)
+		// Set the Entity Model for our virtual entity
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessStaticModel) || flags.test(entity::model::jsonSerializer::Flag::ProcessDynamicModel))
 		{
-			flags.set(entity::model::jsonSerializer::Flag::IgnoreSanityChecks);
+			jsonSerializer::setEntityModel(entity, object.at(jsonSerializer::keyName::ControlledEntity_EntityModel), flags);
 		}
 
-		// Set the Entity Model for our virtual entity
-		jsonSerializer::setEntityModel(entity, object.at(jsonSerializer::keyName::ControlledEntity_EntityModel), flags);
-
 		// Set the Entity State
-		jsonSerializer::setEntityState(entity, object.at(jsonSerializer::keyName::ControlledEntity_EntityState));
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessState))
+		{
+			jsonSerializer::setEntityState(entity, object.at(jsonSerializer::keyName::ControlledEntity_EntityState));
+		}
 
 		// Set the Statistics
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessStatistics))
 		{
 			auto const it = object.find(jsonSerializer::keyName::ControlledEntity_Statistics);
 			if (it != object.end())
