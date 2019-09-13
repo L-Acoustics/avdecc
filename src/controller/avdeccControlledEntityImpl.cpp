@@ -24,6 +24,7 @@
 
 #include "avdeccControlledEntityImpl.hpp"
 #include "avdeccControllerLogHelper.hpp"
+#include "avdeccEntityModelCache.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -162,6 +163,16 @@ entity::Entity const& ControlledEntityImpl::getEntity() const noexcept
 std::optional<entity::model::MilanInfo> ControlledEntityImpl::getMilanInfo() const noexcept
 {
 	return _milanInfo;
+}
+
+bool ControlledEntityImpl::isEntityModelValidForCaching() const noexcept
+{
+	if (_gotFatalEnumerateError || _entityTree.configurationTrees.empty())
+	{
+		return false;
+	}
+
+	return isEntityModelComplete(_entityTree, static_cast<std::uint16_t>(_entityTree.configurationTrees.size()));
 }
 
 model::EntityNode const& ControlledEntityImpl::getEntityNode() const
@@ -1186,7 +1197,7 @@ void ControlledEntityImpl::setEntityTree(entity::model::EntityTree const& entity
 	_entityTree = entityTree;
 }
 
-bool ControlledEntityImpl::setCachedEntityTree(entity::model::EntityTree const& cachedTree, entity::model::EntityDescriptor const& descriptor) noexcept
+bool ControlledEntityImpl::setCachedEntityTree(entity::model::EntityTree const& cachedTree, entity::model::EntityDescriptor const& descriptor, bool const forAllConfiguration) noexcept
 {
 	// Check if static information in EntityDescriptor are identical
 	auto const& cachedDescriptor = cachedTree.staticModel;
@@ -1194,6 +1205,26 @@ bool ControlledEntityImpl::setCachedEntityTree(entity::model::EntityTree const& 
 	{
 		LOG_CONTROLLER_WARN(_entity.getEntityID(), "EntityModelID provided by this Entity has inconsistent data in it's EntityDescriptor, not using cached AEM");
 		return false;
+	}
+
+	if (forAllConfiguration)
+	{
+		// Check if Cached Model is valid for ALL configurations
+		if (!isEntityModelComplete(cachedTree, descriptor.configurationsCount))
+		{
+			LOG_CONTROLLER_WARN(_entity.getEntityID(), "Cached EntityModel does not provide tree for configuration {}, not using cached AEM", descriptor.currentConfiguration);
+			return false;
+		}
+	}
+	else
+	{
+		auto const configTreeIt = cachedTree.configurationTrees.find(descriptor.currentConfiguration);
+
+		if (configTreeIt == cachedTree.configurationTrees.end() || !EntityModelCache::isModelValidForConfiguration(configTreeIt->second))
+		{
+			LOG_CONTROLLER_WARN(_entity.getEntityID(), "Cached EntityModel does not provide tree for configuration {}, not using cached AEM", descriptor.currentConfiguration);
+			return false;
+		}
 	}
 
 	// Ok the static information from EntityDescriptor are identical, we cannot check more than this so we have to assume it's correct, copy the whole model
@@ -2405,6 +2436,24 @@ public:
 		}
 	}
 };
+
+bool ControlledEntityImpl::isEntityModelComplete(entity::model::EntityTree const& entityTree, std::uint16_t const configurationsCount) const noexcept
+{
+	if (configurationsCount != entityTree.configurationTrees.size())
+	{
+		return false;
+	}
+
+	// Check if Cached Model is valid for ALL configurations
+	for (auto const& [configIndex, configTree] : entityTree.configurationTrees)
+	{
+		if (!EntityModelCache::isModelValidForConfiguration(configTree))
+		{
+			return false;
+		}
+	}
+	return true;
+}
 
 void ControlledEntityImpl::buildRedundancyNodes(model::ConfigurationNode& configNode) noexcept
 {

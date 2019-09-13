@@ -91,6 +91,11 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 		{
 			// Dump model(s)
 			object[keyName::ControlledEntity_EntityModel] = entity::model::jsonSerializer::createJsonObject(entity.getEntityTree(), flags);
+			// Dump EntityModelID
+			if (flags.test(entity::model::jsonSerializer::Flag::ProcessStaticModel))
+			{
+				object[keyName::ControlledEntity_EntityModelID] = entity.getEntity().getEntityModelID();
+			}
 		}
 
 		// Dump Milan information, if present

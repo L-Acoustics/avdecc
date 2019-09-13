@@ -26,7 +26,11 @@
 
 #include <la/avdecc/internals/entityModelTree.hpp>
 
+#include "avdeccControllerLogHelper.hpp"
+
 #include <unordered_map>
+#include <mutex>
+#include <optional>
 
 namespace la
 {
@@ -43,49 +47,56 @@ public:
 		return s_instance;
 	}
 
+	bool isCacheEnabled() const noexcept
+	{
+		auto const lg = std::lock_guard{ _lock };
+
+		return _isEnabled;
+	}
+
 	void enableCache() noexcept
 	{
+		auto const lg = std::lock_guard{ _lock };
+
 		_isEnabled = true;
 	}
 
 	void disableCache() noexcept
 	{
+		auto const lg = std::lock_guard{ _lock };
+
 		_isEnabled = false;
 	}
 
-	// TODO: If we want to add a clearCache method, we'll have to add locking to this class
-	// because clearCache would probably not be called from the same thread than getCachedEntityTree and cacheEntityTree.
-	// Also we should return a copy of the data (pair<bool, Tree> or std::optional) so the lock is release with valid data
-	entity::model::EntityTree const* getCachedEntityTree(UniqueIdentifier const entityModelID, entity::model::ConfigurationIndex const configurationIndex) const noexcept
+	std::optional<entity::model::EntityTree> getCachedEntityTree(UniqueIdentifier const entityModelID) const noexcept
 	{
+		AVDECC_ASSERT(_isEnabled, "Should not call AEM cache if cache is not enabled");
+		AVDECC_ASSERT(entityModelID, "Should not call AEM cache if EntityModelID is invalid");
+		auto const lg = std::lock_guard{ _lock };
+
 		if (_isEnabled && entityModelID)
 		{
-			auto const entityModelIt = _modelCache.find(entityModelID);
-			if (entityModelIt != _modelCache.end())
+			if (auto const entityModelIt = _modelCache.find(entityModelID); entityModelIt != _modelCache.end())
 			{
-				auto const& entityModel = entityModelIt->second;
-				auto const modelIt = entityModel.find(configurationIndex);
-				if (modelIt != entityModel.end())
-				{
-					return &modelIt->second;
-				}
+				return entityModelIt->second;
 			}
 		}
 
-		return nullptr;
+		return std::nullopt;
 	}
 
-	void cacheEntityTree(UniqueIdentifier const entityModelID, entity::model::ConfigurationIndex const configurationIndex, entity::model::EntityTree const& tree) noexcept
+	void cacheEntityTree(UniqueIdentifier const entityModelID, entity::model::EntityTree const& tree) noexcept
 	{
+		AVDECC_ASSERT(_isEnabled, "Should not call AEM cache if cache is not enabled");
+		AVDECC_ASSERT(entityModelID, "Should not call AEM cache if EntityModelID is invalid");
+		auto const lg = std::lock_guard{ _lock };
+
 		if (_isEnabled && entityModelID)
 		{
-			auto& entityModel = _modelCache[entityModelID];
-
 			// Cache the EntityModel but only if not already in cache
-			auto modelIt = entityModel.find(configurationIndex);
-			if (modelIt == entityModel.end())
+			if (_modelCache.count(entityModelID) == 0)
 			{
-				// Make a copy of the tree
+				// Make a copy of the passed tree as we want to remove all the dynamic part from it
 				auto cachedTree = tree;
 
 				// Wipe all the dynamic model
@@ -118,6 +129,8 @@ public:
 					{
 						KV.second.dynamicModel = {};
 					}
+					// LocaleNodeModel doesn't have dynamic model
+					// StringsNodeModel doesn't have dynamic model
 					for (auto& KV : config.streamPortInputModels)
 					{
 						KV.second.dynamicModel = {};
@@ -130,6 +143,7 @@ public:
 					{
 						KV.second.dynamicModel = {};
 					}
+					// AudioMapNodeModel doesn't have dynamic model
 					for (auto& KV : config.clockDomainModels)
 					{
 						KV.second.dynamicModel = {};
@@ -137,14 +151,71 @@ public:
 				}
 
 				// Move it to the cache
-				entityModel.insert(std::make_pair(configurationIndex, std::move(cachedTree)));
+				_modelCache.insert(std::make_pair(entityModelID, std::move(cachedTree)));
 			}
 		}
 	}
 
+	static inline bool isValidEntityModelID(UniqueIdentifier const entityModelID) noexcept
+	{
+		auto const [vendorID, deviceID, modelID] = entity::model::splitEntityModelID(entityModelID);
+		return vendorID != 0x00000000 && vendorID != 0x00FFFFFF;
+	}
+
+	static inline bool isModelValidForConfiguration(entity::model::ConfigurationTree const& configTree) noexcept
+	{
+		// Check TOP LEVEL descriptors count. If the declared count does not match what is stored in the tree, it probably means we didn't have a valid tree for this configuration (model was only partially stored)
+		// Currently, we don't want to check more deeply as we trust both the AEM loader and the enumeration state machine to give us a valid model
+		auto const& descriptorCounts = configTree.staticModel.descriptorCounts;
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::AudioUnit, configTree.audioUnitModels))
+		{
+			return false;
+		}
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::StreamInput, configTree.streamInputModels))
+		{
+			return false;
+		}
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::StreamOutput, configTree.streamOutputModels))
+		{
+			return false;
+		}
+		// JACK_INPUT
+		// JACK_OUTPUT
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::AvbInterface, configTree.avbInterfaceModels))
+		{
+			return false;
+		}
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::ClockSource, configTree.clockSourceModels))
+		{
+			return false;
+		}
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::MemoryObject, configTree.memoryObjectModels))
+		{
+			return false;
+		}
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::Locale, configTree.localeModels))
+		{
+			return false;
+		}
+
+		// Seems valid
+		return true;
+	}
+
 private:
-	using ConfigurationModels = std::unordered_map<entity::model::ConfigurationIndex, entity::model::EntityTree>;
-	std::unordered_map<UniqueIdentifier, ConfigurationModels, la::avdecc::UniqueIdentifier::hash> _modelCache{};
+	template<class Tree>
+	static inline bool validateDescriptorCount(std::unordered_map<entity::model::DescriptorType, std::uint16_t, la::avdecc::utils::EnumClassHash> const& descriptorCounts, entity::model::DescriptorType const descriptorType, Tree const& tree) noexcept
+	{
+		auto count = std::uint16_t{ 0u };
+		if (auto const descIt = descriptorCounts.find(descriptorType); descIt != descriptorCounts.end())
+		{
+			count = descIt->second;
+		}
+		return tree.size() == count;
+	}
+
+	mutable std::mutex _lock{};
+	std::unordered_map<UniqueIdentifier, entity::model::EntityTree, la::avdecc::UniqueIdentifier::hash> _modelCache{};
 	bool _isEnabled{ false };
 };
 

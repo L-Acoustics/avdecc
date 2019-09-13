@@ -58,14 +58,15 @@ enum class DeserializationError
 {
 	NoError = 0,
 	AccessDenied = 1, /**< File access denied. */
-	UnsupportedDumpVersion = 2, /**< json dump version not supported. */
-	ParseError = 3, /**< Error during json parsing. */
-	MissingKey = 4, /**< A mandatory Key is missing from the json model. */
-	InvalidKey = 5, /**< Key couldn't be converted from json to field's expected data type. */
-	InvalidValue = 6, /**< Value couldn't be converted from json to field's expected data type. */
-	OtherError = 7, /**< Other json conversion error. */
-	DuplicateEntityID = 8, /**< An Entity already exists with the same EntityID. */
-	NotCompliant = 9, /**< Model is not full compliant with IEEE1722.1 and IgnoreSanityChecks flag was not set. */
+	FileReadError = 2, /**< Error reading file. */
+	UnsupportedDumpVersion = 3, /**< json dump version not supported. */
+	ParseError = 4, /**< Error during json parsing. */
+	MissingKey = 5, /**< A mandatory Key is missing from the json model. */
+	InvalidKey = 6, /**< Key couldn't be converted from json to field's expected data type. */
+	InvalidValue = 7, /**< Value couldn't be converted from json to field's expected data type. */
+	OtherError = 8, /**< Other json conversion error. */
+	DuplicateEntityID = 9, /**< An Entity already exists with the same EntityID. */
+	NotCompliant = 10, /**< Model is not full compliant with IEEE1722.1 and IgnoreSanityChecks flag was not set. */
 	NotSupported = 98, /**< Deserialization feature not supported by the library (was not compiled). */
 	InternalError = 99, /**< Internal error, please report the issue. */
 };
@@ -136,6 +137,7 @@ enum class Flag : std::uint16_t
 	ProcessStatistics = 1u << 5, /**< READ/WRITE Global Entity Statistics */
 	ProcessCompatibility = 1u << 6, /**< READ/WRITE Entity Compatibility */
 
+	BinaryFormat = 1u << 14, /**< READ/WRITE in binary format (MessagePack) */
 	IgnoreAEMSanityChecks = 1u << 15, /**< Ignore AEM Sanity Checks when READING or WRITING */
 };
 using Flags = utils::EnumBitfield<Flag>;

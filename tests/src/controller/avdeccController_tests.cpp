@@ -371,10 +371,11 @@ TEST(StreamConnectionState, Comparison)
 
 TEST(Controller, VirtualEntityLoad)
 {
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
 	//static std::promise<void> commandResultPromise{};
 	{
 		auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en");
-		auto const [error, message] = controller->loadVirtualEntityFromReadableJson("data/SimpleEntity.json", false);
+		auto const [error, message] = controller->loadVirtualEntityFromJson("data/SimpleEntity.json", flags);
 		EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
 		EXPECT_STREQ("", message.c_str());
 	}

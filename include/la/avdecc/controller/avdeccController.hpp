@@ -386,6 +386,12 @@ public:
 	virtual void enableEntityModelCache() noexcept = 0;
 	/** Disables the EntityModel cache */
 	virtual void disableEntityModelCache() noexcept = 0;
+	/** Enables complete EntityModel (static part) enumeration. Depending on entities, it might take a much longer time to enumerate. */
+	virtual void enableFullStaticEntityModelEnumeration() noexcept = 0;
+	/** Disables complete EntityModel (static part) enumeration.*/
+	virtual void disableFullStaticEntityModelEnumeration() noexcept = 0;
+	/** Loads an EntityModel file and feed it to the EntityModel cache */
+	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadEntityModelFile(std::string const& filePath) noexcept = 0;
 
 	/* Enumeration and Control Protocol (AECP) AEM. WARNING: The completion handler will not be called if the controller is destroyed while the query is inflight. Otherwise it will always be called. */
 	virtual void acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, AcquireEntityHandler const& handler) const noexcept = 0;
@@ -449,14 +455,14 @@ public:
 	virtual void unlock() noexcept = 0;
 
 	/* Model serialization methods */
-	/** Serializes all discovered ControlledEntities as a readable JSON file. If 'continueOnError' is specified and some error(s) occured, SerializationError::Incomplete will be returned. */
-	virtual std::tuple<avdecc::jsonSerializer::SerializationError, std::string> serializeAllControlledEntitiesAsReadableJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError) const noexcept = 0;
-	/** Serializes specified ControlledEntity as a readable JSON file. */
-	virtual std::tuple<avdecc::jsonSerializer::SerializationError, std::string> serializeControlledEntityAsReadableJson(UniqueIdentifier const entityID, std::string const& filePath, entity::model::jsonSerializer::Flags const flags) const noexcept = 0;
+	/** Serializes all discovered ControlledEntities as JSON and save to specified file. If 'continueOnError' is specified and some error(s) occured, SerializationError::Incomplete will be returned. */
+	virtual std::tuple<avdecc::jsonSerializer::SerializationError, std::string> serializeAllControlledEntitiesAsJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError) const noexcept = 0;
+	/** Serializes specified ControlledEntity as JSON and save to specified file. */
+	virtual std::tuple<avdecc::jsonSerializer::SerializationError, std::string> serializeControlledEntityAsJson(UniqueIdentifier const entityID, std::string const& filePath, entity::model::jsonSerializer::Flags const flags) const noexcept = 0;
 
 	/* Model deserialization methods */
-	/** Deserializes a readable JSON file representing an entity, and loads it as a virtual ControlledEntity. */
-	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadVirtualEntityFromReadableJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags) noexcept = 0;
+	/** Deserializes a JSON file representing an entity, and loads it as a virtual ControlledEntity. */
+	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadVirtualEntityFromJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags) noexcept = 0;
 
 	// Deleted compiler auto-generated methods
 	Controller(Controller const&) = delete;

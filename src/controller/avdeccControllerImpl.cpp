@@ -2317,8 +2317,24 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const entity) n
 			// Do some final steps before advertising entity
 			onPreAdvertiseEntity(*entity);
 
-			// Store EntityModel in the cache for later use
-			EntityModelCache::getInstance().cacheEntityTree(entity->getEntity().getEntityModelID(), entity->getCurrentConfigurationIndex(), entity->getEntityTree());
+			auto& entityModelCache = EntityModelCache::getInstance();
+			auto const& e = entity->getEntity();
+			auto const& entityID = e.getEntityID();
+			auto const& entityModelID = e.getEntityModelID();
+			// If AEM Cache is Enabled and the entity has an EntityModelID defined
+			if (entityModelCache.isCacheEnabled() && entityModelID)
+			{
+				if (EntityModelCache::isValidEntityModelID(entityModelID))
+				{
+					// Store EntityModel in the cache for later use
+					entityModelCache.cacheEntityTree(entityModelID, entity->getEntityTree());
+					LOG_CONTROLLER_INFO(entityID, "AEM-CACHE: Cached model for EntityModelID {}", utils::toHexString(entityModelID, true, false));
+				}
+				else
+				{
+					LOG_CONTROLLER_INFO(entityID, "AEM-CACHE: Not caching model with invalid EntityModelID {} (invalid Vendor OUI-24)", utils::toHexString(entityModelID, true, false));
+				}
+			}
 
 			// Advertise the entity
 			entity->setAdvertised(true);

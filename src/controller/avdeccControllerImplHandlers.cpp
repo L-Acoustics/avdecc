@@ -139,11 +139,25 @@ void ControllerImpl::onEntityDescriptorResult(entity::controller::Interface cons
 			if (!!status)
 			{
 				// Search in the AEM cache for the AEM of the active configuration (if not ignored)
-				auto const* const cachedTree = controlledEntity->shouldIgnoreCachedEntityModel() ? nullptr : EntityModelCache::getInstance().getCachedEntityTree(descriptor.entityModelID, descriptor.currentConfiguration);
+				auto cachedModel = std::optional<entity::model::EntityTree>{ std::nullopt };
+				auto const& entityModelCache = EntityModelCache::getInstance();
+				// If AEM Cache is Enabled and the entity has an EntityModelID defined
+				if (!controlledEntity->shouldIgnoreCachedEntityModel() && entityModelCache.isCacheEnabled() && descriptor.entityModelID)
+				{
+					if (EntityModelCache::isValidEntityModelID(descriptor.entityModelID))
+					{
+						cachedModel = entityModelCache.getCachedEntityTree(descriptor.entityModelID);
+					}
+					else
+					{
+						LOG_CONTROLLER_INFO(entityID, "AEM-CACHE: Ignoring invalid EntityModelID {} (invalid Vendor OUI-24)", utils::toHexString(descriptor.entityModelID, true, false));
+					}
+				}
 
 				// Already cached, no need to get the remaining of EnumerationSteps::GetStaticModel, proceed with EnumerationSteps::GetDescriptorDynamicInfo
-				if (cachedTree && controlledEntity->setCachedEntityTree(*cachedTree, descriptor))
+				if (cachedModel && controlledEntity->setCachedEntityTree(*cachedModel, descriptor, _fullStaticModelEnumeration))
 				{
+					LOG_CONTROLLER_INFO(entityID, "AEM-CACHE: Loaded model for EntityModelID {}", utils::toHexString(descriptor.entityModelID, true, false));
 					controlledEntity->addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 				}
 				else
@@ -191,8 +205,8 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::controller::Interfa
 			{
 				controlledEntity->setConfigurationDescriptor(descriptor, configurationIndex);
 				auto const isCurrentConfiguration = configurationIndex == controlledEntity->getCurrentConfigurationIndex();
-				// Only get full descriptors for active configuration
-				if (isCurrentConfiguration)
+				// Get full descriptors for active configuration or if _fullStaticModelEnumeration is set
+				if (isCurrentConfiguration || _fullStaticModelEnumeration)
 				{
 					// Get Locales as soon as possible
 					{
