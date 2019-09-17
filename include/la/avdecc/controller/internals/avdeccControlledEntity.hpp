@@ -170,7 +170,7 @@ public:
 	virtual std::chrono::milliseconds const& getEnumerationTime() const noexcept = 0;
 
 	// Visitor method
-	virtual void accept(model::EntityModelVisitor* const visitor) const noexcept = 0;
+	virtual void accept(model::EntityModelVisitor* const visitor, bool const visitAllConfigurations = false) const noexcept = 0;
 
 	/** BasicLockable concept 'lock' method for the whole ControlledEntity */
 	virtual void lock() noexcept = 0;

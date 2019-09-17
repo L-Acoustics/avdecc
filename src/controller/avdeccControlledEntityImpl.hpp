@@ -224,7 +224,7 @@ public:
 	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocalizedStringReference const& stringReference) const noexcept override; // Get localized string or empty string if not found // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
 
 	// Visitor method
-	virtual void accept(model::EntityModelVisitor* const visitor) const noexcept override;
+	virtual void accept(model::EntityModelVisitor* const visitor, bool const visitAllConfigurations = false) const noexcept override;
 
 	virtual void lock() noexcept override;
 	virtual void unlock() noexcept override;

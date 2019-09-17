@@ -523,7 +523,7 @@ std::chrono::milliseconds const& ControlledEntityImpl::getEnumerationTime() cons
 }
 
 // Visitor method
-void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) const noexcept
+void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor, bool const visitAllConfigurations) const noexcept
 {
 	if (_gotFatalEnumerateError)
 		return;
@@ -554,7 +554,7 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor) cons
 				continue;
 
 			// If this is the active configuration, process ConfigurationNode fields
-			if (configuration.dynamicModel->isActiveConfiguration)
+			if (visitAllConfigurations || configuration.dynamicModel->isActiveConfiguration)
 			{
 				// Loop over AudioUnitNode
 				for (auto const& audioUnitKV : configuration.audioUnits)
