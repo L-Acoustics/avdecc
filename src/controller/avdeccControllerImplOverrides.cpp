@@ -300,18 +300,19 @@ ControllerImpl::~ControllerImpl()
 	// Remove all observers, we don't want to trigger notifications for upcoming actions
 	removeAllObservers();
 
-	// Try to release all acquired/locked entities by this controller before destroying everything
-	for (auto const& entityKV : controlledEntities)
+	// Perform some last actions on the entities before destroying everything
+	for (auto const& [entityID, controlledEntity] : controlledEntities)
 	{
-		auto const& controlledEntity = entityKV.second;
+		// Deregister from unsolicited notifications
+		_controller->unregisterUnsolicitedNotifications(entityID, nullptr); // We don't need the result handler, let's just hope our message was properly sent and received!
+
+		// Try to release all acquired / locked entities by this controller
 		if (controlledEntity->isAcquired() || controlledEntity->isAcquireCommandInProgress())
 		{
-			auto const& entityID = entityKV.first;
 			_controller->releaseEntity(entityID, entity::model::DescriptorType::Entity, 0u, nullptr); // We don't need the result handler, let's just hope our message was properly sent and received!
 		}
 		if (controlledEntity->isLocked() || controlledEntity->isLockCommandInProgress())
 		{
-			auto const& entityID = entityKV.first;
 			_controller->unlockEntity(entityID, entity::model::DescriptorType::Entity, 0u, nullptr); // We don't need the result handler, let's just hope our message was properly sent and received!
 		}
 	}
