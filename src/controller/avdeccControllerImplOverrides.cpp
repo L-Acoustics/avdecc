@@ -300,18 +300,19 @@ ControllerImpl::~ControllerImpl()
 	// Remove all observers, we don't want to trigger notifications for upcoming actions
 	removeAllObservers();
 
-	// Try to release all acquired/locked entities by this controller before destroying everything
-	for (auto const& entityKV : controlledEntities)
+	// Perform some last actions on the entities before destroying everything
+	for (auto const& [entityID, controlledEntity] : controlledEntities)
 	{
-		auto const& controlledEntity = entityKV.second;
+		// Deregister from unsolicited notifications
+		_controller->unregisterUnsolicitedNotifications(entityID, nullptr); // We don't need the result handler, let's just hope our message was properly sent and received!
+
+		// Try to release all acquired / locked entities by this controller
 		if (controlledEntity->isAcquired() || controlledEntity->isAcquireCommandInProgress())
 		{
-			auto const& entityID = entityKV.first;
 			_controller->releaseEntity(entityID, entity::model::DescriptorType::Entity, 0u, nullptr); // We don't need the result handler, let's just hope our message was properly sent and received!
 		}
 		if (controlledEntity->isLocked() || controlledEntity->isLockCommandInProgress())
 		{
-			auto const& entityID = entityKV.first;
 			_controller->unlockEntity(entityID, entity::model::DescriptorType::Entity, 0u, nullptr); // We don't need the result handler, let's just hope our message was properly sent and received!
 		}
 	}
@@ -344,14 +345,33 @@ void ControllerImpl::disableEntityAdvertising(std::optional<entity::model::AvbIn
 void ControllerImpl::enableEntityModelCache() noexcept
 {
 	EntityModelCache::getInstance().enableCache();
-	LOG_CONTROLLER_INFO(_controller->getEntityID(), "AEM Cache enabled");
+	LOG_CONTROLLER_INFO(_controller->getEntityID(), "AEM-CACHE Enabled");
 }
 
 void ControllerImpl::disableEntityModelCache() noexcept
 {
 	EntityModelCache::getInstance().disableCache();
-	LOG_CONTROLLER_INFO(_controller->getEntityID(), "AEM Cache disabled");
+	LOG_CONTROLLER_INFO(_controller->getEntityID(), "AEM-CACHE Disabled");
 }
+
+void ControllerImpl::enableFullStaticEntityModelEnumeration() noexcept
+{
+	_fullStaticModelEnumeration = true;
+}
+
+void ControllerImpl::disableFullStaticEntityModelEnumeration() noexcept
+{
+	_fullStaticModelEnumeration = false;
+}
+
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> ControllerImpl::loadEntityModelFile(std::string const& /*filePath*/) noexcept
+{
+	// TODO:
+	//  - Load file similar to loadVirtualEntityFromReadableJson, but merely calling something similar to jsonSerializer::setEntityModel instead of everything else
+	//  - Feed the cache for each configuration found in the file
+	return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Not supported yet" };
+}
+
 
 /* Enumeration and Control Protocol (AECP) */
 void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, AcquireEntityHandler const& handler) const noexcept
@@ -2302,21 +2322,12 @@ void ControllerImpl::unlock() noexcept
 }
 
 /* Model serialization methods */
-std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerImpl::serializeAllControlledEntitiesAsReadableJson([[maybe_unused]] std::string const& filePath, [[maybe_unused]] bool const ignoreSanityChecks, [[maybe_unused]] bool const continueOnError) const noexcept
+std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerImpl::serializeAllControlledEntitiesAsJson([[maybe_unused]] std::string const& filePath, [[maybe_unused]] entity::model::jsonSerializer::Flags const flags, [[maybe_unused]] bool const continueOnError) const noexcept
 {
 #ifndef ENABLE_AVDECC_FEATURE_JSON
 	return { avdecc::jsonSerializer::SerializationError::NotSupported, "Serialization feature not supported by the library (was not compiled)" };
 
 #else // ENABLE_AVDECC_FEATURE_JSON
-
-	// Try to open the output file
-	std::ofstream of{ filePath };
-
-	// Failed to open file to writting
-	if (!of.is_open())
-	{
-		return { avdecc::jsonSerializer::SerializationError::AccessDenied, std::strerror(errno) };
-	}
 
 	// Create the object
 	auto object = json{};
@@ -2334,7 +2345,7 @@ std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerIm
 		// Try to serialize
 		try
 		{
-			auto const entityObject = jsonSerializer::createJsonObject(*entity, ignoreSanityChecks);
+			auto const entityObject = jsonSerializer::createJsonObject(*entity, flags);
 
 			object[jsonSerializer::keyName::Controller_Entities].push_back(entityObject);
 		}
@@ -2350,14 +2361,32 @@ std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerIm
 		}
 	}
 
+	// Try to open the output file
+	auto const mode = std::ios::binary | std::ios::out;
+	auto ofs = std::ofstream{ filePath, mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
+
+	// Failed to open file to writting
+	if (!ofs.is_open())
+	{
+		return { avdecc::jsonSerializer::SerializationError::AccessDenied, std::strerror(errno) };
+	}
+
 	// Everything is fine, write the JSON object to disk
-	of << std::setw(4) << object << std::endl;
+	if (flags.test(entity::model::jsonSerializer::Flag::BinaryFormat))
+	{
+		auto const binary = json::to_msgpack(object);
+		ofs.write(reinterpret_cast<char const*>(binary.data()), binary.size() * sizeof(decltype(binary)::value_type));
+	}
+	else
+	{
+		ofs << std::setw(4) << object << std::endl;
+	}
 
 	return { error, errorText };
 #endif // ENABLE_AVDECC_FEATURE_JSON
 }
 
-std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerImpl::serializeControlledEntityAsReadableJson([[maybe_unused]] UniqueIdentifier const entityID, [[maybe_unused]] std::string const& filePath, [[maybe_unused]] bool const ignoreSanityChecks) const noexcept
+std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerImpl::serializeControlledEntityAsJson([[maybe_unused]] UniqueIdentifier const entityID, [[maybe_unused]] std::string const& filePath, [[maybe_unused]] entity::model::jsonSerializer::Flags const flags) const noexcept
 {
 #ifndef ENABLE_AVDECC_FEATURE_JSON
 	return { avdecc::jsonSerializer::SerializationError::NotSupported, "Serialization feature not supported by the library (was not compiled)" };
@@ -2371,22 +2400,32 @@ std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerIm
 		return { avdecc::jsonSerializer::SerializationError::UnknownEntity, "Entity offline" };
 	}
 
-	// Try to open the output file
-	std::ofstream ofs{ filePath };
-
-	// Failed to open file to writting
-	if (!ofs.is_open())
-	{
-		return { avdecc::jsonSerializer::SerializationError::AccessDenied, std::strerror(errno) };
-	}
-
 	// Try to serialize
 	try
 	{
-		auto const object = jsonSerializer::createJsonObject(*entity, ignoreSanityChecks);
+		// Try to serialize
+		auto const object = jsonSerializer::createJsonObject(*entity, flags);
+
+		// Try to open the output file
+		auto const mode = std::ios::binary | std::ios::out;
+		auto ofs = std::ofstream{ filePath, mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
+
+		// Failed to open file to writting
+		if (!ofs.is_open())
+		{
+			return { avdecc::jsonSerializer::SerializationError::AccessDenied, std::strerror(errno) };
+		}
 
 		// Everything is fine, write the JSON object to disk
-		ofs << std::setw(4) << object << std::endl;
+		if (flags.test(entity::model::jsonSerializer::Flag::BinaryFormat))
+		{
+			auto const binary = json::to_msgpack(object);
+			ofs.write(reinterpret_cast<char const*>(binary.data()), binary.size() * sizeof(decltype(binary)::value_type));
+		}
+		else
+		{
+			ofs << std::setw(4) << object << std::endl;
+		}
 
 		return { avdecc::jsonSerializer::SerializationError::NoError, "" };
 	}
@@ -2398,7 +2437,7 @@ std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerIm
 }
 
 /* Model deserialization methods */
-std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> ControllerImpl::loadVirtualEntityFromReadableJson([[maybe_unused]] std::string const& filePath, [[maybe_unused]] bool const ignoreSanityChecks) noexcept
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> ControllerImpl::loadVirtualEntityFromJson([[maybe_unused]] std::string const& filePath, [[maybe_unused]] entity::model::jsonSerializer::Flags const flags) noexcept
 {
 #ifndef ENABLE_AVDECC_FEATURE_JSON
 	return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Deserialization feature not supported by the library (was not compiled)" };
@@ -2406,9 +2445,10 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 #else // ENABLE_AVDECC_FEATURE_JSON
 
 	// Try to open the input file
-	std::ifstream ifs{ filePath };
+	auto const mode = std::ios::binary | std::ios::in;
+	auto ifs = std::ifstream{ filePath, mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
 
-	// Failed to open file to writting
+	// Failed to open file for reading
 	if (!ifs.is_open())
 	{
 		return { avdecc::jsonSerializer::DeserializationError::AccessDenied, std::strerror(errno) };
@@ -2418,7 +2458,14 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 	auto object = json{};
 	try
 	{
-		ifs >> object;
+		if (flags.test(entity::model::jsonSerializer::Flag::BinaryFormat))
+		{
+			object = json::from_msgpack(ifs);
+		}
+		else
+		{
+			ifs >> object;
+		}
 	}
 	catch (json::type_error const& e)
 	{
@@ -2451,23 +2498,24 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 	// Try to deserialize
 	try
 	{
-		auto controlledEntity = createControlledEntityFromJson(object);
+		auto controlledEntity = createControlledEntityFromJson(object, flags);
 
 		auto& entity = *controlledEntity;
 
-		auto flags = entity::model::jsonSerializer::Flags{ entity::model::jsonSerializer::Flag::ProcessStaticModel, entity::model::jsonSerializer::Flag::ProcessDynamicModel };
-		if (ignoreSanityChecks)
+		// Set the Entity Model for our virtual entity
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessStaticModel) || flags.test(entity::model::jsonSerializer::Flag::ProcessDynamicModel))
 		{
-			flags.set(entity::model::jsonSerializer::Flag::IgnoreSanityChecks);
+			jsonSerializer::setEntityModel(entity, object.at(jsonSerializer::keyName::ControlledEntity_EntityModel), flags);
 		}
 
-		// Set the Entity Model for our virtual entity
-		jsonSerializer::setEntityModel(entity, object.at(jsonSerializer::keyName::ControlledEntity_EntityModel), flags);
-
 		// Set the Entity State
-		jsonSerializer::setEntityState(entity, object.at(jsonSerializer::keyName::ControlledEntity_EntityState));
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessState))
+		{
+			jsonSerializer::setEntityState(entity, object.at(jsonSerializer::keyName::ControlledEntity_EntityState));
+		}
 
 		// Set the Statistics
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessStatistics))
 		{
 			auto const it = object.find(jsonSerializer::keyName::ControlledEntity_Statistics);
 			if (it != object.end())

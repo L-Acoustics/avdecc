@@ -199,6 +199,7 @@ public:
 	virtual UniqueIdentifier getLockingControllerID() const noexcept override;
 	virtual entity::Entity const& getEntity() const noexcept override;
 	virtual std::optional<entity::model::MilanInfo> getMilanInfo() const noexcept override;
+	virtual bool isEntityModelValidForCaching() const noexcept override;
 
 	virtual model::EntityNode const& getEntityNode() const override;
 	virtual model::ConfigurationNode const& getConfigurationNode(entity::model::ConfigurationIndex const configurationIndex) const override;
@@ -223,7 +224,7 @@ public:
 	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocalizedStringReference const& stringReference) const noexcept override; // Get localized string or empty string if not found // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
 
 	// Visitor method
-	virtual void accept(model::EntityModelVisitor* const visitor) const noexcept override;
+	virtual void accept(model::EntityModelVisitor* const visitor, bool const visitAllConfigurations = false) const noexcept override;
 
 	virtual void lock() noexcept override;
 	virtual void unlock() noexcept override;
@@ -374,7 +375,7 @@ public:
 
 	// Setters of the Model from AEM Descriptors (including DescriptorDynamic info)
 	void setEntityTree(entity::model::EntityTree const& entityTree) noexcept;
-	bool setCachedEntityTree(entity::model::EntityTree const& cachedTree, entity::model::EntityDescriptor const& descriptor) noexcept; // Returns true if the cached EntityTree is accepted (and set) for this entity
+	bool setCachedEntityTree(entity::model::EntityTree const& cachedTree, entity::model::EntityDescriptor const& descriptor, bool const forAllConfiguration) noexcept; // Returns true if the cached EntityTree is accepted (and set) for this entity
 	void setEntityDescriptor(entity::model::EntityDescriptor const& descriptor) noexcept;
 	void setConfigurationDescriptor(entity::model::ConfigurationDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex) noexcept;
 	void setAudioUnitDescriptor(entity::model::AudioUnitDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex) noexcept;
@@ -498,6 +499,8 @@ protected:
 	}
 
 private:
+	// Private methods
+	bool isEntityModelComplete(entity::model::EntityTree const& entityTree, std::uint16_t const configurationsCount) const noexcept;
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	void buildRedundancyNodes(model::ConfigurationNode& configNode) noexcept;
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY

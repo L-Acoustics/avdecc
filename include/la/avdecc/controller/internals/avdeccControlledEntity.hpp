@@ -123,6 +123,7 @@ public:
 	virtual UniqueIdentifier getLockingControllerID() const noexcept = 0;
 	virtual entity::Entity const& getEntity() const noexcept = 0;
 	virtual std::optional<entity::model::MilanInfo> getMilanInfo() const noexcept = 0; // Retrieve MilanInfo, guaranteed to be present if CompatibilityFlag::Milan is set
+	virtual bool isEntityModelValidForCaching() const noexcept = 0; // True is the Entity Model is valid for caching
 
 	virtual model::EntityNode const& getEntityNode() const = 0; // Throws Exception::NotSupported if EM not supported by the Entity
 	virtual model::ConfigurationNode const& getConfigurationNode(entity::model::ConfigurationIndex const configurationIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
@@ -169,7 +170,7 @@ public:
 	virtual std::chrono::milliseconds const& getEnumerationTime() const noexcept = 0;
 
 	// Visitor method
-	virtual void accept(model::EntityModelVisitor* const visitor) const noexcept = 0;
+	virtual void accept(model::EntityModelVisitor* const visitor, bool const visitAllConfigurations = false) const noexcept = 0;
 
 	/** BasicLockable concept 'lock' method for the whole ControlledEntity */
 	virtual void lock() noexcept = 0;
@@ -292,6 +293,7 @@ public:
 	ControlledEntityGuard& operator=(ControlledEntityGuard&& other)
 	{
 		swap(*this, other);
+		return *this;
 	}
 
 	// Disallow copy

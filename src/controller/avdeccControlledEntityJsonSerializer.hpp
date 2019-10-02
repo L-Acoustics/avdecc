@@ -43,7 +43,7 @@ class ControlledEntityImpl;
 namespace jsonSerializer
 {
 // Serialization methods
-json createJsonObject(ControlledEntityImpl const& entity, bool const ignoreSanityChecks); // Throws SerializationException
+json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSerializer::Flags const flags); // Throws SerializationException
 
 // Deserialization methods
 void setEntityModel(ControlledEntityImpl& entity, json const& object, entity::model::jsonSerializer::Flags flags); // Throws DeserializationException

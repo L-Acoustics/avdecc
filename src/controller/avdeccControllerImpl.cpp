@@ -2317,8 +2317,24 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const entity) n
 			// Do some final steps before advertising entity
 			onPreAdvertiseEntity(*entity);
 
-			// Store EntityModel in the cache for later use
-			EntityModelCache::getInstance().cacheEntityTree(entity->getEntity().getEntityModelID(), entity->getCurrentConfigurationIndex(), entity->getEntityTree());
+			auto& entityModelCache = EntityModelCache::getInstance();
+			auto const& e = entity->getEntity();
+			auto const& entityID = e.getEntityID();
+			auto const& entityModelID = e.getEntityModelID();
+			// If AEM Cache is Enabled and the entity has an EntityModelID defined
+			if (entityModelCache.isCacheEnabled() && entityModelID)
+			{
+				if (EntityModelCache::isValidEntityModelID(entityModelID))
+				{
+					// Store EntityModel in the cache for later use
+					entityModelCache.cacheEntityTree(entityModelID, entity->getEntityTree());
+					LOG_CONTROLLER_INFO(entityID, "AEM-CACHE: Cached model for EntityModelID {}", utils::toHexString(entityModelID, true, false));
+				}
+				else
+				{
+					LOG_CONTROLLER_INFO(entityID, "AEM-CACHE: Not caching model with invalid EntityModelID {} (invalid Vendor OUI-24)", utils::toHexString(entityModelID, true, false));
+				}
+			}
 
 			// Advertise the entity
 			entity->setAdvertised(true);
@@ -3458,7 +3474,7 @@ void ControllerImpl::addTalkerStreamConnection(ControlledEntityImpl* const talke
 }
 
 #ifdef ENABLE_AVDECC_FEATURE_JSON
-ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntityFromJson(json const& object)
+ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntityFromJson(json const& object, entity::model::jsonSerializer::Flags const flags)
 {
 	try
 	{
@@ -3473,6 +3489,7 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntit
 		auto intfcsInfo = entity::Entity::InterfacesInformation{};
 
 		// Read ADP information
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessADP))
 		{
 			auto const& adp = object.at(jsonSerializer::keyName::ControlledEntity_AdpInformation);
 
@@ -3495,14 +3512,20 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntit
 		entity.setStartEnumerationTime(std::chrono::steady_clock::now());
 
 		// Read device compatibility flags
-		entity.setCompatibilityFlags(object.at(jsonSerializer::keyName::ControlledEntity_CompatibilityFlags).get<ControlledEntity::CompatibilityFlags>());
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessCompatibility))
+		{
+			entity.setCompatibilityFlags(object.at(jsonSerializer::keyName::ControlledEntity_CompatibilityFlags).get<ControlledEntity::CompatibilityFlags>());
+		}
 
 		// Read Milan information, if present
-		auto milanInfo = std::optional<entity::model::MilanInfo>{};
-		get_optional_value(object, jsonSerializer::keyName::ControlledEntity_MilanInformation, milanInfo);
-		if (milanInfo)
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessMilan))
 		{
-			entity.setMilanInfo(*milanInfo);
+			auto milanInfo = std::optional<entity::model::MilanInfo>{};
+			get_optional_value(object, jsonSerializer::keyName::ControlledEntity_MilanInformation, milanInfo);
+			if (milanInfo)
+			{
+				entity.setMilanInfo(*milanInfo);
+			}
 		}
 
 		return controlledEntity;
