@@ -507,7 +507,7 @@ private:
 
 	private:
 		ControlledEntityImpl::LockInformation::SharedPointer _sharedLockInformation{ nullptr };
-		bool const _wasLocked{ false };
+		bool _wasLocked{ false };
 		std::uint32_t _lockedCount{ 0u };
 	};
 
