@@ -287,6 +287,8 @@ function(setup_executable_options TARGET_NAME)
 			set_target_properties(${TARGET_NAME} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
 			# For xcode automatic code signing to go deeply so all our dylibs are signed as well (will fail with xcode >= 11 otherwise)
 			set_target_properties(${TARGET_NAME} PROPERTIES XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS "--deep --force")
+			# Enable Hardened Runtime (required to notarize applications)
+			set_target_properties(${TARGET_NAME} PROPERTIES XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME YES)
 		else()
 			set_target_properties(${TARGET_NAME} PROPERTIES INSTALL_RPATH "@executable_path/../lib")
 			# Directly use install rpath for command line apps too
