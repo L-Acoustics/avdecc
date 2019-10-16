@@ -1,6 +1,22 @@
 #!/bin/bash
 # Utility bash functions
 
+getFileSize()
+{
+	local filePath="$1"
+	local _retval="$2"
+	local result=""
+
+	if isMac;
+	then
+		result=$(stat -f%z "$filePath")
+	else
+		result=$(stat -c%s "$filePath")
+	fi
+
+	eval $_retval="'${result}'"
+}
+
 getOS()
 {
 	local _retval="$1"
