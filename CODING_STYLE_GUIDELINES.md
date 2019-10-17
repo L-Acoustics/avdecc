@@ -18,6 +18,12 @@ This file describes the coding style and guidelines used by this repository, whi
 
 ### Declaration and Initialization
 - Always initialize non static data members (NSDM) except when impossible (when the data member is a reference), using brace initialization
+- Always initialize structs fields, using brace initialization
+ - struct Foo { int a; };
+ - auto const foo = Foo{5};
+ - Later adding a new field to Foo -> struct Foo { int a; int b; };
+ - _foo_ will still compile as it is aggregate initialized, but it will now have an unitialized field without knowing it
+ - struct Foo { int a{0}; int b{0}; }; will prevent UB in this use case
 - Always specify the type to the right of the = sign when declaring a variable (and always use the = sign [for the sake of consistency](https://youtu.be/xnqTKD8uD64?t=2381)). Since c++17 and [dcl.init], there is no downside to this rule.
 - [Always use _auto_ for variables declaration](https://youtu.be/xnqTKD8uD64?t=1808) as it's impossible to have an uninitialized variable (possible since c++17 thanks to [[dcl.init] update in P0135R1: Guaranteed copy elision](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0135r1.html))
 - Always put _const_ to the right of the type (for consistency and prevent ambiguity when used with auto and pointers)
