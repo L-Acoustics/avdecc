@@ -346,17 +346,24 @@ function(sign_target TARGET_NAME)
 		is_macos_bundle(${TARGET_NAME} isBundle)
 		if(${isBundle})
 			set(addTargetPath ".app")
+			# MacOS Catalina requires code signing all the time
+			add_custom_command(
+				TARGET ${TARGET_NAME}
+				POST_BUILD
+				COMMAND codesign -s ${LA_TEAM_IDENTIFIER} --timestamp --deep --strict --force "$<TARGET_FILE_DIR:${TARGET_NAME}>/../.."
+				COMMENT "Signing Bundle ${TARGET_NAME} for easy debug"
+				VERBATIM
+			)
+
 		else()
 			set(addTargetPath "")
 		endif()
 		install(
 			CODE "\
-				if(NOT \${CMAKE_INSTALL_CONFIG_NAME} STREQUAL \"Debug\")\n\
-					set(targetLocation \"${CMAKE_CURRENT_BINARY_DIR}/\${CMAKE_INSTALL_CONFIG_NAME}/${CMAKE_${targetType}_PREFIX}${TARGET_NAME}\${${TARGET_NAME}_\${CMAKE_INSTALL_CONFIG_NAME}_POSTFIX}${CMAKE_${targetType}_SUFFIX}${addTargetPath}\")\n\
-					execute_process(COMMAND \"${CMAKE_COMMAND}\" -E echo \"Signing ${TARGET_NAME}\")\n\
-					execute_process(COMMAND codesign -s \"${LA_TEAM_IDENTIFIER}\" --timestamp --deep --strict --force \"\${targetLocation}\")\n\
-				endif()"
-		)
+				set(targetLocation \"${CMAKE_CURRENT_BINARY_DIR}/\${CMAKE_INSTALL_CONFIG_NAME}/${CMAKE_${targetType}_PREFIX}${TARGET_NAME}\${${TARGET_NAME}_\${CMAKE_INSTALL_CONFIG_NAME}_POSTFIX}${CMAKE_${targetType}_SUFFIX}${addTargetPath}\")\n\
+				execute_process(COMMAND \"${CMAKE_COMMAND}\" -E echo \"Signing ${TARGET_NAME}\")\n\
+				execute_process(COMMAND codesign -s \"${LA_TEAM_IDENTIFIER}\" --timestamp --deep --strict --force \"\${targetLocation}\")\n\
+		")
 	endif()
 
 endfunction()
