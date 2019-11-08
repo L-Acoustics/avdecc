@@ -39,6 +39,7 @@
 #include <cstring> // strerror
 #include <cerrno> // errno
 #include <unordered_set>
+#include <set>
 #include <fstream>
 #include <mutex>
 #include <memory>
@@ -2342,9 +2343,23 @@ std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerIm
 	// Lock to protect _controlledEntities
 	std::lock_guard<decltype(_lock)> const lg(_lock);
 
+	// Define a comparator operator for ControlledEntities as we want to dump entities ordered by EntityID
+	auto const entityComparator = [](ControlledEntityImpl const* const& lhs, ControlledEntityImpl const* const& rhs)
+	{
+		return lhs->getEntity().getEntityID() < rhs->getEntity().getEntityID();
+	};
+	auto entities = std::set<ControlledEntityImpl const*, decltype(entityComparator)>{ entityComparator };
+
+	// Process all known entities and add them to a sorted set
+	for (auto const& entityIt : _controlledEntities)
+	{
+		entities.insert(entityIt.second.get());
+	}
+
 	auto error = avdecc::jsonSerializer::SerializationError::NoError;
 	auto errorText = std::string{};
-	for (auto const& [entityID, entity] : _controlledEntities)
+	// Serialize all known entities, sorted by EntityID
+	for (auto const* const entity : entities)
 	{
 		// Try to serialize
 		try
