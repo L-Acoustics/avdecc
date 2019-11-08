@@ -140,8 +140,8 @@ private:
 	virtual void unlock() noexcept override;
 
 	/* Model serialization methods */
-	virtual std::tuple<avdecc::jsonSerializer::SerializationError, std::string> serializeAllControlledEntitiesAsJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError) const noexcept override;
-	virtual std::tuple<avdecc::jsonSerializer::SerializationError, std::string> serializeControlledEntityAsJson(UniqueIdentifier const entityID, std::string const& filePath, entity::model::jsonSerializer::Flags const flags) const noexcept override;
+	virtual std::tuple<avdecc::jsonSerializer::SerializationError, std::string> serializeAllControlledEntitiesAsJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, std::string const& dumpSource, bool const continueOnError) const noexcept override;
+	virtual std::tuple<avdecc::jsonSerializer::SerializationError, std::string> serializeControlledEntityAsJson(UniqueIdentifier const entityID, std::string const& filePath, entity::model::jsonSerializer::Flags const flags, std::string const& dumpSource) const noexcept override;
 
 	/* Model deserialization methods */
 	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadVirtualEntityFromJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags) noexcept override;

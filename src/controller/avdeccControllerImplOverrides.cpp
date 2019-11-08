@@ -2325,7 +2325,7 @@ void ControllerImpl::unlock() noexcept
 }
 
 /* Model serialization methods */
-std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerImpl::serializeAllControlledEntitiesAsJson([[maybe_unused]] std::string const& filePath, [[maybe_unused]] entity::model::jsonSerializer::Flags const flags, [[maybe_unused]] bool const continueOnError) const noexcept
+std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerImpl::serializeAllControlledEntitiesAsJson([[maybe_unused]] std::string const& filePath, [[maybe_unused]] entity::model::jsonSerializer::Flags const flags, [[maybe_unused]] std::string const& dumpSource, [[maybe_unused]] bool const continueOnError) const noexcept
 {
 #ifndef ENABLE_AVDECC_FEATURE_JSON
 	return { avdecc::jsonSerializer::SerializationError::NotSupported, "Serialization feature not supported by the library (was not compiled)" };
@@ -2337,6 +2337,7 @@ std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerIm
 
 	// Dump information of the dump itself
 	object[jsonSerializer::keyName::Controller_DumpVersion] = jsonSerializer::keyValue::Controller_DumpVersion;
+	object[jsonSerializer::keyName::Controller_Informative_DumpSource] = dumpSource;
 
 	// Lock to protect _controlledEntities
 	std::lock_guard<decltype(_lock)> const lg(_lock);
@@ -2389,7 +2390,7 @@ std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerIm
 #endif // ENABLE_AVDECC_FEATURE_JSON
 }
 
-std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerImpl::serializeControlledEntityAsJson([[maybe_unused]] UniqueIdentifier const entityID, [[maybe_unused]] std::string const& filePath, [[maybe_unused]] entity::model::jsonSerializer::Flags const flags) const noexcept
+std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerImpl::serializeControlledEntityAsJson([[maybe_unused]] UniqueIdentifier const entityID, [[maybe_unused]] std::string const& filePath, [[maybe_unused]] entity::model::jsonSerializer::Flags const flags, [[maybe_unused]] std::string const& dumpSource) const noexcept
 {
 #ifndef ENABLE_AVDECC_FEATURE_JSON
 	return { avdecc::jsonSerializer::SerializationError::NotSupported, "Serialization feature not supported by the library (was not compiled)" };
@@ -2407,7 +2408,10 @@ std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerIm
 	try
 	{
 		// Try to serialize
-		auto const object = jsonSerializer::createJsonObject(*entity, flags);
+		auto object = jsonSerializer::createJsonObject(*entity, flags);
+
+		// Add informative metadata to the object before serialization
+		object[jsonSerializer::keyName::Controller_Informative_DumpSource] = dumpSource;
 
 		// Try to open the output file
 		auto const mode = std::ios::binary | std::ios::out;

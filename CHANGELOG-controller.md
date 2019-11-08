@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- New informative (metadata) fields in json exports: A string representing the source of the dump
 
 ## [2.11.1] - 2019-10-02
 ### Added
