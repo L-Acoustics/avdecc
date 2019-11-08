@@ -49,7 +49,7 @@ namespace utils
 #if defined(__APPLE__)
 static bool IsDebuggerPresent()
 {
-	int junk;
+	[[maybe_unused]] int junk;
 	int mib[4];
 	struct kinfo_proc info;
 	size_t size;
@@ -71,7 +71,7 @@ static bool IsDebuggerPresent()
 
 	size = sizeof(info);
 	junk = sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, NULL, 0);
-	assert(junk == 0);
+	AVDECC_ASSERT(junk == 0, "sysctl failed");
 
 	// We're being debugged if the P_TRACED flag is set.
 

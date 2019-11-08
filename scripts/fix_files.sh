@@ -1,6 +1,6 @@
 #!/bin/bash
 
-FIX_FILES_VERSION="1.4"
+FIX_FILES_VERSION="1.5"
 
 echo "Fix-Files version $FIX_FILES_VERSION"
 echo ""
@@ -88,6 +88,8 @@ if [[ $do_clang_format -eq 1 && -f ./.clang-format ]]; then
 		applyFormat "*.[chi]pp"
 		applyFormat "*.[ch]"
 		applyFormat "*.mm"
+		applyFormat "*.frag"
+		applyFormat "*.vert"
 	else
 		echo "clang-format required"
 		exit 1
@@ -107,6 +109,10 @@ if [ $do_line_endings -eq 1 ]; then
 		applyLineEndings "*.md"
 		applyLineEndings "*.sh"
 		applyLineEndings "*.qs"
+		applyLineEndings "*.frag"
+		applyLineEndings "*.vert"
+		applyLineEndings "*.php"
+		applyLineEndings "*.xml"
 	else
 		echo "dos2unix command not found, not changing file line endings"
 	fi
@@ -128,6 +134,10 @@ if [ $do_chmod -eq 1 ]; then
 		applyFileAttributes "*.patch" "a-x"
 		applyFileAttributes "*.ui" "a-x"
 		applyFileAttributes "*.qs" "a-x"
+		applyFileAttributes "*.frag" "a-x"
+		applyFileAttributes "*.vert" "a-x"
+		applyFileAttributes "*.php" "a-x"
+		applyFileAttributes "*.xml" "a-x"
 
 		# Other files (non-executable)
 		applyFileAttributes "*.svg" "a-x"

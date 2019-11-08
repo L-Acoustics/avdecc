@@ -1,6 +1,42 @@
 #!/bin/bash
 # Utility bash functions
 
+getOutputFolder()
+{
+	local _retval="$1"
+	local basePath="$2"
+	local arch="$3"
+	local toolset="$4"
+	local config="$5"
+	local result=""
+
+	if isMac; then
+		result="${basePath}_${arch}"
+	elif isWindows; then
+		result="${basePath}_${arch}_${toolset}"
+	else
+		result="${basePath}_${arch}_${config}"
+	fi
+
+	eval $_retval="'${result}'"
+}
+
+getFileSize()
+{
+	local filePath="$1"
+	local _retval="$2"
+	local result=""
+
+	if isMac;
+	then
+		result=$(stat -f%z "$filePath")
+	else
+		result=$(stat -c%s "$filePath")
+	fi
+
+	eval $_retval="'${result}'"
+}
+
 getOS()
 {
 	local _retval="$1"
@@ -17,7 +53,12 @@ getOS()
 			result="mac"
 			;;
 		linux*)
-			result="linux"
+			# We have to check for WSL
+			if [[ `uname -r` == *"Microsoft"* ]]; then
+				result="win"
+			else
+				result="linux"
+			fi
 			;;
 		*)
 			echo "ERROR: Unknown OSTYPE: $OSTYPE"

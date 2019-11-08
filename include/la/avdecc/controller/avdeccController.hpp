@@ -456,9 +456,9 @@ public:
 
 	/* Model serialization methods */
 	/** Serializes all discovered ControlledEntities as JSON and save to specified file. If 'continueOnError' is specified and some error(s) occured, SerializationError::Incomplete will be returned. */
-	virtual std::tuple<avdecc::jsonSerializer::SerializationError, std::string> serializeAllControlledEntitiesAsJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError) const noexcept = 0;
+	virtual std::tuple<avdecc::jsonSerializer::SerializationError, std::string> serializeAllControlledEntitiesAsJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, std::string const& dumpSource, bool const continueOnError) const noexcept = 0;
 	/** Serializes specified ControlledEntity as JSON and save to specified file. */
-	virtual std::tuple<avdecc::jsonSerializer::SerializationError, std::string> serializeControlledEntityAsJson(UniqueIdentifier const entityID, std::string const& filePath, entity::model::jsonSerializer::Flags const flags) const noexcept = 0;
+	virtual std::tuple<avdecc::jsonSerializer::SerializationError, std::string> serializeControlledEntityAsJson(UniqueIdentifier const entityID, std::string const& filePath, entity::model::jsonSerializer::Flags const flags, std::string const& dumpSource) const noexcept = 0;
 
 	/* Model deserialization methods */
 	/** Deserializes a JSON file representing an entity, and loads it as a virtual ControlledEntity. */

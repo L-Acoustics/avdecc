@@ -53,8 +53,8 @@ The controller API has 2 interfaces:
 - CMake 3.13
 
 ### Windows
-- Windows 8.1
-- Visual Studio 2017 v15.9 or greater (using platform toolset v141, Windows SDK 8.1)
+- Windows 10
+- Visual Studio 2019 v16.3 or greater (using platform toolset v142)
 - WinPcap 4.1.2 Developer's Pack (see [this file](externals/3rdparty/winpcap/README.md) for more details)
 - GitBash or cygwin
 

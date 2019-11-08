@@ -228,6 +228,7 @@ namespace keyName
 /* Controller nodes */
 constexpr auto Controller_DumpVersion = "dump_version";
 constexpr auto Controller_Entities = "entities";
+constexpr auto Controller_Informative_DumpSource = "_dump_source (informative)";
 
 /* ControlledEntity nodes */
 constexpr auto ControlledEntity_DumpVersion = "dump_version";

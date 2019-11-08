@@ -144,10 +144,10 @@ public:
 	// Defaulted compiler auto-generated methods
 	LoggerImpl() noexcept {}
 	virtual ~LoggerImpl() noexcept override = default;
-	LoggerImpl(LoggerImpl&&) = default;
-	LoggerImpl(LoggerImpl const&) = default;
-	LoggerImpl& operator=(LoggerImpl const&) = default;
-	LoggerImpl& operator=(LoggerImpl&&) = default;
+	LoggerImpl(LoggerImpl&&) = delete;
+	LoggerImpl(LoggerImpl const&) = delete;
+	LoggerImpl& operator=(LoggerImpl const&) = delete;
+	LoggerImpl& operator=(LoggerImpl&&) = delete;
 
 private:
 	std::mutex _lock{};

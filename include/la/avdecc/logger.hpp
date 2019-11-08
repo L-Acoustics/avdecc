@@ -84,7 +84,7 @@ public:
 	LogItem& operator=(LogItem&&) = default;
 
 private:
-	Layer const _layer{ Layer::Generic };
+	Layer _layer{ Layer::Generic };
 };
 
 /** Simple logger class declaration */

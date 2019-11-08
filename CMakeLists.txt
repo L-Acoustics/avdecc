@@ -10,8 +10,8 @@ cmake_minimum_required(VERSION 3.13)
 # It should have 3 digits (x.y.z) on main branch, and 4 digits (x.y.z.w) on dev and task branches. The last digit being used as beta label.
 # As soon as an API change occurs in dev or task branch, update the version number by following SemVer rules (so the API breaking changes are not lost/forgotten).
 # Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task) which will be labelled 1.5.0-beta3
-set(LA_AVDECC_VERSION 2.11.1)
-set(LA_AVDECC_CONTROLLER_VERSION 2.11.1)
+set(LA_AVDECC_VERSION 2.11.2)
+set(LA_AVDECC_CONTROLLER_VERSION 2.11.2)
 
 ############ Override from command line "CMake -D<OPTION>=TRUE/FALSE/0/1/ON/OFF"
 
@@ -180,4 +180,12 @@ if(BUILD_AVDECC_TESTS AND NOT VS_USE_CLANG)
 	add_subdirectory(externals/3rdparty/gtest)
 	# Include our unit tests
 	add_subdirectory(tests)
+endif()
+
+############ Compiler compatibility
+
+if(WIN32)
+	if(${MSVC_VERSION} STRLESS 1923)
+		message(FATAL_ERROR "Microsoft Visual C++ v16.3 required (MSVC_VERSION >= 1923), you have ${MSVC_VERSION}")
+	endif()
 endif()

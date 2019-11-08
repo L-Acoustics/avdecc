@@ -285,6 +285,10 @@ function(setup_executable_options TARGET_NAME)
 			set_target_properties(${TARGET_NAME} PROPERTIES INSTALL_RPATH "@executable_path/../Frameworks")
 			# Directly use install rpath for app bundles, since we copy dylibs into the bundle during post build
 			set_target_properties(${TARGET_NAME} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
+			# For xcode automatic code signing to go deeply so all our dylibs are signed as well (will fail with xcode >= 11 otherwise)
+			set_target_properties(${TARGET_NAME} PROPERTIES XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS "--deep --force")
+			# Enable Hardened Runtime (required to notarize applications)
+			set_target_properties(${TARGET_NAME} PROPERTIES XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME YES)
 		else()
 			set_target_properties(${TARGET_NAME} PROPERTIES INSTALL_RPATH "@executable_path/../lib")
 			# Directly use install rpath for command line apps too
@@ -330,8 +334,8 @@ function(sign_target TARGET_NAME)
 				if(NOT \${CMAKE_INSTALL_CONFIG_NAME} STREQUAL \"Debug\")\n\
 					set(targetLocation \"${CMAKE_CURRENT_BINARY_DIR}/\${CMAKE_INSTALL_CONFIG_NAME}/${CMAKE_${targetType}_PREFIX}${TARGET_NAME}\${${TARGET_NAME}_\${CMAKE_INSTALL_CONFIG_NAME}_POSTFIX}${CMAKE_${targetType}_SUFFIX}\")\n\
 					execute_process(COMMAND \"${CMAKE_COMMAND}\" -E echo \"Signing ${TARGET_NAME}\")\n\
-					execute_process(COMMAND signtool sign /a /sm /q /fd sha1 /t http://timestamp.verisign.com/scripts/timstamp.dll /d \"${LA_COMPANY_NAME} ${PROJECT_NAME}\" \"\${targetLocation}\")\n\
-					execute_process(COMMAND signtool sign /a /sm /as /q /fd sha256 /tr http://sha256timestamp.ws.symantec.com/sha256/timestamp /d \"${LA_COMPANY_NAME} ${PROJECT_NAME}\" \"\${targetLocation}\")\n\
+					execute_process(COMMAND signtool sign /a /sm /q /fd sha1 /t http://timestamp.digicert.com /d \"${LA_COMPANY_NAME} ${PROJECT_NAME}\" \"\${targetLocation}\")\n\
+					execute_process(COMMAND signtool sign /a /sm /as /q /fd sha256 /tr http://timestamp.digicert.com /d \"${LA_COMPANY_NAME} ${PROJECT_NAME}\" \"\${targetLocation}\")\n\
 				endif()"
 		)
 
@@ -342,17 +346,24 @@ function(sign_target TARGET_NAME)
 		is_macos_bundle(${TARGET_NAME} isBundle)
 		if(${isBundle})
 			set(addTargetPath ".app")
+			# MacOS Catalina requires code signing all the time
+			add_custom_command(
+				TARGET ${TARGET_NAME}
+				POST_BUILD
+				COMMAND codesign -s ${LA_TEAM_IDENTIFIER} --timestamp --deep --strict --force "$<TARGET_FILE_DIR:${TARGET_NAME}>/../.."
+				COMMENT "Signing Bundle ${TARGET_NAME} for easy debug"
+				VERBATIM
+			)
+
 		else()
 			set(addTargetPath "")
 		endif()
 		install(
 			CODE "\
-				if(NOT \${CMAKE_INSTALL_CONFIG_NAME} STREQUAL \"Debug\")\n\
-					set(targetLocation \"${CMAKE_CURRENT_BINARY_DIR}/\${CMAKE_INSTALL_CONFIG_NAME}/${CMAKE_${targetType}_PREFIX}${TARGET_NAME}\${${TARGET_NAME}_\${CMAKE_INSTALL_CONFIG_NAME}_POSTFIX}${CMAKE_${targetType}_SUFFIX}${addTargetPath}\")\n\
-					execute_process(COMMAND \"${CMAKE_COMMAND}\" -E echo \"Signing ${TARGET_NAME}\")\n\
-					execute_process(COMMAND codesign -s \"${LA_TEAM_IDENTIFIER}\" --timestamp --deep --strict --force \"\${targetLocation}\")\n\
-				endif()"
-		)
+				set(targetLocation \"${CMAKE_CURRENT_BINARY_DIR}/\${CMAKE_INSTALL_CONFIG_NAME}/${CMAKE_${targetType}_PREFIX}${TARGET_NAME}\${${TARGET_NAME}_\${CMAKE_INSTALL_CONFIG_NAME}_POSTFIX}${CMAKE_${targetType}_SUFFIX}${addTargetPath}\")\n\
+				execute_process(COMMAND \"${CMAKE_COMMAND}\" -E echo \"Signing ${TARGET_NAME}\")\n\
+				execute_process(COMMAND codesign -s \"${LA_TEAM_IDENTIFIER}\" --timestamp --deep --strict --force \"\${targetLocation}\")\n\
+		")
 	endif()
 
 endfunction()

@@ -4,6 +4,13 @@ All notable changes to the Avdecc Controller Library will be documented in this 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.11.2] - 2019-11-08
+### Added
+- New informative (metadata) fields in json exports: A string representing the source of the dump
+
+### Changed
+- Dumped entities in Full Network State are always sorted by EntityID
+
 ## [2.11.1] - 2019-10-02
 ### Added
 - Support for Full Entity Enumeration (Static Model only)

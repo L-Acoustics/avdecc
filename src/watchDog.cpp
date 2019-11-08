@@ -103,10 +103,10 @@ public:
 	}
 
 	// Defaulted compiler auto-generated methods
-	WatchDogImpl(WatchDogImpl&&) = default;
-	WatchDogImpl(WatchDogImpl const&) = default;
-	WatchDogImpl& operator=(WatchDogImpl const&) = default;
-	WatchDogImpl& operator=(WatchDogImpl&&) = default;
+	WatchDogImpl(WatchDogImpl&&) = delete;
+	WatchDogImpl(WatchDogImpl const&) = delete;
+	WatchDogImpl& operator=(WatchDogImpl const&) = delete;
+	WatchDogImpl& operator=(WatchDogImpl&&) = delete;
 
 private:
 	// WatchDog overrides

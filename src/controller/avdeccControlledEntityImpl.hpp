@@ -459,8 +459,8 @@ public:
 	void buildEntityModelGraph() noexcept;
 
 	// Compiler auto-generated methods
-	ControlledEntityImpl(ControlledEntityImpl&&) = default;
-	ControlledEntityImpl(ControlledEntityImpl const&) = default;
+	ControlledEntityImpl(ControlledEntityImpl&&) = delete;
+	ControlledEntityImpl(ControlledEntityImpl const&) = delete;
 	ControlledEntityImpl& operator=(ControlledEntityImpl const&) = delete;
 	ControlledEntityImpl& operator=(ControlledEntityImpl&&) = delete;
 
