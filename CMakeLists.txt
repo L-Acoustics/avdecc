@@ -92,10 +92,6 @@ set(TARGET_ARCH 32)
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
 	set(TARGET_ARCH 64)
 endif()
-set(VS_USE_CLANG FALSE)
-if(MSVC AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
-	set(VS_USE_CLANG TRUE)
-endif()
 
 ############ Check dependencies
 

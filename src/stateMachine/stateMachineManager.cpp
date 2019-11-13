@@ -446,7 +446,7 @@ bool Manager::isSelfLocked() const noexcept
 	return _lockingThreadID == std::this_thread::get_id();
 }
 
-ProtocolInterface const* const Manager::getProtocolInterface() noexcept
+ProtocolInterface const* Manager::getProtocolInterface() noexcept
 {
 	return _protocolInterface;
 }
