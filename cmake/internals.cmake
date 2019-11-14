@@ -381,22 +381,24 @@ function(copy_runtime TARGET_NAME MODULE_NAME)
 	endif()
 
 	is_macos_bundle(${TARGET_NAME} isBundle)
-	# For mac non-bundle apps, we copy the dylibs to the lib sub folder, so it matches the same rpath than when installing (since we use install_rpath)
-	if(APPLE AND NOT ${isBundle})
-		set(addSubDestPath "/../lib")
-	else()
+	if(WIN32)
 		set(addSubDestPath "")
+	else()
+		# For mac non-bundle apps and linux we copy the dylibs to the lib sub folder, so it matches the same rpath than when installing (since we use install_rpath)
+		set(addSubDestPath "/../lib")
 	endif()
 
 	# Copy shared library to output folder as post-build (for easy test/debug)
-	add_custom_command(
-		TARGET ${TARGET_NAME}
-		POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${TARGET_NAME}>${addSubDestPath}"
-		COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${MODULE_NAME}> "$<TARGET_FILE_DIR:${TARGET_NAME}>${addSubDestPath}"
-		COMMENT "Copying ${MODULE_NAME} shared library to ${TARGET_NAME} output folder for easy debug"
-		VERBATIM
-	)
+	if(WIN32 OR NOT ${isBundle}) # No need to copy for macOS bundle, it's already done as post-build event
+		add_custom_command(
+			TARGET ${TARGET_NAME}
+			POST_BUILD
+			COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${TARGET_NAME}>${addSubDestPath}"
+			COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${MODULE_NAME}> "$<TARGET_FILE_DIR:${TARGET_NAME}>${addSubDestPath}"
+			COMMENT "Copying ${MODULE_NAME} shared library to ${TARGET_NAME} output folder for easy debug"
+			VERBATIM
+		)
+	endif()
 endfunction()
 
 ###############################################################################
