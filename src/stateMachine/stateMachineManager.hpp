@@ -76,7 +76,7 @@ public:
 	/** Debug method: Returns true if the whole ProtocolInterface is locked by the calling thread */
 	bool isSelfLocked() const noexcept;
 
-	ProtocolInterface const* const getProtocolInterface() noexcept;
+	ProtocolInterface const* getProtocolInterface() noexcept;
 	ProtocolInterfaceDelegate* getProtocolInterfaceDelegate() noexcept;
 	std::optional<entity::model::AvbInterfaceIndex> getMatchingInterfaceIndex(entity::LocalEntity const& entity) const noexcept;
 	bool isLocalEntity(UniqueIdentifier const entityID) noexcept;

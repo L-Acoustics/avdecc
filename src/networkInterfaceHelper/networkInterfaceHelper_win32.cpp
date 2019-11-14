@@ -49,6 +49,11 @@
 #pragma comment(lib, "NTDLL.lib")
 #pragma comment(lib, "WBEMUUID.lib")
 
+#if defined(_WIN32) && defined(__clang__)
+// Right now, we need to silence "ISO C++11 does not allow conversion from string literal to 'BSTR'" warning for MSVC ClangCL
+#pragma clang diagnostic ignored "-Wwritable-strings"
+#endif
+
 namespace la
 {
 namespace avdecc
