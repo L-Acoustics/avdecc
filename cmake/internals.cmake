@@ -1,6 +1,16 @@
 # Internal utility macros and functions for avdecc library
 
 ###############################################################################
+# Set parallel build
+# Sets the parallel build option for IDE that supports it
+# This is overridden when compiling from command line with "cmake --build"
+function(set_parallel_build TARGET_NAME)
+	if(MSVC)
+		target_compile_options(${TARGET_NAME} PRIVATE /MP)
+	endif()
+endfunction()
+
+###############################################################################
 # Set maximum warning level, and treat warnings as errors
 # Applies on a target, must be called after target has been defined with
 # 'add_library' or 'add_executable'.
@@ -191,6 +201,9 @@ function(setup_library_options TARGET_NAME BASE_LIB_NAME)
 	# Set full warnings (including treat warnings as error)
 	set_maximum_warnings(${TARGET_NAME})
 	
+	# Set parallel build
+	set_parallel_build(${TARGET_NAME})
+
 	# Set the "DEBUG" define in debug compilation mode
 	set_debug_define(${TARGET_NAME})
 	
@@ -264,6 +277,9 @@ function(setup_executable_options TARGET_NAME)
 	# Set full warnings (including treat warnings as error)
 	set_maximum_warnings(${TARGET_NAME})
 	
+	# Set parallel build
+	set_parallel_build(${TARGET_NAME})
+
 	# Set the "DEBUG" define in debug compilation mode
 	set_debug_define(${TARGET_NAME})
 	
