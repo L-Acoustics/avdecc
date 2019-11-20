@@ -31,15 +31,22 @@
 #	ifdef _WIN32
 #		pragma warning(push)
 #		pragma warning(disable : 4702)
+#		ifdef __clang__
+#			pragma clang diagnostic push
+#			pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#		endif // __clang__
 #	endif // _WIN32
 #	include <fmt/format.h>
 #	ifdef _WIN32
+#		ifdef __clang__
+#			pragma clang diagnostic pop
+#		endif // __clang__
 #		pragma warning(pop)
 #	endif // _WIN32
 #	define FORMAT_ARGS(...) fmt::format(__VA_ARGS__)
 #else // !HAVE_FMT
 #	include <string>
-#	define FORMAT_ARGS(...) ""
+#	define FORMAT_ARGS(...) la::avdecc::logger::format(__VA_ARGS__)
 #endif // HAVE_FMT
 
 namespace la
@@ -48,6 +55,14 @@ namespace avdecc
 {
 namespace logger
 {
+/** Template to format args if not using lib fmt */
+template<typename... Ts>
+inline std::string format(std::string&& message, Ts&&... /*params*/)
+{
+	// Right now, not formatting anything, just returning the message with untouched format specifiers - Please enable libfmt!
+	return std::move(message);
+}
+
 /** Template to remove at compile time some of the most time-consuming log messages (Trace and Debug) - Forward arguments to the Logger */
 template<Level LevelValue, class LogItemType, typename... Ts>
 constexpr void log(Ts&&... params)

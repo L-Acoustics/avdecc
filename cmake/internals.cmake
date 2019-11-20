@@ -1,15 +1,29 @@
 # Internal utility macros and functions for avdecc library
 
 ###############################################################################
+# Set parallel build
+# Sets the parallel build option for IDE that supports it
+# This is overridden when compiling from command line with "cmake --build"
+function(set_parallel_build TARGET_NAME)
+	if(MSVC)
+		target_compile_options(${TARGET_NAME} PRIVATE /MP)
+	endif()
+endfunction()
+
+###############################################################################
 # Set maximum warning level, and treat warnings as errors
 # Applies on a target, must be called after target has been defined with
 # 'add_library' or 'add_executable'.
 function(set_maximum_warnings TARGET_NAME)
-	if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR APPLE OR VS_USE_CLANG)
-		target_compile_options(${TARGET_NAME} PRIVATE -Wall -Werror -g)
-	elseif(MSVC)
+	if(MSVC)
 		# Don't use Wall on MSVC, it prints too many stupid warnings
 		target_compile_options(${TARGET_NAME} PRIVATE /W4 /WX)
+		# Using clang-cl with MSVC (special case as MSBuild will convert MSVC Flags to Clang flags automatically)
+		if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+			target_compile_options(${TARGET_NAME} PRIVATE -Wno-nonportable-include-path -Wno-microsoft-include)
+		endif()
+	elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+		target_compile_options(${TARGET_NAME} PRIVATE -Wall -Werror -g)
 	endif()
 endfunction()
 
@@ -53,11 +67,7 @@ function(force_symbols_file TARGET_NAME)
 	get_target_property(targetType ${TARGET_NAME} TYPE)
 
 	if(MSVC)
-		if(VS_USE_CLANG)
-			target_compile_options(${TARGET_NAME} PRIVATE -g2 -gdwarf-2)
-		else()
-			target_compile_options(${TARGET_NAME} PRIVATE /Zi)
-		endif()
+		target_compile_options(${TARGET_NAME} PRIVATE /Zi)
 		set_target_properties(${TARGET_NAME} PROPERTIES LINK_FLAGS_RELEASE "/DEBUG /OPT:REF /OPT:ICF /INCREMENTAL:NO")
 	elseif(APPLE)
 		target_compile_options(${TARGET_NAME} PRIVATE -g)
@@ -144,11 +154,10 @@ function(setup_library_options TARGET_NAME BASE_LIB_NAME)
 		# Set WIN32 version since we want to target WinVista minimum
 		target_compile_options(${TARGET_NAME} PRIVATE -D_WIN32_WINNT=0x0600)
 	endif()
-	if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
-		if(NOT WIN32)
-			# Build using fPIC
-			target_compile_options(${TARGET_NAME} PRIVATE -fPIC)
-		endif()
+
+	if(NOT APPLE AND NOT WIN32)
+		# Build using fPIC
+		target_compile_options(${TARGET_NAME} PRIVATE -fPIC)
 		# Add pthread library
 		set(ADD_LINK_LIBRARIES pthread)
 	endif()
@@ -163,8 +172,10 @@ function(setup_library_options TARGET_NAME BASE_LIB_NAME)
 	elseif(${targetType} STREQUAL "SHARED_LIBRARY")
 		target_link_libraries(${TARGET_NAME} PRIVATE ${LINK_LIBRARIES} ${ADD_LINK_LIBRARIES})
 		# Gcc/Clang needs specific flags for shared libraries
-		if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_HOST_APPLE)
-			target_compile_options(${TARGET_NAME} PRIVATE -fvisibility=hidden)
+		if(NOT MSVC)
+			if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+				target_compile_options(${TARGET_NAME} PRIVATE -fvisibility=hidden)
+			endif()
 		endif()
 		if(WIN32)
 			# Touch the import library so even if we don't change exported symbols, the lib is 'changed' and anything depending on the dll will be relinked
@@ -177,8 +188,8 @@ function(setup_library_options TARGET_NAME BASE_LIB_NAME)
 				VERBATIM
 			)
 		endif()
-		# Generate so-version on Gcc (actually we only want this on linux, so we'll have to better test the condition someday)
-		if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
+		# Generate so-version on Linux and macOS
+		if(NOT WIN32)
 			set_target_properties(${TARGET_NAME} PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
 		endif()
 
@@ -190,6 +201,9 @@ function(setup_library_options TARGET_NAME BASE_LIB_NAME)
 	# Set full warnings (including treat warnings as error)
 	set_maximum_warnings(${TARGET_NAME})
 	
+	# Set parallel build
+	set_parallel_build(${TARGET_NAME})
+
 	# Set the "DEBUG" define in debug compilation mode
 	set_debug_define(${TARGET_NAME})
 	
@@ -263,6 +277,9 @@ function(setup_executable_options TARGET_NAME)
 	# Set full warnings (including treat warnings as error)
 	set_maximum_warnings(${TARGET_NAME})
 	
+	# Set parallel build
+	set_parallel_build(${TARGET_NAME})
+
 	# Set the "DEBUG" define in debug compilation mode
 	set_debug_define(${TARGET_NAME})
 	
@@ -294,9 +311,9 @@ function(setup_executable_options TARGET_NAME)
 			# Directly use install rpath for command line apps too
 			set_target_properties(${TARGET_NAME} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
 		endif()
-	endif()
+
 	# Set rpath for linux
-	if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
+	elseif(NOT WIN32)
 		set_target_properties(${TARGET_NAME} PROPERTIES INSTALL_RPATH "../lib")
 	endif()
 	
@@ -380,22 +397,24 @@ function(copy_runtime TARGET_NAME MODULE_NAME)
 	endif()
 
 	is_macos_bundle(${TARGET_NAME} isBundle)
-	# For mac non-bundle apps, we copy the dylibs to the lib sub folder, so it matches the same rpath than when installing (since we use install_rpath)
-	if(APPLE AND NOT ${isBundle})
-		set(addSubDestPath "/../lib")
-	else()
+	if(WIN32)
 		set(addSubDestPath "")
+	else()
+		# For mac non-bundle apps and linux we copy the dylibs to the lib sub folder, so it matches the same rpath than when installing (since we use install_rpath)
+		set(addSubDestPath "/../lib")
 	endif()
 
 	# Copy shared library to output folder as post-build (for easy test/debug)
-	add_custom_command(
-		TARGET ${TARGET_NAME}
-		POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${TARGET_NAME}>${addSubDestPath}"
-		COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${MODULE_NAME}> "$<TARGET_FILE_DIR:${TARGET_NAME}>${addSubDestPath}"
-		COMMENT "Copying ${MODULE_NAME} shared library to ${TARGET_NAME} output folder for easy debug"
-		VERBATIM
-	)
+	if(WIN32 OR NOT ${isBundle}) # No need to copy for macOS bundle, it's already done as post-build event
+		add_custom_command(
+			TARGET ${TARGET_NAME}
+			POST_BUILD
+			COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${TARGET_NAME}>${addSubDestPath}"
+			COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${MODULE_NAME}> "$<TARGET_FILE_DIR:${TARGET_NAME}>${addSubDestPath}"
+			COMMENT "Copying ${MODULE_NAME} shared library to ${TARGET_NAME} output folder for easy debug"
+			VERBATIM
+		)
+	endif()
 endfunction()
 
 ###############################################################################

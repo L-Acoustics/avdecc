@@ -74,8 +74,8 @@ private:
 	};
 	struct DiscoveredEntityInfo
 	{
-		entity::Entity entity;
-		std::unordered_map<entity::model::AvbInterfaceIndex, std::chrono::time_point<std::chrono::system_clock>> timeouts;
+		entity::Entity entity{ {},{} };
+		std::unordered_map<entity::model::AvbInterfaceIndex, std::chrono::time_point<std::chrono::system_clock>> timeouts{};
 	};
 	using DiscoveredEntities = std::unordered_map<UniqueIdentifier, DiscoveredEntityInfo, UniqueIdentifier::hash>;
 

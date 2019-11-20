@@ -10,8 +10,8 @@ cmake_minimum_required(VERSION 3.13)
 # It should have 3 digits (x.y.z) on main branch, and 4 digits (x.y.z.w) on dev and task branches. The last digit being used as beta label.
 # As soon as an API change occurs in dev or task branch, update the version number by following SemVer rules (so the API breaking changes are not lost/forgotten).
 # Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task) which will be labelled 1.5.0-beta3
-set(LA_AVDECC_VERSION 2.11.2)
-set(LA_AVDECC_CONTROLLER_VERSION 2.11.2)
+set(LA_AVDECC_VERSION 2.11.3)
+set(LA_AVDECC_CONTROLLER_VERSION 2.11.3)
 
 ############ Override from command line "CMake -D<OPTION>=TRUE/FALSE/0/1/ON/OFF"
 
@@ -91,10 +91,6 @@ endif()
 set(TARGET_ARCH 32)
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
 	set(TARGET_ARCH 64)
-endif()
-set(VS_USE_CLANG FALSE)
-if(MSVC AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
-	set(VS_USE_CLANG TRUE)
 endif()
 
 ############ Check dependencies
