@@ -346,26 +346,13 @@ function(sign_target TARGET_NAME)
 	endif()
 
 	if(WIN32)
-		set(INSTALL_CODE_STRING "\
+		install(CODE "\
 				if(NOT \${CMAKE_INSTALL_CONFIG_NAME} STREQUAL \"Debug\")\n\
 					set(targetLocation \"${CMAKE_CURRENT_BINARY_DIR}/\${CMAKE_INSTALL_CONFIG_NAME}/${CMAKE_${targetType}_PREFIX}${TARGET_NAME}\${${TARGET_NAME}_\${CMAKE_INSTALL_CONFIG_NAME}_POSTFIX}${CMAKE_${targetType}_SUFFIX}\")\n\
 					execute_process(COMMAND \"${CMAKE_COMMAND}\" -E echo \"Signing ${TARGET_NAME}\")\n\
+					execute_process(COMMAND signtool sign ${LA_SIGNTOOL_OPTIONS} /d \"${LA_COMPANY_NAME} ${PROJECT_NAME}\" \"\${targetLocation}\")\n\
+				endif()\n\
 		")
-		if(DEFINED LA_SIGNTOOL_SHA1_URL)
-			string(APPEND INSTALL_CODE_STRING "\
-				execute_process(COMMAND signtool sign /a /sm /q /fd sha1 /t \"${LA_SIGNTOOL_SHA1_URL}\" /d \"${LA_COMPANY_NAME} ${PROJECT_NAME}\" \"\${targetLocation}\")\n\
-			")
-		endif()
-		if(DEFINED LA_SIGNTOOL_SHA256_URL)
-			string(APPEND INSTALL_CODE_STRING "\
-				execute_process(COMMAND signtool sign /a /sm /as /q /fd sha256 /tr \"${LA_SIGNTOOL_SHA256_URL}\" /d \"${LA_COMPANY_NAME} ${PROJECT_NAME}\" \"\${targetLocation}\")\n\
-			")
-		endif()
-		string(APPEND INSTALL_CODE_STRING "\
-			endif()\n\
-		")
-
-		install(CODE "${INSTALL_CODE_STRING}")
 
 	elseif(APPLE)
 		if(NOT LA_TEAM_IDENTIFIER)
