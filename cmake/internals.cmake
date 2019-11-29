@@ -184,7 +184,6 @@ function(setup_library_options TARGET_NAME BASE_LIB_NAME)
 				POST_BUILD
 				COMMAND ${CMAKE_COMMAND} -E touch_nocreate "$<TARGET_LINKER_FILE:${TARGET_NAME}>"
 				COMMAND ${CMAKE_COMMAND} -E echo "Touching $<TARGET_LINKER_FILE:${TARGET_NAME}> import library"
-				COMMENT "Touching $<TARGET_LINKER_FILE:${TARGET_NAME}> import library"
 				VERBATIM
 			)
 		endif()
