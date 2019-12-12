@@ -335,6 +335,14 @@ void AggregateEntityImpl::setConfiguration(UniqueIdentifier const targetEntityID
 	}
 }
 
+void AggregateEntityImpl::getConfiguration(UniqueIdentifier const targetEntityID, GetConfigurationHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getConfiguration(targetEntityID, handler);
+	}
+}
+
 void AggregateEntityImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamFormat const streamFormat, SetStreamInputFormatHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))

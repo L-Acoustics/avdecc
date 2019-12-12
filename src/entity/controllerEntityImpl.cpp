@@ -223,6 +223,11 @@ void ControllerEntityImpl::setConfiguration(UniqueIdentifier const targetEntityI
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setConfiguration(targetEntityID, configurationIndex, handler);
 }
 
+void ControllerEntityImpl::getConfiguration(UniqueIdentifier const targetEntityID, GetConfigurationHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getConfiguration(targetEntityID, handler);
+}
+
 void ControllerEntityImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamFormat const streamFormat, SetStreamInputFormatHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setStreamInputFormat(targetEntityID, streamIndex, streamFormat, handler);

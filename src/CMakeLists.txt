@@ -370,5 +370,5 @@ endif()
 
 # Set installation rules
 if(INSTALL_AVDECC_HEADERS)
-	install(DIRECTORY ${LA_ROOT_DIR}/include/la/avdecc CONFIGURATIONS Release DESTINATION include/la)
+	install(DIRECTORY ${LA_ROOT_DIR}/include/la/avdecc CONFIGURATIONS Release DESTINATION include/la FILES_MATCHING PATTERN "*.hpp")
 endif()

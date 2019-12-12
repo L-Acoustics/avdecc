@@ -17,6 +17,11 @@
 * along with LA_avdecc.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/**
+ * @file uniqueIdentifier_tests.cpp
+ * @author Christophe Calmejane
+ */
+
 // Public API
 // Internal API
 

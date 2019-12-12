@@ -401,7 +401,7 @@ public:
 	};
 
 	/** EntityAdvertise dirty flag */
-	enum class AdvertiseFlag
+	enum class AdvertiseFlag : std::uint8_t
 	{
 		None = 0,
 		EntityCapabilities = 1u << 0, /**< EntityCapabilities field changed */

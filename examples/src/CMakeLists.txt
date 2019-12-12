@@ -1,20 +1,7 @@
 # avdecc examples
 
-# Network interfaces enumerator
-add_executable(NetworkInterfacesEnumerator NetworkInterfacesEnumerator.cpp)
-set_target_properties(NetworkInterfacesEnumerator PROPERTIES FOLDER "Examples")
-# Using avdecc library
-target_link_libraries(NetworkInterfacesEnumerator PRIVATE la_avdecc_cxx)
-copy_runtime(NetworkInterfacesEnumerator la_avdecc_cxx)
-# Setup common options
-setup_executable_options(NetworkInterfacesEnumerator)
-# Set installation rule
-if(INSTALL_AVDECC_EXAMPLES)
-	install(TARGETS NetworkInterfacesEnumerator RUNTIME CONFIGURATIONS Release DESTINATION bin)
-endif()
-
 # RawMessageSend
-add_executable(RawMessageSend rawMessageSender.cpp utils.cpp utils.hpp)
+add_executable(RawMessageSend rawMessageSenderCxx.cpp utils.cpp utils.hpp)
 set_target_properties(RawMessageSend PROPERTIES FOLDER "Examples")
 # Using avdecc library
 target_link_libraries(RawMessageSend PRIVATE la_avdecc_cxx)
@@ -43,6 +30,19 @@ setup_executable_options(SimpleController)
 # Set installation rule
 if(INSTALL_AVDECC_EXAMPLES)
 	install(TARGETS SimpleController RUNTIME CONFIGURATIONS Release DESTINATION bin)
+endif()
+
+# Network interfaces enumerator using la_avdecc_cxx
+add_executable(NetworkInterfacesEnumeratorCxx networkInterfacesEnumeratorCxx.cpp)
+set_target_properties(NetworkInterfacesEnumeratorCxx PROPERTIES FOLDER "Examples")
+# Using avdecc library
+target_link_libraries(NetworkInterfacesEnumeratorCxx PRIVATE la_avdecc_cxx)
+copy_runtime(NetworkInterfacesEnumeratorCxx la_avdecc_cxx)
+# Setup common options
+setup_executable_options(NetworkInterfacesEnumeratorCxx)
+# Set installation rule
+if(INSTALL_AVDECC_EXAMPLES)
+	install(TARGETS NetworkInterfacesEnumeratorCxx RUNTIME CONFIGURATIONS Release DESTINATION bin)
 endif()
 
 # Controller library examples

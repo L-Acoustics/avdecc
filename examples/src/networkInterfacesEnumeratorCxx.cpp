@@ -18,8 +18,9 @@
 */
 
 /**
-* @file NetworkInterfacesEnumerator.cpp
+* @file networkInterfaceEnumeratorCxx.cpp
 * @author Christophe Calmejane
+* @brief Example enumerating all detected network interfaces on the local computer (using C++ Library).
 */
 
 //#include <la/avdecc/utils.hpp>
@@ -46,6 +47,9 @@ std::ostream& operator<<(std::ostream& stream, la::avdecc::networkInterface::Int
 			break;
 		case la::avdecc::networkInterface::Interface::Type::WiFi:
 			stream << "WiFi";
+			break;
+		case la::avdecc::networkInterface::Interface::Type::AWDL:
+			stream << "AWDL";
 			break;
 		default:
 			break;

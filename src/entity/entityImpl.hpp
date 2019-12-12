@@ -188,7 +188,7 @@ public:
 	using OnACMPErrorCallback = std::function<void(LocalEntity::ControlStatus)>;
 
 	template<typename T, typename Object, typename... Ts>
-	static OnAemAECPErrorCallback makeAemAECPErrorHandler(T const& handler, Object const* const object, Ts&&... params)
+	static inline OnAemAECPErrorCallback makeAemAECPErrorHandler(T const& handler, Object const* const object, Ts&&... params) noexcept
 	{
 		if (handler)
 			return std::bind(handler, object, std::forward<Ts>(params)...);
@@ -198,7 +198,7 @@ public:
 		};
 	}
 	template<typename T, typename Object, typename... Ts>
-	static OnAaAECPErrorCallback makeAaAECPErrorHandler(T const& handler, Object const* const object, Ts&&... params)
+	static inline OnAaAECPErrorCallback makeAaAECPErrorHandler(T const& handler, Object const* const object, Ts&&... params) noexcept
 	{
 		if (handler)
 			return std::bind(handler, object, std::forward<Ts>(params)...);
@@ -208,7 +208,7 @@ public:
 		};
 	}
 	template<typename T, typename Object, typename... Ts>
-	static OnMvuAECPErrorCallback makeMvuAECPErrorHandler(T const& handler, Object const* const object, Ts&&... params)
+	static inline OnMvuAECPErrorCallback makeMvuAECPErrorHandler(T const& handler, Object const* const object, Ts&&... params) noexcept
 	{
 		if (handler)
 			return std::bind(handler, object, std::forward<Ts>(params)...);
@@ -218,7 +218,7 @@ public:
 		};
 	}
 	template<typename T, typename Object, typename... Ts>
-	static OnACMPErrorCallback makeACMPErrorHandler(T const& handler, Object const* const object, Ts&&... params)
+	static inline OnACMPErrorCallback makeACMPErrorHandler(T const& handler, Object const* const object, Ts&&... params) noexcept
 	{
 		if (handler)
 			return std::bind(handler, object, std::forward<Ts>(params)...);

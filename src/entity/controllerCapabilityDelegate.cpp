@@ -143,28 +143,24 @@ void CapabilityDelegate::unlockEntity(UniqueIdentifier const targetEntityID, mod
 void CapabilityDelegate::queryEntityAvailable(UniqueIdentifier const targetEntityID, Interface::QueryEntityAvailableHandler const& handler) const noexcept
 {
 	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1);
-
 	sendAemAecpCommand(targetEntityID, protocol::AemCommandType::EntityAvailable, nullptr, 0, errorCallback, handler);
 }
 
 void CapabilityDelegate::queryControllerAvailable(UniqueIdentifier const targetEntityID, Interface::QueryControllerAvailableHandler const& handler) const noexcept
 {
 	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1);
-
 	sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ControllerAvailable, nullptr, 0, errorCallback, handler);
 }
 
 void CapabilityDelegate::registerUnsolicitedNotifications(UniqueIdentifier const targetEntityID, Interface::RegisterUnsolicitedNotificationsHandler const& handler) const noexcept
 {
-	auto errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1);
-
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1);
 	sendAemAecpCommand(targetEntityID, protocol::AemCommandType::RegisterUnsolicitedNotification, nullptr, 0, errorCallback, handler);
 }
 
 void CapabilityDelegate::unregisterUnsolicitedNotifications(UniqueIdentifier const targetEntityID, Interface::UnregisterUnsolicitedNotificationsHandler const& handler) const noexcept
 {
-	auto errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1);
-
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1);
 	sendAemAecpCommand(targetEntityID, protocol::AemCommandType::DeregisterUnsolicitedNotification, nullptr, 0, errorCallback, handler);
 }
 
@@ -496,6 +492,12 @@ void CapabilityDelegate::setConfiguration(UniqueIdentifier const targetEntityID,
 	{
 		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setConfiguration: {}", e.what());
 	}
+}
+
+void CapabilityDelegate::getConfiguration(UniqueIdentifier const targetEntityID, Interface::GetConfigurationHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, model::ConfigurationIndex{ 0u });
+	sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetConfiguration, nullptr, 0, errorCallback, handler);
 }
 
 void CapabilityDelegate::setStreamInputFormat(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, model::StreamFormat const streamFormat, Interface::SetStreamInputFormatHandler const& handler) const noexcept
@@ -1386,16 +1388,8 @@ void CapabilityDelegate::getMemoryObjectLength(UniqueIdentifier const targetEnti
 /* Enumeration and Control Protocol (AECP) AA */
 void CapabilityDelegate::addressAccess(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, Interface::AddressAccessHandler const& handler) const noexcept
 {
-	try
-	{
-		auto const errorCallback = LocalEntityImpl<>::makeAaAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, addressAccess::Tlvs{});
-
-		sendAaAecpCommand(targetEntityID, tlvs, errorCallback, handler);
-	}
-	catch ([[maybe_unused]] std::exception const& e)
-	{
-		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize addressAccess: {}", e.what());
-	}
+	auto const errorCallback = LocalEntityImpl<>::makeAaAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, addressAccess::Tlvs{});
+	sendAaAecpCommand(targetEntityID, tlvs, errorCallback, handler);
 }
 
 /* Enumeration and Control Protocol (AECP) MVU (Milan Vendor Unique) */
@@ -1417,37 +1411,37 @@ void CapabilityDelegate::getMilanInfo(UniqueIdentifier const targetEntityID, Int
 /* Connection Management Protocol (ACMP) */
 void CapabilityDelegate::connectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, Interface::ConnectStreamHandler const& handler) const noexcept
 {
-	auto errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_controllerInterface, talkerStream, listenerStream, std::uint16_t(0), entity::ConnectionFlags{}, std::placeholders::_1);
+	auto const errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_controllerInterface, talkerStream, listenerStream, std::uint16_t(0), entity::ConnectionFlags{}, std::placeholders::_1);
 	sendAcmpCommand(protocol::AcmpMessageType::ConnectRxCommand, talkerStream.entityID, talkerStream.streamIndex, listenerStream.entityID, listenerStream.streamIndex, std::uint16_t(0), errorCallback, handler);
 }
 
 void CapabilityDelegate::disconnectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, Interface::DisconnectStreamHandler const& handler) const noexcept
 {
-	auto errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_controllerInterface, talkerStream, listenerStream, std::uint16_t(0), entity::ConnectionFlags{}, std::placeholders::_1);
+	auto const errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_controllerInterface, talkerStream, listenerStream, std::uint16_t(0), entity::ConnectionFlags{}, std::placeholders::_1);
 	sendAcmpCommand(protocol::AcmpMessageType::DisconnectRxCommand, talkerStream.entityID, talkerStream.streamIndex, listenerStream.entityID, listenerStream.streamIndex, std::uint16_t(0), errorCallback, handler);
 }
 
 void CapabilityDelegate::disconnectTalkerStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, Interface::DisconnectTalkerStreamHandler const& handler) const noexcept
 {
-	auto errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_controllerInterface, talkerStream, listenerStream, std::uint16_t(0), entity::ConnectionFlags{}, std::placeholders::_1);
+	auto const errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_controllerInterface, talkerStream, listenerStream, std::uint16_t(0), entity::ConnectionFlags{}, std::placeholders::_1);
 	sendAcmpCommand(protocol::AcmpMessageType::DisconnectTxCommand, talkerStream.entityID, talkerStream.streamIndex, listenerStream.entityID, listenerStream.streamIndex, std::uint16_t(0), errorCallback, handler);
 }
 
 void CapabilityDelegate::getTalkerStreamState(model::StreamIdentification const& talkerStream, Interface::GetTalkerStreamStateHandler const& handler) const noexcept
 {
-	auto errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_controllerInterface, talkerStream, model::StreamIdentification{}, std::uint16_t(0), entity::ConnectionFlags{}, std::placeholders::_1);
+	auto const errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_controllerInterface, talkerStream, model::StreamIdentification{}, std::uint16_t(0), entity::ConnectionFlags{}, std::placeholders::_1);
 	sendAcmpCommand(protocol::AcmpMessageType::GetTxStateCommand, talkerStream.entityID, talkerStream.streamIndex, UniqueIdentifier::getNullUniqueIdentifier(), model::StreamIndex(0), std::uint16_t(0), errorCallback, handler);
 }
 
 void CapabilityDelegate::getListenerStreamState(model::StreamIdentification const& listenerStream, Interface::GetListenerStreamStateHandler const& handler) const noexcept
 {
-	auto errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_controllerInterface, model::StreamIdentification{}, listenerStream, std::uint16_t(0), entity::ConnectionFlags{}, std::placeholders::_1);
+	auto const errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_controllerInterface, model::StreamIdentification{}, listenerStream, std::uint16_t(0), entity::ConnectionFlags{}, std::placeholders::_1);
 	sendAcmpCommand(protocol::AcmpMessageType::GetRxStateCommand, UniqueIdentifier::getNullUniqueIdentifier(), model::StreamIndex(0), listenerStream.entityID, listenerStream.streamIndex, std::uint16_t(0), errorCallback, handler);
 }
 
 void CapabilityDelegate::getTalkerStreamConnection(model::StreamIdentification const& talkerStream, std::uint16_t const connectionIndex, Interface::GetTalkerStreamConnectionHandler const& handler) const noexcept
 {
-	auto errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_controllerInterface, talkerStream, model::StreamIdentification{}, connectionIndex, entity::ConnectionFlags{}, std::placeholders::_1);
+	auto const errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_controllerInterface, talkerStream, model::StreamIdentification{}, connectionIndex, entity::ConnectionFlags{}, std::placeholders::_1);
 	sendAcmpCommand(protocol::AcmpMessageType::GetTxConnectionCommand, talkerStream.entityID, talkerStream.streamIndex, UniqueIdentifier::getNullUniqueIdentifier(), model::StreamIndex(0), connectionIndex, errorCallback, handler);
 }
 
@@ -2129,6 +2123,22 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 			}
 		},
 		// Get Configuration
+		{ protocol::AemCommandType::GetConfiguration.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+			{
+	// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const[configurationIndex] = protocol::aemPayload::deserializeGetConfigurationResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeGetConfigurationResponse(aem.getPayload());
+				model::ConfigurationIndex const configurationIndex = std::get<0>(result);
+#endif // __cpp_structured_bindings
+
+				auto const targetID = aem.getTargetEntityID();
+
+				// Notify handlers
+				answerCallback.invoke<controller::Interface::GetConfigurationHandler>(controllerInterface, targetID, status, configurationIndex);
+			}
+		},
 		// Set Stream Format
 		{ protocol::AemCommandType::SetStreamFormat.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
