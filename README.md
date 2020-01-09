@@ -63,7 +63,7 @@ The controller API has 2 interfaces:
 - Xcode 10
 
 ### Linux
-- C++17 compliant compiler (minimum recommended 8.2.1)
+- C++17 compliant compiler (minimum recommended gcc 8.2.1)
 - Make
 - pcap developer package
 - ncurses developer package (optional, for examples)
@@ -117,7 +117,7 @@ The controller API has 2 interfaces:
 - Ability to preload AEMXML files, and not enumerate AEM for devices with identical vendorEntityModelId
 - Talker and Listener state machines (low level library)
 - Creation of a DiscoveryStateMachine so it can be used by Talker/Listener entities (moving code out of ControllerStateMachine)
-- Wrapper libraries:
+- Bindings libraries:
   * C (public APIs only)
   * Lua (public and private APIs)
 

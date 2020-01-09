@@ -9,6 +9,7 @@ This file describes the coding style and guidelines used by this repository, whi
 - Class member names should start with an underscore
 - Static variables should start with s_
 - When enumerating a map/unordered_map using a _for loop_, name the iterator loop variable _somethingKV_ (_key/value_)
+- Always use the full namespace for types used to declare observer and delegate methods in public APIs, so the user overriding the methods doesn't have to type all of them manually
 
 ### C-style
 - Prohibit _C-style cast_, use _static_cast_ instead
