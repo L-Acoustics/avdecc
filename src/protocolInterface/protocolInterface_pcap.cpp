@@ -555,6 +555,9 @@ private:
 					// Then deserialize Adp
 					deserialize<Adpdu>(&adp, des);
 
+					// Low level notification
+					notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAdpduReceived, this, adp);
+
 					// Forward to our state machine
 					_stateMachineManager.processAdpdu(adp);
 					break;
@@ -626,6 +629,9 @@ private:
 						// Then deserialize Aecp
 						deserialize<Aecpdu>(&aecp, des);
 
+						// Low level notification
+						notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpduReceived, this, aecp);
+
 						// Forward to our state machine
 						_stateMachineManager.processAecpdu(aecp);
 					}
@@ -645,6 +651,9 @@ private:
 					deserialize<AvtpduControl>(&acmp, des);
 					// Then deserialize Acmp
 					deserialize<Acmpdu>(&acmp, des);
+
+					// Low level notification
+					notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAcmpduReceived, this, acmp);
 
 					// Forward to our state machine
 					_stateMachineManager.processAcmpdu(acmp);

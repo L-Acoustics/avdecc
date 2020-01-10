@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - AEM GetConfiguration method
+- ProtocolInterface observer events for all received PDUs (low level)
 
 ### Changed
 - Controller commands result handler properly return all fields in the protocol

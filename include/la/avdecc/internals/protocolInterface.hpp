@@ -108,8 +108,10 @@ public:
 	{
 	public:
 		virtual ~Observer() noexcept = default;
+
 		/* **** Global notifications **** */
 		virtual void onTransportError(la::avdecc::protocol::ProtocolInterface* const /*pi*/) noexcept {}
+
 		/* **** Discovery notifications **** */
 		virtual void onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept {}
 		virtual void onLocalEntityOffline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const /*entityID*/) noexcept {}
@@ -117,6 +119,7 @@ public:
 		virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept {}
 		virtual void onRemoteEntityOffline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const /*entityID*/) noexcept {}
 		virtual void onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept {}
+
 		/* **** AECP notifications **** */
 		/** Notification for when an AECP Command is received (for a locally registered entity). */
 		virtual void onAecpCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept {}
@@ -124,11 +127,13 @@ public:
 		virtual void onAecpAemUnsolicitedResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept {}
 		/** Notification for when an identify notification is received (the notification being a multicast message, the notification is triggered even if there are no locally registered entities). */
 		virtual void onAecpAemIdentifyNotification(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept {}
+
 		/* **** ACMP notifications **** */
 		/** Notification for when an ACMP Command is received, even for none of the locally registered entities. */
 		virtual void onAcmpCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept {}
 		/** Notification for when an ACMP Response is received, even for none of the locally registered entities and for responses already processed by the CommandStateMachine (meaning the sendAcmpCommand result handler have already been called). */
 		virtual void onAcmpResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept {}
+
 		/* **** Statistics **** */
 		/** Notification for when an AECP Command was resent due to a timeout (ControllerStateMachine only). If the retry time out again, then onAecpTimeout will be called. */
 		virtual void onAecpRetry(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const& /*entityID*/) noexcept {}
@@ -138,6 +143,14 @@ public:
 		virtual void onAecpUnexpectedResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const& /*entityID*/) noexcept {}
 		/** Notification for when an AECP Response is received (not an Unsolicited one) along with the time elapsed between the send and the receive. */
 		virtual void onAecpResponseTime(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const& /*entityID*/, std::chrono::milliseconds const& /*responseTime*/) noexcept {}
+
+		/* **** Low level notifications (not supported by all kinds of ProtocolInterface), triggered before processing the pdu **** */
+		/** Notification for when an ADPDU is received (might be a message that was sent by self as this event is triggered for outgoing broadcast messages) */
+		virtual void onAdpduReceived(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::Adpdu const& /*adpdu*/) noexcept {}
+		/** Notification for when an AECPDU is received (might be a message that was sent by self as this event is triggered for outgoing broadcast messages) */
+		virtual void onAecpduReceived(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept {}
+		/** Notification for when an ACMPDU is received (might be a message that was sent by self as this event is triggered for outgoing broadcast messages) */
+		virtual void onAcmpduReceived(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept {}
 	};
 
 	/**
