@@ -1564,7 +1564,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 		// Check if it's an AEM unsolicited response
 		if (isAemUnsolicitedResponse)
 		{
-			_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onAecpAemIdentifyNotification, _protocolInterface, *aecpdu);
+			_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onAecpAemIdentifyNotification, _protocolInterface, static_cast<la::avdecc::protocol::AemAecpdu const&>(*aecpdu));
 		}
 		else
 		{
@@ -1580,7 +1580,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	if (isAemUnsolicitedResponse)
 	{
 		// Notify the observers
-		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onAecpAemUnsolicitedResponse, _protocolInterface, *aecpdu);
+		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onAecpAemUnsolicitedResponse, _protocolInterface, static_cast<la::avdecc::protocol::AemAecpdu const&>(*aecpdu));
 		return YES;
 	}
 

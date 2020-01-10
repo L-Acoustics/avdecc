@@ -618,12 +618,12 @@ void ControllerEntityImpl::onRemoteEntityUpdated(protocol::ProtocolInterface* co
 }
 
 /* **** AECP notifications **** */
-void ControllerEntityImpl::onAecpAemUnsolicitedResponse(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept
+void ControllerEntityImpl::onAecpAemUnsolicitedResponse(protocol::ProtocolInterface* const pi, protocol::AemAecpdu const& aecpdu) noexcept
 {
 	_controllerCapabilityDelegate->onAecpAemUnsolicitedResponse(pi, aecpdu);
 }
 
-void ControllerEntityImpl::onAecpAemIdentifyNotification(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept
+void ControllerEntityImpl::onAecpAemIdentifyNotification(protocol::ProtocolInterface* const pi, protocol::AemAecpdu const& aecpdu) noexcept
 {
 	_controllerCapabilityDelegate->onAecpAemIdentifyNotification(pi, aecpdu);
 }

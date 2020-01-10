@@ -210,7 +210,7 @@ void CommandStateMachine::handleAecpResponse(Aecpdu const& aecpdu) noexcept
 		// Check if it's an AEM unsolicited response
 		if (isAEMUnsolicitedResponse(aecpdu))
 		{
-			utils::invokeProtectedMethod(&Delegate::onAecpAemIdentifyNotification, _delegate, aecpdu);
+			utils::invokeProtectedMethod(&Delegate::onAecpAemIdentifyNotification, _delegate, static_cast<AemAecpdu const&>(aecpdu));
 		}
 		else
 		{
@@ -225,7 +225,7 @@ void CommandStateMachine::handleAecpResponse(Aecpdu const& aecpdu) noexcept
 		// Check if it's an AEM unsolicited response
 		if (isAEMUnsolicitedResponse(aecpdu))
 		{
-			utils::invokeProtectedMethod(&Delegate::onAecpAemUnsolicitedResponse, _delegate, aecpdu);
+			utils::invokeProtectedMethod(&Delegate::onAecpAemUnsolicitedResponse, _delegate, static_cast<AemAecpdu const&>(aecpdu));
 		}
 		else
 		{

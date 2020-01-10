@@ -50,8 +50,8 @@ public:
 	public:
 		virtual ~Delegate() noexcept = default;
 		/* **** AECP notifications **** */
-		virtual void onAecpAemUnsolicitedResponse(la::avdecc::protocol::Aecpdu const& aecpdu) noexcept = 0;
-		virtual void onAecpAemIdentifyNotification(la::avdecc::protocol::Aecpdu const& aecpdu) noexcept = 0;
+		virtual void onAecpAemUnsolicitedResponse(la::avdecc::protocol::AemAecpdu const& aecpdu) noexcept = 0;
+		virtual void onAecpAemIdentifyNotification(la::avdecc::protocol::AemAecpdu const& aecpdu) noexcept = 0;
 		/* **** Statistics **** */
 		virtual void onAecpRetry(la::avdecc::UniqueIdentifier const& entityID) noexcept = 0;
 		virtual void onAecpTimeout(la::avdecc::UniqueIdentifier const& entityID) noexcept = 0;

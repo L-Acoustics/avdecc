@@ -1578,7 +1578,7 @@ bool CapabilityDelegate::onUnhandledAecpCommand(protocol::ProtocolInterface* con
 	return false;
 }
 
-void CapabilityDelegate::onAecpAemUnsolicitedResponse(protocol::ProtocolInterface* const /*pi*/, protocol::Aecpdu const& aecpdu) noexcept
+void CapabilityDelegate::onAecpAemUnsolicitedResponse(protocol::ProtocolInterface* const /*pi*/, protocol::AemAecpdu const& aecpdu) noexcept
 {
 	// Ignore messages not for me
 	if (_controllerID != aecpdu.getControllerEntityID())
@@ -1599,7 +1599,7 @@ void CapabilityDelegate::onAecpAemUnsolicitedResponse(protocol::ProtocolInterfac
 	}
 }
 
-void CapabilityDelegate::onAecpAemIdentifyNotification(protocol::ProtocolInterface* const /*pi*/, protocol::Aecpdu const& aecpdu) noexcept
+void CapabilityDelegate::onAecpAemIdentifyNotification(protocol::ProtocolInterface* const /*pi*/, protocol::AemAecpdu const& aecpdu) noexcept
 {
 	// Forward the event
 	utils::invokeProtectedMethod(&controller::Delegate::onEntityIdentifyNotification, _controllerDelegate, &_controllerInterface, aecpdu.getTargetEntityID());

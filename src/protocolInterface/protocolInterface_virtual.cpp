@@ -348,8 +348,8 @@ private:
 	/* ************************************************************ */
 	/* stateMachine::CommandStateMachine::Delegate overrides        */
 	/* ************************************************************ */
-	virtual void onAecpAemUnsolicitedResponse(Aecpdu const& aecpdu) noexcept override;
-	virtual void onAecpAemIdentifyNotification(Aecpdu const& aecpdu) noexcept override;
+	virtual void onAecpAemUnsolicitedResponse(AemAecpdu const& aecpdu) noexcept override;
+	virtual void onAecpAemIdentifyNotification(AemAecpdu const& aecpdu) noexcept override;
 	virtual void onAecpRetry(UniqueIdentifier const& entityID) noexcept override;
 	virtual void onAecpTimeout(UniqueIdentifier const& entityID) noexcept override;
 	virtual void onAecpUnexpectedResponse(UniqueIdentifier const& entityID) noexcept override;
@@ -695,13 +695,13 @@ void ProtocolInterfaceVirtualImpl::onRemoteEntityUpdated(entity::Entity const& e
 /* ************************************************************ */
 /* stateMachine::CommandStateMachine::Delegate overrides        */
 /* ************************************************************ */
-void ProtocolInterfaceVirtualImpl::onAecpAemUnsolicitedResponse(Aecpdu const& aecpdu) noexcept
+void ProtocolInterfaceVirtualImpl::onAecpAemUnsolicitedResponse(AemAecpdu const& aecpdu) noexcept
 {
 	// Notify observers
 	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpAemUnsolicitedResponse, this, aecpdu);
 }
 
-void ProtocolInterfaceVirtualImpl::onAecpAemIdentifyNotification(Aecpdu const& aecpdu) noexcept
+void ProtocolInterfaceVirtualImpl::onAecpAemIdentifyNotification(AemAecpdu const& aecpdu) noexcept
 {
 	// Notify observers
 	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpAemIdentifyNotification, this, aecpdu);

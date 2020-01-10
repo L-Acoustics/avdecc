@@ -1027,7 +1027,7 @@ void AggregateEntityImpl::onRemoteEntityUpdated(protocol::ProtocolInterface* con
 }
 
 /* **** AECP notifications **** */
-void AggregateEntityImpl::onAecpAemUnsolicitedResponse(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept
+void AggregateEntityImpl::onAecpAemUnsolicitedResponse(protocol::ProtocolInterface* const pi, protocol::AemAecpdu const& aecpdu) noexcept
 {
 	if (_controllerCapabilityDelegate != nullptr)
 	{
@@ -1042,7 +1042,7 @@ void AggregateEntityImpl::onAecpAemUnsolicitedResponse(protocol::ProtocolInterfa
 		_talkerCapabilityDelegate->onAecpAemUnsolicitedResponse(pi, aecpdu);
 	}
 }
-void AggregateEntityImpl::onAecpAemIdentifyNotification(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept
+void AggregateEntityImpl::onAecpAemIdentifyNotification(protocol::ProtocolInterface* const pi, protocol::AemAecpdu const& aecpdu) noexcept
 {
 	if (_controllerCapabilityDelegate != nullptr)
 	{

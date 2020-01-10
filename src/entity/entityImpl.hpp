@@ -547,8 +547,8 @@ public:
 	{
 		return false;
 	}
-	virtual void onAecpAemUnsolicitedResponse(protocol::ProtocolInterface* const /*pi*/, protocol::Aecpdu const& /*aecpdu*/) noexcept {}
-	virtual void onAecpAemIdentifyNotification(protocol::ProtocolInterface* const /*pi*/, protocol::Aecpdu const& /*aecpdu*/) noexcept {}
+	virtual void onAecpAemUnsolicitedResponse(protocol::ProtocolInterface* const /*pi*/, protocol::AemAecpdu const& /*aecpdu*/) noexcept {}
+	virtual void onAecpAemIdentifyNotification(protocol::ProtocolInterface* const /*pi*/, protocol::AemAecpdu const& /*aecpdu*/) noexcept {}
 	/* **** ACMP notifications **** */
 	virtual void onAcmpCommand(protocol::ProtocolInterface* const /*pi*/, protocol::Acmpdu const& /*acmpdu*/) noexcept {}
 	virtual void onAcmpResponse(protocol::ProtocolInterface* const /*pi*/, protocol::Acmpdu const& /*acmpdu*/) noexcept {}

@@ -468,13 +468,13 @@ private:
 	/* ************************************************************ */
 	/* stateMachine::CommandStateMachine::Delegate overrides        */
 	/* ************************************************************ */
-	virtual void onAecpAemUnsolicitedResponse(Aecpdu const& aecpdu) noexcept override
+	virtual void onAecpAemUnsolicitedResponse(AemAecpdu const& aecpdu) noexcept override
 	{
 		// Notify observers
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpAemUnsolicitedResponse, this, aecpdu);
 	}
 
-	virtual void onAecpAemIdentifyNotification(Aecpdu const& aecpdu) noexcept override
+	virtual void onAecpAemIdentifyNotification(AemAecpdu const& aecpdu) noexcept override
 	{
 		// Notify observers
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpAemIdentifyNotification, this, aecpdu);
