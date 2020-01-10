@@ -487,11 +487,11 @@ void AggregateEntityImpl::getEntityGroupName(UniqueIdentifier const targetEntity
 	}
 }
 
-void AggregateEntityImpl::setConfigurationName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AvdeccFixedString const& entityGroupName, SetConfigurationNameHandler const& handler) const noexcept
+void AggregateEntityImpl::setConfigurationName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AvdeccFixedString const& configurationName, SetConfigurationNameHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{
-		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setConfigurationName(targetEntityID, configurationIndex, entityGroupName, handler);
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setConfigurationName(targetEntityID, configurationIndex, configurationName, handler);
 	}
 }
 

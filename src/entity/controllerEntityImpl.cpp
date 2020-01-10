@@ -318,9 +318,9 @@ void ControllerEntityImpl::getEntityGroupName(UniqueIdentifier const targetEntit
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getEntityGroupName(targetEntityID, handler);
 }
 
-void ControllerEntityImpl::setConfigurationName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AvdeccFixedString const& entityGroupName, SetConfigurationNameHandler const& handler) const noexcept
+void ControllerEntityImpl::setConfigurationName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AvdeccFixedString const& configurationName, SetConfigurationNameHandler const& handler) const noexcept
 {
-	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setConfigurationName(targetEntityID, configurationIndex, entityGroupName, handler);
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setConfigurationName(targetEntityID, configurationIndex, configurationName, handler);
 }
 
 void ControllerEntityImpl::getConfigurationName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, GetConfigurationNameHandler const& handler) const noexcept

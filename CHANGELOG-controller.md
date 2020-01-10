@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Dumped entities in Full Network State are always sorted by EntityID
 
+### Fixed
+- First block of WriteDeviceMemory sent twice
+
 ## [2.11.1] - 2019-10-02
 ### Added
 - Support for Full Entity Enumeration (Static Model only)

@@ -853,7 +853,7 @@ void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setEntityName (Name={})", name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setEntityName(targetEntityID, name,
-			[this, name, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status)
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AvdeccFixedString const& entityName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setEntityName (): {}", entity::ControllerEntity::statusToString(status));
 
@@ -867,7 +867,7 @@ void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateEntityName(*entity, name);
+						updateEntityName(*entity, entityName);
 					}
 
 					// Invoke result handler
@@ -895,7 +895,7 @@ void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, e
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setEntityGroupName (Name={})", name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setEntityGroupName(targetEntityID, name,
-			[this, name, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status)
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AvdeccFixedString const& entityGroupName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setEntityGroupName (): {}", entity::ControllerEntity::statusToString(status));
 
@@ -909,7 +909,7 @@ void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, e
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateEntityGroupName(*entity, name);
+						updateEntityGroupName(*entity, entityGroupName);
 					}
 
 					// Invoke result handler
@@ -937,7 +937,7 @@ void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID,
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setConfigurationName (ConfigurationIndex={} Name={})", configurationIndex, name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setConfigurationName(targetEntityID, configurationIndex, name,
-			[this, name, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex)
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& configurationName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setConfigurationName (ConfigurationIndex={}): {}", configurationIndex, entity::ControllerEntity::statusToString(status));
 
@@ -951,7 +951,7 @@ void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID,
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateConfigurationName(*entity, configurationIndex, name);
+						updateConfigurationName(*entity, configurationIndex, configurationName);
 					}
 
 					// Invoke result handler
@@ -979,7 +979,7 @@ void ControllerImpl::setAudioUnitName(UniqueIdentifier const targetEntityID, ent
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioUnitName (ConfigurationIndex={} AudioUnitIndex={} Name={})", configurationIndex, audioUnitIndex, name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setAudioUnitName(targetEntityID, configurationIndex, audioUnitIndex, name,
-			[this, name, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex)
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::AvdeccFixedString const& audioUnitName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setAudioUnitName (ConfigurationIndex={} AudioUnitIndex={}): {}", configurationIndex, audioUnitIndex, entity::ControllerEntity::statusToString(status));
 
@@ -993,7 +993,7 @@ void ControllerImpl::setAudioUnitName(UniqueIdentifier const targetEntityID, ent
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateAudioUnitName(*entity, configurationIndex, audioUnitIndex, name);
+						updateAudioUnitName(*entity, configurationIndex, audioUnitIndex, audioUnitName);
 					}
 
 					// Invoke result handler
@@ -1021,7 +1021,7 @@ void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, e
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamInputName (ConfigurationIndex={} StreamIndex={} Name={})", configurationIndex, streamIndex, name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setStreamInputName(targetEntityID, configurationIndex, streamIndex, name,
-			[this, name, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamInputName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setStreamInputName (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
 
@@ -1035,7 +1035,7 @@ void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, e
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateStreamInputName(*entity, configurationIndex, streamIndex, name);
+						updateStreamInputName(*entity, configurationIndex, streamIndex, streamInputName);
 					}
 
 					// Invoke result handler
@@ -1063,7 +1063,7 @@ void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, 
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setStreamOutputName (ConfigurationIndex={} StreamIndex={} Name={})", configurationIndex, streamIndex, name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setStreamOutputName(targetEntityID, configurationIndex, streamIndex, name,
-			[this, name, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex)
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamOutputName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setStreamOutputName (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
 
@@ -1077,7 +1077,7 @@ void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, 
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateStreamOutputName(*entity, configurationIndex, streamIndex, name);
+						updateStreamOutputName(*entity, configurationIndex, streamIndex, streamOutputName);
 					}
 
 					// Invoke result handler
@@ -1105,7 +1105,7 @@ void ControllerImpl::setAvbInterfaceName(UniqueIdentifier const targetEntityID, 
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setAvbInterfaceName (ConfigurationIndex={} AvbInterfaceIndex={} Name={})", configurationIndex, avbInterfaceIndex, name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setAvbInterfaceName(targetEntityID, configurationIndex, avbInterfaceIndex, name,
-			[this, name, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex)
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvdeccFixedString const& avbInterfaceName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setAvbInterfaceName (ConfigurationIndex={} AvbInterfaceIndex={}): {}", configurationIndex, avbInterfaceIndex, entity::ControllerEntity::statusToString(status));
 
@@ -1119,7 +1119,7 @@ void ControllerImpl::setAvbInterfaceName(UniqueIdentifier const targetEntityID, 
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateAvbInterfaceName(*entity, configurationIndex, avbInterfaceIndex, name);
+						updateAvbInterfaceName(*entity, configurationIndex, avbInterfaceIndex, avbInterfaceName);
 					}
 
 					// Invoke result handler
@@ -1147,7 +1147,7 @@ void ControllerImpl::setClockSourceName(UniqueIdentifier const targetEntityID, e
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setClockSourceName (ConfigurationIndex={} ClockSourceIndex={} Name={})", configurationIndex, clockSourceIndex, name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setClockSourceName(targetEntityID, configurationIndex, clockSourceIndex, name,
-			[this, name, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex)
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex, entity::model::AvdeccFixedString const& clockSourceName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setClockSourceName (ConfigurationIndex={} ClockSourceIndex={}): {}", configurationIndex, clockSourceIndex, entity::ControllerEntity::statusToString(status));
 
@@ -1161,7 +1161,7 @@ void ControllerImpl::setClockSourceName(UniqueIdentifier const targetEntityID, e
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateClockSourceName(*entity, configurationIndex, clockSourceIndex, name);
+						updateClockSourceName(*entity, configurationIndex, clockSourceIndex, clockSourceName);
 					}
 
 					// Invoke result handler
@@ -1189,7 +1189,7 @@ void ControllerImpl::setMemoryObjectName(UniqueIdentifier const targetEntityID, 
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setMemoryObjectName (ConfigurationIndex={} MemoryObjectIndex={} Name={})", configurationIndex, memoryObjectIndex, name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setMemoryObjectName(targetEntityID, configurationIndex, memoryObjectIndex, name,
-			[this, name, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex)
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, entity::model::AvdeccFixedString const& memoryObjectName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setMemoryObjectName (ConfigurationIndex={} MemoryObjectIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
 
@@ -1203,7 +1203,7 @@ void ControllerImpl::setMemoryObjectName(UniqueIdentifier const targetEntityID, 
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateMemoryObjectName(*entity, configurationIndex, memoryObjectIndex, name);
+						updateMemoryObjectName(*entity, configurationIndex, memoryObjectIndex, memoryObjectName);
 					}
 
 					// Invoke result handler
@@ -1231,7 +1231,7 @@ void ControllerImpl::setAudioClusterName(UniqueIdentifier const targetEntityID, 
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setAudioClusterName (ConfigurationIndex={} AudioClusterIndex={} Name={})", configurationIndex, audioClusterIndex, name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setAudioClusterName(targetEntityID, configurationIndex, audioClusterIndex, name,
-			[this, name, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex)
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex, entity::model::AvdeccFixedString const& audioClusterName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setAudioClusterName (ConfigurationIndex={} AudioClusterIndex={}): {}", configurationIndex, audioClusterIndex, entity::ControllerEntity::statusToString(status));
 
@@ -1245,7 +1245,7 @@ void ControllerImpl::setAudioClusterName(UniqueIdentifier const targetEntityID, 
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateAudioClusterName(*entity, configurationIndex, audioClusterIndex, name);
+						updateAudioClusterName(*entity, configurationIndex, audioClusterIndex, audioClusterName);
 					}
 
 					// Invoke result handler
@@ -1273,7 +1273,7 @@ void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, e
 		LOG_CONTROLLER_TRACE(targetEntityID, "User setClockDomainName (ConfigurationIndex={} ClockDomainIndex={} Name={})", configurationIndex, clockDomainIndex, name.str());
 		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
 		_controller->setClockDomainName(targetEntityID, configurationIndex, clockDomainIndex, name,
-			[this, name, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex)
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::AvdeccFixedString const& clockDomainName)
 			{
 				LOG_CONTROLLER_TRACE(entityID, "User setClockDomainName (ConfigurationIndex={} ClockDomainIndex={}): {}", configurationIndex, clockDomainIndex, entity::ControllerEntity::statusToString(status));
 
@@ -1287,7 +1287,7 @@ void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, e
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateClockDomainName(*entity, configurationIndex, clockDomainIndex, name);
+						updateClockDomainName(*entity, configurationIndex, clockDomainIndex, clockDomainName);
 					}
 
 					// Invoke result handler
