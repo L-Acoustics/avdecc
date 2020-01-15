@@ -15,7 +15,7 @@ function updateCopyrightYear()
 	find . -iname "$filePattern" -not -path "./3rdparty/*" -not -path "./externals/*" -not -path "./_*" -exec sed -i {} -r -e "s/Copyright \(C\) ([0-9]+)-([0-9]+),/Copyright \(C\) \1-$newYear,/" \;
 }
 
-year="2019"
+year="$(date "+%Y")"
 updateCopyrightYear "*.[chi]pp" "$year"
 updateCopyrightYear "*.[ch]" "$year"
 updateCopyrightYear "*.mm" "$year"
