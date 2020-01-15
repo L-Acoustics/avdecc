@@ -49,7 +49,7 @@ static auto const s_ListenerEntityID = la::avdecc::UniqueIdentifier{ 0x001b92fff
 static auto const s_TalkerEntityID = la::avdecc::UniqueIdentifier{ 0x1b92fffe02233b };
 static auto const s_TargetMacAddress = la::avdecc::networkInterface::MacAddress{ 0x00, 0x1b, 0x92, 0x01, 0xb9, 0x30 };
 
-void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
+inline void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 {
 	auto const controllerID = la::avdecc::entity::Entity::generateEID(pi.getMacAddress(), s_ProgID);
 
@@ -138,7 +138,71 @@ void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 	}
 }
 
-void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
+inline void receiveAecpdu(la::avdecc::protocol::ProtocolInterface& pi)
+{
+	constexpr auto SequenceID = la::avdecc::protocol::AecpSequenceID{ 42u };
+	static auto commandResultPromise = std::promise<bool>{};
+
+	class Observer final : public la::avdecc::protocol::ProtocolInterface::Observer
+	{
+	public:
+	private:
+		virtual void onAecpduReceived(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override
+		{
+			if (aecpdu.getSequenceID() == SequenceID)
+			{
+				auto result = true;
+
+				result &= static_cast<la::avdecc::protocol::AemAecpdu const&>(aecpdu).getCommandType() == la::avdecc::protocol::AemCommandType::EntityAvailable;
+#ifdef _WIN32
+				// type_info is not available for AemAecpdu or Aecpdu on gcc/clang due to symbols visibility (thus dynamic_cast cannot be used)
+				result &= dynamic_cast<la::avdecc::protocol::AemAecpdu const*>(&aecpdu) != nullptr;
+#endif // _WIN32
+
+				commandResultPromise.set_value(result);
+			}
+		}
+		DECLARE_AVDECC_OBSERVER_GUARD(Observer);
+	};
+
+	auto const controllerID = la::avdecc::entity::Entity::generateEID(pi.getMacAddress(), s_ProgID);
+	auto obs = Observer{};
+	pi.registerObserver(&obs);
+
+	// Send raw AEM AECP message (EntityAvailable Command)
+	{
+		auto aecpdu = la::avdecc::protocol::AemAecpdu{ false };
+
+		// Set Ether2 fields
+		aecpdu.setSrcAddress(pi.getMacAddress());
+		aecpdu.setDestAddress(s_TargetMacAddress);
+		// Set AECP fields
+		aecpdu.setStatus(la::avdecc::protocol::AemAecpStatus::Success);
+		aecpdu.setTargetEntityID(s_TargetEntityID);
+		aecpdu.setControllerEntityID(controllerID);
+		aecpdu.setSequenceID(SequenceID);
+		// Set AEM fields
+		aecpdu.setUnsolicited(false);
+		aecpdu.setCommandType(la::avdecc::protocol::AemCommandType::EntityAvailable);
+
+		// Send the message
+		pi.sendAecpMessage(aecpdu);
+	}
+
+	// Wait for the command result
+	auto fut = commandResultPromise.get_future();
+	auto const status = fut.wait_for(std::chrono::seconds(20));
+	if (status == std::future_status::timeout)
+	{
+		outputText("AEM response timed out\n");
+	}
+	if (!fut.get())
+	{
+		outputText("Invalid AECP response type (not AEM, or sliced!)\n");
+	}
+}
+
+inline void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 {
 	// Generate an EID
 	auto const controllerID = la::avdecc::entity::Entity::generateEID(pi.getMacAddress(), s_ProgID);
@@ -286,7 +350,7 @@ void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 	}
 }
 
-void sendControllerHighLevelCommands(la::avdecc::protocol::ProtocolInterface& pi)
+inline void sendControllerHighLevelCommands(la::avdecc::protocol::ProtocolInterface& pi)
 {
 	class Delegate : public la::avdecc::entity::controller::Delegate
 	{
@@ -341,27 +405,8 @@ void sendControllerHighLevelCommands(la::avdecc::protocol::ProtocolInterface& pi
 	}
 }
 
-int doJob()
+inline int doJob()
 {
-	//class Observer : public la::avdecc::protocol::ProtocolInterface::Observer
-	//{
-	//private:
-	//	// la::avdecc::protocol::ProtocolInterface::Observer overrides
-	//	virtual void onTransportError(la::avdecc::protocol::ProtocolInterface* const /*pi*/) noexcept override {}
-	//	virtual void onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override {}
-	//	virtual void onLocalEntityOffline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const /*entityID*/) noexcept override {}
-	//	virtual void onLocalEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override {}
-	//	virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override {}
-	//	virtual void onRemoteEntityOffline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const /*entityID*/) noexcept override {}
-	//	virtual void onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override {}
-	//	virtual void onAecpCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept override {}
-	//	virtual void onAecpUnsolicitedResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept override {}
-	//	virtual void onAcmpSniffedCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept override {}
-	//	virtual void onAcmpSniffedResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept override {}
-
-	//	DECLARE_AVDECC_OBSERVER_GUARD(Observer);
-	//};
-
 	auto const protocolInterfaceType = chooseProtocolInterfaceType(la::avdecc::protocol::ProtocolInterface::SupportedProtocolInterfaceTypes{ la::avdecc::protocol::ProtocolInterface::Type::PCap, la::avdecc::protocol::ProtocolInterface::Type::MacOSNative });
 	auto intfc = chooseNetworkInterface();
 
@@ -380,6 +425,15 @@ int doJob()
 
 			// Test sending raw messages
 			sendRawMessages(*pi);
+
+			pi->shutdown(); // Not necessary, but best practice
+		}
+
+		{
+			auto pi = la::avdecc::protocol::ProtocolInterface::create(protocolInterfaceType, intfc.id);
+
+			// Test receiving raw messages
+			receiveAecpdu(*pi);
 
 			pi->shutdown(); // Not necessary, but best practice
 		}
