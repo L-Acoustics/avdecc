@@ -146,11 +146,11 @@ public:
 		virtual void onAecpResponseTime(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const& /*entityID*/, std::chrono::milliseconds const& /*responseTime*/) noexcept {}
 
 		/* **** Low level notifications (not supported by all kinds of ProtocolInterface), triggered before processing the pdu **** */
-		/** Notification for when an ADPDU is received (might be a message that was sent by self as this event is triggered for outgoing broadcast messages) */
+		/** Notification for when an ADPDU is received (might be a message that was sent by self as this event might be triggered for outgoing messages) */
 		virtual void onAdpduReceived(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::Adpdu const& /*adpdu*/) noexcept {}
-		/** Notification for when an AECPDU is received (might be a message that was sent by self as this event is triggered for outgoing broadcast messages) */
+		/** Notification for when an AECPDU is received (might be a message that was sent by self as this event might be triggered for outgoing messages) */
 		virtual void onAecpduReceived(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept {}
-		/** Notification for when an ACMPDU is received (might be a message that was sent by self as this event is triggered for outgoing broadcast messages) */
+		/** Notification for when an ACMPDU is received (might be a message that was sent by self as this event might be triggered for outgoing messages) */
 		virtual void onAcmpduReceived(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept {}
 	};
 
