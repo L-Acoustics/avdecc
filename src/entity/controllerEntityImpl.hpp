@@ -200,6 +200,7 @@ private:
 	/* LocalEntityImpl overrides                                                  */
 	/* ************************************************************************** */
 	virtual bool onUnhandledAecpCommand(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept override;
+	virtual bool onUnhandledAecpVuCommand(protocol::ProtocolInterface* const pi, protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, protocol::Aecpdu const& aecpdu) noexcept override;
 
 	/* ************************************************************************** */
 	/* Internal variables                                                         */

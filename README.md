@@ -33,7 +33,7 @@ We use GitHub issues for tracking requests and bugs.
 ## la_avdecc library
 
 Implementation of the IEEE Std 1722.1-2013 specification.  
-Also implementing non-released IEEE Std 1722.1 corrigendum 1 draft 8.
+Also implementing most of IEEE Std 1722.1-Corrigendum1-2018.
 Also implementing AVnu Alliance Milan.
 Also implementing AVnu Alliance Network Redundancy.
 

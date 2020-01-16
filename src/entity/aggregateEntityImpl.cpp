@@ -1133,7 +1133,7 @@ void AggregateEntityImpl::onAecpResponseTime(protocol::ProtocolInterface* const 
 /* ************************************************************************** */
 bool AggregateEntityImpl::onUnhandledAecpCommand(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept
 {
-	bool handled{ false };
+	auto handled = false;
 
 	if (!handled && _controllerCapabilityDelegate != nullptr)
 	{
@@ -1146,6 +1146,26 @@ bool AggregateEntityImpl::onUnhandledAecpCommand(protocol::ProtocolInterface* co
 	if (!handled && _talkerCapabilityDelegate != nullptr)
 	{
 		handled = _talkerCapabilityDelegate->onUnhandledAecpCommand(pi, aecpdu);
+	}
+
+	return handled;
+}
+
+bool AggregateEntityImpl::onUnhandledAecpVuCommand(protocol::ProtocolInterface* const pi, protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, protocol::Aecpdu const& aecpdu) noexcept
+{
+	auto handled = false;
+
+	if (!handled && _controllerCapabilityDelegate != nullptr)
+	{
+		handled = _controllerCapabilityDelegate->onUnhandledAecpVuCommand(pi, protocolIdentifier, aecpdu);
+	}
+	if (!handled && _listenerCapabilityDelegate != nullptr)
+	{
+		handled = _listenerCapabilityDelegate->onUnhandledAecpVuCommand(pi, protocolIdentifier, aecpdu);
+	}
+	if (!handled && _talkerCapabilityDelegate != nullptr)
+	{
+		handled = _talkerCapabilityDelegate->onUnhandledAecpVuCommand(pi, protocolIdentifier, aecpdu);
 	}
 
 	return handled;

@@ -668,6 +668,11 @@ bool ControllerEntityImpl::onUnhandledAecpCommand(protocol::ProtocolInterface* c
 	return _controllerCapabilityDelegate->onUnhandledAecpCommand(pi, aecpdu);
 }
 
+bool ControllerEntityImpl::onUnhandledAecpVuCommand(protocol::ProtocolInterface* const pi, protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, protocol::Aecpdu const& aecpdu) noexcept
+{
+	return _controllerCapabilityDelegate->onUnhandledAecpVuCommand(pi, protocolIdentifier, aecpdu);
+}
+
 /* ************************************************************************** */
 /* ControllerEntity methods                                                   */
 /* ************************************************************************** */

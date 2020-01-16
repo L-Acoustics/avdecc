@@ -25,7 +25,6 @@
 #include "la/avdecc/internals/serialization.hpp"
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
-#include "la/avdecc/internals/protocolMvuAecpdu.hpp"
 #include "la/avdecc/watchDog.hpp"
 #include "la/avdecc/utils.hpp"
 
@@ -289,12 +288,56 @@ private:
 
 	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, AecpCommandResultHandler const& onResult) const noexcept override
 	{
+		auto const messageType = aecpdu->getMessageType();
+
+		if (!AVDECC_ASSERT_WITH_RET(!isAecpResponseMessageType(messageType), "Calling sendAecpCommand with a Response MessageType"))
+		{
+			return Error::MessageNotSupported;
+		}
+
+		// Special check for VendorUnique messages
+		if (messageType == AecpMessageType::VendorUniqueCommand)
+		{
+			auto& vuAecp = static_cast<VuAecpdu&>(*aecpdu);
+
+			auto const vuProtocolID = vuAecp.getProtocolIdentifier();
+			auto* vuDelegate = getVendorUniqueDelegate(vuProtocolID);
+
+			// No delegate, or the messages are not handled by the ControllerStateMachine
+			if (!vuDelegate || !vuDelegate->areHandledByControllerStateMachine(vuProtocolID))
+			{
+				return Error::MessageNotSupported;
+			}
+		}
+
 		// Command goes through the state machine to handle timeout, retry and response
 		return _stateMachineManager.sendAecpCommand(std::move(aecpdu), onResult);
 	}
 
 	virtual Error sendAecpResponse(Aecpdu::UniquePointer&& aecpdu) const noexcept override
 	{
+		auto const messageType = aecpdu->getMessageType();
+
+		if (!AVDECC_ASSERT_WITH_RET(isAecpResponseMessageType(messageType), "Calling sendAecpResponse with a Command MessageType"))
+		{
+			return Error::MessageNotSupported;
+		}
+
+		// Special check for VendorUnique messages
+		if (messageType == AecpMessageType::VendorUniqueResponse)
+		{
+			auto& vuAecp = static_cast<VuAecpdu&>(*aecpdu);
+
+			auto const vuProtocolID = vuAecp.getProtocolIdentifier();
+			auto* vuDelegate = getVendorUniqueDelegate(vuProtocolID);
+
+			// No delegate, or the messages are not handled by the ControllerStateMachine
+			if (!vuDelegate || !vuDelegate->areHandledByControllerStateMachine(vuProtocolID))
+			{
+				return Error::MessageNotSupported;
+			}
+		}
+
 		// Response can be directly sent
 		return sendMessage(static_cast<Aecpdu const&>(*aecpdu));
 	}
@@ -311,12 +354,12 @@ private:
 		return sendMessage(static_cast<Acmpdu const&>(*acmpdu));
 	}
 
-	virtual void lock() noexcept override
+	virtual void lock() const noexcept override
 	{
 		_stateMachineManager.lock();
 	}
 
-	virtual void unlock() noexcept override
+	virtual void unlock() const noexcept override
 	{
 		_stateMachineManager.unlock();
 	}
@@ -350,7 +393,7 @@ private:
 	}
 
 	/* **** Sending methods **** */
-	virtual ProtocolInterface::Error sendMessage(Adpdu const& adpdu) const noexcept override
+	virtual Error sendMessage(Adpdu const& adpdu) const noexcept override
 	{
 		try
 		{
@@ -370,11 +413,11 @@ private:
 		catch ([[maybe_unused]] std::exception const& e)
 		{
 			LOG_PROTOCOL_INTERFACE_DEBUG(adpdu.getSrcAddress(), adpdu.getDestAddress(), std::string("Failed to serialize ADPDU: ") + e.what());
-			return ProtocolInterface::Error::InternalError;
+			return Error::InternalError;
 		}
 	}
 
-	virtual ProtocolInterface::Error sendMessage(Aecpdu const& aecpdu) const noexcept override
+	virtual Error sendMessage(Aecpdu const& aecpdu) const noexcept override
 	{
 		try
 		{
@@ -394,11 +437,11 @@ private:
 		catch ([[maybe_unused]] std::exception const& e)
 		{
 			LOG_PROTOCOL_INTERFACE_DEBUG(aecpdu.getSrcAddress(), aecpdu.getDestAddress(), std::string("Failed to serialize AECPDU: ") + e.what());
-			return ProtocolInterface::Error::InternalError;
+			return Error::InternalError;
 		}
 	}
 
-	virtual ProtocolInterface::Error sendMessage(Acmpdu const& acmpdu) const noexcept override
+	virtual Error sendMessage(Acmpdu const& acmpdu) const noexcept override
 	{
 		try
 		{
@@ -418,8 +461,14 @@ private:
 		catch ([[maybe_unused]] std::exception const& e)
 		{
 			LOG_PROTOCOL_INTERFACE_DEBUG(acmpdu.getSrcAddress(), Acmpdu::Multicast_Mac_Address, "Failed to serialize ACMPDU: {}", e.what());
-			return ProtocolInterface::Error::InternalError;
+			return Error::InternalError;
 		}
+	}
+
+	/* *** Other methods **** */
+	virtual std::uint32_t getVuAecpCommandTimeoutMsec(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) const noexcept override
+	{
+		return getVuAecpCommandTimeout(protocolIdentifier, aecpdu);
 	}
 
 	/* ************************************************************ */
@@ -528,6 +577,17 @@ private:
 		return Error::TransportError;
 	}
 
+	void deserializeAecpMessage(EtherLayer2 const& etherLayer2, Deserializer& des, Aecpdu& aecp) const
+	{
+		// Fill EtherLayer2
+		aecp.setSrcAddress(etherLayer2.getSrcAddress());
+		aecp.setDestAddress(etherLayer2.getDestAddress());
+		// Then deserialize Avtp control
+		deserialize<AvtpduControl>(&aecp, des);
+		// Then deserialize Aecp
+		deserialize<Aecpdu>(&aecp, des);
+	}
+
 	void dispatchAvdeccMessage(std::uint8_t const* const pkt_data, size_t const pkt_len, EtherLayer2 const& etherLayer2) noexcept
 	{
 		try
@@ -566,44 +626,114 @@ private:
 				/* AECP Message */
 				case AvtpSubType_Aecp:
 				{
-					Aecpdu::UniquePointer aecpdu{ nullptr, nullptr };
 					auto const messageType = static_cast<AecpMessageType>(controlData);
 
-					static std::unordered_map<AecpMessageType, std::function<Aecpdu::UniquePointer(std::uint8_t const* const pkt_data, size_t const pkt_len)>, AecpMessageType::Hash> s_Dispatch{
+					static std::unordered_map<AecpMessageType, std::function<Aecpdu::UniquePointer(ProtocolInterfacePcapImpl* const pi, EtherLayer2 const& etherLayer2, Deserializer& des, std::uint8_t const* const pkt_data, size_t const pkt_len)>, AecpMessageType::Hash> s_Dispatch{
 						{ AecpMessageType::AemCommand,
-							[](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
+							[](ProtocolInterfacePcapImpl* const /*pi*/, EtherLayer2 const& /*etherLayer2*/, Deserializer& /*des*/, std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
 							{
 								return AemAecpdu::create(false);
 							} },
 						{ AecpMessageType::AemResponse,
-							[](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
+							[](ProtocolInterfacePcapImpl* const /*pi*/, EtherLayer2 const& /*etherLayer2*/, Deserializer& /*des*/, std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
 							{
 								return AemAecpdu::create(true);
 							} },
 						{ AecpMessageType::AddressAccessCommand,
-							[](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
+							[](ProtocolInterfacePcapImpl* const /*pi*/, EtherLayer2 const& /*etherLayer2*/, Deserializer& /*des*/, std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
 							{
 								return AaAecpdu::create(false);
 							} },
 						{ AecpMessageType::AddressAccessResponse,
-							[](std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
+							[](ProtocolInterfacePcapImpl* const /*pi*/, EtherLayer2 const& /*etherLayer2*/, Deserializer& /*des*/, std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
 							{
 								return AaAecpdu::create(true);
 							} },
-						{ AecpMessageType::VendorUniqueResponse,
-							[](std::uint8_t const* const pkt_data, size_t const pkt_len)
+						{ AecpMessageType::VendorUniqueCommand,
+							[](ProtocolInterfacePcapImpl* const pi, EtherLayer2 const& etherLayer2, Deserializer& des, std::uint8_t const* const pkt_data, size_t const pkt_len)
 							{
 								// We have to retrieve the ProtocolID to dispatch
 								auto const protocolIdentifierOffset = AvtpduControl::HeaderLength + Aecpdu::HeaderLength;
 								if (pkt_len >= (protocolIdentifierOffset + VuAecpdu::ProtocolIdentifier::Size))
 								{
-									VuAecpdu::ProtocolIdentifier::ArrayType protocolIdentifier{};
+									auto protocolIdentifier = VuAecpdu::ProtocolIdentifier::ArrayType{};
 									std::memcpy(protocolIdentifier.data(), pkt_data + protocolIdentifierOffset, VuAecpdu::ProtocolIdentifier::Size);
 
-									if (MvuAecpdu::ProtocolID == protocolIdentifier)
+									auto const vuProtocolID = VuAecpdu::ProtocolIdentifier{ protocolIdentifier };
+									auto* vuDelegate = pi->getVendorUniqueDelegate(vuProtocolID);
+									if (vuDelegate)
 									{
-										return MvuAecpdu::create(true);
+										// VendorUnique Commands are always handled by the VendorUniqueDelegate
+										auto aecpdu = vuDelegate->createAecpdu(vuProtocolID, false);
+										auto& vuAecp = static_cast<VuAecpdu&>(*aecpdu);
+
+										// Deserialize the aecp message
+										pi->deserializeAecpMessage(etherLayer2, des, vuAecp);
+
+										// Low level notification
+										pi->notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpduReceived, pi, vuAecp);
+
+										// Forward to the delegate
+										vuDelegate->onVuAecpCommand(pi, vuProtocolID, vuAecp);
+
+										// Return empty Aecpdu so that it's not processed by the StateMachineManager
 									}
+									else
+									{
+										LOG_PROTOCOL_INTERFACE_DEBUG(networkInterface::MacAddress{}, networkInterface::MacAddress{}, "Unhandled VendorUnique Command for ProtocolIdentifier {}", utils::toHexString(static_cast<VuAecpdu::ProtocolIdentifier::IntegralType>(vuProtocolID), true));
+									}
+								}
+								else
+								{
+									LOG_PROTOCOL_INTERFACE_WARN(networkInterface::MacAddress{}, networkInterface::MacAddress{}, "Invalid VendorUnique Command received. Not enough bytes in the message to hold ProtocolIdentifier");
+								}
+
+								return Aecpdu::UniquePointer{ nullptr, nullptr };
+							} },
+						{ AecpMessageType::VendorUniqueResponse,
+							[](ProtocolInterfacePcapImpl* const pi, EtherLayer2 const& etherLayer2, Deserializer& des, std::uint8_t const* const pkt_data, size_t const pkt_len)
+							{
+								// We have to retrieve the ProtocolID to dispatch
+								auto const protocolIdentifierOffset = AvtpduControl::HeaderLength + Aecpdu::HeaderLength;
+								if (pkt_len >= (protocolIdentifierOffset + VuAecpdu::ProtocolIdentifier::Size))
+								{
+									auto protocolIdentifier = VuAecpdu::ProtocolIdentifier::ArrayType{};
+									std::memcpy(protocolIdentifier.data(), pkt_data + protocolIdentifierOffset, VuAecpdu::ProtocolIdentifier::Size);
+
+									auto const vuProtocolID = VuAecpdu::ProtocolIdentifier{ protocolIdentifier };
+									auto* vuDelegate = pi->getVendorUniqueDelegate(vuProtocolID);
+									if (vuDelegate)
+									{
+										auto aecpdu = vuDelegate->createAecpdu(vuProtocolID, true);
+
+										// Are the messages handled by the VendorUniqueDelegate itself
+										if (!vuDelegate->areHandledByControllerStateMachine(vuProtocolID))
+										{
+											auto& vuAecp = static_cast<VuAecpdu&>(*aecpdu);
+
+											// Deserialize the aecp message
+											pi->deserializeAecpMessage(etherLayer2, des, vuAecp);
+
+											// Low level notification
+											pi->notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpduReceived, pi, vuAecp);
+
+											// Forward to the delegate
+											vuDelegate->onVuAecpResponse(pi, vuProtocolID, vuAecp);
+
+											// Return empty Aecpdu so that it's not processed by the StateMachineManager
+											aecpdu.reset(nullptr);
+										}
+
+										return aecpdu;
+									}
+									else
+									{
+										LOG_PROTOCOL_INTERFACE_DEBUG(networkInterface::MacAddress{}, networkInterface::MacAddress{}, "Unhandled VendorUnique Response for ProtocolIdentifier {}", utils::toHexString(static_cast<VuAecpdu::ProtocolIdentifier::IntegralType>(vuProtocolID), true));
+									}
+								}
+								else
+								{
+									LOG_PROTOCOL_INTERFACE_WARN(networkInterface::MacAddress{}, networkInterface::MacAddress{}, "Invalid VendorUnique Command received. Not enough bytes in the message to hold ProtocolIdentifier");
 								}
 
 								return Aecpdu::UniquePointer{ nullptr, nullptr };
@@ -615,19 +745,14 @@ private:
 						return; // Unsupported AECP message type
 
 					// Create aecpdu frame based on message type
-					aecpdu = it->second(pkt_data, pkt_len);
+					auto aecpdu = it->second(this, etherLayer2, des, pkt_data, pkt_len);
 
 					if (aecpdu != nullptr)
 					{
 						auto& aecp = static_cast<Aecpdu&>(*aecpdu);
 
-						// Fill EtherLayer2
-						aecp.setSrcAddress(etherLayer2.getSrcAddress());
-						aecp.setDestAddress(etherLayer2.getDestAddress());
-						// Then deserialize Avtp control
-						deserialize<AvtpduControl>(&aecp, des);
-						// Then deserialize Aecp
-						deserialize<Aecpdu>(&aecp, des);
+						// Deserialize the aecp message
+						deserializeAecpMessage(etherLayer2, des, aecp);
 
 						// Low level notification
 						notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpduReceived, this, aecp);

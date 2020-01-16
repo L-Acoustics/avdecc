@@ -43,7 +43,6 @@ namespace stateMachine
 /* Aecp commands timeout - Clause 9.2.1 */
 static constexpr auto AecpAemCommandTimeoutMsec = 250u;
 static constexpr auto AecpAaCommandTimeoutMsec = 250u;
-static constexpr auto AecpVuCommandTimeoutMsec = 250u; // This is actually not true, it may be different for each Vendor Unique
 /* Acmp commands timeout - Clause 8.2.2 */
 static constexpr auto AcmpConnectTxCommandTimeoutMsec = 2000u;
 static constexpr auto AcmpDisconnectTxCommandTimeoutMsec = 200u;
@@ -435,17 +434,30 @@ bool CommandStateMachine::shouldRearmTimer(Aecpdu const& aecpdu) const noexcept
 
 void CommandStateMachine::resetAecpCommandTimeoutValue(AecpCommandInfo& command) const noexcept
 {
-	static std::unordered_map<AecpMessageType, std::uint32_t, AecpMessageType::Hash> s_AecpCommandTimeoutMap{
-		{ AecpMessageType::AemCommand, AecpAemCommandTimeoutMsec },
-		{ AecpMessageType::AddressAccessCommand, AecpAaCommandTimeoutMsec },
-		{ AecpMessageType::VendorUniqueCommand, AecpVuCommandTimeoutMsec },
-	};
+	auto const messageType = command.command->getMessageType();
+	auto timeout = std::uint32_t{ 250u };
 
-	std::uint32_t timeout{ 250 };
-	auto const it = s_AecpCommandTimeoutMap.find(command.command->getMessageType());
-	if (AVDECC_ASSERT_WITH_RET(it != s_AecpCommandTimeoutMap.end(), "Timeout for AECP message not defined!"))
+	// Handle special case first, VendorUniqueCommand
+	if (messageType == AecpMessageType::VendorUniqueCommand)
 	{
-		timeout = it->second;
+		auto const& vuAecp = static_cast<VuAecpdu const&>(*command.command);
+		auto const vuProtocolID = vuAecp.getProtocolIdentifier();
+		auto* const protocolInterface = _manager->getProtocolInterfaceDelegate();
+
+		timeout = protocolInterface->getVuAecpCommandTimeoutMsec(vuProtocolID, vuAecp);
+	}
+	else
+	{
+		static std::unordered_map<AecpMessageType, std::uint32_t, AecpMessageType::Hash> s_AecpCommandTimeoutMap{
+			{ AecpMessageType::AemCommand, AecpAemCommandTimeoutMsec },
+			{ AecpMessageType::AddressAccessCommand, AecpAaCommandTimeoutMsec },
+		};
+
+		auto const it = s_AecpCommandTimeoutMap.find(messageType);
+		if (AVDECC_ASSERT_WITH_RET(it != s_AecpCommandTimeoutMap.end(), "Timeout for AECP message not defined!"))
+		{
+			timeout = it->second;
+		}
 	}
 
 	command.sendTime = std::chrono::steady_clock::now();
@@ -464,7 +476,7 @@ void CommandStateMachine::resetAcmpCommandTimeoutValue(AcmpCommandInfo& command)
 		{ AcmpMessageType::GetTxConnectionCommand, AcmpGetTxConnectionCommandTimeoutMsec },
 	};
 
-	std::uint32_t timeout{ 250 };
+	std::uint32_t timeout{ 250u };
 	auto const it = s_AcmpCommandTimeoutMap.find(command.command->getMessageType());
 	if (AVDECC_ASSERT_WITH_RET(it != s_AcmpCommandTimeoutMap.end(), "Timeout for ACMP message not defined!"))
 	{

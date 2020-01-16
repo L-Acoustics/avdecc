@@ -22,12 +22,17 @@
 * @author Christophe Calmejane
 */
 
+// Public API
+#include <la/avdecc/internals/protocolMvuAecpdu.hpp>
+
 // Internal API
 #include "protocolInterface/protocolInterface_pcap.hpp"
 
 #include <gtest/gtest.h>
 #include <future>
 #include <chrono>
+#include <string>
+#include <memory>
 #include <iostream>
 #include <string>
 
@@ -110,5 +115,118 @@ TEST(ProtocolInterfacePCap, TransportError)
 
 		status = completedPromise.get_future().wait_for(std::chrono::seconds(60));
 		ASSERT_NE(std::future_status::timeout, status) << "Either deadlock or you didn't follow instructions quickly enough";
+	}
+}
+
+namespace
+{
+class ProtocolInterfacePCap_F : public ::testing::Test
+{
+public:
+	virtual void SetUp() override
+	{
+		// Search a valid NetworkInterface, the first active one actually
+		auto networkInterfaceName = std::string{};
+		la::avdecc::networkInterface::enumerateInterfaces(
+			[&networkInterfaceName](la::avdecc::networkInterface::Interface const& intfc)
+			{
+				if (!networkInterfaceName.empty())
+				{
+					return;
+				}
+				if (intfc.type == la::avdecc::networkInterface::Interface::Type::Ethernet && intfc.isConnected && !intfc.isVirtual)
+				{
+					networkInterfaceName = intfc.id;
+				}
+			});
+
+		ASSERT_FALSE(networkInterfaceName.empty()) << "No valid NetworkInterface found";
+		_pi = std::unique_ptr<la::avdecc::protocol::ProtocolInterfacePcap>(la::avdecc::protocol::ProtocolInterfacePcap::createRawProtocolInterfacePcap(networkInterfaceName));
+	}
+
+	virtual void TearDown() override
+	{
+		_pi.reset();
+	}
+
+	la::avdecc::protocol::ProtocolInterface& getProtocolInterface() noexcept
+	{
+		return *_pi;
+	}
+
+private:
+	std::unique_ptr<la::avdecc::protocol::ProtocolInterfacePcap> _pi{ nullptr };
+};
+} // namespace
+
+TEST_F(ProtocolInterfacePCap_F, VuDelegate)
+{
+	// Using MvuAecpdu as class for the tests, so we don't have to design a new VendorUnique class
+
+	static auto selfCommandReceivedPromise = std::promise<void>{};
+	static auto vuCreated = false;
+
+	class VuDelegate : public la::avdecc::protocol::ProtocolInterface::VendorUniqueDelegate
+	{
+	public:
+		VuDelegate() noexcept = default;
+
+	private:
+		// la::avdecc::protocol::ProtocolInterface::VendorUniqueDelegate overrides
+		virtual la::avdecc::protocol::Aecpdu::UniquePointer createAecpdu(la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, bool const isResponse) noexcept override
+		{
+			EXPECT_FALSE(vuCreated) << "createAecpdu called twice";
+			vuCreated = true;
+			return la::avdecc::protocol::MvuAecpdu::create(isResponse);
+		}
+		virtual bool areHandledByControllerStateMachine(la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/) const noexcept override
+		{
+			return false;
+		}
+		virtual void onVuAecpCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, la::avdecc::protocol::VuAecpdu const& aecpdu) noexcept override
+		{
+			if (vuCreated)
+			{
+				auto const& vuAecp = static_cast<la::avdecc::protocol::MvuAecpdu const&>(aecpdu);
+				EXPECT_EQ(66u, vuAecp.getCommandType().getValue());
+				selfCommandReceivedPromise.set_value();
+			}
+			else
+			{
+				EXPECT_TRUE(vuCreated) << "createAecpdu never called";
+			}
+		}
+	};
+
+	auto& pi = getProtocolInterface();
+	auto scopedDelegate = std::unique_ptr<VuDelegate, std::function<void(VuDelegate*)>>{ nullptr, [&pi](auto*)
+		{
+			pi.unregisterVendorUniqueDelegate(la::avdecc::protocol::MvuAecpdu::ProtocolID);
+		} };
+	auto delegate = VuDelegate{};
+
+	if (!pi.registerVendorUniqueDelegate(la::avdecc::protocol::MvuAecpdu::ProtocolID, &delegate))
+	{
+		scopedDelegate.reset(&delegate);
+	}
+
+	// Try to send using sendAecpCommand (forbidden)
+	{
+		auto aecpdu = la::avdecc::protocol::MvuAecpdu::create(false);
+		EXPECT_EQ(la::avdecc::protocol::ProtocolInterface::Error::MessageNotSupported, pi.sendAecpCommand(std::move(aecpdu), nullptr));
+	}
+
+	{
+		auto aecpdu = la::avdecc::protocol::MvuAecpdu::create(false);
+		auto& vuAecp = static_cast<la::avdecc::protocol::MvuAecpdu&>(*aecpdu);
+
+		// No need to setup the message base fields for this test, only Mvu one to check it's our message that bounced back
+		vuAecp.setCommandType(la::avdecc::protocol::MvuCommandType{ 66u });
+
+		ASSERT_TRUE(!pi.sendAecpMessage(vuAecp));
+
+		// Wait for message to bounce back
+		auto status = selfCommandReceivedPromise.get_future().wait_for(std::chrono::seconds(5));
+		ASSERT_NE(std::future_status::timeout, status);
 	}
 }

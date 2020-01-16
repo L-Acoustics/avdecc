@@ -37,6 +37,7 @@
 #include <iomanip>
 #include <string>
 #include <sstream>
+#include <memory>
 #include <vector>
 #include <thread>
 #include <chrono>
@@ -204,6 +205,46 @@ inline void receiveAecpdu(la::avdecc::protocol::ProtocolInterface& pi)
 
 inline void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 {
+	class MvuDelegate : public la::avdecc::protocol::ProtocolInterface::VendorUniqueDelegate
+	{
+	public:
+		MvuDelegate() noexcept = default;
+
+	private:
+		// la::avdecc::protocol::ProtocolInterface::VendorUniqueDelegate overrides
+		virtual la::avdecc::protocol::Aecpdu::UniquePointer createAecpdu(la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, bool const isResponse) noexcept override
+		{
+			return la::avdecc::protocol::MvuAecpdu::create(isResponse);
+		}
+		virtual bool areHandledByControllerStateMachine(la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/) const noexcept override
+		{
+			return true;
+		}
+		virtual std::uint32_t getVuAecpCommandTimeoutMsec(la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, la::avdecc::protocol::VuAecpdu const& /*aecpdu*/) noexcept override
+		{
+			return 250u;
+		}
+		virtual void onVuAecpCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, la::avdecc::protocol::VuAecpdu const& /*aecpdu*/) noexcept override
+		{
+			outputText("Received Vu command\n");
+		}
+		virtual void onVuAecpResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, la::avdecc::protocol::VuAecpdu const& /*aecpdu*/) noexcept override
+		{
+			outputText("Received Vu response - SHOULD NEVER HAPPEN because areHandledByControllerStateMachine returns true\n");
+		}
+	};
+
+	auto scopedDelegate = std::unique_ptr<MvuDelegate, std::function<void(MvuDelegate*)>>{ nullptr, [&pi](auto*)
+		{
+			pi.unregisterVendorUniqueDelegate(la::avdecc::protocol::MvuAecpdu::ProtocolID);
+		} };
+	auto delegate = MvuDelegate{};
+
+	if (!pi.registerVendorUniqueDelegate(la::avdecc::protocol::MvuAecpdu::ProtocolID, &delegate))
+	{
+		scopedDelegate.reset(&delegate);
+	}
+
 	// Generate an EID
 	auto const controllerID = la::avdecc::entity::Entity::generateEID(pi.getMacAddress(), s_ProgID);
 
