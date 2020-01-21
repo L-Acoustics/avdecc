@@ -72,10 +72,10 @@ LocalEntity::AaCommandStatus LocalEntityImpl<SuperClass>::convertErrorToAaComman
 		case protocol::ProtocolInterface::Error::UnknownRemoteEntity:
 			return LocalEntity::AaCommandStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::UnknownLocalEntity:
-			AVDECC_ASSERT(false, "Trying to sendAaCommand from a non-existing local entity");
+			AVDECC_ASSERT(false, "Trying to sendAaAecpCommand from a non-existing local entity");
 			return LocalEntity::AaCommandStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::InvalidEntityType:
-			AVDECC_ASSERT(false, "Trying to sendAaCommand from a non-controller entity");
+			AVDECC_ASSERT(false, "Trying to sendAaAecpCommand from a non-controller entity");
 			return LocalEntity::AaCommandStatus::InternalError;
 		case protocol::ProtocolInterface::Error::InternalError:
 			return LocalEntity::AaCommandStatus::InternalError;
@@ -99,10 +99,13 @@ LocalEntity::MvuCommandStatus LocalEntityImpl<SuperClass>::convertErrorToMvuComm
 		case protocol::ProtocolInterface::Error::UnknownRemoteEntity:
 			return LocalEntity::MvuCommandStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::UnknownLocalEntity:
-			AVDECC_ASSERT(false, "Trying to sendAaCommand from a non-existing local entity");
+			AVDECC_ASSERT(false, "Trying to sendMvuAecpCommand from a non-existing local entity");
 			return LocalEntity::MvuCommandStatus::UnknownEntity;
 		case protocol::ProtocolInterface::Error::InvalidEntityType:
-			AVDECC_ASSERT(false, "Trying to sendAaCommand from a non-controller entity");
+			AVDECC_ASSERT(false, "Trying to sendMvuAecpCommand from a non-controller entity");
+			return LocalEntity::MvuCommandStatus::InternalError;
+		case protocol::ProtocolInterface::Error::MessageNotSupported:
+			AVDECC_ASSERT(false, "Trying to sendMvuAecpCommand through a ProtocolInterface not supporting it");
 			return LocalEntity::MvuCommandStatus::InternalError;
 		case protocol::ProtocolInterface::Error::InternalError:
 			return LocalEntity::MvuCommandStatus::InternalError;
@@ -145,6 +148,7 @@ void LocalEntityImpl<SuperClass>::onAecpCommand(protocol::ProtocolInterface* con
 	if (aecpdu.getTargetEntityID() != SuperClass::getEntityID())
 		return;
 
+	// Automatically responding to AEM Entity Available Command
 	if (aecpdu.getMessageType() == protocol::AecpMessageType::AemCommand)
 	{
 		auto const& aem = static_cast<protocol::AemAecpdu const&>(aecpdu);
@@ -167,10 +171,50 @@ void LocalEntityImpl<SuperClass>::onAecpCommand(protocol::ProtocolInterface* con
 		}
 	}
 
+	// Forward to subclass
 	if (!onUnhandledAecpCommand(pi, aecpdu))
 	{
 		// Reflect back the command, and return a NotSupported error code
 		reflectAecpCommand(pi, aecpdu, protocol::AemAecpStatus::NotSupported);
+	}
+}
+
+template<class SuperClass>
+protocol::Aecpdu::UniquePointer LocalEntityImpl<SuperClass>::createAecpdu([[maybe_unused]] protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, bool const isResponse) noexcept
+{
+	AVDECC_ASSERT(protocolIdentifier == la::avdecc::protocol::MvuAecpdu::ProtocolID, "Registered this class for MVU only (currently), should not get any other protocolIdentifier!!");
+	return protocol::MvuAecpdu::create(isResponse);
+}
+
+template<class SuperClass>
+bool LocalEntityImpl<SuperClass>::areHandledByControllerStateMachine([[maybe_unused]] protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier) const noexcept
+{
+	AVDECC_ASSERT(protocolIdentifier == la::avdecc::protocol::MvuAecpdu::ProtocolID, "Registered this class for MVU only (currently), should not get any other protocolIdentifier!!");
+	return true;
+}
+
+template<class SuperClass>
+std::uint32_t LocalEntityImpl<SuperClass>::getVuAecpCommandTimeoutMsec([[maybe_unused]] protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, protocol::VuAecpdu const& /*aecpdu*/) noexcept
+{
+	AVDECC_ASSERT(protocolIdentifier == la::avdecc::protocol::MvuAecpdu::ProtocolID, "Registered this class for MVU only (currently), should not get any other protocolIdentifier!!");
+	return 250u;
+}
+
+template<class SuperClass>
+void LocalEntityImpl<SuperClass>::onVuAecpCommand(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, la::avdecc::protocol::VuAecpdu const& aecpdu) noexcept
+{
+	AVDECC_ASSERT(aecpdu.getMessageType() == protocol::AecpMessageType::VendorUniqueCommand, "onVuAecpCommand called for something else than a VendorUniqueCommand");
+	AVDECC_ASSERT(protocolIdentifier == la::avdecc::protocol::MvuAecpdu::ProtocolID, "Registered this class for MVU only (currently), should not get any other protocolIdentifier!!");
+
+	// Ignore messages not for me
+	if (aecpdu.getTargetEntityID() != SuperClass::getEntityID())
+		return;
+
+	// Forward to subclass
+	if (!onUnhandledAecpVuCommand(pi, protocolIdentifier, aecpdu))
+	{
+		// Reflect back the command, and return a NotImplemented error code (there is no "NotSupported" code for MVU)
+		reflectAecpCommand(pi, aecpdu, protocol::AecpStatus::NotImplemented);
 	}
 }
 

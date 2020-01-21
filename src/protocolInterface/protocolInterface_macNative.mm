@@ -719,6 +719,9 @@ private:
 
 	virtual Error sendAecpMessage(Aecpdu const& aecpdu) const noexcept override
 	{
+		// TODO: Check the kind of message so we can at least process some of them
+		// All Responses can be sent using the sendAecpResponse method
+		// VendorUniqueCommand that are not processed by the ControllerStateMachine can be sent using a duplicate of the sendAecpCommand code (removing the code related to the ResultHandler)
 		return Error::MessageNotSupported;
 	}
 
@@ -729,11 +732,25 @@ private:
 
 	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, AecpCommandResultHandler const& onResult) const noexcept override
 	{
+		auto const messageType = aecpdu->getMessageType();
+
+		if (!AVDECC_ASSERT_WITH_RET(!isAecpResponseMessageType(messageType), "Calling sendAecpCommand with a Response MessageType"))
+		{
+			return Error::MessageNotSupported;
+		}
+
 		return [_bridge sendAecpCommand:std::move(aecpdu) handler:onResult];
 	}
 
 	virtual Error sendAecpResponse(Aecpdu::UniquePointer&& aecpdu) const noexcept override
 	{
+		auto const messageType = aecpdu->getMessageType();
+
+		if (!AVDECC_ASSERT_WITH_RET(isAecpResponseMessageType(messageType), "Calling sendAecpResponse with a Command MessageType"))
+		{
+			return Error::MessageNotSupported;
+		}
+
 		return [_bridge sendAecpResponse:std::move(aecpdu)];
 	}
 
@@ -749,12 +766,12 @@ private:
 		//return [_bridge sendAcmpResponse:std::move(acmpdu)];
 	}
 
-	virtual void lock() noexcept override
+	virtual void lock() const noexcept override
 	{
 		[_bridge lock];
 	}
 
-	virtual void unlock() noexcept override
+	virtual void unlock() const noexcept override
 	{
 		[_bridge unlock];
 	}
@@ -794,6 +811,11 @@ private:
 	{
 		AVDECC_ASSERT(false, "Should never be called (if needed someday, just forward to _bridge");
 		return ProtocolInterface::Error::InternalError;
+	}
+	/* *** Other methods **** */
+	virtual std::uint32_t getVuAecpCommandTimeoutMsec(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, la::avdecc::protocol::VuAecpdu const& aecpdu) const noexcept override
+	{
+		return getVuAecpCommandTimeout(protocolIdentifier, aecpdu);
 	}
 
 private:

@@ -84,6 +84,75 @@ la::avdecc::networkInterface::MacAddress const& LA_AVDECC_CALL_CONVENTION Protoc
 	return _networkInterfaceMacAddress;
 }
 
+ProtocolInterface::Error LA_AVDECC_CALL_CONVENTION ProtocolInterface::registerVendorUniqueDelegate(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VendorUniqueDelegate* const delegate) noexcept
+{
+	// Lock
+	auto const lg = std::lock_guard{ *this };
+
+	_vendorUniqueDelegates[protocolIdentifier] = delegate;
+
+	return Error::NoError;
+}
+
+ProtocolInterface::Error LA_AVDECC_CALL_CONVENTION ProtocolInterface::unregisterVendorUniqueDelegate(VuAecpdu::ProtocolIdentifier const& protocolIdentifier) noexcept
+{
+	// Lock
+	auto const lg = std::lock_guard{ *this };
+
+	_vendorUniqueDelegates.erase(protocolIdentifier);
+
+	return Error::NoError;
+}
+
+ProtocolInterface::Error LA_AVDECC_CALL_CONVENTION ProtocolInterface::unregisterAllVendorUniqueDelegates() noexcept
+{
+	// Lock
+	auto const lg = std::lock_guard{ *this };
+
+	_vendorUniqueDelegates.clear();
+
+	return Error::NoError;
+}
+
+bool ProtocolInterface::isAecpResponseMessageType(AecpMessageType const messageType) const noexcept
+{
+	if (messageType == protocol::AecpMessageType::AemResponse || messageType == protocol::AecpMessageType::AddressAccessResponse || messageType == protocol::AecpMessageType::AvcResponse || messageType == protocol::AecpMessageType::VendorUniqueResponse || messageType == protocol::AecpMessageType::HdcpAemResponse || messageType == protocol::AecpMessageType::ExtendedResponse)
+		return true;
+	return false;
+}
+
+std::uint32_t ProtocolInterface::getVuAecpCommandTimeout(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) const noexcept
+{
+	auto timeout = std::uint32_t{ 250u };
+
+	// Lock
+	auto const lg = std::lock_guard{ *this };
+
+	if (auto const vudIt = _vendorUniqueDelegates.find(protocolIdentifier); vudIt != _vendorUniqueDelegates.end())
+	{
+		auto* vuDelegate = vudIt->second;
+
+		AVDECC_ASSERT(vuDelegate->areHandledByControllerStateMachine(protocolIdentifier), "getVuAecpCommandTimeout should only be called for VendorUniqueDelegates that let the ControllerStateMachine handle sending commands");
+		timeout = vuDelegate->getVuAecpCommandTimeoutMsec(protocolIdentifier, aecpdu);
+	}
+
+	return timeout;
+}
+
+ProtocolInterface::VendorUniqueDelegate* ProtocolInterface::getVendorUniqueDelegate(VuAecpdu::ProtocolIdentifier const& protocolIdentifier) const noexcept
+{
+	// Lock
+	auto const lg = std::lock_guard{ *this };
+
+	auto const vudIt = _vendorUniqueDelegates.find(protocolIdentifier);
+	if (vudIt == _vendorUniqueDelegates.end())
+	{
+		return nullptr;
+	}
+
+	return vudIt->second;
+}
+
 ProtocolInterface* LA_AVDECC_CALL_CONVENTION ProtocolInterface::createRawProtocolInterface(Type const protocolInterfaceType, std::string const& networkInterfaceName)
 {
 	if (!isSupportedProtocolInterfaceType(protocolInterfaceType))

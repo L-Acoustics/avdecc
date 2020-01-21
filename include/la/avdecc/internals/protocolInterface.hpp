@@ -33,7 +33,9 @@
 #include "protocolAecpdu.hpp"
 #include "protocolAemAecpdu.hpp"
 #include "protocolAcmpdu.hpp"
+#include "protocolVuAecpdu.hpp"
 
+#include <unordered_map>
 #include <memory>
 #include <string>
 #include <cstdint>
@@ -146,12 +148,56 @@ public:
 		virtual void onAecpResponseTime(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const& /*entityID*/, std::chrono::milliseconds const& /*responseTime*/) noexcept {}
 
 		/* **** Low level notifications (not supported by all kinds of ProtocolInterface), triggered before processing the pdu **** */
-		/** Notification for when an ADPDU is received (might be a message that was sent by self as this event might be triggered for outgoing messages) */
+		/** Notification for when an ADPDU is received (might be a message that was sent by self as this event might be triggered for outgoing messages). */
 		virtual void onAdpduReceived(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::Adpdu const& /*adpdu*/) noexcept {}
-		/** Notification for when an AECPDU is received (might be a message that was sent by self as this event might be triggered for outgoing messages) */
+		/** Notification for when an AECPDU is received (might be a message that was sent by self as this event might be triggered for outgoing messages). Note: Only AECP sub types known by the library are notified by this event. */
 		virtual void onAecpduReceived(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept {}
-		/** Notification for when an ACMPDU is received (might be a message that was sent by self as this event might be triggered for outgoing messages) */
+		/** Notification for when an ACMPDU is received (might be a message that was sent by self as this event might be triggered for outgoing messages). */
 		virtual void onAcmpduReceived(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept {}
+	};
+
+	/** Interface definition for AECP VendorUnique message delegation */
+	class VendorUniqueDelegate
+	{
+	public:
+		virtual ~VendorUniqueDelegate() noexcept = default;
+
+		/** Method to create an Aecpdu inherited UniquePointer for this VendorUnique. */
+		virtual la::avdecc::protocol::Aecpdu::UniquePointer createAecpdu(la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, bool const isResponse) noexcept = 0;
+
+		/**
+		* @brief Query whether the messages are to be handled by the ControllerStateMachine or the VendorUniqueDelegate itself.
+		* @details VendorUniqueDelegates should decide if they fully handle VendorUnique messages, or if they let the ControllerStateMachine handle them like any other AECP messages.
+		*          If they are to be handled by the ControllerStateMachine:
+		*           - onVuAecpResponse will never be called
+		*           - getCommandTimeout will be called for VendorUnique Commands by the ControllerStateMachine so it knows when a command timed out and can be retried (or return Timeout error status)
+		*           - AecpCommandResultHandler handler passed to sendAecpCommand will be called at some point
+		*          If they are to be handled by the VendorUniqueDelegate:
+		*           - sendAecpCommand and sendAecpResponse shall not be called (use sendAecpMessage instead)
+		*           - onVuAecpResponse will be called when a VendorUnique Reponse for the registered VuAecpdu::ProtocolIdentifier is received and must be processed
+		*           - AecpCommandResultHandler handler passed to sendAecpCommand will never be called
+		*          In any case:
+		*           - onVuAecpCommand will be called whenever a VendorUnique Command for the registered VuAecpdu::ProtocolIdentifier is received
+		*           - onAecpCommand and onAecpAemUnsolicitedResponse from Observer won't be called
+		* @return True if the messages are to be handled by the ControllerStateMachine, false by the VendorUniqueDelegate itself.
+		* @note When messages are handled by the VendorUniqueDelegate itself, no AECP throttling nor retry mechanisms are active, they have to be handled by the delegate if required.
+		*/
+		virtual bool areHandledByControllerStateMachine(la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/) const noexcept
+		{
+			return false;
+		}
+
+		/** Gets the timeout value (in milliseconds) for the provided VuAecpdu. Called only if areHandledByControllerStateMachine() returned true. */
+		virtual std::uint32_t getVuAecpCommandTimeoutMsec(la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, la::avdecc::protocol::VuAecpdu const& /*aecpdu*/) noexcept
+		{
+			return 250u;
+		}
+
+		/** Notification for when an AECP VendorUnique Command is received (for a locally registered entity), for a ProtocolIdentifier this Delegate registered for. */
+		virtual void onVuAecpCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, la::avdecc::protocol::VuAecpdu const& /*aecpdu*/) noexcept {}
+
+		/** Notification for when an AECP VendorUnique Response is received (for a locally registered entity), for a ProtocolIdentifier this Delegate registered for. Called only if areHandledByControllerStateMachine() returned false. */
+		virtual void onVuAecpResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, la::avdecc::protocol::VuAecpdu const& /*aecpdu*/) noexcept {}
 	};
 
 	/**
@@ -171,12 +217,11 @@ public:
 		return UniquePointer(createRawProtocolInterface(protocolInterfaceType, networkInterfaceName), deleter);
 	}
 
-	/** Returns the Mac Address associated with this ProtocolInterface. */
-	LA_AVDECC_API networkInterface::MacAddress const& LA_AVDECC_CALL_CONVENTION getMacAddress() const noexcept;
-
 	/* ************************************************************ */
 	/* General entry points                                         */
 	/* ************************************************************ */
+	/** Returns the Mac Address associated with this ProtocolInterface. */
+	LA_AVDECC_API networkInterface::MacAddress const& LA_AVDECC_CALL_CONVENTION getMacAddress() const noexcept;
 	/** Shuts down the interface, stopping all active communications. This method blocks the current thread until all pending messages are processed. This is automatically called during destructor. */
 	virtual void shutdown() noexcept = 0;
 	/** Gets an available Entity UniqueIdentifier that is valid for this ProtocolInterface (not supported by all kinds of ProtocolInterface). Call releaseDynamicEID when the returned entityID is no longer used. */
@@ -187,6 +232,12 @@ public:
 	virtual Error registerLocalEntity(entity::LocalEntity& entity) noexcept = 0;
 	/** Unregisters a local entity from the interface. It won't be able to send or receive messages anymore. */
 	virtual Error unregisterLocalEntity(entity::LocalEntity& entity) noexcept = 0;
+	/** Registers a VendorUniqueDelegate for the specified protocolIdentifier. */
+	LA_AVDECC_API Error LA_AVDECC_CALL_CONVENTION registerVendorUniqueDelegate(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VendorUniqueDelegate* const delegate) noexcept;
+	/** Unregisters the VendorUniqueDelegate previously associated to the specified protocolIdentifier. */
+	LA_AVDECC_API Error LA_AVDECC_CALL_CONVENTION unregisterVendorUniqueDelegate(VuAecpdu::ProtocolIdentifier const& protocolIdentifier) noexcept;
+	/** Unregisters all VendorUniqueDelegate. */
+	LA_AVDECC_API Error LA_AVDECC_CALL_CONVENTION unregisterAllVendorUniqueDelegates() noexcept;
 
 	/* ************************************************************ */
 	/* Advertising entry points                                     */
@@ -217,19 +268,19 @@ public:
 	virtual Error sendAecpMessage(Aecpdu const& aecpdu) const noexcept = 0;
 	/** Sends an ACMP message directly on the network (not supported by all kinds of ProtocolInterface). */
 	virtual Error sendAcmpMessage(Acmpdu const& acmpdu) const noexcept = 0;
-	/** Sends an AECP command message. */
+	/** Sends an AECP command message. Only registered LocalEntities are allowed to call this method. VuAecpdu that are not handled by the ControllerStateMachine are not allowed to call this method (use sendAecpMessage for those cases). */
 	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, AecpCommandResultHandler const& onResult) const noexcept = 0;
-	/** Sends an AECP response message. */
+	/** Sends an AECP response message. Only registered LocalEntities are allowed to call this method. */
 	virtual Error sendAecpResponse(Aecpdu::UniquePointer&& aecpdu) const noexcept = 0;
-	/** Sends an ACMP command message. */
+	/** Sends an ACMP command message. Only registered LocalEntities are allowed to call this method. */
 	virtual Error sendAcmpCommand(Acmpdu::UniquePointer&& acmpdu, AcmpCommandResultHandler const& onResult) const noexcept = 0;
-	/** Sends an ACMP response message. */
+	/** Sends an ACMP response message. Only registered LocalEntities are allowed to call this method. */
 	virtual Error sendAcmpResponse(Acmpdu::UniquePointer&& acmpdu) const noexcept = 0;
 
 	/** BasicLockable concept 'lock' method for the whole ProtocolInterface */
-	virtual void lock() noexcept = 0;
+	virtual void lock() const noexcept = 0;
 	/** BasicLockable concept 'unlock' method for the whole ProtocolInterface */
-	virtual void unlock() noexcept = 0;
+	virtual void unlock() const noexcept = 0;
 	/** Debug method: Returns true if the whole ProtocolInterface is locked by the calling thread */
 	virtual bool isSelfLocked() const noexcept = 0;
 
@@ -268,6 +319,15 @@ protected:
 
 	virtual ~ProtocolInterface() noexcept = default;
 
+	/** Returns true is the specified AecpMessageType is a Response kind, false if it's a Command kind. */
+	bool isAecpResponseMessageType(AecpMessageType const messageType) const noexcept;
+
+	/** Returns the Command Timeout (in msec) for the specified VendorUnique ProtocolIdentifier and VuAecpdu. */
+	std::uint32_t getVuAecpCommandTimeout(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) const noexcept;
+
+	/** Returns the VendorUniqueDelegate handling the specified protocolIdentifier, or nullptr if none has been registered. WARNING: Once returned, the pointed object is NOT locked. */
+	VendorUniqueDelegate* getVendorUniqueDelegate(VuAecpdu::ProtocolIdentifier const& protocolIdentifier) const noexcept;
+
 	std::string const _networkInterfaceName{};
 
 private:
@@ -278,6 +338,7 @@ private:
 	virtual void destroy() noexcept = 0;
 
 	networkInterface::MacAddress _networkInterfaceMacAddress{};
+	std::unordered_map<VuAecpdu::ProtocolIdentifier, VendorUniqueDelegate*, VuAecpdu::ProtocolIdentifier::hash> _vendorUniqueDelegates{};
 };
 
 /* Operator overloads */

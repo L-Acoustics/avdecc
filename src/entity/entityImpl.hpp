@@ -44,7 +44,7 @@ namespace avdecc
 namespace entity
 {
 template<class SuperClass = LocalEntity>
-class LocalEntityImpl : public SuperClass, public protocol::ProtocolInterface::Observer
+class LocalEntityImpl : public SuperClass, public protocol::ProtocolInterface::Observer, public protocol::ProtocolInterface::VendorUniqueDelegate
 {
 public:
 	LocalEntityImpl(protocol::ProtocolInterface* const protocolInterface, typename SuperClass::CommonInformation const& commonInformation, typename SuperClass::InterfacesInformation const& interfacesInformation)
@@ -55,6 +55,9 @@ public:
 		{
 			throw Exception("Failed to register local entity");
 		}
+
+		// Register Milan VendorUnique delegate
+		_protocolInterface->registerVendorUniqueDelegate(la::avdecc::protocol::MvuAecpdu::ProtocolID, this);
 	}
 
 	virtual ~LocalEntityImpl() noexcept override {}
@@ -488,10 +491,16 @@ protected:
 
 		// Unregister local entity
 		_protocolInterface->unregisterLocalEntity(*this); // Ignore errors
+
+		// Remove all VendorUnique delegates
+		_protocolInterface->unregisterAllVendorUniqueDelegates(); // Ignore errors
 	}
 
-	/** Called when an AECP command is received and not handled by the LocalEntity. Return true if it has been handled. */
+	/** Called when an AECP command is received and not handled by the LocalEntity (except for VendorUnique commands that are treated separately). Return true if it has been handled. */
 	virtual bool onUnhandledAecpCommand(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept = 0;
+
+	/** Called when a VendorUnique command is received by the LocalEntity. Return true if it has been handled. */
+	virtual bool onUnhandledAecpVuCommand(protocol::ProtocolInterface* const pi, protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, protocol::Aecpdu const& aecpdu) noexcept = 0;
 
 private:
 	/* ************************************************************************** */
@@ -499,6 +508,14 @@ private:
 	/* ************************************************************************** */
 	/* **** AECP notifications **** */
 	virtual void onAecpCommand(protocol::ProtocolInterface* const pi, protocol::Aecpdu const& aecpdu) noexcept override;
+
+	/* ************************************************************************** */
+	/* protocol::ProtocolInterface::VendorUniqueDelegate overrides                */
+	/* ************************************************************************** */
+	virtual protocol::Aecpdu::UniquePointer createAecpdu(protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, bool const isResponse) noexcept override;
+	virtual bool areHandledByControllerStateMachine(protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier) const noexcept override;
+	virtual std::uint32_t getVuAecpCommandTimeoutMsec(protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, protocol::VuAecpdu const& aecpdu) noexcept override;
+	virtual void onVuAecpCommand(la::avdecc::protocol::ProtocolInterface* const pi, la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& protocolIdentifier, la::avdecc::protocol::VuAecpdu const& aecpdu) noexcept override;
 
 	// Internal variables
 	std::recursive_mutex _lock{}; // Lock to protect writable fields (not used for the BasicLockable concept of the class itself)
@@ -549,6 +566,10 @@ public:
 	}
 	virtual void onAecpAemUnsolicitedResponse(protocol::ProtocolInterface* const /*pi*/, protocol::AemAecpdu const& /*aecpdu*/) noexcept {}
 	virtual void onAecpAemIdentifyNotification(protocol::ProtocolInterface* const /*pi*/, protocol::AemAecpdu const& /*aecpdu*/) noexcept {}
+	virtual bool onUnhandledAecpVuCommand(protocol::ProtocolInterface* const /*pi*/, protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, protocol::Aecpdu const& /*aecpdu*/) noexcept
+	{
+		return false;
+	}
 	/* **** ACMP notifications **** */
 	virtual void onAcmpCommand(protocol::ProtocolInterface* const /*pi*/, protocol::Acmpdu const& /*acmpdu*/) noexcept {}
 	virtual void onAcmpResponse(protocol::ProtocolInterface* const /*pi*/, protocol::Acmpdu const& /*acmpdu*/) noexcept {}
