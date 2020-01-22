@@ -1,0 +1,25 @@
+/*
+* L-Acoustics is the sole owner of any documents, designs, trademarks, logos,
+* patents, know-hows, products, computer programs and software, models,
+* technical sheets and any other such intellectual property rights
+* whether registered or not mentioned or referred to in this document.
+
+* The recipient of this document shall have no right, title, or interest
+* in any of any documents, designs, trademarks, logos, patents, know-hows,
+* products, computer programs and software, models, technical sheets
+* and any other such intellectual property rights whether registered
+* or not mentioned or referred to in this document.
+* The recipient is not authorized to use, directly or indirectly, or grant
+* any third party the right to use any of such intellectual property rights.
+
+* Any copy or reproduction without prior written consent of L-Acoustics
+* is forbidden and may lead to judicial prosecutions.
+*/
+
+#pragma once
+
+#define LA_AVDECC_BINDINGS_C_VERSION "@LA_PROJECT_VERSIONMAJ@.@LA_PROJECT_VERSIONMIN@.@LA_PROJECT_VERSIONSUB@"
+#define LA_COMPANY_NAME "@LA_PROJECT_COMPANYNAME@"
+#define LA_YEAR "@LA_YEAR@"
+#define LA_LEGAL_COPYRIGHT "@LA_PROJECT_LEGALCOPYRIGHT@"
+#define LA_FULL_COPYRIGHT "@LA_PROJECT_READABLE_COPYRIGHT@"

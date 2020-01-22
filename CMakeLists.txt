@@ -12,6 +12,7 @@ cmake_minimum_required(VERSION 3.13)
 # Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task) which will be labelled 1.5.0-beta3
 set(LA_AVDECC_VERSION 3.0.0.2)
 set(LA_AVDECC_CONTROLLER_VERSION 3.0.0.2)
+set(LA_AVDECC_C_VERSION 1.0.0.1)
 
 ############ Override from command line "CMake -D<OPTION>=TRUE/FALSE/0/1/ON/OFF"
 
@@ -21,6 +22,7 @@ option(BUILD_AVDECC_TESTS "Build unit tests." FALSE)
 option(BUILD_AVDECC_LIB_SHARED_CXX "Build C++ shared library." TRUE)
 option(BUILD_AVDECC_LIB_STATIC_RT_SHARED "Build static library (runtime shared)." TRUE)
 option(BUILD_AVDECC_DOC "Build documentation." FALSE)
+option(BUILD_AVDECC_BINDINGS_C "Build avdecc C bindings library." FALSE)
 option(BUILD_AVDECC_CONTROLLER "Build avdecc controller library." TRUE)
 option(BUILD_AVDECC_INTERFACE_PCAP "Build the pcap protocol interface." TRUE)
 option(BUILD_AVDECC_INTERFACE_PCAP_DYNAMIC_LINKING "Pcap protocol interface uses dynamic shared library linking (instead of static linking)." FALSE)
@@ -32,6 +34,7 @@ option(INSTALL_AVDECC_EXAMPLES "Install examples." FALSE)
 option(INSTALL_AVDECC_TESTS "Install unit tests." FALSE)
 option(INSTALL_AVDECC_LIB_SHARED_CXX "Install C++ shared library." TRUE)
 option(INSTALL_AVDECC_LIB_STATIC "Install static library." FALSE)
+option(INSTALL_AVDECC_BINDINGS "Install bindings libraries." TRUE)
 option(INSTALL_AVDECC_HEADERS "Install headers." TRUE)
 option(INSTALL_AVDECC_DOC "Install documentation." TRUE)
 # Signing options
@@ -150,6 +153,9 @@ if(BUILD_AVDECC_CONTROLLER)
 	message(STATUS "Building Avdecc Controller library")
 	add_subdirectory(src/controller)
 endif()
+
+# Add bindings libraries
+add_subdirectory(src/bindings)
 
 # Add doc
 if(BUILD_AVDECC_DOC)
