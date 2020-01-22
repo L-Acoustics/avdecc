@@ -137,6 +137,33 @@ inline void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 		// Send the message
 		pi.sendAecpMessage(aecpdu);
 	}
+
+	// Send raw MVU AECP message (Get Milan Info)
+	{
+		auto aecpdu = la::avdecc::protocol::MvuAecpdu{ false };
+
+		// Set Ether2 fields
+		aecpdu.setSrcAddress(pi.getMacAddress());
+		aecpdu.setDestAddress(s_TargetMacAddress);
+		// Set AECP fields
+		aecpdu.setStatus(la::avdecc::protocol::MvuAecpStatus::Success);
+		aecpdu.setTargetEntityID(s_TargetEntityID);
+		aecpdu.setControllerEntityID(controllerID);
+		aecpdu.setSequenceID(0u);
+		// Set MVU fields
+		aecpdu.setCommandType(la::avdecc::protocol::MvuCommandType::GetMilanInfo);
+		{
+			auto buffer = la::avdecc::protocol::SerializationBuffer{};
+
+			// Manually fill the MVU payload
+			buffer << static_cast<std::uint16_t>(0u /* Reserved field */); // GetMilanInfo payload
+
+			aecpdu.setCommandSpecificData(buffer.data(), buffer.size());
+		}
+
+		// Send the message
+		pi.sendAecpMessage(aecpdu);
+	}
 }
 
 inline void receiveAecpdu(la::avdecc::protocol::ProtocolInterface& pi)

@@ -252,6 +252,13 @@ public:
 	static LA_AVDECC_API AaAecpStatus const Unsupported;
 };
 
+/** Milan Vendor Unique AECP Status - (Using base AECP clause) */
+class MvuAecpStatus : public AecpStatus
+{
+public:
+	using AecpStatus::AecpStatus;
+};
+
 /** Milan Vendor Unique Command Type - Milan Clause 7.2.2.3 */
 class MvuCommandType : public utils::TypedDefine<MvuCommandType, std::uint16_t>
 {
