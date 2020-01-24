@@ -401,13 +401,11 @@ entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString
 	}
 }
 
-entity::model::StreamConnectionState const& ControlledEntityImpl::getConnectedSinkState(entity::model::StreamIndex const streamIndex) const
+entity::model::StreamInputConnectionInfo const& ControlledEntityImpl::getSinkConnectionInformation(entity::model::StreamIndex const streamIndex) const
 {
 	auto const& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels);
 
-	AVDECC_ASSERT(_entity.getEntityID() == dynamicModel.connectionState.listenerStream.entityID, "EntityID not correctly initialized");
-	AVDECC_ASSERT(streamIndex == dynamicModel.connectionState.listenerStream.streamIndex, "StreamIndex not correctly initialized");
-	return dynamicModel.connectionState;
+	return dynamicModel.connectionInfo;
 }
 
 entity::model::AudioMappings const& ControlledEntityImpl::getStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const
@@ -888,20 +886,17 @@ void ControlledEntityImpl::setSamplingRate(entity::model::AudioUnitIndex const a
 	dynamicModel.currentSamplingRate = samplingRate;
 }
 
-entity::model::StreamConnectionState ControlledEntityImpl::setStreamInputConnectionState(entity::model::StreamIndex const streamIndex, entity::model::StreamConnectionState const& state) noexcept
+entity::model::StreamInputConnectionInfo ControlledEntityImpl::setStreamInputConnectionInformation(entity::model::StreamIndex const streamIndex, entity::model::StreamInputConnectionInfo const& info) noexcept
 {
-	AVDECC_ASSERT(_entity.getEntityID() == state.listenerStream.entityID, "EntityID not correctly initialized");
-	AVDECC_ASSERT(streamIndex == state.listenerStream.streamIndex, "StreamIndex not correctly initialized");
-
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels);
 
-	// Save previous StreamConnectionState
-	auto previousState = dynamicModel.connectionState;
+	// Save previous StreamInputConnectionInfo
+	auto const previousInfo = dynamicModel.connectionInfo;
 
-	// Set StreamConnectionState
-	dynamicModel.connectionState = state;
+	// Set connection information
+	dynamicModel.connectionInfo = info;
 
-	return previousState;
+	return previousInfo;
 }
 
 void ControlledEntityImpl::clearStreamOutputConnections(entity::model::StreamIndex const streamIndex) noexcept
@@ -1374,7 +1369,6 @@ void ControlledEntityImpl::setStreamInputDescriptor(entity::model::StreamDescrip
 		// Get or create a new model::StreamInputNodeDynamicModel
 		auto& m = getNodeDynamicModel(configurationIndex, streamIndex, &entity::model::ConfigurationTree::streamInputModels);
 		// Not changeable fields
-		m.connectionState.listenerStream = entity::model::StreamIdentification{ _entity.getEntityID(), streamIndex }; // We always are the other endpoint of a connection, initialize this now
 		// Changeable fields through commands
 		m.objectName = descriptor.objectName;
 		m.streamFormat = descriptor.currentFormat;

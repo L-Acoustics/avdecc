@@ -63,7 +63,7 @@ struct StreamNodeDynamicModel
 
 struct StreamInputNodeDynamicModel : public StreamNodeDynamicModel
 {
-	model::StreamConnectionState connectionState{};
+	model::StreamInputConnectionInfo connectionInfo{};
 	std::optional<StreamInputCounters> counters{ std::nullopt };
 };
 

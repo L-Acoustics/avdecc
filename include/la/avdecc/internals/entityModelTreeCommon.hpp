@@ -40,7 +40,7 @@ namespace entity
 {
 namespace model
 {
-struct StreamConnectionState
+struct StreamInputConnectionInfo
 {
 	enum class State
 	{
@@ -48,22 +48,21 @@ struct StreamConnectionState
 		FastConnecting = 1,
 		Connected = 2,
 	};
-	StreamIdentification listenerStream{}; /** Always valid */
 	StreamIdentification talkerStream{}; /** Only valid if state != State::NotConnected */
 	State state{ State::NotConnected };
 };
 
-constexpr bool operator==(StreamConnectionState const& lhs, StreamConnectionState const& rhs) noexcept
+constexpr bool operator==(StreamInputConnectionInfo const& lhs, StreamInputConnectionInfo const& rhs) noexcept
 {
-	if (lhs.state == rhs.state && lhs.listenerStream == rhs.listenerStream)
+	if (lhs.state == rhs.state)
 	{
 		// Only compare talkerStream field if State is not NotConnected
-		return (lhs.state == StreamConnectionState::State::NotConnected) || (lhs.talkerStream == rhs.talkerStream);
+		return (lhs.state == StreamInputConnectionInfo::State::NotConnected) || (lhs.talkerStream == rhs.talkerStream);
 	}
 	return false;
 }
 
-constexpr bool operator!=(StreamConnectionState const& lhs, StreamConnectionState const& rhs) noexcept
+constexpr bool operator!=(StreamInputConnectionInfo const& lhs, StreamInputConnectionInfo const& rhs) noexcept
 {
 	return !(lhs == rhs);
 }
@@ -76,7 +75,7 @@ struct StreamDynamicInfo
 	bool doesSupportEncrypted{ false }; /** Indicates that the Stream supports streaming with encrypted PDUs. */
 	bool arePdusEncrypted{ false }; /** Indicates that the Stream is using encrypted PDUs. */
 	bool hasTalkerFailed{ false }; /** Indicates that the Listener has registered an SRP Talker Failed attribute for the Stream. */
-	StreamInfoFlags _streamInfoFlags{}; /** LECAGY FIELD - Last received StreamInfoFlags */
+	StreamInfoFlags _streamInfoFlags{}; /** LEGACY FIELD - Last received StreamInfoFlags */
 	std::optional<UniqueIdentifier> streamID{ std::nullopt };
 	std::optional<std::uint32_t> msrpAccumulatedLatency{ std::nullopt };
 	std::optional<la::avdecc::networkInterface::MacAddress> streamDestMac{ std::nullopt };

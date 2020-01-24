@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 - Controller commands result handler properly return all fields in the protocol
+- Removed listenerStream field from entity::model::StreamConnectionState
+- Renamed entity::model::StreamConnectionState to entity::model::StreamInputConnectionInfo
 
 ## [2.11.3] - 2019-11-20
 

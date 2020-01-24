@@ -769,6 +769,7 @@ constexpr auto StreamInputNode_Dynamic_StreamFormat = "stream_format";
 constexpr auto StreamInputNode_Dynamic_StreamRunning = "stream_running";
 constexpr auto StreamInputNode_Dynamic_StreamDynamicInfo = "stream_dynamic_info";
 constexpr auto StreamInputNode_Dynamic_ConnectedTalker = "connected_talker";
+constexpr auto StreamInputNode_Dynamic_ConnectionState = "connection_state";
 constexpr auto StreamInputNode_Dynamic_Counters = "counters";
 
 /* StreamOutputNode */
@@ -1020,6 +1021,13 @@ NLOHMANN_JSON_SERIALIZE_ENUM(AudioClusterFormat, {
 																									 { AudioClusterFormat::Midi, "MIDI" },
 																									 { AudioClusterFormat::Smpte, "SMPTE" },
 																								 });
+
+/* StreamInputConnectionInfo::State conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(StreamInputConnectionInfo::State, {
+																																 { StreamInputConnectionInfo::State::NotConnected, "NOT_CONNECTED" },
+																																 { StreamInputConnectionInfo::State::FastConnecting, "FAST_CONNECTING" },
+																																 { StreamInputConnectionInfo::State::Connected, "CONNECTED" },
+																															 });
 
 /* SamplingRate conversion */
 inline void to_json(json& j, SamplingRate const& sr)
@@ -1328,7 +1336,8 @@ inline void to_json(json& j, StreamInputNodeDynamicModel const& d)
 	j[keyName::StreamInputNode_Dynamic_StreamFormat] = d.streamFormat;
 	j[keyName::StreamInputNode_Dynamic_StreamRunning] = d.isStreamRunning;
 	j[keyName::StreamInputNode_Dynamic_StreamDynamicInfo] = d.streamDynamicInfo;
-	j[keyName::StreamInputNode_Dynamic_ConnectedTalker] = d.connectionState.talkerStream;
+	j[keyName::StreamInputNode_Dynamic_ConnectedTalker] = d.connectionInfo.talkerStream;
+	j[keyName::StreamInputNode_Dynamic_ConnectionState] = d.connectionInfo.state;
 	j[keyName::StreamInputNode_Dynamic_Counters] = d.counters;
 }
 inline void from_json(json const& j, StreamInputNodeDynamicModel& d)
@@ -1337,7 +1346,17 @@ inline void from_json(json const& j, StreamInputNodeDynamicModel& d)
 	j.at(keyName::StreamInputNode_Dynamic_StreamFormat).get_to(d.streamFormat);
 	get_optional_value(j, keyName::StreamInputNode_Dynamic_StreamRunning, d.isStreamRunning);
 	get_optional_value(j, keyName::StreamInputNode_Dynamic_StreamDynamicInfo, d.streamDynamicInfo);
-	get_optional_value(j, keyName::StreamInputNode_Dynamic_ConnectedTalker, d.connectionState.talkerStream);
+	get_optional_value(j, keyName::StreamInputNode_Dynamic_ConnectedTalker, d.connectionInfo.talkerStream);
+	get_optional_value(j, keyName::StreamInputNode_Dynamic_ConnectionState, d.connectionInfo.state);
+	// Backward compatibility handling (StreamInputNode_Dynamic_ConnectionState was added after initial release)
+	{
+		// If we have a connection (talkerStream being defined to something) but State is set to NotConnected, it means it was not saved
+		if (d.connectionInfo.talkerStream.entityID && d.connectionInfo.state == StreamInputConnectionInfo::State::NotConnected)
+		{
+			// Force it to Connected (impossible to get the ConnectionFlags here, so we cannot detect if it's a FastConnect State)
+			d.connectionInfo.state = StreamInputConnectionInfo::State::Connected;
+		}
+	}
 	get_optional_value(j, keyName::StreamInputNode_Dynamic_Counters, d.counters);
 }
 

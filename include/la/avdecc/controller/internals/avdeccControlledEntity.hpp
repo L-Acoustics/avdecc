@@ -147,8 +147,8 @@ public:
 	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::LocalizedStringReference const& stringReference) const noexcept = 0; // Get localized string or empty string if not found, in current configuration descriptor
 	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocalizedStringReference const& stringReference) const noexcept = 0; // Get localized string or empty string if not found // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
 
-	/** Get connected information about a listener's stream (TalkerID and StreamIndex might be filled even if isConnected is not true, in case of FastConnect) */
-	virtual entity::model::StreamConnectionState const& getConnectedSinkState(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
+	/** Get stream connection information (State and TalkerStream) about a listener's input stream (TalkerStream is meaningful if State is different than NotConnected). */
+	virtual entity::model::StreamInputConnectionInfo const& getSinkConnectionInformation(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 	/** Get the current AudioMappings for the specified Input StreamPortIndex. Might return redundant mappings as well as primary ones. If you want the non-redundant mappings only, you should use getStreamPortInputNonRedundantAudioMappings instead. */
 	virtual entity::model::AudioMappings const& getStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
 	/** Get the current AudioMappings for the specified Input StreamPortIndex. Only return the primary mappings, not the redundant ones. */
