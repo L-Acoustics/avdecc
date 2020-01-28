@@ -501,6 +501,7 @@
                                     "entity_id": "0xFFFFFFFFFFFFFFFF",
                                     "stream_index": 0
                                 },
+                                "connection_state": "NOT_CONNECTED",
                                 "object_name": "Nominal",
                                 "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",
@@ -556,6 +557,7 @@
                                     "entity_id": "0xFFFFFFFFFFFFFFFF",
                                     "stream_index": 0
                                 },
+                                "connection_state": "NOT_CONNECTED",
                                 "object_name": "Other Format",
                                 "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",
@@ -611,6 +613,7 @@
                                     "entity_id": "0xFFFFFFFFFFFFFFFF",
                                     "stream_index": 0
                                 },
+                                "connection_state": "NOT_CONNECTED",
                                 "object_name": "Other Domain",
                                 "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",
@@ -666,6 +669,7 @@
                                     "entity_id": "0xFFFFFFFFFFFFFFFF",
                                     "stream_index": 0
                                 },
+                                "connection_state": "NOT_CONNECTED",
                                 "object_name": "Other Format / Domain",
                                 "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",
@@ -721,6 +725,7 @@
                                     "entity_id": "0xFFFFFFFFFFFFFFFF",
                                     "stream_index": 0
                                 },
+                                "connection_state": "NOT_CONNECTED",
                                 "object_name": "Nominal Pri",
                                 "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",
@@ -779,6 +784,7 @@
                                     "entity_id": "0xFFFFFFFFFFFFFFFF",
                                     "stream_index": 0
                                 },
+                                "connection_state": "NOT_CONNECTED",
                                 "object_name": "Nominal Sec",
                                 "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",
@@ -837,6 +843,7 @@
                                     "entity_id": "0xFFFFFFFFFFFFFFFF",
                                     "stream_index": 0
                                 },
+                                "connection_state": "NOT_CONNECTED",
                                 "object_name": "Other Format Pri",
                                 "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",
@@ -895,6 +902,7 @@
                                     "entity_id": "0xFFFFFFFFFFFFFFFF",
                                     "stream_index": 0
                                 },
+                                "connection_state": "NOT_CONNECTED",
                                 "object_name": "Other Format Sec",
                                 "stream_dynamic_info": {
                                     "acmp_status": "SUCCESS",

@@ -446,6 +446,7 @@
                                     "entity_id": "0xFFFFFFFFFFFFFFFF",
                                     "stream_index": 0
                                 },
+                                "connection_state": "NOT_CONNECTED",
                                 "counters": {
                                     "EARLY_TIMESTAMP": 0,
                                     "FRAMES_RX": 0,
