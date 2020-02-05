@@ -54,7 +54,7 @@ option(ALLOW_SEND_BIG_AECP_PAYLOADS "Allow sending AECP payloads bigger than the
 
 project(LA_avdecc)
 
-# Using c++14 standard for all targets
+# Using c++17 standard for all targets
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 

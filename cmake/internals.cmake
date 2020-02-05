@@ -224,6 +224,16 @@ function(setup_library_options TARGET_NAME BASE_LIB_NAME)
 endfunction()
 
 ###############################################################################
+# Setup install rules for header files
+function(setup_headers_install_rules FILES_LIST INCLUDE_ABSOLUTE_BASE_FOLDER)
+	foreach(f ${FILES_LIST})
+		get_filename_component(dir ${f} DIRECTORY)
+		file(RELATIVE_PATH dir ${INCLUDE_ABSOLUTE_BASE_FOLDER} ${dir})
+		install(FILES ${f} CONFIGURATIONS Release DESTINATION include/${dir})
+	endforeach()
+endfunction()
+
+###############################################################################
 # Setup common install rules for a library target
 function(setup_library_install_rules TARGET_NAME)
 	# Get target type for specific options
@@ -237,6 +247,11 @@ function(setup_library_install_rules TARGET_NAME)
 	# Shared library install rules
 	elseif(${targetType} STREQUAL "SHARED_LIBRARY")
 		install(TARGETS ${TARGET_NAME} EXPORT ${TARGET_NAME} RUNTIME DESTINATION bin LIBRARY DESTINATION lib ARCHIVE DESTINATION lib)
+		install(EXPORT ${TARGET_NAME} DESTINATION cmake)
+
+	# Interface library install rules
+	elseif(${targetType} STREQUAL "INTERFACE_LIBRARY")
+		install(TARGETS ${TARGET_NAME} EXPORT ${TARGET_NAME})
 		install(EXPORT ${TARGET_NAME} DESTINATION cmake)
 
 	# Unsupported target type
