@@ -193,9 +193,7 @@ public:
 		if (handler)
 			return std::bind(handler, object, std::forward<Ts>(params)...);
 		// No handler specified, return an empty handler
-		return [](LocalEntity::AemCommandStatus const /*error*/)
-		{
-		};
+		return [](LocalEntity::AemCommandStatus const /*error*/) {};
 	}
 	template<typename T, typename Object, typename... Ts>
 	static OnAaAECPErrorCallback makeAaAECPErrorHandler(T const& handler, Object const* const object, Ts&&... params)
@@ -203,9 +201,7 @@ public:
 		if (handler)
 			return std::bind(handler, object, std::forward<Ts>(params)...);
 		// No handler specified, return an empty handler
-		return [](LocalEntity::AaCommandStatus const /*error*/)
-		{
-		};
+		return [](LocalEntity::AaCommandStatus const /*error*/) {};
 	}
 	template<typename T, typename Object, typename... Ts>
 	static OnMvuAECPErrorCallback makeMvuAECPErrorHandler(T const& handler, Object const* const object, Ts&&... params)
@@ -213,9 +209,7 @@ public:
 		if (handler)
 			return std::bind(handler, object, std::forward<Ts>(params)...);
 		// No handler specified, return an empty handler
-		return [](LocalEntity::MvuCommandStatus const /*error*/)
-		{
-		};
+		return [](LocalEntity::MvuCommandStatus const /*error*/) {};
 	}
 	template<typename T, typename Object, typename... Ts>
 	static OnACMPErrorCallback makeACMPErrorHandler(T const& handler, Object const* const object, Ts&&... params)
@@ -223,9 +217,7 @@ public:
 		if (handler)
 			return std::bind(handler, object, std::forward<Ts>(params)...);
 		// No handler specified, return an empty handler
-		return [](LocalEntity::ControlStatus const /*error*/)
-		{
-		};
+		return [](LocalEntity::ControlStatus const /*error*/) {};
 	}
 
 	static LocalEntity::AemCommandStatus convertErrorToAemCommandStatus(protocol::ProtocolInterface::Error const error) noexcept;

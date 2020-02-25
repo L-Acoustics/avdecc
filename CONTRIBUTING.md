@@ -22,7 +22,7 @@ echo "/usr/local/bin/bash" | sudo tee -a /etc/shells
 chsh -s /usr/local/bin/bash
 ```
 
-* Install latest `clang-format`
+* Install latest `clang-format` (11.x)
 
 ```bash
 brew install romansavrulin/clang-format/clang-format-lambda --HEAD

@@ -115,11 +115,11 @@ la::avdecc::protocol::ProtocolInterface::Type chooseProtocolInterfaceType(la::av
 		while (index == -1)
 		{
 #if defined(USE_CURSES)
-            int c = wgetch(s_Window);
+			int c = wgetch(s_Window);
 #else
-            int c = getch();
+			int c = getch();
 #endif
-            c -= '0';
+			c -= '0';
 			if (c >= 1 && c <= static_cast<int>(protocolInterfaceTypes.count()))
 			{
 				index = c - 1;
@@ -168,9 +168,9 @@ la::avdecc::networkInterface::Interface chooseNetworkInterface()
 #if defined(USE_CURSES)
 		int c = wgetch(s_Window);
 #else
-        int c = getch();
+		int c = getch();
 #endif
-        c -= '0';
+		c -= '0';
 		if (c >= 1 && c <= static_cast<int>(interfaces.size()))
 		{
 			index = c - 1;
