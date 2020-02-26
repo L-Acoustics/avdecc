@@ -37,7 +37,7 @@ static SCREEN* s_Screen = nullptr;
 int getUserChoice()
 {
 #if defined(USE_CURSES)
-    if (s_Window == nullptr)
+	if (s_Window == nullptr)
 		return 0;
 	int c = wgetch(s_Window);
 #else
