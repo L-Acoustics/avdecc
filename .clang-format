@@ -24,6 +24,8 @@ AllowShortCaseLabelsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: Empty
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
+AllowShortLambdasOnASingleLine: Empty
+AllowAllArgumentsOnNextLine: true
 
 AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: false
@@ -50,6 +52,7 @@ BraceWrapping:
     SplitEmptyRecord: true
     SplitEmptyNamespace: true
     BeforeLambdaBody: true
+    AfterCaseLabel: true
 
 BreakBeforeBinaryOperators: NonAssignment
 BreakBeforeTernaryOperators: false
