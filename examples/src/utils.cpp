@@ -34,6 +34,18 @@ static SCREEN* s_Screen = nullptr;
 #	include <iostream>
 #endif // USE_CURSES
 
+int _getch()
+{
+	if (s_Window == nullptr)
+		return 0;
+#if defined(USE_CURSES)
+	int c = wgetch(s_Window);
+#else
+	int c = getch();
+#endif
+	c -= '0';
+	return c;
+}
 
 void initOutput()
 {
@@ -114,12 +126,7 @@ la::avdecc::protocol::ProtocolInterface::Type chooseProtocolInterfaceType(la::av
 		int index = -1;
 		while (index == -1)
 		{
-#if defined(USE_CURSES)
-			int c = wgetch(s_Window);
-#else
-			int c = getch();
-#endif
-			c -= '0';
+			auto c = _getch();
 			if (c >= 1 && c <= static_cast<int>(protocolInterfaceTypes.count()))
 			{
 				index = c - 1;
@@ -165,12 +172,7 @@ la::avdecc::networkInterface::Interface chooseNetworkInterface()
 	int index = -1;
 	while (index == -1)
 	{
-#if defined(USE_CURSES)
-		int c = wgetch(s_Window);
-#else
-		int c = getch();
-#endif
-		c -= '0';
+		auto c = _getch();
 		if (c >= 1 && c <= static_cast<int>(interfaces.size()))
 		{
 			index = c - 1;

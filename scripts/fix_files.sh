@@ -6,7 +6,7 @@ echo "Fix-Files version $FIX_FILES_VERSION"
 echo ""
 
 # Check bash version
-  if [[ ${BASH_VERSINFO[0]} < 5 && (${BASH_VERSINFO[0]} == 4 && ${BASH_VERSINFO[1]} < 1) ]]; then
+  if [[ ${BASH_VERSINFO[0]} < 5 && (${BASH_VERSINFO[0]} < 4 || ${BASH_VERSINFO[1]} < 1) ]]; then
   echo "bash 4.1 or later required"
   exit 255
 fi
@@ -81,7 +81,7 @@ if [[ $do_clang_format -eq 1 && -f ./.clang-format ]]; then
 	if [ $? -eq 0 ]; then
 		cf_version="$(clang-format --version)"
 		regex="clang-format version 7\.0\.0 \(tags\/RELEASE_700\/final[ 0-9]*\/WithWrappingBeforeLambdaBodyPatch\)"
-		regex2="clang-format version 1[1-9]\.[ 0-9]*"
+		regex2="clang-format version 11\.[ 0-9]*"
 		if [[ ! ( "$cf_version" =~ $regex) && ! ("$cf_version" =~ $regex2) ]]; then
 			echo "Incorrect clang-format: Version 7.0.0 with WrappingBeforeLambdaBody patch or Version > 10.0 required (found: $cf_version)"
 			exit 1
