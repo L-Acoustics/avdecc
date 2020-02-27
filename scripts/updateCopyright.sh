@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Check if a .git file or folder exists (we allow submodules, thus check file and folder), as well as a root cmake file
 if [[ ! -e ".git" || ! -f "CMakeLists.txt" ]]; then

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Utility bash functions
 
 getOutputFolder()
