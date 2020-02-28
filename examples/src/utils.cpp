@@ -158,6 +158,11 @@ la::avdecc::networkInterface::Interface chooseNetworkInterface()
 		return {};
 	}
 
+	if (interfaces.size() == 1)
+	{
+		return interfaces.at(0);
+	}
+
 	// Let the user choose an interface
 	outputText("Choose an interface:\n");
 	unsigned int intNum = 1;
