@@ -18,13 +18,12 @@
 */
 
 /**
-* @file controllerCapabilityDelegate.hpp
+* @file talkerCapabilityDelegate.hpp
 * @author Christophe Calmejane
 */
 
 #pragma once
 
-#include "la/avdecc/internals/controllerEntity.hpp"
 #include "la/avdecc/internals/talkerEntity.hpp"
 
 #include "entityImpl.hpp"
@@ -35,7 +34,7 @@ namespace avdecc
 {
 namespace entity
 {
-namespace controller
+namespace talker
 {
 class CapabilityDelegate final : public entity::CapabilityDelegate
 {
@@ -43,11 +42,11 @@ public:
 	/* ************************************************************************** */
 	/* CapabilityDelegate life cycle                                              */
 	/* ************************************************************************** */
-	CapabilityDelegate(protocol::ProtocolInterface* const protocolInterface, controller::Delegate* controllerDelegate, Interface& controllerInterface, UniqueIdentifier const controllerID) noexcept;
+	CapabilityDelegate(protocol::ProtocolInterface* const protocolInterface, talker::Delegate* talkerDelegate, Interface& talkerInterface, UniqueIdentifier const talkerID) noexcept;
 	virtual ~CapabilityDelegate() noexcept;
 
 	/* ************************************************************************** */
-	/* Controller methods                                                         */
+	/* Talker methods                                                         */
 	/* ************************************************************************** */
 	/* Discovery Protocol (ADP) */
 	/* Enumeration and Control Protocol (AECP) AEM */
@@ -56,7 +55,7 @@ public:
 	void lockEntity(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, Interface::LockEntityHandler const& handler) const noexcept;
 	void unlockEntity(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, Interface::UnlockEntityHandler const& handler) const noexcept;
 	void queryEntityAvailable(UniqueIdentifier const targetEntityID, Interface::QueryEntityAvailableHandler const& handler) const noexcept;
-	void queryControllerAvailable(UniqueIdentifier const targetEntityID, Interface::QueryControllerAvailableHandler const& handler) const noexcept;
+	void queryTalkerAvailable(UniqueIdentifier const targetEntityID, Interface::QueryTalkerAvailableHandler const& handler) const noexcept;
 	void registerUnsolicitedNotifications(UniqueIdentifier const targetEntityID, Interface::RegisterUnsolicitedNotificationsHandler const& handler) const noexcept;
 	void unregisterUnsolicitedNotifications(UniqueIdentifier const targetEntityID, Interface::UnregisterUnsolicitedNotificationsHandler const& handler) const noexcept;
 	void readEntityDescriptor(UniqueIdentifier const targetEntityID, Interface::EntityDescriptorHandler const& handler) const noexcept;
@@ -154,7 +153,7 @@ public:
 	void getTalkerStreamConnection(model::StreamIdentification const& talkerStream, std::uint16_t const connectionIndex, Interface::GetTalkerStreamConnectionHandler const& handler) const noexcept;
 
 	/* ************************************************************************** */
-	/* Controller notifications                                                   */
+	/* Talker notifications                                                   */
 	/* ************************************************************************** */
 	/* **** Statistics **** */
 	void onAecpRetry(protocol::ProtocolInterface* const pi, UniqueIdentifier const& entityID) noexcept;
@@ -175,9 +174,9 @@ private:
 	/* CapabilityDelegate overrides                                               */
 	/* ************************************************************************** */
 	/* **** Global notifications **** */
-	virtual void onControllerDelegateChanged(controller::Delegate* const delegate) noexcept override;
-	//virtual void onListenerDelegateChanged(listener::Delegate* const delegate) noexcept override;
-	virtual void onTalkerDelegateChanged(talker::Delegate* const delegate) noexcept override;
+    virtual void onControllerDelegateChanged(controller::Delegate* const delegate) noexcept override;
+    //virtual void onListenerDelegateChanged(listener::Delegate* const delegate) noexcept override;
+    virtual void onTalkerDelegateChanged(talker::Delegate* const delegate) noexcept override;
 	virtual void onTransportError(protocol::ProtocolInterface* const pi) noexcept override;
 	/* **** Discovery notifications **** */
 	virtual void onLocalEntityOnline(protocol::ProtocolInterface* const pi, Entity const& entity) noexcept override;
@@ -197,7 +196,7 @@ private:
 	/* ************************************************************************** */
 	/* Internal methods                                                           */
 	/* ************************************************************************** */
-	bool isResponseForController(protocol::AcmpMessageType const messageType) const noexcept;
+	bool isResponseForTalker(protocol::AcmpMessageType const messageType) const noexcept;
 	void sendAemAecpCommand(UniqueIdentifier const targetEntityID, protocol::AemCommandType const commandType, void const* const payload, size_t const payloadLength, LocalEntityImpl<>::OnAemAECPErrorCallback const& onErrorCallback, LocalEntityImpl<>::AnswerCallback const& answerCallback) const noexcept;
 	void sendAaAecpCommand(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, LocalEntityImpl<>::OnAaAECPErrorCallback const& onErrorCallback, LocalEntityImpl<>::AnswerCallback const& answerCallback) const noexcept;
 	void sendMvuAecpCommand(UniqueIdentifier const targetEntityID, protocol::MvuCommandType const commandType, void const* const payload, size_t const payloadLength, LocalEntityImpl<>::OnMvuAECPErrorCallback const& onErrorCallback, LocalEntityImpl<>::AnswerCallback const& answerCallback) const noexcept;
@@ -211,13 +210,13 @@ private:
 	/* Internal variables                                                         */
 	/* ************************************************************************** */
 	protocol::ProtocolInterface* const _protocolInterface{ nullptr };
-	controller::Delegate* _controllerDelegate{ nullptr };
-	Interface& _controllerInterface;
-	UniqueIdentifier const _controllerID{ UniqueIdentifier::getNullUniqueIdentifier() };
+	talker::Delegate* _talkerDelegate{ nullptr };
+	Interface& _talkerInterface;
+	UniqueIdentifier const _talkerID{ UniqueIdentifier::getNullUniqueIdentifier() };
 	DiscoveredEntities _discoveredEntities{};
 };
 
-} // namespace controller
+} // namespace talker
 } // namespace entity
 } // namespace avdecc
 } // namespace la

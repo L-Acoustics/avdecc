@@ -170,7 +170,7 @@ private:
 	/* ************************************************************************** */
 	virtual void setControllerDelegate(controller::Delegate* const delegate) noexcept override;
 	//virtual void setListenerDelegate(listener::Delegate* const delegate) noexcept override;
-	//virtual void setTalkerDelegate(talker::Delegate* const delegate) noexcept override;
+	virtual void setTalkerDelegate(talker::Delegate* const delegate) noexcept override;
 
 	/* ************************************************************************** */
 	/* protocol::ProtocolInterface::Observer overrides                            */

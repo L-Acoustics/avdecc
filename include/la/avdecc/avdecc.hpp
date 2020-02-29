@@ -50,6 +50,7 @@
 
 /** Controller entity type definition */
 #include "internals/controllerEntity.hpp"
+#include "internals/talkerEntity.hpp"
 
 /** Symbols export definition */
 #include "internals/exports.hpp"

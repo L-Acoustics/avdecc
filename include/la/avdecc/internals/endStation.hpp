@@ -27,6 +27,7 @@
 
 #include "entity.hpp"
 #include "controllerEntity.hpp"
+#include "talkerEntity.hpp"
 #include "aggregateEntity.hpp"
 #include "protocolInterface.hpp"
 #include "exports.hpp"

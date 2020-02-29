@@ -26,6 +26,8 @@
 
 #include "la/avdecc/internals/entity.hpp"
 #include "la/avdecc/internals/entityModel.hpp"
+#include "la/avdecc/internals/talkerEntity.hpp"
+#include "la/avdecc/internals/controllerEntity.hpp"
 #include "la/avdecc/internals/protocolInterface.hpp"
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
@@ -193,9 +195,7 @@ public:
 		if (handler)
 			return std::bind(handler, object, std::forward<Ts>(params)...);
 		// No handler specified, return an empty handler
-		return [](LocalEntity::AemCommandStatus const /*error*/)
-		{
-		};
+		return [](LocalEntity::AemCommandStatus const /*error*/) {};
 	}
 	template<typename T, typename Object, typename... Ts>
 	static inline OnAaAECPErrorCallback makeAaAECPErrorHandler(T const& handler, Object const* const object, Ts&&... params) noexcept
@@ -203,9 +203,7 @@ public:
 		if (handler)
 			return std::bind(handler, object, std::forward<Ts>(params)...);
 		// No handler specified, return an empty handler
-		return [](LocalEntity::AaCommandStatus const /*error*/)
-		{
-		};
+		return [](LocalEntity::AaCommandStatus const /*error*/) {};
 	}
 	template<typename T, typename Object, typename... Ts>
 	static inline OnMvuAECPErrorCallback makeMvuAECPErrorHandler(T const& handler, Object const* const object, Ts&&... params) noexcept
@@ -213,9 +211,7 @@ public:
 		if (handler)
 			return std::bind(handler, object, std::forward<Ts>(params)...);
 		// No handler specified, return an empty handler
-		return [](LocalEntity::MvuCommandStatus const /*error*/)
-		{
-		};
+		return [](LocalEntity::MvuCommandStatus const /*error*/) {};
 	}
 	template<typename T, typename Object, typename... Ts>
 	static inline OnACMPErrorCallback makeACMPErrorHandler(T const& handler, Object const* const object, Ts&&... params) noexcept
@@ -223,9 +219,7 @@ public:
 		if (handler)
 			return std::bind(handler, object, std::forward<Ts>(params)...);
 		// No handler specified, return an empty handler
-		return [](LocalEntity::ControlStatus const /*error*/)
-		{
-		};
+		return [](LocalEntity::ControlStatus const /*error*/) {};
 	}
 
 	static LocalEntity::AemCommandStatus convertErrorToAemCommandStatus(protocol::ProtocolInterface::Error const error) noexcept;
@@ -533,7 +527,7 @@ public:
 	/* **** Global notifications **** */
 	virtual void onControllerDelegateChanged(controller::Delegate* const delegate) noexcept = 0;
 	//virtual void onListenerDelegateChanged(listener::Delegate* const delegate) noexcept = 0;
-	//virtual void onTalkerDelegateChanged(talker::Delegate* const delegate) noexcept = 0;
+	virtual void onTalkerDelegateChanged(talker::Delegate* const delegate) noexcept = 0;
 	virtual void onTransportError(protocol::ProtocolInterface* const /*pi*/) noexcept {}
 	/* **** Discovery notifications **** */
 	virtual void onLocalEntityOnline(protocol::ProtocolInterface* const /*pi*/, Entity const& /*entity*/) noexcept {}

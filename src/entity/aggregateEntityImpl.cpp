@@ -27,6 +27,7 @@
 #include "logHelper.hpp"
 #include "aggregateEntityImpl.hpp"
 #include "controllerCapabilityDelegate.hpp"
+#include "talkerCapabilityDelegate.hpp"
 
 #include <exception>
 #include <cassert>
@@ -55,18 +56,19 @@ AggregateEntityImpl::AggregateEntityImpl(protocol::ProtocolInterface* const prot
 		_controllerCapabilityDelegate = std::make_unique<controller::CapabilityDelegate>(getProtocolInterface(), controllerDelegate, *this, entityID);
 	}
 
-	// Entity is listener capable
+	/*/ Entity is listener capable
 	if (commonInformation.listenerCapabilities.test(ListenerCapability::Implemented))
 	{
 		AVDECC_ASSERT(false, "TODO: AggregateEntityImpl: Handle listener capability");
-		//_listenerCapabilityDelegate = std::make_unique<listener::CapabilityDelegate>(entityID);
-	}
+		_listenerCapabilityDelegate = std::make_unique<listener::CapabilityDelegate>(entityID);
+	}*/
 
 	// Entity is talker capable
 	if (commonInformation.talkerCapabilities.test(TalkerCapability::Implemented))
 	{
-		AVDECC_ASSERT(false, "TODO: AggregateEntityImpl: Handle talker capability");
-		//_talkerCapabilityDelegate = std::make_unique<talker::CapabilityDelegate>(entityID);
+#pragma message("set delegate!")
+		//_talkerCapabilityDelegate = std::make_unique<talker::CapabilityDelegate>(getProtocolInterface(), controllerDelegate, *this, entityID);
+		        //(entityID);
 	}
 
 	// Register observer
@@ -899,7 +901,7 @@ void AggregateEntityImpl::setControllerDelegate(controller::Delegate* const dele
 	{
 		_listenerCapabilityDelegate->onListenerDelegateChanged(delegate);
 	}
-}
+}*/
 
 void AggregateEntityImpl::setTalkerDelegate(talker::Delegate* const delegate) noexcept
 {
@@ -907,7 +909,7 @@ void AggregateEntityImpl::setTalkerDelegate(talker::Delegate* const delegate) no
 	{
 		_talkerCapabilityDelegate->onTalkerDelegateChanged(delegate);
 	}
-}*/
+}
 
 /* ************************************************************************** */
 /* protocol::ProtocolInterface::Observer overrides                            */
