@@ -27,6 +27,7 @@
 #include "logHelper.hpp"
 #include "controllerEntityImpl.hpp"
 #include "controllerCapabilityDelegate.hpp"
+#include "talkerCapabilityDelegate.hpp"
 
 #include <exception>
 #include <cassert>

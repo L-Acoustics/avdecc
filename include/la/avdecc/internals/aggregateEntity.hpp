@@ -31,6 +31,7 @@
 #include "entityModel.hpp"
 #include "entityAddressAccessTypes.hpp"
 #include "controllerEntity.hpp"
+#include "talkerEntity.hpp"
 #include "exports.hpp"
 
 #include <thread>
@@ -77,7 +78,7 @@ public:
 
 	virtual void setControllerDelegate(controller::Delegate* const delegate) noexcept = 0;
 	//virtual void setListenerDelegate(listener::Delegate* const delegate) noexcept = 0;
-	//virtual void setTalkerDelegate(talker::Delegate* const delegate) noexcept = 0;
+	virtual void setTalkerDelegate(talker::Delegate* const delegate) noexcept = 0;
 
 	// Deleted compiler auto-generated methods
 	AggregateEntity(AggregateEntity&&) = delete;

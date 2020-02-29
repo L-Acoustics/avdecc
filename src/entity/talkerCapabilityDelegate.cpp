@@ -18,12 +18,13 @@
 */
 
 /**
-* @file controllerCapabilityDelegate.cpp
+* @file talkerCapabilityDelegate.cpp
 * @author Christophe Calmejane
 */
 
 #include "la/avdecc/utils.hpp"
 
+#include "talkerCapabilityDelegate.hpp"
 #include "controllerCapabilityDelegate.hpp"
 #include "protocol/protocolAemPayloads.hpp"
 #include "protocol/protocolMvuPayloads.hpp"
@@ -38,7 +39,7 @@ namespace avdecc
 {
 namespace entity
 {
-namespace controller
+namespace talker
 {
 /* ************************************************************************** */
 /* Static variables used for bindings                                         */
@@ -65,18 +66,18 @@ public:
 /* ************************************************************************** */
 /* CapabilityDelegate life cycle                                              */
 /* ************************************************************************** */
-CapabilityDelegate::CapabilityDelegate(protocol::ProtocolInterface* const protocolInterface, controller::Delegate* controllerDelegate, Interface& controllerInterface, UniqueIdentifier const controllerID) noexcept
+CapabilityDelegate::CapabilityDelegate(protocol::ProtocolInterface* const protocolInterface, talker::Delegate* talkerDelegate, Interface& talkerInterface, UniqueIdentifier const talkerID) noexcept
 	: _protocolInterface(protocolInterface)
-	, _controllerDelegate(controllerDelegate)
-	, _controllerInterface(controllerInterface)
-	, _controllerID(controllerID)
+	, _talkerDelegate(talkerDelegate)
+	, _talkerInterface(talkerInterface)
+	, _talkerID(talkerID)
 {
 }
 
 CapabilityDelegate::~CapabilityDelegate() noexcept {}
 
 /* ************************************************************************** */
-/* Controller methods                                                         */
+/* Talker methods                                                         */
 /* ************************************************************************** */
 /* Discovery Protocol (ADP) */
 /* Enumeration and Control Protocol (AECP) AEM */
@@ -85,7 +86,7 @@ void CapabilityDelegate::acquireEntity(UniqueIdentifier const targetEntityID, bo
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeAcquireEntityCommand(isPersistent ? protocol::AemAcquireEntityFlags::Persistent : protocol::AemAcquireEntityFlags::None, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -100,7 +101,7 @@ void CapabilityDelegate::releaseEntity(UniqueIdentifier const targetEntityID, mo
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeAcquireEntityCommand(protocol::AemAcquireEntityFlags::Release, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::AcquireEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -115,7 +116,7 @@ void CapabilityDelegate::lockEntity(UniqueIdentifier const targetEntityID, model
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeLockEntityCommand(protocol::AemLockEntityFlags::None, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::LockEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -130,7 +131,7 @@ void CapabilityDelegate::unlockEntity(UniqueIdentifier const targetEntityID, mod
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeLockEntityCommand(protocol::AemLockEntityFlags::Unlock, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, UniqueIdentifier::getNullUniqueIdentifier(), descriptorType, descriptorIndex);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::LockEntity, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -142,25 +143,25 @@ void CapabilityDelegate::unlockEntity(UniqueIdentifier const targetEntityID, mod
 
 void CapabilityDelegate::queryEntityAvailable(UniqueIdentifier const targetEntityID, Interface::QueryEntityAvailableHandler const& handler) const noexcept
 {
-	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1);
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1);
 	sendAemAecpCommand(targetEntityID, protocol::AemCommandType::EntityAvailable, nullptr, 0, errorCallback, handler);
 }
 
-void CapabilityDelegate::queryControllerAvailable(UniqueIdentifier const targetEntityID, Interface::QueryControllerAvailableHandler const& handler) const noexcept
+void CapabilityDelegate::queryTalkerAvailable(UniqueIdentifier const targetEntityID, Interface::QueryTalkerAvailableHandler const& handler) const noexcept
 {
-	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1);
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1);
 	sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ControllerAvailable, nullptr, 0, errorCallback, handler);
 }
 
 void CapabilityDelegate::registerUnsolicitedNotifications(UniqueIdentifier const targetEntityID, Interface::RegisterUnsolicitedNotificationsHandler const& handler) const noexcept
 {
-	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1);
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1);
 	sendAemAecpCommand(targetEntityID, protocol::AemCommandType::RegisterUnsolicitedNotification, nullptr, 0, errorCallback, handler);
 }
 
 void CapabilityDelegate::unregisterUnsolicitedNotifications(UniqueIdentifier const targetEntityID, Interface::UnregisterUnsolicitedNotificationsHandler const& handler) const noexcept
 {
-	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1);
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1);
 	sendAemAecpCommand(targetEntityID, protocol::AemCommandType::DeregisterUnsolicitedNotification, nullptr, 0, errorCallback, handler);
 }
 
@@ -169,7 +170,7 @@ void CapabilityDelegate::readEntityDescriptor(UniqueIdentifier const targetEntit
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(model::ConfigurationIndex(0u), model::DescriptorType::Entity, model::DescriptorIndex(0u));
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, model::EntityDescriptor{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, model::EntityDescriptor{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -184,7 +185,7 @@ void CapabilityDelegate::readConfigurationDescriptor(UniqueIdentifier const targ
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(model::ConfigurationIndex(0u), model::DescriptorType::Configuration, static_cast<model::DescriptorIndex>(configurationIndex)); // Passing configurationIndex as a DescriptorIndex is NOT an error. See 7.4.5.1
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, model::ConfigurationDescriptor{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, model::ConfigurationDescriptor{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -199,7 +200,7 @@ void CapabilityDelegate::readAudioUnitDescriptor(UniqueIdentifier const targetEn
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::AudioUnit, audioUnitIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, audioUnitIndex, model::AudioUnitDescriptor{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, audioUnitIndex, model::AudioUnitDescriptor{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -214,7 +215,7 @@ void CapabilityDelegate::readStreamInputDescriptor(UniqueIdentifier const target
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::StreamInput, streamIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, model::StreamDescriptor{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, model::StreamDescriptor{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -229,7 +230,7 @@ void CapabilityDelegate::readStreamOutputDescriptor(UniqueIdentifier const targe
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::StreamOutput, streamIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, model::StreamDescriptor{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, model::StreamDescriptor{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -244,7 +245,7 @@ void CapabilityDelegate::readJackInputDescriptor(UniqueIdentifier const targetEn
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::JackInput, jackIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, jackIndex, model::JackDescriptor{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, jackIndex, model::JackDescriptor{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -259,7 +260,7 @@ void CapabilityDelegate::readJackOutputDescriptor(UniqueIdentifier const targetE
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::JackOutput, jackIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, jackIndex, model::JackDescriptor{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, jackIndex, model::JackDescriptor{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -274,7 +275,7 @@ void CapabilityDelegate::readAvbInterfaceDescriptor(UniqueIdentifier const targe
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::AvbInterface, avbInterfaceIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, avbInterfaceIndex, model::AvbInterfaceDescriptor{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, avbInterfaceIndex, model::AvbInterfaceDescriptor{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -289,7 +290,7 @@ void CapabilityDelegate::readClockSourceDescriptor(UniqueIdentifier const target
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::ClockSource, clockSourceIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, clockSourceIndex, model::ClockSourceDescriptor{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, clockSourceIndex, model::ClockSourceDescriptor{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -304,7 +305,7 @@ void CapabilityDelegate::readMemoryObjectDescriptor(UniqueIdentifier const targe
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::MemoryObject, memoryObjectIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex, model::MemoryObjectDescriptor{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex, model::MemoryObjectDescriptor{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -319,7 +320,7 @@ void CapabilityDelegate::readLocaleDescriptor(UniqueIdentifier const targetEntit
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::Locale, localeIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, localeIndex, model::LocaleDescriptor{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, localeIndex, model::LocaleDescriptor{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -334,7 +335,7 @@ void CapabilityDelegate::readStringsDescriptor(UniqueIdentifier const targetEnti
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::Strings, stringsIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, stringsIndex, model::StringsDescriptor{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, stringsIndex, model::StringsDescriptor{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -349,7 +350,7 @@ void CapabilityDelegate::readStreamPortInputDescriptor(UniqueIdentifier const ta
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::StreamPortInput, streamPortIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, streamPortIndex, model::StreamPortDescriptor{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, streamPortIndex, model::StreamPortDescriptor{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -364,7 +365,7 @@ void CapabilityDelegate::readStreamPortOutputDescriptor(UniqueIdentifier const t
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::StreamPortOutput, streamPortIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, streamPortIndex, model::StreamPortDescriptor{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, streamPortIndex, model::StreamPortDescriptor{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -379,7 +380,7 @@ void CapabilityDelegate::readExternalPortInputDescriptor(UniqueIdentifier const 
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::ExternalPortInput, externalPortIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, externalPortIndex, model::ExternalPortDescriptor{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, externalPortIndex, model::ExternalPortDescriptor{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -394,7 +395,7 @@ void CapabilityDelegate::readExternalPortOutputDescriptor(UniqueIdentifier const
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::ExternalPortOutput, externalPortIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, externalPortIndex, model::ExternalPortDescriptor{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, externalPortIndex, model::ExternalPortDescriptor{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -409,7 +410,7 @@ void CapabilityDelegate::readInternalPortInputDescriptor(UniqueIdentifier const 
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::InternalPortInput, internalPortIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, internalPortIndex, model::InternalPortDescriptor{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, internalPortIndex, model::InternalPortDescriptor{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -424,7 +425,7 @@ void CapabilityDelegate::readInternalPortOutputDescriptor(UniqueIdentifier const
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::InternalPortOutput, internalPortIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, internalPortIndex, model::InternalPortDescriptor{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, internalPortIndex, model::InternalPortDescriptor{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -439,7 +440,7 @@ void CapabilityDelegate::readAudioClusterDescriptor(UniqueIdentifier const targe
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::AudioCluster, clusterIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, clusterIndex, model::AudioClusterDescriptor{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, clusterIndex, model::AudioClusterDescriptor{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -454,7 +455,7 @@ void CapabilityDelegate::readAudioMapDescriptor(UniqueIdentifier const targetEnt
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::AudioMap, mapIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, mapIndex, model::AudioMapDescriptor{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, mapIndex, model::AudioMapDescriptor{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -469,7 +470,7 @@ void CapabilityDelegate::readClockDomainDescriptor(UniqueIdentifier const target
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeReadDescriptorCommand(configurationIndex, model::DescriptorType::ClockDomain, clockDomainIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, clockDomainIndex, model::ClockDomainDescriptor{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, clockDomainIndex, model::ClockDomainDescriptor{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::ReadDescriptor, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -484,7 +485,7 @@ void CapabilityDelegate::setConfiguration(UniqueIdentifier const targetEntityID,
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetConfigurationCommand(configurationIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetConfiguration, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -496,7 +497,7 @@ void CapabilityDelegate::setConfiguration(UniqueIdentifier const targetEntityID,
 
 void CapabilityDelegate::getConfiguration(UniqueIdentifier const targetEntityID, Interface::GetConfigurationHandler const& handler) const noexcept
 {
-	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, model::ConfigurationIndex{ 0u });
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, model::ConfigurationIndex{ 0u });
 	sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetConfiguration, nullptr, 0, errorCallback, handler);
 }
 
@@ -505,7 +506,7 @@ void CapabilityDelegate::setStreamInputFormat(UniqueIdentifier const targetEntit
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetStreamFormatCommand(model::DescriptorType::StreamInput, streamIndex, streamFormat);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -520,7 +521,7 @@ void CapabilityDelegate::getStreamInputFormat(UniqueIdentifier const targetEntit
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetStreamFormatCommand(model::DescriptorType::StreamInput, streamIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -535,7 +536,7 @@ void CapabilityDelegate::setStreamOutputFormat(UniqueIdentifier const targetEnti
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetStreamFormatCommand(model::DescriptorType::StreamOutput, streamIndex, streamFormat);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -550,7 +551,7 @@ void CapabilityDelegate::getStreamOutputFormat(UniqueIdentifier const targetEnti
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetStreamFormatCommand(model::DescriptorType::StreamOutput, streamIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, streamIndex, model::StreamFormat());
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetStreamFormat, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -565,7 +566,7 @@ void CapabilityDelegate::getStreamPortInputAudioMap(UniqueIdentifier const targe
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetAudioMapCommand(model::DescriptorType::StreamPortInput, streamPortIndex, mapIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamPortIndex, model::MapIndex(0), mapIndex, s_emptyMappings);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, streamPortIndex, model::MapIndex(0), mapIndex, s_emptyMappings);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetAudioMap, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -580,7 +581,7 @@ void CapabilityDelegate::getStreamPortOutputAudioMap(UniqueIdentifier const targ
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetAudioMapCommand(model::DescriptorType::StreamPortOutput, streamPortIndex, mapIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamPortIndex, model::MapIndex(0), mapIndex, s_emptyMappings);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, streamPortIndex, model::MapIndex(0), mapIndex, s_emptyMappings);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetAudioMap, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -595,7 +596,7 @@ void CapabilityDelegate::addStreamPortInputAudioMappings(UniqueIdentifier const 
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeAddAudioMappingsCommand(model::DescriptorType::StreamPortInput, streamPortIndex, mappings);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamPortIndex, s_emptyMappings);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, streamPortIndex, s_emptyMappings);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::AddAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -610,7 +611,7 @@ void CapabilityDelegate::addStreamPortOutputAudioMappings(UniqueIdentifier const
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeAddAudioMappingsCommand(model::DescriptorType::StreamPortOutput, streamPortIndex, mappings);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamPortIndex, s_emptyMappings);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, streamPortIndex, s_emptyMappings);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::AddAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -625,7 +626,7 @@ void CapabilityDelegate::removeStreamPortInputAudioMappings(UniqueIdentifier con
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeRemoveAudioMappingsCommand(model::DescriptorType::StreamPortInput, streamPortIndex, mappings);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamPortIndex, s_emptyMappings);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, streamPortIndex, s_emptyMappings);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::RemoveAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -640,7 +641,7 @@ void CapabilityDelegate::removeStreamPortOutputAudioMappings(UniqueIdentifier co
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeRemoveAudioMappingsCommand(model::DescriptorType::StreamPortOutput, streamPortIndex, mappings);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamPortIndex, s_emptyMappings);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, streamPortIndex, s_emptyMappings);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::RemoveAudioMappings, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -655,7 +656,7 @@ void CapabilityDelegate::setStreamInputInfo(UniqueIdentifier const targetEntityI
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetStreamInfoCommand(model::DescriptorType::StreamInput, streamIndex, info);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex, s_emptyStreamInfo);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, streamIndex, s_emptyStreamInfo);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetStreamInfo, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -670,7 +671,7 @@ void CapabilityDelegate::setStreamOutputInfo(UniqueIdentifier const targetEntity
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetStreamInfoCommand(model::DescriptorType::StreamOutput, streamIndex, info);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex, s_emptyStreamInfo);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, streamIndex, s_emptyStreamInfo);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetStreamInfo, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -685,7 +686,7 @@ void CapabilityDelegate::getStreamInputInfo(UniqueIdentifier const targetEntityI
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetStreamInfoCommand(model::DescriptorType::StreamInput, streamIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex, s_emptyStreamInfo);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, streamIndex, s_emptyStreamInfo);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetStreamInfo, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -700,7 +701,7 @@ void CapabilityDelegate::getStreamOutputInfo(UniqueIdentifier const targetEntity
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetStreamInfoCommand(model::DescriptorType::StreamOutput, streamIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex, s_emptyStreamInfo);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, streamIndex, s_emptyStreamInfo);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetStreamInfo, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -715,7 +716,7 @@ void CapabilityDelegate::setEntityName(UniqueIdentifier const targetEntityID, mo
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::Entity, 0, 0, 0, entityName);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, s_emptyAvdeccFixedString);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, s_emptyAvdeccFixedString);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -730,7 +731,7 @@ void CapabilityDelegate::getEntityName(UniqueIdentifier const targetEntityID, In
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::Entity, 0, 0, 0);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, s_emptyAvdeccFixedString);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, s_emptyAvdeccFixedString);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -745,7 +746,7 @@ void CapabilityDelegate::setEntityGroupName(UniqueIdentifier const targetEntityI
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::Entity, 0, 1, 0, entityGroupName);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, s_emptyAvdeccFixedString);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, s_emptyAvdeccFixedString);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -760,7 +761,7 @@ void CapabilityDelegate::getEntityGroupName(UniqueIdentifier const targetEntityI
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::Entity, 0, 1, 0);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, s_emptyAvdeccFixedString);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, s_emptyAvdeccFixedString);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -775,7 +776,7 @@ void CapabilityDelegate::setConfigurationName(UniqueIdentifier const targetEntit
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::Configuration, configurationIndex, 0, 0, configurationName);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, s_emptyAvdeccFixedString);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -790,7 +791,7 @@ void CapabilityDelegate::getConfigurationName(UniqueIdentifier const targetEntit
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::Configuration, configurationIndex, 0, 0);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, s_emptyAvdeccFixedString);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -805,7 +806,7 @@ void CapabilityDelegate::setAudioUnitName(UniqueIdentifier const targetEntityID,
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::AudioUnit, audioUnitIndex, 0, configurationIndex, audioUnitName);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, audioUnitIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, audioUnitIndex, s_emptyAvdeccFixedString);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -820,7 +821,7 @@ void CapabilityDelegate::getAudioUnitName(UniqueIdentifier const targetEntityID,
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::AudioUnit, audioUnitIndex, 0, configurationIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, audioUnitIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, audioUnitIndex, s_emptyAvdeccFixedString);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -835,7 +836,7 @@ void CapabilityDelegate::setStreamInputName(UniqueIdentifier const targetEntityI
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::StreamInput, streamIndex, 0, configurationIndex, streamInputName);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, s_emptyAvdeccFixedString);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -850,7 +851,7 @@ void CapabilityDelegate::getStreamInputName(UniqueIdentifier const targetEntityI
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::StreamInput, streamIndex, 0, configurationIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, s_emptyAvdeccFixedString);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -865,7 +866,7 @@ void CapabilityDelegate::setStreamOutputName(UniqueIdentifier const targetEntity
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::StreamOutput, streamIndex, 0, configurationIndex, streamOutputName);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, s_emptyAvdeccFixedString);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -880,7 +881,7 @@ void CapabilityDelegate::getStreamOutputName(UniqueIdentifier const targetEntity
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::StreamOutput, streamIndex, 0, configurationIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, streamIndex, s_emptyAvdeccFixedString);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -895,7 +896,7 @@ void CapabilityDelegate::setAvbInterfaceName(UniqueIdentifier const targetEntity
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::AvbInterface, avbInterfaceIndex, 0, configurationIndex, avbInterfaceName);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, avbInterfaceIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, avbInterfaceIndex, s_emptyAvdeccFixedString);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -910,7 +911,7 @@ void CapabilityDelegate::getAvbInterfaceName(UniqueIdentifier const targetEntity
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::AvbInterface, avbInterfaceIndex, 0, configurationIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, avbInterfaceIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, avbInterfaceIndex, s_emptyAvdeccFixedString);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -925,7 +926,7 @@ void CapabilityDelegate::setClockSourceName(UniqueIdentifier const targetEntityI
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::ClockSource, clockSourceIndex, 0, configurationIndex, clockSourceName);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, clockSourceIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, clockSourceIndex, s_emptyAvdeccFixedString);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -940,7 +941,7 @@ void CapabilityDelegate::getClockSourceName(UniqueIdentifier const targetEntityI
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::ClockSource, clockSourceIndex, 0, configurationIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, clockSourceIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, clockSourceIndex, s_emptyAvdeccFixedString);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -955,7 +956,7 @@ void CapabilityDelegate::setMemoryObjectName(UniqueIdentifier const targetEntity
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::MemoryObject, memoryObjectIndex, 0, configurationIndex, memoryObjectName);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex, s_emptyAvdeccFixedString);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -970,7 +971,7 @@ void CapabilityDelegate::getMemoryObjectName(UniqueIdentifier const targetEntity
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::MemoryObject, memoryObjectIndex, 0, configurationIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex, s_emptyAvdeccFixedString);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -985,7 +986,7 @@ void CapabilityDelegate::setAudioClusterName(UniqueIdentifier const targetEntity
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::AudioCluster, audioClusterIndex, 0, configurationIndex, audioClusterName);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, audioClusterIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, audioClusterIndex, s_emptyAvdeccFixedString);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1000,7 +1001,7 @@ void CapabilityDelegate::getAudioClusterName(UniqueIdentifier const targetEntity
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::AudioCluster, audioClusterIndex, 0, configurationIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, audioClusterIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, audioClusterIndex, s_emptyAvdeccFixedString);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1015,7 +1016,7 @@ void CapabilityDelegate::setClockDomainName(UniqueIdentifier const targetEntityI
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::ClockDomain, clockDomainIndex, 0, configurationIndex, clockDomainName);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, clockDomainIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, clockDomainIndex, s_emptyAvdeccFixedString);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1030,7 +1031,7 @@ void CapabilityDelegate::getClockDomainName(UniqueIdentifier const targetEntityI
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::ClockDomain, clockDomainIndex, 0, configurationIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, clockDomainIndex, s_emptyAvdeccFixedString);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, clockDomainIndex, s_emptyAvdeccFixedString);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1045,7 +1046,7 @@ void CapabilityDelegate::setAudioUnitSamplingRate(UniqueIdentifier const targetE
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetSamplingRateCommand(model::DescriptorType::AudioUnit, audioUnitIndex, samplingRate);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, audioUnitIndex, model::SamplingRate::getNullSamplingRate());
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, audioUnitIndex, model::SamplingRate::getNullSamplingRate());
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1060,7 +1061,7 @@ void CapabilityDelegate::getAudioUnitSamplingRate(UniqueIdentifier const targetE
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetSamplingRateCommand(model::DescriptorType::AudioUnit, audioUnitIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, audioUnitIndex, model::SamplingRate::getNullSamplingRate());
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, audioUnitIndex, model::SamplingRate::getNullSamplingRate());
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1075,7 +1076,7 @@ void CapabilityDelegate::setVideoClusterSamplingRate(UniqueIdentifier const targ
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetSamplingRateCommand(model::DescriptorType::VideoCluster, videoClusterIndex, samplingRate);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, videoClusterIndex, model::SamplingRate::getNullSamplingRate());
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, videoClusterIndex, model::SamplingRate::getNullSamplingRate());
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1090,7 +1091,7 @@ void CapabilityDelegate::getVideoClusterSamplingRate(UniqueIdentifier const targ
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetSamplingRateCommand(model::DescriptorType::VideoCluster, videoClusterIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, videoClusterIndex, model::SamplingRate::getNullSamplingRate());
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, videoClusterIndex, model::SamplingRate::getNullSamplingRate());
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1105,7 +1106,7 @@ void CapabilityDelegate::setSensorClusterSamplingRate(UniqueIdentifier const tar
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetSamplingRateCommand(model::DescriptorType::SensorCluster, sensorClusterIndex, samplingRate);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, sensorClusterIndex, model::SamplingRate::getNullSamplingRate());
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, sensorClusterIndex, model::SamplingRate::getNullSamplingRate());
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1120,7 +1121,7 @@ void CapabilityDelegate::getSensorClusterSamplingRate(UniqueIdentifier const tar
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetSamplingRateCommand(model::DescriptorType::SensorCluster, sensorClusterIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, sensorClusterIndex, model::SamplingRate::getNullSamplingRate());
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, sensorClusterIndex, model::SamplingRate::getNullSamplingRate());
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetSamplingRate, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1135,7 +1136,7 @@ void CapabilityDelegate::setClockSource(UniqueIdentifier const targetEntityID, m
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetClockSourceCommand(model::DescriptorType::ClockDomain, clockDomainIndex, clockSourceIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, clockDomainIndex, model::ClockSourceIndex{ 0u });
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, clockDomainIndex, model::ClockSourceIndex{ 0u });
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetClockSource, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1150,7 +1151,7 @@ void CapabilityDelegate::getClockSource(UniqueIdentifier const targetEntityID, m
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetClockSourceCommand(model::DescriptorType::ClockDomain, clockDomainIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, clockDomainIndex, model::ClockSourceIndex{ 0u });
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, clockDomainIndex, model::ClockSourceIndex{ 0u });
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetClockSource, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1165,7 +1166,7 @@ void CapabilityDelegate::startStreamInput(UniqueIdentifier const targetEntityID,
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeStartStreamingCommand(model::DescriptorType::StreamInput, streamIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, streamIndex);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::StartStreaming, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1180,7 +1181,7 @@ void CapabilityDelegate::startStreamOutput(UniqueIdentifier const targetEntityID
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeStartStreamingCommand(model::DescriptorType::StreamOutput, streamIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, streamIndex);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::StartStreaming, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1195,7 +1196,7 @@ void CapabilityDelegate::stopStreamInput(UniqueIdentifier const targetEntityID, 
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeStopStreamingCommand(model::DescriptorType::StreamInput, streamIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, streamIndex);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::StopStreaming, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1210,7 +1211,7 @@ void CapabilityDelegate::stopStreamOutput(UniqueIdentifier const targetEntityID,
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeStopStreamingCommand(model::DescriptorType::StreamOutput, streamIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, streamIndex);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::StopStreaming, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1225,7 +1226,7 @@ void CapabilityDelegate::getAvbInfo(UniqueIdentifier const targetEntityID, model
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetAvbInfoCommand(model::DescriptorType::AvbInterface, avbInterfaceIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, avbInterfaceIndex, s_emptyAvbInfo);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, avbInterfaceIndex, s_emptyAvbInfo);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetAvbInfo, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1240,7 +1241,7 @@ void CapabilityDelegate::getAsPath(UniqueIdentifier const targetEntityID, model:
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetAsPathCommand(avbInterfaceIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, avbInterfaceIndex, s_emptyAsPath);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, avbInterfaceIndex, s_emptyAsPath);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetAsPath, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1255,7 +1256,7 @@ void CapabilityDelegate::getEntityCounters(UniqueIdentifier const targetEntityID
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetCountersCommand(model::DescriptorType::Entity, 0);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, EntityCounterValidFlags{}, model::DescriptorCounters{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, EntityCounterValidFlags{}, model::DescriptorCounters{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetCounters, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1270,7 +1271,7 @@ void CapabilityDelegate::getAvbInterfaceCounters(UniqueIdentifier const targetEn
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetCountersCommand(model::DescriptorType::AvbInterface, avbInterfaceIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, avbInterfaceIndex, AvbInterfaceCounterValidFlags{}, model::DescriptorCounters{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, avbInterfaceIndex, AvbInterfaceCounterValidFlags{}, model::DescriptorCounters{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetCounters, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1285,7 +1286,7 @@ void CapabilityDelegate::getClockDomainCounters(UniqueIdentifier const targetEnt
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetCountersCommand(model::DescriptorType::ClockDomain, clockDomainIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, clockDomainIndex, ClockDomainCounterValidFlags{}, model::DescriptorCounters{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, clockDomainIndex, ClockDomainCounterValidFlags{}, model::DescriptorCounters{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetCounters, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1300,7 +1301,7 @@ void CapabilityDelegate::getStreamInputCounters(UniqueIdentifier const targetEnt
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetCountersCommand(model::DescriptorType::StreamInput, streamIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex, StreamInputCounterValidFlags{}, model::DescriptorCounters{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, streamIndex, StreamInputCounterValidFlags{}, model::DescriptorCounters{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetCounters, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1315,7 +1316,7 @@ void CapabilityDelegate::getStreamOutputCounters(UniqueIdentifier const targetEn
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetCountersCommand(model::DescriptorType::StreamOutput, streamIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex, StreamOutputCounterValidFlags{}, model::DescriptorCounters{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, streamIndex, StreamOutputCounterValidFlags{}, model::DescriptorCounters{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetCounters, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1330,7 +1331,7 @@ void CapabilityDelegate::startOperation(UniqueIdentifier const targetEntityID, m
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeStartOperationCommand(descriptorType, descriptorIndex, model::OperationID{ 0u }, operationType, memoryBuffer);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, descriptorType, descriptorIndex, model::OperationID{ 0u }, operationType, MemoryBuffer{});
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, descriptorType, descriptorIndex, model::OperationID{ 0u }, operationType, MemoryBuffer{});
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::StartOperation, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1345,7 +1346,7 @@ void CapabilityDelegate::abortOperation(UniqueIdentifier const targetEntityID, m
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeAbortOperationCommand(descriptorType, descriptorIndex, operationID);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, descriptorType, descriptorIndex, operationID);
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, descriptorType, descriptorIndex, operationID);
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::AbortOperation, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1360,7 +1361,7 @@ void CapabilityDelegate::setMemoryObjectLength(UniqueIdentifier const targetEnti
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeSetMemoryObjectLengthCommand(configurationIndex, memoryObjectIndex, length);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex, std::uint64_t{ 0u });
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex, std::uint64_t{ 0u });
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetMemoryObjectLength, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1375,7 +1376,7 @@ void CapabilityDelegate::getMemoryObjectLength(UniqueIdentifier const targetEnti
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetMemoryObjectLengthCommand(configurationIndex, memoryObjectIndex);
-		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex, std::uint64_t{ 0u });
+		auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex, std::uint64_t{ 0u });
 
 		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetMemoryObjectLength, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1388,7 +1389,7 @@ void CapabilityDelegate::getMemoryObjectLength(UniqueIdentifier const targetEnti
 /* Enumeration and Control Protocol (AECP) AA */
 void CapabilityDelegate::addressAccess(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, Interface::AddressAccessHandler const& handler) const noexcept
 {
-	auto const errorCallback = LocalEntityImpl<>::makeAaAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, addressAccess::Tlvs{});
+	auto const errorCallback = LocalEntityImpl<>::makeAaAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, addressAccess::Tlvs{});
 	sendAaAecpCommand(targetEntityID, tlvs, errorCallback, handler);
 }
 
@@ -1398,7 +1399,7 @@ void CapabilityDelegate::getMilanInfo(UniqueIdentifier const targetEntityID, Int
 	try
 	{
 		auto const ser = protocol::mvuPayload::serializeGetMilanInfoCommand();
-		auto const errorCallback = LocalEntityImpl<>::makeMvuAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, s_emptyMilanInfo);
+		auto const errorCallback = LocalEntityImpl<>::makeMvuAECPErrorHandler(handler, &_talkerInterface, targetEntityID, std::placeholders::_1, s_emptyMilanInfo);
 
 		sendMvuAecpCommand(targetEntityID, protocol::MvuCommandType::GetMilanInfo, ser.data(), ser.size(), errorCallback, handler);
 	}
@@ -1411,37 +1412,37 @@ void CapabilityDelegate::getMilanInfo(UniqueIdentifier const targetEntityID, Int
 /* Connection Management Protocol (ACMP) */
 void CapabilityDelegate::connectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, Interface::ConnectStreamHandler const& handler) const noexcept
 {
-	auto const errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_controllerInterface, talkerStream, listenerStream, std::uint16_t(0), entity::ConnectionFlags{}, std::placeholders::_1);
+	auto const errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_talkerInterface, talkerStream, listenerStream, std::uint16_t(0), entity::ConnectionFlags{}, std::placeholders::_1);
 	sendAcmpCommand(protocol::AcmpMessageType::ConnectRxCommand, talkerStream.entityID, talkerStream.streamIndex, listenerStream.entityID, listenerStream.streamIndex, std::uint16_t(0), errorCallback, handler);
 }
 
 void CapabilityDelegate::disconnectStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, Interface::DisconnectStreamHandler const& handler) const noexcept
 {
-	auto const errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_controllerInterface, talkerStream, listenerStream, std::uint16_t(0), entity::ConnectionFlags{}, std::placeholders::_1);
+	auto const errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_talkerInterface, talkerStream, listenerStream, std::uint16_t(0), entity::ConnectionFlags{}, std::placeholders::_1);
 	sendAcmpCommand(protocol::AcmpMessageType::DisconnectRxCommand, talkerStream.entityID, talkerStream.streamIndex, listenerStream.entityID, listenerStream.streamIndex, std::uint16_t(0), errorCallback, handler);
 }
 
 void CapabilityDelegate::disconnectTalkerStream(model::StreamIdentification const& talkerStream, model::StreamIdentification const& listenerStream, Interface::DisconnectTalkerStreamHandler const& handler) const noexcept
 {
-	auto const errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_controllerInterface, talkerStream, listenerStream, std::uint16_t(0), entity::ConnectionFlags{}, std::placeholders::_1);
+	auto const errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_talkerInterface, talkerStream, listenerStream, std::uint16_t(0), entity::ConnectionFlags{}, std::placeholders::_1);
 	sendAcmpCommand(protocol::AcmpMessageType::DisconnectTxCommand, talkerStream.entityID, talkerStream.streamIndex, listenerStream.entityID, listenerStream.streamIndex, std::uint16_t(0), errorCallback, handler);
 }
 
 void CapabilityDelegate::getTalkerStreamState(model::StreamIdentification const& talkerStream, Interface::GetTalkerStreamStateHandler const& handler) const noexcept
 {
-	auto const errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_controllerInterface, talkerStream, model::StreamIdentification{}, std::uint16_t(0), entity::ConnectionFlags{}, std::placeholders::_1);
+	auto const errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_talkerInterface, talkerStream, model::StreamIdentification{}, std::uint16_t(0), entity::ConnectionFlags{}, std::placeholders::_1);
 	sendAcmpCommand(protocol::AcmpMessageType::GetTxStateCommand, talkerStream.entityID, talkerStream.streamIndex, UniqueIdentifier::getNullUniqueIdentifier(), model::StreamIndex(0), std::uint16_t(0), errorCallback, handler);
 }
 
 void CapabilityDelegate::getListenerStreamState(model::StreamIdentification const& listenerStream, Interface::GetListenerStreamStateHandler const& handler) const noexcept
 {
-	auto const errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_controllerInterface, model::StreamIdentification{}, listenerStream, std::uint16_t(0), entity::ConnectionFlags{}, std::placeholders::_1);
+	auto const errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_talkerInterface, model::StreamIdentification{}, listenerStream, std::uint16_t(0), entity::ConnectionFlags{}, std::placeholders::_1);
 	sendAcmpCommand(protocol::AcmpMessageType::GetRxStateCommand, UniqueIdentifier::getNullUniqueIdentifier(), model::StreamIndex(0), listenerStream.entityID, listenerStream.streamIndex, std::uint16_t(0), errorCallback, handler);
 }
 
 void CapabilityDelegate::getTalkerStreamConnection(model::StreamIdentification const& talkerStream, std::uint16_t const connectionIndex, Interface::GetTalkerStreamConnectionHandler const& handler) const noexcept
 {
-	auto const errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_controllerInterface, talkerStream, model::StreamIdentification{}, connectionIndex, entity::ConnectionFlags{}, std::placeholders::_1);
+	auto const errorCallback = LocalEntityImpl<>::makeACMPErrorHandler(handler, &_talkerInterface, talkerStream, model::StreamIdentification{}, connectionIndex, entity::ConnectionFlags{}, std::placeholders::_1);
 	sendAcmpCommand(protocol::AcmpMessageType::GetTxConnectionCommand, talkerStream.entityID, talkerStream.streamIndex, UniqueIdentifier::getNullUniqueIdentifier(), model::StreamIndex(0), connectionIndex, errorCallback, handler);
 }
 
@@ -1449,26 +1450,26 @@ void CapabilityDelegate::getTalkerStreamConnection(model::StreamIdentification c
 /* LocalEntityImpl<>::CapabilityDelegate overrides                          */
 /* ************************************************************************** */
 /* *** General notifications */
-void CapabilityDelegate::onControllerDelegateChanged(controller::Delegate* const delegate) noexcept
-{
-#pragma message("TODO: Protect the _controllerDelegate so it cannot be changed while it's being used (use pi's lock ?? Check for deadlocks!)")
-	_controllerDelegate = delegate;
-}
+
+void CapabilityDelegate::onControllerDelegateChanged(controller::Delegate* const delegate) noexcept {}
 
 //void CapabilityDelegate::onListenerDelegateChanged(listener::Delegate* const delegate) noexcept {}
 
-void CapabilityDelegate::onTalkerDelegateChanged(talker::Delegate* const delegate) noexcept {}
+void CapabilityDelegate::onTalkerDelegateChanged(talker::Delegate* const delegate) noexcept {
+#pragma message("TODO: Protect the _controllerDelegate so it cannot be changed while it's being used (use pi's lock ?? Check for deadlocks!)")
+    _talkerDelegate = delegate;
+}
 
 void CapabilityDelegate::onTransportError(protocol::ProtocolInterface* const /*pi*/) noexcept
 {
-	utils::invokeProtectedMethod(&controller::Delegate::onTransportError, _controllerDelegate, &_controllerInterface);
+	utils::invokeProtectedMethod(&talker::Delegate::onTransportError, _talkerDelegate, &_talkerInterface);
 }
 
 /* **** Discovery notifications **** */
 void CapabilityDelegate::onLocalEntityOnline(protocol::ProtocolInterface* const pi, Entity const& entity) noexcept
 {
 	// Ignore ourself
-	if (entity.getEntityID() == _controllerID)
+	if (entity.getEntityID() == _talkerID)
 		return;
 
 	// Forward to RemoteEntityOnline, we handle all discovered entities the same way
@@ -1478,7 +1479,7 @@ void CapabilityDelegate::onLocalEntityOnline(protocol::ProtocolInterface* const 
 void CapabilityDelegate::onLocalEntityOffline(protocol::ProtocolInterface* const pi, UniqueIdentifier const entityID) noexcept
 {
 	// Ignore ourself
-	if (entityID == _controllerID)
+	if (entityID == _talkerID)
 		return;
 
 	// Forward to RemoteEntityOffline, we handle all discovered entities the same way
@@ -1488,7 +1489,7 @@ void CapabilityDelegate::onLocalEntityOffline(protocol::ProtocolInterface* const
 void CapabilityDelegate::onLocalEntityUpdated(protocol::ProtocolInterface* const pi, Entity const& entity) noexcept
 {
 	// Ignore ourself
-	if (entity.getEntityID() == _controllerID)
+	if (entity.getEntityID() == _talkerID)
 		return;
 
 	// Forward to RemoteEntityUpdated, we handle all discovered entities the same way
@@ -1517,7 +1518,7 @@ void CapabilityDelegate::onRemoteEntityOnline(protocol::ProtocolInterface* const
 		}
 	}
 
-	utils::invokeProtectedMethod(&controller::Delegate::onEntityOnline, _controllerDelegate, &_controllerInterface, entityID, entity);
+	utils::invokeProtectedMethod(&talker::Delegate::onEntityOnline, _talkerDelegate, &_talkerInterface, entityID, entity);
 }
 
 void CapabilityDelegate::onRemoteEntityOffline(protocol::ProtocolInterface* const pi, UniqueIdentifier const entityID) noexcept
@@ -1530,7 +1531,7 @@ void CapabilityDelegate::onRemoteEntityOffline(protocol::ProtocolInterface* cons
 		_discoveredEntities.erase(entityID);
 	}
 
-	utils::invokeProtectedMethod(&controller::Delegate::onEntityOffline, _controllerDelegate, &_controllerInterface, entityID);
+	utils::invokeProtectedMethod(&talker::Delegate::onEntityOffline, _talkerDelegate, &_talkerInterface, entityID);
 }
 
 void CapabilityDelegate::onRemoteEntityUpdated(protocol::ProtocolInterface* const pi, Entity const& entity) noexcept
@@ -1555,7 +1556,7 @@ void CapabilityDelegate::onRemoteEntityUpdated(protocol::ProtocolInterface* cons
 		}
 	}
 
-	utils::invokeProtectedMethod(&controller::Delegate::onEntityUpdate, _controllerDelegate, &_controllerInterface, entityID, entity);
+	utils::invokeProtectedMethod(&talker::Delegate::onEntityUpdate, _talkerDelegate, &_talkerInterface, entityID, entity);
 }
 
 /* **** AECP notifications **** */
@@ -1565,7 +1566,7 @@ bool CapabilityDelegate::onUnhandledAecpCommand(protocol::ProtocolInterface* con
 	{
 		auto const& aem = static_cast<protocol::AemAecpdu const&>(aecpdu);
 
-		if (!AVDECC_ASSERT_WITH_RET(_controllerID != aecpdu.getControllerEntityID(), "Message from self should not pass through this function, or maybe if the same entity has Controller/Talker/Listener capabilities? (in that case allow the message to be processed, the ProtocolInterface will optimize the sending)"))
+		if (!AVDECC_ASSERT_WITH_RET(_talkerID != aecpdu.getControllerEntityID(), "Message from self should not pass through this function, or maybe if the same entity has Talker/Talker/Listener capabilities? (in that case allow the message to be processed, the ProtocolInterface will optimize the sending)"))
 			return true;
 
 		if (aem.getCommandType() == protocol::AemCommandType::ControllerAvailable)
@@ -1581,7 +1582,7 @@ bool CapabilityDelegate::onUnhandledAecpCommand(protocol::ProtocolInterface* con
 void CapabilityDelegate::onAecpAemUnsolicitedResponse(protocol::ProtocolInterface* const /*pi*/, protocol::AemAecpdu const& aecpdu) noexcept
 {
 	// Ignore messages not for me
-	if (_controllerID != aecpdu.getControllerEntityID())
+	if (_talkerID != aecpdu.getControllerEntityID())
 		return;
 
 	auto const messageType = aecpdu.getMessageType();
@@ -1594,7 +1595,7 @@ void CapabilityDelegate::onAecpAemUnsolicitedResponse(protocol::ProtocolInterfac
 			// Process AEM message without any error or answer callbacks, it's not an expected response
 			processAemAecpResponse(&aecpdu, nullptr, {});
 			// Statistics
-			utils::invokeProtectedMethod(&controller::Delegate::onAemAecpUnsolicitedReceived, _controllerDelegate, &_controllerInterface, aecpdu.getTargetEntityID());
+			utils::invokeProtectedMethod(&talker::Delegate::onAemAecpUnsolicitedReceived, _talkerDelegate, &_talkerInterface, aecpdu.getTargetEntityID());
 		}
 	}
 }
@@ -1602,61 +1603,61 @@ void CapabilityDelegate::onAecpAemUnsolicitedResponse(protocol::ProtocolInterfac
 void CapabilityDelegate::onAecpAemIdentifyNotification(protocol::ProtocolInterface* const /*pi*/, protocol::AemAecpdu const& aecpdu) noexcept
 {
 	// Forward the event
-	utils::invokeProtectedMethod(&controller::Delegate::onEntityIdentifyNotification, _controllerDelegate, &_controllerInterface, aecpdu.getTargetEntityID());
+	utils::invokeProtectedMethod(&talker::Delegate::onEntityIdentifyNotification, _talkerDelegate, &_talkerInterface, aecpdu.getTargetEntityID());
 }
 
 /* **** ACMP notifications **** */
 void CapabilityDelegate::onAcmpCommand(protocol::ProtocolInterface* const /*pi*/, protocol::Acmpdu const& /*acmpdu*/) noexcept
 {
-	// Controllers do not care about ACMP Commands (which can only be sniffed ones)
+	// Talkers do not care about ACMP Commands (which can only be sniffed ones)
 }
 
 void CapabilityDelegate::onAcmpResponse(protocol::ProtocolInterface* const /*pi*/, protocol::Acmpdu const& acmpdu) noexcept
 {
-	// Controllers only care about sniffed ACMP Responses here (responses to their commands have already been processed by the ProtocolInterface)
+	// Talkers only care about sniffed ACMP Responses here (responses to their commands have already been processed by the ProtocolInterface)
 
-	// Check if it's a response for a Controller (since the communication btw listener and talkers uses our controllerID, we don't want to detect talker's response as ours)
-	auto const expectedControllerResponseType = isResponseForController(acmpdu.getMessageType());
+	// Check if it's a response for a Talker (since the communication btw listener and talkers uses our talkerID, we don't want to detect talker's response as ours)
+	auto const expectedTalkerResponseType = isResponseForTalker(acmpdu.getMessageType());
 
-	// Only process sniffed responses (ie. Talker response to Listener, or Listener response to another Controller)
-	if (_controllerID != acmpdu.getControllerEntityID() || !expectedControllerResponseType)
+	// Only process sniffed responses (ie. Talker response to Listener, or Listener response to another Talker)
+	if (_talkerID != acmpdu.getControllerEntityID() || !expectedTalkerResponseType)
 	{
 		processAcmpResponse(&acmpdu, LocalEntityImpl<>::OnACMPErrorCallback(), LocalEntityImpl<>::AnswerCallback(), true);
 	}
 }
 
 /* ************************************************************************** */
-/* Controller notifications                                                   */
+/* Talker notifications                                                   */
 /* ************************************************************************** */
 /* **** Statistics **** */
 void CapabilityDelegate::onAecpRetry(protocol::ProtocolInterface* const /*pi*/, UniqueIdentifier const& entityID) noexcept
 {
 	// Statistics
-	utils::invokeProtectedMethod(&controller::Delegate::onAecpRetry, _controllerDelegate, &_controllerInterface, entityID);
+	utils::invokeProtectedMethod(&talker::Delegate::onAecpRetry, _talkerDelegate, &_talkerInterface, entityID);
 }
 
 void CapabilityDelegate::onAecpTimeout(protocol::ProtocolInterface* const /*pi*/, UniqueIdentifier const& entityID) noexcept
 {
 	// Statistics
-	utils::invokeProtectedMethod(&controller::Delegate::onAecpTimeout, _controllerDelegate, &_controllerInterface, entityID);
+	utils::invokeProtectedMethod(&talker::Delegate::onAecpTimeout, _talkerDelegate, &_talkerInterface, entityID);
 }
 
 void CapabilityDelegate::onAecpUnexpectedResponse(protocol::ProtocolInterface* const /*pi*/, UniqueIdentifier const& entityID) noexcept
 {
 	// Statistics
-	utils::invokeProtectedMethod(&controller::Delegate::onAecpUnexpectedResponse, _controllerDelegate, &_controllerInterface, entityID);
+	utils::invokeProtectedMethod(&talker::Delegate::onAecpUnexpectedResponse, _talkerDelegate, &_talkerInterface, entityID);
 }
 
 void CapabilityDelegate::onAecpResponseTime(protocol::ProtocolInterface* const /*pi*/, UniqueIdentifier const& entityID, std::chrono::milliseconds const& responseTime) noexcept
 {
 	// Statistics
-	utils::invokeProtectedMethod(&controller::Delegate::onAecpResponseTime, _controllerDelegate, &_controllerInterface, entityID, responseTime);
+	utils::invokeProtectedMethod(&talker::Delegate::onAecpResponseTime, _talkerDelegate, &_talkerInterface, entityID, responseTime);
 }
 
 /* ************************************************************************** */
 /* Internal methods                                                           */
 /* ************************************************************************** */
-bool CapabilityDelegate::isResponseForController(protocol::AcmpMessageType const messageType) const noexcept
+bool CapabilityDelegate::isResponseForTalker(protocol::AcmpMessageType const messageType) const noexcept
 {
 	if (messageType == protocol::AcmpMessageType::ConnectRxResponse || messageType == protocol::AcmpMessageType::DisconnectRxResponse || messageType == protocol::AcmpMessageType::GetRxStateResponse || messageType == protocol::AcmpMessageType::GetTxConnectionResponse)
 		return true;
@@ -1688,7 +1689,7 @@ void CapabilityDelegate::sendAemAecpCommand(UniqueIdentifier const targetEntityI
 		return;
 	}
 
-	LocalEntityImpl<>::sendAemAecpCommand(_protocolInterface, _controllerID, targetEntityID, targetMacAddress, commandType, payload, payloadLength,
+	LocalEntityImpl<>::sendAemAecpCommand(_protocolInterface, _talkerID, targetEntityID, targetMacAddress, commandType, payload, payloadLength,
 		[this, onErrorCallback, answerCallback](protocol::Aecpdu const* const response, LocalEntity::AemCommandStatus const status)
 		{
 			if (!!status)
@@ -1727,7 +1728,7 @@ void CapabilityDelegate::sendAaAecpCommand(UniqueIdentifier const targetEntityID
 		return;
 	}
 
-	LocalEntityImpl<>::sendAaAecpCommand(_protocolInterface, _controllerID, targetEntityID, targetMacAddress, tlvs,
+	LocalEntityImpl<>::sendAaAecpCommand(_protocolInterface, _talkerID, targetEntityID, targetMacAddress, tlvs,
 		[this, onErrorCallback, answerCallback](protocol::Aecpdu const* const response, LocalEntity::AaCommandStatus const status)
 		{
 			if (!!status)
@@ -1766,7 +1767,7 @@ void CapabilityDelegate::sendMvuAecpCommand(UniqueIdentifier const targetEntityI
 		return;
 	}
 
-	LocalEntityImpl<>::sendMvuAecpCommand(_protocolInterface, _controllerID, targetEntityID, targetMacAddress, commandType, payload, payloadLength,
+	LocalEntityImpl<>::sendMvuAecpCommand(_protocolInterface, _talkerID, targetEntityID, targetMacAddress, commandType, payload, payloadLength,
 		[this, onErrorCallback, answerCallback](protocol::Aecpdu const* const response, LocalEntity::MvuCommandStatus const status)
 		{
 			if (!!status)
@@ -1782,7 +1783,7 @@ void CapabilityDelegate::sendMvuAecpCommand(UniqueIdentifier const targetEntityI
 
 void CapabilityDelegate::sendAcmpCommand(protocol::AcmpMessageType const messageType, UniqueIdentifier const talkerEntityID, model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, model::StreamIndex const listenerStreamIndex, std::uint16_t const connectionIndex, LocalEntityImpl<>::OnACMPErrorCallback const& onErrorCallback, LocalEntityImpl<>::AnswerCallback const& answerCallback) const noexcept
 {
-	LocalEntityImpl<>::sendAcmpCommand(_protocolInterface, messageType, _controllerID, talkerEntityID, talkerStreamIndex, listenerEntityID, listenerStreamIndex, connectionIndex,
+	LocalEntityImpl<>::sendAcmpCommand(_protocolInterface, messageType, _talkerID, talkerEntityID, talkerStreamIndex, listenerEntityID, listenerStreamIndex, connectionIndex,
 		[this, onErrorCallback, answerCallback](protocol::Acmpdu const* const response, LocalEntity::ControlStatus const status)
 		{
 			if (!!status)
@@ -1801,10 +1802,10 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 	auto const& aem = static_cast<protocol::AemAecpdu const&>(*response);
 	auto const status = static_cast<LocalEntity::AemCommandStatus>(aem.getStatus().getValue()); // We have to convert protocol status to our extended status
 
-	static std::unordered_map<protocol::AemCommandType::value_type, std::function<void(controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)>> s_Dispatch
+	static std::unordered_map<protocol::AemCommandType::value_type, std::function<void(talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)>> s_Dispatch
 	{
 		// Acquire Entity
-		{ protocol::AemCommandType::AcquireEntity.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::AcquireEntity.getValue(), [](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -1821,24 +1822,24 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 
 				if ((flags & protocol::AemAcquireEntityFlags::Release) == protocol::AemAcquireEntityFlags::Release)
 				{
-					answerCallback.invoke<controller::Interface::ReleaseEntityHandler>(controllerInterface, targetID, status, ownerID, descriptorType, descriptorIndex);
+					answerCallback.invoke<talker::Interface::ReleaseEntityHandler>(talkerInterface, targetID, status, ownerID, descriptorType, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onEntityReleased, delegate, controllerInterface, targetID, ownerID, descriptorType, descriptorIndex);
+						utils::invokeProtectedMethod(&talker::Delegate::onEntityReleased, delegate, talkerInterface, targetID, ownerID, descriptorType, descriptorIndex);
 					}
 				}
 				else
 				{
-					answerCallback.invoke<controller::Interface::AcquireEntityHandler>(controllerInterface, targetID, status, ownerID, descriptorType, descriptorIndex);
+					answerCallback.invoke<talker::Interface::AcquireEntityHandler>(talkerInterface, targetID, status, ownerID, descriptorType, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onEntityAcquired, delegate, controllerInterface, targetID, ownerID, descriptorType, descriptorIndex);
+						utils::invokeProtectedMethod(&talker::Delegate::onEntityAcquired, delegate, talkerInterface, targetID, ownerID, descriptorType, descriptorIndex);
 					}
 				}
 			}
 		},
 		// Lock Entity
-		{ protocol::AemCommandType::LockEntity.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::LockEntity.getValue(), [](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -1855,38 +1856,31 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 
 				if ((flags & protocol::AemLockEntityFlags::Unlock) == protocol::AemLockEntityFlags::Unlock)
 				{
-					answerCallback.invoke<controller::Interface::UnlockEntityHandler>(controllerInterface, targetID, status, lockedID, descriptorType, descriptorIndex);
+					answerCallback.invoke<talker::Interface::UnlockEntityHandler>(talkerInterface, targetID, status, lockedID, descriptorType, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onEntityUnlocked, delegate, controllerInterface, targetID, lockedID, descriptorType, descriptorIndex);
+						utils::invokeProtectedMethod(&talker::Delegate::onEntityUnlocked, delegate, talkerInterface, targetID, lockedID, descriptorType, descriptorIndex);
 					}
 				}
 				else
 				{
-					answerCallback.invoke<controller::Interface::LockEntityHandler>(controllerInterface, targetID, status, lockedID, descriptorType, descriptorIndex);
+					answerCallback.invoke<talker::Interface::LockEntityHandler>(talkerInterface, targetID, status, lockedID, descriptorType, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onEntityLocked, delegate, controllerInterface, targetID, lockedID, descriptorType, descriptorIndex);
+						utils::invokeProtectedMethod(&talker::Delegate::onEntityLocked, delegate, talkerInterface, targetID, lockedID, descriptorType, descriptorIndex);
 					}
 				}
 			}
 		},
 		// Entity Available
-		{ protocol::AemCommandType::EntityAvailable.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::EntityAvailable.getValue(), [](talker::Delegate* const /*delegate*/, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 				auto const targetID = aem.getTargetEntityID();
-				answerCallback.invoke<controller::Interface::QueryEntityAvailableHandler>(controllerInterface, targetID, status);
-			}
-		},
-		// Controller Available
-		{ protocol::AemCommandType::ControllerAvailable.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
-			{
-				auto const targetID = aem.getTargetEntityID();
-				answerCallback.invoke<controller::Interface::QueryControllerAvailableHandler>(controllerInterface, targetID, status);
+				answerCallback.invoke<talker::Interface::QueryEntityAvailableHandler>(talkerInterface, targetID, status);
 			}
 		},
 		// Read Descriptor
-		{ protocol::AemCommandType::ReadDescriptor.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::ReadDescriptor.getValue(), [](talker::Delegate* const /*delegate*/, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 				auto const payload = aem.getPayload();
 		// Deserialize payload
@@ -1910,7 +1904,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						// Deserialize entity descriptor
 						auto entityDescriptor = protocol::aemPayload::deserializeReadEntityDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::EntityDescriptorHandler>(controllerInterface, targetID, status, entityDescriptor);
+						answerCallback.invoke<talker::Interface::EntityDescriptorHandler>(talkerInterface, targetID, status, entityDescriptor);
 						break;
 					}
 
@@ -1919,7 +1913,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						// Deserialize configuration descriptor
 						auto configurationDescriptor = protocol::aemPayload::deserializeReadConfigurationDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::ConfigurationDescriptorHandler>(controllerInterface, targetID, status, static_cast<model::ConfigurationIndex>(descriptorIndex), configurationDescriptor); // Passing descriptorIndex as ConfigurationIndex here is NOT an error. See 7.4.5.1
+						answerCallback.invoke<talker::Interface::ConfigurationDescriptorHandler>(talkerInterface, targetID, status, static_cast<model::ConfigurationIndex>(descriptorIndex), configurationDescriptor); // Passing descriptorIndex as ConfigurationIndex here is NOT an error. See 7.4.5.1
 						break;
 					}
 
@@ -1928,7 +1922,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						// Deserialize audio unit descriptor
 						auto audioUnitDescriptor = protocol::aemPayload::deserializeReadAudioUnitDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::AudioUnitDescriptorHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, audioUnitDescriptor);
+						answerCallback.invoke<talker::Interface::AudioUnitDescriptorHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, audioUnitDescriptor);
 						break;
 					}
 
@@ -1937,7 +1931,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						// Deserialize stream input descriptor
 						auto streamDescriptor = protocol::aemPayload::deserializeReadStreamDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::StreamInputDescriptorHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, streamDescriptor);
+						answerCallback.invoke<talker::Interface::StreamInputDescriptorHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, streamDescriptor);
 						break;
 					}
 
@@ -1946,7 +1940,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						// Deserialize stream output descriptor
 						auto streamDescriptor = protocol::aemPayload::deserializeReadStreamDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::StreamOutputDescriptorHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, streamDescriptor);
+						answerCallback.invoke<talker::Interface::StreamOutputDescriptorHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, streamDescriptor);
 						break;
 					}
 
@@ -1955,7 +1949,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						// Deserialize jack input descriptor
 						auto jackDescriptor = protocol::aemPayload::deserializeReadJackDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::JackInputDescriptorHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, jackDescriptor);
+						answerCallback.invoke<talker::Interface::JackInputDescriptorHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, jackDescriptor);
 						break;
 					}
 
@@ -1964,7 +1958,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						// Deserialize jack output descriptor
 						auto jackDescriptor = protocol::aemPayload::deserializeReadJackDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::JackOutputDescriptorHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, jackDescriptor);
+						answerCallback.invoke<talker::Interface::JackOutputDescriptorHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, jackDescriptor);
 						break;
 					}
 
@@ -1973,7 +1967,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						// Deserialize avb interface descriptor
 						auto avbInterfaceDescriptor = protocol::aemPayload::deserializeReadAvbInterfaceDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::AvbInterfaceDescriptorHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, avbInterfaceDescriptor);
+						answerCallback.invoke<talker::Interface::AvbInterfaceDescriptorHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, avbInterfaceDescriptor);
 						break;
 					}
 
@@ -1982,7 +1976,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						// Deserialize clock source descriptor
 						auto clockSourceDescriptor = protocol::aemPayload::deserializeReadClockSourceDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::ClockSourceDescriptorHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, clockSourceDescriptor);
+						answerCallback.invoke<talker::Interface::ClockSourceDescriptorHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, clockSourceDescriptor);
 						break;
 					}
 
@@ -1991,7 +1985,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						// Deserialize memory object descriptor
 						auto memoryObjectDescriptor = protocol::aemPayload::deserializeReadMemoryObjectDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::MemoryObjectDescriptorHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, memoryObjectDescriptor);
+						answerCallback.invoke<talker::Interface::MemoryObjectDescriptorHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, memoryObjectDescriptor);
 						break;
 					}
 
@@ -2000,7 +1994,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						// Deserialize locale descriptor
 						auto localeDescriptor = protocol::aemPayload::deserializeReadLocaleDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::LocaleDescriptorHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, localeDescriptor);
+						answerCallback.invoke<talker::Interface::LocaleDescriptorHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, localeDescriptor);
 						break;
 					}
 
@@ -2009,7 +2003,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						// Deserialize strings descriptor
 						auto stringsDescriptor = protocol::aemPayload::deserializeReadStringsDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::StringsDescriptorHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, stringsDescriptor);
+						answerCallback.invoke<talker::Interface::StringsDescriptorHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, stringsDescriptor);
 						break;
 					}
 
@@ -2018,7 +2012,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						// Deserialize stream port descriptor
 						auto streamPortDescriptor = protocol::aemPayload::deserializeReadStreamPortDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::StreamPortInputDescriptorHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, streamPortDescriptor);
+						answerCallback.invoke<talker::Interface::StreamPortInputDescriptorHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, streamPortDescriptor);
 						break;
 					}
 
@@ -2027,7 +2021,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						// Deserialize stream port descriptor
 						auto streamPortDescriptor = protocol::aemPayload::deserializeReadStreamPortDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::StreamPortOutputDescriptorHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, streamPortDescriptor);
+						answerCallback.invoke<talker::Interface::StreamPortOutputDescriptorHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, streamPortDescriptor);
 						break;
 					}
 
@@ -2036,7 +2030,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						// Deserialize external port descriptor
 						auto externalPortDescriptor = protocol::aemPayload::deserializeReadExternalPortDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::ExternalPortInputDescriptorHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, externalPortDescriptor);
+						answerCallback.invoke<talker::Interface::ExternalPortInputDescriptorHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, externalPortDescriptor);
 						break;
 					}
 
@@ -2045,7 +2039,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						// Deserialize external port descriptor
 						auto externalPortDescriptor = protocol::aemPayload::deserializeReadExternalPortDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::ExternalPortOutputDescriptorHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, externalPortDescriptor);
+						answerCallback.invoke<talker::Interface::ExternalPortOutputDescriptorHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, externalPortDescriptor);
 						break;
 					}
 
@@ -2054,7 +2048,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						// Deserialize internal port descriptor
 						auto internalPortDescriptor = protocol::aemPayload::deserializeReadInternalPortDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::InternalPortInputDescriptorHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, internalPortDescriptor);
+						answerCallback.invoke<talker::Interface::InternalPortInputDescriptorHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, internalPortDescriptor);
 						break;
 					}
 
@@ -2063,7 +2057,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						// Deserialize internal port descriptor
 						auto internalPortDescriptor = protocol::aemPayload::deserializeReadInternalPortDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::InternalPortOutputDescriptorHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, internalPortDescriptor);
+						answerCallback.invoke<talker::Interface::InternalPortOutputDescriptorHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, internalPortDescriptor);
 						break;
 					}
 
@@ -2072,7 +2066,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						// Deserialize audio cluster descriptor
 						auto audioClusterDescriptor = protocol::aemPayload::deserializeReadAudioClusterDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::AudioClusterDescriptorHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, audioClusterDescriptor);
+						answerCallback.invoke<talker::Interface::AudioClusterDescriptorHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, audioClusterDescriptor);
 						break;
 					}
 
@@ -2081,7 +2075,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						// Deserialize audio map descriptor
 						auto audioMapDescriptor = protocol::aemPayload::deserializeReadAudioMapDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::AudioMapDescriptorHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, audioMapDescriptor);
+						answerCallback.invoke<talker::Interface::AudioMapDescriptorHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, audioMapDescriptor);
 						break;
 					}
 
@@ -2090,7 +2084,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						// Deserialize clock domain descriptor
 						auto clockDomainDescriptor = protocol::aemPayload::deserializeReadClockDomainDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::ClockDomainDescriptorHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, clockDomainDescriptor);
+						answerCallback.invoke<talker::Interface::ClockDomainDescriptorHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, clockDomainDescriptor);
 						break;
 					}
 
@@ -2102,7 +2096,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		},
 		// Write Descriptor
 		// Set Configuration
-		{ protocol::AemCommandType::SetConfiguration.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::SetConfiguration.getValue(), [](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -2115,15 +2109,15 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
-				answerCallback.invoke<controller::Interface::SetConfigurationHandler>(controllerInterface, targetID, status, configurationIndex);
+				answerCallback.invoke<talker::Interface::SetConfigurationHandler>(talkerInterface, targetID, status, configurationIndex);
 				if (aem.getUnsolicited() && delegate && !!status)
 				{
-					utils::invokeProtectedMethod(&controller::Delegate::onConfigurationChanged, delegate, controllerInterface, targetID, configurationIndex);
+					utils::invokeProtectedMethod(&talker::Delegate::onConfigurationChanged, delegate, talkerInterface, targetID, configurationIndex);
 				}
 			}
 		},
 		// Get Configuration
-		{ protocol::AemCommandType::GetConfiguration.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::GetConfiguration.getValue(), [](talker::Delegate* const /*delegate*/, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -2136,11 +2130,11 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
-				answerCallback.invoke<controller::Interface::GetConfigurationHandler>(controllerInterface, targetID, status, configurationIndex);
+				answerCallback.invoke<talker::Interface::GetConfigurationHandler>(talkerInterface, targetID, status, configurationIndex);
 			}
 		},
 		// Set Stream Format
-		{ protocol::AemCommandType::SetStreamFormat.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::SetStreamFormat.getValue(), [](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -2157,18 +2151,18 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::StreamInput)
 				{
-					answerCallback.invoke<controller::Interface::SetStreamInputFormatHandler>(controllerInterface, targetID, status, descriptorIndex, streamFormat);
+					answerCallback.invoke<talker::Interface::SetStreamInputFormatHandler>(talkerInterface, targetID, status, descriptorIndex, streamFormat);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onStreamInputFormatChanged, delegate, controllerInterface, targetID, descriptorIndex, streamFormat);
+						utils::invokeProtectedMethod(&talker::Delegate::onStreamInputFormatChanged, delegate, talkerInterface, targetID, descriptorIndex, streamFormat);
 					}
 				}
 				else if (descriptorType == model::DescriptorType::StreamOutput)
 				{
-					answerCallback.invoke<controller::Interface::SetStreamOutputFormatHandler>(controllerInterface, targetID, status, descriptorIndex, streamFormat);
+					answerCallback.invoke<talker::Interface::SetStreamOutputFormatHandler>(talkerInterface, targetID, status, descriptorIndex, streamFormat);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onStreamOutputFormatChanged, delegate, controllerInterface, targetID, descriptorIndex, streamFormat);
+						utils::invokeProtectedMethod(&talker::Delegate::onStreamOutputFormatChanged, delegate, talkerInterface, targetID, descriptorIndex, streamFormat);
 					}
 				}
 				else
@@ -2176,7 +2170,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 			}
 		},
 		// Get Stream Format
-		{ protocol::AemCommandType::GetStreamFormat.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::GetStreamFormat.getValue(), [](talker::Delegate* const /*delegate*/, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -2193,18 +2187,18 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::StreamInput)
 				{
-					answerCallback.invoke<controller::Interface::GetStreamInputFormatHandler>(controllerInterface, targetID, status, descriptorIndex, streamFormat);
+					answerCallback.invoke<talker::Interface::GetStreamInputFormatHandler>(talkerInterface, targetID, status, descriptorIndex, streamFormat);
 				}
 				else if (descriptorType == model::DescriptorType::StreamOutput)
 				{
-					answerCallback.invoke<controller::Interface::GetStreamOutputFormatHandler>(controllerInterface, targetID, status, descriptorIndex, streamFormat);
+					answerCallback.invoke<talker::Interface::GetStreamOutputFormatHandler>(talkerInterface, targetID, status, descriptorIndex, streamFormat);
 				}
 				else
 					throw InvalidDescriptorTypeException();
 			}
 		},
 		// Set Stream Info
-		{ protocol::AemCommandType::SetStreamInfo.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::SetStreamInfo.getValue(), [](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -2221,18 +2215,18 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::StreamInput)
 				{
-					answerCallback.invoke<controller::Interface::SetStreamInputInfoHandler>(controllerInterface, targetID, status, descriptorIndex, streamInfo);
+					answerCallback.invoke<talker::Interface::SetStreamInputInfoHandler>(talkerInterface, targetID, status, descriptorIndex, streamInfo);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onStreamInputInfoChanged, delegate, controllerInterface, targetID, descriptorIndex, streamInfo, false);
+						utils::invokeProtectedMethod(&talker::Delegate::onStreamInputInfoChanged, delegate, talkerInterface, targetID, descriptorIndex, streamInfo, false);
 					}
 				}
 				else if (descriptorType == model::DescriptorType::StreamOutput)
 				{
-					answerCallback.invoke<controller::Interface::SetStreamOutputInfoHandler>(controllerInterface, targetID, status, descriptorIndex, streamInfo);
+					answerCallback.invoke<talker::Interface::SetStreamOutputInfoHandler>(talkerInterface, targetID, status, descriptorIndex, streamInfo);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onStreamOutputInfoChanged, delegate, controllerInterface, targetID, descriptorIndex, streamInfo, false);
+						utils::invokeProtectedMethod(&talker::Delegate::onStreamOutputInfoChanged, delegate, talkerInterface, targetID, descriptorIndex, streamInfo, false);
 					}
 				}
 				else
@@ -2240,7 +2234,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 			}
 		},
 		// Get Stream Info
-		{ protocol::AemCommandType::GetStreamInfo.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::GetStreamInfo.getValue(), [](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -2257,18 +2251,18 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::StreamInput)
 				{
-					answerCallback.invoke<controller::Interface::GetStreamInputInfoHandler>(controllerInterface, targetID, status, descriptorIndex, streamInfo);
+					answerCallback.invoke<talker::Interface::GetStreamInputInfoHandler>(talkerInterface, targetID, status, descriptorIndex, streamInfo);
 					if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (Clause 7.5.2)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onStreamInputInfoChanged, delegate, controllerInterface, targetID, descriptorIndex, streamInfo, true);
+						utils::invokeProtectedMethod(&talker::Delegate::onStreamInputInfoChanged, delegate, talkerInterface, targetID, descriptorIndex, streamInfo, true);
 					}
 				}
 				else if (descriptorType == model::DescriptorType::StreamOutput)
 				{
-					answerCallback.invoke<controller::Interface::GetStreamOutputInfoHandler>(controllerInterface, targetID, status, descriptorIndex, streamInfo);
+					answerCallback.invoke<talker::Interface::GetStreamOutputInfoHandler>(talkerInterface, targetID, status, descriptorIndex, streamInfo);
 					if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (Clause 7.5.2)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onStreamOutputInfoChanged, delegate, controllerInterface, targetID, descriptorIndex, streamInfo, true);
+						utils::invokeProtectedMethod(&talker::Delegate::onStreamOutputInfoChanged, delegate, talkerInterface, targetID, descriptorIndex, streamInfo, true);
 					}
 				}
 				else
@@ -2276,7 +2270,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 			}
 		},
 		// Set Name
-		{ protocol::AemCommandType::SetName.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::SetName.getValue(), [](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -2308,17 +2302,17 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						switch (nameIndex)
 						{
 							case 0: // entity_name
-								answerCallback.invoke<controller::Interface::SetEntityNameHandler>(controllerInterface, targetID, status, name);
+								answerCallback.invoke<talker::Interface::SetEntityNameHandler>(talkerInterface, targetID, status, name);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									utils::invokeProtectedMethod(&controller::Delegate::onEntityNameChanged, delegate, controllerInterface, targetID, name);
+									utils::invokeProtectedMethod(&talker::Delegate::onEntityNameChanged, delegate, talkerInterface, targetID, name);
 								}
 								break;
 							case 1: // group_name
-								answerCallback.invoke<controller::Interface::SetEntityGroupNameHandler>(controllerInterface, targetID, status, name);
+								answerCallback.invoke<talker::Interface::SetEntityGroupNameHandler>(talkerInterface, targetID, status, name);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									utils::invokeProtectedMethod(&controller::Delegate::onEntityGroupNameChanged, delegate, controllerInterface, targetID, name);
+									utils::invokeProtectedMethod(&talker::Delegate::onEntityGroupNameChanged, delegate, talkerInterface, targetID, name);
 								}
 								break;
 							default:
@@ -2336,10 +2330,10 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						switch (nameIndex)
 						{
 							case 0: // object_name
-								answerCallback.invoke<controller::Interface::SetConfigurationNameHandler>(controllerInterface, targetID, status, descriptorIndex, name);
+								answerCallback.invoke<talker::Interface::SetConfigurationNameHandler>(talkerInterface, targetID, status, descriptorIndex, name);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									utils::invokeProtectedMethod(&controller::Delegate::onConfigurationNameChanged, delegate, controllerInterface, targetID, descriptorIndex, name);
+									utils::invokeProtectedMethod(&talker::Delegate::onConfigurationNameChanged, delegate, talkerInterface, targetID, descriptorIndex, name);
 								}
 								break;
 							default:
@@ -2353,10 +2347,10 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						switch (nameIndex)
 						{
 							case 0: // object_name
-								answerCallback.invoke<controller::Interface::SetAudioUnitNameHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								answerCallback.invoke<talker::Interface::SetAudioUnitNameHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, name);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									utils::invokeProtectedMethod(&controller::Delegate::onAudioUnitNameChanged, delegate, controllerInterface, targetID, configurationIndex, descriptorIndex, name);
+									utils::invokeProtectedMethod(&talker::Delegate::onAudioUnitNameChanged, delegate, talkerInterface, targetID, configurationIndex, descriptorIndex, name);
 								}
 								break;
 							default:
@@ -2370,10 +2364,10 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						switch (nameIndex)
 						{
 							case 0: // stream_name
-								answerCallback.invoke<controller::Interface::SetStreamInputNameHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								answerCallback.invoke<talker::Interface::SetStreamInputNameHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, name);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									utils::invokeProtectedMethod(&controller::Delegate::onStreamInputNameChanged, delegate, controllerInterface, targetID, configurationIndex, descriptorIndex, name);
+									utils::invokeProtectedMethod(&talker::Delegate::onStreamInputNameChanged, delegate, talkerInterface, targetID, configurationIndex, descriptorIndex, name);
 								}
 								break;
 							default:
@@ -2387,10 +2381,10 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						switch (nameIndex)
 						{
 							case 0: // stream_name
-								answerCallback.invoke<controller::Interface::SetStreamOutputNameHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								answerCallback.invoke<talker::Interface::SetStreamOutputNameHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, name);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									utils::invokeProtectedMethod(&controller::Delegate::onStreamOutputNameChanged, delegate, controllerInterface, targetID, configurationIndex, descriptorIndex, name);
+									utils::invokeProtectedMethod(&talker::Delegate::onStreamOutputNameChanged, delegate, talkerInterface, targetID, configurationIndex, descriptorIndex, name);
 								}
 								break;
 							default:
@@ -2404,10 +2398,10 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						switch (nameIndex)
 						{
 							case 0: // object_name
-								answerCallback.invoke<controller::Interface::SetAvbInterfaceNameHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								answerCallback.invoke<talker::Interface::SetAvbInterfaceNameHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, name);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									utils::invokeProtectedMethod(&controller::Delegate::onAvbInterfaceNameChanged, delegate, controllerInterface, targetID, configurationIndex, descriptorIndex, name);
+									utils::invokeProtectedMethod(&talker::Delegate::onAvbInterfaceNameChanged, delegate, talkerInterface, targetID, configurationIndex, descriptorIndex, name);
 								}
 								break;
 							default:
@@ -2421,10 +2415,10 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						switch (nameIndex)
 						{
 							case 0: // object_name
-								answerCallback.invoke<controller::Interface::SetClockSourceNameHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								answerCallback.invoke<talker::Interface::SetClockSourceNameHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, name);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									utils::invokeProtectedMethod(&controller::Delegate::onClockSourceNameChanged, delegate, controllerInterface, targetID, configurationIndex, descriptorIndex, name);
+									utils::invokeProtectedMethod(&talker::Delegate::onClockSourceNameChanged, delegate, talkerInterface, targetID, configurationIndex, descriptorIndex, name);
 								}
 								break;
 							default:
@@ -2438,10 +2432,10 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						switch (nameIndex)
 						{
 							case 0: // object_name
-								answerCallback.invoke<controller::Interface::SetMemoryObjectNameHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								answerCallback.invoke<talker::Interface::SetMemoryObjectNameHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, name);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									utils::invokeProtectedMethod(&controller::Delegate::onMemoryObjectNameChanged, delegate, controllerInterface, targetID, configurationIndex, descriptorIndex, name);
+									utils::invokeProtectedMethod(&talker::Delegate::onMemoryObjectNameChanged, delegate, talkerInterface, targetID, configurationIndex, descriptorIndex, name);
 								}
 								break;
 							default:
@@ -2455,10 +2449,10 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						switch (nameIndex)
 						{
 							case 0: // object_name
-								answerCallback.invoke<controller::Interface::SetAudioClusterNameHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								answerCallback.invoke<talker::Interface::SetAudioClusterNameHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, name);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									utils::invokeProtectedMethod(&controller::Delegate::onAudioClusterNameChanged, delegate, controllerInterface, targetID, configurationIndex, descriptorIndex, name);
+									utils::invokeProtectedMethod(&talker::Delegate::onAudioClusterNameChanged, delegate, talkerInterface, targetID, configurationIndex, descriptorIndex, name);
 								}
 								break;
 							default:
@@ -2472,10 +2466,10 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						switch (nameIndex)
 						{
 							case 0: // object_name
-								answerCallback.invoke<controller::Interface::SetClockDomainNameHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								answerCallback.invoke<talker::Interface::SetClockDomainNameHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, name);
 								if (aem.getUnsolicited() && delegate && !!status)
 								{
-									utils::invokeProtectedMethod(&controller::Delegate::onClockDomainNameChanged, delegate, controllerInterface, targetID, configurationIndex, descriptorIndex, name);
+									utils::invokeProtectedMethod(&talker::Delegate::onClockDomainNameChanged, delegate, talkerInterface, targetID, configurationIndex, descriptorIndex, name);
 								}
 								break;
 							default:
@@ -2491,7 +2485,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 			}
 		},
 		// Get Name
-		{ protocol::AemCommandType::GetName.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::GetName.getValue(), [](talker::Delegate* const /*delegate*/, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -2523,10 +2517,10 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						switch (nameIndex)
 						{
 							case 0: // entity_name
-								answerCallback.invoke<controller::Interface::GetEntityNameHandler>(controllerInterface, targetID, status, name);
+								answerCallback.invoke<talker::Interface::GetEntityNameHandler>(talkerInterface, targetID, status, name);
 								break;
 							case 1: // group_name
-								answerCallback.invoke<controller::Interface::GetEntityGroupNameHandler>(controllerInterface, targetID, status, name);
+								answerCallback.invoke<talker::Interface::GetEntityGroupNameHandler>(talkerInterface, targetID, status, name);
 								break;
 							default:
 								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for Entity Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
@@ -2543,7 +2537,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						switch (nameIndex)
 						{
 							case 0: // object_name
-								answerCallback.invoke<controller::Interface::GetConfigurationNameHandler>(controllerInterface, targetID, status, descriptorIndex, name);
+								answerCallback.invoke<talker::Interface::GetConfigurationNameHandler>(talkerInterface, targetID, status, descriptorIndex, name);
 								break;
 							default:
 								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for Configuration Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
@@ -2556,7 +2550,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						switch (nameIndex)
 						{
 							case 0: // object_name
-								answerCallback.invoke<controller::Interface::GetAudioUnitNameHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								answerCallback.invoke<talker::Interface::GetAudioUnitNameHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, name);
 								break;
 							default:
 								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for AudioUnit Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
@@ -2569,7 +2563,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						switch (nameIndex)
 						{
 							case 0: // object_name
-								answerCallback.invoke<controller::Interface::GetStreamInputNameHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								answerCallback.invoke<talker::Interface::GetStreamInputNameHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, name);
 								break;
 							default:
 								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for StreamInput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
@@ -2582,7 +2576,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						switch (nameIndex)
 						{
 							case 0: // object_name
-								answerCallback.invoke<controller::Interface::GetStreamOutputNameHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								answerCallback.invoke<talker::Interface::GetStreamOutputNameHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, name);
 								break;
 							default:
 								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for StreamOutput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
@@ -2595,7 +2589,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						switch (nameIndex)
 						{
 							case 0: // object_name
-								answerCallback.invoke<controller::Interface::GetAvbInterfaceNameHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								answerCallback.invoke<talker::Interface::GetAvbInterfaceNameHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, name);
 								break;
 							default:
 								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for AvbInterface Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
@@ -2608,7 +2602,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						switch (nameIndex)
 						{
 							case 0: // object_name
-								answerCallback.invoke<controller::Interface::GetClockSourceNameHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								answerCallback.invoke<talker::Interface::GetClockSourceNameHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, name);
 								break;
 							default:
 								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for ClockSource Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
@@ -2621,7 +2615,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						switch (nameIndex)
 						{
 							case 0: // object_name
-								answerCallback.invoke<controller::Interface::GetMemoryObjectNameHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								answerCallback.invoke<talker::Interface::GetMemoryObjectNameHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, name);
 								break;
 							default:
 								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for MemoryObject Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
@@ -2634,7 +2628,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						switch (nameIndex)
 						{
 							case 0: // object_name
-								answerCallback.invoke<controller::Interface::GetAudioClusterNameHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								answerCallback.invoke<talker::Interface::GetAudioClusterNameHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, name);
 								break;
 							default:
 								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for AudioCluster Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
@@ -2647,7 +2641,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 						switch (nameIndex)
 						{
 							case 0: // object_name
-								answerCallback.invoke<controller::Interface::GetClockDomainNameHandler>(controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								answerCallback.invoke<talker::Interface::GetClockDomainNameHandler>(talkerInterface, targetID, status, configurationIndex, descriptorIndex, name);
 								break;
 							default:
 								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for ClockDomain Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
@@ -2662,7 +2656,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 			}
 		},
 		// Set Sampling Rate
-		{ protocol::AemCommandType::SetSamplingRate.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::SetSamplingRate.getValue(), [](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -2679,26 +2673,26 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::AudioUnit)
 				{
-					answerCallback.invoke<controller::Interface::SetAudioUnitSamplingRateHandler>(controllerInterface, targetID, status, descriptorIndex, samplingRate);
+					answerCallback.invoke<talker::Interface::SetAudioUnitSamplingRateHandler>(talkerInterface, targetID, status, descriptorIndex, samplingRate);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onAudioUnitSamplingRateChanged, delegate, controllerInterface, targetID, descriptorIndex, samplingRate);
+						utils::invokeProtectedMethod(&talker::Delegate::onAudioUnitSamplingRateChanged, delegate, talkerInterface, targetID, descriptorIndex, samplingRate);
 					}
 				}
 				else if (descriptorType == model::DescriptorType::VideoCluster)
 				{
-					answerCallback.invoke<controller::Interface::SetVideoClusterSamplingRateHandler>(controllerInterface, targetID, status, descriptorIndex, samplingRate);
+					answerCallback.invoke<talker::Interface::SetVideoClusterSamplingRateHandler>(talkerInterface, targetID, status, descriptorIndex, samplingRate);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onVideoClusterSamplingRateChanged, delegate, controllerInterface, targetID, descriptorIndex, samplingRate);
+						utils::invokeProtectedMethod(&talker::Delegate::onVideoClusterSamplingRateChanged, delegate, talkerInterface, targetID, descriptorIndex, samplingRate);
 					}
 				}
 				else if (descriptorType == model::DescriptorType::SensorCluster)
 				{
-					answerCallback.invoke<controller::Interface::SetSensorClusterSamplingRateHandler>(controllerInterface, targetID, status, descriptorIndex, samplingRate);
+					answerCallback.invoke<talker::Interface::SetSensorClusterSamplingRateHandler>(talkerInterface, targetID, status, descriptorIndex, samplingRate);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onSensorClusterSamplingRateChanged, delegate, controllerInterface, targetID, descriptorIndex , samplingRate);
+						utils::invokeProtectedMethod(&talker::Delegate::onSensorClusterSamplingRateChanged, delegate, talkerInterface, targetID, descriptorIndex , samplingRate);
 					}
 				}
 				else
@@ -2706,7 +2700,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 			}
 		},
 		// Get Sampling Rate
-		{ protocol::AemCommandType::GetSamplingRate.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::GetSamplingRate.getValue(), [](talker::Delegate* const /*delegate*/, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -2723,22 +2717,22 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::AudioUnit)
 				{
-					answerCallback.invoke<controller::Interface::GetAudioUnitSamplingRateHandler>(controllerInterface, targetID, status, descriptorIndex, samplingRate);
+					answerCallback.invoke<talker::Interface::GetAudioUnitSamplingRateHandler>(talkerInterface, targetID, status, descriptorIndex, samplingRate);
 				}
 				else if (descriptorType == model::DescriptorType::VideoCluster)
 				{
-					answerCallback.invoke<controller::Interface::GetVideoClusterSamplingRateHandler>(controllerInterface, targetID, status, descriptorIndex, samplingRate);
+					answerCallback.invoke<talker::Interface::GetVideoClusterSamplingRateHandler>(talkerInterface, targetID, status, descriptorIndex, samplingRate);
 				}
 				else if (descriptorType == model::DescriptorType::SensorCluster)
 				{
-					answerCallback.invoke<controller::Interface::GetSensorClusterSamplingRateHandler>(controllerInterface, targetID, status, descriptorIndex, samplingRate);
+					answerCallback.invoke<talker::Interface::GetSensorClusterSamplingRateHandler>(talkerInterface, targetID, status, descriptorIndex, samplingRate);
 				}
 				else
 					throw InvalidDescriptorTypeException();
 			}
 		},
 		// Set Clock Source
-		{ protocol::AemCommandType::SetClockSource.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::SetClockSource.getValue(), [](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -2753,15 +2747,15 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
-				answerCallback.invoke<controller::Interface::SetClockSourceHandler>(controllerInterface, targetID, status, descriptorIndex, clockSourceIndex);
+				answerCallback.invoke<talker::Interface::SetClockSourceHandler>(talkerInterface, targetID, status, descriptorIndex, clockSourceIndex);
 				if (aem.getUnsolicited() && delegate && !!status)
 				{
-					utils::invokeProtectedMethod(&controller::Delegate::onClockSourceChanged, delegate, controllerInterface, targetID, descriptorIndex, clockSourceIndex);
+					utils::invokeProtectedMethod(&talker::Delegate::onClockSourceChanged, delegate, talkerInterface, targetID, descriptorIndex, clockSourceIndex);
 				}
 			}
 		},
 		// Get Clock Source
-		{ protocol::AemCommandType::GetClockSource.getValue(),[](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::GetClockSource.getValue(),[](talker::Delegate* const /*delegate*/, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -2776,11 +2770,11 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
-				answerCallback.invoke<controller::Interface::GetClockSourceHandler>(controllerInterface, targetID, status, descriptorIndex, clockSourceIndex);
+				answerCallback.invoke<talker::Interface::GetClockSourceHandler>(talkerInterface, targetID, status, descriptorIndex, clockSourceIndex);
 			}
 		},
 		// Start Streaming
-		{ protocol::AemCommandType::StartStreaming.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::StartStreaming.getValue(), [](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -2796,18 +2790,18 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::StreamInput)
 				{
-					answerCallback.invoke<controller::Interface::StartStreamInputHandler>(controllerInterface, targetID, status, descriptorIndex);
+					answerCallback.invoke<talker::Interface::StartStreamInputHandler>(talkerInterface, targetID, status, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onStreamInputStarted, delegate, controllerInterface, targetID, descriptorIndex);
+						utils::invokeProtectedMethod(&talker::Delegate::onStreamInputStarted, delegate, talkerInterface, targetID, descriptorIndex);
 					}
 				}
 				else if (descriptorType == model::DescriptorType::StreamOutput)
 				{
-					answerCallback.invoke<controller::Interface::StartStreamOutputHandler>(controllerInterface, targetID, status, descriptorIndex);
+					answerCallback.invoke<talker::Interface::StartStreamOutputHandler>(talkerInterface, targetID, status, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onStreamOutputStarted, delegate, controllerInterface, targetID, descriptorIndex);
+						utils::invokeProtectedMethod(&talker::Delegate::onStreamOutputStarted, delegate, talkerInterface, targetID, descriptorIndex);
 					}
 				}
 				else
@@ -2815,7 +2809,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 			}
 		},
 		// Stop Streaming
-		{ protocol::AemCommandType::StopStreaming.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::StopStreaming.getValue(), [](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -2831,18 +2825,18 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::StreamInput)
 				{
-					answerCallback.invoke<controller::Interface::StopStreamInputHandler>(controllerInterface, targetID, status, descriptorIndex);
+					answerCallback.invoke<talker::Interface::StopStreamInputHandler>(talkerInterface, targetID, status, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onStreamInputStopped, delegate, controllerInterface, targetID, descriptorIndex);
+						utils::invokeProtectedMethod(&talker::Delegate::onStreamInputStopped, delegate, talkerInterface, targetID, descriptorIndex);
 					}
 				}
 				else if (descriptorType == model::DescriptorType::StreamOutput)
 				{
-					answerCallback.invoke<controller::Interface::StopStreamOutputHandler>(controllerInterface, targetID, status, descriptorIndex);
+					answerCallback.invoke<talker::Interface::StopStreamOutputHandler>(talkerInterface, targetID, status, descriptorIndex);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onStreamOutputStopped, delegate, controllerInterface, targetID, descriptorIndex);
+						utils::invokeProtectedMethod(&talker::Delegate::onStreamOutputStopped, delegate, talkerInterface, targetID, descriptorIndex);
 					}
 				}
 				else
@@ -2850,28 +2844,28 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 			}
 		},
 		// Register Unsolicited Notifications
-		{ protocol::AemCommandType::RegisterUnsolicitedNotification.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::RegisterUnsolicitedNotification.getValue(), [](talker::Delegate* const /*delegate*/, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 				// Ignore payload size and content, Apple's implementation is bugged and returns too much data
 				auto const targetID = aem.getTargetEntityID();
-				answerCallback.invoke<controller::Interface::RegisterUnsolicitedNotificationsHandler>(controllerInterface, targetID, status);
+				answerCallback.invoke<talker::Interface::RegisterUnsolicitedNotificationsHandler>(talkerInterface, targetID, status);
 			}
 		},
 		// Unregister Unsolicited Notifications
-		{ protocol::AemCommandType::DeregisterUnsolicitedNotification.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::DeregisterUnsolicitedNotification.getValue(), [](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 				// Ignore payload size and content, Apple's implementation is bugged and returns too much data
 				auto const targetID = aem.getTargetEntityID();
 
-				answerCallback.invoke<controller::Interface::UnregisterUnsolicitedNotificationsHandler>(controllerInterface, targetID, status);
+				answerCallback.invoke<talker::Interface::UnregisterUnsolicitedNotificationsHandler>(talkerInterface, targetID, status);
 				if (aem.getUnsolicited() && delegate && !!status)
 				{
-					utils::invokeProtectedMethod(&controller::Delegate::onDeregisteredFromUnsolicitedNotifications, delegate, controllerInterface, targetID);
+					utils::invokeProtectedMethod(&talker::Delegate::onDeregisteredFromUnsolicitedNotifications, delegate, talkerInterface, targetID);
 				}
 			}
 		},
 		// GetAvbInfo
-		{ protocol::AemCommandType::GetAvbInfo.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::GetAvbInfo.getValue(), [](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -2888,10 +2882,10 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::AvbInterface)
 				{
-					answerCallback.invoke<controller::Interface::GetAvbInfoHandler>(controllerInterface, targetID, status, descriptorIndex, avbInfo);
+					answerCallback.invoke<talker::Interface::GetAvbInfoHandler>(talkerInterface, targetID, status, descriptorIndex, avbInfo);
 					if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (Clause 7.5.2)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onAvbInfoChanged, delegate, controllerInterface, targetID, descriptorIndex, avbInfo);
+						utils::invokeProtectedMethod(&talker::Delegate::onAvbInfoChanged, delegate, talkerInterface, targetID, descriptorIndex, avbInfo);
 					}
 				}
 				else
@@ -2899,7 +2893,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 			}
 		},
 		// GetAsPath
-		{ protocol::AemCommandType::GetAsPath.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::GetAsPath.getValue(), [](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -2913,15 +2907,15 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
-				answerCallback.invoke<controller::Interface::GetAsPathHandler>(controllerInterface, targetID, status, descriptorIndex, asPath);
+				answerCallback.invoke<talker::Interface::GetAsPathHandler>(talkerInterface, targetID, status, descriptorIndex, asPath);
 				if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (Clause 7.5.2)
 				{
-					utils::invokeProtectedMethod(&controller::Delegate::onAsPathChanged, delegate, controllerInterface, targetID, descriptorIndex, asPath);
+					utils::invokeProtectedMethod(&talker::Delegate::onAsPathChanged, delegate, talkerInterface, targetID, descriptorIndex, asPath);
 				}
 			}
 		},
 		// GetCounters
-		{ protocol::AemCommandType::GetCounters.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::GetCounters.getValue(), [](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -2943,10 +2937,10 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 					{
 						EntityCounterValidFlags flags;
 						flags.assign(validFlags);
-						answerCallback.invoke<controller::Interface::GetEntityCountersHandler>(controllerInterface, targetID, status, flags, counters);
+						answerCallback.invoke<talker::Interface::GetEntityCountersHandler>(talkerInterface, targetID, status, flags, counters);
 						if (aem.getUnsolicited() && delegate && !!status)
 						{
-							utils::invokeProtectedMethod(&controller::Delegate::onEntityCountersChanged, delegate, controllerInterface, targetID, flags, counters);
+							utils::invokeProtectedMethod(&talker::Delegate::onEntityCountersChanged, delegate, talkerInterface, targetID, flags, counters);
 						}
 						if (descriptorIndex != 0)
 						{
@@ -2958,10 +2952,10 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 					{
 						AvbInterfaceCounterValidFlags flags;
 						flags.assign(validFlags);
-						answerCallback.invoke<controller::Interface::GetAvbInterfaceCountersHandler>(controllerInterface, targetID, status, descriptorIndex, flags, counters);
+						answerCallback.invoke<talker::Interface::GetAvbInterfaceCountersHandler>(talkerInterface, targetID, status, descriptorIndex, flags, counters);
 						if (aem.getUnsolicited() && delegate && !!status)
 						{
-							utils::invokeProtectedMethod(&controller::Delegate::onAvbInterfaceCountersChanged, delegate, controllerInterface, targetID, descriptorIndex, flags, counters);
+							utils::invokeProtectedMethod(&talker::Delegate::onAvbInterfaceCountersChanged, delegate, talkerInterface, targetID, descriptorIndex, flags, counters);
 						}
 						break;
 					}
@@ -2969,10 +2963,10 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 					{
 						ClockDomainCounterValidFlags flags;
 						flags.assign(validFlags);
-						answerCallback.invoke<controller::Interface::GetClockDomainCountersHandler>(controllerInterface, targetID, status, descriptorIndex, flags, counters);
+						answerCallback.invoke<talker::Interface::GetClockDomainCountersHandler>(talkerInterface, targetID, status, descriptorIndex, flags, counters);
 						if (aem.getUnsolicited() && delegate && !!status)
 						{
-							utils::invokeProtectedMethod(&controller::Delegate::onClockDomainCountersChanged, delegate, controllerInterface, targetID, descriptorIndex, flags, counters);
+							utils::invokeProtectedMethod(&talker::Delegate::onClockDomainCountersChanged, delegate, talkerInterface, targetID, descriptorIndex, flags, counters);
 						}
 						break;
 					}
@@ -2980,10 +2974,10 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 					{
 						StreamInputCounterValidFlags flags;
 						flags.assign(validFlags);
-						answerCallback.invoke<controller::Interface::GetStreamInputCountersHandler>(controllerInterface, targetID, status, descriptorIndex, flags, counters);
+						answerCallback.invoke<talker::Interface::GetStreamInputCountersHandler>(talkerInterface, targetID, status, descriptorIndex, flags, counters);
 						if (aem.getUnsolicited() && delegate && !!status)
 						{
-							utils::invokeProtectedMethod(&controller::Delegate::onStreamInputCountersChanged, delegate, controllerInterface, targetID, descriptorIndex, flags, counters);
+							utils::invokeProtectedMethod(&talker::Delegate::onStreamInputCountersChanged, delegate, talkerInterface, targetID, descriptorIndex, flags, counters);
 						}
 						break;
 					}
@@ -2991,10 +2985,10 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 					{
 						StreamOutputCounterValidFlags flags;
 						flags.assign(validFlags);
-						answerCallback.invoke<controller::Interface::GetStreamOutputCountersHandler>(controllerInterface, targetID, status, descriptorIndex, flags, counters);
+						answerCallback.invoke<talker::Interface::GetStreamOutputCountersHandler>(talkerInterface, targetID, status, descriptorIndex, flags, counters);
 						if (aem.getUnsolicited() && delegate && !!status)
 						{
-							utils::invokeProtectedMethod(&controller::Delegate::onStreamOutputCountersChanged, delegate, controllerInterface, targetID, descriptorIndex, flags, counters);
+							utils::invokeProtectedMethod(&talker::Delegate::onStreamOutputCountersChanged, delegate, talkerInterface, targetID, descriptorIndex, flags, counters);
 						}
 						break;
 					}
@@ -3005,7 +2999,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 			}
 		},
 		// Get Audio Map
-		{ protocol::AemCommandType::GetAudioMap.getValue(), []([[maybe_unused]] controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::GetAudioMap.getValue(), []([[maybe_unused]] talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -3024,21 +3018,21 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				// Notify handlers
 				if (descriptorType == model::DescriptorType::StreamPortInput)
 				{
-					answerCallback.invoke<controller::Interface::GetStreamPortInputAudioMapHandler>(controllerInterface, targetID, status, descriptorIndex, numberOfMaps, mapIndex, mappings);
+					answerCallback.invoke<talker::Interface::GetStreamPortInputAudioMapHandler>(talkerInterface, targetID, status, descriptorIndex, numberOfMaps, mapIndex, mappings);
 #ifdef ALLOW_GET_AUDIO_MAP_UNSOL
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onStreamPortInputAudioMappingsChanged, delegate, controllerInterface, targetID, descriptorIndex, numberOfMaps, mapIndex, mappings);
+						utils::invokeProtectedMethod(&talker::Delegate::onStreamPortInputAudioMappingsChanged, delegate, talkerInterface, targetID, descriptorIndex, numberOfMaps, mapIndex, mappings);
 					}
 #endif // ALLOW_GET_AUDIO_MAP_UNSOL
 				}
 				else if (descriptorType == model::DescriptorType::StreamPortOutput)
 				{
-					answerCallback.invoke<controller::Interface::GetStreamPortOutputAudioMapHandler>(controllerInterface, targetID, status, descriptorIndex, numberOfMaps, mapIndex, mappings);
+					answerCallback.invoke<talker::Interface::GetStreamPortOutputAudioMapHandler>(talkerInterface, targetID, status, descriptorIndex, numberOfMaps, mapIndex, mappings);
 #ifdef ALLOW_GET_AUDIO_MAP_UNSOL
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onStreamPortOutputAudioMappingsChanged, delegate, controllerInterface, targetID, descriptorIndex, numberOfMaps, mapIndex, mappings);
+						utils::invokeProtectedMethod(&talker::Delegate::onStreamPortOutputAudioMappingsChanged, delegate, talkerInterface, targetID, descriptorIndex, numberOfMaps, mapIndex, mappings);
 					}
 #endif
 				}
@@ -3047,7 +3041,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 			}
 		},
 		// Add Audio Mappings
-		{ protocol::AemCommandType::AddAudioMappings.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::AddAudioMappings.getValue(), [](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -3064,18 +3058,18 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Notify handlers
 				if (descriptorType == model::DescriptorType::StreamPortInput)
 				{
-					answerCallback.invoke<controller::Interface::AddStreamPortInputAudioMappingsHandler>(controllerInterface, targetID, status, descriptorIndex, mappings);
+					answerCallback.invoke<talker::Interface::AddStreamPortInputAudioMappingsHandler>(talkerInterface, targetID, status, descriptorIndex, mappings);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onStreamPortInputAudioMappingsAdded, delegate, controllerInterface, targetID, descriptorIndex, mappings);
+						utils::invokeProtectedMethod(&talker::Delegate::onStreamPortInputAudioMappingsAdded, delegate, talkerInterface, targetID, descriptorIndex, mappings);
 					}
 				}
 				else if (descriptorType == model::DescriptorType::StreamPortOutput)
 				{
-					answerCallback.invoke<controller::Interface::AddStreamPortOutputAudioMappingsHandler>(controllerInterface, targetID, status, descriptorIndex, mappings);
+					answerCallback.invoke<talker::Interface::AddStreamPortOutputAudioMappingsHandler>(talkerInterface, targetID, status, descriptorIndex, mappings);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onStreamPortOutputAudioMappingsAdded, delegate, controllerInterface, targetID, descriptorIndex, mappings);
+						utils::invokeProtectedMethod(&talker::Delegate::onStreamPortOutputAudioMappingsAdded, delegate, talkerInterface, targetID, descriptorIndex, mappings);
 					}
 				}
 				else
@@ -3083,7 +3077,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 			}
 		},
 		// Remove Audio Mappings
-		{ protocol::AemCommandType::RemoveAudioMappings.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::RemoveAudioMappings.getValue(), [](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -3100,18 +3094,18 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Notify handlers
 				if (descriptorType == model::DescriptorType::StreamPortInput)
 				{
-					answerCallback.invoke<controller::Interface::RemoveStreamPortInputAudioMappingsHandler>(controllerInterface, targetID, status, descriptorIndex, mappings);
+					answerCallback.invoke<talker::Interface::RemoveStreamPortInputAudioMappingsHandler>(talkerInterface, targetID, status, descriptorIndex, mappings);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onStreamPortInputAudioMappingsRemoved, delegate, controllerInterface, targetID, descriptorIndex, mappings);
+						utils::invokeProtectedMethod(&talker::Delegate::onStreamPortInputAudioMappingsRemoved, delegate, talkerInterface, targetID, descriptorIndex, mappings);
 					}
 				}
 				else if (descriptorType == model::DescriptorType::StreamPortOutput)
 				{
-					answerCallback.invoke<controller::Interface::RemoveStreamPortOutputAudioMappingsHandler>(controllerInterface, targetID, status, descriptorIndex, mappings);
+					answerCallback.invoke<talker::Interface::RemoveStreamPortOutputAudioMappingsHandler>(talkerInterface, targetID, status, descriptorIndex, mappings);
 					if (aem.getUnsolicited() && delegate && !!status)
 					{
-						utils::invokeProtectedMethod(&controller::Delegate::onStreamPortOutputAudioMappingsRemoved, delegate, controllerInterface, targetID, descriptorIndex, mappings);
+						utils::invokeProtectedMethod(&talker::Delegate::onStreamPortOutputAudioMappingsRemoved, delegate, talkerInterface, targetID, descriptorIndex, mappings);
 					}
 				}
 				else
@@ -3119,7 +3113,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 			}
 		},
 		// Start Operation
-		{ protocol::AemCommandType::StartOperation.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::StartOperation.getValue(), [](talker::Delegate* const /*delegate*/, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -3136,11 +3130,11 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
-				answerCallback.invoke<controller::Interface::StartOperationHandler>(controllerInterface, targetID, status, descriptorType, descriptorIndex, operationID, operationType, memoryBuffer);
+				answerCallback.invoke<talker::Interface::StartOperationHandler>(talkerInterface, targetID, status, descriptorType, descriptorIndex, operationID, operationType, memoryBuffer);
 			}
 		},
 		// Abort Operation
-		{ protocol::AemCommandType::AbortOperation.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::AbortOperation.getValue(), [](talker::Delegate* const /*delegate*/, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -3155,11 +3149,11 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
-				answerCallback.invoke<controller::Interface::AbortOperationHandler>(controllerInterface, targetID, status, descriptorType, descriptorIndex, operationID);
+				answerCallback.invoke<talker::Interface::AbortOperationHandler>(talkerInterface, targetID, status, descriptorType, descriptorIndex, operationID);
 			}
 		},
 		// Operation Status
-		{ protocol::AemCommandType::OperationStatus.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const /*status*/, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& /*answerCallback*/)
+		{ protocol::AemCommandType::OperationStatus.getValue(), [](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const /*status*/, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& /*answerCallback*/)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -3176,11 +3170,11 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 
 				// Notify handlers
 				AVDECC_ASSERT(aem.getUnsolicited(), "OperationStatus can only be an unsolicited response");
-				utils::invokeProtectedMethod(&controller::Delegate::onOperationStatus, delegate, controllerInterface, targetID, descriptorType, descriptorIndex, operationID, percentComplete);
+				utils::invokeProtectedMethod(&talker::Delegate::onOperationStatus, delegate, talkerInterface, targetID, descriptorType, descriptorIndex, operationID, percentComplete);
 			}
 		},
 		// Set Memory Object Length
-		{ protocol::AemCommandType::SetMemoryObjectLength.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::SetMemoryObjectLength.getValue(), [](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -3195,15 +3189,15 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
-				answerCallback.invoke<controller::Interface::SetMemoryObjectLengthHandler>(controllerInterface, targetID, status, configurationIndex, memoryObjectIndex, length);
+				answerCallback.invoke<talker::Interface::SetMemoryObjectLengthHandler>(talkerInterface, targetID, status, configurationIndex, memoryObjectIndex, length);
 				if (aem.getUnsolicited() && delegate && !!status)
 				{
-					utils::invokeProtectedMethod(&controller::Delegate::onMemoryObjectLengthChanged, delegate, controllerInterface, targetID, configurationIndex, memoryObjectIndex, length);
+					utils::invokeProtectedMethod(&talker::Delegate::onMemoryObjectLengthChanged, delegate, talkerInterface, targetID, configurationIndex, memoryObjectIndex, length);
 				}
 			}
 		},
 		// Get Memory Object Length
-		{ protocol::AemCommandType::GetMemoryObjectLength.getValue(),[](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+		{ protocol::AemCommandType::GetMemoryObjectLength.getValue(),[](talker::Delegate* const /*delegate*/, Interface const* const talkerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -3218,7 +3212,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
-				answerCallback.invoke<controller::Interface::GetMemoryObjectLengthHandler>(controllerInterface, targetID, status, configurationIndex, memoryObjectIndex, length);
+				answerCallback.invoke<talker::Interface::GetMemoryObjectLengthHandler>(talkerInterface, targetID, status, configurationIndex, memoryObjectIndex, length);
 			}
 		},
 		// Set Stream Backup
@@ -3262,7 +3256,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 
 		try
 		{
-			it->second(_controllerDelegate, &_controllerInterface, status, aem, answerCallback);
+			it->second(_talkerDelegate, &_talkerInterface, status, aem, answerCallback);
 		}
 		catch (protocol::aemPayload::IncorrectPayloadSizeException const& e)
 		{
@@ -3289,7 +3283,7 @@ void CapabilityDelegate::processAaAecpResponse(protocol::Aecpdu const* const res
 	auto const status = static_cast<LocalEntity::AaCommandStatus>(aa.getStatus().getValue()); // We have to convert protocol status to our extended status
 	auto const targetID = aa.getTargetEntityID();
 
-	answerCallback.invoke<controller::Interface::AddressAccessHandler>(&_controllerInterface, targetID, status, aa.getTlvData());
+	answerCallback.invoke<talker::Interface::AddressAccessHandler>(&_talkerInterface, targetID, status, aa.getTlvData());
 }
 
 void CapabilityDelegate::processMvuAecpResponse(protocol::Aecpdu const* const response, LocalEntityImpl<>::OnMvuAECPErrorCallback const& onErrorCallback, LocalEntityImpl<>::AnswerCallback const& answerCallback) const noexcept
@@ -3297,10 +3291,10 @@ void CapabilityDelegate::processMvuAecpResponse(protocol::Aecpdu const* const re
 	auto const& mvu = static_cast<protocol::MvuAecpdu const&>(*response);
 	auto const status = static_cast<LocalEntity::MvuCommandStatus>(mvu.getStatus().getValue()); // We have to convert protocol status to our extended status
 
-	static std::unordered_map<protocol::MvuCommandType::value_type, std::function<void(controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::MvuCommandStatus const status, protocol::MvuAecpdu const& mvu, LocalEntityImpl<>::AnswerCallback const& answerCallback)>> s_Dispatch{
+	static std::unordered_map<protocol::MvuCommandType::value_type, std::function<void(talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::MvuCommandStatus const status, protocol::MvuAecpdu const& mvu, LocalEntityImpl<>::AnswerCallback const& answerCallback)>> s_Dispatch{
 		// Get Milan Info
 		{ protocol::MvuCommandType::GetMilanInfo.getValue(),
-			[](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::MvuCommandStatus const status, protocol::MvuAecpdu const& mvu, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+			[](talker::Delegate* const /*delegate*/, Interface const* const talkerInterface, LocalEntity::MvuCommandStatus const status, protocol::MvuAecpdu const& mvu, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 	// Deserialize payload
 #ifdef __cpp_structured_bindings
@@ -3312,7 +3306,7 @@ void CapabilityDelegate::processMvuAecpResponse(protocol::Aecpdu const* const re
 
 				auto const targetID = mvu.getTargetEntityID();
 
-				answerCallback.invoke<controller::Interface::GetMilanInfoHandler>(controllerInterface, targetID, status, milanInfo);
+				answerCallback.invoke<talker::Interface::GetMilanInfoHandler>(talkerInterface, targetID, status, milanInfo);
 			} },
 	};
 
@@ -3327,7 +3321,7 @@ void CapabilityDelegate::processMvuAecpResponse(protocol::Aecpdu const* const re
 	{
 		try
 		{
-			it->second(_controllerDelegate, &_controllerInterface, status, mvu, answerCallback);
+			it->second(_talkerDelegate, &_talkerInterface, status, mvu, answerCallback);
 		}
 		catch ([[maybe_unused]] protocol::mvuPayload::IncorrectPayloadSizeException const& e)
 		{
@@ -3355,12 +3349,12 @@ void CapabilityDelegate::processAcmpResponse(protocol::Acmpdu const* const respo
 	auto const& acmp = static_cast<protocol::Acmpdu const&>(*response);
 	auto const status = static_cast<LocalEntity::ControlStatus>(acmp.getStatus().getValue()); // We have to convert protocol status to our extended status
 
-	static std::unordered_map<protocol::AcmpMessageType::value_type, std::function<void(controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::ControlStatus const status, protocol::Acmpdu const& acmp, LocalEntityImpl<>::AnswerCallback const& answerCallback, bool const sniffed)>> s_Dispatch{
+	static std::unordered_map<protocol::AcmpMessageType::value_type, std::function<void(talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::ControlStatus const status, protocol::Acmpdu const& acmp, LocalEntityImpl<>::AnswerCallback const& answerCallback, bool const sniffed)>> s_Dispatch{
 		// Connect TX response
 		{ protocol::AcmpMessageType::ConnectTxResponse.getValue(),
-			[](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::ControlStatus const status, protocol::Acmpdu const& acmp, LocalEntityImpl<>::AnswerCallback const& /*answerCallback*/, bool const sniffed)
+			[](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::ControlStatus const status, protocol::Acmpdu const& acmp, LocalEntityImpl<>::AnswerCallback const& /*answerCallback*/, bool const sniffed)
 			{
-				auto const talkerEntityID = acmp.getTalkerEntityID();
+				auto const talkerEntityID = acmp.getControllerEntityID();
 				auto const talkerStreamIndex = acmp.getTalkerUniqueID();
 				auto const listenerEntityID = acmp.getListenerEntityID();
 				auto const listenerStreamIndex = acmp.getListenerUniqueID();
@@ -3368,100 +3362,100 @@ void CapabilityDelegate::processAcmpResponse(protocol::Acmpdu const* const respo
 				auto const flags = acmp.getFlags();
 				if (sniffed && delegate)
 				{
-					utils::invokeProtectedMethod(&controller::Delegate::onListenerConnectResponseSniffed, delegate, controllerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
+					utils::invokeProtectedMethod(&talker::Delegate::onListenerConnectResponseSniffed, delegate, talkerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
 				}
 			} },
 		// Disconnect TX response
 		{ protocol::AcmpMessageType::DisconnectTxResponse.getValue(),
-			[](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::ControlStatus const status, protocol::Acmpdu const& acmp, LocalEntityImpl<>::AnswerCallback const& answerCallback, bool const sniffed)
+			[](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::ControlStatus const status, protocol::Acmpdu const& acmp, LocalEntityImpl<>::AnswerCallback const& answerCallback, bool const sniffed)
 			{
-				auto const talkerEntityID = acmp.getTalkerEntityID();
+				auto const talkerEntityID = acmp.getControllerEntityID();
 				auto const talkerStreamIndex = acmp.getTalkerUniqueID();
 				auto const listenerEntityID = acmp.getListenerEntityID();
 				auto const listenerStreamIndex = acmp.getListenerUniqueID();
 				auto const connectionCount = acmp.getConnectionCount();
 				auto const flags = acmp.getFlags();
-				answerCallback.invoke<controller::Interface::DisconnectTalkerStreamHandler>(controllerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
+				answerCallback.invoke<talker::Interface::DisconnectTalkerStreamHandler>(talkerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
 				if (sniffed && delegate)
 				{
-					utils::invokeProtectedMethod(&controller::Delegate::onListenerDisconnectResponseSniffed, delegate, controllerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
+					utils::invokeProtectedMethod(&talker::Delegate::onListenerDisconnectResponseSniffed, delegate, talkerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
 				}
 			} },
 		// Get TX state response
 		{ protocol::AcmpMessageType::GetTxStateResponse.getValue(),
-			[](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::ControlStatus const status, protocol::Acmpdu const& acmp, LocalEntityImpl<>::AnswerCallback const& answerCallback, bool const sniffed)
+			[](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::ControlStatus const status, protocol::Acmpdu const& acmp, LocalEntityImpl<>::AnswerCallback const& answerCallback, bool const sniffed)
 			{
-				auto const talkerEntityID = acmp.getTalkerEntityID();
+				auto const talkerEntityID = acmp.getControllerEntityID();
 				auto const talkerStreamIndex = acmp.getTalkerUniqueID();
 				auto const listenerEntityID = acmp.getListenerEntityID();
 				auto const listenerStreamIndex = acmp.getListenerUniqueID();
 				auto const connectionCount = acmp.getConnectionCount();
 				auto const flags = acmp.getFlags();
-				answerCallback.invoke<controller::Interface::GetTalkerStreamStateHandler>(controllerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
+				answerCallback.invoke<talker::Interface::GetTalkerStreamStateHandler>(talkerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
 				if (sniffed && delegate)
 				{
-					utils::invokeProtectedMethod(&controller::Delegate::onGetTalkerStreamStateResponseSniffed, delegate, controllerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
+					utils::invokeProtectedMethod(&talker::Delegate::onGetTalkerStreamStateResponseSniffed, delegate, talkerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
 				}
 			} },
 		// Connect RX response
 		{ protocol::AcmpMessageType::ConnectRxResponse.getValue(),
-			[](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::ControlStatus const status, protocol::Acmpdu const& acmp, LocalEntityImpl<>::AnswerCallback const& answerCallback, bool const sniffed)
+			[](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::ControlStatus const status, protocol::Acmpdu const& acmp, LocalEntityImpl<>::AnswerCallback const& answerCallback, bool const sniffed)
 			{
-				auto const talkerEntityID = acmp.getTalkerEntityID();
+				auto const talkerEntityID = acmp.getControllerEntityID();
 				auto const talkerStreamIndex = acmp.getTalkerUniqueID();
 				auto const listenerEntityID = acmp.getListenerEntityID();
 				auto const listenerStreamIndex = acmp.getListenerUniqueID();
 				auto const connectionCount = acmp.getConnectionCount();
 				auto const flags = acmp.getFlags();
-				answerCallback.invoke<controller::Interface::ConnectStreamHandler>(controllerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
+				answerCallback.invoke<talker::Interface::ConnectStreamHandler>(talkerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
 				if (sniffed && delegate)
 				{
-					utils::invokeProtectedMethod(&controller::Delegate::onControllerConnectResponseSniffed, delegate, controllerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
+					utils::invokeProtectedMethod(&talker::Delegate::onTalkerConnectResponseSniffed, delegate, talkerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
 				}
 			} },
 		// Disconnect RX response
 		{ protocol::AcmpMessageType::DisconnectRxResponse.getValue(),
-			[](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::ControlStatus const status, protocol::Acmpdu const& acmp, LocalEntityImpl<>::AnswerCallback const& answerCallback, bool const sniffed)
+			[](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::ControlStatus const status, protocol::Acmpdu const& acmp, LocalEntityImpl<>::AnswerCallback const& answerCallback, bool const sniffed)
 			{
-				auto const talkerEntityID = acmp.getTalkerEntityID();
+				auto const talkerEntityID = acmp.getControllerEntityID();
 				auto const talkerStreamIndex = acmp.getTalkerUniqueID();
 				auto const listenerEntityID = acmp.getListenerEntityID();
 				auto const listenerStreamIndex = acmp.getListenerUniqueID();
 				auto const connectionCount = acmp.getConnectionCount();
 				auto const flags = acmp.getFlags();
-				answerCallback.invoke<controller::Interface::DisconnectStreamHandler>(controllerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
+				answerCallback.invoke<talker::Interface::DisconnectStreamHandler>(talkerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
 				if (sniffed && delegate)
 				{
-					utils::invokeProtectedMethod(&controller::Delegate::onControllerDisconnectResponseSniffed, delegate, controllerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
+					utils::invokeProtectedMethod(&talker::Delegate::onTalkerDisconnectResponseSniffed, delegate, talkerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
 				}
 			} },
 		// Get RX state response
 		{ protocol::AcmpMessageType::GetRxStateResponse.getValue(),
-			[](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::ControlStatus const status, protocol::Acmpdu const& acmp, LocalEntityImpl<>::AnswerCallback const& answerCallback, bool const sniffed)
+			[](talker::Delegate* const delegate, Interface const* const talkerInterface, LocalEntity::ControlStatus const status, protocol::Acmpdu const& acmp, LocalEntityImpl<>::AnswerCallback const& answerCallback, bool const sniffed)
 			{
-				auto const talkerEntityID = acmp.getTalkerEntityID();
+				auto const talkerEntityID = acmp.getControllerEntityID();
 				auto const talkerStreamIndex = acmp.getTalkerUniqueID();
 				auto const listenerEntityID = acmp.getListenerEntityID();
 				auto const listenerStreamIndex = acmp.getListenerUniqueID();
 				auto const connectionCount = acmp.getConnectionCount();
 				auto const flags = acmp.getFlags();
-				answerCallback.invoke<controller::Interface::GetListenerStreamStateHandler>(controllerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
+				answerCallback.invoke<talker::Interface::GetListenerStreamStateHandler>(talkerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
 				if (sniffed && delegate)
 				{
-					utils::invokeProtectedMethod(&controller::Delegate::onGetListenerStreamStateResponseSniffed, delegate, controllerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
+					utils::invokeProtectedMethod(&talker::Delegate::onGetListenerStreamStateResponseSniffed, delegate, talkerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
 				}
 			} },
 		// Get TX connection response
 		{ protocol::AcmpMessageType::GetTxConnectionResponse.getValue(),
-			[](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::ControlStatus const status, protocol::Acmpdu const& acmp, LocalEntityImpl<>::AnswerCallback const& answerCallback, bool const /*sniffed*/)
+			[](talker::Delegate* const /*delegate*/, Interface const* const talkerInterface, LocalEntity::ControlStatus const status, protocol::Acmpdu const& acmp, LocalEntityImpl<>::AnswerCallback const& answerCallback, bool const /*sniffed*/)
 			{
-				auto const talkerEntityID = acmp.getTalkerEntityID();
+				auto const talkerEntityID = acmp.getControllerEntityID();
 				auto const talkerStreamIndex = acmp.getTalkerUniqueID();
 				auto const listenerEntityID = acmp.getListenerEntityID();
 				auto const listenerStreamIndex = acmp.getListenerUniqueID();
 				auto const connectionCount = acmp.getConnectionCount();
 				auto const flags = acmp.getFlags();
-				answerCallback.invoke<controller::Interface::GetTalkerStreamConnectionHandler>(controllerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
+				answerCallback.invoke<talker::Interface::GetTalkerStreamConnectionHandler>(talkerInterface, model::StreamIdentification{ talkerEntityID, talkerStreamIndex }, model::StreamIdentification{ listenerEntityID, listenerStreamIndex }, connectionCount, flags, status);
 			} },
 	};
 
@@ -3471,12 +3465,12 @@ void CapabilityDelegate::processAcmpResponse(protocol::Acmpdu const* const respo
 		// If this is a sniffed message, simply log we do not handle the message
 		if (sniffed)
 		{
-			LOG_CONTROLLER_ENTITY_DEBUG(acmp.getTalkerEntityID(), "ACMP response {} not handled ({})", std::string(acmp.getMessageType()), utils::toHexString(acmp.getMessageType().getValue()));
+			LOG_CONTROLLER_ENTITY_DEBUG(acmp.getControllerEntityID(), "ACMP response {} not handled ({})", std::string(acmp.getMessageType()), utils::toHexString(acmp.getMessageType().getValue()));
 		}
 		// But if it's an expected response, this is an internal error since we sent a command and didn't implement the code to handle the response
 		else
 		{
-			LOG_CONTROLLER_ENTITY_ERROR(acmp.getTalkerEntityID(), "Failed to process ACMP response: Unhandled message type {} ({})", std::string(acmp.getMessageType()), utils::toHexString(acmp.getMessageType().getValue()));
+			LOG_CONTROLLER_ENTITY_ERROR(acmp.getControllerEntityID(), "Failed to process ACMP response: Unhandled message type {} ({})", std::string(acmp.getMessageType()), utils::toHexString(acmp.getMessageType().getValue()));
 			utils::invokeProtectedHandler(onErrorCallback, LocalEntity::ControlStatus::InternalError);
 		}
 	}
@@ -3484,18 +3478,18 @@ void CapabilityDelegate::processAcmpResponse(protocol::Acmpdu const* const respo
 	{
 		try
 		{
-			it->second(_controllerDelegate, &_controllerInterface, status, acmp, answerCallback, sniffed);
+			it->second(_talkerDelegate, &_talkerInterface, status, acmp, answerCallback, sniffed);
 		}
 		catch ([[maybe_unused]] std::exception const& e) // Mainly unpacking errors
 		{
-			LOG_CONTROLLER_ENTITY_ERROR(acmp.getTalkerEntityID(), "Failed to process ACMP response: {}", e.what());
+			LOG_CONTROLLER_ENTITY_ERROR(acmp.getControllerEntityID(), "Failed to process ACMP response: {}", e.what());
 			utils::invokeProtectedHandler(onErrorCallback, LocalEntity::ControlStatus::ProtocolError);
 			return;
 		}
 	}
 }
 
-} // namespace controller
+} // namespace talker
 } // namespace entity
 } // namespace avdecc
 } // namespace la

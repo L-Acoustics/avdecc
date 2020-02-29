@@ -25,6 +25,7 @@
 #pragma once
 
 #include "la/avdecc/internals/controllerEntity.hpp"
+#include "la/avdecc/internals/talkerEntity.hpp"
 #include "la/avdecc/internals/protocolInterface.hpp"
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
