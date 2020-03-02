@@ -547,10 +547,6 @@ public:
 	using UniquePointer = std::unique_ptr<CapabilityDelegate>;
 	virtual ~CapabilityDelegate() = default;
 
-	/* **** Global notifications **** */
-	virtual void onControllerDelegateChanged(controller::Delegate* const delegate) noexcept = 0;
-	//virtual void onListenerDelegateChanged(listener::Delegate* const delegate) noexcept = 0;
-	//virtual void onTalkerDelegateChanged(talker::Delegate* const delegate) noexcept = 0;
 	virtual void onTransportError(protocol::ProtocolInterface* const /*pi*/) noexcept {}
 	/* **** Discovery notifications **** */
 	virtual void onLocalEntityOnline(protocol::ProtocolInterface* const /*pi*/, Entity const& /*entity*/) noexcept {}

@@ -78,6 +78,12 @@ CapabilityDelegate::~CapabilityDelegate() noexcept {}
 /* ************************************************************************** */
 /* Controller methods                                                         */
 /* ************************************************************************** */
+void CapabilityDelegate::setControllerDelegate(controller::Delegate* const delegate) noexcept
+{
+#pragma message("TODO: Protect the _controllerDelegate so it cannot be changed while it's being used (use pi's lock ?? Check for deadlocks!)")
+	_controllerDelegate = delegate;
+}
+
 /* Discovery Protocol (ADP) */
 /* Enumeration and Control Protocol (AECP) AEM */
 void CapabilityDelegate::acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, Interface::AcquireEntityHandler const& handler) const noexcept
@@ -1448,17 +1454,6 @@ void CapabilityDelegate::getTalkerStreamConnection(model::StreamIdentification c
 /* ************************************************************************** */
 /* LocalEntityImpl<>::CapabilityDelegate overrides                          */
 /* ************************************************************************** */
-/* *** General notifications */
-void CapabilityDelegate::onControllerDelegateChanged(controller::Delegate* const delegate) noexcept
-{
-#pragma message("TODO: Protect the _controllerDelegate so it cannot be changed while it's being used (use pi's lock ?? Check for deadlocks!)")
-	_controllerDelegate = delegate;
-}
-
-//void CapabilityDelegate::onListenerDelegateChanged(listener::Delegate* const delegate) noexcept {}
-
-//void CapabilityDelegate::onTalkerDelegateChanged(talker::Delegate* const delegate) noexcept {}
-
 void CapabilityDelegate::onTransportError(protocol::ProtocolInterface* const /*pi*/) noexcept
 {
 	utils::invokeProtectedMethod(&controller::Delegate::onTransportError, _controllerDelegate, &_controllerInterface);

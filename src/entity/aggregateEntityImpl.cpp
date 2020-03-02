@@ -887,25 +887,25 @@ void AggregateEntityImpl::getTalkerStreamConnection(model::StreamIdentification 
 /* ************************************************************************** */
 void AggregateEntityImpl::setControllerDelegate(controller::Delegate* const delegate) noexcept
 {
-	if (_controllerCapabilityDelegate != nullptr)
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{
-		_controllerCapabilityDelegate->onControllerDelegateChanged(delegate);
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setControllerDelegate(delegate);
 	}
 }
 
 /*void AggregateEntityImpl::setListenerDelegate(listener::Delegate* const delegate) noexcept
 {
-	if (_listenerCapabilityDelegate != nullptr)
+	if (AVDECC_ASSERT_WITH_RET(_listenerCapabilityDelegate != nullptr, "Listener method should have a valid ListenerCapabilityDelegate"))
 	{
-		_listenerCapabilityDelegate->onListenerDelegateChanged(delegate);
+		static_cast<listener::CapabilityDelegate&>(*_listenerCapabilityDelegate).setListenerDelegate(delegate);
 	}
 }
 
 void AggregateEntityImpl::setTalkerDelegate(talker::Delegate* const delegate) noexcept
 {
-	if (_talkerCapabilityDelegate != nullptr)
+	if (AVDECC_ASSERT_WITH_RET(_talkerCapabilityDelegate != nullptr, "Talker method should have a valid TalkerCapabilityDelegate"))
 	{
-		_talkerCapabilityDelegate->onTalkerDelegateChanged(delegate);
+		static_cast<talker::CapabilityDelegate&>(*_talkerCapabilityDelegate).setTalkerDelegate(delegate);
 	}
 }*/
 

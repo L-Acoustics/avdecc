@@ -571,10 +571,7 @@ void ControllerEntityImpl::getTalkerStreamConnection(model::StreamIdentification
 /* ************************************************************************** */
 void ControllerEntityImpl::setControllerDelegate(controller::Delegate* const delegate) noexcept
 {
-	if (_controllerCapabilityDelegate != nullptr)
-	{
-		_controllerCapabilityDelegate->onControllerDelegateChanged(delegate);
-	}
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setControllerDelegate(delegate);
 }
 
 /* ************************************************************************** */

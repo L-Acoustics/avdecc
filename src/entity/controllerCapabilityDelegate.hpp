@@ -48,6 +48,7 @@ public:
 	/* ************************************************************************** */
 	/* Controller methods                                                         */
 	/* ************************************************************************** */
+	void setControllerDelegate(controller::Delegate* const delegate) noexcept;
 	/* Discovery Protocol (ADP) */
 	/* Enumeration and Control Protocol (AECP) AEM */
 	void acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, Interface::AcquireEntityHandler const& handler) const noexcept;
@@ -173,10 +174,6 @@ private:
 	/* ************************************************************************** */
 	/* CapabilityDelegate overrides                                               */
 	/* ************************************************************************** */
-	/* **** Global notifications **** */
-	virtual void onControllerDelegateChanged(controller::Delegate* const delegate) noexcept override;
-	//virtual void onListenerDelegateChanged(listener::Delegate* const delegate) noexcept override;
-	//virtual void onTalkerDelegateChanged(talker::Delegate* const delegate) noexcept override;
 	virtual void onTransportError(protocol::ProtocolInterface* const pi) noexcept override;
 	/* **** Discovery notifications **** */
 	virtual void onLocalEntityOnline(protocol::ProtocolInterface* const pi, Entity const& entity) noexcept override;
