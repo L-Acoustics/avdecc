@@ -381,7 +381,7 @@ int doJob()
 	try
 	{
 		outputText("Selected interface '" + intfc.alias + "' and protocol interface '" + la::avdecc::protocol::ProtocolInterface::typeToString(protocolInterfaceType) + "':\n");
-		auto endPoint = la::avdecc::EndStation::create(protocolInterfaceType, intfc.id);
+		auto endStation = la::avdecc::EndStation::create(protocolInterfaceType, intfc.id);
 		ControllerDelegate controllerDelegate;
 
 		// Register log observer
@@ -389,8 +389,8 @@ int doJob()
 		// Set default log level
 		la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Trace);
 
-		//auto* controller = endPoint->addControllerEntity(0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), &controllerDelegate);
-		auto* controller = endPoint->addAggregateEntity(0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), &controllerDelegate);
+		//auto* controller = endStation->addControllerEntity(0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), &controllerDelegate);
+		auto* controller = endStation->addAggregateEntity(0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), &controllerDelegate);
 
 		// Try to start entity advertisement
 		if (!controller->enableEntityAdvertising(10))

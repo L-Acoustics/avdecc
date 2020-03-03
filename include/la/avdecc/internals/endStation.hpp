@@ -27,6 +27,7 @@
 
 #include "entity.hpp"
 #include "controllerEntity.hpp"
+#include "endpointEntity.hpp"
 #include "aggregateEntity.hpp"
 #include "protocolInterface.hpp"
 #include "exports.hpp"
@@ -103,8 +104,20 @@ public:
 	*/
 	virtual entity::ControllerEntity* addControllerEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::controller::Delegate* const delegate) = 0;
 
+	/**
+	* @brief Create and attach an endpoint entity to the EndStation.
+	* @details Creates and attaches an endpoint type entity to the EndStation.
+	* @param[in] commonInformation Information describing the endpoint.
+	* @param[in] delegate The Delegate to be called whenever an endpoint related notification occurs.
+	* @return A weak pointer to the newly created EndpointEntity.
+	* @note Might throw an Exception.
+	*/
+	virtual entity::EndpointEntity* addEndpointEntity(entity::Entity::CommonInformation const& commonInformation, entity::endpoint::Delegate* const delegate) = 0;
+
 	// TODO: Add all other AggregateEntity parameters
 	virtual entity::AggregateEntity* addAggregateEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::controller::Delegate* const controllerDelegate) = 0;
+
+	virtual protocol::ProtocolInterface& getProtocolInterface() noexcept = 0;
 
 	// Deleted compiler auto-generated methods
 	EndStation(EndStation&&) = delete;

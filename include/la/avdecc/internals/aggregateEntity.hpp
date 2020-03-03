@@ -75,6 +75,7 @@ public:
 	/** Disables entity advertising on the specified interfaceIndex if set, otherwise on all interfaces. */
 	using LocalEntity::disableEntityAdvertising;
 
+	/* Other methods */
 	virtual void setControllerDelegate(controller::Delegate* const delegate) noexcept = 0;
 	//virtual void setListenerDelegate(listener::Delegate* const delegate) noexcept = 0;
 	//virtual void setTalkerDelegate(talker::Delegate* const delegate) noexcept = 0;

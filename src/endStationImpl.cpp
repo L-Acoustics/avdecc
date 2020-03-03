@@ -82,6 +82,37 @@ entity::ControllerEntity* EndStationImpl::addControllerEntity(std::uint16_t cons
 	return controllerPtr;
 }
 
+entity::EndpointEntity* EndStationImpl::addEndpointEntity(entity::Entity::CommonInformation const& commonInformation, entity::endpoint::Delegate* const delegate)
+{
+	std::unique_ptr<entity::LocalEntityGuard<entity::EndpointEntityImpl>> endpoint{ nullptr };
+	try
+	{
+		try
+		{
+			auto const interfaceInfo{ entity::Entity::InterfaceInformation{ _protocolInterface->getMacAddress(), 31u, 0u, std::nullopt, std::nullopt } };
+
+			endpoint = std::make_unique<entity::LocalEntityGuard<entity::EndpointEntityImpl>>(_protocolInterface.get(), commonInformation, entity::Entity::InterfacesInformation{ { entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } }, delegate);
+		}
+		catch (la::avdecc::Exception const& e) // Because entity::EndpointEntityImpl::EndpointEntityImpl might throw if an entityID cannot be generated
+		{
+			throw Exception(Error::DuplicateEntityID, e.what());
+		}
+	}
+	catch (la::avdecc::Exception const& e) // entity::Entity::generateEID might throw if ProtocolInterface is not valid (doesn't have a valid MacAddress)
+	{
+		throw Exception(Error::InterfaceInvalid, e.what());
+	}
+
+	// Get endpoint's pointer now, we'll soon move the object
+	auto* const endpointPtr = static_cast<entity::EndpointEntity*>(endpoint.get());
+
+	// Add the entity to our list
+	_entities.push_back(std::move(endpoint));
+
+	// Return the endpoint to the user
+	return endpointPtr;
+}
+
 entity::AggregateEntity* EndStationImpl::addAggregateEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::controller::Delegate* const controllerDelegate)
 {
 	std::unique_ptr<entity::LocalEntityGuard<entity::AggregateEntityImpl>> aggregate{ nullptr };
@@ -114,6 +145,11 @@ entity::AggregateEntity* EndStationImpl::addAggregateEntity(std::uint16_t const 
 
 	// Return the aggregate to the user
 	return aggregatePtr;
+}
+
+protocol::ProtocolInterface& EndStationImpl::getProtocolInterface() noexcept
+{
+	return *_protocolInterface;
 }
 
 /** Destroy method for COM-like interface */

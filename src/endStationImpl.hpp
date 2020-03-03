@@ -42,7 +42,10 @@ public:
 
 	// EndStation overrides
 	virtual entity::ControllerEntity* addControllerEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::controller::Delegate* const delegate) override;
+	virtual entity::EndpointEntity* addEndpointEntity(entity::Entity::CommonInformation const& commonInformation, entity::endpoint::Delegate* const delegate) override;
 	virtual entity::AggregateEntity* addAggregateEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::controller::Delegate* const controllerDelegate) override;
+
+	virtual protocol::ProtocolInterface& getProtocolInterface() noexcept override;
 
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept override;

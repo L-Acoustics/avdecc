@@ -166,3 +166,15 @@ constexpr void log(Ts&&... params)
 #define LOG_CONTROLLER_STATE_MACHINE_INFO(TargetID, ...) LOG_CONTROLLER_STATE_MACHINE(Info, TargetID, __VA_ARGS__)
 #define LOG_CONTROLLER_STATE_MACHINE_WARN(TargetID, ...) LOG_CONTROLLER_STATE_MACHINE(Warn, TargetID, __VA_ARGS__)
 #define LOG_CONTROLLER_STATE_MACHINE_ERROR(TargetID, ...) LOG_CONTROLLER_STATE_MACHINE(Error, TargetID, __VA_ARGS__)
+
+#define LOG_ENDPOINT_ENTITY(LogLevel, TargetID, ...) la::avdecc::logger::log<la::avdecc::logger::Level::LogLevel, la::avdecc::logger::LogItemEndpointEntity>(TargetID, FORMAT_ARGS(__VA_ARGS__))
+#ifdef DEBUG
+#	define LOG_ENDPOINT_ENTITY_TRACE(TargetID, ...) LOG_ENDPOINT_ENTITY(Trace, TargetID, __VA_ARGS__)
+#	define LOG_ENDPOINT_ENTITY_DEBUG(TargetID, ...) LOG_ENDPOINT_ENTITY(Debug, TargetID, __VA_ARGS__)
+#else // !DEBUG
+#	define LOG_ENDPOINT_ENTITY_TRACE(TargetID, ...)
+#	define LOG_ENDPOINT_ENTITY_DEBUG(TargetID, ...)
+#endif // DEBUG
+#define LOG_ENDPOINT_ENTITY_INFO(TargetID, ...) LOG_ENDPOINT_ENTITY(Info, TargetID, __VA_ARGS__)
+#define LOG_ENDPOINT_ENTITY_WARN(TargetID, ...) LOG_ENDPOINT_ENTITY(Warn, TargetID, __VA_ARGS__)
+#define LOG_ENDPOINT_ENTITY_ERROR(TargetID, ...) LOG_ENDPOINT_ENTITY(Error, TargetID, __VA_ARGS__)

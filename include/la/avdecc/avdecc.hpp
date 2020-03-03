@@ -52,6 +52,9 @@
 /** Controller entity type definition */
 #include "internals/controllerEntity.hpp"
 
+/** Endpoint entity type definition */
+#include "internals/endpointEntity.hpp"
+
 /** Symbols export definition */
 #include "internals/exports.hpp"
 

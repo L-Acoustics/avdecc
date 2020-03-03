@@ -47,6 +47,7 @@ enum class Layer
 	ControllerStateMachine = 6,
 	Controller = 7,
 	JsonSerializer = 8,
+	EndpointEntity = 9,
 	FirstUserLayer = 100,
 };
 

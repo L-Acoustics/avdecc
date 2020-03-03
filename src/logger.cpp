@@ -110,6 +110,10 @@ public:
 					return "Controller State Machine";
 				case Layer::Controller:
 					return "Controller";
+				case Layer::JsonSerializer:
+					return "Json Serializer";
+				case Layer::EndpointEntity:
+					return "Endpoint Entity";
 				default:
 					AVDECC_ASSERT(false, "Layer not handled");
 			}

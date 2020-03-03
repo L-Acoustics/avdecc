@@ -174,8 +174,8 @@ void LocalEntityImpl<SuperClass>::onAecpCommand(protocol::ProtocolInterface* con
 	// Forward to subclass
 	if (!onUnhandledAecpCommand(pi, aecpdu))
 	{
-		// Reflect back the command, and return a NotSupported error code
-		reflectAecpCommand(pi, aecpdu, protocol::AemAecpStatus::NotSupported);
+		// Reflect back the command, and return a NotImplemented error code
+		reflectAecpCommand(pi, aecpdu, protocol::AemAecpStatus::NotImplemented);
 	}
 }
 

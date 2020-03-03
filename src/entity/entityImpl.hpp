@@ -133,7 +133,7 @@ public:
 		return _protocolInterface;
 	}
 
-	protocol::ProtocolInterface const* getProtocolInterface() const noexcept
+	protocol::ProtocolInterface* getProtocolInterface() const noexcept
 	{
 		return _protocolInterface;
 	}

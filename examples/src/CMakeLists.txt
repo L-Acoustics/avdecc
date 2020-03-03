@@ -32,6 +32,22 @@ if(INSTALL_AVDECC_EXAMPLES)
 	install(TARGETS SimpleController RUNTIME CONFIGURATIONS Release DESTINATION bin)
 endif()
 
+# SimpleEndpoint
+add_executable(SimpleEndpoint simpleEndpoint.cpp utils.cpp utils.hpp)
+set_target_properties(SimpleEndpoint PROPERTIES FOLDER "Examples")
+# Using avdecc library
+target_link_libraries(SimpleEndpoint PRIVATE la_avdecc_cxx)
+copy_runtime(SimpleEndpoint la_avdecc_cxx)
+if(NOT WIN32)
+	target_link_libraries(SimpleEndpoint PRIVATE ncurses)
+endif()
+# Setup common options
+setup_executable_options(SimpleEndpoint)
+# Set installation rule
+if(INSTALL_AVDECC_EXAMPLES)
+	install(TARGETS SimpleEndpoint RUNTIME CONFIGURATIONS Release DESTINATION bin)
+endif()
+
 # Network interfaces enumerator using la_avdecc_cxx
 add_executable(NetworkInterfacesEnumeratorCxx networkInterfacesEnumeratorCxx.cpp)
 set_target_properties(NetworkInterfacesEnumeratorCxx PROPERTIES FOLDER "Examples")

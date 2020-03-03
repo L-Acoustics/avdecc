@@ -58,6 +58,7 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/internals/aggregateEntity.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/controllerEntity.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/endian.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/endpointEntity.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/endStation.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entity.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityAddressAccessTypes.hpp
@@ -141,6 +142,8 @@ set (HEADER_FILES_ENTITY
 	entity/aggregateEntityImpl.hpp
 	entity/controllerCapabilityDelegate.hpp
 	entity/controllerEntityImpl.hpp
+	entity/endpointCapabilityDelegate.hpp
+	entity/endpointEntityImpl.hpp
 )
 
 set (SOURCE_FILES_ENTITY
@@ -149,6 +152,8 @@ set (SOURCE_FILES_ENTITY
 	entity/aggregateEntityImpl.cpp
 	entity/controllerCapabilityDelegate.cpp
 	entity/controllerEntityImpl.cpp
+	entity/endpointCapabilityDelegate.cpp
+	entity/endpointEntityImpl.cpp
 )
 
 # Common files

@@ -180,6 +180,31 @@ private:
 	std::string _message{};
 };
 
+class LogItemEndpointEntity : public la::avdecc::logger::LogItem
+{
+public:
+	LogItemEndpointEntity(la::avdecc::UniqueIdentifier const& targetID, std::string message) noexcept
+		: LogItem(Layer::EndpointEntity)
+		, _targetID(targetID)
+		, _message(message)
+	{
+	}
+
+	virtual std::string getMessage() const noexcept override
+	{
+		return std::string("[") + la::avdecc::utils::toHexString(_targetID, true, false) + "] " + _message;
+	}
+
+	la::avdecc::UniqueIdentifier const& getTargetID() const noexcept
+	{
+		return _targetID;
+	}
+
+private:
+	la::avdecc::UniqueIdentifier const& _targetID;
+	std::string _message{};
+};
+
 class LogItemControllerStateMachine : public la::avdecc::logger::LogItem
 {
 public:
