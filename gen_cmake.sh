@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # Useful script to generate project files using cmake
 
+# Get absolute folder for this script
+selfFolderPath="`cd "${BASH_SOURCE[0]%/*}"; pwd -P`/" # Command to get the absolute path
+
+# Include util functions
+. "${selfFolderPath}scripts/utils.sh"
+
 # Override default cmake options
 cmake_opt="-DBUILD_AVDECC_EXAMPLES=TRUE -DBUILD_AVDECC_TESTS=TRUE -DBUILD_AVDECC_LIB_SHARED_CXX=TRUE -DBUILD_AVDECC_LIB_STATIC_RT_SHARED=TRUE -DBUILD_AVDECC_DOC=TRUE -DBUILD_AVDECC_CONTROLLER=TRUE -DINSTALL_AVDECC_EXAMPLES=TRUE -DINSTALL_AVDECC_TESTS=TRUE -DINSTALL_AVDECC_LIB_SHARED_CXX=TRUE -DINSTALL_AVDECC_LIB_STATIC=TRUE -DINSTALL_AVDECC_HEADERS=TRUE -DINSTALL_AVDECC_DOC=TRUE -DENABLE_AVDECC_SIGNING=FALSE"
 
@@ -13,12 +19,6 @@ else
 fi
 
 ############################ DO NOT MODIFY AFTER THAT LINE #############
-
-# Get absolute folder for this script
-selfFolderPath="`cd "${BASH_SOURCE[0]%/*}"; pwd -P`/" # Command to get the absolute path
-
-# Include util functions
-. "${selfFolderPath}scripts/utils.sh"
 
 # Default values
 default_VisualGenerator="Visual Studio 16 2019"
