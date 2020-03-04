@@ -43,12 +43,12 @@ namespace endpoint
 /* ************************************************************************** */
 /* Static variables used for bindings                                         */
 /* ************************************************************************** */
-static model::AudioMappings const s_emptyMappings{}; // Empty AudioMappings used by timeout callback (needs a ref to an AudioMappings)
-static model::StreamInfo const s_emptyStreamInfo{}; // Empty StreamInfo used by timeout callback (needs a ref to a StreamInfo)
-static model::AvbInfo const s_emptyAvbInfo{}; // Empty AvbInfo used by timeout callback (needs a ref to an AvbInfo)
-static model::AsPath const s_emptyAsPath{}; // Empty AsPath used by timeout callback (needs a ref to an AsPath)
-static model::AvdeccFixedString const s_emptyAvdeccFixedString{}; // Empty AvdeccFixedString used by timeout callback (needs a ref to a std::string)
-static model::MilanInfo const s_emptyMilanInfo{}; // Empty MilanInfo used by timeout callback (need a ref to a MilanInfo)
+//static model::AudioMappings const s_emptyMappings{}; // Empty AudioMappings used by timeout callback (needs a ref to an AudioMappings)
+//static model::StreamInfo const s_emptyStreamInfo{}; // Empty StreamInfo used by timeout callback (needs a ref to a StreamInfo)
+//static model::AvbInfo const s_emptyAvbInfo{}; // Empty AvbInfo used by timeout callback (needs a ref to an AvbInfo)
+//static model::AsPath const s_emptyAsPath{}; // Empty AsPath used by timeout callback (needs a ref to an AsPath)
+//static model::AvdeccFixedString const s_emptyAvdeccFixedString{}; // Empty AvdeccFixedString used by timeout callback (needs a ref to a std::string)
+//static model::MilanInfo const s_emptyMilanInfo{}; // Empty MilanInfo used by timeout callback (need a ref to a MilanInfo)
 
 /* ************************************************************************** */
 /* Exceptions                                                                 */
@@ -214,7 +214,7 @@ void CapabilityDelegate::onAcmpResponse(protocol::ProtocolInterface* const /*pi*
 void CapabilityDelegate::sendAemAecpCommand(UniqueIdentifier const targetEntityID, networkInterface::MacAddress const& targetMacAddress, protocol::AemCommandType const commandType, void const* const payload, size_t const payloadLength, std::function<void(LocalEntity::AemCommandStatus)> const& handler) const noexcept
 {
 	LocalEntityImpl<>::sendAemAecpCommand(_protocolInterface, _endpointID, targetEntityID, targetMacAddress, commandType, payload, payloadLength,
-		[this, handler](protocol::Aecpdu const* const /*response*/, LocalEntity::AemCommandStatus const status)
+		[handler](protocol::Aecpdu const* const /*response*/, LocalEntity::AemCommandStatus const status)
 		{
 			utils::invokeProtectedHandler(handler, status);
 		});
@@ -223,7 +223,7 @@ void CapabilityDelegate::sendAemAecpCommand(UniqueIdentifier const targetEntityI
 void CapabilityDelegate::sendAcmpCommand(protocol::AcmpMessageType const messageType, UniqueIdentifier const controllerEntityID, UniqueIdentifier const talkerEntityID, model::StreamIndex const talkerStreamIndex, UniqueIdentifier const listenerEntityID, model::StreamIndex const listenerStreamIndex, std::uint16_t const connectionIndex, std::function<void(LocalEntity::ControlStatus)> const& handler) const noexcept
 {
 	LocalEntityImpl<>::sendAcmpCommand(_protocolInterface, messageType, controllerEntityID, talkerEntityID, talkerStreamIndex, listenerEntityID, listenerStreamIndex, connectionIndex,
-		[this, handler](protocol::Acmpdu const* const /*response*/, LocalEntity::ControlStatus const status)
+		[handler](protocol::Acmpdu const* const /*response*/, LocalEntity::ControlStatus const status)
 		{
 			utils::invokeProtectedHandler(handler, status);
 		});

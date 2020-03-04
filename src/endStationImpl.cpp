@@ -28,6 +28,7 @@
 
 // Entities
 #include "entity/controllerEntityImpl.hpp"
+#include "entity/endpointEntityImpl.hpp"
 #include "entity/aggregateEntityImpl.hpp"
 
 namespace la

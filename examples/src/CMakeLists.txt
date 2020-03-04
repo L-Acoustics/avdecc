@@ -39,7 +39,7 @@ set_target_properties(SimpleEndpoint PROPERTIES FOLDER "Examples")
 target_link_libraries(SimpleEndpoint PRIVATE la_avdecc_cxx)
 copy_runtime(SimpleEndpoint la_avdecc_cxx)
 if(NOT WIN32)
-	target_link_libraries(SimpleEndpoint PRIVATE ncurses)
+	target_link_libraries(SimpleEndpoint PRIVATE ncurses pthread)
 endif()
 # Setup common options
 setup_executable_options(SimpleEndpoint)

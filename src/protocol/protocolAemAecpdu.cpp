@@ -210,6 +210,12 @@ Aecpdu::UniquePointer LA_AVDECC_CALL_CONVENTION AemAecpdu::responseCopy() const
 	return response;
 }
 
+// Defaulted compiler auto-generated methods
+AemAecpdu::AemAecpdu(AemAecpdu&&) = default;
+AemAecpdu::AemAecpdu(AemAecpdu const&) = default;
+AemAecpdu& LA_AVDECC_CALL_CONVENTION AemAecpdu::operator=(AemAecpdu const&) = default;
+AemAecpdu& LA_AVDECC_CALL_CONVENTION AemAecpdu::operator=(AemAecpdu&&) = default;
+
 /** Entry point */
 AemAecpdu* LA_AVDECC_CALL_CONVENTION AemAecpdu::createRawAemAecpdu(bool const isResponse) noexcept
 {

@@ -105,10 +105,6 @@ int doJob()
 	class EndpointDelegate : public la::avdecc::entity::endpoint::Delegate, public la::avdecc::logger::Logger::Observer
 	{
 	public:
-		EndpointDelegate(la::avdecc::protocol::ProtocolInterface& protocolInterface) noexcept
-			: _protocolInterface(protocolInterface)
-		{
-		}
 		~EndpointDelegate() noexcept override
 		{
 			la::avdecc::logger::Logger::getInstance().unregisterObserver(this);
@@ -242,7 +238,6 @@ int doJob()
 
 
 	private:
-		la::avdecc::protocol::ProtocolInterface& _protocolInterface;
 		AsyncExecutor<std::future<void>> _deferredQueue{};
 	};
 
@@ -259,7 +254,7 @@ int doJob()
 		outputText("Selected interface '" + intfc.alias + "' and protocol interface '" + la::avdecc::protocol::ProtocolInterface::typeToString(protocolInterfaceType) + "':\n");
 		auto endStation = la::avdecc::EndStation::create(protocolInterfaceType, intfc.id);
 		auto& protocolInterface = endStation->getProtocolInterface();
-		auto endpointDelegate = EndpointDelegate{ protocolInterface };
+		auto endpointDelegate = EndpointDelegate{};
 
 		// Register log observer
 		la::avdecc::logger::Logger::getInstance().registerObserver(&endpointDelegate);
