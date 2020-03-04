@@ -112,18 +112,18 @@ public:
 	/** Contruct a Response message to this Command (only changing the messageType to be of Response kind). Returns nullptr if the message is not a Command or if no Response is possible for this messageType */
 	virtual LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION responseCopy() const = 0;
 
+protected:
+	/** Constructor */
+	Aecpdu() noexcept;
+
+	/** Destructor */
+	virtual ~Aecpdu() noexcept override = default;
+
 	// Defaulted compiler auto-generated methods
 	Aecpdu(Aecpdu&&) = default;
 	Aecpdu(Aecpdu const&) = default;
 	Aecpdu& operator=(Aecpdu const&) = default;
 	Aecpdu& operator=(Aecpdu&&) = default;
-
-protected:
-	/** Constructor */
-	LA_AVDECC_API Aecpdu() noexcept;
-
-	/** Destructor */
-	virtual ~Aecpdu() noexcept override = default;
 
 	void LA_AVDECC_CALL_CONVENTION setMessageType(AecpMessageType const messageType) noexcept
 	{

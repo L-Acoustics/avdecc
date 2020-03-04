@@ -57,12 +57,6 @@ public:
 	static constexpr size_t HeaderLength = 14; /* DestMacAddress + SrcMacAddress + EtherType */
 	using UniquePointer = std::unique_ptr<EtherLayer2, void (*)(EtherLayer2*)>;
 
-	/** Constructor */
-	EtherLayer2() noexcept = default;
-
-	/** Destructor */
-	virtual ~EtherLayer2() noexcept = default;
-
 	// Setters
 	void LA_AVDECC_CALL_CONVENTION setDestAddress(networkInterface::MacAddress const& destAddress) noexcept
 	{
@@ -97,6 +91,13 @@ public:
 	// Deserialization method
 	void LA_AVDECC_CALL_CONVENTION deserialize(DeserializationBuffer& buffer);
 
+	// Note: Life cycle methods exposed for internal uses, not meant to be used outside the library
+	/** Constructor */
+	EtherLayer2() noexcept = default;
+
+	/** Destructor */
+	virtual ~EtherLayer2() noexcept = default;
+
 	// Defaulted compiler auto-generated methods
 	EtherLayer2(EtherLayer2&&) = default;
 	EtherLayer2(EtherLayer2 const&) = default;
@@ -110,23 +111,12 @@ protected:
 	std::uint16_t _etherType{};
 
 private:
-	/** Destroy method for COM-like interface */
-	//virtual void destroy() noexcept
-	//{
-	//	delete this;
-	//}
 };
 
 /** Avtpdu common header */
 class Avtpdu : public EtherLayer2
 {
 public:
-	/** Constructor */
-	Avtpdu() noexcept;
-
-	/** Destructor */
-	virtual ~Avtpdu() noexcept override = default;
-
 	// Setters
 	void LA_AVDECC_CALL_CONVENTION setCD(bool const cd) noexcept
 	{
@@ -163,13 +153,19 @@ public:
 		return _version;
 	}
 
+protected:
+	/** Constructor */
+	Avtpdu() noexcept;
+
+	/** Destructor */
+	virtual ~Avtpdu() noexcept override = default;
+
 	// Defaulted compiler auto-generated methods
 	Avtpdu(Avtpdu&&) = default;
 	Avtpdu(Avtpdu const&) = default;
 	Avtpdu& operator=(Avtpdu const&) = default;
 	Avtpdu& operator=(Avtpdu&&) = default;
 
-protected:
 	// Avtpdu header data
 	bool _cd{};
 	std::uint8_t _subType{};
@@ -187,12 +183,6 @@ class AvtpduControl : public Avtpdu
 {
 public:
 	static constexpr size_t HeaderLength = 12; /* CD + SubType + StreamValid + Version + ControlData + Status + ControlDataLength + StreamID */
-
-	/** Constructor */
-	AvtpduControl() noexcept;
-
-	/**  Destructor */
-	virtual ~AvtpduControl() noexcept override = default;
 
 	// Setters
 	void LA_AVDECC_CALL_CONVENTION setStreamValid(bool const streamValid) noexcept
@@ -244,13 +234,19 @@ public:
 	// Deserialization method
 	void LA_AVDECC_CALL_CONVENTION deserialize(DeserializationBuffer& buffer);
 
+protected:
+	/** Constructor */
+	AvtpduControl() noexcept;
+
+	/**  Destructor */
+	virtual ~AvtpduControl() noexcept override = default;
+
 	// Defaulted compiler auto-generated methods
 	AvtpduControl(AvtpduControl&&) = default;
 	AvtpduControl(AvtpduControl const&) = default;
 	AvtpduControl& operator=(AvtpduControl const&) = default;
 	AvtpduControl& operator=(AvtpduControl&&) = default;
 
-protected:
 	// AvtpduControl header data
 	std::uint8_t _controlData{ 0 };
 	std::uint8_t _status{ 0 };

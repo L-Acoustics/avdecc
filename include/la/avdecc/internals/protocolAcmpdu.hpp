@@ -59,8 +59,8 @@ public:
 	/** Constructor for heap Acmpdu */
 	LA_AVDECC_API Acmpdu() noexcept;
 
-	/** Destructor */
-	virtual ~Acmpdu() noexcept override = default;
+	/** Destructor (for some reason we have to define it in the cpp file or clang complains about missing vtable, using = default or inline not working) */
+	virtual LA_AVDECC_API ~Acmpdu() noexcept override;
 
 	// Setters
 	void LA_AVDECC_CALL_CONVENTION setMessageType(AcmpMessageType const messageType) noexcept
@@ -172,10 +172,10 @@ public:
 	LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION copy() const;
 
 	// Defaulted compiler auto-generated methods
-	Acmpdu(Acmpdu&&) = default;
-	Acmpdu(Acmpdu const&) = default;
-	Acmpdu& operator=(Acmpdu const&) = default;
-	Acmpdu& operator=(Acmpdu&&) = default;
+	LA_AVDECC_API Acmpdu(Acmpdu&&);
+	LA_AVDECC_API Acmpdu(Acmpdu const&);
+	LA_AVDECC_API Acmpdu& LA_AVDECC_CALL_CONVENTION operator=(Acmpdu const&);
+	LA_AVDECC_API Acmpdu& LA_AVDECC_CALL_CONVENTION operator=(Acmpdu&&);
 
 private:
 	/** Entry point */
