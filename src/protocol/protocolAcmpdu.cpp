@@ -49,6 +49,8 @@ Acmpdu::Acmpdu() noexcept
 	AvtpduControl::setControlDataLength(Length);
 }
 
+Acmpdu::~Acmpdu() noexcept {}
+
 void LA_AVDECC_CALL_CONVENTION Acmpdu::serialize(SerializationBuffer& buffer) const
 {
 	auto const previousSize = buffer.size();
@@ -122,6 +124,12 @@ Acmpdu::UniquePointer LA_AVDECC_CALL_CONVENTION Acmpdu::copy() const
 	};
 	return UniquePointer(new Acmpdu(*this), deleter);
 }
+
+// Defaulted compiler auto-generated methods
+Acmpdu::Acmpdu(Acmpdu&&) = default;
+Acmpdu::Acmpdu(Acmpdu const&) = default;
+Acmpdu& LA_AVDECC_CALL_CONVENTION Acmpdu::operator=(Acmpdu const&) = default;
+Acmpdu& LA_AVDECC_CALL_CONVENTION Acmpdu::operator=(Acmpdu&&) = default;
 
 /** Entry point */
 Acmpdu* LA_AVDECC_CALL_CONVENTION Acmpdu::createRawAcmpdu() noexcept

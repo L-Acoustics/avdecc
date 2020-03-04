@@ -151,18 +151,18 @@ public:
 	/** Deserialization method */
 	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION deserialize(DeserializationBuffer& buffer) override;
 
+protected:
+	/** Constructor */
+	VuAecpdu(bool const isResponse) noexcept;
+
+	/** Destructor */
+	virtual ~VuAecpdu() noexcept override = default;
+
 	// Defaulted compiler auto-generated methods
 	VuAecpdu(VuAecpdu&&) = default;
 	VuAecpdu(VuAecpdu const&) = default;
 	VuAecpdu& operator=(VuAecpdu const&) = default;
 	VuAecpdu& operator=(VuAecpdu&&) = default;
-
-protected:
-	/** Constructor */
-	LA_AVDECC_API VuAecpdu(bool const isResponse) noexcept;
-
-	/** Destructor */
-	virtual ~VuAecpdu() noexcept override = default;
 
 private:
 	// VuAecpdu header data

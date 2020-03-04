@@ -98,10 +98,10 @@ public:
 	virtual LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION responseCopy() const override;
 
 	// Defaulted compiler auto-generated methods
-	AaAecpdu(AaAecpdu&&) = default;
-	AaAecpdu(AaAecpdu const&) = default;
-	AaAecpdu& operator=(AaAecpdu const&) = default;
-	AaAecpdu& operator=(AaAecpdu&&) = default;
+	LA_AVDECC_API AaAecpdu(AaAecpdu&&);
+	LA_AVDECC_API AaAecpdu(AaAecpdu const&);
+	LA_AVDECC_API AaAecpdu& LA_AVDECC_CALL_CONVENTION operator=(AaAecpdu const&);
+	LA_AVDECC_API AaAecpdu& LA_AVDECC_CALL_CONVENTION operator=(AaAecpdu&&);
 
 private:
 	/** Entry point */
