@@ -38,7 +38,6 @@ namespace protocol
 class Aecpdu : public AvtpduControl
 {
 public:
-	static constexpr size_t DefaultMaxInflightCommands = 1;
 	static constexpr size_t HeaderLength = 10; /* ControllerEID + SequenceID */
 	static constexpr size_t MaximumLength_1722_1 = 524; /* AECPDU maximum size - Clause 9.2.1.1.7 */
 #if defined(ALLOW_SEND_BIG_AECP_PAYLOADS) || defined(ALLOW_RECV_BIG_AECP_PAYLOADS) // Memory optimization, only set MaximumLength_BigPayloads to a greater value if either option is enabled

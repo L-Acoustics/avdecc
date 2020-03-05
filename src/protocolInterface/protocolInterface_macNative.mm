@@ -37,6 +37,7 @@
 #include <optional>
 #include <sstream>
 #include <thread>
+#include <chrono>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -49,6 +50,14 @@ namespace avdecc
 {
 namespace protocol
 {
+/* Default state machine parameters */
+static constexpr size_t DefaultMaxAecpInflightCommands = 1;
+static constexpr std::chrono::milliseconds DefaultAecpSendInterval{ 1u };
+static constexpr size_t DefaultMaxAcmpMulticastInflightCommands = 10;
+static constexpr size_t DefaultMaxAcmpUnicastInflightCommands = 10;
+static constexpr std::chrono::milliseconds DefaultAcmpMulticastSendInterval{ 1u };
+static constexpr std::chrono::milliseconds DefaultAcmpUnicastSendInterval{ 1u };
+
 class ProtocolInterfaceMacNativeImpl;
 } // namespace protocol
 } // namespace avdecc
@@ -849,7 +858,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 - (EntityQueues const&)createQueuesForRemoteEntity:(la::avdecc::UniqueIdentifier)entityID {
 	EntityQueues eq;
 	eq.aecpQueue = dispatch_queue_create([[NSString stringWithFormat:@"%@.0x%016llx.aecp", [self className], entityID.getValue()] UTF8String], 0);
-	eq.aecpLimiter = dispatch_semaphore_create(la::avdecc::protocol::Aecpdu::DefaultMaxInflightCommands);
+	eq.aecpLimiter = dispatch_semaphore_create(la::avdecc::protocol::DefaultMaxAecpInflightCommands);
 	return _entityQueues[entityID] = std::move(eq);
 }
 

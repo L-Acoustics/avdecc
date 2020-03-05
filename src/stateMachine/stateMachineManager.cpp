@@ -249,7 +249,7 @@ void Manager::startStateMachines() noexcept
 					watchDog.alive("avdecc::StateMachine");
 
 					// Wait a little bit so we don't burn the CPU
-					std::this_thread::sleep_for(std::chrono::milliseconds(10));
+					std::this_thread::sleep_for(std::chrono::milliseconds(5));
 				}
 				watchDog.unregisterWatch("avdecc::StateMachine");
 			});

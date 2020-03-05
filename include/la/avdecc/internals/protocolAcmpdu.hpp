@@ -38,8 +38,6 @@ namespace protocol
 class Acmpdu final : public AvtpduControl
 {
 public:
-	static constexpr size_t DefaultMaxMulticastInflightCommands = 1;
-	static constexpr size_t DefaultMaxUnicastInflightCommands = 1;
 	static constexpr size_t Length = 44; /* ACMPDU size - Clause 8.2.1.7 */
 	using UniquePointer = std::unique_ptr<Acmpdu, void (*)(Acmpdu*)>;
 	static LA_AVDECC_API la::avdecc::networkInterface::MacAddress const Multicast_Mac_Address; /* Annex B */

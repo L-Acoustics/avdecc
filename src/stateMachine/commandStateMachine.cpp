@@ -52,6 +52,14 @@ static constexpr auto AcmpDisconnectRxCommandTimeoutMsec = 500u;
 static constexpr auto AcmpGetRxStateCommandTimeoutMsec = 200u;
 static constexpr auto AcmpGetTxConnectionCommandTimeoutMsec = 200u;
 
+/* Default state machine parameters */
+static constexpr size_t DefaultMaxAecpInflightCommands = 10;
+static constexpr std::chrono::milliseconds DefaultAecpSendInterval{ 1u };
+static constexpr size_t DefaultMaxAcmpMulticastInflightCommands = 10;
+static constexpr size_t DefaultMaxAcmpUnicastInflightCommands = 10;
+static constexpr std::chrono::milliseconds DefaultAcmpMulticastSendInterval{ 1u };
+static constexpr std::chrono::milliseconds DefaultAcmpUnicastSendInterval{ 1u };
+
 /* ************************************************************ */
 /* Public methods                                               */
 /* ************************************************************ */
@@ -111,7 +119,8 @@ void CommandStateMachine::checkInflightCommandsTimeoutExpiracy() noexcept
 		// Check AECP commands
 		for (auto& [targetEntityID, inflight] : localEntityInfo.inflightAecpCommands)
 		{
-			for (auto it = inflight.begin(); it != inflight.end(); /* Iterate inside the loop */)
+			// Check all inflight timeouts
+			for (auto it = inflight.inflightCommands.begin(); it != inflight.inflightCommands.end(); /* Iterate inside the loop */)
 			{
 				auto& command = *it;
 				if (now > command.timeoutTime)
@@ -122,8 +131,16 @@ void CommandStateMachine::checkInflightCommandsTimeoutExpiracy() noexcept
 					{
 						// Let's retry
 						command.retried = true;
+
+						// Update last send time
+						inflight.lastSendTime = now;
+
+						// Ask the transport layer to send the packet
 						error = protocolInterface->sendMessage(static_cast<Aecpdu const&>(*command.command));
+
+						// Reset command timeout
 						resetAecpCommandTimeoutValue(command);
+
 						// Statistics
 						utils::invokeProtectedMethod(&Delegate::onAecpRetry, _delegate, targetEntityID);
 						LOG_CONTROLLER_STATE_MACHINE_DEBUG(targetEntityID, std::string("AECP command with sequenceID ") + std::to_string(command.sequenceID) + " timed out, trying again");
@@ -148,12 +165,16 @@ void CommandStateMachine::checkInflightCommandsTimeoutExpiracy() noexcept
 					++it;
 				}
 			}
+
+			// Check if we need to empty the queue
+			checkQueue(protocolInterface, localEntityInfo, targetEntityID, inflight, inflight.inflightCommands.end());
 		}
 
 		// Check ACMP commands
 		for (auto& [targetMacAddress, inflight] : localEntityInfo.inflightAcmpCommands)
 		{
-			for (auto it = inflight.begin(); it != inflight.end(); /* Iterate inside the loop */)
+			// Check all inflight timeouts
+			for (auto it = inflight.inflightCommands.begin(); it != inflight.inflightCommands.end(); /* Iterate inside the loop */)
 			{
 				auto& command = *it;
 				if (now > command.timeoutTime)
@@ -164,7 +185,14 @@ void CommandStateMachine::checkInflightCommandsTimeoutExpiracy() noexcept
 					{
 						// Let's retry
 						command.retried = true;
+
+						// Update last send time
+						inflight.lastSendTime = now;
+
+						// Ask the transport layer to send the packet
 						error = protocolInterface->sendMessage(static_cast<Acmpdu const&>(*command.command));
+
+						// Reset command timeout
 						resetAcmpCommandTimeoutValue(command);
 					}
 					else
@@ -184,6 +212,9 @@ void CommandStateMachine::checkInflightCommandsTimeoutExpiracy() noexcept
 					++it;
 				}
 			}
+
+			// Check if we need to empty the queue
+			checkQueue(protocolInterface, localEntityInfo, targetMacAddress, inflight, inflight.inflightCommands.end());
 		}
 
 		// Notify scheduled errors
@@ -242,14 +273,15 @@ void CommandStateMachine::handleAecpResponse(Aecpdu const& aecpdu) noexcept
 			if (auto inflightIt = commandEntityInfo.inflightAecpCommands.find(targetID); inflightIt != commandEntityInfo.inflightAecpCommands.end())
 			{
 				auto& inflight = inflightIt->second;
+				auto& inflightCommands = inflight.inflightCommands;
 				auto const sequenceID = aecpdu.getSequenceID();
-				auto commandIt = std::find_if(inflight.begin(), inflight.end(),
+				auto commandIt = std::find_if(inflightCommands.begin(), inflightCommands.end(),
 					[sequenceID](AecpCommandInfo const& command)
 					{
 						return command.sequenceID == sequenceID;
 					});
 				// If the sequenceID is not found, it means the response already timed out (arriving too late)
-				if (commandIt != inflight.end())
+				if (commandIt != inflightCommands.end())
 				{
 					auto& info = *commandIt;
 
@@ -301,14 +333,15 @@ void CommandStateMachine::handleAcmpResponse(Acmpdu const& acmpdu) noexcept
 		if (auto inflightIt = commandEntityInfo.inflightAcmpCommands.find(targetMacAddress); inflightIt != commandEntityInfo.inflightAcmpCommands.end())
 		{
 			auto& inflight = inflightIt->second;
+			auto& inflightCommands = inflight.inflightCommands;
 			auto const sequenceID = acmpdu.getSequenceID();
-			auto commandIt = std::find_if(inflight.begin(), inflight.end(),
+			auto commandIt = std::find_if(inflightCommands.begin(), inflightCommands.end(),
 				[sequenceID](AcmpCommandInfo const& command)
 				{
 					return command.sequenceID == sequenceID;
 				});
 			// If the sequenceID is not found, it either means the response already timed out (arriving too late), or it's a communication btw talker and listener (requested by us) and they did not use our sequenceID
-			if (commandIt != inflight.end())
+			if (commandIt != inflightCommands.end())
 			{
 				auto& info = *commandIt;
 
@@ -357,17 +390,12 @@ ProtocolInterface::Error CommandStateMachine::sendAecpCommand(Aecpdu::UniquePoin
 		AecpCommandInfo command{ sequenceID, std::move(aecpdu), onResult };
 		{
 			auto& inflight = commandEntityInfo.inflightAecpCommands[targetEntityID];
-			// Check if we don't have too many inflight commands for this entity
-			if (inflight.size() < getMaxInflightAecpMessages(targetEntityID))
-			{
-				// Send the command
-				setCommandInflight(protocolInterface, commandEntityInfo, inflight, inflight.end(), std::move(command));
-			}
-			else // Too many inflight commands, queue it
-			{
-				auto& queue = commandEntityInfo.aecpCommandsQueue[targetEntityID];
-				queue.push_back(std::move(command));
-			}
+
+			// Add the command to the queue (to send directly, in case there is something waiting in the queue)
+			commandEntityInfo.aecpCommandsQueue[targetEntityID].queuedCommands.push_back(std::move(command));
+
+			// Check the queue
+			checkQueue(protocolInterface, commandEntityInfo, targetEntityID, inflight, inflight.inflightCommands.end());
 		}
 	}
 	catch (...)
@@ -384,6 +412,9 @@ ProtocolInterface::Error CommandStateMachine::sendAcmpCommand(Acmpdu::UniquePoin
 
 	// Lock
 	auto const lg = std::lock_guard{ *_manager };
+
+	// Get current time
+	auto const now = std::chrono::steady_clock::now();
 
 	// Get CommandEntityInfo matching ControllerEntityID
 	auto const& commandEntityIt = _commandEntities.find(acmp->getControllerEntityID());
@@ -403,17 +434,12 @@ ProtocolInterface::Error CommandStateMachine::sendAcmpCommand(Acmpdu::UniquePoin
 		AcmpCommandInfo command{ sequenceID, std::move(acmpdu), onResult };
 		{
 			auto& inflight = commandEntityInfo.inflightAcmpCommands[targetMacAddress];
-			// Check if we don't have too many inflight commands for this destination macAddress
-			if (inflight.size() < getMaxInflightAcmpMessages(targetMacAddress))
-			{
-				// Send the command
-				setCommandInflight(protocolInterface, commandEntityInfo, inflight, inflight.end(), std::move(command));
-			}
-			else // Too many inflight commands, queue it
-			{
-				auto& queue = commandEntityInfo.acmpCommandsQueue[targetMacAddress];
-				queue.push_back(std::move(command));
-			}
+
+			// Add the command to the queue (to send directly, in case there is something waiting in the queue)
+			commandEntityInfo.acmpCommandsQueue[targetMacAddress].queuedCommands.push_back(std::move(command));
+
+			// Check the queue
+			checkQueue(protocolInterface, commandEntityInfo, targetMacAddress, inflight, inflight.inflightCommands.end());
 		}
 	}
 	catch (...)
@@ -528,16 +554,30 @@ AcmpSequenceID CommandStateMachine::getNextAcmpSequenceID(CommandEntityInfo& inf
 
 size_t CommandStateMachine::getMaxInflightAecpMessages(UniqueIdentifier const& /*entityID*/) const noexcept
 {
-	return Aecpdu::DefaultMaxInflightCommands;
+	return DefaultMaxAecpInflightCommands;
+}
+
+std::chrono::milliseconds CommandStateMachine::getAecpSendInterval(UniqueIdentifier const& /*entityID*/) const noexcept
+{
+	return DefaultAecpSendInterval;
 }
 
 size_t CommandStateMachine::getMaxInflightAcmpMessages(networkInterface::MacAddress const& macAddress) const noexcept
 {
 	if (macAddress == Acmpdu::Multicast_Mac_Address)
 	{
-		return Acmpdu::DefaultMaxMulticastInflightCommands;
+		return DefaultMaxAcmpMulticastInflightCommands;
 	}
-	return Acmpdu::DefaultMaxUnicastInflightCommands;
+	return DefaultMaxAcmpUnicastInflightCommands;
+}
+
+std::chrono::milliseconds CommandStateMachine::getAcmpSendInterval(networkInterface::MacAddress const& macAddress) const noexcept
+{
+	if (macAddress == Acmpdu::Multicast_Mac_Address)
+	{
+		return DefaultAcmpMulticastSendInterval;
+	}
+	return DefaultAcmpUnicastSendInterval;
 }
 
 } // namespace stateMachine
