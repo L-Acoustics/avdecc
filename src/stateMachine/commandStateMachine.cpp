@@ -151,35 +151,38 @@ void CommandStateMachine::checkInflightCommandsTimeoutExpiracy() noexcept
 		}
 
 		// Check ACMP commands
-		for (auto it = localEntityInfo.inflightAcmpCommands.begin(); it != localEntityInfo.inflightAcmpCommands.end(); /* Iterate inside the loop */)
+		for (auto& [targetMacAddress, inflight] : localEntityInfo.inflightAcmpCommands)
 		{
-			auto& command = it->second;
-			if (now > command.timeoutTime)
+			for (auto it = inflight.begin(); it != inflight.end(); /* Iterate inside the loop */)
 			{
-				auto error = ProtocolInterface::Error::NoError;
-				// Timeout expired, check if we retried yet
-				if (!command.retried)
+				auto& command = *it;
+				if (now > command.timeoutTime)
 				{
-					// Let's retry
-					command.retried = true;
-					error = protocolInterface->sendMessage(static_cast<Acmpdu const&>(*command.command));
-					resetAcmpCommandTimeoutValue(command);
+					auto error = ProtocolInterface::Error::NoError;
+					// Timeout expired, check if we retried yet
+					if (!command.retried)
+					{
+						// Let's retry
+						command.retried = true;
+						error = protocolInterface->sendMessage(static_cast<Acmpdu const&>(*command.command));
+						resetAcmpCommandTimeoutValue(command);
+					}
+					else
+					{
+						error = ProtocolInterface::Error::Timeout;
+					}
+
+					if (!!error)
+					{
+						// Already retried, the command has been lost
+						utils::invokeProtectedHandler(command.resultHandler, nullptr, error);
+						it = removeInflight(protocolInterface, localEntityInfo, targetMacAddress, inflight, it);
+					}
 				}
 				else
 				{
-					error = ProtocolInterface::Error::Timeout;
+					++it;
 				}
-
-				if (!!error)
-				{
-					// Already retried, the command has been lost
-					utils::invokeProtectedHandler(command.resultHandler, nullptr, error);
-					it = localEntityInfo.inflightAcmpCommands.erase(it);
-				}
-			}
-			else
-			{
-				++it;
 			}
 		}
 
@@ -189,6 +192,12 @@ void CommandStateMachine::checkInflightCommandsTimeoutExpiracy() noexcept
 			utils::invokeProtectedHandler(e.second, nullptr, e.first);
 		}
 		localEntityInfo.scheduledAecpErrors.clear();
+
+		for (auto const& e : localEntityInfo.scheduledAcmpErrors)
+		{
+			utils::invokeProtectedHandler(e.second, nullptr, e.first);
+		}
+		localEntityInfo.scheduledAcmpErrors.clear();
 	}
 }
 
@@ -218,8 +227,7 @@ void CommandStateMachine::handleAecpResponse(Aecpdu const& aecpdu) noexcept
 	}
 
 	// Only process it if it's targeted to a registered local command entity (which is set in the ControllerID field)
-	auto const commandEntityIt = _commandEntities.find(controllerID);
-	if (commandEntityIt != _commandEntities.end())
+	if (auto const commandEntityIt = _commandEntities.find(controllerID); commandEntityIt != _commandEntities.end())
 	{
 		// Check if it's an AEM unsolicited response
 		if (isAEMUnsolicitedResponse(aecpdu))
@@ -231,8 +239,7 @@ void CommandStateMachine::handleAecpResponse(Aecpdu const& aecpdu) noexcept
 			auto& commandEntityInfo = commandEntityIt->second;
 			auto const targetID = aecpdu.getTargetEntityID();
 
-			auto inflightIt = commandEntityInfo.inflightAecpCommands.find(targetID);
-			if (inflightIt != commandEntityInfo.inflightAecpCommands.end())
+			if (auto inflightIt = commandEntityInfo.inflightAecpCommands.find(targetID); inflightIt != commandEntityInfo.inflightAecpCommands.end())
 			{
 				auto& inflight = inflightIt->second;
 				auto const sequenceID = aecpdu.getSequenceID();
@@ -283,31 +290,42 @@ void CommandStateMachine::handleAcmpResponse(Acmpdu const& acmpdu) noexcept
 
 	// Only process it if it's targeted to a registered local command entity
 #pragma message("TODO: This only work for CONTROLLER messages, not for LISTENER-TALKER communication. Will probably have to check command type")
+	auto* const protocolInterface = _manager->getProtocolInterfaceDelegate();
 	auto const controllerID = acmpdu.getControllerEntityID();
-	auto const commandEntityIt = _commandEntities.find(controllerID);
-	if (commandEntityIt != _commandEntities.end())
+
+	if (auto const commandEntityIt = _commandEntities.find(controllerID); commandEntityIt != _commandEntities.end())
 	{
 		auto& commandEntityInfo = commandEntityIt->second;
-		auto const sequenceID = acmpdu.getSequenceID();
-		auto commandIt = commandEntityInfo.inflightAcmpCommands.find(sequenceID);
-		// If the sequenceID is not found, it either means the response already timed out (arriving too late), or it's a communication btw talker and listener (requested by us) and they did not use our sequenceID
-		if (commandIt != commandEntityInfo.inflightAcmpCommands.end())
+		auto const targetMacAddress = acmpdu.getDestAddress();
+
+		if (auto inflightIt = commandEntityInfo.inflightAcmpCommands.find(targetMacAddress); inflightIt != commandEntityInfo.inflightAcmpCommands.end())
 		{
-			auto& info = commandIt->second;
-
-			// Check if it's an expected response (since the communication btw listener and talkers uses our controllerID and might use our sequenceID, we don't want to detect talker's response as ours)
-			auto const messageType = acmpdu.getMessageType().getValue();
-			auto const expectedResponseType = info.command->getMessageType().getValue() + 1; // Based on Clause 8.2.1.5, responses are always Command + 1
-			if (messageType == expectedResponseType)
+			auto& inflight = inflightIt->second;
+			auto const sequenceID = acmpdu.getSequenceID();
+			auto commandIt = std::find_if(inflight.begin(), inflight.end(),
+				[sequenceID](AcmpCommandInfo const& command)
+				{
+					return command.sequenceID == sequenceID;
+				});
+			// If the sequenceID is not found, it either means the response already timed out (arriving too late), or it's a communication btw talker and listener (requested by us) and they did not use our sequenceID
+			if (commandIt != inflight.end())
 			{
-				// Move the query (it will be deleted)
-				AcmpCommandInfo acmpQuery = std::move(info);
+				auto& info = *commandIt;
 
-				// Remove the command from inflight list
-				commandEntityInfo.inflightAcmpCommands.erase(sequenceID);
+				// Check if it's an expected response (since the communication btw listener and talkers uses our controllerID and might use our sequenceID, we don't want to detect talker's response as ours)
+				auto const messageType = acmpdu.getMessageType().getValue();
+				auto const expectedResponseType = info.command->getMessageType().getValue() + 1; // Based on Clause 8.2.1.5, responses are always Command + 1
+				if (messageType == expectedResponseType)
+				{
+					// Move the query (it will be deleted)
+					AcmpCommandInfo acmpQuery = std::move(info);
 
-				// Call completion handler
-				utils::invokeProtectedHandler(acmpQuery.resultHandler, &acmpdu, ProtocolInterface::Error::NoError);
+					// Remove the command from inflight list
+					removeInflight(protocolInterface, commandEntityInfo, targetMacAddress, inflight, commandIt);
+
+					// Call completion handler
+					utils::invokeProtectedHandler(acmpQuery.resultHandler, &acmpdu, ProtocolInterface::Error::NoError);
+				}
 			}
 		}
 	}
@@ -347,7 +365,7 @@ ProtocolInterface::Error CommandStateMachine::sendAecpCommand(Aecpdu::UniquePoin
 			}
 			else // Too many inflight commands, queue it
 			{
-				auto& queue = commandEntityInfo.commandsQueue[targetEntityID];
+				auto& queue = commandEntityInfo.aecpCommandsQueue[targetEntityID];
 				queue.push_back(std::move(command));
 			}
 		}
@@ -362,6 +380,7 @@ ProtocolInterface::Error CommandStateMachine::sendAecpCommand(Aecpdu::UniquePoin
 ProtocolInterface::Error CommandStateMachine::sendAcmpCommand(Acmpdu::UniquePointer&& acmpdu, ProtocolInterface::AcmpCommandResultHandler const& onResult) noexcept
 {
 	auto* acmp = static_cast<Acmpdu*>(acmpdu.get());
+	auto const targetMacAddress = acmp->getDestAddress();
 
 	// Lock
 	auto const lg = std::lock_guard{ *_manager };
@@ -378,24 +397,30 @@ ProtocolInterface::Error CommandStateMachine::sendAcmpCommand(Acmpdu::UniquePoin
 	auto const sequenceID = getNextAcmpSequenceID(commandEntityInfo);
 	acmpdu->setSequenceID(sequenceID);
 
-	auto error{ ProtocolInterface::Error::NoError };
 	try
 	{
 		// Record the query for when we get a response (so we can send it again if it timed out)
 		AcmpCommandInfo command{ sequenceID, std::move(acmpdu), onResult };
-
-		error = protocolInterface->sendMessage(static_cast<Acmpdu const&>(*command.command));
-		if (!error)
 		{
-			resetAcmpCommandTimeoutValue(command);
-			commandEntityInfo.inflightAcmpCommands[sequenceID] = std::move(command);
+			auto& inflight = commandEntityInfo.inflightAcmpCommands[targetMacAddress];
+			// Check if we don't have too many inflight commands for this destination macAddress
+			if (inflight.size() < getMaxInflightAcmpMessages(targetMacAddress))
+			{
+				// Send the command
+				setCommandInflight(protocolInterface, commandEntityInfo, inflight, inflight.end(), std::move(command));
+			}
+			else // Too many inflight commands, queue it
+			{
+				auto& queue = commandEntityInfo.acmpCommandsQueue[targetMacAddress];
+				queue.push_back(std::move(command));
+			}
 		}
 	}
 	catch (...)
 	{
-		error = ProtocolInterface::Error::InternalError;
+		return ProtocolInterface::Error::InternalError;
 	}
-	return error;
+	return ProtocolInterface::Error::NoError;
 }
 
 /* ************************************************************ */
@@ -501,11 +526,19 @@ AcmpSequenceID CommandStateMachine::getNextAcmpSequenceID(CommandEntityInfo& inf
 	return nextID;
 }
 
-size_t CommandStateMachine::getMaxInflightAecpMessages(UniqueIdentifier const /*entityID*/) const noexcept
+size_t CommandStateMachine::getMaxInflightAecpMessages(UniqueIdentifier const& /*entityID*/) const noexcept
 {
 	return Aecpdu::DefaultMaxInflightCommands;
 }
 
+size_t CommandStateMachine::getMaxInflightAcmpMessages(networkInterface::MacAddress const& macAddress) const noexcept
+{
+	if (macAddress == Acmpdu::Multicast_Mac_Address)
+	{
+		return Acmpdu::DefaultMaxMulticastInflightCommands;
+	}
+	return Acmpdu::DefaultMaxUnicastInflightCommands;
+}
 
 } // namespace stateMachine
 } // namespace protocol

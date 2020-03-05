@@ -110,9 +110,12 @@ private:
 		{
 		}
 	};
-	using InflightAcmpCommands = std::unordered_map<AcmpSequenceID, AcmpCommandInfo>;
+	using AcmpCommands = std::list<AcmpCommandInfo>;
+	using InflightAcmpCommands = std::unordered_map<networkInterface::MacAddress, AcmpCommands, networkInterface::MacAddressHash>;
+	using AcmpCommandsQueue = std::unordered_map<networkInterface::MacAddress, AcmpCommands, networkInterface::MacAddressHash>;
 
 	using ScheduledAecpErrors = std::list<std::pair<ProtocolInterface::Error, ProtocolInterface::AecpCommandResultHandler>>;
+	using ScheduledAcmpErrors = std::list<std::pair<ProtocolInterface::Error, ProtocolInterface::AcmpCommandResultHandler>>;
 
 	struct CommandEntityInfo
 	{
@@ -121,14 +124,16 @@ private:
 		// AECP variables
 		AecpSequenceID currentAecpSequenceID{ 0 };
 		InflightAecpCommands inflightAecpCommands{};
-		AecpCommandsQueue commandsQueue{};
+		AecpCommandsQueue aecpCommandsQueue{};
 
 		// ACMP variables
 		AcmpSequenceID currentAcmpSequenceID{ 0 };
 		InflightAcmpCommands inflightAcmpCommands{};
+		AcmpCommandsQueue acmpCommandsQueue{};
 
 		// Other variables
 		ScheduledAecpErrors scheduledAecpErrors{};
+		ScheduledAcmpErrors scheduledAcmpErrors{};
 
 		/** Constructor */
 		CommandEntityInfo(entity::LocalEntity& entity) noexcept
@@ -158,14 +163,14 @@ private:
 		}
 	}
 	template<typename T>
-	T checkQueue(ProtocolInterfaceDelegate* const protocolInterface, CommandEntityInfo& info, UniqueIdentifier const entityID, AecpCommands& inflight, T const it)
+	T checkQueue(ProtocolInterfaceDelegate* const protocolInterface, CommandEntityInfo& info, UniqueIdentifier const& entityID, AecpCommands& inflight, T const it)
 	{
 		// Check if we don't have too many inflight commands for this entity
 		if (inflight.size() >= getMaxInflightAecpMessages(entityID))
 			return it;
 
 		// Check if queue is not empty for this entity
-		auto& queue = info.commandsQueue[entityID];
+		auto& queue = info.aecpCommandsQueue[entityID];
 		if (queue.empty())
 			return it;
 
@@ -175,12 +180,54 @@ private:
 
 		return setCommandInflight(protocolInterface, info, inflight, it, std::move(command));
 	}
-
 	template<typename T>
-	T removeInflight(ProtocolInterfaceDelegate* const protocolInterface, CommandEntityInfo& info, UniqueIdentifier const entityID, AecpCommands& inflight, T const it)
+	T removeInflight(ProtocolInterfaceDelegate* const protocolInterface, CommandEntityInfo& info, UniqueIdentifier const& entityID, AecpCommands& inflight, T const it)
 	{
 		auto retIt = inflight.erase(it);
 		return checkQueue(protocolInterface, info, entityID, inflight, retIt);
+	}
+
+	template<typename T>
+	T setCommandInflight(ProtocolInterfaceDelegate* const protocolInterface, CommandEntityInfo& info, AcmpCommands& inflight, T const it, AcmpCommandInfo&& command)
+	{
+		// Ask the transport layer to send the packet
+		auto const error = protocolInterface->sendMessage(static_cast<Acmpdu const&>(*command.command));
+		if (!!error)
+		{
+			// Schedule the result handler to be called with the returned error from the delegate
+			info.scheduledAcmpErrors.push_back(std::make_pair(error, command.resultHandler));
+			return it;
+		}
+		else
+		{
+			// Move the command to inflight queue
+			resetAcmpCommandTimeoutValue(command);
+			return inflight.insert(it, std::move(command));
+		}
+	}
+	template<typename T>
+	T checkQueue(ProtocolInterfaceDelegate* const protocolInterface, CommandEntityInfo& info, networkInterface::MacAddress const& macAddress, AcmpCommands& inflight, T const it)
+	{
+		// Check if we don't have too many inflight commands for this entity
+		if (inflight.size() >= getMaxInflightAcmpMessages(macAddress))
+			return it;
+
+		// Check if queue is not empty for this entity
+		auto& queue = info.acmpCommandsQueue[macAddress];
+		if (queue.empty())
+			return it;
+
+		// Remove command from queue
+		auto command = std::move(queue.front());
+		queue.pop_front();
+
+		return setCommandInflight(protocolInterface, info, inflight, it, std::move(command));
+	}
+	template<typename T>
+	T removeInflight(ProtocolInterfaceDelegate* const protocolInterface, CommandEntityInfo& info, networkInterface::MacAddress const& macAddress, AcmpCommands& inflight, T const it)
+	{
+		auto retIt = inflight.erase(it);
+		return checkQueue(protocolInterface, info, macAddress, inflight, retIt);
 	}
 
 	bool isAEMUnsolicitedResponse(Aecpdu const& aecpdu) const noexcept;
@@ -189,7 +236,8 @@ private:
 	void resetAcmpCommandTimeoutValue(AcmpCommandInfo& command) const noexcept;
 	AecpSequenceID getNextAecpSequenceID(CommandEntityInfo& info) noexcept;
 	AcmpSequenceID getNextAcmpSequenceID(CommandEntityInfo& info) noexcept;
-	size_t getMaxInflightAecpMessages(UniqueIdentifier const entityID) const noexcept;
+	size_t getMaxInflightAecpMessages(UniqueIdentifier const& entityID) const noexcept;
+	size_t getMaxInflightAcmpMessages(networkInterface::MacAddress const& macAddress) const noexcept;
 
 	// Private members
 	Manager* _manager{ nullptr };

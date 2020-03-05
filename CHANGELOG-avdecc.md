@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - AEM GetConfiguration method
 - ProtocolInterface observer events for all received PDUs (low level)
 - Delegate class in ProtocolInterface to handle VendorUnique messages
+- [ACMP inflight queue](https://github.com/L-Acoustics/avdecc/issues/17)
 
 ### Changed
 - Controller commands result handler properly return all fields in the protocol
