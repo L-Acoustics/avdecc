@@ -52,11 +52,11 @@ namespace protocol
 {
 /* Default state machine parameters */
 static constexpr size_t DefaultMaxAecpInflightCommands = 1;
-static constexpr std::chrono::milliseconds DefaultAecpSendInterval{ 1u };
-static constexpr size_t DefaultMaxAcmpMulticastInflightCommands = 10;
-static constexpr size_t DefaultMaxAcmpUnicastInflightCommands = 10;
-static constexpr std::chrono::milliseconds DefaultAcmpMulticastSendInterval{ 1u };
-static constexpr std::chrono::milliseconds DefaultAcmpUnicastSendInterval{ 1u };
+//static constexpr std::chrono::milliseconds DefaultAecpSendInterval{ 1u };
+//static constexpr size_t DefaultMaxAcmpMulticastInflightCommands = 10;
+//static constexpr size_t DefaultMaxAcmpUnicastInflightCommands = 10;
+//static constexpr std::chrono::milliseconds DefaultAcmpMulticastSendInterval{ 1u };
+//static constexpr std::chrono::milliseconds DefaultAcmpUnicastSendInterval{ 1u };
 
 class ProtocolInterfaceMacNativeImpl;
 } // namespace protocol
@@ -540,6 +540,7 @@ struct LockInformation
 
 	std::mutex _lockQueues; /** Lock to protect _entityQueues */
 	std::unordered_map<la::avdecc::UniqueIdentifier, EntityQueues, la::avdecc::UniqueIdentifier::hash> _entityQueues;
+	dispatch_queue_t _deleterQueue; // Queue to postpone deletion of handlers
 
 	std::mutex _lockPending; /** Lock to protect _pendingCommands and _pendingCondVar */
 	std::uint32_t _pendingCommands; /** Count of pending (inflight) commands, since there is no way to cancel a command upon destruction (and result block might be called while we already destroyed our objects) */
@@ -935,6 +936,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 		_primedDiscovery = FALSE;
 		_protocolInterface = protocolInterface;
 		_pendingCommands = 0u;
+		_deleterQueue = dispatch_queue_create([[NSString stringWithFormat:@"%@.deleterQueue", [self className]] UTF8String], 0);
 		self.interface = [[AVBEthernetInterface alloc] initWithInterfaceName:interfaceName];
 		self.interface.entityDiscovery.discoveryDelegate = self;
 	}
@@ -974,6 +976,18 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 
 	// Wait for remaining pending operations
 	[self waitAsyncOperations];
+
+	if (_deleterQueue)
+	{
+		// Synchronize the queue using an empty block
+		dispatch_sync(_deleterQueue, ^{
+									});
+#if !__has_feature(objc_arc)
+		// Release the objects
+		dispatch_release(_deleterQueue);
+#endif
+		_deleterQueue = nil;
+	}
 
 	// Release 1722.1 interface
 	self.interface = nil;
@@ -1040,8 +1054,10 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	if (entity.getControllerCapabilities().test(la::avdecc::entity::ControllerCapability::Implemented))
 	{
 		// Remove handlers
-		[self.interface.aecp removeCommandHandlerForEntityID:entityID];
-		[self.interface.aecp removeResponseHandlerForControllerEntityID:entityID];
+		dispatch_async(_deleterQueue, ^{
+			[self.interface.aecp removeCommandHandlerForEntityID:entityID];
+			[self.interface.aecp removeResponseHandlerForControllerEntityID:entityID];
+		});
 	}
 }
 
@@ -1360,11 +1376,10 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	{
 		// Lock
 		auto const lg = std::lock_guard{ _lock };
-
 		// Unregister ACMP handler
 		_registeredAcmpHandlers.erase(entityID);
-		[self.interface.acmp removeHandlerForEntityID:entityID];
 	}
+	[self.interface.acmp removeHandlerForEntityID:entityID];
 
 	// Remove the EntityQueues structure from the map under the lock (if found), then clean it without the lock (to prevent deadlock)
 	EntityQueues eq;

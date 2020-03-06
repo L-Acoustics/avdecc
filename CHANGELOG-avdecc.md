@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Removed listenerStream field from entity::model::StreamConnectionState
 - Renamed entity::model::StreamConnectionState to entity::model::StreamInputConnectionInfo
 
+### Fixed
+- [Crashes/deadlock when using macOS native](https://github.com/L-Acoustics/avdecc/issues/73)
+
 ## [2.11.3] - 2019-11-20
 
 ## [2.11.2] - 2019-11-08

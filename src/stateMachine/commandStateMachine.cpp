@@ -413,9 +413,6 @@ ProtocolInterface::Error CommandStateMachine::sendAcmpCommand(Acmpdu::UniquePoin
 	// Lock
 	auto const lg = std::lock_guard{ *_manager };
 
-	// Get current time
-	auto const now = std::chrono::steady_clock::now();
-
 	// Get CommandEntityInfo matching ControllerEntityID
 	auto const& commandEntityIt = _commandEntities.find(acmp->getControllerEntityID());
 	if (commandEntityIt == _commandEntities.end())
