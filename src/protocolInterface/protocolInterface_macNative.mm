@@ -25,6 +25,7 @@
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
 #include "la/avdecc/internals/protocolVuAecpdu.hpp"
+#include "la/avdecc/internals/protocolMvuAecpdu.hpp"
 
 #include "stateMachine/stateMachineManager.hpp"
 #include "protocolInterface_macNative.hpp"
@@ -38,6 +39,7 @@
 #include <sstream>
 #include <thread>
 #include <chrono>
+#include <list>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -63,11 +65,681 @@ class ProtocolInterfaceMacNativeImpl;
 } // namespace avdecc
 } // namespace la
 
+#pragma mark - BridgeInterface Declaration
+struct EntityQueues
+{
+	dispatch_queue_t aecpQueue;
+	dispatch_semaphore_t aecpLimiter;
+};
+
+struct LockInformation
+{
+	std::recursive_mutex _lock{};
+	std::uint32_t _lockedCount{ 0u };
+	std::thread::id _lockingThreadID{};
+
+	void lock() noexcept
+	{
+		_lock.lock();
+		if (_lockedCount == 0)
+		{
+			_lockingThreadID = std::this_thread::get_id();
+		}
+		++_lockedCount;
+	}
+
+	void unlock() noexcept
+	{
+		--_lockedCount;
+		if (_lockedCount == 0)
+		{
+			_lockingThreadID = {};
+		}
+		_lock.unlock();
+	}
+
+	bool isSelfLocked() const noexcept
+	{
+		return _lockingThreadID == std::this_thread::get_id();
+	}
+};
+
+@interface BridgeInterface : NSObject <AVB17221EntityDiscoveryDelegate, AVB17221AECPClient, AVB17221ACMPClient>
+// Private variables
+{
+	BOOL _primedDiscovery;
+	la::avdecc::protocol::ProtocolInterfaceMacNativeImpl* _protocolInterface;
+
+	LockInformation _lock; /** Lock to protect the ProtocolInterface */
+	std::unordered_map<la::avdecc::UniqueIdentifier, std::uint32_t, la::avdecc::UniqueIdentifier::hash> _lastAvailableIndex; /** Last received AvailableIndex for each entity */
+	std::unordered_map<la::avdecc::UniqueIdentifier, la::avdecc::entity::LocalEntity&, la::avdecc::UniqueIdentifier::hash> _localProcessEntities; /** Local entities declared by the running process */
+	std::unordered_set<la::avdecc::UniqueIdentifier, la::avdecc::UniqueIdentifier::hash> _registeredAcmpHandlers; /** List of ACMP handlers that have been registered (that must be removed upon destruction, since there is no removeAllHandlers method) */
+
+	std::mutex _lockQueues; /** Lock to protect _entityQueues */
+	std::unordered_map<la::avdecc::UniqueIdentifier, EntityQueues, la::avdecc::UniqueIdentifier::hash> _entityQueues;
+	dispatch_queue_t _deleterQueue; // Queue to postpone deletion of handlers
+
+	std::mutex _lockPending; /** Lock to protect _pendingCommands and _pendingCondVar */
+	std::uint32_t _pendingCommands; /** Count of pending (inflight) commands, since there is no way to cancel a command upon destruction (and result block might be called while we already destroyed our objects) */
+	std::condition_variable _pendingCondVar;
+}
+
++ (BOOL)isSupported;
+/** std::string to NSString conversion */
++ (NSString*)getNSString:(std::string const&)cString;
+/** NSString to std::string conversion */
++ (std::string)getStdString:(NSString*)nsString;
++ (NSString*)getEntityCapabilities:(AVB17221Entity*)entity;
+
+- (std::optional<la::avdecc::entity::model::AvbInterfaceIndex>)getMatchingInterfaceIndex:(la::avdecc::entity::LocalEntity const&)entity;
+
+/** Initializer */
+- (id)initWithInterfaceName:(NSString*)interfaceName andProtocolInterface:(la::avdecc::protocol::ProtocolInterfaceMacNativeImpl*)protocolInterface;
+/** Deinit method to shutdown every pending operations */
+- (void)deinit;
+/** Destructor */
+- (void)dealloc;
+
+// la::avdecc::protocol::ProtocolInterface bridge methods
+- (la::avdecc::UniqueIdentifier)getDynamicEID;
+- (void)releaseDynamicEID:(la::avdecc::UniqueIdentifier)entityID;
+// Registration of a local process entity (an entity declared inside this process, not all local computer entities)
+- (la::avdecc::protocol::ProtocolInterface::Error)registerLocalEntity:(la::avdecc::entity::LocalEntity&)entity;
+// Remove handlers for a local process entity
+- (void)removeLocalProcessEntityHandlers:(la::avdecc::entity::LocalEntity const&)entity;
+// Unregistration of a local process entity
+- (la::avdecc::protocol::ProtocolInterface::Error)unregisterLocalEntity:(la::avdecc::entity::LocalEntity const&)entity;
+- (la::avdecc::protocol::ProtocolInterface::Error)setEntityNeedsAdvertise:(la::avdecc::entity::LocalEntity const&)entity flags:(la::avdecc::entity::LocalEntity::AdvertiseFlags)flags;
+- (la::avdecc::protocol::ProtocolInterface::Error)enableEntityAdvertising:(la::avdecc::entity::LocalEntity const&)entity;
+- (la::avdecc::protocol::ProtocolInterface::Error)disableEntityAdvertising:(la::avdecc::entity::LocalEntity const&)entity;
+- (BOOL)discoverRemoteEntities;
+- (BOOL)discoverRemoteEntity:(la::avdecc::UniqueIdentifier)entityID;
+- (la::avdecc::protocol::ProtocolInterface::Error)sendAecpCommand:(la::avdecc::protocol::Aecpdu::UniquePointer&&)aecpdu handler:(la::avdecc::protocol::ProtocolInterface::AecpCommandResultHandler const&)onResult;
+- (la::avdecc::protocol::ProtocolInterface::Error)sendAecpResponse:(la::avdecc::protocol::Aecpdu::UniquePointer&&)aecpdu;
+- (la::avdecc::protocol::ProtocolInterface::Error)sendAcmpCommand:(la::avdecc::protocol::Acmpdu::UniquePointer&&)acmpdu handler:(la::avdecc::protocol::ProtocolInterface::AcmpCommandResultHandler const&)onResult;
+- (void)lock;
+- (void)unlock;
+- (bool)isSelfLocked;
+
+// Variables
+@property (retain) AVBInterface* interface;
+
+@end
+
+#pragma mark - ProtocolInterfaceMacNativeImpl Declaration/Implementation
+namespace la
+{
+namespace avdecc
+{
+namespace protocol
+{
+class ProtocolInterfaceMacNativeImpl final : public ProtocolInterfaceMacNative, private stateMachine::ProtocolInterfaceDelegate
+{
+public:
+	// Publicly expose methods so the objC code can use it directly
+	using ProtocolInterfaceMacNative::notifyObservers;
+	using ProtocolInterfaceMacNative::notifyObserversMethod;
+	using ProtocolInterfaceMacNative::getVendorUniqueDelegate;
+
+	/** Constructor */
+	ProtocolInterfaceMacNativeImpl(std::string const& networkInterfaceName)
+		: ProtocolInterfaceMacNative(networkInterfaceName)
+	{
+		// Should not be there if the interface is not supported
+		AVDECC_ASSERT(isSupported(), "Should not be there if the interface is not supported");
+
+		auto* intName = [BridgeInterface getNSString:networkInterfaceName];
+
+#if 0 // We don't need to check for AVB capability/enable on the interface, AVDECC do not require an AVB compatible interface \
+	// Check the interface is AVB enabled
+					if(![AVBInterface isAVBEnabledOnInterfaceNamed:intName])
+					{
+						throw std::invalid_argument("Interface is not AVB enabled");
+					}
+					// Check the interface is AVB capable
+					if(![AVBInterface isAVBCapableInterfaceNamed:intName])
+					{
+						throw std::invalid_argument("Interface is not AVB capable");
+					}
+#endif // 0
+
+		// We can now create an AVBInterface from this network interface
+		_bridge = [[BridgeInterface alloc] initWithInterfaceName:intName andProtocolInterface:this];
+
+		// Start the state machines
+		_stateMachineManager.startStateMachines();
+
+		// Should no longer terminate
+		_shouldTerminate = false;
+
+		// Create the state machine thread
+		_stateMachineThread = std::thread(
+			[this]
+			{
+				utils::setCurrentThreadName("avdecc::StateMachine::macNative");
+
+				while (!_shouldTerminate)
+				{
+					// Check for inflight commands expiracy
+					checkInflightCommandsTimeoutExpiracy();
+
+					// Wait a little bit so we don't burn the CPU
+					std::this_thread::sleep_for(std::chrono::milliseconds(5));
+				}
+			});
+	}
+
+	void handleVendorUniqueCommandSent(Aecpdu::UniquePointer&& aecpdu, la::avdecc::protocol::ProtocolInterface::AecpCommandResultHandler const& resultHandler) noexcept
+	{
+		if (AVDECC_ASSERT_WITH_RET(aecpdu->getMessageType() == AecpMessageType::VendorUniqueCommand, "Should be a VendorUnique Command"))
+		{
+			auto const& vuAecp = static_cast<VuAecpdu const&>(*aecpdu);
+
+			// Lock
+			auto const lg = std::lock_guard{ *this };
+
+			// Get CommandEntityInfo matching ControllerEntityID
+			auto const& commandEntityIt = _commandEntities.find(aecpdu->getControllerEntityID());
+			if (commandEntityIt == _commandEntities.end())
+			{
+				utils::invokeProtectedHandler(resultHandler, nullptr, Error::UnknownLocalEntity);
+				return;
+			}
+			auto const vuProtocolID = vuAecp.getProtocolIdentifier();
+			auto* vuDelegate = getVendorUniqueDelegate(vuProtocolID);
+			if (AVDECC_ASSERT_WITH_RET(vuDelegate, "Should have a VendorUnique delegate"))
+			{
+				// Are the messages handled by our state machine
+				if (vuDelegate->areHandledByControllerStateMachine(vuProtocolID))
+				{
+					auto& commandEntityInfo = commandEntityIt->second;
+					auto const targetEntityID = vuAecp.getTargetEntityID();
+					auto const sequenceID = vuAecp.getSequenceID();
+
+					// Record the query for when we get a response (so we can send it again if it timed out)
+					auto command = VendorUniqueCommandInfo{ sequenceID, std::move(aecpdu), resultHandler };
+
+					// Set times
+					command.sendTime = std::chrono::steady_clock::now();
+					command.timeoutTime = command.sendTime + std::chrono::milliseconds(getVuAecpCommandTimeoutMsec(vuProtocolID, vuAecp));
+
+					// Add the command to the inflight queue
+					commandEntityInfo.inflightVendorUniqueCommands[targetEntityID].push_back(std::move(command));
+				}
+			}
+			else
+			{
+				utils::invokeProtectedHandler(resultHandler, nullptr, Error::InternalError);
+			}
+		}
+		else
+		{
+			utils::invokeProtectedHandler(resultHandler, nullptr, Error::InternalError);
+		}
+	}
+
+	bool handleVendorUniqueResponseReceived(VuAecpdu const& vuAecp) noexcept
+	{
+		auto const vuProtocolID = vuAecp.getProtocolIdentifier();
+		auto* vuDelegate = getVendorUniqueDelegate(vuProtocolID);
+		if (vuDelegate)
+		{
+			// Are the messages handled by the VendorUniqueDelegate itself
+			if (!vuDelegate->areHandledByControllerStateMachine(vuProtocolID))
+			{
+				// Low level notification
+				notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpduReceived, this, vuAecp);
+
+				// Forward to the delegate
+				vuDelegate->onVuAecpResponse(this, vuProtocolID, vuAecp);
+			}
+			else
+			{
+				// Messages are handled by our state machine
+				auto const controllerID = vuAecp.getControllerEntityID();
+
+				// Lock
+				auto const lg = std::lock_guard{ *this };
+
+				// Only process it if it's targeted to a registered local command entity (which is set in the ControllerID field)
+				if (auto const commandEntityIt = _commandEntities.find(controllerID); commandEntityIt != _commandEntities.end())
+				{
+					auto& commandEntityInfo = commandEntityIt->second;
+					auto const targetID = vuAecp.getTargetEntityID();
+
+					if (auto inflightIt = commandEntityInfo.inflightVendorUniqueCommands.find(targetID); inflightIt != commandEntityInfo.inflightVendorUniqueCommands.end())
+					{
+						auto& inflightCommands = inflightIt->second;
+						auto const sequenceID = vuAecp.getSequenceID();
+						auto commandIt = std::find_if(inflightCommands.begin(), inflightCommands.end(),
+							[sequenceID](VendorUniqueCommandInfo const& command)
+							{
+								return command.sequenceID == sequenceID;
+							});
+						// If the sequenceID is not found, it means the response already timed out (arriving too late)
+						if (commandIt != inflightCommands.end())
+						{
+							auto& info = *commandIt;
+
+							// Move the query (it will be deleted)
+							auto vuAecpQuery = std::move(info);
+
+							// Remove the command from inflight list
+							commandEntityInfo.inflightVendorUniqueCommands.erase(inflightIt);
+
+							// Call completion handler
+							utils::invokeProtectedHandler(vuAecpQuery.resultHandler, &vuAecp, ProtocolInterface::Error::NoError);
+						}
+						else
+						{
+							LOG_CONTROLLER_STATE_MACHINE_DEBUG(targetID, std::string("VendorUnique command with sequenceID ") + std::to_string(sequenceID) + " unexpected (timed out already?)");
+						}
+					}
+				}
+			}
+
+			return true;
+		}
+		else
+		{
+			LOG_PROTOCOL_INTERFACE_DEBUG(networkInterface::MacAddress{}, networkInterface::MacAddress{}, "Unhandled VendorUnique Response for ProtocolIdentifier {}", utils::toHexString(static_cast<VuAecpdu::ProtocolIdentifier::IntegralType>(vuProtocolID), true));
+		}
+
+		return false;
+	}
+
+	void addLocalEntity(entity::LocalEntity& entity)
+	{
+		// Lock
+		auto const lg = std::lock_guard{ *this };
+
+		_commandEntities.emplace(std::make_pair(entity.getEntityID(), CommandEntityInfo{ entity }));
+	}
+
+	void removeLocalEntity(UniqueIdentifier const& entityID)
+	{
+		// Lock
+		auto const lg = std::lock_guard{ *this };
+
+		_commandEntities.erase(entityID);
+	}
+
+	virtual void lock() const noexcept override
+	{
+		[_bridge lock];
+	}
+
+	virtual void unlock() const noexcept override
+	{
+		[_bridge unlock];
+	}
+
+	virtual bool isSelfLocked() const noexcept override
+	{
+		return [_bridge isSelfLocked];
+	}
+
+	/** Destructor */
+	virtual ~ProtocolInterfaceMacNativeImpl() noexcept
+	{
+		shutdown();
+	}
+
+	/** Destroy method for COM-like interface */
+	virtual void destroy() noexcept override
+	{
+		delete this;
+	}
+
+	// Deleted compiler auto-generated methods
+	ProtocolInterfaceMacNativeImpl(ProtocolInterfaceMacNativeImpl&&) = delete;
+	ProtocolInterfaceMacNativeImpl(ProtocolInterfaceMacNativeImpl const&) = delete;
+	ProtocolInterfaceMacNativeImpl& operator=(ProtocolInterfaceMacNativeImpl const&) = delete;
+	ProtocolInterfaceMacNativeImpl& operator=(ProtocolInterfaceMacNativeImpl&&) = delete;
+
+private:
+#pragma mark la::avdecc::protocol::ProtocolInterface overrides
+	virtual void shutdown() noexcept override
+	{
+		// Stop the state machines
+		_stateMachineManager.stopStateMachines();
+
+		// StateMachines are started
+		if (_stateMachineThread.joinable())
+		{
+			// Notify the thread we are shutting down
+			_shouldTerminate = true;
+
+			// Wait for the thread to complete its pending tasks
+			_stateMachineThread.join();
+		}
+
+		// Destroy the bridge
+		if (_bridge != nullptr)
+		{
+			[_bridge deinit];
+#if !__has_feature(objc_arc)
+			[_bridge release];
+#endif
+			_bridge = nullptr;
+		}
+	}
+
+	virtual UniqueIdentifier getDynamicEID() const noexcept override
+	{
+		return [_bridge getDynamicEID];
+	}
+
+	virtual void releaseDynamicEID(UniqueIdentifier const entityID) const noexcept override
+	{
+		[_bridge releaseDynamicEID:entityID];
+	}
+
+	virtual Error registerLocalEntity(entity::LocalEntity& entity) noexcept override
+	{
+		return [_bridge registerLocalEntity:entity];
+	}
+
+	virtual Error unregisterLocalEntity(entity::LocalEntity& entity) noexcept override
+	{
+		return [_bridge unregisterLocalEntity:entity];
+	}
+
+	virtual Error setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const flags) noexcept override
+	{
+		return [_bridge setEntityNeedsAdvertise:entity flags:flags];
+	}
+
+	virtual Error enableEntityAdvertising(entity::LocalEntity& entity) noexcept override
+	{
+		return [_bridge enableEntityAdvertising:entity];
+	}
+
+	virtual Error disableEntityAdvertising(entity::LocalEntity const& entity) noexcept override
+	{
+		return [_bridge disableEntityAdvertising:entity];
+	}
+
+	virtual Error discoverRemoteEntities() const noexcept override
+	{
+		if ([_bridge discoverRemoteEntities])
+			return ProtocolInterface::Error::NoError;
+		return ProtocolInterface::Error::TransportError;
+	}
+
+	virtual Error discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept override
+	{
+		if ([_bridge discoverRemoteEntity:entityID])
+			return ProtocolInterface::Error::NoError;
+		return ProtocolInterface::Error::TransportError;
+	}
+
+	virtual bool isDirectMessageSupported() const noexcept override
+	{
+		return false;
+	}
+
+	virtual Error sendAdpMessage(Adpdu const& adpdu) const noexcept override
+	{
+		return Error::MessageNotSupported;
+	}
+
+	virtual Error sendAecpMessage(Aecpdu const& aecpdu) const noexcept override
+	{
+		// TODO: Check the kind of message so we can at least process some of them
+		// All Responses can be sent using the sendAecpResponse method
+		// VendorUniqueCommand that are not processed by the ControllerStateMachine can be sent using a duplicate of the sendAecpCommand code (removing the code related to the ResultHandler)
+		return Error::MessageNotSupported;
+	}
+
+	virtual Error sendAcmpMessage(Acmpdu const& acmpdu) const noexcept override
+	{
+		return Error::MessageNotSupported;
+	}
+
+	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, AecpCommandResultHandler const& onResult) const noexcept override
+	{
+		auto const messageType = aecpdu->getMessageType();
+
+		if (!AVDECC_ASSERT_WITH_RET(!isAecpResponseMessageType(messageType), "Calling sendAecpCommand with a Response MessageType"))
+		{
+			return Error::MessageNotSupported;
+		}
+
+		// Special check for VendorUnique messages
+		if (messageType == AecpMessageType::VendorUniqueCommand)
+		{
+			auto& vuAecp = static_cast<VuAecpdu&>(*aecpdu);
+
+			auto const vuProtocolID = vuAecp.getProtocolIdentifier();
+			auto* vuDelegate = getVendorUniqueDelegate(vuProtocolID);
+
+			// No delegate, or the messages are not handled by the ControllerStateMachine
+			if (!vuDelegate || !vuDelegate->areHandledByControllerStateMachine(vuProtocolID))
+			{
+				return Error::MessageNotSupported;
+			}
+		}
+
+		return [_bridge sendAecpCommand:std::move(aecpdu) handler:onResult];
+	}
+
+	virtual Error sendAecpResponse(Aecpdu::UniquePointer&& aecpdu) const noexcept override
+	{
+		auto const messageType = aecpdu->getMessageType();
+
+		if (!AVDECC_ASSERT_WITH_RET(isAecpResponseMessageType(messageType), "Calling sendAecpResponse with a Command MessageType"))
+		{
+			return Error::MessageNotSupported;
+		}
+
+		// Special check for VendorUnique messages
+		if (messageType == AecpMessageType::VendorUniqueResponse)
+		{
+			auto& vuAecp = static_cast<VuAecpdu&>(*aecpdu);
+
+			auto const vuProtocolID = vuAecp.getProtocolIdentifier();
+			auto* vuDelegate = getVendorUniqueDelegate(vuProtocolID);
+
+			// No delegate, or the messages are not handled by the ControllerStateMachine
+			if (!vuDelegate || !vuDelegate->areHandledByControllerStateMachine(vuProtocolID))
+			{
+				return Error::MessageNotSupported;
+			}
+		}
+
+		return [_bridge sendAecpResponse:std::move(aecpdu)];
+	}
+
+	virtual Error sendAcmpCommand(Acmpdu::UniquePointer&& acmpdu, AcmpCommandResultHandler const& onResult) const noexcept override
+	{
+		return [_bridge sendAcmpCommand:std::move(acmpdu) handler:onResult];
+	}
+
+	virtual Error sendAcmpResponse(Acmpdu::UniquePointer&& acmpdu) const noexcept override
+	{
+		AVDECC_ASSERT(false, "TBD: To be implemented");
+		return ProtocolInterface::Error::InternalError;
+		//return [_bridge sendAcmpResponse:std::move(acmpdu)];
+	}
+
+#pragma mark stateMachine::ProtocolInterfaceDelegate overrides
+	/* **** AECP notifications **** */
+	virtual void onAecpCommand(la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override
+	{
+		AVDECC_ASSERT(false, "Should never be called");
+	}
+	/* **** ACMP notifications **** */
+	virtual void onAcmpCommand(la::avdecc::protocol::Acmpdu const& acmpdu) noexcept override
+	{
+		AVDECC_ASSERT(false, "Should never be called");
+	}
+	virtual void onAcmpResponse(la::avdecc::protocol::Acmpdu const& acmpdu) noexcept override
+	{
+		AVDECC_ASSERT(false, "Should never be called");
+	}
+	/* **** Sending methods **** */
+	virtual ProtocolInterface::Error sendMessage(la::avdecc::protocol::Adpdu const& adpdu) const noexcept override
+	{
+		AVDECC_ASSERT(false, "Should never be called (if needed someday, just forward to _bridge");
+		return ProtocolInterface::Error::InternalError;
+	}
+	virtual ProtocolInterface::Error sendMessage(la::avdecc::protocol::Aecpdu const& aecpdu) const noexcept override
+	{
+		AVDECC_ASSERT(false, "Should never be called (if needed someday, just forward to _bridge");
+		return ProtocolInterface::Error::InternalError;
+	}
+	virtual ProtocolInterface::Error sendMessage(la::avdecc::protocol::Acmpdu const& acmpdu) const noexcept override
+	{
+		AVDECC_ASSERT(false, "Should never be called (if needed someday, just forward to _bridge");
+		return ProtocolInterface::Error::InternalError;
+	}
+	/* *** Other methods **** */
+	virtual std::uint32_t getVuAecpCommandTimeoutMsec(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, la::avdecc::protocol::VuAecpdu const& aecpdu) const noexcept override
+	{
+		return getVuAecpCommandTimeout(protocolIdentifier, aecpdu);
+	}
+
+private:
+#pragma mark Private Types
+	struct VendorUniqueCommandInfo
+	{
+		AecpSequenceID sequenceID{ 0 };
+		std::chrono::time_point<std::chrono::steady_clock> sendTime{};
+		std::chrono::time_point<std::chrono::steady_clock> timeoutTime{};
+		bool retried{ false };
+		Aecpdu::UniquePointer command{ nullptr, nullptr };
+		ProtocolInterface::AecpCommandResultHandler resultHandler{};
+
+		VendorUniqueCommandInfo() {}
+		VendorUniqueCommandInfo(AecpSequenceID const sequenceID, Aecpdu::UniquePointer&& command, ProtocolInterface::AecpCommandResultHandler const& resultHandler)
+			: sequenceID(sequenceID)
+			, command(std::move(command))
+			, resultHandler(resultHandler)
+		{
+		}
+	};
+	using InflightVendorUniqueCommands = std::unordered_map<UniqueIdentifier, std::list<VendorUniqueCommandInfo>, UniqueIdentifier::hash>;
+	struct CommandEntityInfo
+	{
+		entity::LocalEntity& entity;
+
+		// VendorUnique variables
+		InflightVendorUniqueCommands inflightVendorUniqueCommands{};
+
+		/** Constructor */
+		CommandEntityInfo(entity::LocalEntity& entity) noexcept
+			: entity(entity)
+		{
+		}
+	};
+	using CommandEntities = std::unordered_map<UniqueIdentifier, CommandEntityInfo, UniqueIdentifier::hash>;
+
+#pragma mark Private methods
+	void checkInflightCommandsTimeoutExpiracy() noexcept
+	{
+		// Lock
+		auto const lg = std::lock_guard{ *this };
+
+		// Get current time
+		auto const now = std::chrono::steady_clock::now();
+
+		// Iterate over all locally registered command entities
+		for (auto& localEntityInfoKV : _commandEntities)
+		{
+			auto& localEntityInfo = localEntityInfoKV.second;
+
+			// Check AECP commands
+			for (auto& [targetEntityID, inflight] : localEntityInfo.inflightVendorUniqueCommands)
+			{
+				// Check all inflight timeouts
+				for (auto it = inflight.begin(); it != inflight.end(); /* Iterate inside the loop */)
+				{
+					auto& command = *it;
+					if (now > command.timeoutTime)
+					{
+						auto error = ProtocolInterface::Error::NoError;
+						// Timeout expired, check if we retried yet
+						//						if (!command.retried)
+						//						{
+						//							// Let's retry
+						//							command.retried = true;
+
+						//							// Update last send time
+						//							inflight.lastSendTime = now;
+
+						//							// Ask the transport layer to send the packet
+						//							error = protocolInterface->sendMessage(static_cast<Aecpdu const&>(*command.command));
+
+						//							// Reset command timeout
+						//							resetAecpCommandTimeoutValue(command);
+
+						//							// Statistics
+						//							utils::invokeProtectedMethod(&Delegate::onAecpRetry, _delegate, targetEntityID);
+						//							LOG_CONTROLLER_STATE_MACHINE_DEBUG(targetEntityID, std::string("AECP command with sequenceID ") + std::to_string(command.sequenceID) + " timed out, trying again");
+						//						}
+						//						else
+						{
+							error = ProtocolInterface::Error::Timeout;
+						}
+
+						if (!!error)
+						{
+							// Already retried, the command has been lost
+							utils::invokeProtectedHandler(command.resultHandler, nullptr, error);
+							it = inflight.erase(it);
+						}
+					}
+					else
+					{
+						++it;
+					}
+				}
+			}
+		}
+	}
+
+	size_t getMaxInflightVendorUniqueMessages(UniqueIdentifier const& /*entityID*/) const noexcept
+	{
+		return DefaultMaxAecpInflightCommands;
+	}
+	std::chrono::milliseconds getVendorUniqueSendInterval(UniqueIdentifier const& entityID) const noexcept
+	{
+		return {};
+	}
+
+#pragma mark Private variables
+	BridgeInterface* _bridge{ nullptr };
+	stateMachine::Manager _stateMachineManager{ this, this, nullptr, nullptr, nullptr }; // stateMachineManager only required to create the discovery thread (which will callback 'this')
+	bool _shouldTerminate{ false };
+	std::thread _stateMachineThread{}; // Can safely be declared here, will be joined during destruction
+	CommandEntities _commandEntities{};
+};
+
+ProtocolInterfaceMacNative::ProtocolInterfaceMacNative(std::string const& networkInterfaceName)
+	: ProtocolInterface(networkInterfaceName)
+{
+}
+
+bool ProtocolInterfaceMacNative::isSupported() noexcept
+{
+	return [BridgeInterface isSupported];
+}
+
+ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfaceMacNative(std::string const& networkInterfaceName)
+{
+	return new ProtocolInterfaceMacNativeImpl(networkInterfaceName);
+}
+
+} // namespace protocol
+} // namespace avdecc
+} // namespace la
+
 #pragma mark - FromNative Declaration
 
 @interface FromNative : NSObject
 + (la::avdecc::entity::Entity)makeEntity:(AVB17221Entity*)entity;
-+ (la::avdecc::protocol::Aecpdu::UniquePointer)makeAecpdu:(AVB17221AECPMessage*)message toDestAddress:(la::avdecc::networkInterface::MacAddress const&)destAddress;
++ (la::avdecc::protocol::Aecpdu::UniquePointer)makeAecpdu:(AVB17221AECPMessage*)message toDestAddress:(la::avdecc::networkInterface::MacAddress const&)destAddress withProtocolInterface:(la::avdecc::protocol::ProtocolInterfaceMacNativeImpl const&)pi;
 + (la::avdecc::protocol::Acmpdu::UniquePointer)makeAcmpdu:(AVB17221ACMPMessage*)message;
 + (la::avdecc::networkInterface::MacAddress)makeMacAddress:(AVBMACAddress*)macAddress;
 + (la::avdecc::protocol::ProtocolInterface::Error)getProtocolError:(NSError*)error;
@@ -152,7 +824,9 @@ class ProtocolInterfaceMacNativeImpl;
 	aem.setUnsolicited(message.isUnsolicited);
 	aem.setCommandType(la::avdecc::protocol::AemCommandType{ message.commandType });
 	if (message.commandSpecificData.length != 0)
+	{
 		aem.setCommandSpecificData(message.commandSpecificData.bytes, message.commandSpecificData.length);
+	}
 
 	return aemAecpdu;
 }
@@ -180,12 +854,60 @@ class ProtocolInterfaceMacNativeImpl;
 	return aaAecpdu;
 }
 
-+ (la::avdecc::protocol::VuAecpdu::UniquePointer)makeVendorUniqueAecpdu:(AVB17221AECPVendorMessage*)message toDestAddress:(la::avdecc::networkInterface::MacAddress const&)destAddress isResponse:(bool)isResponse {
-#pragma message("TODO")
++ (la::avdecc::protocol::VuAecpdu::UniquePointer)makeMvuAecpdu:(AVB17221AECPVendorMessage*)message toDestAddress:(la::avdecc::networkInterface::MacAddress const&)destAddress isResponse:(bool)isResponse withVendorUniqueDelegate:(la::avdecc::protocol::ProtocolInterface::VendorUniqueDelegate*)vuDelegate {
+	auto vuAecpdu = vuDelegate->createAecpdu(la::avdecc::protocol::MvuAecpdu::ProtocolID, isResponse);
+	if (vuAecpdu)
+	{
+		auto& mvu = static_cast<la::avdecc::protocol::MvuAecpdu&>(*vuAecpdu);
+
+		// Set Ether2 fields
+		mvu.setSrcAddress([FromNative makeMacAddress:message.sourceMAC]);
+		mvu.setDestAddress(destAddress);
+
+		// Set AECP fields
+		mvu.setStatus(la::avdecc::protocol::AecpStatus{ message.status });
+		mvu.setTargetEntityID(la::avdecc::UniqueIdentifier{ message.targetEntityID });
+		mvu.setControllerEntityID(la::avdecc::UniqueIdentifier{ message.controllerEntityID });
+		mvu.setSequenceID(message.sequenceID);
+
+		auto const bytesLen = message.protocolSpecificData.length;
+		if (bytesLen >= la::avdecc::protocol::MvuAecpdu::HeaderLength)
+		{
+			// Set MVU fields
+			auto const* const bytes = static_cast<std::uint8_t const*>(message.protocolSpecificData.bytes);
+			auto pos = decltype(bytesLen){ 0 };
+
+			// Skip reserved field
+			++pos;
+
+			// Read CommandType
+			auto commandType = *reinterpret_cast<la::avdecc::protocol::MvuCommandType const*>(bytes + pos);
+			++pos;
+			mvu.setCommandType(commandType);
+
+			// Read CommandSpecificData
+			mvu.setCommandSpecificData(reinterpret_cast<void const*>(bytes + pos), bytesLen - pos);
+
+			return vuAecpdu;
+		}
+	}
 	return la::avdecc::protocol::VuAecpdu::UniquePointer{ nullptr, nullptr };
 }
 
-+ (la::avdecc::protocol::Aecpdu::UniquePointer)makeAecpdu:(AVB17221AECPMessage*)message toDestAddress:(la::avdecc::networkInterface::MacAddress const&)destAddress {
++ (la::avdecc::protocol::VuAecpdu::UniquePointer)makeVendorUniqueAecpdu:(AVB17221AECPVendorMessage*)message toDestAddress:(la::avdecc::networkInterface::MacAddress const&)destAddress isResponse:(bool)isResponse withProtocolInterface:(la::avdecc::protocol::ProtocolInterfaceMacNativeImpl const&)pi {
+	auto const vuProtocolID = la::avdecc::protocol::VuAecpdu::ProtocolIdentifier{ message.protocolID };
+	auto* vuDelegate = pi.getVendorUniqueDelegate(vuProtocolID);
+	if (vuDelegate)
+	{
+		if (vuProtocolID == la::avdecc::protocol::MvuAecpdu::ProtocolID)
+		{
+			return [FromNative makeMvuAecpdu:message toDestAddress:destAddress isResponse:isResponse withVendorUniqueDelegate:vuDelegate];
+		}
+	}
+	return la::avdecc::protocol::VuAecpdu::UniquePointer{ nullptr, nullptr };
+}
+
++ (la::avdecc::protocol::Aecpdu::UniquePointer)makeAecpdu:(AVB17221AECPMessage*)message toDestAddress:(la::avdecc::networkInterface::MacAddress const&)destAddress withProtocolInterface:(la::avdecc::protocol::ProtocolInterfaceMacNativeImpl const&)pi {
 	switch ([message messageType])
 	{
 		case AVB17221AECPMessageTypeAEMCommand:
@@ -197,9 +919,9 @@ class ProtocolInterfaceMacNativeImpl;
 		case AVB17221AECPMessageTypeAddressAccessResponse:
 			return [FromNative makeAaAecpdu:static_cast<AVB17221AECPAddressAccessMessage*>(message) toDestAddress:destAddress isResponse:true];
 		case AVB17221AECPMessageTypeVendorUniqueCommand:
-			return [FromNative makeVendorUniqueAecpdu:static_cast<AVB17221AECPVendorMessage*>(message) toDestAddress:destAddress isResponse:false];
+			return [FromNative makeVendorUniqueAecpdu:static_cast<AVB17221AECPVendorMessage*>(message) toDestAddress:destAddress isResponse:false withProtocolInterface:pi];
 		case AVB17221AECPMessageTypeVendorUniqueResponse:
-			return [FromNative makeVendorUniqueAecpdu:static_cast<AVB17221AECPVendorMessage*>(message) toDestAddress:destAddress isResponse:true];
+			return [FromNative makeVendorUniqueAecpdu:static_cast<AVB17221AECPVendorMessage*>(message) toDestAddress:destAddress isResponse:true withProtocolInterface:pi];
 		default:
 			AVDECC_ASSERT(false, "Unhandled AECP message type");
 			break;
@@ -488,371 +1210,6 @@ class ProtocolInterfaceMacNativeImpl;
 
 @end
 
-#pragma mark - BridgeInterface Declaration
-struct EntityQueues
-{
-	dispatch_queue_t aecpQueue;
-	dispatch_semaphore_t aecpLimiter;
-};
-
-struct LockInformation
-{
-	std::recursive_mutex _lock{};
-	std::uint32_t _lockedCount{ 0u };
-	std::thread::id _lockingThreadID{};
-
-	void lock() noexcept
-	{
-		_lock.lock();
-		if (_lockedCount == 0)
-		{
-			_lockingThreadID = std::this_thread::get_id();
-		}
-		++_lockedCount;
-	}
-
-	void unlock() noexcept
-	{
-		--_lockedCount;
-		if (_lockedCount == 0)
-		{
-			_lockingThreadID = {};
-		}
-		_lock.unlock();
-	}
-
-	bool isSelfLocked() const noexcept
-	{
-		return _lockingThreadID == std::this_thread::get_id();
-	}
-};
-
-@interface BridgeInterface : NSObject <AVB17221EntityDiscoveryDelegate, AVB17221AECPClient, AVB17221ACMPClient>
-// Private variables
-{
-	BOOL _primedDiscovery;
-	la::avdecc::protocol::ProtocolInterfaceMacNativeImpl* _protocolInterface;
-
-	LockInformation _lock; /** Lock to protect the ProtocolInterface */
-	std::unordered_map<la::avdecc::UniqueIdentifier, std::uint32_t, la::avdecc::UniqueIdentifier::hash> _lastAvailableIndex; /** Last received AvailableIndex for each entity */
-	std::unordered_map<la::avdecc::UniqueIdentifier, la::avdecc::entity::LocalEntity&, la::avdecc::UniqueIdentifier::hash> _localProcessEntities; /** Local entities declared by the running process */
-	std::unordered_set<la::avdecc::UniqueIdentifier, la::avdecc::UniqueIdentifier::hash> _registeredAcmpHandlers; /** List of ACMP handlers that have been registered (that must be removed upon destruction, since there is no removeAllHandlers method) */
-
-	std::mutex _lockQueues; /** Lock to protect _entityQueues */
-	std::unordered_map<la::avdecc::UniqueIdentifier, EntityQueues, la::avdecc::UniqueIdentifier::hash> _entityQueues;
-	dispatch_queue_t _deleterQueue; // Queue to postpone deletion of handlers
-
-	std::mutex _lockPending; /** Lock to protect _pendingCommands and _pendingCondVar */
-	std::uint32_t _pendingCommands; /** Count of pending (inflight) commands, since there is no way to cancel a command upon destruction (and result block might be called while we already destroyed our objects) */
-	std::condition_variable _pendingCondVar;
-}
-
-+ (BOOL)isSupported;
-/** std::string to NSString conversion */
-+ (NSString*)getNSString:(std::string const&)cString;
-/** NSString to std::string conversion */
-+ (std::string)getStdString:(NSString*)nsString;
-+ (NSString*)getEntityCapabilities:(AVB17221Entity*)entity;
-
-- (std::optional<la::avdecc::entity::model::AvbInterfaceIndex>)getMatchingInterfaceIndex:(la::avdecc::entity::LocalEntity const&)entity;
-
-/** Initializer */
-- (id)initWithInterfaceName:(NSString*)interfaceName andProtocolInterface:(la::avdecc::protocol::ProtocolInterfaceMacNativeImpl*)protocolInterface;
-/** Deinit method to shutdown every pending operations */
-- (void)deinit;
-/** Destructor */
-- (void)dealloc;
-
-// la::avdecc::protocol::ProtocolInterface bridge methods
-- (la::avdecc::UniqueIdentifier)getDynamicEID;
-- (void)releaseDynamicEID:(la::avdecc::UniqueIdentifier)entityID;
-// Registration of a local process entity (an entity declared inside this process, not all local computer entities)
-- (la::avdecc::protocol::ProtocolInterface::Error)registerLocalEntity:(la::avdecc::entity::LocalEntity&)entity;
-// Remove handlers for a local process entity
-- (void)removeLocalProcessEntityHandlers:(la::avdecc::entity::LocalEntity const&)entity;
-// Unregistration of a local process entity
-- (la::avdecc::protocol::ProtocolInterface::Error)unregisterLocalEntity:(la::avdecc::entity::LocalEntity const&)entity;
-- (la::avdecc::protocol::ProtocolInterface::Error)setEntityNeedsAdvertise:(la::avdecc::entity::LocalEntity const&)entity flags:(la::avdecc::entity::LocalEntity::AdvertiseFlags)flags;
-- (la::avdecc::protocol::ProtocolInterface::Error)enableEntityAdvertising:(la::avdecc::entity::LocalEntity const&)entity;
-- (la::avdecc::protocol::ProtocolInterface::Error)disableEntityAdvertising:(la::avdecc::entity::LocalEntity const&)entity;
-- (BOOL)discoverRemoteEntities;
-- (BOOL)discoverRemoteEntity:(la::avdecc::UniqueIdentifier)entityID;
-- (la::avdecc::protocol::ProtocolInterface::Error)sendAecpCommand:(la::avdecc::protocol::Aecpdu::UniquePointer&&)aecpdu handler:(la::avdecc::protocol::ProtocolInterface::AecpCommandResultHandler const&)onResult;
-- (la::avdecc::protocol::ProtocolInterface::Error)sendAecpResponse:(la::avdecc::protocol::Aecpdu::UniquePointer&&)aecpdu;
-- (la::avdecc::protocol::ProtocolInterface::Error)sendAcmpCommand:(la::avdecc::protocol::Acmpdu::UniquePointer&&)acmpdu handler:(la::avdecc::protocol::ProtocolInterface::AcmpCommandResultHandler const&)onResult;
-- (void)lock;
-- (void)unlock;
-- (bool)isSelfLocked;
-
-// Variables
-@property (retain) AVBInterface* interface;
-
-@end
-
-#pragma mark - ProtocolInterfaceMacNativeImpl Implementation
-namespace la
-{
-namespace avdecc
-{
-namespace protocol
-{
-class ProtocolInterfaceMacNativeImpl final : public ProtocolInterfaceMacNative, private stateMachine::ProtocolInterfaceDelegate
-{
-public:
-	// Publicly expose notifyObservers methods so the objC code can use it directly
-	using ProtocolInterfaceMacNative::notifyObservers;
-	using ProtocolInterfaceMacNative::notifyObserversMethod;
-
-	/** Constructor */
-	ProtocolInterfaceMacNativeImpl(std::string const& networkInterfaceName)
-		: ProtocolInterfaceMacNative(networkInterfaceName)
-	{
-		// Should not be there if the interface is not supported
-		AVDECC_ASSERT(isSupported(), "Should not be there if the interface is not supported");
-
-		auto* intName = [BridgeInterface getNSString:networkInterfaceName];
-
-#if 0 // We don't need to check for AVB capability/enable on the interface, AVDECC do not require an AVB compatible interface \
-	// Check the interface is AVB enabled
-					if(![AVBInterface isAVBEnabledOnInterfaceNamed:intName])
-					{
-						throw std::invalid_argument("Interface is not AVB enabled");
-					}
-					// Check the interface is AVB capable
-					if(![AVBInterface isAVBCapableInterfaceNamed:intName])
-					{
-						throw std::invalid_argument("Interface is not AVB capable");
-					}
-#endif // 0
-
-		// We can now create an AVBInterface from this network interface
-		_bridge = [[BridgeInterface alloc] initWithInterfaceName:intName andProtocolInterface:this];
-
-		// Start the state machines
-		_stateMachineManager.startStateMachines();
-	}
-
-	/** Destructor */
-	virtual ~ProtocolInterfaceMacNativeImpl() noexcept
-	{
-		shutdown();
-	}
-
-	/** Destroy method for COM-like interface */
-	virtual void destroy() noexcept override
-	{
-		delete this;
-	}
-
-	// Deleted compiler auto-generated methods
-	ProtocolInterfaceMacNativeImpl(ProtocolInterfaceMacNativeImpl&&) = delete;
-	ProtocolInterfaceMacNativeImpl(ProtocolInterfaceMacNativeImpl const&) = delete;
-	ProtocolInterfaceMacNativeImpl& operator=(ProtocolInterfaceMacNativeImpl const&) = delete;
-	ProtocolInterfaceMacNativeImpl& operator=(ProtocolInterfaceMacNativeImpl&&) = delete;
-
-private:
-#pragma mark la::avdecc::protocol::ProtocolInterface overrides
-	virtual void shutdown() noexcept override
-	{
-		// Stop the state machines
-		_stateMachineManager.stopStateMachines();
-
-		// Destroy the bridge
-		if (_bridge != nullptr)
-		{
-			[_bridge deinit];
-#if !__has_feature(objc_arc)
-			[_bridge release];
-#endif
-			_bridge = nullptr;
-		}
-	}
-
-	virtual UniqueIdentifier getDynamicEID() const noexcept override
-	{
-		return [_bridge getDynamicEID];
-	}
-
-	virtual void releaseDynamicEID(UniqueIdentifier const entityID) const noexcept override
-	{
-		[_bridge releaseDynamicEID:entityID];
-	}
-
-	virtual Error registerLocalEntity(entity::LocalEntity& entity) noexcept override
-	{
-		return [_bridge registerLocalEntity:entity];
-	}
-
-	virtual Error unregisterLocalEntity(entity::LocalEntity& entity) noexcept override
-	{
-		return [_bridge unregisterLocalEntity:entity];
-	}
-
-	virtual Error setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const flags) noexcept override
-	{
-		return [_bridge setEntityNeedsAdvertise:entity flags:flags];
-	}
-
-	virtual Error enableEntityAdvertising(entity::LocalEntity& entity) noexcept override
-	{
-		return [_bridge enableEntityAdvertising:entity];
-	}
-
-	virtual Error disableEntityAdvertising(entity::LocalEntity const& entity) noexcept override
-	{
-		return [_bridge disableEntityAdvertising:entity];
-	}
-
-	virtual Error discoverRemoteEntities() const noexcept override
-	{
-		if ([_bridge discoverRemoteEntities])
-			return ProtocolInterface::Error::NoError;
-		return ProtocolInterface::Error::TransportError;
-	}
-
-	virtual Error discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept override
-	{
-		if ([_bridge discoverRemoteEntity:entityID])
-			return ProtocolInterface::Error::NoError;
-		return ProtocolInterface::Error::TransportError;
-	}
-
-	virtual bool isDirectMessageSupported() const noexcept override
-	{
-		return false;
-	}
-
-	virtual Error sendAdpMessage(Adpdu const& adpdu) const noexcept override
-	{
-		return Error::MessageNotSupported;
-	}
-
-	virtual Error sendAecpMessage(Aecpdu const& aecpdu) const noexcept override
-	{
-		// TODO: Check the kind of message so we can at least process some of them
-		// All Responses can be sent using the sendAecpResponse method
-		// VendorUniqueCommand that are not processed by the ControllerStateMachine can be sent using a duplicate of the sendAecpCommand code (removing the code related to the ResultHandler)
-		return Error::MessageNotSupported;
-	}
-
-	virtual Error sendAcmpMessage(Acmpdu const& acmpdu) const noexcept override
-	{
-		return Error::MessageNotSupported;
-	}
-
-	virtual Error sendAecpCommand(Aecpdu::UniquePointer&& aecpdu, AecpCommandResultHandler const& onResult) const noexcept override
-	{
-		auto const messageType = aecpdu->getMessageType();
-
-		if (!AVDECC_ASSERT_WITH_RET(!isAecpResponseMessageType(messageType), "Calling sendAecpCommand with a Response MessageType"))
-		{
-			return Error::MessageNotSupported;
-		}
-
-		return [_bridge sendAecpCommand:std::move(aecpdu) handler:onResult];
-	}
-
-	virtual Error sendAecpResponse(Aecpdu::UniquePointer&& aecpdu) const noexcept override
-	{
-		auto const messageType = aecpdu->getMessageType();
-
-		if (!AVDECC_ASSERT_WITH_RET(isAecpResponseMessageType(messageType), "Calling sendAecpResponse with a Command MessageType"))
-		{
-			return Error::MessageNotSupported;
-		}
-
-		return [_bridge sendAecpResponse:std::move(aecpdu)];
-	}
-
-	virtual Error sendAcmpCommand(Acmpdu::UniquePointer&& acmpdu, AcmpCommandResultHandler const& onResult) const noexcept override
-	{
-		return [_bridge sendAcmpCommand:std::move(acmpdu) handler:onResult];
-	}
-
-	virtual Error sendAcmpResponse(Acmpdu::UniquePointer&& acmpdu) const noexcept override
-	{
-		AVDECC_ASSERT(false, "TBD: To be implemented");
-		return ProtocolInterface::Error::InternalError;
-		//return [_bridge sendAcmpResponse:std::move(acmpdu)];
-	}
-
-	virtual void lock() const noexcept override
-	{
-		[_bridge lock];
-	}
-
-	virtual void unlock() const noexcept override
-	{
-		[_bridge unlock];
-	}
-
-	virtual bool isSelfLocked() const noexcept override
-	{
-		return [_bridge isSelfLocked];
-	}
-
-#pragma mark stateMachine::ProtocolInterfaceDelegate overrides
-	/* **** AECP notifications **** */
-	virtual void onAecpCommand(la::avdecc::protocol::Aecpdu const& aecpdu) noexcept override
-	{
-		AVDECC_ASSERT(false, "Should never be called");
-	}
-	/* **** ACMP notifications **** */
-	virtual void onAcmpCommand(la::avdecc::protocol::Acmpdu const& acmpdu) noexcept override
-	{
-		AVDECC_ASSERT(false, "Should never be called");
-	}
-	virtual void onAcmpResponse(la::avdecc::protocol::Acmpdu const& acmpdu) noexcept override
-	{
-		AVDECC_ASSERT(false, "Should never be called");
-	}
-	/* **** Sending methods **** */
-	virtual ProtocolInterface::Error sendMessage(la::avdecc::protocol::Adpdu const& adpdu) const noexcept override
-	{
-		AVDECC_ASSERT(false, "Should never be called (if needed someday, just forward to _bridge");
-		return ProtocolInterface::Error::InternalError;
-	}
-	virtual ProtocolInterface::Error sendMessage(la::avdecc::protocol::Aecpdu const& aecpdu) const noexcept override
-	{
-		AVDECC_ASSERT(false, "Should never be called (if needed someday, just forward to _bridge");
-		return ProtocolInterface::Error::InternalError;
-	}
-	virtual ProtocolInterface::Error sendMessage(la::avdecc::protocol::Acmpdu const& acmpdu) const noexcept override
-	{
-		AVDECC_ASSERT(false, "Should never be called (if needed someday, just forward to _bridge");
-		return ProtocolInterface::Error::InternalError;
-	}
-	/* *** Other methods **** */
-	virtual std::uint32_t getVuAecpCommandTimeoutMsec(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, la::avdecc::protocol::VuAecpdu const& aecpdu) const noexcept override
-	{
-		return getVuAecpCommandTimeout(protocolIdentifier, aecpdu);
-	}
-
-private:
-#pragma mark Private variables
-	BridgeInterface* _bridge{ nullptr };
-	stateMachine::Manager _stateMachineManager{ this, this, nullptr, nullptr, nullptr }; // stateMachineManager only required to create the discovery thread (which will callback 'this')
-};
-
-ProtocolInterfaceMacNative::ProtocolInterfaceMacNative(std::string const& networkInterfaceName)
-	: ProtocolInterface(networkInterfaceName)
-{
-}
-
-bool ProtocolInterfaceMacNative::isSupported() noexcept
-{
-	return [BridgeInterface isSupported];
-}
-
-ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfaceMacNative(std::string const& networkInterfaceName)
-{
-	return new ProtocolInterfaceMacNativeImpl(networkInterfaceName);
-}
-
-} // namespace protocol
-} // namespace avdecc
-} // namespace la
-
 #pragma mark - BridgeInterface Implementation
 @implementation BridgeInterface
 
@@ -1039,6 +1396,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 
 	// Add the entity to our cache of local entities declared by the running program
 	_localProcessEntities.insert(decltype(_localProcessEntities)::value_type(entityID, entity));
+	_protocolInterface->addLocalEntity(entity);
 
 	// Notify observers
 	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOnline, _protocolInterface, entity);
@@ -1076,6 +1434,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 
 	// Remove the entity from our cache of local entities declared by the running program
 	_localProcessEntities.erase(entityID);
+	_protocolInterface->removeLocalEntity(entityID);
 
 	// Notify observers
 	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOffline, _protocolInterface, entityID);
@@ -1174,6 +1533,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 			}
 		}
 
+		__block auto sentAecpdu = std::move(aecpdu); // Move the aecpdu to a __block variable so it can safely be used inside the objC block.
 		dispatch_async(queue, ^{
 			dispatch_semaphore_t limiter;
 			{
@@ -1206,16 +1566,20 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 												 {
 													 // Special case for VendorUnique messages:
 													 //  It's up to the implementation to keep track of the message, the response, the timeout, the retry.
-													 //  This completion handler is called immediately upon send, with NSError set if there was an error.
-													 //  Otherwise we arrive here with the exact sent message passed here so we can retrieve the sequenceID to track the response in - (BOOL)AECPDidReceiveResponse:(AVB17221AECPMessage*)message onInterface:(AVB17221AECPInterface*)anInterface;
+													 //  This completion handler is called immediately upon send, NSError being set if there was an error.
+													 //  If no error was detected, we passed the actual message being send so we can retrieve the sequenceID to track the response in - (BOOL)AECPDidReceiveResponse:(AVB17221AECPMessage*)message onInterface:(AVB17221AECPInterface*)anInterface;
 													 if (message.messageType == AVB17221AECPMessageTypeVendorUniqueCommand)
 													 {
-														 // Right now, due to a bug in AECPDidReceiveResponse not being triggered, just act as if the message had time out
-														 la::avdecc::utils::invokeProtectedHandler(resultHandler, nullptr, la::avdecc::protocol::ProtocolInterface::Error::Timeout);
+														 // Right now as there is no alternative for sending VendorUnique message, we have to alter our Aecpdu::SequenceID with the autogenerated one
+														 // If we someday get a new API to send AECP messages without being handled by macOS state machine, we will have to remove this line
+														 sentAecpdu->setSequenceID([message sequenceID]);
+
+														 // Forward to our state machine
+														 _protocolInterface->handleVendorUniqueCommandSent(std::move(sentAecpdu), resultHandler);
 													 }
 													 else
 													 {
-														 auto aecpdu = [FromNative makeAecpdu:message toDestAddress:_protocolInterface->getMacAddress()];
+														 auto aecpdu = [FromNative makeAecpdu:message toDestAddress:_protocolInterface->getMacAddress() withProtocolInterface:*_protocolInterface];
 														 la::avdecc::utils::invokeProtectedHandler(resultHandler, aecpdu.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
 													 }
 												 }
@@ -1278,7 +1642,8 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 
 			// Actually send the message
 			[self startAsyncOperation];
-			[self.interface.aecp sendResponse:message toMACAddress:[ToNative makeAVBMacAddress:macAddr] error:Nil];
+			NSError* error{ nullptr };
+			[self.interface.aecp sendResponse:message toMACAddress:[ToNative makeAVBMacAddress:macAddr] error:&error];
 			[self stopAsyncOperation];
 
 			// Signal the semaphore so we can process another command
@@ -1583,7 +1948,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	if (_localProcessEntities.count(la::avdecc::UniqueIdentifier{ message.targetEntityID }) == 0)
 		return NO;
 
-	auto const aecpdu = [FromNative makeAecpdu:message toDestAddress:_protocolInterface->getMacAddress()];
+	auto const aecpdu = [FromNative makeAecpdu:message toDestAddress:_protocolInterface->getMacAddress() withProtocolInterface:*_protocolInterface];
 
 	// Notify the observers
 	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onAecpCommand, _protocolInterface, *aecpdu);
@@ -1597,7 +1962,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	// Lock
 	auto const lg = std::lock_guard{ _lock };
 
-	auto aecpdu = [FromNative makeAecpdu:message toDestAddress:_protocolInterface->getMacAddress()];
+	auto aecpdu = [FromNative makeAecpdu:message toDestAddress:_protocolInterface->getMacAddress() withProtocolInterface:*_protocolInterface];
 	auto const controllerID = la::avdecc::UniqueIdentifier{ [message controllerEntityID] };
 	auto const isAemUnsolicitedResponse = [message messageType] == AVB17221AECPMessageTypeAEMResponse && [static_cast<AVB17221AECPAEMMessage*>(message) isUnsolicited];
 
@@ -1629,6 +1994,14 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onAecpAemUnsolicitedResponse, _protocolInterface, static_cast<la::avdecc::protocol::AemAecpdu const&>(*aecpdu));
 		return YES;
 	}
+
+	// Special case for VendorUnique messages:
+	//  It's up to the implementation to keep track of the message, the response, the timeout, the retry.
+	if (message.messageType == AVB17221AECPMessageTypeVendorUniqueResponse)
+	{
+		return _protocolInterface->handleVendorUniqueResponseReceived(static_cast<la::avdecc::protocol::VuAecpdu const&>(*aecpdu));
+	}
+
 
 	// Ignore all other messages in this handler, expected responses will be handled by the block of aecp.sendCommand() method
 	return NO;
