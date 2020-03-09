@@ -11,11 +11,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Delegate class in ProtocolInterface to handle VendorUnique messages
 - [ACMP inflight queue](https://github.com/L-Acoustics/avdecc/issues/17)
 - [AECP/ACMP throttling](https://github.com/L-Acoustics/avdecc/issues/17)
+- Partial support for VendorUnique message in macOS Native ProtocolInterface
 
 ### Changed
 - Controller commands result handler properly return all fields in the protocol
 - Removed listenerStream field from entity::model::StreamConnectionState
 - Renamed entity::model::StreamConnectionState to entity::model::StreamInputConnectionInfo
+- MacOS Native ProtocolInterface is now restricted to macOS Catalina and later
 
 ### Fixed
 - [Crashes/deadlock when using macOS native](https://github.com/L-Acoustics/avdecc/issues/73)
