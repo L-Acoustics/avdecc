@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Controller commands result handler properly return all fields in the protocol
 - Removed listenerStream field from entity::model::StreamConnectionState
 - Renamed entity::model::StreamConnectionState to entity::model::StreamInputConnectionInfo
+- MacOS Native ProtocolInterface is now restricted to macOS Catalina and later
 
 ### Fixed
 - [Crashes/deadlock when using macOS native](https://github.com/L-Acoustics/avdecc/issues/73)

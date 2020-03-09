@@ -1223,8 +1223,8 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 + (BOOL)isSupported {
 	if ([NSProcessInfo instancesRespondToSelector:@selector(isOperatingSystemAtLeastVersion:)])
 	{
-		// Minimum required version is macOS 10.11.0 (El Capitan)
-		return [[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion:{ 10, 11, 0 }];
+		// Minimum required version is macOS 10.15.0 (Catalina)
+		return [[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion:{ 10, 15, 0 }];
 	}
 
 	return FALSE;
