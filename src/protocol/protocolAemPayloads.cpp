@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -33,7 +33,6 @@ namespace protocol
 {
 namespace aemPayload
 {
-
 /** ACQUIRE_ENTITY Command - Clause 7.4.1.1 */
 Serializer<AecpAemAcquireEntityCommandPayloadSize> serializeAcquireEntityCommand(AemAcquireEntityFlags const flags, UniqueIdentifier const ownerID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
@@ -240,7 +239,7 @@ entity::model::EntityDescriptor deserializeReadEntityDescriptorResponse(AemAecpd
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_ENTITY_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_ENTITY_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -287,7 +286,7 @@ entity::model::ConfigurationDescriptor deserializeReadConfigurationDescriptorRes
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_CONFIGURATION_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_CONFIGURATION_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -355,7 +354,7 @@ entity::model::AudioUnitDescriptor deserializeReadAudioUnitDescriptorResponse(Ae
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AUDIO_UNIT_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AUDIO_UNIT_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -423,7 +422,7 @@ entity::model::StreamDescriptor deserializeReadStreamDescriptorResponse(AemAecpd
 		// Let's loop over the formats
 		for (auto index = 0u; index < numberOfFormats; ++index)
 		{
-			std::uint64_t format;
+			entity::model::StreamFormat format{};
 			des >> format;
 			streamDescriptor.formats.insert(format);
 		}
@@ -449,7 +448,7 @@ entity::model::StreamDescriptor deserializeReadStreamDescriptorResponse(AemAecpd
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_STREAM_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_STREAM_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -481,7 +480,7 @@ entity::model::JackDescriptor deserializeReadJackDescriptorResponse(AemAecpdu::P
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_JACK_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_JACK_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -519,7 +518,7 @@ entity::model::AvbInterfaceDescriptor deserializeReadAvbInterfaceDescriptorRespo
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AVB_INTERFACE_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AVB_INTERFACE_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -552,7 +551,7 @@ entity::model::ClockSourceDescriptor deserializeReadClockSourceDescriptorRespons
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_CLOCK_SOURCE_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_CLOCK_SOURCE_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -586,7 +585,7 @@ entity::model::MemoryObjectDescriptor deserializeReadMemoryObjectDescriptorRespo
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_MEMORY_OBJECT_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_MEMORY_OBJECT_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -616,7 +615,7 @@ entity::model::LocaleDescriptor deserializeReadLocaleDescriptorResponse(AemAecpd
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_LOCALE_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_LOCALE_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -648,7 +647,7 @@ entity::model::StringsDescriptor deserializeReadStringsDescriptorResponse(AemAec
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_STRINGS_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_STRINGS_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -680,7 +679,7 @@ entity::model::StreamPortDescriptor deserializeReadStreamPortDescriptorResponse(
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_STREAM_PORT_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_STREAM_PORT_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -712,7 +711,7 @@ entity::model::ExternalPortDescriptor deserializeReadExternalPortDescriptorRespo
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_EXTERNAL_PORT_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_EXTERNAL_PORT_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -744,7 +743,7 @@ entity::model::InternalPortDescriptor deserializeReadInternalPortDescriptorRespo
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_INTERNAL_PORT_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_INTERNAL_PORT_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -777,7 +776,7 @@ entity::model::AudioClusterDescriptor deserializeReadAudioClusterDescriptorRespo
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AUDIO_CLUSTER_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AUDIO_CLUSTER_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -827,7 +826,7 @@ entity::model::AudioMapDescriptor deserializeReadAudioMapDescriptorResponse(AemA
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AUDIO_MAP_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_AUDIO_MAP_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -880,7 +879,7 @@ entity::model::ClockDomainDescriptor deserializeReadClockDomainDescriptorRespons
 
 		if (des.remaining() != 0)
 		{
-			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_CLOCK_DOMAIN_DESCRIPTOR RESPONSE");
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_CLOCK_DOMAIN_DESCRIPTOR RESPONSE: {}", des.remaining());
 		}
 	}
 
@@ -994,7 +993,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	Deserializer des(commandPayload, commandPayloadLength);
 	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
-	entity::model::StreamFormat streamFormat{ entity::model::getNullStreamFormat() };
+	entity::model::StreamFormat streamFormat{};
 
 	des >> descriptorType >> descriptorIndex;
 	des >> streamFormat;
@@ -1172,18 +1171,90 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 
 
 /** GET_STREAM_INFO Response - Clause 7.4.16.2 */
-Serializer<AecpAemGetStreamInfoResponsePayloadSize> serializeGetStreamInfoResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamInfo const& streamInfo)
+Serializer<AecpAemMilanGetStreamInfoResponsePayloadSize> serializeGetStreamInfoResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamInfo const& streamInfo)
 {
-	// Same as SET_STREAM_INFO Command
-	static_assert(AecpAemGetStreamInfoResponsePayloadSize == AecpAemSetStreamInfoCommandPayloadSize, "GET_STREAM_INFO Response no longer the same as SET_STREAM_INFO Command");
-	return serializeSetStreamInfoCommand(descriptorType, descriptorIndex, streamInfo);
+	Serializer<AecpAemMilanGetStreamInfoResponsePayloadSize> ser;
+	std::uint8_t const reserved{ 0u };
+	std::uint16_t const reserved2{ 0u };
+
+	ser << descriptorType << descriptorIndex;
+	ser << streamInfo.streamInfoFlags;
+	ser << streamInfo.streamFormat;
+	ser << streamInfo.streamID;
+	ser << streamInfo.msrpAccumulatedLatency;
+	ser.packBuffer(streamInfo.streamDestMac.data(), streamInfo.streamDestMac.size());
+	ser << streamInfo.msrpFailureCode;
+	ser << reserved;
+	ser << streamInfo.msrpFailureBridgeID;
+	ser << streamInfo.streamVlanID;
+	ser << reserved2;
+
+	if (streamInfo.streamInfoFlagsEx && streamInfo.probingStatus && streamInfo.acmpStatus)
+	{
+		auto reserved3 = std::uint8_t{ 0u };
+		auto reserved4 = std::uint16_t{ 0u };
+
+		ser << *streamInfo.streamInfoFlagsEx << static_cast<std::uint8_t>(((utils::to_integral(*streamInfo.probingStatus) << 5) & 0xe0) | ((*streamInfo.acmpStatus).getValue() & 0x1f)) << reserved3 << reserved4;
+
+		AVDECC_ASSERT(ser.usedBytes() == AecpAemMilanGetStreamInfoResponsePayloadSize, "Used bytes do not match the protocol constant");
+	}
+	else
+	{
+		AVDECC_ASSERT(ser.usedBytes() == AecpAemGetStreamInfoResponsePayloadSize, "Used bytes do not match the protocol constant");
+	}
+
+	return ser;
 }
 
 std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::StreamInfo> deserializeGetStreamInfoResponse(AemAecpdu::Payload const& payload)
 {
-	// Same as SET_STREAM_INFO Command
-	static_assert(AecpAemGetStreamInfoResponsePayloadSize == AecpAemSetStreamInfoCommandPayloadSize, "GET_STREAM_INFO Response no longer the same as SET_STREAM_INFO Command");
-	return deserializeSetStreamInfoCommand(payload);
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetStreamInfoResponsePayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+	entity::model::StreamInfo streamInfo{};
+	std::uint8_t reserved{ 0u };
+	std::uint16_t reserved2{ 0u };
+
+	des >> descriptorType >> descriptorIndex;
+	des >> streamInfo.streamInfoFlags;
+	des >> streamInfo.streamFormat;
+	des >> streamInfo.streamID;
+	des >> streamInfo.msrpAccumulatedLatency;
+	des.unpackBuffer(streamInfo.streamDestMac.data(), streamInfo.streamDestMac.size());
+	des >> streamInfo.msrpFailureCode;
+	des >> reserved;
+	des >> streamInfo.msrpFailureBridgeID;
+	des >> streamInfo.streamVlanID;
+	des >> reserved2;
+
+	if (commandPayloadLength >= AecpAemMilanGetStreamInfoResponsePayloadSize)
+	{
+		auto streamInfoFlagsEx = entity::StreamInfoFlagsEx{};
+		auto probing_acmp_status = std::uint8_t{ 0u };
+		auto reserved3 = std::uint8_t{ 0u };
+		auto reserved4 = std::uint16_t{ 0u };
+
+		des >> streamInfoFlagsEx >> probing_acmp_status >> reserved3 >> reserved4;
+
+		streamInfo.streamInfoFlagsEx = streamInfoFlagsEx;
+		streamInfo.probingStatus = static_cast<entity::model::ProbingStatus>((probing_acmp_status & 0xe0) >> 5);
+		streamInfo.acmpStatus = static_cast<AcmpStatus>(probing_acmp_status & 0x1f);
+
+		AVDECC_ASSERT(des.usedBytes() == AecpAemMilanGetStreamInfoResponsePayloadSize, "Used more bytes than specified in protocol constant");
+	}
+	else
+	{
+		AVDECC_ASSERT(des.usedBytes() == AecpAemGetStreamInfoResponsePayloadSize, "Used more bytes than specified in protocol constant");
+	}
+
+	return std::make_tuple(descriptorType, descriptorIndex, streamInfo);
 }
 
 /** GET_AUDIO_MAP Command  - Clause 7.4.44.1 */
@@ -1331,7 +1402,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	Deserializer des(commandPayload, commandPayloadLength);
 	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
-	entity::model::SamplingRate samplingRate{ entity::model::getNullSamplingRate() };
+	entity::model::SamplingRate samplingRate{};
 
 	des >> descriptorType >> descriptorIndex;
 	des >> samplingRate;
@@ -1671,7 +1742,91 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 }
 
 /** GET_AS_PATH Command - Clause 7.4.41.1 */
+Serializer<AecpAemGetAsPathCommandPayloadSize> serializeGetAsPathCommand(entity::model::DescriptorIndex const descriptorIndex)
+{
+	Serializer<AecpAemGetAsPathCommandPayloadSize> ser;
+	std::uint16_t const reserved{ 0u };
+
+	ser << descriptorIndex << reserved;
+
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorIndex> deserializeGetAsPathCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetAsPathCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+	std::uint16_t reserved{ 0u };
+
+	des >> descriptorIndex >> reserved;
+
+	AVDECC_ASSERT(des.usedBytes() == AecpAemGetAsPathCommandPayloadSize, "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(descriptorIndex);
+}
+
 /** GET_AS_PATH Response - Clause 7.4.41.2 */
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeGetAsPathResponse(entity::model::DescriptorIndex const descriptorIndex, entity::model::AsPath const& asPath)
+{
+	Serializer<AemAecpdu::MaximumSendPayloadBufferLength> ser;
+
+	ser << descriptorIndex << static_cast<std::uint16_t>(asPath.sequence.size());
+
+	// Serialize variable data
+	for (auto const& clockIdentity : asPath.sequence)
+	{
+		ser << clockIdentity;
+	}
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorIndex, entity::model::AsPath> deserializeGetAsPathResponse(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetAsPathResponsePayloadMinSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+	entity::model::AsPath asPath{};
+	std::uint16_t count{ 0u };
+
+	des >> descriptorIndex >> count;
+
+	// Check variable size
+	auto const sequenceSize = sizeof(UniqueIdentifier::value_type) * count;
+	if (des.remaining() < sequenceSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Unpack remaining data
+	for (auto index = 0u; index < count; ++index)
+	{
+		auto clockIdentity = decltype(asPath.sequence)::value_type{};
+		des >> clockIdentity;
+		asPath.sequence.push_back(clockIdentity);
+	}
+	AVDECC_ASSERT(des.usedBytes() == (protocol::aemPayload::AecpAemGetAsPathResponsePayloadMinSize + sequenceSize), "Used more bytes than specified in protocol constant");
+
+	if (des.remaining() != 0)
+	{
+		LOG_AEM_PAYLOAD_TRACE("GetAsPath Response deserialize warning: Remaining bytes in buffer");
+	}
+
+	return std::make_tuple(descriptorIndex, asPath);
+}
 
 /** GET_COUNTERS Command - Clause 7.4.42.1 */
 Serializer<AecpAemGetCountersCommandPayloadSize> serializeGetCountersCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)

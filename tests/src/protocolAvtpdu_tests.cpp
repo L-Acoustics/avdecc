@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -36,11 +36,10 @@
 
 TEST(Aem, SerializeFrame)
 {
-	auto frame = la::avdecc::protocol::AemAecpdu::create();
+	auto frame = la::avdecc::protocol::AemAecpdu::create(false);
 	auto& aem = static_cast<la::avdecc::protocol::AemAecpdu&>(*frame);
 
 	// Set AECP fields
-	aem.setMessageType(la::avdecc::protocol::AecpMessageType::AemCommand);
 	aem.setStatus(la::avdecc::protocol::AecpStatus::NotImplemented);
 	aem.setTargetEntityID(la::avdecc::UniqueIdentifier::getUninitializedUniqueIdentifier());
 	aem.setControllerEntityID(la::avdecc::UniqueIdentifier::getUninitializedUniqueIdentifier());

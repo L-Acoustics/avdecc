@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -24,16 +24,31 @@
 
 #include "utils.hpp"
 #include <mutex>
+#include <memory>
+#include <vector>
+#include <functional>
 
 #if defined(USE_CURSES)
-#include <stdlib.h>
-#include <locale.h>
+#	include <stdlib.h>
+#	include <locale.h>
 static WINDOW* s_Window = nullptr;
 static SCREEN* s_Screen = nullptr;
 #else // !USE_CURSES
-#include <iostream>
+#	include <iostream>
 #endif // USE_CURSES
 
+int getUserChoice()
+{
+#if defined(USE_CURSES)
+	if (s_Window == nullptr)
+		return 0;
+	int c = wgetch(s_Window);
+#else
+	int c = getch();
+#endif
+	c -= '0';
+	return c;
+}
 
 void initOutput()
 {
@@ -85,20 +100,137 @@ void outputText(std::string const& str) noexcept
 	}
 }
 
-la::avdecc::protocol::ProtocolInterface::Type chooseProtocolInterfaceType()
+#ifdef USE_BINDINGS_C
+template<typename ValueType>
+constexpr size_t countBits(ValueType const value) noexcept
 {
-	auto protocolInterfaceType{ la::avdecc::protocol::ProtocolInterface::Type::None };
+	return (value == 0u) ? 0u : 1u + countBits(value & (value - 1u));
+}
+
+using smart_network_interface_ptr = std::unique_ptr<avdecc_network_interface_t, std::function<void(avdecc_network_interface_p)>>;
+static inline smart_network_interface_ptr make_smart_network_interface_ptr(avdecc_network_interface_p ptr)
+{
+	return smart_network_interface_ptr{ ptr, [](avdecc_network_interface_p ptr)
+		{
+			if (ptr != nullptr)
+				LA_AVDECC_freeNetworkInterface(ptr);
+		} };
+}
+
+avdecc_protocol_interface_type_t chooseProtocolInterfaceType()
+{
+	avdecc_protocol_interface_type_t protocolInterfaceType{ avdecc_protocol_interface_type_none };
 
 	// Get the list of supported protocol interface types, and ask the user to choose one (if many available)
-	auto protocolInterfaceTypes = la::avdecc::protocol::ProtocolInterface::getSupportedProtocolInterfaceTypes();
-	if (protocolInterfaceTypes.empty())
+	auto protocolInterfaceTypes = LA_AVDECC_ProtocolInterface_getSupportedProtocolInterfaceTypes();
+	if (protocolInterfaceTypes == avdecc_protocol_interface_type_none)
 	{
 		outputText(std::string("No protocol interface supported on this computer\n"));
 		return protocolInterfaceType;
 	}
 
 	// Remove Virtual interface
-	protocolInterfaceTypes.reset(la::avdecc::protocol::ProtocolInterface::Type::Virtual);
+	protocolInterfaceTypes &= ~avdecc_protocol_interface_type_virtual;
+
+	if (countBits(protocolInterfaceTypes) == 1)
+		protocolInterfaceType = protocolInterfaceTypes;
+	else
+	{
+		outputText("Choose a protocol interface type:\n");
+
+		std::vector<avdecc_protocol_interface_type_t> proposedInterfaces{};
+
+		auto const checkAndDisplayInterfaceType = [protocolInterfaceTypes, &proposedInterfaces](avdecc_protocol_interface_type_t const interfaceType)
+		{
+			if ((protocolInterfaceTypes & interfaceType) == interfaceType)
+			{
+				proposedInterfaces.push_back(interfaceType);
+				outputText(std::to_string(proposedInterfaces.size()) + ": " + LA_AVDECC_ProtocolInterface_typeToString(interfaceType) + "\n");
+			}
+		};
+
+		checkAndDisplayInterfaceType(avdecc_protocol_interface_type_pcap);
+		checkAndDisplayInterfaceType(avdecc_protocol_interface_type_macos_native);
+		checkAndDisplayInterfaceType(avdecc_protocol_interface_type_proxy);
+
+		outputText("\n> ");
+
+		// Get user's choice
+		int index = -1;
+		while (index == -1)
+		{
+			int c = getch() - '0';
+			if (c >= 1 && c <= static_cast<int>(proposedInterfaces.size()))
+			{
+				index = c - 1;
+			}
+		}
+		protocolInterfaceType = proposedInterfaces[index];
+	}
+
+	return protocolInterfaceType;
+}
+
+static std::vector<smart_network_interface_ptr> interfaces;
+static void LA_AVDECC_BINDINGS_C_CALL_CONVENTION EnumerateInterfacesCallback(avdecc_network_interface_p intfc)
+{
+	auto i = make_smart_network_interface_ptr(intfc);
+	// Only select interfaces that is not loopback and has at least one IP address
+	if (intfc->type != avdecc_network_interface_type_Loopback && intfc->ip_addresses != nullptr && intfc->is_connected && !intfc->is_virtual)
+		interfaces.emplace_back(std::move(i));
+}
+
+avdecc_network_interface_cp chooseNetworkInterface()
+{
+	// List of available interfaces
+	interfaces.clear();
+
+	// Enumerate available interfaces
+	LA_AVDECC_enumerateInterfaces(&EnumerateInterfacesCallback);
+
+	if (interfaces.empty())
+	{
+		outputText(std::string("No valid network interface found on this computer\n"));
+		return {};
+	}
+
+	// Let the user choose an interface
+	outputText("Choose an interface:\n");
+	unsigned int intNum = 1;
+	for (auto const& intfc : interfaces)
+	{
+		outputText(std::to_string(intNum) + ": " + std::string(intfc->alias) + " (" + std::string(intfc->description) + ")\n");
+		++intNum;
+	}
+	outputText("\n> ");
+
+	// Get user's choice
+	int index = -1;
+	while (index == -1)
+	{
+		int c = getch() - '0';
+		if (c >= 1 && c <= static_cast<int>(interfaces.size()))
+		{
+			index = c - 1;
+		}
+	}
+
+	return interfaces[index].get();
+}
+
+#else // !USE_BINDINGS_C
+
+la::avdecc::protocol::ProtocolInterface::Type chooseProtocolInterfaceType(la::avdecc::protocol::ProtocolInterface::SupportedProtocolInterfaceTypes const& allowedTypes)
+{
+	auto protocolInterfaceType{ la::avdecc::protocol::ProtocolInterface::Type::None };
+
+	// Get the list of supported protocol interface types, and ask the user to choose one (if many available)
+	auto const protocolInterfaceTypes = la::avdecc::protocol::ProtocolInterface::getSupportedProtocolInterfaceTypes() & allowedTypes;
+	if (protocolInterfaceTypes.empty())
+	{
+		outputText(std::string("No protocol interface supported on this computer\n"));
+		return protocolInterfaceType;
+	}
 
 	if (protocolInterfaceTypes.count() == 1)
 		protocolInterfaceType = protocolInterfaceTypes.at(0);
@@ -117,7 +249,7 @@ la::avdecc::protocol::ProtocolInterface::Type chooseProtocolInterfaceType()
 		int index = -1;
 		while (index == -1)
 		{
-			int c = getch() - '0';
+			auto c = getUserChoice();
 			if (c >= 1 && c <= static_cast<int>(protocolInterfaceTypes.count()))
 			{
 				index = c - 1;
@@ -135,12 +267,13 @@ la::avdecc::networkInterface::Interface chooseNetworkInterface()
 	std::vector<la::avdecc::networkInterface::Interface> interfaces;
 
 	// Enumerate available interfaces
-	la::avdecc::networkInterface::enumerateInterfaces([&interfaces](la::avdecc::networkInterface::Interface const& intfc)
-	{
-		// Only select interfaces that is not loopback and has at least one IP address
-		if (intfc.type != la::avdecc::networkInterface::Interface::Type::Loopback && !intfc.ipAddresses.empty() && intfc.isActive)
-			interfaces.push_back(intfc);
-	});
+	la::avdecc::networkInterface::enumerateInterfaces(
+		[&interfaces](la::avdecc::networkInterface::Interface const& intfc)
+		{
+			// Only select connected, non virtual, ethernet interfaces
+			if (intfc.type == la::avdecc::networkInterface::Interface::Type::Ethernet && intfc.isConnected && !intfc.isVirtual)
+				interfaces.push_back(intfc);
+		});
 
 	if (interfaces.empty())
 	{
@@ -162,7 +295,7 @@ la::avdecc::networkInterface::Interface chooseNetworkInterface()
 	int index = -1;
 	while (index == -1)
 	{
-		int c = getch() - '0';
+		auto c = getUserChoice();
 		if (c >= 1 && c <= static_cast<int>(interfaces.size()))
 		{
 			index = c - 1;
@@ -171,3 +304,5 @@ la::avdecc::networkInterface::Interface chooseNetworkInterface()
 
 	return interfaces[index];
 }
+
+#endif // USE_BINDINGS_C

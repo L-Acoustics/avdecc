@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -27,9 +27,11 @@
 
 #include "entity.hpp"
 #include "controllerEntity.hpp"
+#include "aggregateEntity.hpp"
 #include "protocolInterface.hpp"
 #include "exports.hpp"
 #include "exception.hpp"
+
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -38,7 +40,6 @@ namespace la
 {
 namespace avdecc
 {
-
 class EndStation
 {
 public:
@@ -49,6 +50,7 @@ public:
 		InterfaceOpenError = 2, /**< Failed to open interface. */
 		InterfaceNotFound = 3, /**< Specified interface not found. */
 		InterfaceInvalid = 4, /**< Specified interface is invalid. */
+		DuplicateEntityID = 5, /**< EntityID not available (either duplicate, or no EntityID left on the local computer). */
 		InternalError = 99, /**< Internal error, please report the issue. */
 	};
 
@@ -56,13 +58,21 @@ public:
 	{
 	public:
 		template<class T>
-		Exception(Error const error, T&& text) noexcept : la::avdecc::Exception(std::forward<T>(text)), _error(error) {}
-		Error getError() const noexcept { return _error; }
+		Exception(Error const error, T&& text) noexcept
+			: la::avdecc::Exception(std::forward<T>(text))
+			, _error(error)
+		{
+		}
+		Error getError() const noexcept
+		{
+			return _error;
+		}
+
 	private:
 		Error const _error{ Error::NoError };
 	};
 
-	using UniquePointer = std::unique_ptr<EndStation, void(*)(EndStation*)>;
+	using UniquePointer = std::unique_ptr<EndStation, void (*)(EndStation*)>;
 
 	/**
 	* @brief Factory method to create a new EndStation.
@@ -91,7 +101,10 @@ public:
 	* @return A weak pointer to the newly created ControllerEntity.
 	* @note Might throw an Exception.
 	*/
-	virtual entity::ControllerEntity* addControllerEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::ControllerEntity::Delegate* const delegate) = 0;
+	virtual entity::ControllerEntity* addControllerEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::controller::Delegate* const delegate) = 0;
+
+	// TODO: Add all other AggregateEntity parameters
+	virtual entity::AggregateEntity* addAggregateEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::controller::Delegate* const controllerDelegate) = 0;
 
 	// Deleted compiler auto-generated methods
 	EndStation(EndStation&&) = delete;

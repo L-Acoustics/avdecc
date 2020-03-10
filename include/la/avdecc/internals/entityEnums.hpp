@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -26,7 +26,9 @@
 #pragma once
 
 #include "la/avdecc/utils.hpp"
+
 #include "entityModelTypes.hpp"
+
 #include <cstdint>
 #include <string>
 
@@ -36,9 +38,8 @@ namespace avdecc
 {
 namespace entity
 {
-
 /** ADP Entity Capabilities - Clause 6.2.1.10 */
-enum class EntityCapabilities : std::uint32_t
+enum class EntityCapability : std::uint32_t
 {
 	None = 0u,
 	EfuMode = 1u << 0, /**< Entity Firmware Upgrade mode is enabled on the AVDECC Entity. When this flag is set, the AVDECC Entity is in the mode to perform an AVDECC Entity firmware upgrade. */
@@ -61,9 +62,10 @@ enum class EntityCapabilities : std::uint32_t
 	EntityNotReady = 1u << 17, /**< The AVDECC Entity is not ready to be enumerated or connected by an AVDECC Controller. */
 	/* Bits 0 to 13 reserved for future use */
 };
+using EntityCapabilities = utils::EnumBitfield<EntityCapability>;
 
 /** ADP Talker Capabilities - Clause 6.2.1.12 */
-enum class TalkerCapabilities : std::uint16_t
+enum class TalkerCapability : std::uint16_t
 {
 	None = 0u,
 	Implemented = 1u << 0, /**< Implements an AVDECC Talker. */
@@ -76,9 +78,10 @@ enum class TalkerCapabilities : std::uint16_t
 	AudioSource = 1u << 14, /**< The AVDECC Talker has Audio Stream sources. */
 	VideoSource = 1u << 15, /**< The AVDECC Talker has Video Stream sources (which can include embedded audio). */
 };
+using TalkerCapabilities = utils::EnumBitfield<TalkerCapability>;
 
 /** ADP Listener Capabilities - Clause 6.2.1.14 */
-enum class ListenerCapabilities : std::uint16_t
+enum class ListenerCapability : std::uint16_t
 {
 	None = 0u,
 	Implemented = 1u << 0, /**< Implements an AVDECC Listener. */
@@ -91,17 +94,19 @@ enum class ListenerCapabilities : std::uint16_t
 	AudioSink = 1u << 14, /**< The AVDECC Listener has Audio Stream sinks. */
 	VideoSink = 1u << 15, /**< The AVDECC Listener has Video Stream sinks (which can include embedded audio). */
 };
+using ListenerCapabilities = utils::EnumBitfield<ListenerCapability>;
 
 /** ADP Controller Capabilities - Clause 6.2.1.15 */
-enum class ControllerCapabilities : std::uint32_t
+enum class ControllerCapability : std::uint32_t
 {
 	None = 0u,
 	Implemented = 1u << 0, /**< Implements an AVDECC Controller. */
 	/* Bits 0 to 20 reserved for future use */
 };
+using ControllerCapabilities = utils::EnumBitfield<ControllerCapability>;
 
 /** ConnectionFlags - Clause 8.2.1.17 */
-enum class ConnectionFlags : std::uint16_t
+enum class ConnectionFlag : std::uint16_t
 {
 	None = 0u,
 	ClassB = 1u << 0, /**< Indicates that the Stream is Class B instead of Class A (default 0 is class A). */
@@ -113,9 +118,10 @@ enum class ConnectionFlags : std::uint16_t
 	TalkerFailed = 1u << 6, /**< Indicates that the listener has registered an SRP Talker Failed attribute for the Stream. */
 	/* Bits 0 to 8 reserved for future use */
 };
+using ConnectionFlags = utils::EnumBitfield<ConnectionFlag>;
 
 /** StreamFlags - Clause 7.2.6.1 */
-enum class StreamFlags : std::uint16_t
+enum class StreamFlag : std::uint16_t
 {
 	None = 0u,
 	ClockSyncSource = 1u << 0, /**< Indicates that the Stream can be used as a clock synchronization source. */
@@ -130,18 +136,20 @@ enum class StreamFlags : std::uint16_t
 	TertiaryBackupValid = 1u << 9, /**< Indicates that the backup_talker_entity_id_2 and the backup_talker_entity_id_2 fields are valid. */
 	/* Bits 0 to 5 reserved for future use */
 };
+using StreamFlags = utils::EnumBitfield<StreamFlag>;
 
 /** JackFlags - Clause 7.2.7.1 */
-enum class JackFlags : std::uint16_t
+enum class JackFlag : std::uint16_t
 {
 	None = 0u,
 	ClockSyncSource = 1u << 0, /**< Indicates that the Jack can be used as a clock synchronization source. */
 	Captive = 1u << 1, /**< Indicates that the Jack connection is hardwired, cannot be disconnected and may be physically within the device's structure. */
 	/* Bits 0 to 13 reserved for future use */
 };
+using JackFlags = utils::EnumBitfield<JackFlag>;
 
 /** AvbInterfaceFlags - Clause 7.2.8.1 */
-enum class AvbInterfaceFlags : std::uint16_t
+enum class AvbInterfaceFlag : std::uint16_t
 {
 	None = 0u,
 	GptpGrandmasterSupported = 1u << 0, /**< Indicates that the interface supports the IEEE Std 802.1AS-2011 grandmaster functionality. */
@@ -149,18 +157,20 @@ enum class AvbInterfaceFlags : std::uint16_t
 	SrpSupported = 1u << 2, /**< Indicates that the interface supports Clause 35 of IEEE Std 802.1Q-2011, "Stream Reservation Protocol (SRP)" functionality. */
 	/* Bits 0 to 12 reserved for future use */
 };
+using AvbInterfaceFlags = utils::EnumBitfield<AvbInterfaceFlag>;
 
 /** ClockSourceFlags - Clause 7.2.9.1 */
-enum class ClockSourceFlags : std::uint16_t
+enum class ClockSourceFlag : std::uint16_t
 {
 	None = 0u,
 	StreamID = 1u << 0, /**< The INPUT_STREAM Clock Source is identified by the stream_id. */
 	LocalID = 1u << 1, /**< The INPUT_STREAM Clock Source is identified by its local ID. */
 	/* Bits 0 to 13 reserved for future use */
 };
+using ClockSourceFlags = utils::EnumBitfield<ClockSourceFlag>;
 
 /** PortFlags - Clause 7.2.13.1 */
-enum class PortFlags : std::uint16_t
+enum class PortFlag : std::uint16_t
 {
 	None = 0u,
 	ClockSyncSource = 1u << 0, /**< Indicates that the Port can be used as a clock synchronization source. */
@@ -168,9 +178,10 @@ enum class PortFlags : std::uint16_t
 	SyncSampleRateConv = 1u << 2, /**< Indicates that the Port has a synchronous sample rate convertor to convert between sample rates in the same Clock Domain. */
 	/* Bits 0 to 12 reserved for future use */
 };
+using PortFlags = utils::EnumBitfield<PortFlag>;
 
 /** StreamInfo Flags - Clause 7.4.15.1 */
-enum class StreamInfoFlags : std::uint32_t
+enum class StreamInfoFlag : std::uint32_t
 {
 	None = 0u,
 	ClassB = 1u << 0, /**< Indicates that the Stream is Class B instead of Class A (default 0 is class A). */
@@ -189,9 +200,19 @@ enum class StreamInfoFlags : std::uint32_t
 	StreamIDValid = 1u << 30, /**< The value in the stream_id field is valid. */
 	StreamFormatValid = 1u << 31, /**< The value in stream_format field is valid and is to be used to change the Stream format if it is a SET_STREAM_INFO command. */
 };
+using StreamInfoFlags = utils::EnumBitfield<StreamInfoFlag>;
+
+/** StreamInfoEx Flags - Milan Clause 7.3.10 */
+enum class StreamInfoFlagEx : std::uint32_t
+{
+	None = 0u,
+	Registering = 1u << 0, /**< StreamInput: Registering either a matching Talker Advertise or a matching Talker Failed attribute. StreamOutput: Declaring a Talker Advertise or a Talker Failed attribute and registering a matching Listener attribute. */
+	/* Bits 0 to 30 reserved for future use */
+};
+using StreamInfoFlagsEx = utils::EnumBitfield<StreamInfoFlagEx>;
 
 /** AvbInfo Flags - Clause 7.4.40.2 */
-enum class AvbInfoFlags : std::uint8_t
+enum class AvbInfoFlag : std::uint8_t
 {
 	None = 0u,
 	AsCapable = 1u << 0, /**< The IEEE Std 802.1AS-2011 variable asCapable is set on this interface. */
@@ -199,6 +220,22 @@ enum class AvbInfoFlags : std::uint8_t
 	SrpEnabled = 1u << 2, /**< Indicates that the interface has the IEEE Std 802.1Q-2011 Clause 35, "Stream Reservation Protocol (SRP)" functionality enabled. */
 	/* Bits 0 to 4 reserved for future use */
 };
+using AvbInfoFlags = utils::EnumBitfield<AvbInfoFlag>;
+
+/* ENTITY Counters - Clause 7.4.42.2.1 */
+enum class EntityCounterValidFlag : model::DescriptorCounterValidFlag
+{
+	None = 0u,
+	EntitySpecific8 = 1u << 24, /**< Entity Specific counter 8. */
+	EntitySpecific7 = 1u << 25, /**< Entity Specific counter 7. */
+	EntitySpecific6 = 1u << 26, /**< Entity Specific counter 6. */
+	EntitySpecific5 = 1u << 27, /**< Entity Specific counter 5. */
+	EntitySpecific4 = 1u << 28, /**< Entity Specific counter 4. */
+	EntitySpecific3 = 1u << 29, /**< Entity Specific counter 3. */
+	EntitySpecific2 = 1u << 30, /**< Entity Specific counter 2. */
+	EntitySpecific1 = 1u << 31, /**< Entity Specific counter 1. */
+};
+using EntityCounterValidFlags = utils::EnumBitfield<EntityCounterValidFlag>;
 
 /* AVB_INTERFACE Counters - Clause 7.4.42.2.2 */
 enum class AvbInterfaceCounterValidFlag : model::DescriptorCounterValidFlag
@@ -219,7 +256,7 @@ enum class AvbInterfaceCounterValidFlag : model::DescriptorCounterValidFlag
 	EntitySpecific2 = 1u << 30, /**< Entity Specific counter 2. */
 	EntitySpecific1 = 1u << 31, /**< Entity Specific counter 1. */
 };
-using AvbInterfaceCounterValidFlags = EnumBitfield<AvbInterfaceCounterValidFlag>;
+using AvbInterfaceCounterValidFlags = utils::EnumBitfield<AvbInterfaceCounterValidFlag>;
 
 /* CLOCK_DOMAIN Counters - Clause 7.4.42.2.3 */
 enum class ClockDomainCounterValidFlag : model::DescriptorCounterValidFlag
@@ -227,7 +264,7 @@ enum class ClockDomainCounterValidFlag : model::DescriptorCounterValidFlag
 	None = 0u,
 	Locked = 1u << 0, /**< Increments on a clock locking event. */
 	Unlocked = 1u << 1, /**< Increments on a clock unlocking event. */
-	EntitySpecific8 = 1u << 24, /**< Entity Specific counter 8. */ /* WARNING: 1722.1 says EntitySpecific counters are in the reverse order, but that might be a mistake */
+	EntitySpecific8 = 1u << 24, /**< Entity Specific counter 8. */
 	EntitySpecific7 = 1u << 25, /**< Entity Specific counter 7. */
 	EntitySpecific6 = 1u << 26, /**< Entity Specific counter 6. */
 	EntitySpecific5 = 1u << 27, /**< Entity Specific counter 5. */
@@ -236,15 +273,16 @@ enum class ClockDomainCounterValidFlag : model::DescriptorCounterValidFlag
 	EntitySpecific2 = 1u << 30, /**< Entity Specific counter 2. */
 	EntitySpecific1 = 1u << 31, /**< Entity Specific counter 1. */
 };
-using ClockDomainCounterValidFlags = EnumBitfield<ClockDomainCounterValidFlag>;
+using ClockDomainCounterValidFlags = utils::EnumBitfield<ClockDomainCounterValidFlag>;
 
-/* STREAM_INPUT Counters - Clause 7.4.42.2.4 */
+/* STREAM_INPUT Counters - Clause 7.4.42.2.4 / Milan Clause 6.8.10 */
 enum class StreamInputCounterValidFlag : model::DescriptorCounterValidFlag
 {
 	None = 0u,
 	MediaLocked = 1u << 0, /**< Increments on a Stream media clock locking. */
 	MediaUnlocked = 1u << 1, /**< Increments on a Stream media clock unlocking. */
-	StreamReset = 1u << 2, /**< Increments whenever the Stream playback is reset. */
+	StreamReset = 1u << 2, /**< IEEE1722.1-2013 - Increments whenever the Stream playback is reset. */
+	StreamInterrupted = 1u << 2, /**< IEEE1722-2016 / Milan - Incremented each time the stream playback is interrupted for any reason other than a Controller Unbind operation. */
 	SeqNumMismatch = 1u << 3, /**< Increments when a Stream data AVTPDU is received with a nonsequential sequence_num field. */
 	MediaReset = 1u << 4, /**< Increments on a toggle of the mr bit in the Stream data AVTPDU. */
 	TimestampUncertain = 1u << 5, /**< Increments on a toggle of the tu bit in the Stream data AVTPDU. */
@@ -264,93 +302,28 @@ enum class StreamInputCounterValidFlag : model::DescriptorCounterValidFlag
 	EntitySpecific2 = 1u << 30, /**< Entity Specific counter 2. */
 	EntitySpecific1 = 1u << 31, /**< Entity Specific counter 1. */
 };
-using StreamInputCounterValidFlags = EnumBitfield<StreamInputCounterValidFlag>;
+using StreamInputCounterValidFlags = utils::EnumBitfield<StreamInputCounterValidFlag>;
+
+/* STREAM_OUTPUT Counters - Milan Clause 6.7.7/7.3.25 */
+enum class StreamOutputCounterValidFlag : model::DescriptorCounterValidFlag
+{
+	None = 0u,
+	StreamStart = 1u << 0, /**< Incremented each time the Talker starts streaming. */
+	StreamStop = 1u << 1, /**< Incremented each time the Talker stops streaming. At any time, the PAAD-AE shall ensure that either STREAM_START=STREAM_STOP+1 (in this case, the Talker is currently streaming), or STREAM_START=STREAM_STOP (in this case, the Talker is not currently streaming). */
+	MediaReset = 1u << 2, /**< Incremented at the end of every observation interval during which the "mr" bit has been toggled in any of the transmitted Stream Data AVTPDUs. The duration of the observation interval is implementation-specific and shall be less than or equal to 1 second. */
+	TimestampUncertain = 1u << 3, /**< Incremented at the end of every observation interval during which the "tu" bit has been set in any of the transmitted Stream Data AVTPDUs. The duration of the observation interval is implementation-specific and shall be less than or equal to 1 second. */
+	FramesTx = 1u << 4, /**< Incremented at the end of every observation interval during which at least one Stream Data AVTPDU has been transmitted on this STREAM_OUTPUT. The duration of the observation interval is implementation-specific and shall be less than or equal to 1 second. */
+};
+using StreamOutputCounterValidFlags = utils::EnumBitfield<StreamOutputCounterValidFlag>;
+
+/** Milan Info Features Flags - Milan Clause 7.4.1 */
+enum class MilanInfoFeaturesFlag : std::uint32_t
+{
+	None = 0u,
+	Redundancy = 1u << 0, /**< The entity supports the milan redundancy scheme. */
+};
+using MilanInfoFeaturesFlags = utils::EnumBitfield<MilanInfoFeaturesFlag>;
 
 } // namespace entity
-
-// Define bitfield enum traits for EntityCapabilities
-template<>
-struct enum_traits<entity::EntityCapabilities>
-{
-	static constexpr bool is_bitfield = true;
-};
-
-// Define bitfield enum traits for TalkerCapabilities
-template<>
-struct enum_traits<entity::TalkerCapabilities>
-{
-	static constexpr bool is_bitfield = true;
-};
-
-// Define bitfield enum traits for ListenerCapabilities
-template<>
-struct enum_traits<entity::ListenerCapabilities>
-{
-	static constexpr bool is_bitfield = true;
-};
-
-// Define bitfield enum traits for ControllerCapabilities
-template<>
-struct enum_traits<entity::ControllerCapabilities>
-{
-	static constexpr bool is_bitfield = true;
-};
-
-// Define bitfield enum traits for ConnectionFlags
-template<>
-struct enum_traits<entity::ConnectionFlags>
-{
-	static constexpr bool is_bitfield = true;
-};
-
-// Define bitfield enum traits for StreamFlags
-template<>
-struct enum_traits<entity::StreamFlags>
-{
-	static constexpr bool is_bitfield = true;
-};
-
-// Define bitfield enum traits for JackFlags
-template<>
-struct enum_traits<entity::JackFlags>
-{
-	static constexpr bool is_bitfield = true;
-};
-
-// Define bitfield enum traits for AvbInterfaceFlags
-template<>
-struct enum_traits<entity::AvbInterfaceFlags>
-{
-	static constexpr bool is_bitfield = true;
-};
-
-// Define bitfield enum traits for ClockSourceFlags
-template<>
-struct enum_traits<entity::ClockSourceFlags>
-{
-	static constexpr bool is_bitfield = true;
-};
-
-// Define bitfield enum traits for PortFlags
-template<>
-struct enum_traits<entity::PortFlags>
-{
-	static constexpr bool is_bitfield = true;
-};
-
-// Define bitfield enum traits for StreamInfoFlags
-template<>
-struct enum_traits<entity::StreamInfoFlags>
-{
-	static constexpr bool is_bitfield = true;
-};
-
-// Define bitfield enum traits for AvbInfoFlags
-template<>
-struct enum_traits<entity::AvbInfoFlags>
-{
-	static constexpr bool is_bitfield = true;
-};
-
 } // namespace avdecc
 } // namespace la

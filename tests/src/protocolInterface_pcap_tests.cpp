@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -22,13 +22,36 @@
 * @author Christophe Calmejane
 */
 
+// Public API
+#include <la/avdecc/internals/protocolMvuAecpdu.hpp>
+
 // Internal API
 #include "protocolInterface/protocolInterface_pcap.hpp"
 
 #include <gtest/gtest.h>
 #include <future>
 #include <chrono>
+#include <string>
+#include <memory>
 #include <iostream>
+#include <string>
+
+static la::avdecc::networkInterface::Interface getFirstInterface()
+{
+	auto interface = la::avdecc::networkInterface::Interface{};
+
+	// COMMENTED CODE TO FORCE ALL TESTS USING THIS TO BE DISABLED AUTOMATICALLY ;)
+
+	//la::avdecc::networkInterface::enumerateInterfaces(
+	//	[&interface](la::avdecc::networkInterface::Interface const& intfc)
+	//	{
+	//		if (intfc.type == la::avdecc::networkInterface::Interface::Type::Ethernet && intfc.isEnabled && interface.type == la::avdecc::networkInterface::Interface::Type::None)
+	//		{
+	//			interface = intfc;
+	//		}
+	//	});
+	return interface;
+}
 
 TEST(ProtocolInterfacePCap, InvalidName)
 {
@@ -56,15 +79,12 @@ TEST(ProtocolInterfacePCap, TransportError)
 		virtual void onTransportError(la::avdecc::protocol::ProtocolInterface* const pi) noexcept override
 		{
 			std::this_thread::sleep_for(std::chrono::seconds(15)); // Wait for an entity to go offline
-			// Now we are sure ProtocolInterface (from avdecc::ControllerStateMachine thread) wants to acquire the observers lock, but we currently own this lock
-			// So let's call something that wants to acquire the ControllerStateMachine and see if we deadlock or not
+			// Now we are sure ProtocolInterface (from avdecc::CommandStateMachine thread) wants to acquire the observers lock, but we currently own this lock
+			// So let's call something that wants to acquire the CommandStateMachine and see if we deadlock or not
 			pi->lock(); // This will use CSM's lock
 			pi->unlock();
 		}
-		virtual void onLocalEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept override {}
-		virtual void onLocalEntityOffline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::UniqueIdentifier const /*entityID*/) noexcept override {}
-		virtual void onLocalEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept override {}
-		virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept override
+		virtual void onRemoteEntityOnline(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::Entity const& /*entity*/) noexcept override
 		{
 			static auto done{ false };
 			if (!done)
@@ -78,21 +98,135 @@ TEST(ProtocolInterfacePCap, TransportError)
 		{
 			completedPromise.set_value();
 		}
-		virtual void onRemoteEntityUpdated(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::DiscoveredEntity const& /*entity*/) noexcept override {}
-		virtual void onAecpCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept override {}
-		virtual void onAecpUnsolicitedResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Aecpdu const& /*aecpdu*/) noexcept override {}
-		virtual void onAcmpSniffedCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept override {}
-		virtual void onAcmpSniffedResponse(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::entity::LocalEntity const& /*entity*/, la::avdecc::protocol::Acmpdu const& /*acmpdu*/) noexcept override {}
 		DECLARE_AVDECC_OBSERVER_GUARD(Observer);
 	};
 
-	Observer obs;
-	auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfacePcap>(la::avdecc::protocol::ProtocolInterfacePcap::createRawProtocolInterfacePcap("\\Device\\NPF_{1AC618CE-7A20-4B2D-BCFB-DE0DFC7C4089}"));
-	intfc->registerObserver(&obs);
+	auto const interface = getFirstInterface();
+	if (interface.type != la::avdecc::networkInterface::Interface::Type::None)
+	{
+		std::cout << "Using interface " << interface.alias << std::endl;
 
-	auto status = entityOnlinePromise.get_future().wait_for(std::chrono::seconds(5));
-	ASSERT_NE(std::future_status::timeout, status) << "Failed to detect an online entity... stopping the test";
+		Observer obs;
+		auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfacePcap>(la::avdecc::protocol::ProtocolInterfacePcap::createRawProtocolInterfacePcap(interface.id));
+		intfc->registerObserver(&obs);
 
-	status = completedPromise.get_future().wait_for(std::chrono::seconds(60));
-	ASSERT_NE(std::future_status::timeout, status) << "Either deadlock or you didn't follow instructions quickly enough";
+		auto status = entityOnlinePromise.get_future().wait_for(std::chrono::seconds(5));
+		ASSERT_NE(std::future_status::timeout, status) << "Failed to detect an online entity... stopping the test";
+
+		status = completedPromise.get_future().wait_for(std::chrono::seconds(60));
+		ASSERT_NE(std::future_status::timeout, status) << "Either deadlock or you didn't follow instructions quickly enough";
+	}
+}
+
+namespace
+{
+class ProtocolInterfacePCap_F : public ::testing::Test
+{
+public:
+	virtual void SetUp() override
+	{
+		// Search a valid NetworkInterface, the first active one actually
+		auto networkInterfaceName = std::string{};
+		la::avdecc::networkInterface::enumerateInterfaces(
+			[&networkInterfaceName](la::avdecc::networkInterface::Interface const& intfc)
+			{
+				if (!networkInterfaceName.empty())
+				{
+					return;
+				}
+				if (intfc.type == la::avdecc::networkInterface::Interface::Type::Ethernet && intfc.isConnected && !intfc.isVirtual)
+				{
+					networkInterfaceName = intfc.id;
+				}
+			});
+
+		ASSERT_FALSE(networkInterfaceName.empty()) << "No valid NetworkInterface found";
+		_pi = std::unique_ptr<la::avdecc::protocol::ProtocolInterfacePcap>(la::avdecc::protocol::ProtocolInterfacePcap::createRawProtocolInterfacePcap(networkInterfaceName));
+	}
+
+	virtual void TearDown() override
+	{
+		_pi.reset();
+	}
+
+	la::avdecc::protocol::ProtocolInterface& getProtocolInterface() noexcept
+	{
+		return *_pi;
+	}
+
+private:
+	std::unique_ptr<la::avdecc::protocol::ProtocolInterfacePcap> _pi{ nullptr };
+};
+} // namespace
+
+TEST_F(ProtocolInterfacePCap_F, VuDelegate)
+{
+	// Using MvuAecpdu as class for the tests, so we don't have to design a new VendorUnique class
+
+	static auto selfCommandReceivedPromise = std::promise<void>{};
+	static auto vuCreated = false;
+
+	class VuDelegate : public la::avdecc::protocol::ProtocolInterface::VendorUniqueDelegate
+	{
+	public:
+		VuDelegate() noexcept = default;
+
+	private:
+		// la::avdecc::protocol::ProtocolInterface::VendorUniqueDelegate overrides
+		virtual la::avdecc::protocol::Aecpdu::UniquePointer createAecpdu(la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, bool const isResponse) noexcept override
+		{
+			EXPECT_FALSE(vuCreated) << "createAecpdu called twice";
+			vuCreated = true;
+			return la::avdecc::protocol::MvuAecpdu::create(isResponse);
+		}
+		virtual bool areHandledByControllerStateMachine(la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/) const noexcept override
+		{
+			return false;
+		}
+		virtual void onVuAecpCommand(la::avdecc::protocol::ProtocolInterface* const /*pi*/, la::avdecc::protocol::VuAecpdu::ProtocolIdentifier const& /*protocolIdentifier*/, la::avdecc::protocol::VuAecpdu const& aecpdu) noexcept override
+		{
+			if (vuCreated)
+			{
+				auto const& vuAecp = static_cast<la::avdecc::protocol::MvuAecpdu const&>(aecpdu);
+				EXPECT_EQ(66u, vuAecp.getCommandType().getValue());
+				selfCommandReceivedPromise.set_value();
+			}
+			else
+			{
+				EXPECT_TRUE(vuCreated) << "createAecpdu never called";
+			}
+		}
+	};
+
+	auto& pi = getProtocolInterface();
+	auto scopedDelegate = std::unique_ptr<VuDelegate, std::function<void(VuDelegate*)>>{ nullptr, [&pi](auto*)
+		{
+			pi.unregisterVendorUniqueDelegate(la::avdecc::protocol::MvuAecpdu::ProtocolID);
+		} };
+	auto delegate = VuDelegate{};
+
+	if (!pi.registerVendorUniqueDelegate(la::avdecc::protocol::MvuAecpdu::ProtocolID, &delegate))
+	{
+		scopedDelegate.reset(&delegate);
+	}
+
+	// Try to send using sendAecpCommand (forbidden)
+	{
+		auto aecpdu = la::avdecc::protocol::MvuAecpdu::create(false);
+		EXPECT_EQ(la::avdecc::protocol::ProtocolInterface::Error::MessageNotSupported, pi.sendAecpCommand(std::move(aecpdu), nullptr));
+	}
+
+	{
+		auto aecpdu = la::avdecc::protocol::MvuAecpdu::create(false);
+		auto& vuAecp = static_cast<la::avdecc::protocol::MvuAecpdu&>(*aecpdu);
+
+		// No need to setup the message base fields for this test, only Mvu one to check it's our message that bounced back
+		vuAecp.setCommandType(la::avdecc::protocol::MvuCommandType{ 66u });
+
+		ASSERT_TRUE(!pi.sendAecpMessage(vuAecp));
+
+		// Wait for message to bounce back
+		auto status = selfCommandReceivedPromise.get_future().wait_for(std::chrono::seconds(5));
+		ASSERT_NE(std::future_status::timeout, status);
+	}
 }

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -25,7 +25,6 @@ namespace avdecc
 {
 namespace protocol
 {
-
 struct PcapInterface::pImpl
 {
 };
@@ -38,42 +37,42 @@ bool PcapInterface::is_available() const
 	return true;
 }
 
-pcap_t * PcapInterface::open_live(const char *device, int snaplen, int promisc, int to_ms, char *ebuf) const
+pcap_t* PcapInterface::open_live(const char* device, int snaplen, int promisc, int to_ms, char* ebuf) const
 {
 	return pcap_open_live(device, snaplen, promisc, to_ms, ebuf);
 }
 
-int PcapInterface::fileno(pcap_t *p) const
+int PcapInterface::fileno(pcap_t* p) const
 {
 	return pcap_fileno(p);
 }
 
-void PcapInterface::close(pcap_t *p) const
+void PcapInterface::close(pcap_t* p) const
 {
 	return pcap_close(p);
 }
 
-int PcapInterface::compile(pcap_t *p, struct bpf_program *fp, const char *str, int optimize, bpf_u_int32 netmask) const
+int PcapInterface::compile(pcap_t* p, struct bpf_program* fp, const char* str, int optimize, bpf_u_int32 netmask) const
 {
 	return pcap_compile(p, fp, str, optimize, netmask);
 }
 
-int PcapInterface::setfilter(pcap_t *p, struct bpf_program *fp) const
+int PcapInterface::setfilter(pcap_t* p, struct bpf_program* fp) const
 {
 	return pcap_setfilter(p, fp);
 }
 
-void PcapInterface::freecode(bpf_program *fp) const
+void PcapInterface::freecode(bpf_program* fp) const
 {
 	return pcap_freecode(fp);
 }
 
-int PcapInterface::next_ex(pcap_t *p, struct pcap_pkthdr **pkt_header, const u_char **pkt_data) const
+int PcapInterface::next_ex(pcap_t* p, struct pcap_pkthdr** pkt_header, const u_char** pkt_data) const
 {
 	return pcap_next_ex(p, pkt_header, pkt_data);
 }
 
-int PcapInterface::sendpacket(pcap_t *p, const u_char *buf, int size) const
+int PcapInterface::sendpacket(pcap_t* p, const u_char* buf, int size) const
 {
 	return pcap_sendpacket(p, buf, size);
 }

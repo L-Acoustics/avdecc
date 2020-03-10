@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -31,7 +31,6 @@ namespace avdecc
 {
 namespace controller
 {
-
 bool LA_AVDECC_CONTROLLER_CALL_CONVENTION isCompatibleWithInterfaceVersion(std::uint32_t const interfaceVersion) noexcept
 {
 	/* Here you have to choose a compatibility mode
@@ -79,10 +78,14 @@ std::vector<CompileOptionInfo> LA_AVDECC_CONTROLLER_CALL_CONVENTION getCompileOp
 
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	options.emplace_back(CompileOptionInfo{ CompileOption::EnableRedundancy, "RDNCY", "Redundancy" });
-#ifdef ENABLE_AVDECC_STRICT_2018_REDUNDANCY
+#	ifdef ENABLE_AVDECC_STRICT_2018_REDUNDANCY
 	options.emplace_back(CompileOptionInfo{ CompileOption::Strict2018Redundancy, "RDNCY2018", "Strict 2018 Redundancy" });
-#endif // ENABLE_AVDECC_STRICT_2018_REDUNDANCY
+#	endif // ENABLE_AVDECC_STRICT_2018_REDUNDANCY
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+	options.emplace_back(CompileOptionInfo{ CompileOption::EnableJsonSupport, "JSN", "JSON" });
+#endif // ENABLE_AVDECC_FEATURE_JSON
 
 	return options;
 }

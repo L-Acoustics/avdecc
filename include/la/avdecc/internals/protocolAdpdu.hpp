@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -25,6 +25,7 @@
 #pragma once
 
 #include "protocolAvtpdu.hpp"
+
 #include <memory>
 
 namespace la
@@ -33,21 +34,20 @@ namespace avdecc
 {
 namespace protocol
 {
-
 /** Adpdu message */
 class Adpdu final : public AvtpduControl
 {
 public:
 	static constexpr size_t Length = 56; /* ADPDU size - Clause 6.2.1.7 */
-	using UniquePointer = std::unique_ptr<Adpdu, void(*)(Adpdu*)>;
-	static LA_AVDECC_API la::avdecc::networkInterface::MacAddress Multicast_Mac_Address;
+	using UniquePointer = std::unique_ptr<Adpdu, void (*)(Adpdu*)>;
+	static LA_AVDECC_API la::avdecc::networkInterface::MacAddress const Multicast_Mac_Address; /* Annex B */
 
 	/**
 	* @brief Factory method to create a new Adpdu.
 	* @details Creates a new Adpdu as a unique pointer.
 	* @return A new Adpdu as a Adpdu::UniquePointer.
 	*/
-	static UniquePointer create()
+	static UniquePointer create() noexcept
 	{
 		auto deleter = [](Adpdu* self)
 		{
@@ -59,8 +59,8 @@ public:
 	/** Constructor for heap Adpdu */
 	LA_AVDECC_API Adpdu() noexcept;
 
-	/** Destructor */
-	virtual ~Adpdu() noexcept override = default;
+	/** Destructor (for some reason we have to define it in the cpp file or clang complains about missing vtable, using = default or inline not working) */
+	virtual LA_AVDECC_API ~Adpdu() noexcept override;
 
 	// Setters
 	void LA_AVDECC_CALL_CONVENTION setMessageType(AdpMessageType const messageType) noexcept
@@ -115,11 +115,11 @@ public:
 	{
 		_gptpDomainNumber = gptpDomainNumber;
 	}
-	void LA_AVDECC_CALL_CONVENTION setIdentifyControlIndex(std::uint16_t const identifyControlIndex) noexcept
+	void LA_AVDECC_CALL_CONVENTION setIdentifyControlIndex(entity::model::ControlIndex const identifyControlIndex) noexcept
 	{
 		_identifyControlIndex = identifyControlIndex;
 	}
-	void LA_AVDECC_CALL_CONVENTION setInterfaceIndex(std::uint16_t const interfaceIndex) noexcept
+	void LA_AVDECC_CALL_CONVENTION setInterfaceIndex(entity::model::AvbInterfaceIndex const interfaceIndex) noexcept
 	{
 		_interfaceIndex = interfaceIndex;
 	}
@@ -181,11 +181,11 @@ public:
 	{
 		return _gptpDomainNumber;
 	}
-	std::uint16_t LA_AVDECC_CALL_CONVENTION getIdentifyControlIndex() const noexcept
+	entity::model::ControlIndex LA_AVDECC_CALL_CONVENTION getIdentifyControlIndex() const noexcept
 	{
 		return _identifyControlIndex;
 	}
-	std::uint16_t LA_AVDECC_CALL_CONVENTION getInterfaceIndex() const noexcept
+	entity::model::AvbInterfaceIndex LA_AVDECC_CALL_CONVENTION getInterfaceIndex() const noexcept
 	{
 		return _interfaceIndex;
 	}
@@ -204,32 +204,32 @@ public:
 	LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION copy() const;
 
 	// Defaulted compiler auto-generated methods
-	Adpdu(Adpdu&&) = default;
-	Adpdu(Adpdu const&) = default;
-	Adpdu& operator=(Adpdu const&) = default;
-	Adpdu& operator=(Adpdu&&) = default;
+	LA_AVDECC_API Adpdu(Adpdu&&);
+	LA_AVDECC_API Adpdu(Adpdu const&);
+	LA_AVDECC_API Adpdu& LA_AVDECC_CALL_CONVENTION operator=(Adpdu const&);
+	LA_AVDECC_API Adpdu& LA_AVDECC_CALL_CONVENTION operator=(Adpdu&&);
 
 private:
 	/** Entry point */
-	static LA_AVDECC_API Adpdu* LA_AVDECC_CALL_CONVENTION createRawAdpdu();
+	static LA_AVDECC_API Adpdu* LA_AVDECC_CALL_CONVENTION createRawAdpdu() noexcept;
 
 	/** Destroy method for COM-like interface */
 	LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION destroy() noexcept;
 
 	// Adpdu header data
 	UniqueIdentifier _entityModelID{};
-	entity::EntityCapabilities _entityCapabilities{ entity::EntityCapabilities::None };
+	entity::EntityCapabilities _entityCapabilities{};
 	std::uint16_t _talkerStreamSources{};
-	entity::TalkerCapabilities _talkerCapabilities{ entity::TalkerCapabilities::None };
+	entity::TalkerCapabilities _talkerCapabilities{};
 	std::uint16_t _listenerStreamSinks{};
-	entity::ListenerCapabilities _listenerCapabilities{ entity::ListenerCapabilities::None };
-	entity::ControllerCapabilities _controllerCapabilities{ entity::ControllerCapabilities::None };
+	entity::ListenerCapabilities _listenerCapabilities{};
+	entity::ControllerCapabilities _controllerCapabilities{};
 	std::uint32_t _availableIndex{};
 	UniqueIdentifier _gptpGrandmasterID{};
 	std::uint8_t _gptpDomainNumber{ 0u };
 	// Reserved 24bits
-	std::uint16_t _identifyControlIndex{ 0u };
-	std::uint16_t _interfaceIndex{ 0u };
+	entity::model::ControlIndex _identifyControlIndex{ 0u };
+	entity::model::AvbInterfaceIndex _interfaceIndex{ 0u };
 	UniqueIdentifier _associationID{};
 	// Reserved 32bits
 

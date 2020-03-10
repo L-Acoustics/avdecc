@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Useful script to generate project files using cmake
 
 # Get absolute folder for this script
@@ -21,14 +21,21 @@ fi
 ############################ DO NOT MODIFY AFTER THAT LINE #############
 
 # Default values
-default_VisualGenerator="Visual Studio 15 2017"
-default_VisualToolset="v141"
+default_VisualGenerator="Visual Studio 16 2019"
+default_VisualGeneratorArch="Win32"
+default_VisualToolset="v142"
 default_VisualToolchain="x64"
 default_VisualArch="x86"
 default_VisualSdk="8.1"
+default_signtoolOptions="/a /sm /q /fd sha256 /tr http://timestamp.digicert.com"
 
 # 
 cmake_generator=""
+generator_arch=""
+arch=""
+toolset=""
+cmake_config=""
+outputFolderBasePath="_build"
 if isMac; then
 	cmake_path="/Applications/CMake.app/Contents/bin/cmake"
 	# CMake.app not found, use cmake from the path
@@ -37,18 +44,22 @@ if isMac; then
 	fi
 	generator="Xcode"
 	getCcArch arch
+	defaultOutputFolder="${outputFolderBasePath}_<arch>"
 else
 	# Use cmake from the path
 	cmake_path="cmake"
 	if isWindows; then
 		generator="$default_VisualGenerator"
+		generator_arch="$default_VisualGeneratorArch"
 		toolset="$default_VisualToolset"
 		toolchain="$default_VisualToolchain"
 		platformSdk="$default_VisualSdk"
 		arch="$default_VisualArch"
+		defaultOutputFolder="${outputFolderBasePath}_<arch>_<toolset>"
 	else
 		generator="Unix Makefiles"
 		getCcArch arch
+		defaultOutputFolder="${outputFolderBasePath}_<arch>_<config>"
 	fi
 fi
 
@@ -58,13 +69,14 @@ if [ $? -ne 0 ]; then
 	exit 1
 fi
 
-outputFolder="./_build"
-cmake_config=""
-add_cmake_opt=""
+outputFolder=""
 outputFolderForced=0
+add_cmake_opt=()
 useVSclang=0
+useVS2017=0
 hasTeamId=0
 doSign=0
+signtoolOptions="$default_signtoolOptions"
 
 while [ $# -gt 0 ]
 do
@@ -72,7 +84,7 @@ do
 		-h)
 			echo "Usage: gen_cmake.sh [options]"
 			echo " -h -> Display this help"
-			echo " -o <folder> -> Output folder (Default: ${outputFolder}_${arch})"
+			echo " -o <folder> -> Output folder (Default: ${defaultOutputFolder})"
 			echo " -f <flags> -> Force all cmake flags (Default: $cmake_opt)"
 			echo " -a <flags> -> Add cmake flags to default ones (or to forced ones with -f option)"
 			echo " -b <cmake path> -> Force cmake binary path (Default: $cmake_path)"
@@ -81,7 +93,9 @@ do
 				echo " -t <visual toolset> -> Force visual toolset (Default: $toolset)"
 				echo " -tc <visual toolchain> -> Force visual toolchain (Default: $toolchain)"
 				echo " -64 -> Generate the 64 bits version of the project (Default: 32)"
-				echo " -clang -> Compile using clang for VisualStudio (if predefined toolset do not work, override with -t option INSTEAD of -clang)"
+				echo " -vs2017 -> Compile using VS 2017 compiler instead of the default one"
+				echo " -clang -> Compile using clang for VisualStudio"
+				echo " -signtool-opt <options> -> Windows code signing options (Default: $default_signtoolOptions)"
 			fi
 			if isMac; then
 				echo " -id <TeamIdentifier> -> iTunes team identifier for binary signing."
@@ -116,7 +130,11 @@ do
 				echo "ERROR: Missing parameter for -a option, see help (-h)"
 				exit 4
 			fi
-			add_cmake_opt="$add_cmake_opt $1"
+			IFS=' ' read -r -a tokens <<< "$1"
+			for token in ${tokens[@]}
+			do
+				add_cmake_opt+=("$token")
+			done
 			;;
 		-b)
 			shift
@@ -173,11 +191,32 @@ do
 				exit 4
 			fi
 			;;
+		-vs2017)
+			if isWindows; then
+				useVS2017=1
+			else
+				echo "ERROR: -vs2017 option is only supported on Windows platform"
+				exit 4
+			fi
+			;;
 		-clang)
 			if isWindows; then
 				useVSclang=1
 			else
 				echo "ERROR: -clang option is only supported on Windows platform"
+				exit 4
+			fi
+			;;
+		-signtool-opt)
+			if isWindows; then
+				shift
+				if [ $# -lt 1 ]; then
+					echo "ERROR: Missing parameter for -signtool-opt option, see help (-h)"
+					exit 4
+				fi
+				signtoolOptions="$1"
+			else
+				echo "ERROR: -signtool-opt option is only supported on Windows platform"
 				exit 4
 			fi
 			;;
@@ -188,7 +227,7 @@ do
 					echo "ERROR: Missing parameter for -id option, see help (-h)"
 					exit 4
 				fi
-				add_cmake_opt="$add_cmake_opt -DLA_TEAM_IDENTIFIER=$1"
+				add_cmake_opt+=("-DLA_TEAM_IDENTIFIER=$1")
 				hasTeamId=1
 			else
 				echo "ERROR: -id option is only supported on macOS platform"
@@ -197,7 +236,8 @@ do
 			;;
 		-debug)
 			if isLinux; then
-				cmake_config="-DCMAKE_BUILD_TYPE=Debug"
+				cmake_config="Debug"
+				add_cmake_opt+=("-DCMAKE_BUILD_TYPE=${cmake_config}")
 			else
 				echo "ERROR: -debug option is only supported on Linux platform"
 				exit 4
@@ -205,14 +245,15 @@ do
 			;;
 		-release)
 			if isLinux; then
-				cmake_config="-DCMAKE_BUILD_TYPE=Release"
+				cmake_config="Release"
+				add_cmake_opt+=("-DCMAKE_BUILD_TYPE=${cmake_config}")
 			else
 				echo "ERROR: -release option is only supported on Linux platform"
 				exit 4
 			fi
 			;;
 		-sign)
-			add_cmake_opt="$add_cmake_opt -DENABLE_AVDECC_SIGNING=TRUE"
+			add_cmake_opt+=("-DENABLE_AVDECC_SIGNING=TRUE")
 			doSign=1
 			;;
 		*)
@@ -223,20 +264,25 @@ do
 	shift
 done
 
-if [ $outputFolderForced -eq 0 ]; then
-	outputFolder="${outputFolder}_${arch}"
-fi
-
 if [ ! -z "$cmake_generator" ]; then
 	echo "Overriding default cmake generator ($generator) with: $cmake_generator"
 	generator="$cmake_generator"
 fi
 
-# Check TeamIdentifier specified is signing enabled on macOS
+# Check TeamIdentifier specified if signing enabled on macOS
 if isMac; then
 	if [[ $hasTeamId -eq 0 && $doSign -eq 1 ]]; then
 		echo "ERROR: macOS requires either iTunes TeamIdentifier to be specified using -id option, or -no-signing to disable binary signing"
 		exit 4
+	fi
+fi
+
+# Set signtool options if signing enabled on windows
+if isWindows; then
+	if [ $doSign -eq 1 ]; then
+		if [ ! -z "$signtoolOptions" ]; then
+			add_cmake_opt+=("-DLA_SIGNTOOL_OPTIONS=$signtoolOptions")
+		fi
 	fi
 fi
 
@@ -248,15 +294,24 @@ if isLinux; then
 	fi
 fi
 
-# Using -clang option (shortcut to auto-define the toolset)
-if [ $useVSclang -eq 1 ]; then
-	toolset="v141_clang_c2"
+# Using -vs2017 option
+if [ $useVS2017 -eq 1 ]; then
+	generator="Visual Studio 15 2017"
+	toolset="v141"
 fi
 
-# Clang on windows does not properly compile using Sdk8.1, we have to force Sdk10.0
-shopt -s nocasematch
-if [[ isWindows && $toolset =~ clang ]]; then
-	platformSdk="10.0"
+# Using -clang option (shortcut to auto-define the toolset)
+if [ $useVSclang -eq 1 ]; then
+	toolset="ClangCL"
+fi
+
+if [ $outputFolderForced -eq 0 ]; then
+	getOutputFolder outputFolder "${outputFolderBasePath}" "${arch}" "${toolset}" "${cmake_config}"
+fi
+
+generator_arch_option=""
+if [ ! -z "${generator_arch}" ]; then
+	generator_arch_option="-A${generator_arch} "
 fi
 
 toolset_option=""
@@ -268,8 +323,13 @@ if [ ! -z "${toolset}" ]; then
 	fi
 fi
 
+sdk_option=""
+if [ ! -z "${platformSdk}" ]; then
+	sdk_option="-DCMAKE_SYSTEM_VERSION=$platformSdk"
+fi
+
 echo "Generating cmake project..."
-"$cmake_path" -H. -B"${outputFolder}" "-G${generator}" $toolset_option $sdk_option $cmake_opt $add_cmake_opt $cmake_config
+"$cmake_path" -H. -B"${outputFolder}" "-G${generator}" $generator_arch_option $toolset_option $sdk_option $cmake_opt "${add_cmake_opt[@]}"
 
 echo ""
 echo "All done, generated project lies in ${outputFolder}"

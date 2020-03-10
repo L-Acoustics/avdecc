@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -23,7 +23,9 @@
 */
 
 #include "la/avdecc/internals/protocolVuAecpdu.hpp"
+
 #include "logHelper.hpp"
+
 #include <cassert>
 #include <string>
 
@@ -33,13 +35,13 @@ namespace avdecc
 {
 namespace protocol
 {
-
 /***********************************************************/
 /* VuAecpdu class definition                               */
 /***********************************************************/
 
-VuAecpdu::VuAecpdu() noexcept
+VuAecpdu::VuAecpdu(bool const isResponse) noexcept
 {
+	Aecpdu::setMessageType(isResponse ? AecpMessageType::VendorUniqueResponse : AecpMessageType::VendorUniqueCommand);
 	Aecpdu::setAecpSpecificDataLength(VuAecpdu::HeaderLength);
 }
 
@@ -60,7 +62,7 @@ void LA_AVDECC_CALL_CONVENTION VuAecpdu::serialize(SerializationBuffer& buffer) 
 
 	auto const previousSize = buffer.size();
 
-	buffer << _protocolIdentifier;
+	buffer << static_cast<ProtocolIdentifier::ArrayType>(_protocolIdentifier);
 
 	if (!AVDECC_ASSERT_WITH_RET((buffer.size() - previousSize) == HeaderLength, "VuAecpdu::serialize error: Packed buffer length != expected header length"))
 	{
@@ -80,7 +82,11 @@ void LA_AVDECC_CALL_CONVENTION VuAecpdu::deserialize(DeserializationBuffer& buff
 		throw std::invalid_argument("Not enough data to deserialize");
 	}
 
-	buffer >> _protocolIdentifier;
+	ProtocolIdentifier::ArrayType protocolIdentifier{};
+
+	buffer >> protocolIdentifier;
+
+	_protocolIdentifier.setValue(protocolIdentifier);
 }
 
 } // namespace protocol

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -25,7 +25,9 @@
 #pragma once
 
 #include "protocolAecpdu.hpp"
+
 #include "entityAddressAccessTypes.hpp"
+
 #include <utility>
 #include <array>
 
@@ -35,7 +37,6 @@ namespace avdecc
 {
 namespace protocol
 {
-
 /** AA Aecpdu message */
 class AaAecpdu final : public Aecpdu
 {
@@ -46,19 +47,20 @@ public:
 	/**
 	* @brief Factory method to create a new AaAecpdu.
 	* @details Creates a new AaAecpdu as a unique pointer.
+	* @param[in] isResponse True if the AA message is a response, false if it's a command.
 	* @return A new AaAecpdu as a Aecpdu::UniquePointer.
 	*/
-	static UniquePointer create()
+	static UniquePointer create(bool const isResponse) noexcept
 	{
 		auto deleter = [](Aecpdu* self)
 		{
 			static_cast<AaAecpdu*>(self)->destroy();
 		};
-		return UniquePointer(createRawAaAecpdu(), deleter);
+		return UniquePointer(createRawAaAecpdu(isResponse), deleter);
 	}
 
 	/** Constructor for heap AaAecpdu */
-	LA_AVDECC_API AaAecpdu() noexcept;
+	LA_AVDECC_API AaAecpdu(bool const isResponse) noexcept;
 
 	/** Destructor (for some reason we have to define it in the cpp file or clang complains about missing vtable, using = default or inline not working) */
 	virtual LA_AVDECC_API ~AaAecpdu() noexcept override;
@@ -92,18 +94,18 @@ public:
 	/** Deserialization method */
 	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION deserialize(DeserializationBuffer& buffer) override;
 
-	/** Copy method */
-	virtual LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION copy() const override;
+	/** Contruct a Response message to this Command (only changing the messageType to be of Response kind). Returns nullptr if the message is not a Command or if no Response is possible for this messageType */
+	virtual LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION responseCopy() const override;
 
 	// Defaulted compiler auto-generated methods
-	AaAecpdu(AaAecpdu&&) = default;
-	AaAecpdu(AaAecpdu const&) = default;
-	AaAecpdu& operator=(AaAecpdu const&) = default;
-	AaAecpdu& operator=(AaAecpdu&&) = default;
+	LA_AVDECC_API AaAecpdu(AaAecpdu&&);
+	LA_AVDECC_API AaAecpdu(AaAecpdu const&);
+	LA_AVDECC_API AaAecpdu& LA_AVDECC_CALL_CONVENTION operator=(AaAecpdu const&);
+	LA_AVDECC_API AaAecpdu& LA_AVDECC_CALL_CONVENTION operator=(AaAecpdu&&);
 
 private:
 	/** Entry point */
-	static LA_AVDECC_API AaAecpdu* LA_AVDECC_CALL_CONVENTION createRawAaAecpdu();
+	static LA_AVDECC_API AaAecpdu* LA_AVDECC_CALL_CONVENTION createRawAaAecpdu(bool const isResponse) noexcept;
 
 	/** Destroy method for COM-like interface */
 	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION destroy() noexcept override;

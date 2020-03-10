@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -23,7 +23,9 @@
 */
 
 #include "la/avdecc/internals/protocolAcmpdu.hpp"
+
 #include "logHelper.hpp"
+
 #include <cassert>
 #include <string>
 
@@ -33,12 +35,11 @@ namespace avdecc
 {
 namespace protocol
 {
-
 /***********************************************************/
 /* Acmpdu class definition                                 */
 /***********************************************************/
 
-la::avdecc::networkInterface::MacAddress Acmpdu::Multicast_Mac_Address{ { 0x91, 0xe0, 0xf0, 0x01, 0x00, 0x00 } };
+la::avdecc::networkInterface::MacAddress const Acmpdu::Multicast_Mac_Address{ { 0x91, 0xe0, 0xf0, 0x01, 0x00, 0x00 } };
 
 Acmpdu::Acmpdu() noexcept
 {
@@ -47,6 +48,8 @@ Acmpdu::Acmpdu() noexcept
 	AvtpduControl::setStreamValid(0);
 	AvtpduControl::setControlDataLength(Length);
 }
+
+Acmpdu::~Acmpdu() noexcept {}
 
 void LA_AVDECC_CALL_CONVENTION Acmpdu::serialize(SerializationBuffer& buffer) const
 {
@@ -73,6 +76,18 @@ void LA_AVDECC_CALL_CONVENTION Acmpdu::deserialize(DeserializationBuffer& buffer
 		throw std::invalid_argument("Not enough data to deserialize");
 	}
 
+	// Check is there are less advertised data than the required minimum
+	if (_controlDataLength < Length)
+	{
+#if defined(IGNORE_INVALID_CONTROL_DATA_LENGTH)
+		// Allow this packet to go through, the ControlData specific unpacker will trap any error if the message is further ill-formed
+		LOG_SERIALIZATION_DEBUG(_srcAddress, "Acmpdu::deserialize error: ControlDataLength field minimum value for ACMPDU is {}. Only {} bytes advertised", Length, _controlDataLength);
+#else // !IGNORE_INVALID_CONTROL_DATA_LENGTH
+		LOG_SERIALIZATION_WARN(_srcAddress, "Acmpdu::deserialize error: ControlDataLength field minimum value for ACMPDU is {}. Only {} bytes advertised", Length, _controlDataLength);
+		throw std::invalid_argument("ControlDataLength field value too small for ACMPDU");
+#endif // IGNORE_INVALID_CONTROL_DATA_LENGTH
+	}
+
 	// Check if there is more advertised data than actual bytes in the buffer
 	if (_controlDataLength > beginRemainingBytes)
 	{
@@ -94,7 +109,9 @@ void LA_AVDECC_CALL_CONVENTION Acmpdu::deserialize(DeserializationBuffer& buffer
 #ifdef DEBUG
 	// Do not log this error in release, it might happen too often if an entity is bugged or if the message contains data this version of the library do not unpack
 	if (buffer.remaining() != 0 && buffer.usedBytes() >= EthernetPayloadMinimumSize)
-		LOG_SERIALIZATION_TRACE(_srcAddress, "Acmpdu::deserialize warning: Remaining bytes in buffer for AcmpMessageType " + std::string(getMessageType()) + " (" + la::avdecc::toHexString(getMessageType().getValue()) + ")");
+	{
+		LOG_SERIALIZATION_TRACE(_srcAddress, "Acmpdu::deserialize warning: Remaining bytes in buffer for AcmpMessageType {} ({}): {}", std::string(getMessageType()), utils::toHexString(getMessageType().getValue()), buffer.remaining());
+	}
 #endif // DEBUG
 }
 
@@ -108,8 +125,14 @@ Acmpdu::UniquePointer LA_AVDECC_CALL_CONVENTION Acmpdu::copy() const
 	return UniquePointer(new Acmpdu(*this), deleter);
 }
 
+// Defaulted compiler auto-generated methods
+Acmpdu::Acmpdu(Acmpdu&&) = default;
+Acmpdu::Acmpdu(Acmpdu const&) = default;
+Acmpdu& LA_AVDECC_CALL_CONVENTION Acmpdu::operator=(Acmpdu const&) = default;
+Acmpdu& LA_AVDECC_CALL_CONVENTION Acmpdu::operator=(Acmpdu&&) = default;
+
 /** Entry point */
-Acmpdu* LA_AVDECC_CALL_CONVENTION Acmpdu::createRawAcmpdu()
+Acmpdu* LA_AVDECC_CALL_CONVENTION Acmpdu::createRawAcmpdu() noexcept
 {
 	return new Acmpdu();
 }

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -27,26 +27,26 @@
 
 #ifdef _WIN32
 
-# define LA_AVDECC_CONTROLLER_CALL_CONVENTION __stdcall
+#	define LA_AVDECC_CONTROLLER_CALL_CONVENTION __stdcall
 
-# if defined(la_avdecc_controller_cxx_EXPORTS)
-#   define LA_AVDECC_CONTROLLER_API __declspec(dllexport)
-# elif defined(la_avdecc_controller_cxx_STATICS)
-#   define LA_AVDECC_CONTROLLER_API
-# else // !la_avdecc_controller_cxx_EXPORTS
-#   define LA_AVDECC_CONTROLLER_API __declspec(dllimport)
-# endif // la_avdecc_controller_cxx_EXPORTS
+#	if defined(la_avdecc_controller_cxx_EXPORTS)
+#		define LA_AVDECC_CONTROLLER_API __declspec(dllexport)
+#	elif defined(la_avdecc_controller_cxx_STATICS)
+#		define LA_AVDECC_CONTROLLER_API
+#	else // !la_avdecc_controller_cxx_EXPORTS
+#		define LA_AVDECC_CONTROLLER_API __declspec(dllimport)
+#	endif // la_avdecc_controller_cxx_EXPORTS
 
 #else // !_WIN32
 
-#define LA_AVDECC_CONTROLLER_CALL_CONVENTION
+#	define LA_AVDECC_CONTROLLER_CALL_CONVENTION
 
-# if defined(la_avdecc_controller_cxx_EXPORTS)
-#   define LA_AVDECC_CONTROLLER_API __attribute__((visibility("default")))
-# elif defined(la_avdecc_controller_cxx_STATICS)
-#   define LA_AVDECC_CONTROLLER_API
-# else // !la_avdecc_controller_cxx_EXPORTS
-#   define LA_AVDECC_CONTROLLER_API __attribute__((visibility("default")))
-# endif // la_avdecc_controller_cxx_EXPORTS
+#	if defined(la_avdecc_controller_cxx_EXPORTS)
+#		define LA_AVDECC_CONTROLLER_API __attribute__((visibility("default")))
+#	elif defined(la_avdecc_controller_cxx_STATICS)
+#		define LA_AVDECC_CONTROLLER_API
+#	else // !la_avdecc_controller_cxx_EXPORTS
+#		define LA_AVDECC_CONTROLLER_API __attribute__((visibility("default")))
+#	endif // la_avdecc_controller_cxx_EXPORTS
 
 #endif // _WIN32

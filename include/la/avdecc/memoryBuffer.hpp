@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -37,7 +37,6 @@ namespace la
 {
 namespace avdecc
 {
-
 /**
 * @brief Lightweight and efficient vector-like container.
 * @details A vector-like container that handles a "byte" resizable array
@@ -58,9 +57,7 @@ public:
 	/* Life cycle                                                                 */
 
 	/** Default constructor */
-	MemoryBuffer() noexcept
-	{
-	}
+	MemoryBuffer() noexcept {}
 
 	/** Contructor from a std::vector */
 	template<typename T>

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -20,7 +20,7 @@
 #include "networkInterfaceHelper_common.hpp"
 
 #ifndef _GNU_SOURCE
-#define _GNU_SOURCE /* To get defns of NI_MAXSERV and NI_MAXHOST */
+#	define _GNU_SOURCE /* To get defns of NI_MAXSERV and NI_MAXHOST */
 #endif // !_GNU_SOURCE
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
@@ -41,6 +41,9 @@
 #include <memory>
 #include <string>
 #include <cstring> // memcpy
+#include <atomic>
+#include <thread>
+#include <chrono>
 
 namespace la
 {
@@ -48,7 +51,6 @@ namespace avdecc
 {
 namespace networkInterface
 {
-
 Interface::Type getInterfaceType(struct ifaddrs const* const ifa, int const sock)
 {
 	// Check for loopback
@@ -59,7 +61,7 @@ Interface::Type getInterfaceType(struct ifaddrs const* const ifa, int const sock
 	{
 		struct iwreq wrq;
 		memset(&wrq, 0, sizeof(wrq));
-		strncpy(wrq.ifr_name, ifa->ifa_name, IFNAMSIZ);
+		strncpy(wrq.ifr_name, ifa->ifa_name, IFNAMSIZ - 1);
 		if (ioctl(sock, SIOCGIWNAME, &wrq) != -1)
 		{
 			// TODO: Might not be 802.11 only, find a way to differenciate wireless protocols... maybe with  "wrq.u.name" with partial string match, but it may not be standard
@@ -74,11 +76,10 @@ Interface::Type getInterfaceType(struct ifaddrs const* const ifa, int const sock
 void refreshInterfaces(Interfaces& interfaces) noexcept
 {
 	std::unique_ptr<struct ifaddrs, std::function<void(struct ifaddrs*)>> scopedIfa{ nullptr, [](struct ifaddrs* ptr)
-	{
-		if (ptr != nullptr)
-			freeifaddrs(ptr);
-	}
-	};
+		{
+			if (ptr != nullptr)
+				freeifaddrs(ptr);
+		} };
 
 	struct ifaddrs* ifaddr{ nullptr };
 	if (getifaddrs(&ifaddr) == -1)
@@ -108,11 +109,17 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 		if (family == AF_PACKET && ifa->ifa_data != nullptr)
 		{
 			la::avdecc::networkInterface::Interface interface;
-			interface.name = ifa->ifa_name;
+			interface.id = ifa->ifa_name;
 			interface.description = ifa->ifa_name;
 			interface.alias = ifa->ifa_name;
 			interface.type = getInterfaceType(ifa, sck);
-			interface.isActive = (ifa->ifa_flags & (IFF_UP | IFF_RUNNING)) == (IFF_UP | IFF_RUNNING);
+			// Check if interface is enabled
+			interface.isEnabled = (ifa->ifa_flags & IFF_UP) == IFF_UP;
+			// Check if interface is connected
+			interface.isConnected = (ifa->ifa_flags & (IFF_UP | IFF_RUNNING)) == (IFF_UP | IFF_RUNNING);
+			// Is interface Virtual (TODO: Try to detect for other kinds)
+			interface.isVirtual = interface.type == Interface::Type::Loopback;
+
 			// Get the mac address contained in the AF_PACKET specific data
 			auto sll = reinterpret_cast<struct sockaddr_ll*>(ifa->ifa_addr);
 			if (sll->sll_halen == 6)
@@ -134,20 +141,106 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 				auto& interface = intfcIt->second;
 
 				char host[NI_MAXHOST];
-				int s = getnameinfo(ifa->ifa_addr, (family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), host, NI_MAXHOST, nullptr, 0, NI_NUMERICHOST);
-				if (s != 0)
+				auto ret = getnameinfo(ifa->ifa_addr, (family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), host, sizeof(host) - 1, nullptr, 0, NI_NUMERICHOST);
+				if (ret != 0)
 				{
 					continue;
 				}
+				host[NI_MAXHOST - 1] = 0;
+
+				char mask[NI_MAXHOST];
+				ret = getnameinfo(ifa->ifa_netmask, (family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), mask, sizeof(mask) - 1, nullptr, 0, NI_NUMERICHOST);
+				if (ret != 0)
+				{
+					continue;
+				}
+				mask[NI_MAXHOST - 1] = 0;
 
 				// Add the IP address of that interface
-				interface.ipAddresses.push_back(host);
+				interface.ipAddressInfos.emplace_back(IPAddressInfo{ IPAddress{ host }, IPAddress{ mask } });
 			}
 		}
 	}
 
 	// Release the socket
 	close(sck);
+}
+
+void waitForFirstEnumeration() noexcept
+{
+	static std::once_flag once;
+	std::call_once(once,
+		[]()
+		{
+			auto newList = Interfaces{};
+			refreshInterfaces(newList);
+			onNewInterfacesList(std::move(newList));
+		});
+}
+
+static auto s_shouldTerminate = std::atomic_bool{ false };
+static auto s_observerThread = std::thread{};
+
+void onFirstObserverRegistered() noexcept
+{
+	s_shouldTerminate = false;
+
+	s_observerThread = std::thread(
+		[]()
+		{
+			utils::setCurrentThreadName("networkInterfaceHelper::ObserverPolling");
+			auto previousList = Interfaces{};
+			auto nextCheck = std::chrono::time_point<std::chrono::system_clock>{};
+			while (!s_shouldTerminate)
+			{
+				auto const now = std::chrono::system_clock::now();
+				if (now >= nextCheck)
+				{
+					auto newList = Interfaces{};
+					refreshInterfaces(newList);
+
+					// Process previous list and check if some property changed
+					for (auto const& [name, previousIntfc] : previousList)
+					{
+						auto const newIntfcIt = newList.find(name);
+						if (newIntfcIt != newList.end())
+						{
+							auto const& newIntfc = newIntfcIt->second;
+							if (previousIntfc.isEnabled != newIntfc.isEnabled)
+							{
+								onEnabledStateChanged(name, newIntfc.isEnabled);
+							}
+							if (previousIntfc.isConnected != newIntfc.isConnected)
+							{
+								onConnectedStateChanged(name, newIntfc.isConnected);
+							}
+						}
+					}
+
+					// Copy the list before it's moved
+					previousList = newList;
+
+					// Check for change in Interface count
+					onNewInterfacesList(std::move(newList));
+
+					// Setup next check time
+					nextCheck = now + std::chrono::milliseconds(1000);
+				}
+
+				// Wait a little bit so we don't burn the CPU
+				std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			}
+		});
+}
+
+void onLastObserverUnregistered() noexcept
+{
+	s_shouldTerminate = true;
+	if (s_observerThread.joinable())
+	{
+		s_observerThread.join();
+		s_observerThread = {};
+	}
 }
 
 } // namespace networkInterface

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -27,10 +27,12 @@
 
 #include "la/avdecc/utils.hpp"
 #include "la/avdecc/networkInterfaceHelper.hpp"
+
 #include "entityEnums.hpp"
 #include "uniqueIdentifier.hpp"
 #include "protocolDefines.hpp"
 #include "entityModelTypes.hpp"
+
 #include <cstdint>
 #include <string>
 #include <array>
@@ -40,6 +42,7 @@
 #include <set>
 #include <tuple>
 #include <vector>
+#include <optional>
 
 namespace la
 {
@@ -49,21 +52,9 @@ namespace entity
 {
 namespace model
 {
-
-constexpr StreamFormat getNullStreamFormat() noexcept
+constexpr DescriptorIndex getInvalidDescriptorIndex() noexcept
 {
-	return StreamFormat(0u);
-}
-
-constexpr SamplingRate getNullSamplingRate() noexcept
-{
-	return SamplingRate(0u);
-}
-
-constexpr LocalizedStringReference getNullLocalizedStringReference() noexcept
-{
-	// Clause 7.3.6
-	return LocalizedStringReference(0xFFFF);
+	return DescriptorIndex(0xFFFF);
 }
 
 /** ENTITY Descriptor - Clause 7.2.1 */
@@ -71,17 +62,17 @@ struct EntityDescriptor
 {
 	UniqueIdentifier entityID{};
 	UniqueIdentifier entityModelID{};
-	EntityCapabilities entityCapabilities{ EntityCapabilities::None };
+	EntityCapabilities entityCapabilities{};
 	std::uint16_t talkerStreamSources{ 0u };
-	TalkerCapabilities talkerCapabilities{ TalkerCapabilities::None };
+	TalkerCapabilities talkerCapabilities{};
 	std::uint16_t listenerStreamSinks{ 0u };
-	ListenerCapabilities listenerCapabilities{ ListenerCapabilities::None };
-	ControllerCapabilities controllerCapabilities{ ControllerCapabilities::None };
+	ListenerCapabilities listenerCapabilities{};
+	ControllerCapabilities controllerCapabilities{};
 	std::uint32_t availableIndex{ 0u };
 	UniqueIdentifier associationID{};
 	AvdeccFixedString entityName{};
-	LocalizedStringReference vendorNameString{ getNullLocalizedStringReference() };
-	LocalizedStringReference modelNameString{ getNullLocalizedStringReference() };
+	LocalizedStringReference vendorNameString{};
+	LocalizedStringReference modelNameString{};
 	AvdeccFixedString firmwareVersion{};
 	AvdeccFixedString groupName{};
 	AvdeccFixedString serialNumber{};
@@ -93,15 +84,15 @@ struct EntityDescriptor
 struct ConfigurationDescriptor
 {
 	AvdeccFixedString objectName{};
-	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
-	std::unordered_map<DescriptorType, std::uint16_t, la::avdecc::EnumClassHash> descriptorCounts{};
+	LocalizedStringReference localizedDescription{};
+	std::unordered_map<DescriptorType, std::uint16_t, la::avdecc::utils::EnumClassHash> descriptorCounts{};
 };
 
 /** AUDIO_UNIT Descriptor - Clause 7.2.3 */
 struct AudioUnitDescriptor
 {
 	AvdeccFixedString objectName{};
-	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
+	LocalizedStringReference localizedDescription{};
 	ClockDomainIndex clockDomainIndex{ 0u };
 	std::uint16_t numberOfStreamInputPorts{ 0u };
 	StreamPortIndex baseStreamInputPort{ StreamPortIndex(0u) };
@@ -135,7 +126,7 @@ struct AudioUnitDescriptor
 	SignalTranscoderIndex baseTranscoder{ SignalTranscoderIndex(0u) };
 	std::uint16_t numberOfControlBlocks{ 0u };
 	ControlBlockIndex baseControlBlock{ ControlBlockIndex(0u) };
-	SamplingRate currentSamplingRate{ getNullSamplingRate() };
+	SamplingRate currentSamplingRate{};
 	std::set<SamplingRate> samplingRates{};
 };
 
@@ -147,10 +138,10 @@ struct AudioUnitDescriptor
 struct StreamDescriptor
 {
 	AvdeccFixedString objectName{};
-	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
+	LocalizedStringReference localizedDescription{};
 	ClockDomainIndex clockDomainIndex{ ClockDomainIndex(0u) };
-	StreamFlags streamFlags{ StreamFlags::None };
-	StreamFormat currentFormat{ getNullStreamFormat() };
+	StreamFlags streamFlags{};
+	StreamFormat currentFormat{};
 	UniqueIdentifier backupTalkerEntityID_0{};
 	std::uint16_t backupTalkerUniqueID_0{ 0u };
 	UniqueIdentifier backupTalkerEntityID_1{};
@@ -171,8 +162,8 @@ struct StreamDescriptor
 struct JackDescriptor
 {
 	AvdeccFixedString objectName{};
-	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
-	JackFlags jackFlags{ JackFlags::None };
+	LocalizedStringReference localizedDescription{};
+	JackFlags jackFlags{};
 	JackType jackType{ JackType::Speaker };
 	std::uint16_t numberOfControls{ 0u };
 	ControlIndex baseControl{ ControlIndex(0u) };
@@ -182,10 +173,10 @@ struct JackDescriptor
 struct AvbInterfaceDescriptor
 {
 	AvdeccFixedString objectName{};
-	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
+	LocalizedStringReference localizedDescription{};
 	networkInterface::MacAddress macAddress{};
-	AvbInterfaceFlags interfaceFlags{ AvbInterfaceFlags::None };
-	UniqueIdentifier clockIdentity{ 0u };
+	AvbInterfaceFlags interfaceFlags{};
+	UniqueIdentifier clockIdentity{};
 	std::uint8_t priority1{ 0xff };
 	std::uint8_t clockClass{ 0xff };
 	std::uint16_t offsetScaledLogVariance{ 0x0000 };
@@ -202,8 +193,8 @@ struct AvbInterfaceDescriptor
 struct ClockSourceDescriptor
 {
 	AvdeccFixedString objectName{};
-	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
-	ClockSourceFlags clockSourceFlags{ ClockSourceFlags::None };
+	LocalizedStringReference localizedDescription{};
+	ClockSourceFlags clockSourceFlags{};
 	ClockSourceType clockSourceType{ ClockSourceType::Internal };
 	UniqueIdentifier clockSourceIdentifier{};
 	DescriptorType clockSourceLocationType{ DescriptorType::Invalid };
@@ -214,7 +205,7 @@ struct ClockSourceDescriptor
 struct MemoryObjectDescriptor
 {
 	AvdeccFixedString objectName{};
-	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
+	LocalizedStringReference localizedDescription{};
 	MemoryObjectType memoryObjectType{ MemoryObjectType::FirmwareImage };
 	DescriptorType targetDescriptorType{ DescriptorType::Invalid };
 	DescriptorIndex targetDescriptorIndex{ DescriptorIndex(0u) };
@@ -241,7 +232,7 @@ struct StringsDescriptor
 struct StreamPortDescriptor
 {
 	ClockDomainIndex clockDomainIndex{ ClockDomainIndex(0u) };
-	PortFlags portFlags{ PortFlags::None };
+	PortFlags portFlags{};
 	std::uint16_t numberOfControls{ 0u };
 	ControlIndex baseControl{ ControlIndex(0u) };
 	std::uint16_t numberOfClusters{ 0u };
@@ -254,7 +245,7 @@ struct StreamPortDescriptor
 struct ExternalPortDescriptor
 {
 	ClockDomainIndex clockDomainIndex{ ClockDomainIndex(0u) };
-	PortFlags portFlags{ PortFlags::None };
+	PortFlags portFlags{};
 	std::uint16_t numberOfControls{ 0u };
 	ControlIndex baseControl{ ControlIndex(0u) };
 	DescriptorType signalType{ DescriptorType::Invalid };
@@ -268,7 +259,7 @@ struct ExternalPortDescriptor
 struct InternalPortDescriptor
 {
 	ClockDomainIndex clockDomainIndex{ ClockDomainIndex(0u) };
-	PortFlags portFlags{ PortFlags::None };
+	PortFlags portFlags{};
 	std::uint16_t numberOfControls{ 0u };
 	ControlIndex baseControl{ ControlIndex(0u) };
 	DescriptorType signalType{ DescriptorType::Invalid };
@@ -282,7 +273,7 @@ struct InternalPortDescriptor
 struct AudioClusterDescriptor
 {
 	AvdeccFixedString objectName{};
-	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
+	LocalizedStringReference localizedDescription{};
 	DescriptorType signalType{ DescriptorType::Invalid };
 	DescriptorIndex signalIndex{ DescriptorIndex(0u) };
 	std::uint16_t signalOutput{ 0u };
@@ -330,7 +321,7 @@ struct AudioMapDescriptor
 struct ClockDomainDescriptor
 {
 	AvdeccFixedString objectName{};
-	LocalizedStringReference localizedDescription{ getNullLocalizedStringReference() };
+	LocalizedStringReference localizedDescription{};
 	ClockSourceIndex clockSourceIndex{ ClockSourceIndex(0u) };
 	std::vector<ClockSourceIndex> clockSources{};
 };
@@ -340,22 +331,23 @@ struct ClockDomainDescriptor
 /** GET_STREAM_INFO and SET_STREAM_INFO Dynamic Information - Clause 7.4.16.2 */
 struct StreamInfo
 {
-	StreamInfoFlags streamInfoFlags{ StreamInfoFlags::None };
-	StreamFormat streamFormat{ getNullStreamFormat() };
-	std::uint64_t streamID{ 0u };
+	StreamInfoFlags streamInfoFlags{};
+	StreamFormat streamFormat{};
+	UniqueIdentifier streamID{ 0u };
 	std::uint32_t msrpAccumulatedLatency{ 0u };
 	la::avdecc::networkInterface::MacAddress streamDestMac{};
 	std::uint8_t msrpFailureCode{ 0u };
-	std::uint64_t msrpFailureBridgeID{ 0u };
+	BridgeIdentifier msrpFailureBridgeID{ 0u };
 	std::uint16_t streamVlanID{ 0u };
+	// Milan additions
+	std::optional<StreamInfoFlagsEx> streamInfoFlagsEx{ std::nullopt };
+	std::optional<ProbingStatus> probingStatus{ std::nullopt };
+	std::optional<protocol::AcmpStatus> acmpStatus{ std::nullopt };
 };
 
 constexpr bool operator==(StreamInfo const& lhs, StreamInfo const& rhs) noexcept
 {
-	return (lhs.streamInfoFlags == rhs.streamInfoFlags) && (lhs.streamFormat == rhs.streamFormat) &&
-		(lhs.streamID == rhs.streamID) && (lhs.msrpAccumulatedLatency == rhs.msrpAccumulatedLatency) &&
-		(lhs.streamDestMac == rhs.streamDestMac) && (lhs.msrpFailureCode == rhs.msrpFailureCode) &&
-		(lhs.msrpFailureBridgeID == rhs.msrpFailureBridgeID) && (lhs.streamVlanID == rhs.streamVlanID);
+	return (lhs.streamInfoFlags == rhs.streamInfoFlags) && (lhs.streamFormat == rhs.streamFormat) && (lhs.streamID == rhs.streamID) && (lhs.msrpAccumulatedLatency == rhs.msrpAccumulatedLatency) && (lhs.streamDestMac == rhs.streamDestMac) && (lhs.msrpFailureCode == rhs.msrpFailureCode) && (lhs.msrpFailureBridgeID == rhs.msrpFailureBridgeID) && (lhs.streamVlanID == rhs.streamVlanID) && (lhs.streamInfoFlagsEx == rhs.streamInfoFlagsEx) && (lhs.probingStatus == rhs.probingStatus) && (lhs.acmpStatus == rhs.acmpStatus);
 }
 
 constexpr bool operator!=(StreamInfo const& lhs, StreamInfo const& rhs) noexcept
@@ -369,21 +361,44 @@ struct AvbInfo
 	UniqueIdentifier gptpGrandmasterID{};
 	std::uint32_t propagationDelay{ 0u };
 	std::uint8_t gptpDomainNumber{ 0u };
-	AvbInfoFlags flags{ AvbInfoFlags::None };
+	AvbInfoFlags flags{};
 	entity::model::MsrpMappings mappings{};
 };
 
 constexpr bool operator==(AvbInfo const& lhs, AvbInfo const& rhs) noexcept
 {
-	return (lhs.gptpGrandmasterID == rhs.gptpGrandmasterID) && (lhs.propagationDelay == rhs.propagationDelay) &&
-		(lhs.gptpDomainNumber == rhs.gptpDomainNumber) && (lhs.flags == rhs.flags) &&
-		(lhs.mappings == rhs.mappings);
+	return (lhs.gptpGrandmasterID == rhs.gptpGrandmasterID) && (lhs.propagationDelay == rhs.propagationDelay) && (lhs.gptpDomainNumber == rhs.gptpDomainNumber) && (lhs.flags == rhs.flags) && (lhs.mappings == rhs.mappings);
 }
 
 constexpr bool operator!=(AvbInfo const& lhs, AvbInfo const& rhs) noexcept
 {
 	return !(lhs == rhs);
 }
+
+/** GET_AS_PATH Dynamic Information - Clause 7.4.41.2 */
+struct AsPath
+{
+	entity::model::PathSequence sequence{};
+};
+
+inline bool operator==(AsPath const& lhs, AsPath const& rhs) noexcept
+{
+	return lhs.sequence == rhs.sequence;
+}
+
+inline bool operator!=(AsPath const& lhs, AsPath const& rhs) noexcept
+{
+	return !(lhs == rhs);
+}
+
+/** GET_MILAN_INFO - Milan Clause 7.4.1 */
+struct MilanInfo
+{
+	std::uint32_t protocolVersion{ 0u };
+	MilanInfoFeaturesFlags featuresFlags{};
+	std::uint32_t certificationVersion{ 0u };
+};
+
 
 /**
 * @brief Make a UniqueIdentifier from vendorID, deviceID and modelID.
@@ -411,11 +426,7 @@ inline UniqueIdentifier makeEntityModelID(std::uint32_t const vendorID, std::uin
 inline std::tuple<std::uint32_t, std::uint8_t, std::uint32_t> splitEntityModelID(UniqueIdentifier const entityModelID) noexcept
 {
 	auto const value = entityModelID.getValue();
-	return std::make_tuple(
-		static_cast<std::uint32_t>((value >> 40) & 0x0000000000FFFFFF),
-		static_cast<std::uint8_t>((value >> 32) & 0x00000000000000FF),
-		static_cast<std::uint32_t>(value & 0x00000000FFFFFFFF)
-	);
+	return std::make_tuple(static_cast<std::uint32_t>((value >> 40) & 0x0000000000FFFFFF), static_cast<std::uint8_t>((value >> 32) & 0x00000000000000FF), static_cast<std::uint32_t>(value & 0x00000000FFFFFFFF));
 }
 
 } // namespace model

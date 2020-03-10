@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -24,13 +24,13 @@
 */
 
 #include "la/avdecc/avdecc.hpp"
+
 #include "config.h"
 
 namespace la
 {
 namespace avdecc
 {
-
 bool LA_AVDECC_CALL_CONVENTION isCompatibleWithInterfaceVersion(std::uint32_t const interfaceVersion) noexcept
 {
 	/* Here you have to choose a compatibility mode
@@ -80,6 +80,10 @@ std::vector<CompileOptionInfo> LA_AVDECC_CALL_CONVENTION getCompileOptionsInfo()
 	options.emplace_back(CompileOptionInfo{ CompileOption::IgnoreInvalidNonSuccessAemResponses, "IINSAR", "Ignore Invalid Non Success AEM Responses" });
 #endif // IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES
 
+#ifdef ALLOW_GET_AUDIO_MAP_UNSOL
+	options.emplace_back(CompileOptionInfo{ CompileOption::AllowGetAudioMapUnsol, "AGAMU", "Allow Get Audio Map Unsolicited Notifications" });
+#endif // ALLOW_GET_AUDIO_MAP_UNSOL
+
 #ifdef ALLOW_SEND_BIG_AECP_PAYLOADS
 	options.emplace_back(CompileOptionInfo{ CompileOption::AllowSendBigAecpPayloads, "ASBAP", "Allow Send Big AECP payloads" });
 #endif // ALLOW_SEND_BIG_AECP_PAYLOADS
@@ -91,6 +95,10 @@ std::vector<CompileOptionInfo> LA_AVDECC_CALL_CONVENTION getCompileOptionsInfo()
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	options.emplace_back(CompileOptionInfo{ CompileOption::EnableRedundancy, "RDNCY", "Redundancy" });
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+	options.emplace_back(CompileOptionInfo{ CompileOption::EnableJsonSupport, "JSN", "JSON" });
+#endif // ENABLE_AVDECC_FEATURE_JSON
 
 	return options;
 }

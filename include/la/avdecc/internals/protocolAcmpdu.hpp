@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -25,6 +25,7 @@
 #pragma once
 
 #include "protocolAvtpdu.hpp"
+
 #include <memory>
 
 namespace la
@@ -33,21 +34,20 @@ namespace avdecc
 {
 namespace protocol
 {
-
 /** Acmpdu message */
 class Acmpdu final : public AvtpduControl
 {
 public:
 	static constexpr size_t Length = 44; /* ACMPDU size - Clause 8.2.1.7 */
-	using UniquePointer = std::unique_ptr<Acmpdu, void(*)(Acmpdu*)>;
-	static LA_AVDECC_API la::avdecc::networkInterface::MacAddress Multicast_Mac_Address;
+	using UniquePointer = std::unique_ptr<Acmpdu, void (*)(Acmpdu*)>;
+	static LA_AVDECC_API la::avdecc::networkInterface::MacAddress const Multicast_Mac_Address; /* Annex B */
 
 	/**
 	* @brief Factory method to create a new Acmpdu.
 	* @details Creates a new Acmpdu as a unique pointer.
 	* @return A new Acmpdu as a Acmpdu::UniquePointer.
 	*/
-	static UniquePointer create()
+	static UniquePointer create() noexcept
 	{
 		auto deleter = [](Acmpdu* self)
 		{
@@ -59,8 +59,8 @@ public:
 	/** Constructor for heap Acmpdu */
 	LA_AVDECC_API Acmpdu() noexcept;
 
-	/** Destructor */
-	virtual ~Acmpdu() noexcept override = default;
+	/** Destructor (for some reason we have to define it in the cpp file or clang complains about missing vtable, using = default or inline not working) */
+	virtual LA_AVDECC_API ~Acmpdu() noexcept override;
 
 	// Setters
 	void LA_AVDECC_CALL_CONVENTION setMessageType(AcmpMessageType const messageType) noexcept
@@ -172,14 +172,14 @@ public:
 	LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION copy() const;
 
 	// Defaulted compiler auto-generated methods
-	Acmpdu(Acmpdu&&) = default;
-	Acmpdu(Acmpdu const&) = default;
-	Acmpdu& operator=(Acmpdu const&) = default;
-	Acmpdu& operator=(Acmpdu&&) = default;
+	LA_AVDECC_API Acmpdu(Acmpdu&&);
+	LA_AVDECC_API Acmpdu(Acmpdu const&);
+	LA_AVDECC_API Acmpdu& LA_AVDECC_CALL_CONVENTION operator=(Acmpdu const&);
+	LA_AVDECC_API Acmpdu& LA_AVDECC_CALL_CONVENTION operator=(Acmpdu&&);
 
 private:
 	/** Entry point */
-	static LA_AVDECC_API Acmpdu* LA_AVDECC_CALL_CONVENTION createRawAcmpdu();
+	static LA_AVDECC_API Acmpdu* LA_AVDECC_CALL_CONVENTION createRawAcmpdu() noexcept;
 
 	/** Destroy method for COM-like interface */
 	LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION destroy() noexcept;
@@ -193,7 +193,7 @@ private:
 	networkInterface::MacAddress _streamDestAddress{};
 	std::uint16_t _connectionCount{ 0u };
 	AcmpSequenceID _sequenceID{ 0u };
-	entity::ConnectionFlags _flags{ entity::ConnectionFlags::None };
+	entity::ConnectionFlags _flags{};
 	std::uint16_t _streamVlanID{ 0u };
 
 private:
@@ -202,9 +202,6 @@ private:
 	using AvtpduControl::setControlDataLength;
 	using AvtpduControl::getControlData;
 	using AvtpduControl::getControlDataLength;
-	// Hide EtherLayer2 const data
-	using EtherLayer2::setDestAddress;
-	using EtherLayer2::getDestAddress;
 	// Hide Avtpdu const data
 	using Avtpdu::setSubType;
 	using Avtpdu::getSubType;

@@ -4,8 +4,113 @@ All notable changes to the Avdecc Controller Library will be documented in this 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2020-03-10
+### Changed
+- Renamed onStreamConnectionChanged to onStreamInputConnectionChanged
+- Renamed onStreamConnectionsChanged to onStreamOutputConnectionsChanged
+
+## [2.11.3] - 2019-11-20
+
+## [2.11.2] - 2019-11-08
+### Added
+- New informative (metadata) fields in json exports: A string representing the source of the dump
+
+### Changed
+- Dumped entities in Full Network State are always sorted by EntityID
+
+### Fixed
+- First block of WriteDeviceMemory sent twice
+
+## [2.11.1] - 2019-10-02
+### Added
+- Support for Full Entity Enumeration (Static Model only)
+
+### Changed
+- More control over what is dumped when serializing an entity
+- Renamed json dump APIs (there is now a flag to choose from readable and binary format)
+
+## [2.11.0] - 2019-09-10
+### Added
+- Precompiled headers on windows
+- ControlledEntity::getStreamPortInputNonRedundantAudioMappings (and Output equivalent)
+- ControlledEntity StreamNodeDynamicModel now uses StreamDynamicInfo instead of StreamInfo
+- ControlledEntity AvbInterfaceNodeDynamicModel now uses AvbInterfaceInfo instead of AvbInfo
+- Controller::requestExclusiveAccess method
+
+### Changed
+- Always replacing complete StreamInfo data with the latest received (according to IEEE1722.1 clarification)
+
+### Fixed
+- [Incorrect usage of the AEM cache feature](https://github.com/L-Acoustics/avdecc/issues/62)
+- ControlledEntityGuard move constructor not properly changing WatchDog information
+
+## [2.10.0] - 2019-06-24
+### Added
+- Load of entity from readable json file and injection as virtual entity
+
+### Removed
+- Entity Model Tree definition (moved to low level library)
+
+## [2.9.2] - 2019-05-20
+### Added
+- Support for Identify notifications
+- Full entity and network state dump as readable json file
+- Enumeration of STRINGS descriptor
+- Support for Entity Descriptor counters
+
+### Fixed
+- Invalid strings indexes when not using the first locale
+- Talker's connections list accurate again with Milan devices
+
+## [2.9.1] - 2019-03-13
+### Changed
+- ControlledEntity visitor reports a more specialized parent class
+
+### Fixed
+- Controller entry-points automatically unlock all ControlledEntity (temporarily) during a sendMessage call
+- StreamInput connected state not always properly updated for non-Milan devices, in FastConnect mode
+
+## [2.9.0] - 2019-02-13
+### Added
+- Support for Milan STREAM_OUTPUT counters
+- More Milan compatibility detection (Counters, AECP GET commands)
+
+### Changed
+- BAD_ARGUMENTS is allowed as a valid response for some AEM queries
+
+### Fixed
+- Uncaught exception when an enumeration error occured
+- RegisterUnsolicitedNotification is allowed to return NO_RESOURCES (Milan spec)
+
+## [2.8.0] - 2019-01-23
+### Added
+- Better detection of non IEEE1722.1 compliant entities, and misbehaving entities (sending correctly built messages but with incoherent values)
+- Detecting when the controller is being deregistered from unsolicited notifications (or if the entity does not support it)
+- Support for lock/unlock commands
+- Support for AsPath (query during enumeration, and change notification)
+- Support for setStreamInfo command
+- [Retrieving entity current lock state upon enumeration](https://github.com/L-Acoustics/avdecc/issues/26)
+- AVB Interface link status (when available)
+- New enum value for AcquireState and LockState: Unsupported (if the entity does not support the command)
+- Code to try to prevent deadlocks
+
+### Removed
+- Fully removed acquire/lock state from descriptors, the controller only support it at entity level (globally)
+
+### Fixed
+- Preventing a crash in upper layers caused by toxic entities (Motu Ultralite card sending a GET_RX_STATE_RESPONSE with a non-existent stream index)
+- Properly monitoring changes in dynamic mappings
+- Updated GetMilanInfo to match Milan specification
+- Dynamic mappings in redundancy mode not correctly set for StreamPortOutput
+- Concurrent access protection
+
+## [2.7.2] - 2018-10-30
+### Fixed
+- [Flagging not fully compliant entities as so, instead of discarding them](https://github.com/L-Acoustics/avdecc/issues/42)
+
 ## [2.7.1] - 2018-10-02
 ### Added
+- [Retrieving entity current acquired state upon enumeration](https://github.com/L-Acoustics/avdecc/issues/26)
 - [Support for GET_COUNTERS command and unsolicited notifications](https://github.com/L-Acoustics/avdecc/issues/12)
 
 ## [2.7.0] - 2018-09-12

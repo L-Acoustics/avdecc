@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -27,39 +27,37 @@
 #pragma once
 
 #if !defined(ENABLE_AVDECC_CUSTOM_ANY)
-#error "Including this file requires ENABLE_AVDECC_CUSTOM_ANY flag to be defined."
+#	error "Including this file requires ENABLE_AVDECC_CUSTOM_ANY flag to be defined."
 #endif // ENABLE_AVDECC_CUSTOM_ANY
 
 // Include guard in case this exact same file is used (a copy of it) in another project ('pragma once' won't protect against this case)
 #ifndef __ANY_FOR_CPP14_H_
-#define __ANY_FOR_CPP14_H_
+#	define __ANY_FOR_CPP14_H_
 
-#include <type_traits>
-#include <utility>
-#include <typeinfo>
+#	include <type_traits>
+#	include <utility>
+#	include <typeinfo>
 
 namespace std
 {
-
 namespace details
 {
-
 struct storage
 {
 	void* ptr{ nullptr };
 };
 
-template <typename T>
+template<typename T>
 struct is_copy_constructible : ::std::is_constructible<T, typename ::std::add_lvalue_reference<typename ::std::add_const<T>::type>::type>::type
 {
 };
 
 struct vtable
 {
-	void(*destroy)(storage&) noexcept;
-	void(*copy)(storage const& src, storage& dst);
-	void(*move)(storage& src, storage& dst) noexcept;
-	void(*swap)(storage& lhs, storage& rhs) noexcept;
+	void (*destroy)(storage&) noexcept;
+	void (*copy)(storage const& src, storage& dst);
+	void (*move)(storage& src, storage& dst) noexcept;
+	void (*swap)(storage& lhs, storage& rhs) noexcept;
 	::std::type_info const& (*type)() noexcept;
 };
 
@@ -96,7 +94,8 @@ static vtable* get_vtable()
 	using VTableType = dynamic_vtable<DecayedValueType>;
 	static vtable s_table = {
 		VTableType::destroy,
-		VTableType::copy, VTableType::move,
+		VTableType::copy,
+		VTableType::move,
 		VTableType::swap,
 		VTableType::type,
 	};
@@ -138,7 +137,7 @@ public:
 		}
 	}
 
-	template <typename ValueType, typename DecayedValueType = typename ::std::decay<ValueType>::type, typename = ::std::enable_if_t<!::std::is_same<DecayedValueType, any>::value>>
+	template<typename ValueType, typename DecayedValueType = typename ::std::decay<ValueType>::type, typename = ::std::enable_if_t<!::std::is_same<DecayedValueType, any>::value>>
 	constexpr any(ValueType&& value)
 	{
 		static_assert(details::is_copy_constructible<DecayedValueType>::value, "ValueType not CopyConstructible");
@@ -163,7 +162,7 @@ public:
 		return *this;
 	}
 
-	template <typename ValueType, typename DecayedValueType = typename ::std::decay<ValueType>::type, typename = ::std::enable_if_t<!::std::is_same<DecayedValueType, any>::value>>
+	template<typename ValueType, typename DecayedValueType = typename ::std::decay<ValueType>::type, typename = ::std::enable_if_t<!::std::is_same<DecayedValueType, any>::value>>
 	constexpr any& operator=(ValueType&& value)
 	{
 		static_assert(details::is_copy_constructible<DecayedValueType>::value, "ValueType not CopyConstructible");
@@ -217,18 +216,18 @@ public:
 	}
 
 protected:
-	template <typename ValueType>
+	template<typename ValueType>
 	friend constexpr ValueType const* any_cast(any const* value) noexcept;
-	template <typename ValueType>
+	template<typename ValueType>
 	friend constexpr ValueType* any_cast(any* value) noexcept;
 
-	template <typename ValueType/*, typename DecayedValueType = typename ::std::decay<ValueType>::type*/>
+	template<typename ValueType /*, typename DecayedValueType = typename ::std::decay<ValueType>::type*/>
 	ValueType const* reinterpret_value() const noexcept
 	{
 		return reinterpret_cast<ValueType const*>(_storage.ptr);
 	}
 
-	template <typename ValueType/*, typename DecayedValueType = typename ::std::decay<ValueType>::type*/>
+	template<typename ValueType /*, typename DecayedValueType = typename ::std::decay<ValueType>::type*/>
 	ValueType* reinterpret_value() noexcept
 	{
 		return reinterpret_cast<ValueType*>(_storage.ptr);
@@ -240,7 +239,7 @@ private:
 };
 
 
-template <typename ValueType>
+template<typename ValueType>
 constexpr ValueType any_cast(any const& anyValue)
 {
 	static_assert(::std::is_constructible<ValueType, ::std::remove_cv_t<::std::remove_reference_t<ValueType>> const&>::value, "ValueType not constructible");
@@ -253,7 +252,7 @@ constexpr ValueType any_cast(any const& anyValue)
 	return static_cast<ValueType>(*ptr);
 }
 
-template <typename ValueType>
+template<typename ValueType>
 constexpr ValueType any_cast(any& anyValue)
 {
 	static_assert(::std::is_constructible<ValueType, ::std::remove_cv_t<::std::remove_reference_t<ValueType>>&>::value, "ValueType not constructible");
@@ -266,7 +265,7 @@ constexpr ValueType any_cast(any& anyValue)
 	return static_cast<ValueType>(*ptr);
 }
 
-template <typename ValueType>
+template<typename ValueType>
 constexpr ValueType any_cast(any&& anyValue)
 {
 	static_assert(::std::is_constructible<ValueType, ::std::remove_cv_t<::std::remove_reference_t<ValueType>>>::value, "ValueType not constructible");
@@ -279,7 +278,7 @@ constexpr ValueType any_cast(any&& anyValue)
 	return static_cast<ValueType>(::std::move(*ptr));
 }
 
-template <typename ValueType>
+template<typename ValueType>
 constexpr ValueType const* any_cast(any const* value) noexcept
 {
 	if (value == nullptr || value->type() != typeid(ValueType))
@@ -288,7 +287,7 @@ constexpr ValueType const* any_cast(any const* value) noexcept
 		return value->reinterpret_value<ValueType>();
 }
 
-template <typename ValueType>
+template<typename ValueType>
 constexpr ValueType* any_cast(any* value) noexcept
 {
 	if (value == nullptr || value->type() != typeid(ValueType))
@@ -297,7 +296,7 @@ constexpr ValueType* any_cast(any* value) noexcept
 		return value->reinterpret_value<ValueType>();
 }
 
-template <typename ValueType>
+template<typename ValueType>
 inline any make_any(ValueType&& value)
 {
 	return any(std::move(value));
@@ -308,6 +307,6 @@ inline void swap(any& lhs, any& rhs) noexcept
 	lhs.swap(rhs);
 }
 
-}// namespace std
+} // namespace std
 
 #endif //!__ANY_FOR_CPP14_H_

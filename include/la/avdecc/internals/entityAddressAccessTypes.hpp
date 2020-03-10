@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -26,9 +26,12 @@
 #pragma once
 
 #include "la/avdecc/utils.hpp"
+
 #include "protocolDefines.hpp"
+
 #include <cstdint>
 #include <vector>
+#include <stdexcept> // invalid_argument
 
 namespace la
 {
@@ -38,23 +41,21 @@ namespace entity
 {
 namespace addressAccess
 {
-
 /** Type-Length-Value for AddressAccess */
 class Tlv final
 {
 public:
-	static constexpr size_t MaxLength = pow(2, 12); // Actually a lot less since the TLV must be embedded inside an AECP message
+	static constexpr size_t MaxLength = utils::pow(2, 12); // Actually a lot less since the TLV must be embedded inside an AECP message
 	using value_type = std::uint8_t;
 	using memory_data_type = std::vector<value_type>;
 
 	/** Default constructor for an invalid Tlv. */
-	Tlv() noexcept
-	{
-	}
+	Tlv() noexcept {}
 
 	/** Constructor from a length for a Read mode. */
 	Tlv(std::uint64_t const address, size_t const length)
-		: _mode(protocol::AaMode::Read), _address(address)
+		: _mode(protocol::AaMode::Read)
+		, _address(address)
 	{
 		if (length == 0u)
 		{
@@ -69,7 +70,8 @@ public:
 
 	/** Constructor from a length and a mode, allocating the memory data. */
 	Tlv(protocol::AaMode const mode, std::uint64_t const address, size_t const length)
-		: _mode(mode), _address(address)
+		: _mode(mode)
+		, _address(address)
 	{
 		if (length == 0u)
 		{
@@ -84,7 +86,8 @@ public:
 
 	/** Constructor from a memory data for a Write or Execute mode. */
 	Tlv(std::uint64_t const address, protocol::AaMode const mode, memory_data_type const& memoryData)
-		: _mode(mode), _address(address)
+		: _mode(mode)
+		, _address(address)
 	{
 		if (memoryData.size() == 0u)
 		{
@@ -99,7 +102,8 @@ public:
 
 	/** Constructor from a memory data for a Write or Execute mode. */
 	Tlv(std::uint64_t const address, protocol::AaMode const mode, memory_data_type&& memoryData)
-		: _mode(mode), _address(address)
+		: _mode(mode)
+		, _address(address)
 	{
 		if (memoryData.size() == 0u)
 		{
@@ -114,7 +118,8 @@ public:
 
 	/** Constructor from a raw buffer for a Write or Execute mode. */
 	Tlv(std::uint64_t const address, protocol::AaMode const mode, void const* const ptr, size_t const size)
-		: _mode(mode), _address(address)
+		: _mode(mode)
+		, _address(address)
 	{
 		if (size == 0u)
 		{

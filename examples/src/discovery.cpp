@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -53,7 +53,10 @@ class Discovery : public la::avdecc::controller::Controller::Observer, public la
 public:
 	/** Constructor/destructor/destroy */
 	Discovery(la::avdecc::protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, la::avdecc::UniqueIdentifier const entityModelID, std::string const& preferedLocale);
-	~Discovery() = default;
+	~Discovery() noexcept override
+	{
+		la::avdecc::logger::Logger::getInstance().unregisterObserver(this);
+	}
 
 	// Deleted compiler auto-generated methods
 	Discovery(Discovery&&) = delete;
@@ -74,6 +77,12 @@ private:
 	// Discovery notifications (ADP)
 	virtual void onEntityOnline(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity) noexcept override;
 	virtual void onEntityOffline(la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity) noexcept override;
+	// Statistics
+	virtual void onAecpRetryCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override;
+	virtual void onAecpTimeoutCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override;
+	virtual void onAecpUnexpectedResponseCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override;
+	virtual void onAecpResponseAverageTimeChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::chrono::milliseconds const& value) noexcept override;
+	virtual void onAemAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept override;
 
 private:
 	la::avdecc::controller::Controller::UniquePointer _controller{ nullptr, nullptr }; // Read/Write from the UI thread (and read only from la::avdecc::controller::Controller::Observer callbacks)
@@ -100,34 +109,35 @@ void Discovery::onTransportError(la::avdecc::controller::Controller const* const
 void Discovery::onEntityQueryError(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* entity, la::avdecc::controller::Controller::QueryCommandError const error) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
-	outputText("Query error on entity " + la::avdecc::toHexString(entityID, true) + ": " + std::to_string(static_cast<std::underlying_type_t<decltype(error)>>(error)) + "\n");
+	outputText("Query error on entity " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(static_cast<std::underlying_type_t<decltype(error)>>(error)) + "\n");
 }
 
 void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
-	if (la::avdecc::hasFlag(entity->getEntity().getEntityCapabilities(), la::avdecc::entity::EntityCapabilities::AemSupported))
+	if (entity->getEntity().getEntityCapabilities().test(la::avdecc::entity::EntityCapability::AemSupported))
 	{
 		std::uint32_t const vendorID = std::get<0>(la::avdecc::entity::model::splitEntityModelID(entity->getEntity().getEntityModelID()));
 		// Filter entities from the same vendor as this controller
 		if (vendorID == VENDOR_ID)
 		{
-			outputText("New LA unit online: " + la::avdecc::toHexString(entityID, true) + "\n");
-			_controller->acquireEntity(entity->getEntity().getEntityID(), false, [](la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const /*owningEntity*/) noexcept
-			{
-				if (!!status)
+			outputText("New LA unit online: " + la::avdecc::utils::toHexString(entityID, true) + "\n");
+			_controller->acquireEntity(entity->getEntity().getEntityID(), false,
+				[](la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const /*owningEntity*/) noexcept
 				{
-					outputText("Unit acquired: " + la::avdecc::toHexString(entity->getEntity().getEntityID(), true) + "\n");
-				}
-			});
+					if (!!status)
+					{
+						outputText("Unit acquired: " + la::avdecc::utils::toHexString(entity->getEntity().getEntityID(), true) + "\n");
+					}
+				});
 		}
-		else if (la::avdecc::hasFlag(entity->getEntity().getTalkerCapabilities(), la::avdecc::entity::TalkerCapabilities::Implemented))
+		else if (entity->getEntity().getTalkerCapabilities().test(la::avdecc::entity::TalkerCapability::Implemented))
 		{
-			outputText("New talker online: " + la::avdecc::toHexString(entityID, true) + "\n");
+			outputText("New talker online: " + la::avdecc::utils::toHexString(entityID, true) + "\n");
 		}
 		else
 		{
-			outputText("New unknown entity online: " + la::avdecc::toHexString(entityID, true) + "\n");
+			outputText("New unknown entity online: " + la::avdecc::utils::toHexString(entityID, true) + "\n");
 		}
 
 		// Get PNG Manufacturer image
@@ -137,38 +147,70 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 			auto const& obj = objIt.second;
 			if (obj.staticModel->memoryObjectType == la::avdecc::entity::model::MemoryObjectType::PngEntity)
 			{
-				_controller->readDeviceMemory(entity->getEntity().getEntityID(), obj.staticModel->startAddress, obj.staticModel->maximumLength, [](la::avdecc::controller::ControlledEntity const* const /*entity*/, float const percentComplete)
-				{
-					outputText("Memory Object progress: " + std::to_string(percentComplete) + "\n");
-					return false;
-
-				}, [](la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AaCommandStatus const status, la::avdecc::controller::Controller::DeviceMemoryBuffer const& memoryBuffer)
-				{
-					if (!!status && entity)
+				_controller->readDeviceMemory(entity->getEntity().getEntityID(), obj.staticModel->startAddress, obj.staticModel->maximumLength,
+					[](la::avdecc::controller::ControlledEntity const* const /*entity*/, float const percentComplete)
 					{
-						auto const fileName{ std::to_string(entity->getEntity().getEntityID()) + ".png" };
-						std::ofstream file(fileName, std::ios::binary);
-						if (file.is_open())
+						outputText("Memory Object progress: " + std::to_string(percentComplete) + "\n");
+						return false;
+					},
+					[](la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AaCommandStatus const status, la::avdecc::controller::Controller::DeviceMemoryBuffer const& memoryBuffer)
+					{
+						if (!!status && entity)
 						{
-							file.write(reinterpret_cast<char const*>(memoryBuffer.data()), memoryBuffer.size());
-							file.close();
-							outputText("Memory Object saved to file: " + fileName + "\n");
+							auto const fileName{ std::to_string(entity->getEntity().getEntityID()) + ".png" };
+							std::ofstream file(fileName, std::ios::binary);
+							if (file.is_open())
+							{
+								file.write(reinterpret_cast<char const*>(memoryBuffer.data()), memoryBuffer.size());
+								file.close();
+								outputText("Memory Object saved to file: " + fileName + "\n");
+							}
 						}
-					}
-				});
+					});
 			}
 		}
 	}
 	else
 	{
-		outputText("New NON-AEM entity online: " + la::avdecc::toHexString(entityID, true) + "\n");
+		outputText("New NON-AEM entity online: " + la::avdecc::utils::toHexString(entityID, true) + "\n");
 	}
 }
 
 void Discovery::onEntityOffline(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity) noexcept
 {
 	auto const entityID = entity->getEntity().getEntityID();
-	outputText("Unit going offline: " + la::avdecc::toHexString(entityID, true) + "\n");
+	outputText("Unit going offline: " + la::avdecc::utils::toHexString(entityID, true) + "\n");
+}
+
+// Statistics
+void Discovery::onAecpRetryCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value) noexcept
+{
+	auto const entityID = entity->getEntity().getEntityID();
+	outputText("AECP Retry Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + "\n");
+}
+
+void Discovery::onAecpTimeoutCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value) noexcept
+{
+	auto const entityID = entity->getEntity().getEntityID();
+	outputText("Aecp Timeout Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + "\n");
+}
+
+void Discovery::onAecpUnexpectedResponseCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value) noexcept
+{
+	auto const entityID = entity->getEntity().getEntityID();
+	outputText("Aecp Unexpected Response Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + "\n");
+}
+
+void Discovery::onAecpResponseAverageTimeChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::chrono::milliseconds const& value) noexcept
+{
+	auto const entityID = entity->getEntity().getEntityID();
+	outputText("Aecp Response Average Time for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value.count()) + " msec\n");
+}
+
+void Discovery::onAemAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity, std::uint64_t const value) noexcept
+{
+	auto const entityID = entity->getEntity().getEntityID();
+	outputText("Aem Aecp Unsolicited Counter for " + la::avdecc::utils::toHexString(entityID, true) + ": " + std::to_string(value) + "\n");
 }
 
 
@@ -178,7 +220,7 @@ void Discovery::onEntityOffline(la::avdecc::controller::Controller const* const 
 
 int doJob()
 {
-	auto const protocolInterfaceType = chooseProtocolInterfaceType();
+	auto const protocolInterfaceType = chooseProtocolInterfaceType(la::avdecc::protocol::ProtocolInterface::SupportedProtocolInterfaceTypes{ la::avdecc::protocol::ProtocolInterface::Type::PCap, la::avdecc::protocol::ProtocolInterface::Type::MacOSNative });
 	auto intfc = chooseNetworkInterface();
 
 	if (intfc.type == la::avdecc::networkInterface::Interface::Type::None || protocolInterfaceType == la::avdecc::protocol::ProtocolInterface::Type::None)
@@ -190,7 +232,7 @@ int doJob()
 	{
 		outputText("Selected interface '" + intfc.alias + "' and protocol interface '" + la::avdecc::protocol::ProtocolInterface::typeToString(protocolInterfaceType) + "', discovery active:\n");
 
-		Discovery discovery(protocolInterfaceType, intfc.name, 0x0003, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), "en");
+		Discovery discovery(protocolInterfaceType, intfc.id, 0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), "en");
 
 		std::this_thread::sleep_for(std::chrono::seconds(30));
 	}

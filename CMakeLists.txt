@@ -1,15 +1,18 @@
 # Avdecc Library
 
 # Minimum CMake version
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.13)
 
 ############ Versioning
 
 # Using Semantic Versioning (http://semver.org/spec/v2.0.0.html)
-# Project version number x.y.z on main branch, x.y.z.w on dev and task branches
-# Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task)
-set(LA_AVDECC_VERSION 2.7.1)
-set(LA_AVDECC_CONTROLLER_VERSION 2.7.1)
+# This variable defines the project version number.
+# It should have 3 digits (x.y.z) on main branch, and 4 digits (x.y.z.w) on dev and task branches. The last digit being used as beta label.
+# As soon as an API change occurs in dev or task branch, update the version number by following SemVer rules (so the API breaking changes are not lost/forgotten).
+# Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task) which will be labelled 1.5.0-beta3
+set(LA_AVDECC_VERSION 3.0.0)
+set(LA_AVDECC_CONTROLLER_VERSION 3.0.0)
+set(LA_AVDECC_C_VERSION 1.0.0)
 
 ############ Override from command line "CMake -D<OPTION>=TRUE/FALSE/0/1/ON/OFF"
 
@@ -19,6 +22,7 @@ option(BUILD_AVDECC_TESTS "Build unit tests." FALSE)
 option(BUILD_AVDECC_LIB_SHARED_CXX "Build C++ shared library." TRUE)
 option(BUILD_AVDECC_LIB_STATIC_RT_SHARED "Build static library (runtime shared)." TRUE)
 option(BUILD_AVDECC_DOC "Build documentation." FALSE)
+option(BUILD_AVDECC_BINDINGS_C "Build avdecc C bindings library." FALSE)
 option(BUILD_AVDECC_CONTROLLER "Build avdecc controller library." TRUE)
 option(BUILD_AVDECC_INTERFACE_PCAP "Build the pcap protocol interface." TRUE)
 option(BUILD_AVDECC_INTERFACE_PCAP_DYNAMIC_LINKING "Pcap protocol interface uses dynamic shared library linking (instead of static linking)." FALSE)
@@ -30,12 +34,14 @@ option(INSTALL_AVDECC_EXAMPLES "Install examples." FALSE)
 option(INSTALL_AVDECC_TESTS "Install unit tests." FALSE)
 option(INSTALL_AVDECC_LIB_SHARED_CXX "Install C++ shared library." TRUE)
 option(INSTALL_AVDECC_LIB_STATIC "Install static library." FALSE)
+option(INSTALL_AVDECC_BINDINGS "Install bindings libraries." TRUE)
 option(INSTALL_AVDECC_HEADERS "Install headers." TRUE)
 option(INSTALL_AVDECC_DOC "Install documentation." TRUE)
 # Signing options
 option(ENABLE_AVDECC_SIGNING "Enable binaries signing." FALSE)
 # Enable features
 option(ENABLE_AVDECC_FEATURE_REDUNDANCY "Enable 'Network Redundancy' feature as defined by AVnu Alliance." TRUE)
+option(ENABLE_AVDECC_FEATURE_JSON "Enable read/write files in JSON format." TRUE)
 # Compatibility options
 option(ENABLE_AVDECC_USE_FMTLIB "Use fmtlib" TRUE)
 option(ENABLE_AVDECC_CUSTOM_ANY "Use custom std::any instead of c++17 one (for compilers not supporting std::any yet)" TRUE)
@@ -43,6 +49,7 @@ option(ENABLE_AVDECC_STRICT_2018_REDUNDANCY "Be strict about 'Network Redundancy
 option(IGNORE_INVALID_CONTROL_DATA_LENGTH "Allow messages with an invalid advertised 'Control Data Length' field (not matching data in buffer)." TRUE) # Required for Motu devices sending invalid response messages
 option(IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES "Allow invalid AEM non-success responses messages." TRUE) # Required for Motu/Tesira devices sending invalid error response messages
 option(IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS "Allow Entities not supporting Dynamic Mapping and not adversiting AUDIO_MAP." TRUE) # Required for Tesira devices not implementing Dynamic Mappings and not advertising any static map
+option(ALLOW_GET_AUDIO_MAP_UNSOL "Allow receiving GetAudioMap unsolicited notifications." TRUE) # Required for L-Acoustics older devices, when changing dynamic mappings from the front panel
 option(ALLOW_RECV_BIG_AECP_PAYLOADS "Allow receiving AECP payloads bigger than the allowed 524 bytes." TRUE) # Required for Q6 Core devices not splitting AudioMaps into smaller ones, and for Milan devices
 option(ALLOW_SEND_BIG_AECP_PAYLOADS "Allow sending AECP payloads bigger than the allowed 524 bytes." FALSE)
 
@@ -50,7 +57,7 @@ option(ALLOW_SEND_BIG_AECP_PAYLOADS "Allow sending AECP payloads bigger than the
 
 project(LA_avdecc)
 
-# Using c++14 standard for all targets
+# Using c++17 standard for all targets
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
@@ -73,7 +80,13 @@ include(${CMAKE_CURRENT_LIST_DIR}/cmake/CommonProjectProperties.cmake)
 
 # Include fmtlib
 if(ENABLE_AVDECC_USE_FMTLIB)
-	add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/externals/3rdparty/fmtlib)
+	add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/externals/3rdparty/fmtlib EXCLUDE_FROM_ALL)
+endif()
+
+# Include json
+if(ENABLE_AVDECC_FEATURE_JSON)
+	set(JSON_BuildTests OFF CACHE INTERNAL "Disable JSON unit tests")
+	add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/externals/3rdparty/json EXCLUDE_FROM_ALL)
 endif()
 
 ############ Define some variables
@@ -81,10 +94,6 @@ endif()
 set(TARGET_ARCH 32)
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
 	set(TARGET_ARCH 64)
-endif()
-set(VS_USE_CLANG FALSE)
-if(MSVC AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
-	set(VS_USE_CLANG TRUE)
 endif()
 
 ############ Check dependencies
@@ -145,6 +154,9 @@ if(BUILD_AVDECC_CONTROLLER)
 	add_subdirectory(src/controller)
 endif()
 
+# Add bindings libraries
+add_subdirectory(src/bindings)
+
 # Add doc
 if(BUILD_AVDECC_DOC)
 	message(STATUS "Building documentation")
@@ -164,8 +176,18 @@ if(BUILD_AVDECC_TESTS AND NOT VS_USE_CLANG)
 	message(STATUS "Building unit tests")
 	# Setup gtest options
 	set(gtest_force_shared_crt ON CACHE BOOL "For shared crt for gtest" FORCE)
+	set(BUILD_GMOCK OFF CACHE BOOL "Don't build the googlemock subproject" FORCE)
+	set(INSTALL_GTEST OFF CACHE BOOL "Disable installation of googletest. (Projects embedding googletest may want to turn this OFF.)" FORCE)
 	# Include gtest framework
-	add_subdirectory(externals/3rdparty/gtest/googletest)
+	add_subdirectory(externals/3rdparty/gtest)
 	# Include our unit tests
 	add_subdirectory(tests)
+endif()
+
+############ Compiler compatibility
+
+if(WIN32)
+	if(${MSVC_VERSION} STRLESS 1923)
+		message(FATAL_ERROR "Microsoft Visual C++ v16.3 required (MSVC_VERSION >= 1923), you have ${MSVC_VERSION}")
+	endif()
 endif()

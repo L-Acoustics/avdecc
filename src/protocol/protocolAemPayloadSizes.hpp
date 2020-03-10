@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -34,7 +34,6 @@ namespace protocol
 {
 namespace aemPayload
 {
-
 /** ACQUIRE_ENTITY Command and Response - Clause 7.4.1.1 */
 constexpr size_t AecpAemAcquireEntityCommandPayloadSize = 16u;
 constexpr size_t AecpAemAcquireEntityResponsePayloadSize = 16u;
@@ -113,6 +112,9 @@ constexpr size_t AecpAemGetStreamInfoCommandPayloadSize = 4u;
 
 /** GET_STREAM_INFO Response - Clause 7.4.16.2 */
 constexpr size_t AecpAemGetStreamInfoResponsePayloadSize = 48u;
+
+/** GET_STREAM_INFO Response - Milan Clause 7.3.10 */
+constexpr size_t AecpAemMilanGetStreamInfoResponsePayloadSize = 56u;
 
 /** SET_NAME Command and Response - Clause 7.4.17.1 */
 constexpr size_t AecpAemSetNameCommandPayloadSize = 72u;

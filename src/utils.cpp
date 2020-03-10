@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -23,14 +23,19 @@
 */
 
 #include "la/avdecc/utils.hpp"
+
 #if defined(_WIN32)
-#include <Windows.h>
+#	include <Windows.h>
 #endif // _WIN32
 #if defined(__APPLE__)
-#include <pthread.h>
+#	include <pthread.h>
+#	include <stdbool.h>
+#	include <sys/types.h>
+#	include <unistd.h>
+#	include <sys/sysctl.h>
 #endif // __APPLE__
 #if defined(__unix__)
-#include <pthread.h>
+#	include <pthread.h>
 #endif // __unix__
 #include <iostream>
 #include <cstdio>
@@ -39,6 +44,45 @@ namespace la
 {
 namespace avdecc
 {
+namespace utils
+{
+#if defined(__APPLE__)
+static bool IsDebuggerPresent()
+{
+	[[maybe_unused]] int junk;
+	int mib[4];
+	struct kinfo_proc info;
+	size_t size;
+
+	// Initialize the flags so that, if sysctl fails for some bizarre
+	// reason, we get a predictable result.
+
+	info.kp_proc.p_flag = 0;
+
+	// Initialize mib, which tells sysctl the info we want, in this case
+	// we're looking for information about a specific process ID.
+
+	mib[0] = CTL_KERN;
+	mib[1] = KERN_PROC;
+	mib[2] = KERN_PROC_PID;
+	mib[3] = getpid();
+
+	// Call sysctl.
+
+	size = sizeof(info);
+	junk = sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, NULL, 0);
+	AVDECC_ASSERT(junk == 0, "sysctl failed");
+
+	// We're being debugged if the P_TRACED flag is set.
+
+	return ((info.kp_proc.p_flag & P_TRACED) != 0);
+}
+#elif !defined(_WIN32)
+static bool IsDebuggerPresent()
+{
+	return false;
+}
+#endif // __APPLE__
 
 bool LA_AVDECC_CALL_CONVENTION setCurrentThreadName(std::string const& name)
 {
@@ -70,13 +114,13 @@ bool LA_AVDECC_CALL_CONVENTION setCurrentThreadName(std::string const& name)
 	return true;
 
 #elif defined(__unix__) && !defined(__CYGWIN__)
-#if (__GLIBC__ * 1000 + __GLIBC_MINOR__) >= 2012
+#	if (__GLIBC__ * 1000 + __GLIBC_MINOR__) >= 2012
 	pthread_setname_np(pthread_self(), name.c_str());
 	return true;
-#else // !GLIBC >= 2012
+#	else // !GLIBC >= 2012
 	prctl(PR_SET_NAME, name.c_str(), 0, 0, 0);
 	return true;
-#endif
+#	endif
 
 #else
 	(void)name;
@@ -108,25 +152,26 @@ void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsig
 	try
 	{
 		char buffer[2048];
+		constexpr auto BufferLastCharOffset = static_cast<int>(sizeof(buffer) - 1); // We want the same type than std::snprintf return value
+
 		auto offset = std::snprintf(buffer, sizeof(buffer), "Debug Assertion Failed!\n\nFile: %s\nLine: %u\n\n\t", file, line);
-		if (offset < sizeof(buffer) - 1)
+		if (offset < BufferLastCharOffset)
 		{
 			offset += std::vsnprintf(buffer + offset, sizeof(buffer) - offset, message, arg);
-			buffer[sizeof(buffer) - 1] = 0; // Contrary to std::snprintf, std::vsnprintf does not add \0 if there is not enough room
+			buffer[BufferLastCharOffset] = 0; // Contrary to std::snprintf, std::vsnprintf does not add \0 if there is not enough room
 
 			std::cerr << buffer << std::endl;
 
-			if (offset < sizeof(buffer) - 1)
+			if (offset < BufferLastCharOffset)
 			{
 				offset += std::snprintf(buffer + offset, sizeof(buffer) - offset,
-																"\n"
-																"\n"
-																"Press 'Abort' to abort immediately\n"
-																"Press 'Retry' to debug the program\n"
-																"Press 'Ignore' to try to continue normal execution\n");
+					"\n"
+					"\n"
+					"Press 'Abort' to abort immediately\n"
+					"Press 'Retry' to debug the program\n"
+					"Press 'Ignore' to try to continue normal execution\n");
 			}
 		}
-#ifdef _WIN32
 		if (IsDebuggerPresent())
 		{
 			shouldBreak = true; // Always call DebugBreak if debugger is attached
@@ -134,11 +179,12 @@ void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsig
 		}
 		else
 		{
+#ifdef _WIN32
 			auto const value = MessageBox(nullptr, buffer, "Assert", MB_ABORTRETRYIGNORE | MB_ICONERROR);
 			shouldBreak = (value == IDRETRY);
 			shouldAbort = (value == IDABORT);
-		}
 #endif // _WIN32
+		}
 	}
 	catch (...)
 	{
@@ -156,5 +202,6 @@ void LA_AVDECC_CALL_CONVENTION displayAssertDialog(char const* const file, unsig
 	}
 }
 
+} // namespace utils
 } // namespace avdecc
 } // namespace la

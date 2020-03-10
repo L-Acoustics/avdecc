@@ -1,16 +1,17 @@
 # LA AVDECC
 [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/14038.svg)](https://scan.coverity.com/projects/l-acoustics-avdecc)
 
-Copyright (C) 2016-2018, L-Acoustics and its contributors
+Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 ## What is LA_avdecc
 LA_avdecc is a set of open source libraries for controlling and monitoring AVB entities using the AVDECC protocol (IEEE 1722.1) compliant to Avnu Milan.
 
 These libraries are written in pure C++17. They can be compiled on Windows, Linux and macOS, using standard development tools (procedure below). Unit tests and sample programs are also provided.
 
-These libraries have already been used indirectly in many musical events throughout the world to control all kinds of AVB entities ([list below](#compatibleEntities)). L-Acoustics' Network Manager 2.5 (and up) now relies on them for all its AVDECC functionalities.
+These libraries have already been used indirectly in many musical events throughout the world to control all kinds of AVB entities ([list below](#compatibleEntities)). L-Acoustics' Network Manager 2.5 (and up) now relies on them for all its AVDECC functionalities in compliance to the Avnu Milan Specifications.
 
 Another benefit is the support of Apple’s native API, which allows control of the input and output AVB streams of a Mac from itself (which is not possible with the libraries using PCAP).
+Bindings to other languages are also provided, and will continue in the future.
 
 We use GitHub issues for tracking requests and bugs.
 
@@ -18,6 +19,7 @@ We use GitHub issues for tracking requests and bugs.
 * [Google's C++ test framework](https://github.com/google/googletest) to build unit tests
 * [WinPcap Developer's Pack](externals/3rdparty/winpcap/README.md) to build on Windows platform
 * [libfmt](https://github.com/fmtlib/fmt) to format log messages
+* [nlohmann JSON](https://github.com/nlohmann/json) to read and write JSON files
 
 ### <a name="compatibleEntities"></a>Tested AVB entities:
 * L-Acoustics: LA4X, LA12X, P1
@@ -29,16 +31,16 @@ We use GitHub issues for tracking requests and bugs.
 * Apple: macOS Talker, Listener and Controller (El Capitan and later)
 * AudioScience: Hono AVB Mini
 
-## la_avdecc Library
+## la_avdecc library
 
 Implementation of the IEEE Std 1722.1-2013 specification.  
-Also implementing non-released IEEE Std 1722.1 corrigendum 1 draft 8.
+Also implementing most of IEEE Std 1722.1-Corrigendum1-2018.
 Also implementing AVnu Alliance Milan.
 Also implementing AVnu Alliance Network Redundancy.
 
 The library exposes APIs needed to create AVDECC entities on the local computer, and to interact with other entities on the network.
 
-## la_avdecc_controller Library
+## la_avdecc_controller library
 
 This is a simple library to create an AVDECC controller entity on the local computer. This controller automatically listens to and keeps track of the other entities on the network using the IEEE Std 1722.1 protocol.
 
@@ -46,23 +48,27 @@ The controller API has 2 interfaces:
 - An observer interface to monitor all changes on discovered entities
 - An interaction interface to send enumeration and control (AECP) or connection management (ACMP) requests to an entity
 
+## la_avdecc_c library
+
+C language bindings over la_avdecc library.
+
 ## Minimum requirements for compilation
 
 ### All platforms
-- CMake 3.9
+- CMake 3.13
 
 ### Windows
-- Windows 8.1
-- Visual Studio 2017 v15.7 or greater (using platform toolset v141)
+- Windows 10
+- Visual Studio 2019 v16.3 or greater (using platform toolset v142)
 - WinPcap 4.1.2 Developer's Pack (see [this file](externals/3rdparty/winpcap/README.md) for more details)
 - GitBash or cygwin
 
 ### macOS
 - macOS 10.12
-- Xcode 9.2
+- Xcode 10
 
 ### Linux
-- C++17 compliant compiler
+- C++17 compliant compiler (minimum recommended gcc 8.2.1)
 - Make
 - pcap developer package
 - ncurses developer package (optional, for examples)
@@ -116,9 +122,13 @@ The controller API has 2 interfaces:
 - Ability to preload AEMXML files, and not enumerate AEM for devices with identical vendorEntityModelId
 - Talker and Listener state machines (low level library)
 - Creation of a DiscoveryStateMachine so it can be used by Talker/Listener entities (moving code out of ControllerStateMachine)
-- Wrapper libraries:
-  * C (public APIs only)
+- Bindings libraries:
+  * C Controller (public APIs only)
   * Lua (public and private APIs)
 
-## Trademark Legal Notice
+## Contributing code
+
+[Please read this file](CONTRIBUTING.md)
+
+## Trademark legal notice
 All product names, logos, brands and trademarks are property of their respective owners. All company, product and service names used in this library are for identification purposes only. Use of these names, logos, and brands does not imply endorsement.

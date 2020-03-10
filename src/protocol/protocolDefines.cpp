@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -24,6 +24,7 @@
 
 #include "la/avdecc/internals/protocolDefines.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
+
 #include <unordered_map>
 
 namespace la
@@ -32,7 +33,6 @@ namespace avdecc
 {
 namespace protocol
 {
-
 /* Global protocol defines */
 std::uint16_t const AaAecpMaxSingleTlvMemoryDataLength{ Aecpdu::MaximumSendLength - Aecpdu::HeaderLength - AaAecpdu::HeaderLength - AaAecpdu::TlvHeaderLength }; /* Maximum individual TLV memory_data length in commands */
 
@@ -289,7 +289,7 @@ AemAcquireEntityFlags const AemAcquireEntityFlags::Release{ 0x80000000 };
 
 /** AEM Lock Entity Flags - Clause 7.4.2.1 */
 AemLockEntityFlags const AemLockEntityFlags::None{ 0x00000000 };
-AemLockEntityFlags const AemLockEntityFlags::Unlock{ 0x80000000 };
+AemLockEntityFlags const AemLockEntityFlags::Unlock{ 0x00000001 };
 
 /** Address Access Mode - Clause 9.2.1.3.3 */
 AaMode const AaMode::Read{ 0x0 };
@@ -336,10 +336,6 @@ MvuCommandType::operator std::string() const noexcept
 		return "INVALID_COMMAND_TYPE";
 	return it->second;
 }
-
-/** Milan Features Flags - Milan Clause 7.4.1 */
-MvuFeaturesFlags const MvuFeaturesFlags::None{ 0x00000000 };
-MvuFeaturesFlags const MvuFeaturesFlags::Redundancy{ 0x00000001 };
 
 /** ACMP Message Type - Clause 8.2.1.5 */
 AcmpMessageType const AcmpMessageType::ConnectTxCommand{ 0 };
@@ -404,6 +400,55 @@ AcmpStatus const AcmpStatus::ControllerNotAuthorized{ 16 };
 AcmpStatus const AcmpStatus::IncompatibleRequest{ 17 };
 /* 18-30 reserved for future use */
 AcmpStatus const AcmpStatus::NotSupported{ 31 };
+
+static std::unordered_map<AcmpStatus::value_type, std::string> s_AcmpStatusMapping = {
+	{ AcmpStatus::Success.getValue(), "SUCCESS" },
+	{ AcmpStatus::ListenerUnknownID.getValue(), "LISTENER_UNKNOWN_ID" },
+	{ AcmpStatus::TalkerUnknownID.getValue(), "TALKER_UNKNOWN_ID" },
+	{ AcmpStatus::TalkerDestMacFail.getValue(), "TALKER_DEST_MAC_FAIL" },
+	{ AcmpStatus::TalkerNoStreamIndex.getValue(), "TALKER_NO_STREAM_INDEX" },
+	{ AcmpStatus::TalkerNoBandwidth.getValue(), "TALKER_NO_BANDWIDTH" },
+	{ AcmpStatus::TalkerExclusive.getValue(), "TALKER_EXCLUSIVE" },
+	{ AcmpStatus::ListenerTalkerTimeout.getValue(), "LISTENER_TALKER_TIMEOUT" },
+	{ AcmpStatus::ListenerExclusive.getValue(), "LISTENER_EXCLUSIVE" },
+	{ AcmpStatus::StateUnavailable.getValue(), "STATE_UNAVAILABLE" },
+	{ AcmpStatus::NotConnected.getValue(), "NOT_CONNECTED" },
+	{ AcmpStatus::NoSuchConnection.getValue(), "NO_SUCH_CONNECTION" },
+	{ AcmpStatus::CouldNotSendMessage.getValue(), "COULD_NOT_SEND_MESSAGE" },
+	{ AcmpStatus::TalkerMisbehaving.getValue(), "TALKER_MISBEHAVING" },
+	{ AcmpStatus::ListenerMisbehaving.getValue(), "LISTENER_MISBEHAVING" },
+	/* 15 reserved for future use */
+	{ AcmpStatus::ControllerNotAuthorized.getValue(), "CONTROLLER_NOT_AUTHORIZED" },
+	{ AcmpStatus::IncompatibleRequest.getValue(), "INCOMPATIBLE_REQUEST" },
+	/* 18-30 reserved for future use */
+	{ AcmpStatus::NotSupported.getValue(), "NOT_SUPPORTED" },
+};
+
+AcmpStatus::AcmpStatus() noexcept
+	: TypedDefine(AcmpStatus::NotSupported)
+{
+}
+
+AcmpStatus::operator std::string() const noexcept
+{
+	auto const& it = s_AcmpStatusMapping.find(getValue());
+	if (it == s_AcmpStatusMapping.end())
+		return "INVALID_STATUS";
+	return it->second;
+}
+
+void LA_AVDECC_CALL_CONVENTION AcmpStatus::fromString(std::string const& stringValue)
+{
+	for (auto const& [key, value] : s_AcmpStatusMapping)
+	{
+		if (value == stringValue)
+		{
+			setValue(key);
+			return;
+		}
+	}
+	throw std::invalid_argument("Unknown AcmpStatus string representation: " + stringValue);
+}
 
 } // namespace protocol
 } // namespace avdecc

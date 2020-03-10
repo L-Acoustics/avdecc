@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -26,19 +26,27 @@
 #pragma once
 
 #include "la/avdecc/controller/internals/logItems.hpp"
+
 #ifdef HAVE_FMT
-#ifdef _WIN32
-#pragma warning(push)
-#pragma warning(disable:4702)
-#endif // _WIN32
-#include <fmt/format.h>
-#ifdef _WIN32
-#pragma warning(pop)
-#endif // _WIN32
-#define FORMAT_ARGS(...) fmt::format(__VA_ARGS__)
+#	ifdef _WIN32
+#		pragma warning(push)
+#		pragma warning(disable : 4702)
+#		ifdef __clang__
+#			pragma clang diagnostic push
+#			pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#		endif // __clang__
+#	endif // _WIN32
+#	include <fmt/format.h>
+#	ifdef _WIN32
+#		ifdef __clang__
+#			pragma clang diagnostic pop
+#		endif // __clang__
+#		pragma warning(pop)
+#	endif // _WIN32
+#	define FORMAT_ARGS(...) fmt::format(__VA_ARGS__)
 #else // !HAVE_FMT
-#include <string>
-#define FORMAT_ARGS(...) ""
+#	include <string>
+#	define FORMAT_ARGS(...) la::avdecc::logger::format(__VA_ARGS__)
 #endif // HAVE_FMT
 
 namespace la
@@ -47,6 +55,13 @@ namespace avdecc
 {
 namespace logger
 {
+/** Template to format args if not using lib fmt */
+template<typename... Ts>
+inline std::string format(std::string&& message, Ts&&... /*params*/)
+{
+	// Right now, not formatting anything, just returning the message with untouched format specifiers - Please enable libfmt!
+	return std::move(message);
+}
 
 /** Template to remove at compile time some of the most time-consuming log messages (Trace and Debug) - Forward arguments to the Logger */
 template<Level LevelValue, class LogItemType, typename... Ts>
@@ -54,7 +69,7 @@ constexpr void log(Ts&&... params)
 {
 #ifndef DEBUG
 	// In release, we don't want Trace nor Debug levels
-	if constexpr(LevelValue == Level::Trace || LevelValue == Level::Debug)
+	if constexpr (LevelValue == Level::Trace || LevelValue == Level::Debug)
 	{
 	}
 	else
@@ -72,11 +87,11 @@ constexpr void log(Ts&&... params)
 /** Preprocessor defines to remove at compile time some of the most time-consuming log messages (Trace and Debug) - Creation of the arguments */
 #define LOG_CONTROLLER(LogLevel, TargetID, ...) la::avdecc::logger::log<la::avdecc::logger::Level::LogLevel, la::avdecc::logger::LogItemController>(TargetID, FORMAT_ARGS(__VA_ARGS__))
 #ifdef DEBUG
-#define LOG_CONTROLLER_TRACE(TargetID, ...) LOG_CONTROLLER(Trace, TargetID, __VA_ARGS__)
-#define LOG_CONTROLLER_DEBUG(TargetID, ...) LOG_CONTROLLER(Debug, TargetID, __VA_ARGS__)
+#	define LOG_CONTROLLER_TRACE(TargetID, ...) LOG_CONTROLLER(Trace, TargetID, __VA_ARGS__)
+#	define LOG_CONTROLLER_DEBUG(TargetID, ...) LOG_CONTROLLER(Debug, TargetID, __VA_ARGS__)
 #else // !DEBUG
-#define LOG_CONTROLLER_TRACE(TargetID, ...)
-#define LOG_CONTROLLER_DEBUG(TargetID, ...)
+#	define LOG_CONTROLLER_TRACE(TargetID, ...)
+#	define LOG_CONTROLLER_DEBUG(TargetID, ...)
 #endif // DEBUG
 #define LOG_CONTROLLER_INFO(TargetID, ...) LOG_CONTROLLER(Info, TargetID, __VA_ARGS__)
 #define LOG_CONTROLLER_WARN(TargetID, ...) LOG_CONTROLLER(Warn, TargetID, __VA_ARGS__)

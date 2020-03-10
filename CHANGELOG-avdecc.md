@@ -4,9 +4,106 @@ All notable changes to the Avdecc Library will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2020-03-10
+### Added
+- AEM GetConfiguration method
+- ProtocolInterface observer events for all received PDUs (low level)
+- Delegate class in ProtocolInterface to handle VendorUnique messages
+- [ACMP inflight queue](https://github.com/L-Acoustics/avdecc/issues/17)
+- [AECP/ACMP throttling](https://github.com/L-Acoustics/avdecc/issues/17)
+- Partial support for VendorUnique message in macOS Native ProtocolInterface
+- C Bindings library
+
+### Changed
+- Controller commands result handler properly return all fields in the protocol
+- Removed listenerStream field from entity::model::StreamConnectionState
+- Renamed entity::model::StreamConnectionState to entity::model::StreamInputConnectionInfo
+- MacOS Native ProtocolInterface is now restricted to macOS Catalina and later
+
+### Fixed
+- [Crashes/deadlock when using macOS native](https://github.com/L-Acoustics/avdecc/issues/73)
+
+## [2.11.3] - 2019-11-20
+
+## [2.11.2] - 2019-11-08
+
+## [2.11.1] - 2019-10-02
+### Changed
+- More control over what is dumped when serializing an entity
+
+## [2.11.0] - 2019-09-10
+### Added
+- Precompiled headers on windows
+- Improved protocol warning messages
+
+## [2.10.0] - 2019-06-24
+### Added
+- Entity Model Tree definition
+- Entity Model dump as readable json file
+- Entity Model load from readable json file
+- NetworkInterfaceHelper observer to monitor changes in adapters status
+- [Controller statistics counters](https://github.com/L-Acoustics/avdecc/issues/41)
+
+### Changed
+- NetworkInterfaceHelper _isActive_ field replace with _isEnabled_ and _isConnected_
+- _protocol::MvuFeaturesFlags_ TypedDefine moved to _MilanInfoFeaturesFlags_ EnumBitfield
+
+### Fixed
+- [NetworkInterfaces Helper fully working on win7 and win10](https://github.com/L-Acoustics/avdecc/issues/59)
+- json::Exception being thrown across shared library boundary
+
+## [2.9.2] - 2019-05-20
+### Added
+- Support for IdentifyNotification in ProtocolInterface and ControllerEntity
+- Support for Entity Descriptor counters
+
+## [2.9.1] - 2019-03-13
+### Changed
+- [Replaced all la::avdecc::enum_traits with la::avdecc::EnumBitfield](https://github.com/L-Acoustics/avdecc/issues/34)
+- StreamFormat and SamplingRate now have their own class, instead of just an alias
+
+### Fixed
+- macOS Native Protocol Interface correctly handles incoming AECP Commands
+- macOS Native Protocol Interface simulates a time out for VENDOR_UNIQUE messages, instead of incorrectly handling them (time out required due to bug in AVBFramework)
+
+### Removed
+- GenericAecpdu class, due to potential misusage
+- Aecpdu::copy method, no longer necessary
+
+## [2.9.0] - 2019-02-13
+### Added
+- Support for Milan STREAM_OUTPUT counters
+
+### Changed
+- Removed macAddress parameter from sendAecpCommand and sendAecpResponse (automatically getting it from the AECPDU)
+- Returning ProtocolInterface::Error::InvalidParameters when trying to enable/disable advertising on a non-existent InterfaceIndex
+
+### Fixed
+- Incorrect error returned by EndStation's LocalEntity creation code
+- No longer sending ADP DEPARTING message twice when destroying a LocalEntity
+
+## [2.8.0] - 2019-01-23
+### Added
+- Notification when a controller is being deregistered from unsolicited notifications
+- Notification when (some or all) audio mappings are added or removed
+- Notification when an entity is locked/unlocked by another controller
+- setStreamInputInfo, setStreamOutputInfo, getAsPath
+- Milan extended GetStreamInfo
+- Code to try to prevent deadlocks
+- Watch dog thread
+
+### Changed
+- lockEntity/unlockEntity signature and result handler changed to include the locking entity and descriptor type/index
+- GetMilanInfo now return a struct instead of individual fields
+- Updated GetMilanInfo to match Milan specification
+
+### Fixed
+- Incorrect value for AemLockEntityFlags::Unlock flag
+
+## [2.7.2] - 2018-10-30
+
 ## [2.7.1] - 2018-10-02
 ### Added
-- [Retrieving entity current acquired state upon enumeration](https://github.com/L-Acoustics/avdecc/issues/26)
 - [Support for GET_COUNTERS command and unsolicited notifications](https://github.com/L-Acoustics/avdecc/issues/12)
 - Support for VendorUnique AECP messages
 - Support for 500Hz CRF stream format
@@ -16,7 +113,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [2.7.0] - 2018-09-12
 ### Added
-- Support for MemoryObject Operations (Contributed by Florian Harmuth)
+- Support for MemoryObject Operations (Contributed by d&b)
 - Protocol and ProtocolInterface classes exposed in the public API
 - Removed InterfaceIndex field from ProtocolInterface (not its place)
 

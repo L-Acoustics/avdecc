@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -24,6 +24,7 @@
 
 #include "la/avdecc/logger.hpp"
 #include "la/avdecc/utils.hpp"
+
 #include <vector>
 #include <mutex>
 #include <algorithm>
@@ -35,7 +36,6 @@ namespace avdecc
 {
 namespace logger
 {
-
 class LoggerImpl final : public Logger
 {
 public:
@@ -48,10 +48,12 @@ public:
 	virtual void unregisterObserver(Observer* const observer) noexcept override
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
-		_observers.erase(std::remove_if(std::begin(_observers), std::end(_observers), [observer](Observer* const o)
-		{
-			return o == observer;
-		}), _observers.end());
+		_observers.erase(std::remove_if(std::begin(_observers), std::end(_observers),
+											 [observer](Observer* const o)
+											 {
+												 return o == observer;
+											 }),
+			_observers.end());
 	}
 
 	virtual void logItem(la::avdecc::logger::Level const level, LogItem const* const item) noexcept override
@@ -65,7 +67,7 @@ public:
 		std::lock_guard<decltype(_lock)> const lg(_lock);
 		for (auto* o : _observers)
 		{
-			invokeProtectedMethod(&Observer::onLogItem, o, level, item);
+			utils::invokeProtectedMethod(&Observer::onLogItem, o, level, item);
 		}
 	}
 
@@ -100,6 +102,8 @@ public:
 					return "Protocol Interface";
 				case Layer::AemPayload:
 					return "Aem Payload";
+				case Layer::Entity:
+					return "Entity";
 				case Layer::ControllerEntity:
 					return "Controller Entity";
 				case Layer::ControllerStateMachine:
@@ -140,10 +144,10 @@ public:
 	// Defaulted compiler auto-generated methods
 	LoggerImpl() noexcept {}
 	virtual ~LoggerImpl() noexcept override = default;
-	LoggerImpl(LoggerImpl&&) = default;
-	LoggerImpl(LoggerImpl const&) = default;
-	LoggerImpl& operator=(LoggerImpl const&) = default;
-	LoggerImpl& operator=(LoggerImpl&&) = default;
+	LoggerImpl(LoggerImpl&&) = delete;
+	LoggerImpl(LoggerImpl const&) = delete;
+	LoggerImpl& operator=(LoggerImpl const&) = delete;
+	LoggerImpl& operator=(LoggerImpl&&) = delete;
 
 private:
 	std::mutex _lock{};

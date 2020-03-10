@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -31,6 +31,9 @@
 /** Entity model definition */
 #include "internals/entityModel.hpp"
 
+/** Entity model tree definition */
+#include "internals/entityModelTree.hpp"
+
 /** ProtocolInterface definition */
 #include "internals/protocolInterface.hpp"
 
@@ -41,7 +44,7 @@
 #include "internals/protocolAecpdu.hpp"
 #include "internals/protocolAaAecpdu.hpp"
 #include "internals/protocolAemAecpdu.hpp"
-#include "internals/protocolGenericAecpdu.hpp"
+#include "internals/protocolMvuAecpdu.hpp"
 
 /** EndStation definition */
 #include "internals/endStation.hpp"
@@ -60,7 +63,6 @@ namespace la
 {
 namespace avdecc
 {
-
 /**
 * Interface version of the library, used to check for compatibility between the version used to compile and the runtime version.<BR>
 * Everytime the interface changes (what is visible from the user) you increase the InterfaceVersion value.<BR>
@@ -68,7 +70,7 @@ namespace avdecc
 * (either added, removed or signature modification).
 * Any other change (including templates, inline methods, defines, typedefs, ...) are considered a modification of the interface.
 */
-constexpr std::uint32_t InterfaceVersion = 207;
+constexpr std::uint32_t InterfaceVersion = 300;
 
 /**
 * @brief Checks if the library is compatible with specified interface version.
@@ -98,11 +100,13 @@ enum class CompileOption : std::uint32_t
 	None = 0,
 	IgnoreInvalidControlDataLength = 1u << 0,
 	IgnoreInvalidNonSuccessAemResponses = 1u << 1,
-	AllowSendBigAecpPayloads = 1u << 2,
-	AllowRecvBigAecpPayloads = 1u << 3,
+	AllowGetAudioMapUnsol = 1u << 2,
+	AllowSendBigAecpPayloads = 1u << 3,
+	AllowRecvBigAecpPayloads = 1u << 4,
 	EnableRedundancy = 1u << 15,
+	EnableJsonSupport = 1u << 16,
 };
-using CompileOptions = EnumBitfield<CompileOption>;
+using CompileOptions = utils::EnumBitfield<CompileOption>;
 
 struct CompileOptionInfo
 {

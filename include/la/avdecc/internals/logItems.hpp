@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -28,6 +28,7 @@
 #include "la/avdecc/logger.hpp"
 #include "la/avdecc/utils.hpp"
 #include "la/avdecc/networkInterfaceHelper.hpp"
+
 #include "uniqueIdentifier.hpp"
 
 namespace la
@@ -36,12 +37,12 @@ namespace avdecc
 {
 namespace logger
 {
-
 class LogItemGeneric : public la::avdecc::logger::LogItem
 {
 public:
-	LogItemGeneric(std::string message)
-		: LogItem(Layer::Generic), _message(message)
+	LogItemGeneric(std::string message) noexcept
+		: LogItem(Layer::Generic)
+		, _message(message)
 	{
 	}
 
@@ -57,8 +58,10 @@ private:
 class LogItemSerialization : public la::avdecc::logger::LogItem
 {
 public:
-	LogItemSerialization(la::avdecc::networkInterface::MacAddress const& source, std::string message)
-		: LogItem(Layer::Serialization), _source(source), _message(message)
+	LogItemSerialization(la::avdecc::networkInterface::MacAddress const& source, std::string message) noexcept
+		: LogItem(Layer::Serialization)
+		, _source(source)
+		, _message(message)
 	{
 	}
 
@@ -80,8 +83,11 @@ private:
 class LogItemProtocolInterface : public la::avdecc::logger::LogItem
 {
 public:
-	LogItemProtocolInterface(la::avdecc::networkInterface::MacAddress const& source, la::avdecc::networkInterface::MacAddress const& dest, std::string message)
-		: LogItem(Layer::ProtocolInterface), _source(source), _dest(dest), _message(message)
+	LogItemProtocolInterface(la::avdecc::networkInterface::MacAddress const& source, la::avdecc::networkInterface::MacAddress const& dest, std::string message) noexcept
+		: LogItem(Layer::ProtocolInterface)
+		, _source(source)
+		, _dest(dest)
+		, _message(message)
 	{
 	}
 
@@ -109,8 +115,9 @@ private:
 class LogItemAemPayload : public la::avdecc::logger::LogItem
 {
 public:
-	LogItemAemPayload(std::string message)
-		: LogItem(Layer::AemPayload), _message(message)
+	LogItemAemPayload(std::string message) noexcept
+		: LogItem(Layer::AemPayload)
+		, _message(message)
 	{
 	}
 
@@ -123,17 +130,44 @@ private:
 	std::string _message{};
 };
 
-class LogItemControllerEntity : public la::avdecc::logger::LogItem
+class LogItemEntity : public la::avdecc::logger::LogItem
 {
 public:
-	LogItemControllerEntity(la::avdecc::UniqueIdentifier const& targetID, std::string message)
-		: LogItem(Layer::ControllerEntity), _targetID(targetID), _message(message)
+	LogItemEntity(la::avdecc::UniqueIdentifier const& targetID, std::string message) noexcept
+		: LogItem(Layer::Entity)
+		, _targetID(targetID)
+		, _message(message)
 	{
 	}
 
 	virtual std::string getMessage() const noexcept override
 	{
-		return std::string("[") + la::avdecc::toHexString(_targetID, true, false) + "] " + _message;
+		return std::string("[") + la::avdecc::utils::toHexString(_targetID, true, false) + "] " + _message;
+	}
+
+	la::avdecc::UniqueIdentifier const& getTargetID() const noexcept
+	{
+		return _targetID;
+	}
+
+private:
+	la::avdecc::UniqueIdentifier const& _targetID;
+	std::string _message{};
+};
+
+class LogItemControllerEntity : public la::avdecc::logger::LogItem
+{
+public:
+	LogItemControllerEntity(la::avdecc::UniqueIdentifier const& targetID, std::string message) noexcept
+		: LogItem(Layer::ControllerEntity)
+		, _targetID(targetID)
+		, _message(message)
+	{
+	}
+
+	virtual std::string getMessage() const noexcept override
+	{
+		return std::string("[") + la::avdecc::utils::toHexString(_targetID, true, false) + "] " + _message;
 	}
 
 	la::avdecc::UniqueIdentifier const& getTargetID() const noexcept
@@ -149,14 +183,16 @@ private:
 class LogItemControllerStateMachine : public la::avdecc::logger::LogItem
 {
 public:
-	LogItemControllerStateMachine(la::avdecc::UniqueIdentifier const& targetID, std::string message)
-		: LogItem(Layer::ControllerStateMachine), _targetID(targetID), _message(message)
+	LogItemControllerStateMachine(la::avdecc::UniqueIdentifier const& targetID, std::string message) noexcept
+		: LogItem(Layer::ControllerStateMachine)
+		, _targetID(targetID)
+		, _message(message)
 	{
 	}
 
 	virtual std::string getMessage() const noexcept override
 	{
-		return std::string("[") + la::avdecc::toHexString(_targetID, true, false) + "] " + _message;
+		return std::string("[") + la::avdecc::utils::toHexString(_targetID, true, false) + "] " + _message;
 	}
 
 	la::avdecc::UniqueIdentifier const& getTargetID() const noexcept
@@ -166,6 +202,24 @@ public:
 
 private:
 	la::avdecc::UniqueIdentifier const& _targetID;
+	std::string _message{};
+};
+
+class LogItemJsonSerializer : public la::avdecc::logger::LogItem
+{
+public:
+	LogItemJsonSerializer(std::string const& message) noexcept
+		: LogItem(Layer::JsonSerializer)
+		, _message(message)
+	{
+	}
+
+	virtual std::string getMessage() const noexcept override
+	{
+		return _message;
+	}
+
+private:
 	std::string _message{};
 };
 

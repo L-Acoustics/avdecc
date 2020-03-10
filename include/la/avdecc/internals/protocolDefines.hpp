@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -26,7 +26,9 @@
 #pragma once
 
 #include "la/avdecc/utils.hpp"
+
 #include "exports.hpp"
+
 #include <cstdint>
 
 namespace la
@@ -35,7 +37,6 @@ namespace avdecc
 {
 namespace protocol
 {
-
 /* Global protocol defines */
 static constexpr std::uint16_t EthernetMaxFrameSize{ 1522 };
 static constexpr std::uint16_t AvtpEtherType{ 0x22f0 };
@@ -49,7 +50,7 @@ static constexpr std::uint8_t AvtpSubType_Experimental{ 0x7f };
 extern LA_AVDECC_API std::uint16_t const AaAecpMaxSingleTlvMemoryDataLength; /* Maximum individual TLV memory_data length in commands */
 
 /** ADP Message Type - Clause 6.2.1.5 */
-class AdpMessageType : public TypedDefine<std::uint8_t>
+class AdpMessageType : public utils::TypedDefine<AdpMessageType, std::uint8_t>
 {
 public:
 	using TypedDefine::TypedDefine;
@@ -62,7 +63,7 @@ public:
 };
 
 /** AECP Message Type - Clause 9.2.1.1.5 */
-class AecpMessageType : public TypedDefine<std::uint8_t>
+class AecpMessageType : public utils::TypedDefine<AecpMessageType, std::uint8_t>
 {
 public:
 	using TypedDefine::TypedDefine;
@@ -84,7 +85,7 @@ public:
 };
 
 /** AECP Status - Clause 9.2.1.1.6 */
-class AecpStatus : public TypedDefine<std::uint8_t>
+class AecpStatus : public utils::TypedDefine<AecpStatus, std::uint8_t>
 {
 public:
 	using TypedDefine::TypedDefine;
@@ -116,7 +117,7 @@ public:
 };
 
 /** AEM Command Type - Clause 7.4 */
-class AemCommandType : public TypedDefine<std::uint16_t>
+class AemCommandType : public utils::TypedDefine<AemCommandType, std::uint16_t>
 {
 public:
 	using TypedDefine::TypedDefine;
@@ -204,7 +205,7 @@ public:
 };
 
 /** AEM Acquire Entity Flags - Clause 7.4.1.1 */
-class AemAcquireEntityFlags : public TypedDefine<std::uint32_t>
+class AemAcquireEntityFlags : public utils::TypedDefine<AemAcquireEntityFlags, std::uint32_t>
 {
 public:
 	using TypedDefine::TypedDefine;
@@ -215,7 +216,7 @@ public:
 };
 
 /** AEM Lock Entity Flags - Clause 7.4.2.1 */
-class AemLockEntityFlags : public TypedDefine<std::uint32_t>
+class AemLockEntityFlags : public utils::TypedDefine<AemLockEntityFlags, std::uint32_t>
 {
 public:
 	using TypedDefine::TypedDefine;
@@ -225,7 +226,7 @@ public:
 };
 
 /** Address Access Mode - Clause 9.2.1.3.3 */
-class AaMode : public TypedDefine<std::uint8_t>
+class AaMode : public utils::TypedDefine<AaMode, std::uint8_t>
 {
 public:
 	using TypedDefine::TypedDefine;
@@ -251,8 +252,15 @@ public:
 	static LA_AVDECC_API AaAecpStatus const Unsupported;
 };
 
+/** Milan Vendor Unique AECP Status - (Using base AECP clause) */
+class MvuAecpStatus : public AecpStatus
+{
+public:
+	using AecpStatus::AecpStatus;
+};
+
 /** Milan Vendor Unique Command Type - Milan Clause 7.2.2.3 */
-class MvuCommandType : public TypedDefine<std::uint16_t>
+class MvuCommandType : public utils::TypedDefine<MvuCommandType, std::uint16_t>
 {
 public:
 	using TypedDefine::TypedDefine;
@@ -264,18 +272,8 @@ public:
 	LA_AVDECC_API operator std::string() const noexcept;
 };
 
-/** Milan Features Flags - Milan Clause 7.4.1 */
-class MvuFeaturesFlags : public TypedDefine<std::uint32_t>
-{
-public:
-	using TypedDefine::TypedDefine;
-
-	static LA_AVDECC_API MvuFeaturesFlags const None;
-	static LA_AVDECC_API MvuFeaturesFlags const Redundancy;
-};
-
 /** ACMP Message Type - Clause 8.2.1.5 */
-class AcmpMessageType : public TypedDefine<std::uint8_t>
+class AcmpMessageType : public utils::TypedDefine<AcmpMessageType, std::uint8_t>
 {
 public:
 	using TypedDefine::TypedDefine;
@@ -299,10 +297,12 @@ public:
 };
 
 /** ACMP Status - Clause 8.2.1.6 */
-class AcmpStatus : public TypedDefine<std::uint8_t>
+class AcmpStatus : public utils::TypedDefine<AcmpStatus, std::uint8_t>
 {
 public:
 	using TypedDefine::TypedDefine;
+
+	LA_AVDECC_API AcmpStatus() noexcept;
 
 	static LA_AVDECC_API AcmpStatus const Success;
 	static LA_AVDECC_API AcmpStatus const ListenerUnknownID;
@@ -322,6 +322,9 @@ public:
 	static LA_AVDECC_API AcmpStatus const ControllerNotAuthorized;
 	static LA_AVDECC_API AcmpStatus const IncompatibleRequest;
 	static LA_AVDECC_API AcmpStatus const NotSupported;
+
+	LA_AVDECC_API operator std::string() const noexcept;
+	LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION fromString(std::string const& stringValue); // Throws std::invalid_argument if value does not exist
 };
 
 /** ACMP UniqueID - Clause 8.2.1.12 and 8.2.1.13 */
@@ -331,20 +334,5 @@ using AcmpUniqueID = std::uint16_t;
 using AcmpSequenceID = std::uint16_t;
 
 } // namespace protocol
-
-// Define bitfield TypedDefine traits for AemAcquireEntityFlags
-template<>
-struct typed_define_traits<protocol::AemAcquireEntityFlags>
-{
-	static constexpr bool is_bitfield = true;
-};
-
-// Define bitfield TypedDefine traits for AemLockEntityFlags
-template<>
-struct typed_define_traits<protocol::AemLockEntityFlags>
-{
-	static constexpr bool is_bitfield = true;
-};
-
 } // namespace avdecc
 } // namespace la

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -25,6 +25,7 @@
 #pragma once
 
 #include "protocolAvtpdu.hpp"
+
 #include <memory>
 
 namespace la
@@ -33,12 +34,10 @@ namespace avdecc
 {
 namespace protocol
 {
-
 /** Aecpdu common header */
 class Aecpdu : public AvtpduControl
 {
 public:
-	static constexpr size_t DefaultMaxInflightCommands = 1;
 	static constexpr size_t HeaderLength = 10; /* ControllerEID + SequenceID */
 	static constexpr size_t MaximumLength_1722_1 = 524; /* AECPDU maximum size - Clause 9.2.1.1.7 */
 #if defined(ALLOW_SEND_BIG_AECP_PAYLOADS) || defined(ALLOW_RECV_BIG_AECP_PAYLOADS) // Memory optimization, only set MaximumLength_BigPayloads to a greater value if either option is enabled
@@ -56,13 +55,9 @@ public:
 #else // !ALLOW_RECV_BIG_AECP_PAYLOADS
 	static constexpr size_t MaximumRecvLength = MaximumLength_1722_1;
 #endif // ALLOW_RECV_BIG_AECP_PAYLOADS
-	using UniquePointer = std::unique_ptr<Aecpdu, void(*)(Aecpdu*)>;
+	using UniquePointer = std::unique_ptr<Aecpdu, void (*)(Aecpdu*)>;
 
 	// Setters
-	void LA_AVDECC_CALL_CONVENTION setMessageType(AecpMessageType const messageType) noexcept
-	{
-		AvtpduControl::setControlData(messageType.getValue());
-	}
 	void LA_AVDECC_CALL_CONVENTION setStatus(AecpStatus const status) noexcept
 	{
 		AvtpduControl::setStatus(status.getValue());
@@ -113,8 +108,15 @@ public:
 	/** Deserialization method */
 	virtual LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION deserialize(DeserializationBuffer& buffer) = 0;
 
-	/** Copy method */
-	virtual LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION copy() const = 0;
+	/** Contruct a Response message to this Command (only changing the messageType to be of Response kind). Returns nullptr if the message is not a Command or if no Response is possible for this messageType */
+	virtual LA_AVDECC_API UniquePointer LA_AVDECC_CALL_CONVENTION responseCopy() const = 0;
+
+protected:
+	/** Constructor */
+	Aecpdu() noexcept;
+
+	/** Destructor */
+	virtual ~Aecpdu() noexcept override = default;
 
 	// Defaulted compiler auto-generated methods
 	Aecpdu(Aecpdu&&) = default;
@@ -122,12 +124,10 @@ public:
 	Aecpdu& operator=(Aecpdu const&) = default;
 	Aecpdu& operator=(Aecpdu&&) = default;
 
-protected:
-	/** Constructor */
-	LA_AVDECC_API Aecpdu() noexcept;
-
-	/** Destructor */
-	virtual ~Aecpdu() noexcept override = default;
+	void LA_AVDECC_CALL_CONVENTION setMessageType(AecpMessageType const messageType) noexcept
+	{
+		AvtpduControl::setControlData(messageType.getValue());
+	}
 
 private:
 	/** Destroy method for COM-like interface */

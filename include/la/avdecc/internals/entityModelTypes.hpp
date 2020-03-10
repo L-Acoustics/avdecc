@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -25,7 +25,11 @@
 
 #pragma once
 
+#include "la/avdecc/utils.hpp"
+
 #include "uniqueIdentifier.hpp"
+#include "exports.hpp"
+
 #include <cstdint>
 #include <string>
 #include <array>
@@ -41,7 +45,6 @@ namespace entity
 {
 namespace model
 {
-
 using ConfigurationIndex = std::uint16_t;
 using DescriptorIndex = std::uint16_t;
 using AudioUnitIndex = DescriptorIndex;
@@ -68,12 +71,10 @@ using SignalMultiplexerIndex = DescriptorIndex;
 using SignalTranscoderIndex = DescriptorIndex;
 using ClockDomainIndex = DescriptorIndex;
 using ControlBlockIndex = DescriptorIndex;
-using SamplingRate = std::uint32_t; /** Sampling Rate packed value - Clause 7.3.1 */
-using StreamFormat = std::uint64_t; /** Stream Format packed value - Clause 7.3.2 */
-using LocalizedStringReference = std::uint16_t; /** Localized String Reference packed value - Clause 7.3.6 */
 using DescriptorCounterValidFlag = std::uint32_t; /** Counters valid flag - Clause 7.4.42 */
 using DescriptorCounter = std::uint32_t; /** Counter - Clause 7.4.42 */
 using OperationID = std::uint16_t; /** OperationID for OPERATIONS returned by an entity to a controller - Clause 7.4.53 */
+using BridgeIdentifier = std::uint64_t;
 
 /** Descriptor Type - Clause 7.2 */
 enum class DescriptorType : std::uint16_t
@@ -134,6 +135,8 @@ constexpr bool operator==(DescriptorType const lhs, std::underlying_type_t<Descr
 	return static_cast<std::underlying_type_t<DescriptorType>>(lhs) == rhs;
 }
 
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION descriptorTypeToString(DescriptorType const descriptorType) noexcept;
+
 /** Jack Type - Clause 7.2.7.2 */
 enum class JackType : std::uint16_t
 {
@@ -188,6 +191,8 @@ constexpr bool operator==(JackType const lhs, std::underlying_type_t<JackType> c
 	return static_cast<std::underlying_type_t<JackType>>(lhs) == rhs;
 }
 
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION jackTypeToString(JackType const jackType) noexcept;
+
 /** ClockSource Type - Clause 7.2.9.2 */
 enum class ClockSourceType : std::uint16_t
 {
@@ -206,6 +211,8 @@ constexpr bool operator==(ClockSourceType const lhs, std::underlying_type_t<Cloc
 {
 	return static_cast<std::underlying_type_t<ClockSourceType>>(lhs) == rhs;
 }
+
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION clockSourceTypeToString(ClockSourceType const clockSourceType) noexcept;
 
 /** MemoryObject Type - Clause 7.2.10.1 */
 enum class MemoryObjectType : std::uint16_t
@@ -237,6 +244,8 @@ constexpr bool operator==(MemoryObjectType const lhs, std::underlying_type_t<Mem
 	return static_cast<std::underlying_type_t<MemoryObjectType>>(lhs) == rhs;
 }
 
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION memoryObjectTypeToString(MemoryObjectType const memoryObjectType) noexcept;
+
 /** MemoryObject Operation Type - Clause 7.2.10.2 */
 enum class MemoryObjectOperationType : std::uint16_t
 {
@@ -257,6 +266,8 @@ constexpr bool operator==(MemoryObjectOperationType const lhs, std::underlying_t
 	return static_cast<std::underlying_type_t<MemoryObjectOperationType>>(lhs) == rhs;
 }
 
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION memoryObjectOperationTypeToString(MemoryObjectOperationType const memoryObjectOperationType) noexcept;
+
 /** AudioCluster Format - Clause 7.2.16.1 */
 enum class AudioClusterFormat : std::uint8_t
 {
@@ -275,6 +286,8 @@ constexpr bool operator==(AudioClusterFormat const lhs, std::underlying_type_t<A
 	return static_cast<std::underlying_type_t<AudioClusterFormat>>(lhs) == rhs;
 }
 
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION audioClusterFormatToString(AudioClusterFormat const audioClusterFormat) noexcept;
+
 /** Audio Mapping - Clause 7.2.19.1 */
 struct AudioMapping
 {
@@ -283,8 +296,20 @@ struct AudioMapping
 	ClusterIndex clusterOffset{ ClusterIndex(0u) };
 	std::uint16_t clusterChannel{ 0u };
 
-	static constexpr size_t size() { return sizeof(streamIndex) + sizeof(streamChannel) + sizeof(clusterOffset) + sizeof(clusterChannel); }
+	static constexpr size_t size()
+	{
+		return sizeof(streamIndex) + sizeof(streamChannel) + sizeof(clusterOffset) + sizeof(clusterChannel);
+	}
+	constexpr friend bool operator==(AudioMapping const& lhs, AudioMapping const& rhs) noexcept
+	{
+		return (lhs.streamIndex == rhs.streamIndex) && (lhs.streamChannel == rhs.streamChannel) && (lhs.clusterOffset == rhs.clusterOffset) && (lhs.clusterChannel == rhs.clusterChannel);
+	}
+	constexpr friend bool operator!=(AudioMapping const& lhs, AudioMapping const& rhs) noexcept
+	{
+		return !operator==(lhs, rhs);
+	}
 };
+
 using AudioMappings = std::vector<AudioMapping>;
 
 /** MSRP Mapping - Clause 7.4.40.2.1 */
@@ -294,15 +319,24 @@ struct MsrpMapping
 	std::uint8_t priority{ 0xff };
 	std::uint16_t vlanID{ 0u };
 
-	static constexpr size_t size() { return sizeof(trafficClass) + sizeof(priority) + sizeof(vlanID); }
+	static constexpr size_t size()
+	{
+		return sizeof(trafficClass) + sizeof(priority) + sizeof(vlanID);
+	}
+	constexpr friend bool operator==(MsrpMapping const& lhs, MsrpMapping const& rhs) noexcept
+	{
+		return (lhs.trafficClass == rhs.trafficClass) && (lhs.priority == rhs.priority) && (lhs.vlanID == rhs.vlanID);
+	}
+	constexpr friend bool operator!=(MsrpMapping const& lhs, MsrpMapping const& rhs) noexcept
+	{
+		return !operator==(lhs, rhs);
+	}
 };
 
-constexpr bool operator==(MsrpMapping const& lhs, MsrpMapping const& rhs) noexcept
-{
-	return (lhs.trafficClass == rhs.trafficClass) && (lhs.priority == rhs.priority) && (lhs.vlanID == rhs.vlanID);
-}
-
 using MsrpMappings = std::vector<MsrpMapping>;
+
+/** GET_AS_PATH Dynamic Information - Clause 7.4.41.2 */
+using PathSequence = std::vector<UniqueIdentifier>;
 
 /** GET_COUNTERS - Clause 7.4.42.2 */
 using DescriptorCounters = std::array<DescriptorCounter, 32>;
@@ -434,6 +468,339 @@ private:
 	std::array<value_type, MaxLength> _buffer{};
 };
 
+/** Sampling Rate - Clause 7.3.1 */
+class SamplingRate final
+{
+public:
+	using value_type = std::uint32_t;
+
+	/** Default constructor. */
+	SamplingRate() noexcept {}
+
+	/** Constructor to create a SamplingRate from the underlying value. */
+	explicit SamplingRate(value_type const value) noexcept
+		: _value(value)
+	{
+	}
+
+	/** Constructor to create a SamplingRate from pull and baseFrequency values. */
+	SamplingRate(std::uint8_t const pull, std::uint32_t const baseFrequency) noexcept
+		: _value((pull << 29) + (baseFrequency & 0x1FFFFFFF))
+	{
+	}
+
+	/** Setter to change the underlying value. */
+	constexpr void setValue(value_type const value) noexcept
+	{
+		_value = value;
+	}
+
+	/** Getter to retrieve the underlying value. */
+	constexpr value_type getValue() const noexcept
+	{
+		return _value;
+	}
+
+	/** Gets the Nominal Sample Rate value. */
+	constexpr double getNominalSampleRate() const noexcept
+	{
+		auto const [pull, frequency] = getPullBaseFrequency();
+		switch (pull)
+		{
+			case 0:
+				return frequency;
+			case 1:
+				return frequency * 1.0 / 1.001;
+			case 2:
+				return frequency * 1.001;
+			case 3:
+				return frequency * 24.0 / 25.0;
+			case 4:
+				return frequency * 25.0 / 24.0;
+			default: // 5 to 7 reserved for future use
+				AVDECC_ASSERT(false, "Unknown pull value");
+				return frequency;
+		}
+	}
+
+	/** Getter to retrieve the pull and baseFrequency values from this SamplingRate. */
+	constexpr std::pair<std::uint8_t, std::uint32_t> getPullBaseFrequency() const noexcept
+	{
+		return std::make_pair(static_cast<std::uint8_t>(_value >> 29), static_cast<std::uint32_t>(_value & 0x1FFFFFFF));
+	}
+
+	/** True if the SamplingRate contains a valid underlying value, false otherwise. */
+	constexpr bool isValid() const noexcept
+	{
+		// Clause 7.3.1.2 says base_frequency ranges from 1 to 536'870'911, so we 0 detect invalid value.
+		return (_value & 0x1FFFFFFF) != 0;
+	}
+
+	/** Underlying value operator (equivalent to getValue()). */
+	constexpr operator value_type() const noexcept
+	{
+		return getValue();
+	}
+
+	/** Underlying value validity bool operator (equivalent to isValid()). */
+	explicit constexpr operator bool() const noexcept
+	{
+		return isValid();
+	}
+
+	/** Equality operator. Returns true if the underlying values are equal (Any 2 invalid SamplingRate are considered equal, since they are both invalid). */
+	constexpr friend bool operator==(SamplingRate const& lhs, SamplingRate const& rhs) noexcept
+	{
+		return (!lhs.isValid() && !rhs.isValid()) || lhs._value == rhs._value;
+	}
+
+	/** Non equality operator. */
+	constexpr friend bool operator!=(SamplingRate const& lhs, SamplingRate const& rhs) noexcept
+	{
+		return !operator==(lhs, rhs);
+	}
+
+	/** operator< */
+	constexpr friend bool operator<(SamplingRate const& lhs, SamplingRate const& rhs) noexcept
+	{
+		return lhs._value < rhs._value;
+	}
+
+	/** Static helper method to create a Null SamplingRate (isValid() returns false). */
+	static SamplingRate getNullSamplingRate() noexcept
+	{
+		return SamplingRate{ NullSamplingRate };
+	}
+
+	/** Hash functor to be used for std::hash */
+	struct hash
+	{
+		std::size_t operator()(SamplingRate const& ref) const
+		{
+			return std::hash<value_type>()(ref._value);
+		}
+	};
+
+	// Defaulted compiler auto-generated methods
+	SamplingRate(SamplingRate&&) = default;
+	SamplingRate(SamplingRate const&) = default;
+	SamplingRate& operator=(SamplingRate const&) = default;
+	SamplingRate& operator=(SamplingRate&&) = default;
+
+private:
+	static constexpr value_type NullSamplingRate = 0u;
+	value_type _value{ NullSamplingRate };
+};
+
+/** Stream Format packed value - Clause 7.3.2 */
+class StreamFormat final
+{
+public:
+	using value_type = std::uint64_t;
+
+	/** Default constructor. */
+	StreamFormat() noexcept {}
+
+	/** Constructor to create a StreamFormat from the underlying value. */
+	StreamFormat(value_type const value) noexcept
+		: _value(value)
+	{
+	}
+
+	/** Setter to change the underlying value. */
+	constexpr void setValue(value_type const value) noexcept
+	{
+		_value = value;
+	}
+
+	/** Getter to retrieve the underlying value. */
+	constexpr value_type getValue() const noexcept
+	{
+		return _value;
+	}
+
+	/** True if the StreamFormat contains a valid underlying value, false otherwise. */
+	constexpr bool isValid() const noexcept
+	{
+		return _value != NullStreamFormat;
+	}
+
+	/** Underlying value operator (equivalent to getValue()). */
+	constexpr operator value_type() const noexcept
+	{
+		return getValue();
+	}
+
+	/** Underlying value validity bool operator (equivalent to isValid()). */
+	explicit constexpr operator bool() const noexcept
+	{
+		return isValid();
+	}
+
+	/** Equality operator. Returns true if the underlying values are equal (Any 2 invalid StreamFormats are considered equal, since they are both invalid). */
+	constexpr friend bool operator==(StreamFormat const& lhs, StreamFormat const& rhs) noexcept
+	{
+		return (!lhs.isValid() && !rhs.isValid()) || lhs._value == rhs._value;
+	}
+
+	/** Non equality operator. */
+	constexpr friend bool operator!=(StreamFormat const& lhs, StreamFormat const& rhs) noexcept
+	{
+		return !operator==(lhs, rhs);
+	}
+
+	/** operator< */
+	constexpr friend bool operator<(StreamFormat const& lhs, StreamFormat const& rhs) noexcept
+	{
+		return lhs._value < rhs._value;
+	}
+
+	/** Static helper method to create a Null StreamFormat (isValid() returns false). */
+	static StreamFormat getNullStreamFormat() noexcept
+	{
+		return StreamFormat{ NullStreamFormat };
+	}
+
+	/** Hash functor to be used for std::hash */
+	struct hash
+	{
+		std::size_t operator()(StreamFormat const& ref) const
+		{
+			return std::hash<value_type>()(ref._value);
+		}
+	};
+
+	// Defaulted compiler auto-generated methods
+	StreamFormat(StreamFormat&&) = default;
+	StreamFormat(StreamFormat const&) = default;
+	StreamFormat& operator=(StreamFormat const&) = default;
+	StreamFormat& operator=(StreamFormat&&) = default;
+
+private:
+	static constexpr value_type NullStreamFormat = 0ul;
+	value_type _value{ NullStreamFormat };
+};
+
+
+/** Localized String Reference - Clause 7.3.6 */
+class LocalizedStringReference final
+{
+public:
+	using value_type = std::uint16_t;
+
+	/** Default constructor. */
+	LocalizedStringReference() noexcept {}
+
+	/** Constructor to create a LocalizedStringReference from the underlying value. */
+	explicit LocalizedStringReference(value_type const value) noexcept
+		: _value(value)
+	{
+	}
+
+	/** Constructor to create a LocalizedStringReference from offset and index values. */
+	LocalizedStringReference(std::uint16_t const offset, std::uint8_t const index) noexcept
+	{
+		setOffsetIndex(offset, index);
+	}
+
+	/** Setter to change the underlying value. */
+	constexpr void setValue(value_type const value) noexcept
+	{
+		_value = value;
+	}
+
+	/** Getter to retrieve the underlying value. */
+	constexpr value_type getValue() const noexcept
+	{
+		return _value;
+	}
+
+	/** Getter to retrieve the global offset for this LocalizedStringReference. Throws std::invalid_argument if this LocalizedStringReference is invalid. */
+	constexpr value_type getGlobalOffset() const
+	{
+		if (!isValid())
+		{
+			throw std::invalid_argument("Invalid LocalizedStringReference");
+		}
+
+		auto const [offset, index] = getOffsetIndex();
+		return ((offset * 7u) + index) & 0xFFFF;
+	}
+
+	/** Setter to change the offset and index values from this LocalizedStringReference. */
+	constexpr void setOffsetIndex(std::uint16_t const offset, std::uint8_t const index) noexcept
+	{
+		_value = (offset << 3) + (index & 0x07);
+	}
+
+	/** Getter to retrieve the offset and index values from this LocalizedStringReference. */
+	constexpr std::pair<std::uint16_t, std::uint8_t> getOffsetIndex() const noexcept
+	{
+		return std::make_pair(static_cast<std::uint16_t>(_value >> 3), static_cast<std::uint8_t>(_value & 0x0007));
+	}
+
+	/** True if the LocalizedStringReference contains a valid underlying value, false otherwise. */
+	constexpr bool isValid() const noexcept
+	{
+		// Clause 7.3.6 says any index value of 7 is invalid, we just have to check that.
+		return (_value & 0x0007) != 0x07;
+	}
+
+	/** Underlying value operator (equivalent to getValue()). */
+	constexpr operator value_type() const noexcept
+	{
+		return getValue();
+	}
+
+	/** Underlying value validity bool operator (equivalent to isValid()). */
+	explicit constexpr operator bool() const noexcept
+	{
+		return isValid();
+	}
+
+	/** Equality operator. Returns true if the underlying values are equal (Any 2 invalid LocalizedStringReferences are considered equal, since they are both invalid). */
+	constexpr friend bool operator==(LocalizedStringReference const& lhs, LocalizedStringReference const& rhs) noexcept
+	{
+		return (!lhs.isValid() && !rhs.isValid()) || lhs._value == rhs._value;
+	}
+
+	/** Non equality operator. */
+	constexpr friend bool operator!=(LocalizedStringReference const& lhs, LocalizedStringReference const& rhs) noexcept
+	{
+		return !operator==(lhs, rhs);
+	}
+
+	/** operator< */
+	constexpr friend bool operator<(LocalizedStringReference const& lhs, LocalizedStringReference const& rhs) noexcept
+	{
+		return lhs._value < rhs._value;
+	}
+
+	/** Static helper method to create a Null LocalizedStringReference (isValid() returns false). */
+	static LocalizedStringReference getNullLocalizedStringReference() noexcept
+	{
+		return LocalizedStringReference{ NullLocalizedStringReference };
+	}
+
+	/** Hash functor to be used for std::hash */
+	struct hash
+	{
+		std::size_t operator()(LocalizedStringReference const& ref) const
+		{
+			return std::hash<value_type>()(ref._value);
+		}
+	};
+
+	// Defaulted compiler auto-generated methods
+	LocalizedStringReference(LocalizedStringReference&&) = default;
+	LocalizedStringReference(LocalizedStringReference const&) = default;
+	LocalizedStringReference& operator=(LocalizedStringReference const&) = default;
+	LocalizedStringReference& operator=(LocalizedStringReference&&) = default;
+
+private:
+	static constexpr value_type NullLocalizedStringReference = 0xFFFF;
+	value_type _value{ NullLocalizedStringReference };
+};
 
 /** Stream Identification (EntityID/StreamIndex couple) */
 struct StreamIdentification
@@ -457,6 +824,24 @@ constexpr bool operator<(StreamIdentification const& lhs, StreamIdentification c
 	return (lhs.entityID.getValue() < rhs.entityID.getValue()) || (lhs.entityID == rhs.entityID && lhs.streamIndex < rhs.streamIndex);
 }
 
+/** Probing Status - Milan Clause 6.8.6 */
+enum class ProbingStatus : std::uint8_t
+{
+	Disabled = 0x00, /** The sink is not probing because it is not bound. */
+	Passive = 0x01, /** The sink is probing passively. It waits until the bound talker has been discovered. */
+	Active = 0x02, /** The sink is probing actively. It is querying the stream parameters to the talker. */
+	Completed = 0x03, /** The sink is not probing because it is settled. */
+	/* 04 to 07 reserved for future use */
+};
+constexpr bool operator==(ProbingStatus const lhs, ProbingStatus const rhs)
+{
+	return static_cast<std::underlying_type_t<ProbingStatus>>(lhs) == static_cast<std::underlying_type_t<ProbingStatus>>(rhs);
+}
+
+constexpr bool operator==(ProbingStatus const lhs, std::underlying_type_t<ProbingStatus> const rhs)
+{
+	return static_cast<std::underlying_type_t<ProbingStatus>>(lhs) == rhs;
+}
 
 } // namespace model
 } // namespace entity
@@ -469,4 +854,3 @@ inline std::ostream& operator<<(std::ostream& os, la::avdecc::entity::model::Avd
 	os << rhs.str();
 	return os;
 }
-

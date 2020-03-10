@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -27,11 +27,13 @@
 #include "la/avdecc/memoryBuffer.hpp"
 #include "la/avdecc/internals/serialization.hpp"
 #include "la/avdecc/internals/entityModel.hpp"
+
 #include "protocolAemPayloadSizes.hpp"
+
 #if defined(ENABLE_AVDECC_CUSTOM_ANY)
-#include "la/avdecc/internals/any.hpp"
+#	include "la/avdecc/internals/any.hpp"
 #else // !ENABLE_AVDECC_CUSTOM_ANY
-#include <any>
+#	include <any>
 #endif // ENABLE_AVDECC_CUSTOM_ANY
 #include <cstdint>
 #include <tuple>
@@ -44,11 +46,13 @@ namespace protocol
 {
 namespace aemPayload
 {
-
 class IncorrectPayloadSizeException final : public Exception
 {
 public:
-	IncorrectPayloadSizeException() : Exception("Incorrect payload size") {}
+	IncorrectPayloadSizeException()
+		: Exception("Incorrect payload size")
+	{
+	}
 };
 
 // All serialization methods might throw a std::invalid_argument if serialization goes wrong
@@ -154,7 +158,7 @@ Serializer<AecpAemGetStreamInfoCommandPayloadSize> serializeGetStreamInfoCommand
 std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeGetStreamInfoCommand(AemAecpdu::Payload const& payload);
 
 /** GET_STREAM_INFO Response - Clause 7.4.16.2 */
-Serializer<AecpAemGetStreamInfoResponsePayloadSize> serializeGetStreamInfoResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamInfo const& streamInfo);
+Serializer<AecpAemMilanGetStreamInfoResponsePayloadSize> serializeGetStreamInfoResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamInfo const& streamInfo);
 std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::StreamInfo> deserializeGetStreamInfoResponse(AemAecpdu::Payload const& payload);
 
 /** SET_NAME Command - Clause 7.4.17.1 */
@@ -242,7 +246,12 @@ Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeGetAvbInfoRespons
 std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::AvbInfo> deserializeGetAvbInfoResponse(AemAecpdu::Payload const& payload);
 
 /** GET_AS_PATH Command - Clause 7.4.41.1 */
+Serializer<AecpAemGetAsPathCommandPayloadSize> serializeGetAsPathCommand(entity::model::DescriptorIndex const descriptorIndex);
+std::tuple<entity::model::DescriptorIndex> deserializeGetAsPathCommand(AemAecpdu::Payload const& payload);
+
 /** GET_AS_PATH Response - Clause 7.4.41.2 */
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeGetAsPathResponse(entity::model::DescriptorIndex const descriptorIndex, entity::model::AsPath const& asPath);
+std::tuple<entity::model::DescriptorIndex, entity::model::AsPath> deserializeGetAsPathResponse(AemAecpdu::Payload const& payload);
 
 /** GET_COUNTERS Command - Clause 7.4.42.1 */
 Serializer<AecpAemGetCountersCommandPayloadSize> serializeGetCountersCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex);

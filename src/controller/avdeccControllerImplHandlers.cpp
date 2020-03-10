@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2018, L-Acoustics and its contributors
+* Copyright (C) 2016-2020, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -8,7 +8,7 @@
 * the Free Software Foundation, either version 3 of the License, or
 * (at your option) any later version.
 
-* LA_avdecc is distributed in the hope that it will be usefu_state,
+* LA_avdecc is distributed in the hope that it will be useful,
 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 * GNU Lesser General Public License for more details.
@@ -32,71 +32,105 @@ namespace avdecc
 {
 namespace controller
 {
+static auto const s_MilanMandatoryStreamInputCounters = entity::StreamInputCounterValidFlags{ entity::StreamInputCounterValidFlag::MediaLocked, entity::StreamInputCounterValidFlag::MediaUnlocked, entity::StreamInputCounterValidFlag::StreamInterrupted, entity::StreamInputCounterValidFlag::SeqNumMismatch, entity::StreamInputCounterValidFlag::MediaReset, entity::StreamInputCounterValidFlag::TimestampUncertain, entity::StreamInputCounterValidFlag::UnsupportedFormat, entity::StreamInputCounterValidFlag::LateTimestamp, entity::StreamInputCounterValidFlag::EarlyTimestamp, entity::StreamInputCounterValidFlag::FramesRx }; // Milan Clause 6.8.10
+static auto const s_MilanMandatoryStreamOutputCounters = entity::StreamOutputCounterValidFlags{ entity::StreamOutputCounterValidFlag::StreamStart, entity::StreamOutputCounterValidFlag::StreamStop, entity::StreamOutputCounterValidFlag::MediaReset, entity::StreamOutputCounterValidFlag::TimestampUncertain, entity::StreamOutputCounterValidFlag::FramesTx }; // Milan Clause 6.7.7
+static auto const s_MilanMandatoryAvbInterfaceCounters = entity::AvbInterfaceCounterValidFlags{ entity::AvbInterfaceCounterValidFlag::LinkUp, entity::AvbInterfaceCounterValidFlag::LinkDown, entity::AvbInterfaceCounterValidFlag::GptpGmChanged }; // Milan Clause 6.6.3
+static auto const s_MilanMandatoryClockDomainCounters = entity::ClockDomainCounterValidFlags{ entity::ClockDomainCounterValidFlag::Locked, entity::ClockDomainCounterValidFlag::Unlocked }; // Milan Clause 6.11.2
 
 /* ************************************************************ */
 /* Result handlers                                              */
 /* ************************************************************ */
 /* Enumeration and Control Protocol (AECP) handlers */
-void ControllerImpl::onGetMilanVersionResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status) noexcept
+void ControllerImpl::onGetMilanInfoResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::MvuCommandStatus const status, entity::model::MilanInfo const& info) noexcept
 {
-	LOG_CONTROLLER_TRACE(entityID, "onGetMilanVersionResult: {}", entity::ControllerEntity::statusToString(status));
+	LOG_CONTROLLER_TRACE(entityID, "onGetMilanInfoResult (ProtocolVersion={} FeaturesFlags={} CertificationVersion={}): {}", info.protocolVersion, utils::toHexString(utils::forceNumeric(info.featuresFlags.value())), info.certificationVersion, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
-		if (!!status)
+		if (controlledEntity->checkAndClearExpectedMilanInfo(ControlledEntityImpl::MilanInfoType::MilanInfo))
 		{
-			controlledEntity->setCompatibility(ControlledEntity::Compatibility::Milan);
-		}
-		else
-		{
-			controlledEntity->setCompatibility(ControlledEntity::Compatibility::IEEE17221);
-			//if (!processFailureStatus(status, controlledEntity.get(), 0, entity::model::DescriptorType::Entity, 0)) // Utiliser un autre code, ce n'est pas Entity!!
-			//{
-			//	controlledEntity->setGetFatalEnumerationError();
-			//	notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::EntityDescriptor);
-			//	return;
-			//}
+			if (!!status)
+			{
+				// Flag the entity as "Milan compatible", if protocolVersion is 1
+				switch (info.protocolVersion)
+				{
+					case 1:
+						addCompatibilityFlag(*controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+						break;
+					default:
+						LOG_CONTROLLER_WARN(entityID, "Unsupported Milan protocol_version: {}", info.protocolVersion);
+						break;
+				}
+				controlledEntity->setMilanInfo(info);
+			}
+			else
+			{
+				if (!processGetMilanModelFailureStatus(status, controlledEntity.get(), ControlledEntityImpl::MilanInfoType::MilanInfo))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::GetMilanInfo);
+					return;
+				}
+			}
 		}
 
-		// Clear this enumeration step and check for next one
-		controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetMilanVersion);
-		checkEnumerationSteps(controlledEntity.get());
+		// Got all expected milan information
+		if (controlledEntity->gotAllExpectedMilanInfo())
+		{
+			// Clear this enumeration step and check for next one
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetMilanInfo);
+			checkEnumerationSteps(controlledEntity.get());
+		}
 	}
 }
 
-void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status) noexcept
+void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onRegisterUnsolicitedNotificationsResult: {}", entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
-		if (!!status)
+		auto& entity = *controlledEntity;
+
+		if (entity.checkAndClearExpectedRegisterUnsol())
 		{
-			// Nothing special to do right now
-		}
-		else
-		{
-			controlledEntity->setCompatibility(ControlledEntity::Compatibility::IEEE17221);
+			if (!!status)
+			{
+				entity.setSubscribedToUnsolicitedNotifications(true);
+			}
+			else
+			{
+				if (!processRegisterUnsolFailureStatus(status, &entity))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::RegisterUnsol);
+					return;
+				}
+			}
 		}
 
-		// Clear this enumeration step and check for next one
-		controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::RegisterUnsol);
-		checkEnumerationSteps(controlledEntity.get());
+		// Got all expected descriptors
+		if (entity.gotExpectedRegisterUnsol())
+		{
+			// Clear this enumeration step and check for next one
+			entity.clearEnumerationStep(ControlledEntityImpl::EnumerationStep::RegisterUnsol);
+			checkEnumerationSteps(&entity);
+		}
 	}
 }
 
-void ControllerImpl::onEntityDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::EntityDescriptor const& descriptor) noexcept
+void ControllerImpl::onEntityDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::EntityDescriptor const& descriptor) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onEntityDescriptorStaticResult: {}", entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -105,12 +139,26 @@ void ControllerImpl::onEntityDescriptorResult(entity::ControllerEntity const* co
 			if (!!status)
 			{
 				// Search in the AEM cache for the AEM of the active configuration (if not ignored)
-				auto const* const cachedStaticTree = controlledEntity->shouldIgnoreCachedEntityModel() ? nullptr : EntityModelCache::getInstance().getCachedEntityStaticTree(entityID, descriptor.currentConfiguration);
+				auto cachedModel = std::optional<entity::model::EntityTree>{ std::nullopt };
+				auto const& entityModelCache = EntityModelCache::getInstance();
+				// If AEM Cache is Enabled and the entity has an EntityModelID defined
+				if (!controlledEntity->shouldIgnoreCachedEntityModel() && entityModelCache.isCacheEnabled() && descriptor.entityModelID)
+				{
+					if (EntityModelCache::isValidEntityModelID(descriptor.entityModelID))
+					{
+						cachedModel = entityModelCache.getCachedEntityTree(descriptor.entityModelID);
+					}
+					else
+					{
+						LOG_CONTROLLER_INFO(entityID, "AEM-CACHE: Ignoring invalid EntityModelID {} (invalid Vendor OUI-24)", utils::toHexString(descriptor.entityModelID, true, false));
+					}
+				}
 
 				// Already cached, no need to get the remaining of EnumerationSteps::GetStaticModel, proceed with EnumerationSteps::GetDescriptorDynamicInfo
-				if (cachedStaticTree && controlledEntity->setCachedEntityStaticTree(*cachedStaticTree, descriptor))
+				if (cachedModel && controlledEntity->setCachedEntityTree(*cachedModel, descriptor, _fullStaticModelEnumeration))
 				{
-					controlledEntity->addEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+					LOG_CONTROLLER_INFO(entityID, "AEM-CACHE: Loaded model for EntityModelID {}", utils::toHexString(descriptor.entityModelID, true, false));
+					controlledEntity->addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 				}
 				else
 				{
@@ -123,7 +171,7 @@ void ControllerImpl::onEntityDescriptorResult(entity::ControllerEntity const* co
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), 0, entity::model::DescriptorType::Entity, 0))
+				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), 0, entity::model::DescriptorType::Entity, 0))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::EntityDescriptor);
@@ -136,18 +184,18 @@ void ControllerImpl::onEntityDescriptorResult(entity::ControllerEntity const* co
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ConfigurationDescriptor const& descriptor) noexcept
+void ControllerImpl::onConfigurationDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ConfigurationDescriptor const& descriptor) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onConfigurationDescriptorResult (ConfigurationIndex={}): {}", configurationIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -157,8 +205,8 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 			{
 				controlledEntity->setConfigurationDescriptor(descriptor, configurationIndex);
 				auto const isCurrentConfiguration = configurationIndex == controlledEntity->getCurrentConfigurationIndex();
-				// Only get full descriptors for active configuration
-				if (isCurrentConfiguration)
+				// Get full descriptors for active configuration or if _fullStaticModelEnumeration is set
+				if (isCurrentConfiguration || _fullStaticModelEnumeration)
 				{
 					// Get Locales as soon as possible
 					{
@@ -280,7 +328,7 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), 0, entity::model::DescriptorType::Configuration, configurationIndex))
+				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), 0, entity::model::DescriptorType::Configuration, configurationIndex))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ConfigurationDescriptor);
@@ -293,18 +341,18 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::ControllerEntity co
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onAudioUnitDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::AudioUnitDescriptor const& descriptor) noexcept
+void ControllerImpl::onAudioUnitDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::AudioUnitDescriptor const& descriptor) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onAudioUnitDescriptorResult (ConfigurationIndex={} AudioUnitIndex={}): {}", configurationIndex, audioUnitIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -337,7 +385,7 @@ void ControllerImpl::onAudioUnitDescriptorResult(entity::ControllerEntity const*
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::AudioUnit, audioUnitIndex))
+				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::AudioUnit, audioUnitIndex))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AudioUnitDescriptor);
@@ -350,18 +398,18 @@ void ControllerImpl::onAudioUnitDescriptorResult(entity::ControllerEntity const*
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onStreamInputDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept
+void ControllerImpl::onStreamInputDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onStreamInputDescriptorResult (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -373,7 +421,7 @@ void ControllerImpl::onStreamInputDescriptorResult(entity::ControllerEntity cons
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamInput, streamIndex))
+				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamInput, streamIndex))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamInputDescriptor);
@@ -386,18 +434,18 @@ void ControllerImpl::onStreamInputDescriptorResult(entity::ControllerEntity cons
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onStreamOutputDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept
+void ControllerImpl::onStreamOutputDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::StreamDescriptor const& descriptor) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onStreamOutputDescriptorResult (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -409,7 +457,7 @@ void ControllerImpl::onStreamOutputDescriptorResult(entity::ControllerEntity con
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamOutput, streamIndex))
+				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamOutput, streamIndex))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamOutputDescriptor);
@@ -422,18 +470,18 @@ void ControllerImpl::onStreamOutputDescriptorResult(entity::ControllerEntity con
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onAvbInterfaceDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const interfaceIndex, entity::model::AvbInterfaceDescriptor const& descriptor) noexcept
+void ControllerImpl::onAvbInterfaceDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const interfaceIndex, entity::model::AvbInterfaceDescriptor const& descriptor) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onAvbInterfaceDescriptorResult (ConfigurationIndex={} InterfaceIndex={}): {}", configurationIndex, interfaceIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -445,7 +493,7 @@ void ControllerImpl::onAvbInterfaceDescriptorResult(entity::ControllerEntity con
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::AvbInterface, interfaceIndex))
+				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::AvbInterface, interfaceIndex))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AvbInterfaceDescriptor);
@@ -458,18 +506,18 @@ void ControllerImpl::onAvbInterfaceDescriptorResult(entity::ControllerEntity con
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onClockSourceDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockIndex, entity::model::ClockSourceDescriptor const& descriptor) noexcept
+void ControllerImpl::onClockSourceDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockIndex, entity::model::ClockSourceDescriptor const& descriptor) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onClockSourceDescriptorResult (ConfigurationIndex={} ClockIndex={}): {}", configurationIndex, clockIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -481,7 +529,7 @@ void ControllerImpl::onClockSourceDescriptorResult(entity::ControllerEntity cons
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::ClockSource, clockIndex))
+				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::ClockSource, clockIndex))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockSourceDescriptor);
@@ -494,18 +542,18 @@ void ControllerImpl::onClockSourceDescriptorResult(entity::ControllerEntity cons
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onMemoryObjectDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, entity::model::MemoryObjectDescriptor const& descriptor) noexcept
+void ControllerImpl::onMemoryObjectDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, entity::model::MemoryObjectDescriptor const& descriptor) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onMemoryObjectDescriptorResult (ConfigurationIndex={} ClockDomainIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -517,7 +565,7 @@ void ControllerImpl::onMemoryObjectDescriptorResult(entity::ControllerEntity con
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::MemoryObject, memoryObjectIndex))
+				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::MemoryObject, memoryObjectIndex))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::MemoryObjectDescriptor);
@@ -530,18 +578,18 @@ void ControllerImpl::onMemoryObjectDescriptorResult(entity::ControllerEntity con
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onLocaleDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::LocaleIndex const localeIndex, entity::model::LocaleDescriptor const& descriptor) noexcept
+void ControllerImpl::onLocaleDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::LocaleIndex const localeIndex, entity::model::LocaleDescriptor const& descriptor) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onLocaleDescriptorResult (ConfigurationIndex={} LocaleIndex={}): {}", configurationIndex, localeIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -550,14 +598,14 @@ void ControllerImpl::onLocaleDescriptorResult(entity::ControllerEntity const* co
 			if (!!status)
 			{
 				controlledEntity->setLocaleDescriptor(descriptor, configurationIndex, localeIndex);
-				auto const& configStaticTree = controlledEntity->getConfigurationStaticTree(configurationIndex);
+				auto const& configTree = controlledEntity->getConfigurationTree(configurationIndex);
 				std::uint16_t countLocales{ 0u };
 				{
-					auto const localeIt = configStaticTree.staticModel.descriptorCounts.find(entity::model::DescriptorType::Locale);
-					if (localeIt != configStaticTree.staticModel.descriptorCounts.end())
+					auto const localeIt = configTree.staticModel.descriptorCounts.find(entity::model::DescriptorType::Locale);
+					if (localeIt != configTree.staticModel.descriptorCounts.end())
 						countLocales = localeIt->second;
 				}
-				auto const allLocalesLoaded = configStaticTree.localeStaticModels.size() == countLocales;
+				auto const allLocalesLoaded = configTree.localeModels.size() == countLocales;
 				// We got all locales, now load strings for the desired locale
 				if (allLocalesLoaded)
 				{
@@ -566,7 +614,7 @@ void ControllerImpl::onLocaleDescriptorResult(entity::ControllerEntity const* co
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Locale, localeIndex))
+				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Locale, localeIndex))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::LocaleDescriptor);
@@ -579,18 +627,18 @@ void ControllerImpl::onLocaleDescriptorResult(entity::ControllerEntity const* co
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onStringsDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const stringsIndex, entity::model::StringsDescriptor const& descriptor) noexcept
+void ControllerImpl::onStringsDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StringsIndex const stringsIndex, entity::model::StringsDescriptor const& descriptor) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onStringsDescriptorResult (ConfigurationIndex={} StringsIndex={}): {}", configurationIndex, stringsIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -602,7 +650,7 @@ void ControllerImpl::onStringsDescriptorResult(entity::ControllerEntity const* c
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Strings, stringsIndex))
+				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Strings, stringsIndex))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StringsDescriptor);
@@ -615,18 +663,18 @@ void ControllerImpl::onStringsDescriptorResult(entity::ControllerEntity const* c
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onStreamPortInputDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex, entity::model::StreamPortDescriptor const& descriptor) noexcept
+void ControllerImpl::onStreamPortInputDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex, entity::model::StreamPortDescriptor const& descriptor) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onStreamPortInputDescriptorResult (ConfigurationIndex={} StreamPortIndex={}): {}", configurationIndex, streamPortIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -657,7 +705,7 @@ void ControllerImpl::onStreamPortInputDescriptorResult(entity::ControllerEntity 
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamPortInput, streamPortIndex))
+				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamPortInput, streamPortIndex))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamPortInputDescriptor);
@@ -670,18 +718,18 @@ void ControllerImpl::onStreamPortInputDescriptorResult(entity::ControllerEntity 
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onStreamPortOutputDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex, entity::model::StreamPortDescriptor const& descriptor) noexcept
+void ControllerImpl::onStreamPortOutputDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex, entity::model::StreamPortDescriptor const& descriptor) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onStreamPortOutputDescriptorResult (ConfigurationIndex={} StreamPortIndex={}): {}", configurationIndex, streamPortIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -712,7 +760,7 @@ void ControllerImpl::onStreamPortOutputDescriptorResult(entity::ControllerEntity
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamPortOutput, streamPortIndex))
+				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamPortOutput, streamPortIndex))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamPortOutputDescriptor);
@@ -725,18 +773,18 @@ void ControllerImpl::onStreamPortOutputDescriptorResult(entity::ControllerEntity
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onAudioClusterDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex, entity::model::AudioClusterDescriptor const& descriptor) noexcept
+void ControllerImpl::onAudioClusterDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex, entity::model::AudioClusterDescriptor const& descriptor) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onAudioClusterDescriptorResult (ConfigurationIndex={} ClusterIndex={}): {}", configurationIndex, clusterIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -748,7 +796,7 @@ void ControllerImpl::onAudioClusterDescriptorResult(entity::ControllerEntity con
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::AudioCluster, clusterIndex))
+				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::AudioCluster, clusterIndex))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AudioClusterDescriptor);
@@ -761,18 +809,18 @@ void ControllerImpl::onAudioClusterDescriptorResult(entity::ControllerEntity con
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onAudioMapDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex, entity::model::AudioMapDescriptor const& descriptor) noexcept
+void ControllerImpl::onAudioMapDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex, entity::model::AudioMapDescriptor const& descriptor) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onAudioMapDescriptorResult (ConfigurationIndex={} MapIndex={}): {}", configurationIndex, mapIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -784,7 +832,7 @@ void ControllerImpl::onAudioMapDescriptorResult(entity::ControllerEntity const* 
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::AudioMap, mapIndex))
+				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::AudioMap, mapIndex))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AudioMapDescriptor);
@@ -797,18 +845,18 @@ void ControllerImpl::onAudioMapDescriptorResult(entity::ControllerEntity const* 
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onClockDomainDescriptorResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockDomainDescriptor const& descriptor) noexcept
+void ControllerImpl::onClockDomainDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockDomainDescriptor const& descriptor) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onClockDomainDescriptorResult (ConfigurationIndex={} ClockDomainIndex={}): {}", configurationIndex, clockDomainIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -820,7 +868,7 @@ void ControllerImpl::onClockDomainDescriptorResult(entity::ControllerEntity cons
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::ClockDomain, clockDomainIndex))
+				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::ClockDomain, clockDomainIndex))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockDomainDescriptor);
@@ -833,18 +881,18 @@ void ControllerImpl::onClockDomainDescriptorResult(entity::ControllerEntity cons
 		if (controlledEntity->gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetStaticModel);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onGetStreamInputInfoResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, entity::model::ConfigurationIndex const configurationIndex) noexcept
+void ControllerImpl::onGetStreamInputInfoResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetStreamInputInfoResult (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -852,11 +900,12 @@ void ControllerImpl::onGetStreamInputInfoResult(entity::ControllerEntity const* 
 		{
 			if (!!status)
 			{
-				controlledEntity->setStreamInputInfo(streamIndex, info);
+				// Use the "update**" method, there are many things to do
+				updateStreamInputInfo(*controlledEntity, streamIndex, info, true, true);
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamInfo, streamIndex))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamInfo, streamIndex, 0u, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ListenerStreamInfo);
@@ -869,18 +918,18 @@ void ControllerImpl::onGetStreamInputInfoResult(entity::ControllerEntity const* 
 		if (controlledEntity->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onGetStreamOutputInfoResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, entity::model::ConfigurationIndex const configurationIndex) noexcept
+void ControllerImpl::onGetStreamOutputInfoResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamInfo const& info, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetStreamOutputInfoResult (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -888,11 +937,12 @@ void ControllerImpl::onGetStreamOutputInfoResult(entity::ControllerEntity const*
 		{
 			if (!!status)
 			{
-				controlledEntity->setStreamOutputInfo(streamIndex, info);
+				// Use the "update**" method, there are many things to do
+				updateStreamOutputInfo(*controlledEntity, streamIndex, info, true, true);
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamInfo, streamIndex))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamInfo, streamIndex, 0u, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::TalkerStreamInfo);
@@ -905,78 +955,96 @@ void ControllerImpl::onGetStreamOutputInfoResult(entity::ControllerEntity const*
 		if (controlledEntity->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onGetAcquiredStateResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity) noexcept
+void ControllerImpl::onGetAcquiredStateResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetAcquiredStateResult (OwningEntity={}): {}", owningEntity, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
 		if (controlledEntity->checkAndClearExpectedDynamicInfo(0u, ControlledEntityImpl::DynamicInfoType::AcquiredState, 0u, 0u))
 		{
-			auto acquireState{ model::AcquireState::Undefined };
-			auto owningController{ UniqueIdentifier{} };
-			// We have to manually check each status code (do not use processFailureStatus) because even an error allows AcquiredState detection
-			switch (status)
-			{
-				// Valid responses
-				case entity::ControllerEntity::AemCommandStatus::Success:
-					// Full status check based on returned owningEntity, some devices return SUCCESS although the requesting controller is not the one currently owning the entity
-					acquireState = owningEntity ? (owningEntity == getControllerEID() ? model::AcquireState::Acquired : model::AcquireState::AcquiredByOther) : model::AcquireState::NotAcquired;
-					owningController = owningEntity;
-					break;
-				case entity::ControllerEntity::AemCommandStatus::AcquiredByOther:
-					acquireState = model::AcquireState::AcquiredByOther;
-					owningController = owningEntity;
-					break;
-				case entity::ControllerEntity::AemCommandStatus::BadArguments: // Interpret BadArguments as trying to Release an Entity that is Not Acquired at all
-					[[fallthrough]];
-				case entity::ControllerEntity::AemCommandStatus::NotImplemented:
-					[[fallthrough]];
-				case entity::ControllerEntity::AemCommandStatus::NotSupported:
-					acquireState = model::AcquireState::NotAcquired;
-					break;
+			auto& entity = *controlledEntity;
+			auto const [acquireState, owningController] = getAcquiredInfoFromStatus(entity, owningEntity, status, true);
 
-				// All other cases, let processFailureStatus do its job
-				default:
-					if (!processFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::AcquiredState, 0u, 0u))
-					{
-						controlledEntity->setGetFatalEnumerationError();
-						notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AcquiredState);
-						return;
-					}
-					break;
+			// Could not determine the AcquiredState
+			if (acquireState == model::AcquireState::Undefined)
+			{
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::AcquiredState, 0u, 0u, true))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AcquiredState);
+					return;
+				}
 			}
 
 			// Update acquired state
-			controlledEntity->setAcquireState(acquireState);
-			controlledEntity->setOwningController(owningController);
+			updateAcquiredState(entity, acquireState, owningController);
 		}
 
 		// Got all expected dynamic information
 		if (controlledEntity->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings, entity::model::ConfigurationIndex const configurationIndex) noexcept
+void ControllerImpl::onGetLockedStateResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const lockingEntity) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onGetLockedStateResult (LockingEntity={}): {}", lockingEntity, entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDynamicInfo(0u, ControlledEntityImpl::DynamicInfoType::LockedState, 0u, 0u))
+		{
+			auto& entity = *controlledEntity;
+			auto const [lockState, lockingController] = getLockedInfoFromStatus(entity, lockingEntity, status, true);
+
+			// Could not determine the LockState
+			if (lockState == model::LockState::Undefined)
+			{
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::LockedState, 0u, 0u, false))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::LockedState);
+					return;
+				}
+			}
+
+			// Update locked state
+			updateLockedState(entity, lockState, lockingController);
+		}
+
+		// Got all expected dynamic information
+		if (controlledEntity->gotAllExpectedDynamicInfo())
+		{
+			// Clear this enumeration step and check for next one
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
+			checkEnumerationSteps(controlledEntity.get());
+		}
+	}
+}
+
+void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetStreamPortInputAudioMapResult (StreamPortIndex={} NumberMaps={} MapIndex={}): {}", streamPortIndex, numberOfMaps, mapIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1006,7 +1074,7 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::ControllerEntity
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, streamPortIndex, mapIndex))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, streamPortIndex, mapIndex, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamInputAudioMap);
@@ -1028,18 +1096,18 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::ControllerEntity
 		if (controlledEntity->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings, entity::model::ConfigurationIndex const configurationIndex) noexcept
+void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamPortIndex const streamPortIndex, entity::model::MapIndex const numberOfMaps, entity::model::MapIndex const mapIndex, entity::model::AudioMappings const& mappings, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetStreamPortOutputAudioMapResult (StreamPortIndex={} NumberMaps={} MapIndex={}): {}", streamPortIndex, numberOfMaps, mapIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1069,7 +1137,7 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::ControllerEntit
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, streamPortIndex, mapIndex))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, streamPortIndex, mapIndex, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamOutputAudioMap);
@@ -1091,33 +1159,94 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::ControllerEntit
 		if (controlledEntity->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onGetAvbInfoResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info, entity::model::ConfigurationIndex const configurationIndex) noexcept
+void ControllerImpl::onGetAvbInfoResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetAvbInfoResult (AvbInterfaceIndex={}): {}", avbInterfaceIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
 		if (controlledEntity->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInfo, avbInterfaceIndex))
 		{
+			auto& entity = *controlledEntity;
 			if (!!status)
 			{
-				controlledEntity->setAvbInfo(avbInterfaceIndex, info);
+				// Use the "update**" method, there are many things to do
+				updateAvbInfo(entity, avbInterfaceIndex, info);
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInfo, avbInterfaceIndex))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInfo, avbInterfaceIndex, 0u, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AvbInfo);
+					return;
+				}
+
+				// Special case for gPTP info, we always want to have valid gPTP information in the AvbInterfaceDescriptor model (updated when an ADP is received, or GET_AVB_INFO unsolicited)
+				// So we have to retrieve the matching ADP information to force an update of the cached model
+				auto const& macAddress = entity.getNodeStaticModel(configurationIndex, avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels).macAddress;
+				auto& e = controlledEntity->getEntity();
+				auto const caps = e.getEntityCapabilities();
+				if (caps.test(entity::EntityCapability::GptpSupported))
+				{
+					// Search which InterfaceInformation matches this AvbInterfaceIndex (searching by Index, or by MacAddress in case the Index was not specified in ADP)
+					for (auto& [interfaceIndex, interfaceInfo] : e.getInterfacesInformation())
+					{
+						// Do we even have gPTP info on this InterfaceInfo
+						if (interfaceInfo.gptpGrandmasterID)
+						{
+							// Match with the passed AvbInterfaceIndex, or with macAddress if this ADP is the GlobalAvbInterfaceIndex
+							if (interfaceIndex == avbInterfaceIndex || (interfaceIndex == entity::Entity::GlobalAvbInterfaceIndex && macAddress == interfaceInfo.macAddress))
+							{
+								// Force InterfaceInfo with these gPTP info
+								updateGptpInformation(entity, avbInterfaceIndex, macAddress, *interfaceInfo.gptpGrandmasterID, *interfaceInfo.gptpDomainNumber);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// Got all expected dynamic information
+		if (controlledEntity->gotAllExpectedDynamicInfo())
+		{
+			// Clear this enumeration step and check for next one
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
+			checkEnumerationSteps(controlledEntity.get());
+		}
+	}
+}
+
+void ControllerImpl::onGetAsPathResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath, entity::model::ConfigurationIndex const configurationIndex) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onGetAsPathResult (AvbInterfaceIndex={}): {}", avbInterfaceIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAsPath, avbInterfaceIndex))
+		{
+			if (!!status)
+			{
+				controlledEntity->setAsPath(avbInterfaceIndex, asPath);
+			}
+			else
+			{
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAsPath, avbInterfaceIndex, 0u, false))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AsPath);
 					return;
 				}
 			}
@@ -1127,18 +1256,57 @@ void ControllerImpl::onGetAvbInfoResult(entity::ControllerEntity const* const /*
 		if (controlledEntity->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onGetAvbInterfaceCountersResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::AvbInterfaceCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, entity::model::ConfigurationIndex const configurationIndex) noexcept
+void ControllerImpl::onGetEntityCountersResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::EntityCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onGetEntityCountersResult (): {}", entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDynamicInfo(0u, ControlledEntityImpl::DynamicInfoType::GetEntityCounters, 0u))
+		{
+			if (!!status)
+			{
+				auto& entity = *controlledEntity;
+
+				// Use the "update**" method, there are many things to do
+				updateEntityCounters(entity, validCounters, counters);
+			}
+			else
+			{
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), 0u, ControlledEntityImpl::DynamicInfoType::GetEntityCounters, 0u, 0u, true))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::EntityCounters);
+					return;
+				}
+			}
+		}
+
+		// Got all expected dynamic information
+		if (controlledEntity->gotAllExpectedDynamicInfo())
+		{
+			// Clear this enumeration step and check for next one
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
+			checkEnumerationSteps(controlledEntity.get());
+		}
+	}
+}
+
+void ControllerImpl::onGetAvbInterfaceCountersResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::AvbInterfaceCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetAvbInterfaceCountersResult (AvbInterfaceIndex={}): {}", avbInterfaceIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1146,18 +1314,24 @@ void ControllerImpl::onGetAvbInterfaceCountersResult(entity::ControllerEntity co
 		{
 			if (!!status)
 			{
-				// Get previous counters
-				auto& avbInterfaceCounters = controlledEntity->getAvbInterfaceCounters(avbInterfaceIndex);
+				auto& entity = *controlledEntity;
 
-				// Update (or set) counters
-				for (auto counter : validCounters)
+				// If Milan device, validate mandatory counters are present
+				if (entity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 				{
-					avbInterfaceCounters[counter] = counters[validCounters.getPosition(counter)];
+					if ((validCounters & s_MilanMandatoryAvbInterfaceCounters) != s_MilanMandatoryAvbInterfaceCounters)
+					{
+						LOG_CONTROLLER_WARN(entityID, "Milan mandatory counters missing for AVB_INTERFACE descriptor");
+						removeCompatibilityFlag(entity, ControlledEntity::CompatibilityFlag::Milan);
+					}
 				}
+
+				// Use the "update**" method, there are many things to do
+				updateAvbInterfaceCounters(entity, avbInterfaceIndex, validCounters, counters);
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInterfaceCounters, avbInterfaceIndex))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInterfaceCounters, avbInterfaceIndex, 0u, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AvbInterfaceCounters);
@@ -1170,18 +1344,18 @@ void ControllerImpl::onGetAvbInterfaceCountersResult(entity::ControllerEntity co
 		if (controlledEntity->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onGetClockDomainCountersResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::ClockDomainCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, entity::model::ConfigurationIndex const configurationIndex) noexcept
+void ControllerImpl::onGetClockDomainCountersResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::ClockDomainCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetClockDomainCountersResult (ClockDomainIndex={}): {}", clockDomainIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1189,18 +1363,24 @@ void ControllerImpl::onGetClockDomainCountersResult(entity::ControllerEntity con
 		{
 			if (!!status)
 			{
-				// Get previous counters
-				auto& clockDomainCounters = controlledEntity->getClockDomainCounters(clockDomainIndex);
+				auto& entity = *controlledEntity;
 
-				// Update (or set) counters
-				for (auto counter : validCounters)
+				// If Milan device, validate mandatory counters are present
+				if (entity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 				{
-					clockDomainCounters[counter] = counters[validCounters.getPosition(counter)];
+					if ((validCounters & s_MilanMandatoryClockDomainCounters) != s_MilanMandatoryClockDomainCounters)
+					{
+						LOG_CONTROLLER_WARN(entityID, "Milan mandatory counters missing for CLOCK_DOMAIN descriptor");
+						removeCompatibilityFlag(entity, ControlledEntity::CompatibilityFlag::Milan);
+					}
 				}
+
+				// Use the "update**" method, there are many things to do
+				updateClockDomainCounters(entity, clockDomainIndex, validCounters, counters);
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetClockDomainCounters, clockDomainIndex))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetClockDomainCounters, clockDomainIndex, 0u, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockDomainCounters);
@@ -1213,18 +1393,18 @@ void ControllerImpl::onGetClockDomainCountersResult(entity::ControllerEntity con
 		if (controlledEntity->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onGetStreamInputCountersResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::StreamInputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, entity::model::ConfigurationIndex const configurationIndex) noexcept
+void ControllerImpl::onGetStreamInputCountersResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::StreamInputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onGetStreamInputCountersResult (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1232,18 +1412,24 @@ void ControllerImpl::onGetStreamInputCountersResult(entity::ControllerEntity con
 		{
 			if (!!status)
 			{
-				// Get previous counters
-				auto& streamCounters = controlledEntity->getStreamInputCounters(streamIndex);
+				auto& entity = *controlledEntity;
 
-				// Update (or set) counters
-				for (auto counter : validCounters)
+				// If Milan device, validate mandatory counters are present
+				if (entity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 				{
-					streamCounters[counter] = counters[validCounters.getPosition(counter)];
+					if ((validCounters & s_MilanMandatoryStreamInputCounters) != s_MilanMandatoryStreamInputCounters)
+					{
+						LOG_CONTROLLER_WARN(entityID, "Milan mandatory counters missing for STREAM_INPUT descriptor");
+						removeCompatibilityFlag(entity, ControlledEntity::CompatibilityFlag::Milan);
+					}
 				}
+
+				// Use the "update**" method, there are many things to do
+				updateStreamInputCounters(entity, streamIndex, validCounters, counters);
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamInputCounters, streamIndex))
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamInputCounters, streamIndex, 0u, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamInputCounters);
@@ -1256,18 +1442,67 @@ void ControllerImpl::onGetStreamInputCountersResult(entity::ControllerEntity con
 		if (controlledEntity->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onConfigurationNameResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& configurationName) noexcept
+void ControllerImpl::onGetStreamOutputCountersResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::StreamOutputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, entity::model::ConfigurationIndex const configurationIndex) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onGetStreamOutputCountersResult (StreamIndex={}): {}", streamIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamOutputCounters, streamIndex))
+		{
+			if (!!status)
+			{
+				auto& entity = *controlledEntity;
+
+				// If Milan device, validate mandatory counters are present
+				if (entity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+				{
+					if ((validCounters & s_MilanMandatoryStreamOutputCounters) != s_MilanMandatoryStreamOutputCounters)
+					{
+						LOG_CONTROLLER_WARN(entityID, "Milan mandatory counters missing for STREAM_OUTPUT descriptor");
+						removeCompatibilityFlag(entity, ControlledEntity::CompatibilityFlag::Milan);
+					}
+				}
+
+				// Use the "update**" method, there are many things to do
+				updateStreamOutputCounters(entity, streamIndex, validCounters, counters);
+			}
+			else
+			{
+				if (!processGetAecpDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::GetStreamOutputCounters, streamIndex, 0u, false))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamOutputCounters);
+					return;
+				}
+			}
+		}
+
+		// Got all expected dynamic information
+		if (controlledEntity->gotAllExpectedDynamicInfo())
+		{
+			// Clear this enumeration step and check for next one
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
+			checkEnumerationSteps(controlledEntity.get());
+		}
+	}
+}
+
+void ControllerImpl::onConfigurationNameResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& configurationName) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onConfigurationNameResult (ConfigurationIndex={}): {}", configurationIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1279,7 +1514,7 @@ void ControllerImpl::onConfigurationNameResult(entity::ControllerEntity const* c
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ConfigurationName, 0u))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ConfigurationName, 0u, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ConfigurationName);
@@ -1292,18 +1527,18 @@ void ControllerImpl::onConfigurationNameResult(entity::ControllerEntity const* c
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onAudioUnitNameResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::AvdeccFixedString const& audioUnitName) noexcept
+void ControllerImpl::onAudioUnitNameResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::AvdeccFixedString const& audioUnitName) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onAudioUnitNameResult (ConfigurationIndex={} AudioUnitIndex={}): {}", configurationIndex, audioUnitIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1311,11 +1546,11 @@ void ControllerImpl::onAudioUnitNameResult(entity::ControllerEntity const* const
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, audioUnitIndex, &model::ConfigurationDynamicTree::audioUnitDynamicModels, audioUnitName);
+				controlledEntity->setObjectName(configurationIndex, audioUnitIndex, &entity::model::ConfigurationTree::audioUnitModels, audioUnitName);
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName, audioUnitIndex))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName, audioUnitIndex, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AudioUnitName);
@@ -1328,18 +1563,18 @@ void ControllerImpl::onAudioUnitNameResult(entity::ControllerEntity const* const
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onAudioUnitSamplingRateResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate, entity::model::ConfigurationIndex const configurationIndex) noexcept
+void ControllerImpl::onAudioUnitSamplingRateResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onAudioUnitSamplingRateResult (ConfigurationIndex={} AudioUnitIndex={}): {}", configurationIndex, audioUnitIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1351,7 +1586,7 @@ void ControllerImpl::onAudioUnitSamplingRateResult(entity::ControllerEntity cons
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate, audioUnitIndex))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate, audioUnitIndex, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AudioUnitSamplingRate);
@@ -1364,18 +1599,18 @@ void ControllerImpl::onAudioUnitSamplingRateResult(entity::ControllerEntity cons
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onInputStreamNameResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamInputName) noexcept
+void ControllerImpl::onInputStreamNameResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamInputName) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onInputStreamNameResult (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1383,11 +1618,11 @@ void ControllerImpl::onInputStreamNameResult(entity::ControllerEntity const* con
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, streamIndex, &model::ConfigurationDynamicTree::streamInputDynamicModels, streamInputName);
+				controlledEntity->setObjectName(configurationIndex, streamIndex, &entity::model::ConfigurationTree::streamInputModels, streamInputName);
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName, streamIndex))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName, streamIndex, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::InputStreamName);
@@ -1400,18 +1635,18 @@ void ControllerImpl::onInputStreamNameResult(entity::ControllerEntity const* con
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onInputStreamFormatResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat, entity::model::ConfigurationIndex const configurationIndex) noexcept
+void ControllerImpl::onInputStreamFormatResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onInputStreamFormatResult (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1419,11 +1654,12 @@ void ControllerImpl::onInputStreamFormatResult(entity::ControllerEntity const* c
 		{
 			if (!!status)
 			{
-				controlledEntity->setStreamInputFormat(streamIndex, streamFormat);
+				// Use the "update**" method, there are many things to do
+				updateStreamInputFormat(*controlledEntity, streamIndex, streamFormat);
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat, streamIndex))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat, streamIndex, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::InputStreamFormat);
@@ -1436,18 +1672,18 @@ void ControllerImpl::onInputStreamFormatResult(entity::ControllerEntity const* c
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onOutputStreamNameResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamOutputName) noexcept
+void ControllerImpl::onOutputStreamNameResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex, entity::model::AvdeccFixedString const& streamOutputName) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onOutputStreamNameResult (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1455,11 +1691,11 @@ void ControllerImpl::onOutputStreamNameResult(entity::ControllerEntity const* co
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, streamIndex, &model::ConfigurationDynamicTree::streamOutputDynamicModels, streamOutputName);
+				controlledEntity->setObjectName(configurationIndex, streamIndex, &entity::model::ConfigurationTree::streamOutputModels, streamOutputName);
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName, streamIndex))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName, streamIndex, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::OutputStreamName);
@@ -1472,18 +1708,18 @@ void ControllerImpl::onOutputStreamNameResult(entity::ControllerEntity const* co
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onOutputStreamFormatResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat, entity::model::ConfigurationIndex const configurationIndex) noexcept
+void ControllerImpl::onOutputStreamFormatResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onOutputStreamFormatResult (ConfigurationIndex={} StreamIndex={}): {}", configurationIndex, streamIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1491,11 +1727,12 @@ void ControllerImpl::onOutputStreamFormatResult(entity::ControllerEntity const* 
 		{
 			if (!!status)
 			{
-				controlledEntity->setStreamOutputFormat(streamIndex, streamFormat);
+				// Use the "update**" method, there are many things to do
+				updateStreamOutputFormat(*controlledEntity, streamIndex, streamFormat);
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat, streamIndex))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat, streamIndex, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::OutputStreamFormat);
@@ -1508,18 +1745,18 @@ void ControllerImpl::onOutputStreamFormatResult(entity::ControllerEntity const* 
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onAvbInterfaceNameResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvdeccFixedString const& avbInterfaceName) noexcept
+void ControllerImpl::onAvbInterfaceNameResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvdeccFixedString const& avbInterfaceName) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onAvbInterfaceNameResult (ConfigurationIndex={} AvbInterfaceIndex={}): {}", configurationIndex, avbInterfaceIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1527,11 +1764,11 @@ void ControllerImpl::onAvbInterfaceNameResult(entity::ControllerEntity const* co
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, avbInterfaceIndex, &model::ConfigurationDynamicTree::avbInterfaceDynamicModels, avbInterfaceName);
+				controlledEntity->setObjectName(configurationIndex, avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels, avbInterfaceName);
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName, avbInterfaceIndex))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName, avbInterfaceIndex, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AvbInterfaceName);
@@ -1544,18 +1781,18 @@ void ControllerImpl::onAvbInterfaceNameResult(entity::ControllerEntity const* co
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onClockSourceNameResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex, entity::model::AvdeccFixedString const& clockSourceName) noexcept
+void ControllerImpl::onClockSourceNameResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex, entity::model::AvdeccFixedString const& clockSourceName) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onClockSourceNameResult (ConfigurationIndex={} ClockSourceIndex={}): {}", configurationIndex, clockSourceIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1563,11 +1800,11 @@ void ControllerImpl::onClockSourceNameResult(entity::ControllerEntity const* con
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, clockSourceIndex, &model::ConfigurationDynamicTree::clockSourceDynamicModels, clockSourceName);
+				controlledEntity->setObjectName(configurationIndex, clockSourceIndex, &entity::model::ConfigurationTree::clockSourceModels, clockSourceName);
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName, clockSourceIndex))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName, clockSourceIndex, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockSourceName);
@@ -1580,18 +1817,18 @@ void ControllerImpl::onClockSourceNameResult(entity::ControllerEntity const* con
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onMemoryObjectNameResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, entity::model::AvdeccFixedString const& memoryObjectName) noexcept
+void ControllerImpl::onMemoryObjectNameResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, entity::model::AvdeccFixedString const& memoryObjectName) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onMemoryObjectNameResult (ConfigurationIndex={} MemoryObjectIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1599,11 +1836,11 @@ void ControllerImpl::onMemoryObjectNameResult(entity::ControllerEntity const* co
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, memoryObjectIndex, &model::ConfigurationDynamicTree::memoryObjectDynamicModels, memoryObjectName);
+				controlledEntity->setObjectName(configurationIndex, memoryObjectIndex, &entity::model::ConfigurationTree::memoryObjectModels, memoryObjectName);
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName, memoryObjectIndex))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName, memoryObjectIndex, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::MemoryObjectName);
@@ -1616,18 +1853,18 @@ void ControllerImpl::onMemoryObjectNameResult(entity::ControllerEntity const* co
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onMemoryObjectLengthResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) noexcept
+void ControllerImpl::onMemoryObjectLengthResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onMemoryObjectLengthResult (ConfigurationIndex={} MemoryObjectIndex={}): {}", configurationIndex, memoryObjectIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1639,7 +1876,7 @@ void ControllerImpl::onMemoryObjectLengthResult(entity::ControllerEntity const* 
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength, memoryObjectIndex))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength, memoryObjectIndex, true))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::MemoryObjectLength);
@@ -1652,18 +1889,18 @@ void ControllerImpl::onMemoryObjectLengthResult(entity::ControllerEntity const* 
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onAudioClusterNameResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex, entity::model::AvdeccFixedString const& audioClusterName) noexcept
+void ControllerImpl::onAudioClusterNameResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const audioClusterIndex, entity::model::AvdeccFixedString const& audioClusterName) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onAudioClusterNameResult (ConfigurationIndex={} AudioClusterIndex={}): {}", configurationIndex, audioClusterIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1671,11 +1908,11 @@ void ControllerImpl::onAudioClusterNameResult(entity::ControllerEntity const* co
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, audioClusterIndex, &model::ConfigurationDynamicTree::audioClusterDynamicModels, audioClusterName);
+				controlledEntity->setObjectName(configurationIndex, audioClusterIndex, &entity::model::ConfigurationTree::audioClusterModels, audioClusterName);
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, audioClusterIndex))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, audioClusterIndex, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::AudioClusterName);
@@ -1688,18 +1925,18 @@ void ControllerImpl::onAudioClusterNameResult(entity::ControllerEntity const* co
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onClockDomainNameResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::AvdeccFixedString const& clockDomainName) noexcept
+void ControllerImpl::onClockDomainNameResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::AvdeccFixedString const& clockDomainName) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onClockDomainNameResult (ConfigurationIndex={} ClockDomainIndex={}): {}", configurationIndex, clockDomainIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1707,11 +1944,11 @@ void ControllerImpl::onClockDomainNameResult(entity::ControllerEntity const* con
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, clockDomainIndex, &model::ConfigurationDynamicTree::clockDomainDynamicModels, clockDomainName);
+				controlledEntity->setObjectName(configurationIndex, clockDomainIndex, &entity::model::ConfigurationTree::clockDomainModels, clockDomainName);
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName, clockDomainIndex))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName, clockDomainIndex, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockDomainName);
@@ -1724,18 +1961,18 @@ void ControllerImpl::onClockDomainNameResult(entity::ControllerEntity const* con
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
-void ControllerImpl::onClockDomainSourceIndexResult(entity::ControllerEntity const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex, entity::model::ConfigurationIndex const configurationIndex) noexcept
+void ControllerImpl::onClockDomainSourceIndexResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
 	LOG_CONTROLLER_TRACE(entityID, "onClockDomainSourceIndexResult (ConfigurationIndex={} ClockDomainIndex={}): {}", configurationIndex, clockDomainIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto controlledEntity = getControlledEntityImpl(entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
 	if (controlledEntity)
 	{
@@ -1747,7 +1984,7 @@ void ControllerImpl::onClockDomainSourceIndexResult(entity::ControllerEntity con
 			}
 			else
 			{
-				if (!processFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex, clockDomainIndex))
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex, clockDomainIndex, false))
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::ClockDomainSourceIndex);
@@ -1760,67 +1997,78 @@ void ControllerImpl::onClockDomainSourceIndexResult(entity::ControllerEntity con
 		if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDescriptorDynamicInfo);
+			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 			checkEnumerationSteps(controlledEntity.get());
 		}
 	}
 }
 
 /* Connection Management Protocol (ACMP) handlers */
-void ControllerImpl::onConnectStreamResult(entity::ControllerEntity const* const /*controller*/, [[maybe_unused]] entity::model::StreamIdentification const& talkerStream, [[maybe_unused]] entity::model::StreamIdentification const& listenerStream, [[maybe_unused]] uint16_t const connectionCount, [[maybe_unused]] entity::ConnectionFlags const flags, [[maybe_unused]] entity::ControllerEntity::ControlStatus const status) noexcept
+void ControllerImpl::onConnectStreamResult(entity::controller::Interface const* const /*controller*/, [[maybe_unused]] entity::model::StreamIdentification const& talkerStream, [[maybe_unused]] entity::model::StreamIdentification const& listenerStream, [[maybe_unused]] std::uint16_t const connectionCount, [[maybe_unused]] entity::ConnectionFlags const flags, [[maybe_unused]] entity::ControllerEntity::ControlStatus const status) noexcept
 {
-	LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "onConnectStreamResult (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={} ConnectionCount={} Flags={}): {}", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, toHexString(listenerStream.entityID, true), listenerStream.streamIndex, connectionCount, toHexString(to_integral(flags), true), entity::ControllerEntity::statusToString(status));
+	LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "onConnectStreamResult (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={} ConnectionCount={} Flags={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, connectionCount, utils::toHexString(utils::forceNumeric(flags.value()), true), entity::ControllerEntity::statusToString(status));
 }
 
-void ControllerImpl::onDisconnectStreamResult(entity::ControllerEntity const* const /*controller*/, [[maybe_unused]] entity::model::StreamIdentification const& talkerStream, [[maybe_unused]] entity::model::StreamIdentification const& listenerStream, [[maybe_unused]] uint16_t const connectionCount, [[maybe_unused]] entity::ConnectionFlags const flags, [[maybe_unused]] entity::ControllerEntity::ControlStatus const status) noexcept
+void ControllerImpl::onDisconnectStreamResult(entity::controller::Interface const* const /*controller*/, [[maybe_unused]] entity::model::StreamIdentification const& talkerStream, [[maybe_unused]] entity::model::StreamIdentification const& listenerStream, [[maybe_unused]] std::uint16_t const connectionCount, [[maybe_unused]] entity::ConnectionFlags const flags, [[maybe_unused]] entity::ControllerEntity::ControlStatus const status) noexcept
 {
-	LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "onDisconnectStreamResult (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={} ConnectionCount={} Flags={}): {}", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, toHexString(listenerStream.entityID, true), listenerStream.streamIndex, connectionCount, toHexString(to_integral(flags), true), entity::ControllerEntity::statusToString(status));
+	LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "onDisconnectStreamResult (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={} ConnectionCount={} Flags={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, connectionCount, utils::toHexString(utils::forceNumeric(flags.value()), true), entity::ControllerEntity::statusToString(status));
 }
 
-void ControllerImpl::onGetTalkerStreamStateResult(entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& /*listenerStream*/, [[maybe_unused]] uint16_t const connectionCount, entity::ConnectionFlags const /*flags*/, entity::ControllerEntity::ControlStatus const status, entity::model::ConfigurationIndex const configurationIndex) noexcept
+void ControllerImpl::onGetTalkerStreamStateResult(entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& /*listenerStream*/, [[maybe_unused]] std::uint16_t const connectionCount, entity::ConnectionFlags const /*flags*/, entity::ControllerEntity::ControlStatus const status, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
-	LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "onGetTalkerStreamStateResult (TalkerID={} TalkerIndex={} ConnectionCount={} ConfigurationIndex={}): {}", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, connectionCount, configurationIndex, entity::ControllerEntity::statusToString(status));
+	LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "onGetTalkerStreamStateResult (TalkerID={} TalkerIndex={} ConnectionCount={} ConfigurationIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, connectionCount, configurationIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto talker = getControlledEntityImpl(talkerStream.entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledTalker = getControlledEntityImplGuard(talkerStream.entityID);
 
-	if (talker)
+	if (controlledTalker)
 	{
-		if (talker->checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, talkerStream.streamIndex))
+		auto& talker = *controlledTalker;
+		if (talker.checkAndClearExpectedDynamicInfo(configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, talkerStream.streamIndex))
 		{
 			if (!!status)
 			{
-				clearTalkerStreamConnections(talker.get(), talkerStream.streamIndex);
+				clearTalkerStreamConnections(&talker, talkerStream.streamIndex);
+
+				// Milan device should return 0 as connectionCount
+				if (talker.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+				{
+					if (connectionCount != 0)
+					{
+						LOG_CONTROLLER_WARN(talker.getEntity().getEntityID(), "Milan device must advertise 0 connection_count in GET_TX_STATE_RESPONSE");
+						removeCompatibilityFlag(talker, ControlledEntity::CompatibilityFlag::Milan);
+					}
+				}
 
 				for (auto index = std::uint16_t(0); index < connectionCount; ++index)
 				{
-					queryInformation(talker.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamConnection, talkerStream, index);
+					queryInformation(&talker, configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamConnection, talkerStream, index);
 				}
 			}
 			else
 			{
-				if (!processFailureStatus(status, talker.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, talkerStream.streamIndex))
+				if (!processGetAcmpDynamicInfoFailureStatus(status, &talker, configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, talkerStream.streamIndex, false))
 				{
-					talker->setGetFatalEnumerationError();
-					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, talker.get(), QueryCommandError::TalkerStreamState);
+					talker.setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, &talker, QueryCommandError::TalkerStreamState);
 					return;
 				}
 			}
 		}
 
 		// Got all expected dynamic information
-		if (talker->gotAllExpectedDynamicInfo())
+		if (talker.gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			talker->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
-			checkEnumerationSteps(talker.get());
+			talker.clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
+			checkEnumerationSteps(&talker);
 		}
 	}
 }
 
-void ControllerImpl::onGetListenerStreamStateResult(entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status, entity::model::ConfigurationIndex const configurationIndex) noexcept
+void ControllerImpl::onGetListenerStreamStateResult(entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status, entity::model::ConfigurationIndex const configurationIndex) noexcept
 {
-	LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "onGetListenerStreamStateResult (ListenerID={} ListenerIndex={} ConnectionCount={} Flags={} ConfigurationIndex={}): {}", toHexString(listenerStream.entityID, true), listenerStream.streamIndex, connectionCount, toHexString(to_integral(flags), true), configurationIndex, entity::ControllerEntity::statusToString(status));
+	LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "onGetListenerStreamStateResult (ListenerID={} ListenerIndex={} ConnectionCount={} Flags={} ConfigurationIndex={}): {}", utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, connectionCount, utils::toHexString(utils::forceNumeric(flags.value()), true), configurationIndex, entity::ControllerEntity::statusToString(status));
 
 	if (!!status)
 	{
@@ -1828,8 +2076,8 @@ void ControllerImpl::onGetListenerStreamStateResult(entity::ControllerEntity con
 		handleListenerStreamStateNotification(talkerStream, listenerStream, connectionCount != 0, flags, false);
 	}
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto listener = getControlledEntityImpl(listenerStream.entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto listener = getControlledEntityImplGuard(listenerStream.entityID);
 
 	if (listener)
 	{
@@ -1841,7 +2089,7 @@ void ControllerImpl::onGetListenerStreamStateResult(entity::ControllerEntity con
 			}
 			else
 			{
-				if (!processFailureStatus(status, listener.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamState, listenerStream.streamIndex))
+				if (!processGetAcmpDynamicInfoFailureStatus(status, listener.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamState, listenerStream.streamIndex, false))
 				{
 					listener->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, listener.get(), QueryCommandError::ListenerStreamState);
@@ -1854,18 +2102,18 @@ void ControllerImpl::onGetListenerStreamStateResult(entity::ControllerEntity con
 		if (listener->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			listener->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			listener->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(listener.get());
 		}
 	}
 }
 
-void ControllerImpl::onGetTalkerStreamConnectionResult(entity::ControllerEntity const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, [[maybe_unused]] uint16_t const connectionCount, entity::ConnectionFlags const /*flags*/, entity::ControllerEntity::ControlStatus const status, entity::model::ConfigurationIndex const configurationIndex, std::uint16_t const connectionIndex) noexcept
+void ControllerImpl::onGetTalkerStreamConnectionResult(entity::controller::Interface const* const /*controller*/, entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, [[maybe_unused]] std::uint16_t const connectionCount, entity::ConnectionFlags const /*flags*/, entity::ControllerEntity::ControlStatus const status, entity::model::ConfigurationIndex const configurationIndex, std::uint16_t const connectionIndex) noexcept
 {
-	LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "onGetTalkerStreamConnectionResult (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={} ConnectionCount={} ConfigurationIndex={} ConnectionIndex={}): {}", toHexString(talkerStream.entityID, true), talkerStream.streamIndex, toHexString(listenerStream.entityID, true), listenerStream.streamIndex, connectionCount, configurationIndex, connectionIndex, entity::ControllerEntity::statusToString(status));
+	LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "onGetTalkerStreamConnectionResult (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={} ConnectionCount={} ConfigurationIndex={} ConnectionIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, connectionCount, configurationIndex, connectionIndex, entity::ControllerEntity::statusToString(status));
 
-	// Take a copy of the ControlledEntity so we don't have to keep the lock
-	auto talker = getControlledEntityImpl(talkerStream.entityID);
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto talker = getControlledEntityImplGuard(talkerStream.entityID);
 
 	if (talker)
 	{
@@ -1877,7 +2125,7 @@ void ControllerImpl::onGetTalkerStreamConnectionResult(entity::ControllerEntity 
 			}
 			else
 			{
-				if (!processFailureStatus(status, talker.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamConnection, talkerStream, connectionIndex))
+				if (!processGetAcmpDynamicInfoFailureStatus(status, talker.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamConnection, talkerStream, connectionIndex, true))
 				{
 					talker->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, talker.get(), QueryCommandError::TalkerStreamConnection);
@@ -1890,7 +2138,7 @@ void ControllerImpl::onGetTalkerStreamConnectionResult(entity::ControllerEntity 
 		if (talker->gotAllExpectedDynamicInfo())
 		{
 			// Clear this enumeration step and check for next one
-			talker->clearEnumerationSteps(ControlledEntityImpl::EnumerationSteps::GetDynamicInfo);
+			talker->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDynamicInfo);
 			checkEnumerationSteps(talker.get());
 		}
 	}
