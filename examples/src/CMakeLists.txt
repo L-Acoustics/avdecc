@@ -45,6 +45,40 @@ if(INSTALL_AVDECC_EXAMPLES)
 	install(TARGETS NetworkInterfacesEnumeratorCxx RUNTIME CONFIGURATIONS Release DESTINATION bin)
 endif()
 
+# C bindings examples
+if(BUILD_AVDECC_BINDINGS_C)
+	# Network interfaces enumerator using la_avdecc_c
+	add_executable(NetworkInterfacesEnumeratorC networkInterfacesEnumerator.c)
+	set_target_properties(NetworkInterfacesEnumeratorC PROPERTIES FOLDER "Examples")
+	# Using avdecc C library
+	target_link_libraries(NetworkInterfacesEnumeratorC PRIVATE la_avdecc_c)
+	copy_runtime(NetworkInterfacesEnumeratorC la_avdecc_c)
+	# Setup common options
+	setup_executable_options(NetworkInterfacesEnumeratorC)
+	# Set installation rule
+	if(INSTALL_AVDECC_EXAMPLES)
+		install(TARGETS NetworkInterfacesEnumeratorC RUNTIME CONFIGURATIONS Release DESTINATION bin)
+	endif()
+
+	# C bindings Example (using c++ code)
+	add_executable(RawMessageSendC rawMessageSenderC.cpp utils.cpp utils.hpp)
+	set_target_properties(RawMessageSendC PROPERTIES FOLDER "Examples")
+	# Use C bindings in utils.cpp
+	target_compile_options(RawMessageSendC PRIVATE -DUSE_BINDINGS_C)
+	# Using avdecc library
+	target_link_libraries(RawMessageSendC PRIVATE la_avdecc_c)
+	copy_runtime(RawMessageSendC la_avdecc_c)
+	if(NOT WIN32)
+		target_link_libraries(RawMessageSendC PRIVATE ncurses)
+	endif()
+	# Setup common options
+	setup_executable_options(RawMessageSendC)
+	# Set installation rule
+	if(INSTALL_AVDECC_EXAMPLES)
+		install(TARGETS RawMessageSendC RUNTIME CONFIGURATIONS Release DESTINATION bin)
+	endif()
+endif()
+
 # Controller library examples
 if(BUILD_AVDECC_CONTROLLER)
 	# Discovery

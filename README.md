@@ -11,6 +11,7 @@ These libraries are written in pure C++17. They can be compiled on Windows, Linu
 These libraries have already been used indirectly in many musical events throughout the world to control all kinds of AVB entities ([list below](#compatibleEntities)). L-Acoustics' Network Manager 2.5 (and up) now relies on them for all its AVDECC functionalities in compliance to the Avnu Milan Specifications.
 
 Another benefit is the support of Apple’s native API, which allows control of the input and output AVB streams of a Mac from itself (which is not possible with the libraries using PCAP).
+Bindings to other languages are also provided, and will continue in the future.
 
 We use GitHub issues for tracking requests and bugs.
 
@@ -46,6 +47,10 @@ This is a simple library to create an AVDECC controller entity on the local comp
 The controller API has 2 interfaces:
 - An observer interface to monitor all changes on discovered entities
 - An interaction interface to send enumeration and control (AECP) or connection management (ACMP) requests to an entity
+
+## la_avdecc_c library
+
+C language bindings over la_avdecc library.
 
 ## Minimum requirements for compilation
 
@@ -118,7 +123,7 @@ The controller API has 2 interfaces:
 - Talker and Listener state machines (low level library)
 - Creation of a DiscoveryStateMachine so it can be used by Talker/Listener entities (moving code out of ControllerStateMachine)
 - Bindings libraries:
-  * C (public APIs only)
+  * C Controller (public APIs only)
   * Lua (public and private APIs)
 
 ## Contributing code
