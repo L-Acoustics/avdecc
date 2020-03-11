@@ -317,7 +317,7 @@ function(setup_executable_options TARGET_NAME)
 			# Directly use install rpath for app bundles, since we copy dylibs into the bundle during post build
 			set_target_properties(${TARGET_NAME} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
 			# For xcode automatic code signing to go deeply so all our dylibs are signed as well (will fail with xcode >= 11 otherwise)
-			set_target_properties(${TARGET_NAME} PROPERTIES XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS "--deep --force")
+			set_target_properties(${TARGET_NAME} PROPERTIES XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS "--deep --strict --force --options=runtime")
 			# Enable Hardened Runtime (required to notarize applications)
 			set_target_properties(${TARGET_NAME} PROPERTIES XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME YES)
 		else()
@@ -375,11 +375,11 @@ function(sign_target TARGET_NAME)
 		is_macos_bundle(${TARGET_NAME} isBundle)
 		if(${isBundle})
 			set(addTargetPath ".app")
-			# MacOS Catalina requires code signing all the time
+			# MacOS Catalina requires code signing even for local builds, so always sign
 			add_custom_command(
 				TARGET ${TARGET_NAME}
 				POST_BUILD
-				COMMAND codesign -s ${LA_TEAM_IDENTIFIER} --timestamp --deep --strict --force "$<TARGET_FILE_DIR:${TARGET_NAME}>/../.."
+				COMMAND codesign -s ${LA_TEAM_IDENTIFIER} --timestamp --deep --strict --force --options=runtime "$<TARGET_FILE_DIR:${TARGET_NAME}>/../.."
 				COMMENT "Signing Bundle ${TARGET_NAME} for easy debug"
 				VERBATIM
 			)
@@ -391,7 +391,7 @@ function(sign_target TARGET_NAME)
 			CODE "\
 				set(targetLocation \"${CMAKE_CURRENT_BINARY_DIR}/\${CMAKE_INSTALL_CONFIG_NAME}/${CMAKE_${targetType}_PREFIX}${TARGET_NAME}\${${TARGET_NAME}_\${CMAKE_INSTALL_CONFIG_NAME}_POSTFIX}${CMAKE_${targetType}_SUFFIX}${addTargetPath}\")\n\
 				execute_process(COMMAND \"${CMAKE_COMMAND}\" -E echo \"Signing ${TARGET_NAME}\")\n\
-				execute_process(COMMAND codesign -s \"${LA_TEAM_IDENTIFIER}\" --timestamp --deep --strict --force \"\${targetLocation}\")\n\
+				execute_process(COMMAND codesign -s \"${LA_TEAM_IDENTIFIER}\" --timestamp --deep --strict --force --options=runtime \"\${targetLocation}\")\n\
 		")
 	endif()
 
