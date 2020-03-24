@@ -72,21 +72,41 @@ function(force_symbols_file TARGET_NAME)
 	elseif(APPLE)
 		target_compile_options(${TARGET_NAME} PRIVATE -g)
 
-		if(${targetType} STREQUAL "STATIC_LIBRARY")
-			# macOS do not support dSYM file for static libraries
-			set_target_properties(${TARGET_NAME} PROPERTIES
-				XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT[variant=Debug] "dwarf"
-				XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT[variant=Release] "dwarf"
-				XCODE_ATTRIBUTE_DEPLOYMENT_POSTPROCESSING[variant=Debug] "NO"
-				XCODE_ATTRIBUTE_DEPLOYMENT_POSTPROCESSING[variant=Release] "NO"
-			)
+		if("${CMAKE_GENERATOR}" STREQUAL "Xcode")
+			if(${targetType} STREQUAL "STATIC_LIBRARY")
+				# macOS do not support dSYM file for static libraries
+				set_target_properties(${TARGET_NAME} PROPERTIES
+					XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT[variant=Debug] "dwarf"
+					XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT[variant=Release] "dwarf"
+					XCODE_ATTRIBUTE_DEPLOYMENT_POSTPROCESSING[variant=Debug] "NO"
+					XCODE_ATTRIBUTE_DEPLOYMENT_POSTPROCESSING[variant=Release] "NO"
+				)
+			else()
+				set_target_properties(${TARGET_NAME} PROPERTIES
+					XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT[variant=Debug] "dwarf-with-dsym"
+					XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT[variant=Release] "dwarf-with-dsym"
+					XCODE_ATTRIBUTE_DEPLOYMENT_POSTPROCESSING[variant=Debug] "YES"
+					XCODE_ATTRIBUTE_DEPLOYMENT_POSTPROCESSING[variant=Release] "YES"
+				)
+			endif()
 		else()
-			set_target_properties(${TARGET_NAME} PROPERTIES
-				XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT[variant=Debug] "dwarf-with-dsym"
-				XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT[variant=Release] "dwarf-with-dsym"
-				XCODE_ATTRIBUTE_DEPLOYMENT_POSTPROCESSING[variant=Debug] "YES"
-				XCODE_ATTRIBUTE_DEPLOYMENT_POSTPROCESSING[variant=Release] "YES"
-			)
+			# If not using Xcode, we have to do the dSYM/strip steps manually (but only for binary targets)
+			if(${targetType} STREQUAL "SHARED_LIBRARY" OR ${targetType} STREQUAL "EXECUTABLE")
+				add_custom_command(
+					TARGET ${TARGET_NAME}
+					POST_BUILD
+					COMMAND dsymutil "$<TARGET_FILE:${TARGET_NAME}>"
+					COMMENT "Extracting dSYM for ${TARGET_NAME}"
+					VERBATIM
+				)
+				add_custom_command(
+					TARGET ${TARGET_NAME}
+					POST_BUILD
+					COMMAND strip -x "$<TARGET_FILE:${TARGET_NAME}>"
+					COMMENT "Stripping symbols from ${TARGET_NAME}"
+					VERBATIM
+				)
+			endif()
 		endif()
 	endif()
 endfunction()
