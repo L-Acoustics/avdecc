@@ -300,8 +300,11 @@ function(setup_executable_options TARGET_NAME)
 	# Prevent visual studio deprecated warnings about CRT and Sockets
 	remove_vs_deprecated_warnings(${TARGET_NAME})
 	
-	# Add a postfix in debug mode
-	set_target_properties(${TARGET_NAME} PROPERTIES DEBUG_POSTFIX "-d")
+	# Add a postfix in debug mode (but only if not a macOS bundle as it is not supported and will cause error in other parts of the scripts)
+	is_macos_bundle(${TARGET_NAME} isBundle)
+	if(NOT ${isBundle})
+		set_target_properties(${TARGET_NAME} PROPERTIES DEBUG_POSTFIX "-d")
+	endif()
 
 	# Set target properties
 	setup_bundle_information(${TARGET_NAME})
@@ -311,7 +314,6 @@ function(setup_executable_options TARGET_NAME)
 
 	# Set rpath for macOS
 	if(APPLE)
-		is_macos_bundle(${TARGET_NAME} isBundle)
 		if(${isBundle})
 			set_target_properties(${TARGET_NAME} PROPERTIES INSTALL_RPATH "@executable_path/../Frameworks")
 			# Directly use install rpath for app bundles, since we copy dylibs into the bundle during post build
