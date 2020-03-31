@@ -36,11 +36,12 @@
 #	define DL_OPEN(x) LoadLibrary(x)
 #	define DL_CLOSE(x) FreeLibrary(x)
 #	define DL_SYM(x, y) GetProcAddress((x), (y))
+#	define DL_ERROR() la_dlerror()
 #else
 #	include <dlfcn.h>
 #	include <signal.h>
 #	ifdef __APPLE__
-#		define PCAP_LIBRARY "libpcap.dylib"
+#		define PCAP_LIBRARY "/usr/lib/libpcap.dylib" /* Due to macOS hardened runtime, we have to specify the absolute path for the pcap library */
 #	else /* !__APPLE__ */
 #		define PCAP_LIBRARY "libpcap.so"
 #	endif /* __APPLE__ */
@@ -48,7 +49,43 @@
 #	define DL_OPEN(x) dlopen((x), RTLD_LAZY)
 #	define DL_CLOSE(x) dlclose(x)
 #	define DL_SYM(x, y) dlsym((x), (y))
+#	define DL_ERROR() dlerror()
 #endif
+
+#ifdef _WIN32
+static std::string wideCharToUTF8(PWCHAR const wide) noexcept
+{
+	// All APIs calling this method have to provide a NULL-terminated PWCHAR
+	auto const wideLength = wcsnlen_s(wide, 1024); // Compute the size, in characters, of the wide string
+
+	if (wideLength != 0)
+	{
+		auto const sizeNeeded = WideCharToMultiByte(CP_UTF8, 0, wide, static_cast<int>(wideLength), nullptr, 0, nullptr, nullptr);
+		auto result = std::string(static_cast<std::string::size_type>(sizeNeeded), std::string::value_type{ 0 }); // Brace-initialization constructor prevents the use of {}
+
+		if (WideCharToMultiByte(CP_UTF8, 0, wide, static_cast<int>(wideLength), result.data(), sizeNeeded, nullptr, nullptr) > 0)
+		{
+			return result;
+		}
+	}
+
+	return {};
+}
+
+static std::string la_dlerror()
+{
+	constexpr auto ErrorMessageMaxLength = 512;
+	WCHAR errMessage[ErrorMessageMaxLength];
+
+	auto const errorCode = GetLastError();
+	if (FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, errorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), errMessage, ErrorMessageMaxLength, NULL) == 0)
+	{
+		return std::to_string(errorCode);
+	}
+
+	return wideCharToUTF8(errMessage);
+}
+#endif // _WIN32
 
 namespace la
 {
@@ -117,7 +154,7 @@ PcapInterface::PcapInterface()
 	}
 	else
 	{
-		auto const item = la::avdecc::logger::LogItemGeneric{ "Cannot load " PCAP_LIBRARY };
+		auto const item = la::avdecc::logger::LogItemGeneric{ std::string("Cannot load " PCAP_LIBRARY ": ") + std::string(DL_ERROR()) };
 		la::avdecc::logger::Logger::getInstance().logItem(la::avdecc::logger::Level::Error, &item);
 	}
 }
