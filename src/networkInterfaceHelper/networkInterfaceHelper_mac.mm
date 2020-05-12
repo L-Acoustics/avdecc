@@ -17,6 +17,11 @@
 * along with LA_avdecc.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/**
+* @file networkInterfaceHelper_mac.mm
+* @author Christophe Calmejane
+*/
+
 #include "networkInterfaceHelper_common.hpp"
 
 #ifndef _GNU_SOURCE
@@ -43,6 +48,7 @@
 #include <string>
 #include <mutex> // once
 #include <cstring> // memcpy
+#include <thread>
 
 #import <SystemConfiguration/SystemConfiguration.h>
 #import <Foundation/Foundation.h>
@@ -50,8 +56,10 @@
 // https://developer.apple.com/library/archive/documentation/Networking/Conceptual/SystemConfigFrameworks/
 // Command line tool: scutil
 #define DYNAMIC_STORE_NETWORK_STATE_STRING @"State:/Network/Interface/"
+#define DYNAMIC_STORE_NETWORK_SERVICE_STRING @"Setup:/Network/Service/"
 #define DYNAMIC_STORE_LINK_STRING @"/Link"
 #define DYNAMIC_STORE_IPV4_STRING @"/IPv4"
+#define DYNAMIC_STORE_INTERFACE_STRING @"/Interface"
 
 namespace la
 {
@@ -59,26 +67,90 @@ namespace avdecc
 {
 namespace networkInterface
 {
-Interface::Type getInterfaceType(struct ifaddrs const* const ifa, int const ifm_options)
+static auto s_notificationPort = IONotificationPortRef{ nullptr };
+static auto s_controllerMatchIterator = io_iterator_t{ 0 };
+static auto s_controllerTerminateIterator = io_iterator_t{ 0 };
+static auto s_storeRef = SCDynamicStoreRef{ nullptr };
+static auto s_thread = std::thread{};
+static auto s_threadRunLoopRef = CFRunLoopRef{ nullptr };
+
+/** NSString to std::string conversion */
+static std::string getStdString(NSString* const nsString) noexcept
 {
-	// Check for AWDL
-	if (strncmp(ifa->ifa_name, "awdl", 4) == 0)
-		return Interface::Type::AWDL;
+	return std::string{ [nsString UTF8String] };
+}
 
-	// Check for loopback
-	if ((ifa->ifa_flags & IFF_LOOPBACK) != 0)
-		return Interface::Type::Loopback;
+static bool getIsVirtualInterface(NSString* deviceName, Interface::Type const type) noexcept
+{
+	if (type == Interface::Type::Loopback)
+	{
+		return true;
+	}
 
-	// Check for WiFi
-	if (ifm_options & IFM_IEEE80211)
+	if ([deviceName hasPrefix:@"bridge"])
+	{
+		return true;
+	}
+
+	return false;
+}
+
+static Interface::Type getInterfaceType(NSString* hardware) noexcept
+{
+	if ([hardware isEqualToString:@"AirPort"])
+	{
 		return Interface::Type::WiFi;
+	}
 
 	// Check for Ethernet
-	if (ifm_options & IFM_ETHER)
+	if ([hardware isEqualToString:@"Ethernet"])
+	{
 		return Interface::Type::Ethernet;
+	}
 
 	// Not supported interface type
 	return Interface::Type::None;
+}
+
+static bool isInterfaceConnected(CFStringRef const linkStateKeyRef) noexcept
+{
+	auto isConnected = false;
+
+	auto const* const valueRef = SCDynamicStoreCopyValue(s_storeRef, linkStateKeyRef);
+	if (valueRef)
+	{
+		isConnected = [(NSString*)[(__bridge NSDictionary const*)valueRef valueForKey:@"Active"] boolValue];
+		CFRelease(valueRef);
+	}
+
+	return isConnected;
+}
+
+static Interface::IPAddressInfos getIPAddressInfo(CFStringRef const ipKeyRef) noexcept
+{
+	auto ipAddressInfos = Interface::IPAddressInfos{};
+
+	auto const* const valueRef = SCDynamicStoreCopyValue(s_storeRef, ipKeyRef);
+
+	// Still have IP addresses
+	if (valueRef)
+	{
+		auto* const addresses = (NSArray*)[(__bridge NSDictionary const*)valueRef valueForKey:@"Addresses"];
+		auto* const netmasks = (NSArray*)[(__bridge NSDictionary const*)valueRef valueForKey:@"SubnetMasks"];
+		if (LA_ASSERT_WITH_RET([addresses count] == [netmasks count], "Not the same count of addresses and netmasks"))
+		{
+			for (auto ipIndex = NSUInteger{ 0u }; ipIndex < [addresses count]; ++ipIndex)
+			{
+				auto* const address = (NSString*)[addresses objectAtIndex:ipIndex];
+				auto* const netmask = (NSString*)[netmasks objectAtIndex:ipIndex];
+				ipAddressInfos.push_back(IPAddressInfo{ IPAddress{ std::string{ [address UTF8String] } }, IPAddress{ std::string{ [netmask UTF8String] } } });
+			}
+		}
+
+		CFRelease(valueRef);
+	}
+
+	return ipAddressInfos;
 }
 
 void dynamicStoreChangedCallback(SCDynamicStoreRef store, CFArrayRef changedKeys, void* ctx)
@@ -97,49 +169,30 @@ void dynamicStoreChangedCallback(SCDynamicStoreRef store, CFArrayRef changedKeys
 				auto const prefixLength = [DYNAMIC_STORE_NETWORK_STATE_STRING length];
 				auto const suffixLength = [DYNAMIC_STORE_LINK_STRING length];
 				auto* interfaceName = [key substringWithRange:NSMakeRange(prefixLength, [key length] - prefixLength - suffixLength)];
-				auto const* const valueRef = SCDynamicStoreCopyValue(store, keyRef);
-				if (valueRef)
-				{
-					auto const isConnected = [(NSString*)[(__bridge NSDictionary const*)valueRef valueForKey:@"Active"] boolValue];
-					onConnectedStateChanged(std::string{ [interfaceName UTF8String] }, isConnected);
-					CFRelease(valueRef);
-				}
+
+				// Read value
+				auto const isConnected = isInterfaceConnected(keyRef);
+
+				// Notify
+				onConnectedStateChanged(std::string{ [interfaceName UTF8String] }, isConnected);
 			}
 			else if ([key hasSuffix:DYNAMIC_STORE_IPV4_STRING])
 			{
 				auto const prefixLength = [DYNAMIC_STORE_NETWORK_STATE_STRING length];
 				auto const suffixLength = [DYNAMIC_STORE_IPV4_STRING length];
 				auto* interfaceName = [key substringWithRange:NSMakeRange(prefixLength, [key length] - prefixLength - suffixLength)];
-				auto const* const valueRef = SCDynamicStoreCopyValue(store, keyRef);
-				if (valueRef)
-				{
-					auto ipAddressInfos = Interface::IPAddressInfos{};
-					auto* const addresses = (NSArray*)[(__bridge NSDictionary const*)valueRef valueForKey:@"Addresses"];
-					auto* const netmasks = (NSArray*)[(__bridge NSDictionary const*)valueRef valueForKey:@"SubnetMasks"];
-					if (LA_ASSERT_WITH_RET([addresses count] == [netmasks count], "Not the same count of addresses and netmasks"))
-					{
-						for (auto ipIndex = NSUInteger{ 0u }; ipIndex < [addresses count]; ++ipIndex)
-						{
-							auto* const address = (NSString*)[addresses objectAtIndex:ipIndex];
-							auto* const netmask = (NSString*)[netmasks objectAtIndex:ipIndex];
-							ipAddressInfos.push_back(IPAddressInfo{ IPAddress{ std::string{ [address UTF8String] } }, IPAddress{ std::string{ [netmask UTF8String] } } });
-						}
-					}
 
-					onIPAddressInfosChanged(std::string{ [interfaceName UTF8String] }, std::move(ipAddressInfos));
-					CFRelease(valueRef);
-				}
-				else
-				{
-					// No more IPs
-					onIPAddressInfosChanged(std::string{ [interfaceName UTF8String] }, Interface::IPAddressInfos{});
-				}
+				// Read IP addresses info
+				auto ipAddressInfos = getIPAddressInfo(keyRef);
+
+				// Notify
+				onIPAddressInfosChanged(std::string{ [interfaceName UTF8String] }, std::move(ipAddressInfos));
 			}
 		}
 	}
 }
 
-void refreshInterfaces(Interfaces& interfaces) noexcept
+static void setOtherFieldsFromIOCTL(Interfaces& interfaces) noexcept
 {
 	std::unique_ptr<struct ifaddrs, std::function<void(struct ifaddrs*)>> scopedIfa{ nullptr, [](struct ifaddrs* ptr)
 		{
@@ -168,119 +221,128 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 		if (ifa->ifa_addr == nullptr)
 			continue;
 
-		/* Per interface, we first receive a AF_LINK then any number of AF_INET* (one per IP address) */
 		int family = ifa->ifa_addr->sa_family;
 
 		/* For AF_LINK, get the mac and setup the interface struct */
 		if (family == AF_LINK)
 		{
-			la::avdecc::networkInterface::Interface interface;
-			interface.id = ifa->ifa_name;
-			interface.description = ifa->ifa_name;
-			interface.alias = ifa->ifa_name;
+			// Only process interfaces that have already been recorded
+			auto const intfcIt = interfaces.find(ifa->ifa_name);
+			if (intfcIt == interfaces.end())
+			{
+				continue;
+			}
+			auto& interface = intfcIt->second;
+
 			// Get media information
 			struct ifmediareq ifmr;
 			memset(&ifmr, 0, sizeof(ifmr));
 			strncpy(ifmr.ifm_name, ifa->ifa_name, sizeof(ifmr.ifm_name));
 			if (ioctl(sck, SIOCGIFMEDIA, &ifmr) != -1)
 			{
-				// Get media type
-				interface.type = getInterfaceType(ifa, ifmr.ifm_current);
-				if (interface.type != Interface::Type::None)
+				// Get the mac address contained in the AF_LINK specific data
+				auto sdl = reinterpret_cast<struct sockaddr_dl*>(ifa->ifa_addr);
+				if (sdl->sdl_alen == 6)
 				{
-					// Declared macOS interfaces are always enabled
-					interface.isEnabled = true;
-					// Check if interface is connected
-					interface.isConnected = (ifmr.ifm_status & IFM_ACTIVE) != 0;
-					// Is interface Virtual (TODO: Try to detect for other kinds)
-					interface.isVirtual = interface.type == Interface::Type::Loopback;
-					// Get the mac address contained in the AF_LINK specific data
-					auto sdl = reinterpret_cast<struct sockaddr_dl*>(ifa->ifa_addr);
-					if (sdl->sdl_alen == 6)
-					{
-						auto ptr = reinterpret_cast<unsigned char*>(LLADDR(sdl));
-						std::memcpy(interface.macAddress.data(), ptr, 6);
-					}
-					// Add the interface to the list
-					interfaces[ifa->ifa_name] = interface;
+					auto ptr = reinterpret_cast<unsigned char*>(LLADDR(sdl));
+					std::memcpy(interface.macAddress.data(), ptr, 6);
 				}
-			}
-		}
-		/* For an AF_INET* interface address, get the IP */
-		else if (family == AF_INET || family == AF_INET6)
-		{
-			if (family == AF_INET6) // Right now, we don't want ipv6 addresses
-				continue;
-
-			// Check if interface has been recorded from AF_LINK
-			auto intfcIt = interfaces.find(ifa->ifa_name);
-			if (intfcIt != interfaces.end())
-			{
-				auto& interface = intfcIt->second;
-
-				char host[NI_MAXHOST];
-				auto ret = getnameinfo(ifa->ifa_addr, (family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), host, sizeof(host) - 1, nullptr, 0, NI_NUMERICHOST);
-				if (ret != 0)
-				{
-					continue;
-				}
-				host[NI_MAXHOST - 1] = 0;
-
-				char mask[NI_MAXHOST];
-				ret = getnameinfo(ifa->ifa_netmask, (family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), mask, sizeof(mask) - 1, nullptr, 0, NI_NUMERICHOST);
-				if (ret != 0)
-				{
-					continue;
-				}
-				mask[NI_MAXHOST - 1] = 0;
-
-				// Add the IP address of that interface
-				interface.ipAddressInfos.emplace_back(IPAddressInfo{ IPAddress{ host }, IPAddress{ mask } });
 			}
 		}
 	}
 
 	// Release the socket
 	close(sck);
+}
 
-	// If we have a recent version of macOS, get the Interface localized display name
-	if (@available(macOS 10.14, *))
+
+void refreshInterfaces(Interfaces& interfaces) noexcept
+{
+	auto const serviceKeys = DYNAMIC_STORE_NETWORK_SERVICE_STRING @"[^/]+" DYNAMIC_STORE_INTERFACE_STRING;
+	auto const* const serviceKeysRef = static_cast<CFStringRef>(serviceKeys);
+	auto servicesArray = SCDynamicStoreCopyKeyList(s_storeRef, serviceKeysRef);
+	if (servicesArray)
 	{
-		// Get alias name for registered interfaces (using macOS native API)
-		auto const* const interfacesArrayRef = SCNetworkInterfaceCopyAll();
+		auto const count = CFArrayGetCount(servicesArray);
 
-		if (interfacesArrayRef)
+		for (auto index = CFIndex{ 0 }; index < count; ++index)
 		{
-			auto const count = CFArrayGetCount(interfacesArrayRef);
-
-			for (auto index = CFIndex{ 0 }; index < count; ++index)
+			auto const* const keyRef = static_cast<CFStringRef>(CFArrayGetValueAtIndex(servicesArray, index));
+			auto const* const valueRef = SCDynamicStoreCopyValue(s_storeRef, keyRef);
+			if (valueRef)
 			{
-				auto const* const interfaceRef = static_cast<SCNetworkInterfaceRef>(CFArrayGetValueAtIndex(interfacesArrayRef, index));
+				auto const* const valueDictRef = static_cast<CFDictionaryRef>(valueRef);
+				auto const* const valueDict = (__bridge NSDictionary const*)valueDictRef;
 
-				auto const* const bsdName = static_cast<CFStringRef>(SCNetworkInterfaceGetBSDName(interfaceRef));
-				if (!bsdName)
-				{
-					continue;
-				}
+				NSString* const deviceName = [valueDict objectForKey:@"DeviceName"];
+				NSString* const hardware = [valueDict objectForKey:@"Hardware"];
+				NSString* const description = [valueDict objectForKey:@"UserDefinedName"];
 
-				// Only process interfaces that has been recorded from AF_LINK
-				auto const intName = [(__bridge NSString*)bsdName UTF8String];
-				auto const intfcIt = interfaces.find(intName);
-				if (intfcIt == interfaces.end())
+				if (deviceName && hardware)
 				{
-					continue;
-				}
-				auto& interface = intfcIt->second;
+					auto interface = Interface{};
+					auto const interfaceID = getStdString(deviceName);
+					interface.id = interfaceID;
+					interface.type = getInterfaceType(hardware);
+					interface.description = getStdString(description);
 
-				// Get alias/description
-				auto const* const localizedRef = static_cast<CFStringRef>(SCNetworkInterfaceGetLocalizedDisplayName(interfaceRef));
-				if (localizedRef)
-				{
-					interface.description = [(__bridge NSString*)localizedRef UTF8String];
+					// TODO: Understand how to get the real user defined name (not sure why, as Settings is able to display it, the UserDefinedName key is present in /Library/Preferences/SystemConfiguration/preferences.plist under /Network/Service/<serverID>/UserDefinedName but not in DynamicStore)
 					interface.alias = interface.description + " (" + interface.id + ")";
+
+					// Declared macOS services are always enabled through DynamicStore (not sure why, as Settings is able to display disabled interfaces and the __INACTIVE__ value is set in /Library/Preferences/SystemConfiguration/preferences.plist)
+					interface.isEnabled = true;
+
+					// Check if interface is connected
+					{
+						auto const linkStateKey = [NSString stringWithFormat:DYNAMIC_STORE_NETWORK_STATE_STRING @"%@" DYNAMIC_STORE_LINK_STRING, deviceName];
+						auto const* const linkStateKeyRef = static_cast<CFStringRef>(linkStateKey);
+						interface.isConnected = isInterfaceConnected(linkStateKeyRef);
+					}
+
+					// Get IP Addresses info
+					{
+						auto const ipKey = [NSString stringWithFormat:DYNAMIC_STORE_NETWORK_STATE_STRING @"%@" DYNAMIC_STORE_IPV4_STRING, deviceName];
+						auto const* const ipKeyRef = static_cast<CFStringRef>(ipKey);
+						interface.ipAddressInfos = getIPAddressInfo(ipKeyRef);
+					}
+
+					// Is interface Virtual
+					interface.isVirtual = getIsVirtualInterface(deviceName, interface.type);
+
+					// Add the interface to the list
+					interfaces[interfaceID] = std::move(interface);
 				}
+				CFRelease(valueRef);
 			}
-			CFRelease(interfacesArrayRef);
+		}
+		CFRelease(servicesArray);
+	}
+
+	// Set other fields we couldn't retrieve
+	setOtherFieldsFromIOCTL(interfaces);
+
+	// Remove interfaces that are not complete
+	for (auto it = interfaces.begin(); it != interfaces.end(); /* Iterate inside the loop */)
+	{
+		auto& intfc = it->second;
+
+		auto isValidMacAddress = false;
+		for (auto const v : intfc.macAddress)
+		{
+			if (v != 0)
+			{
+				isValidMacAddress = true;
+				break;
+			}
+		}
+		if (intfc.type == Interface::Type::None || !isValidMacAddress)
+		{
+			// Remove from the list
+			it = interfaces.erase(it);
+		}
+		else
+		{
+			++it;
 		}
 	}
 }
@@ -296,11 +358,6 @@ void waitForFirstEnumeration() noexcept
 			onNewInterfacesList(std::move(newList));
 		});
 }
-
-static IONotificationPortRef s_notificationPort = nullptr;
-static io_iterator_t s_controllerMatchIterator = 0;
-static io_iterator_t s_controllerTerminateIterator = 0;
-static CFRunLoopSourceRef s_runLoopRef = nullptr;
 
 static void clearIterator(io_iterator_t iterator)
 {
@@ -324,7 +381,7 @@ static void onIONetworkControllerListChanged(void* refcon, io_iterator_t iterato
 
 void onFirstObserverRegistered() noexcept
 {
-	// Register for Added/Removed interfaces notification
+	// Register for Added/Removed interfaces notification (kernel events)
 	{
 		mach_port_t masterPort = 0;
 		IOMasterPort(mach_task_self(), &masterPort);
@@ -339,7 +396,7 @@ void onFirstObserverRegistered() noexcept
 		clearIterator(s_controllerTerminateIterator);
 	}
 
-	// Register for State change notification on all interfaces
+	// Register for State change notification on all interfaces (Dynamic Store events)
 	{
 		auto* scKeys = [[NSMutableArray alloc] init];
 #if !__has_feature(objc_arc)
@@ -350,13 +407,28 @@ void onFirstObserverRegistered() noexcept
 
 		/* Connect to the dynamic store */
 		auto ctx = SCDynamicStoreContext{ 0, NULL, NULL, NULL, NULL };
-		auto const store = SCDynamicStoreCreate(nullptr, CFSTR("networkInterfaceHelper"), dynamicStoreChangedCallback, &ctx);
+		s_storeRef = SCDynamicStoreCreate(nullptr, CFSTR("networkInterfaceHelper"), dynamicStoreChangedCallback, &ctx);
 
 		/* Start monitoring */
-		if (SCDynamicStoreSetNotificationKeys(store, nullptr, (__bridge CFArrayRef)scKeys))
+		if (SCDynamicStoreSetNotificationKeys(s_storeRef, nullptr, (__bridge CFArrayRef)scKeys))
 		{
-			s_runLoopRef = SCDynamicStoreCreateRunLoopSource(kCFAllocatorDefault, store, 0);
-			CFRunLoopAddSource(CFRunLoopGetCurrent(), s_runLoopRef, kCFRunLoopCommonModes);
+			s_thread = std::thread(
+				[]()
+				{
+					// Create a source for the thread's loop
+					auto const runLoopSourceRef = SCDynamicStoreCreateRunLoopSource(kCFAllocatorDefault, s_storeRef, 0);
+
+					// Add a source to the thread's loop, so it has something to do
+					s_threadRunLoopRef = CFRunLoopGetCurrent();
+					CFRunLoopAddSource(s_threadRunLoopRef, runLoopSourceRef, kCFRunLoopCommonModes);
+
+					// Run the thread's loop, until stopped
+					CFRunLoopRun();
+
+					// Cleanup
+					CFRelease(runLoopSourceRef);
+					s_threadRunLoopRef = nullptr;
+				});
 		}
 	}
 }
@@ -379,12 +451,21 @@ void onLastObserverUnregistered() noexcept
 		IONotificationPortDestroy(s_notificationPort);
 	}
 
-	// Clean up run loop
-	if (s_runLoopRef)
+	// Stop the thread
+	if (s_thread.joinable())
 	{
-		CFRunLoopSourceInvalidate(s_runLoopRef);
-		CFRelease(s_runLoopRef);
-		s_runLoopRef = nullptr;
+		// Stop the thread's run loop
+		CFRunLoopStop(s_threadRunLoopRef);
+
+		// Wait for the thread to complete its pending tasks
+		s_thread.join();
+	}
+
+	// Release the dynamic store
+	if (s_storeRef)
+	{
+		CFRelease(s_storeRef);
+		s_storeRef = nullptr;
 	}
 }
 
