@@ -47,8 +47,11 @@
 #import <SystemConfiguration/SystemConfiguration.h>
 #import <Foundation/Foundation.h>
 
+// https://developer.apple.com/library/archive/documentation/Networking/Conceptual/SystemConfigFrameworks/
+// Command line tool: scutil
 #define DYNAMIC_STORE_NETWORK_STATE_STRING @"State:/Network/Interface/"
 #define DYNAMIC_STORE_LINK_STRING @"/Link"
+#define DYNAMIC_STORE_IPV4_STRING @"/IPv4"
 
 namespace la
 {
@@ -78,7 +81,7 @@ Interface::Type getInterfaceType(struct ifaddrs const* const ifa, int const ifm_
 	return Interface::Type::None;
 }
 
-void interfaceLinkStatusChanged(SCDynamicStoreRef store, CFArrayRef changedKeys, void* ctx)
+void dynamicStoreChangedCallback(SCDynamicStoreRef store, CFArrayRef changedKeys, void* ctx)
 {
 	auto const count = CFArrayGetCount(changedKeys);
 
@@ -89,15 +92,48 @@ void interfaceLinkStatusChanged(SCDynamicStoreRef store, CFArrayRef changedKeys,
 
 		if ([key hasPrefix:DYNAMIC_STORE_NETWORK_STATE_STRING])
 		{
-			auto const prefixLength = [DYNAMIC_STORE_NETWORK_STATE_STRING length];
-			auto const suffixLength = [DYNAMIC_STORE_LINK_STRING length];
-			auto* interfaceName = [key substringWithRange:NSMakeRange(prefixLength, [key length] - prefixLength - suffixLength)];
-			auto const* const valueRef = SCDynamicStoreCopyValue(store, keyRef);
-			if (valueRef)
+			if ([key hasSuffix:DYNAMIC_STORE_LINK_STRING])
 			{
-				auto const isConnected = [(NSString*)[(__bridge NSDictionary const*)valueRef valueForKey:@"Active"] boolValue];
-				onConnectedStateChanged(std::string{ [interfaceName UTF8String] }, isConnected);
-				CFRelease(valueRef);
+				auto const prefixLength = [DYNAMIC_STORE_NETWORK_STATE_STRING length];
+				auto const suffixLength = [DYNAMIC_STORE_LINK_STRING length];
+				auto* interfaceName = [key substringWithRange:NSMakeRange(prefixLength, [key length] - prefixLength - suffixLength)];
+				auto const* const valueRef = SCDynamicStoreCopyValue(store, keyRef);
+				if (valueRef)
+				{
+					auto const isConnected = [(NSString*)[(__bridge NSDictionary const*)valueRef valueForKey:@"Active"] boolValue];
+					onConnectedStateChanged(std::string{ [interfaceName UTF8String] }, isConnected);
+					CFRelease(valueRef);
+				}
+			}
+			else if ([key hasSuffix:DYNAMIC_STORE_IPV4_STRING])
+			{
+				auto const prefixLength = [DYNAMIC_STORE_NETWORK_STATE_STRING length];
+				auto const suffixLength = [DYNAMIC_STORE_IPV4_STRING length];
+				auto* interfaceName = [key substringWithRange:NSMakeRange(prefixLength, [key length] - prefixLength - suffixLength)];
+				auto const* const valueRef = SCDynamicStoreCopyValue(store, keyRef);
+				if (valueRef)
+				{
+					auto ipAddressInfos = Interface::IPAddressInfos{};
+					auto* const addresses = (NSArray*)[(__bridge NSDictionary const*)valueRef valueForKey:@"Addresses"];
+					auto* const netmasks = (NSArray*)[(__bridge NSDictionary const*)valueRef valueForKey:@"SubnetMasks"];
+					if (LA_ASSERT_WITH_RET([addresses count] == [netmasks count], "Not the same count of addresses and netmasks"))
+					{
+						for (auto ipIndex = NSUInteger{ 0u }; ipIndex < [addresses count]; ++ipIndex)
+						{
+							auto* const address = (NSString*)[addresses objectAtIndex:ipIndex];
+							auto* const netmask = (NSString*)[netmasks objectAtIndex:ipIndex];
+							ipAddressInfos.push_back(IPAddressInfo{ IPAddress{ std::string{ [address UTF8String] } }, IPAddress{ std::string{ [netmask UTF8String] } } });
+						}
+					}
+
+					onIPAddressInfosChanged(std::string{ [interfaceName UTF8String] }, std::move(ipAddressInfos));
+					CFRelease(valueRef);
+				}
+				else
+				{
+					// No more IPs
+					onIPAddressInfosChanged(std::string{ [interfaceName UTF8String] }, Interface::IPAddressInfos{});
+				}
 			}
 		}
 	}
@@ -309,11 +345,12 @@ void onFirstObserverRegistered() noexcept
 #if !__has_feature(objc_arc)
 		[scKeys autorelease];
 #endif
-		[scKeys addObject:DYNAMIC_STORE_NETWORK_STATE_STRING @"[^\\]+" DYNAMIC_STORE_LINK_STRING];
+		[scKeys addObject:DYNAMIC_STORE_NETWORK_STATE_STRING @"[^/]+" DYNAMIC_STORE_LINK_STRING]; // Monitor changes in the Link State
+		[scKeys addObject:DYNAMIC_STORE_NETWORK_STATE_STRING @"[^/]+" DYNAMIC_STORE_IPV4_STRING]; // Monitor changes in the IPv4 configuration
 
 		/* Connect to the dynamic store */
 		auto ctx = SCDynamicStoreContext{ 0, NULL, NULL, NULL, NULL };
-		auto const store = SCDynamicStoreCreate(nullptr, CFSTR("networkInterfaceHelper"), interfaceLinkStatusChanged, &ctx);
+		auto const store = SCDynamicStoreCreate(nullptr, CFSTR("networkInterfaceHelper"), dynamicStoreChangedCallback, &ctx);
 
 		/* Start monitoring */
 		if (SCDynamicStoreSetNotificationKeys(store, nullptr, (__bridge CFArrayRef)scKeys))

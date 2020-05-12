@@ -66,29 +66,36 @@ int displayInterfaces()
 	la::avdecc::networkInterface::enumerateInterfaces(
 		[&intNum](la::avdecc::networkInterface::Interface const& intfc) noexcept
 		{
-			std::cout << intNum << ": " << intfc.id << std::endl;
-			std::cout << "  Description:  " << intfc.description << std::endl;
-			std::cout << "  Alias:        " << intfc.alias << std::endl;
-			std::cout << "  MacAddress:   " << intfc.macAddress << std::endl;
-			std::cout << "  Type:         " << intfc.type << std::endl;
-			std::cout << "  Enabled:      " << (intfc.isEnabled ? "YES" : "NO") << std::endl;
-			std::cout << "  Connected:    " << (intfc.isConnected ? "YES" : "NO") << std::endl;
-			std::cout << "  Virtual:      " << (intfc.isVirtual ? "YES" : "NO") << std::endl;
-			if (!intfc.ipAddressInfos.empty())
+			try
 			{
-				std::cout << "  IP Addresses: " << std::endl;
-				for (auto const& info : intfc.ipAddressInfos)
+				std::cout << intNum << ": " << intfc.id << std::endl;
+				std::cout << "  Description:  " << intfc.description << std::endl;
+				std::cout << "  Alias:        " << intfc.alias << std::endl;
+				std::cout << "  MacAddress:   " << intfc.macAddress << std::endl;
+				std::cout << "  Type:         " << intfc.type << std::endl;
+				std::cout << "  Enabled:      " << (intfc.isEnabled ? "YES" : "NO") << std::endl;
+				std::cout << "  Connected:    " << (intfc.isConnected ? "YES" : "NO") << std::endl;
+				std::cout << "  Virtual:      " << (intfc.isVirtual ? "YES" : "NO") << std::endl;
+				if (!intfc.ipAddressInfos.empty())
 				{
-					std::cout << "    " << static_cast<std::string>(info.address) << " (" << static_cast<std::string>(info.netmask) << ") -> " << static_cast<std::string>(info.getNetworkBaseAddress()) << " / " << static_cast<std::string>(info.getBroadcastAddress()) << std::endl;
+					std::cout << "  IP Addresses: " << std::endl;
+					for (auto const& info : intfc.ipAddressInfos)
+					{
+						std::cout << "    " << static_cast<std::string>(info.address) << " (" << static_cast<std::string>(info.netmask) << ") -> " << static_cast<std::string>(info.getNetworkBaseAddress()) << " / " << static_cast<std::string>(info.getBroadcastAddress()) << std::endl;
+					}
+				}
+				if (!intfc.gateways.empty())
+				{
+					std::cout << "  Gateways:     " << std::endl;
+					for (auto const& ip : intfc.gateways)
+					{
+						std::cout << "    " << static_cast<std::string>(ip) << std::endl;
+					}
 				}
 			}
-			if (!intfc.gateways.empty())
+			catch (std::exception const& e)
 			{
-				std::cout << "  Gateways:     " << std::endl;
-				for (auto const& ip : intfc.gateways)
-				{
-					std::cout << "    " << static_cast<std::string>(ip) << std::endl;
-				}
+				std::cout << "Got exception: " << e.what() << std::endl;
 			}
 
 			std::cout << std::endl;

@@ -53,6 +53,83 @@ void onNewInterfacesList(Interfaces&& interfaces) noexcept;
 void onEnabledStateChanged(std::string const& interfaceName, bool const isEnabled) noexcept;
 /** When the Connected state of an interface changed */
 void onConnectedStateChanged(std::string const& interfaceName, bool const isConnected) noexcept;
+/** When the Alias of an interface changed */
+void onAliasChanged(std::string const& interfaceName, std::string&& alias) noexcept;
+/** When the IPAddressInfos of an interface changed */
+void onIPAddressInfosChanged(std::string const& interfaceName, Interface::IPAddressInfos&& ipAddressInfos) noexcept;
+/** When the Gateways of an interface changed */
+void onGatewaysChanged(std::string const& interfaceName, Interface::Gateways&& gateways) noexcept;
+
+// Observer notifications
+void notifyEnabledStateChanged(Interface const& intfc, bool const isEnabled) noexcept;
+/** When the Connected state of an interface changed */
+void notifyConnectedStateChanged(Interface const& intfc, bool const isConnected) noexcept;
+/** When the Alias of an interface changed */
+void notifyAliasChanged(Interface const& intfc, std::string const& alias) noexcept;
+/** When the IPAddressInfos of an interface changed */
+void notifyIPAddressInfosChanged(Interface const& intfc, Interface::IPAddressInfos const& ipAddressInfos) noexcept;
+/** When the Gateways of an interface changed */
+void notifyGatewaysChanged(Interface const& intfc, Interface::Gateways const& gateways) noexcept;
+
+
+constexpr IPAddress::value_type_packed_v4 makePackedMaskV4(std::uint8_t const countBits) noexcept
+{
+	constexpr auto MaxBits = sizeof(IPAddress::value_type_packed_v4) * 8;
+	if (countBits >= MaxBits)
+	{
+		return ~IPAddress::value_type_packed_v4(0);
+	}
+	if (countBits == 0)
+	{
+		return IPAddress::value_type_packed_v4(0);
+	}
+	return ~IPAddress::value_type_packed_v4(0) << (MaxBits - countBits);
+}
+
+constexpr IPAddress::value_type_packed_v4 makePackedMaskV6(std::uint8_t const countBits) noexcept
+{
+#pragma message("TODO: Use value_type_packed_v6 instead of value_type_packed_v4")
+	constexpr auto MaxBits = sizeof(IPAddress::value_type_packed_v4) * 8;
+	if (countBits >= MaxBits)
+	{
+		return ~IPAddress::value_type_packed_v4(0);
+	}
+	if (countBits == 0)
+	{
+		return IPAddress::value_type_packed_v4(0);
+	}
+	return ~IPAddress::value_type_packed_v4(0) << (MaxBits - countBits);
+}
+
+static inline void validateNetmaskV4(IPAddress const& netmask)
+{
+	auto packed = netmask.getIPV4Packed();
+	auto maskStarted = false;
+	for (auto i = 0u; i < (sizeof(IPAddress::value_type_packed_v4) * 8); ++i)
+	{
+		auto const isSet = packed & 0x00000001;
+		// Bit is not set, check if mask was already started
+		if (!isSet)
+		{
+			// Already started
+			if (maskStarted)
+			{
+				throw std::invalid_argument("netmask is not contiguous");
+			}
+		}
+		// Bit is set, start the mask
+		else
+		{
+			maskStarted = true;
+		}
+		packed >>= 1;
+	}
+	// At least one bit must be set
+	if (!maskStarted)
+	{
+		throw std::invalid_argument("netmask cannot be empty");
+	}
+}
 
 } // namespace networkInterface
 } // namespace avdecc
