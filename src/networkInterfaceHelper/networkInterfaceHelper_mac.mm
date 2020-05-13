@@ -46,7 +46,7 @@
 #include <unordered_map>
 #include <memory>
 #include <string>
-#include <mutex> // once
+#include <mutex> // once, mutex
 #include <cstring> // memcpy
 #include <thread>
 
@@ -67,17 +67,72 @@ namespace avdecc
 {
 namespace networkInterface
 {
-static auto s_notificationPort = IONotificationPortRef{ nullptr };
-static auto s_controllerMatchIterator = io_iterator_t{ 0 };
-static auto s_controllerTerminateIterator = io_iterator_t{ 0 };
-static auto s_storeRef = SCDynamicStoreRef{ nullptr };
-static auto s_thread = std::thread{};
-static auto s_threadRunLoopRef = CFRunLoopRef{ nullptr };
+struct GlobalInformation
+{
+	IONotificationPortRef notificationPort{ nullptr };
+	io_iterator_t controllerMatchIterator{ 0 };
+	io_iterator_t controllerTerminateIterator{ 0 };
+	SCDynamicStoreRef storeRef{ nullptr };
+	std::thread thread{};
+	CFRunLoopRef threadRunLoopRef{ nullptr };
+	std::mutex lock{};
+	std::unordered_map<std::string, std::string> interfaceToServiceMapping{};
+};
+
+static auto s_global = GlobalInformation{};
+
+/** std::string to NSString conversion */
+static NSString* getNSString(std::string const& cString)
+{
+	return [NSString stringWithCString:cString.c_str() encoding:NSUTF8StringEncoding];
+}
 
 /** NSString to std::string conversion */
-static std::string getStdString(NSString* const nsString) noexcept
+static std::string getStdString(NSString const* const nsString) noexcept
 {
 	return std::string{ [nsString UTF8String] };
+}
+
+static void clearInterfaceToServiceMapping()
+{
+	auto const lg = std::lock_guard{ s_global.lock };
+
+	s_global.interfaceToServiceMapping.clear();
+}
+
+static void setInterfaceToServiceMapping(NSString const* const interfaceName, NSString const* const serviceID)
+{
+	auto const lg = std::lock_guard{ s_global.lock };
+
+	s_global.interfaceToServiceMapping[getStdString(interfaceName)] = getStdString(serviceID);
+}
+
+static NSString* getServiceForInterface(NSString const* const interfaceName)
+{
+	auto const lg = std::lock_guard{ s_global.lock };
+
+	if (auto const serviceIt = s_global.interfaceToServiceMapping.find(getStdString(interfaceName)); serviceIt != s_global.interfaceToServiceMapping.end())
+	{
+		return getNSString(serviceIt->second);
+	}
+
+	return nullptr;
+}
+
+static NSString* getInterfaceForService(NSString const* const serviceID)
+{
+	auto const lg = std::lock_guard{ s_global.lock };
+
+	auto const std_serviceID = getStdString(serviceID);
+	for (auto const& [interfaceName, servID] : s_global.interfaceToServiceMapping)
+	{
+		if (servID == std_serviceID)
+		{
+			return getNSString(interfaceName);
+		}
+	}
+
+	return nullptr;
 }
 
 static bool getIsVirtualInterface(NSString* deviceName, Interface::Type const type) noexcept
@@ -116,7 +171,7 @@ static bool isInterfaceConnected(CFStringRef const linkStateKeyRef) noexcept
 {
 	auto isConnected = false;
 
-	auto const* const valueRef = SCDynamicStoreCopyValue(s_storeRef, linkStateKeyRef);
+	auto const* const valueRef = SCDynamicStoreCopyValue(s_global.storeRef, linkStateKeyRef);
 	if (valueRef)
 	{
 		isConnected = [(NSString*)[(__bridge NSDictionary const*)valueRef valueForKey:@"Active"] boolValue];
@@ -126,23 +181,25 @@ static bool isInterfaceConnected(CFStringRef const linkStateKeyRef) noexcept
 	return isConnected;
 }
 
-static Interface::IPAddressInfos getIPAddressInfo(CFStringRef const ipKeyRef) noexcept
+static Interface::IPAddressInfos getIPAddressInfoFromKey(CFStringRef const ipKeyRef) noexcept
 {
 	auto ipAddressInfos = Interface::IPAddressInfos{};
 
-	auto const* const valueRef = SCDynamicStoreCopyValue(s_storeRef, ipKeyRef);
+	auto const* const valueRef = SCDynamicStoreCopyValue(s_global.storeRef, ipKeyRef);
 
 	// Still have IP addresses
 	if (valueRef)
 	{
 		auto* const addresses = (NSArray*)[(__bridge NSDictionary const*)valueRef valueForKey:@"Addresses"];
 		auto* const netmasks = (NSArray*)[(__bridge NSDictionary const*)valueRef valueForKey:@"SubnetMasks"];
-		if (LA_ASSERT_WITH_RET([addresses count] == [netmasks count], "Not the same count of addresses and netmasks"))
+		// Only parse if we have the same count of addresses and netmasks, or no masks at all
+		// (No netmasks is allowed in DHCP with manual IP)
+		if (netmasks == nullptr || [addresses count] == [netmasks count])
 		{
 			for (auto ipIndex = NSUInteger{ 0u }; ipIndex < [addresses count]; ++ipIndex)
 			{
 				auto* const address = (NSString*)[addresses objectAtIndex:ipIndex];
-				auto* const netmask = (NSString*)[netmasks objectAtIndex:ipIndex];
+				auto* const netmask = netmasks == nullptr ? @"255.255.255.255" : (NSString*)[netmasks objectAtIndex:ipIndex];
 				ipAddressInfos.push_back(IPAddressInfo{ IPAddress{ std::string{ [address UTF8String] } }, IPAddress{ std::string{ [netmask UTF8String] } } });
 			}
 		}
@@ -151,6 +208,28 @@ static Interface::IPAddressInfos getIPAddressInfo(CFStringRef const ipKeyRef) no
 	}
 
 	return ipAddressInfos;
+}
+
+static Interface::IPAddressInfos getIPAddressInfo(NSString const* const interfaceName) noexcept
+{
+	auto ipInfos = Interface::IPAddressInfos{};
+
+	auto const ipKey = [NSString stringWithFormat:DYNAMIC_STORE_NETWORK_STATE_STRING @"%@" DYNAMIC_STORE_IPV4_STRING, interfaceName];
+	auto const* const ipKeyRef = static_cast<CFStringRef>(ipKey);
+	ipInfos = getIPAddressInfoFromKey(ipKeyRef);
+
+	// In case there is no cable or it was just plugged in we won't have any IPv4 information available in the State keys, so try to get it from the Setup keys
+	if (ipInfos.empty())
+	{
+		if (auto const serviceID = getServiceForInterface(interfaceName); serviceID != nullptr)
+		{
+			auto const ipKey = [NSString stringWithFormat:DYNAMIC_STORE_NETWORK_SERVICE_STRING @"%@" DYNAMIC_STORE_IPV4_STRING, serviceID];
+			auto const* const ipKeyRef = static_cast<CFStringRef>(ipKey);
+			ipInfos = getIPAddressInfoFromKey(ipKeyRef);
+		}
+	}
+
+	return ipInfos;
 }
 
 void dynamicStoreChangedCallback(SCDynamicStoreRef store, CFArrayRef changedKeys, void* ctx)
@@ -168,7 +247,7 @@ void dynamicStoreChangedCallback(SCDynamicStoreRef store, CFArrayRef changedKeys
 			{
 				auto const prefixLength = [DYNAMIC_STORE_NETWORK_STATE_STRING length];
 				auto const suffixLength = [DYNAMIC_STORE_LINK_STRING length];
-				auto* interfaceName = [key substringWithRange:NSMakeRange(prefixLength, [key length] - prefixLength - suffixLength)];
+				auto const* const interfaceName = [key substringWithRange:NSMakeRange(prefixLength, [key length] - prefixLength - suffixLength)];
 
 				// Read value
 				auto const isConnected = isInterfaceConnected(keyRef);
@@ -180,13 +259,32 @@ void dynamicStoreChangedCallback(SCDynamicStoreRef store, CFArrayRef changedKeys
 			{
 				auto const prefixLength = [DYNAMIC_STORE_NETWORK_STATE_STRING length];
 				auto const suffixLength = [DYNAMIC_STORE_IPV4_STRING length];
-				auto* interfaceName = [key substringWithRange:NSMakeRange(prefixLength, [key length] - prefixLength - suffixLength)];
+				auto const* const interfaceName = [key substringWithRange:NSMakeRange(prefixLength, [key length] - prefixLength - suffixLength)];
 
 				// Read IP addresses info
-				auto ipAddressInfos = getIPAddressInfo(keyRef);
+				auto ipAddressInfos = getIPAddressInfo(interfaceName);
 
 				// Notify
 				onIPAddressInfosChanged(std::string{ [interfaceName UTF8String] }, std::move(ipAddressInfos));
+			}
+		}
+		else if ([key hasPrefix:DYNAMIC_STORE_NETWORK_SERVICE_STRING])
+		{
+			if ([key hasSuffix:DYNAMIC_STORE_IPV4_STRING])
+			{
+				auto const prefixLength = [DYNAMIC_STORE_NETWORK_SERVICE_STRING length];
+				auto const suffixLength = [DYNAMIC_STORE_IPV4_STRING length];
+				auto const* const serviceID = [key substringWithRange:NSMakeRange(prefixLength, [key length] - prefixLength - suffixLength)];
+				auto const* const interfaceName = getInterfaceForService(serviceID);
+
+				if (interfaceName)
+				{
+					// Read IP addresses info
+					auto ipAddressInfos = getIPAddressInfo(interfaceName);
+
+					// Notify
+					onIPAddressInfosChanged(std::string{ [interfaceName UTF8String] }, std::move(ipAddressInfos));
+				}
 			}
 		}
 	}
@@ -255,12 +353,13 @@ static void setOtherFieldsFromIOCTL(Interfaces& interfaces) noexcept
 	close(sck);
 }
 
-
 void refreshInterfaces(Interfaces& interfaces) noexcept
 {
+	clearInterfaceToServiceMapping();
+
 	auto const serviceKeys = DYNAMIC_STORE_NETWORK_SERVICE_STRING @"[^/]+" DYNAMIC_STORE_INTERFACE_STRING;
 	auto const* const serviceKeysRef = static_cast<CFStringRef>(serviceKeys);
-	auto servicesArray = SCDynamicStoreCopyKeyList(s_storeRef, serviceKeysRef);
+	auto servicesArray = SCDynamicStoreCopyKeyList(s_global.storeRef, serviceKeysRef);
 	if (servicesArray)
 	{
 		auto const count = CFArrayGetCount(servicesArray);
@@ -268,7 +367,7 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 		for (auto index = CFIndex{ 0 }; index < count; ++index)
 		{
 			auto const* const keyRef = static_cast<CFStringRef>(CFArrayGetValueAtIndex(servicesArray, index));
-			auto const* const valueRef = SCDynamicStoreCopyValue(s_storeRef, keyRef);
+			auto const* const valueRef = SCDynamicStoreCopyValue(s_global.storeRef, keyRef);
 			if (valueRef)
 			{
 				auto const* const valueDictRef = static_cast<CFDictionaryRef>(valueRef);
@@ -280,6 +379,12 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 
 				if (deviceName && hardware)
 				{
+					auto const* const key = (__bridge NSString const*)keyRef;
+					auto const prefixLength = [DYNAMIC_STORE_NETWORK_SERVICE_STRING length];
+					auto const suffixLength = [DYNAMIC_STORE_INTERFACE_STRING length];
+					auto const* const serviceID = [key substringWithRange:NSMakeRange(prefixLength, [key length] - prefixLength - suffixLength)];
+					setInterfaceToServiceMapping(deviceName, serviceID);
+
 					auto interface = Interface{};
 					auto const interfaceID = getStdString(deviceName);
 					interface.id = interfaceID;
@@ -300,11 +405,7 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 					}
 
 					// Get IP Addresses info
-					{
-						auto const ipKey = [NSString stringWithFormat:DYNAMIC_STORE_NETWORK_STATE_STRING @"%@" DYNAMIC_STORE_IPV4_STRING, deviceName];
-						auto const* const ipKeyRef = static_cast<CFStringRef>(ipKey);
-						interface.ipAddressInfos = getIPAddressInfo(ipKeyRef);
-					}
+					interface.ipAddressInfos = getIPAddressInfo(deviceName);
 
 					// Is interface Virtual
 					interface.isVirtual = getIsVirtualInterface(deviceName, interface.type);
@@ -385,15 +486,15 @@ void onFirstObserverRegistered() noexcept
 	{
 		mach_port_t masterPort = 0;
 		IOMasterPort(mach_task_self(), &masterPort);
-		s_notificationPort = IONotificationPortCreate(masterPort);
-		IONotificationPortSetDispatchQueue(s_notificationPort, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0));
+		s_global.notificationPort = IONotificationPortCreate(masterPort);
+		IONotificationPortSetDispatchQueue(s_global.notificationPort, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0));
 
-		IOServiceAddMatchingNotification(s_notificationPort, kIOMatchedNotification, IOServiceMatching("IONetworkController"), onIONetworkControllerListChanged, nullptr, &s_controllerMatchIterator);
-		IOServiceAddMatchingNotification(s_notificationPort, kIOTerminatedNotification, IOServiceMatching("IONetworkController"), onIONetworkControllerListChanged, nullptr, &s_controllerTerminateIterator);
+		IOServiceAddMatchingNotification(s_global.notificationPort, kIOMatchedNotification, IOServiceMatching("IONetworkController"), onIONetworkControllerListChanged, nullptr, &s_global.controllerMatchIterator);
+		IOServiceAddMatchingNotification(s_global.notificationPort, kIOTerminatedNotification, IOServiceMatching("IONetworkController"), onIONetworkControllerListChanged, nullptr, &s_global.controllerTerminateIterator);
 
 		// Clear the iterators discarding already discovered adapters, we'll manually list them anyway
-		clearIterator(s_controllerMatchIterator);
-		clearIterator(s_controllerTerminateIterator);
+		clearIterator(s_global.controllerMatchIterator);
+		clearIterator(s_global.controllerTerminateIterator);
 	}
 
 	// Register for State change notification on all interfaces (Dynamic Store events)
@@ -403,31 +504,32 @@ void onFirstObserverRegistered() noexcept
 		[scKeys autorelease];
 #endif
 		[scKeys addObject:DYNAMIC_STORE_NETWORK_STATE_STRING @"[^/]+" DYNAMIC_STORE_LINK_STRING]; // Monitor changes in the Link State
-		[scKeys addObject:DYNAMIC_STORE_NETWORK_STATE_STRING @"[^/]+" DYNAMIC_STORE_IPV4_STRING]; // Monitor changes in the IPv4 configuration
+		[scKeys addObject:DYNAMIC_STORE_NETWORK_STATE_STRING @"[^/]+" DYNAMIC_STORE_IPV4_STRING]; // Monitor changes in the IPv4 State
+		[scKeys addObject:DYNAMIC_STORE_NETWORK_SERVICE_STRING @"[^/]+" DYNAMIC_STORE_IPV4_STRING]; // Monitor changes in the IPv4 Setup
 
 		/* Connect to the dynamic store */
 		auto ctx = SCDynamicStoreContext{ 0, NULL, NULL, NULL, NULL };
-		s_storeRef = SCDynamicStoreCreate(nullptr, CFSTR("networkInterfaceHelper"), dynamicStoreChangedCallback, &ctx);
+		s_global.storeRef = SCDynamicStoreCreate(nullptr, CFSTR("networkInterfaceHelper"), dynamicStoreChangedCallback, &ctx);
 
 		/* Start monitoring */
-		if (SCDynamicStoreSetNotificationKeys(s_storeRef, nullptr, (__bridge CFArrayRef)scKeys))
+		if (SCDynamicStoreSetNotificationKeys(s_global.storeRef, nullptr, (__bridge CFArrayRef)scKeys))
 		{
-			s_thread = std::thread(
+			s_global.thread = std::thread(
 				[]()
 				{
 					// Create a source for the thread's loop
-					auto const runLoopSourceRef = SCDynamicStoreCreateRunLoopSource(kCFAllocatorDefault, s_storeRef, 0);
+					auto const runLoopSourceRef = SCDynamicStoreCreateRunLoopSource(kCFAllocatorDefault, s_global.storeRef, 0);
 
 					// Add a source to the thread's loop, so it has something to do
-					s_threadRunLoopRef = CFRunLoopGetCurrent();
-					CFRunLoopAddSource(s_threadRunLoopRef, runLoopSourceRef, kCFRunLoopCommonModes);
+					s_global.threadRunLoopRef = CFRunLoopGetCurrent();
+					CFRunLoopAddSource(s_global.threadRunLoopRef, runLoopSourceRef, kCFRunLoopCommonModes);
 
 					// Run the thread's loop, until stopped
 					CFRunLoopRun();
 
 					// Cleanup
 					CFRelease(runLoopSourceRef);
-					s_threadRunLoopRef = nullptr;
+					s_global.threadRunLoopRef = nullptr;
 				});
 		}
 	}
@@ -436,36 +538,36 @@ void onFirstObserverRegistered() noexcept
 void onLastObserverUnregistered() noexcept
 {
 	//Clean up the IOKit code
-	if (s_controllerTerminateIterator)
+	if (s_global.controllerTerminateIterator)
 	{
-		IOObjectRelease(s_controllerTerminateIterator);
+		IOObjectRelease(s_global.controllerTerminateIterator);
 	}
 
-	if (s_controllerMatchIterator)
+	if (s_global.controllerMatchIterator)
 	{
-		IOObjectRelease(s_controllerMatchIterator);
+		IOObjectRelease(s_global.controllerMatchIterator);
 	}
 
-	if (s_notificationPort)
+	if (s_global.notificationPort)
 	{
-		IONotificationPortDestroy(s_notificationPort);
+		IONotificationPortDestroy(s_global.notificationPort);
 	}
 
 	// Stop the thread
-	if (s_thread.joinable())
+	if (s_global.thread.joinable())
 	{
 		// Stop the thread's run loop
-		CFRunLoopStop(s_threadRunLoopRef);
+		CFRunLoopStop(s_global.threadRunLoopRef);
 
 		// Wait for the thread to complete its pending tasks
-		s_thread.join();
+		s_global.thread.join();
 	}
 
 	// Release the dynamic store
-	if (s_storeRef)
+	if (s_global.storeRef)
 	{
-		CFRelease(s_storeRef);
-		s_storeRef = nullptr;
+		CFRelease(s_global.storeRef);
+		s_global.storeRef = nullptr;
 	}
 }
 
