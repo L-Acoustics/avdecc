@@ -204,13 +204,13 @@ private:
 
 	void testConstructionAndValue() const
 	{
-		TestBitfieldClasses const v1{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
-		TestBitfieldClasses const v2{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
-		TestBitfieldClasses const v3{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
-		TestBitfieldClasses const v4{ TestBitfieldClass::Implemented };
-		TestBitfieldClasses const v5{ TestBitfieldClass::Supported };
-		TestBitfieldClasses const v6{};
-		TestBitfieldClasses const v7{ TestBitfieldClass::Supported, TestBitfieldClass::Supported, TestBitfieldClass::Supported };
+		constexpr auto v1 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
+		constexpr auto v2 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
+		constexpr auto v3 = TestBitfieldClasses{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
+		constexpr auto v4 = TestBitfieldClasses{ TestBitfieldClass::Implemented };
+		constexpr auto v5 = TestBitfieldClasses{ TestBitfieldClass::Supported };
+		constexpr auto v6 = TestBitfieldClasses{};
+		constexpr auto v7 = TestBitfieldClasses{ TestBitfieldClass::Supported, TestBitfieldClass::Supported, TestBitfieldClass::Supported };
 
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v1.value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported), v2.value());
@@ -223,12 +223,11 @@ private:
 
 	void testAssign() const
 	{
-		TestBitfieldClasses v1_1{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
-		TestBitfieldClasses v1_2{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
-		TestBitfieldClasses v1_3{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
-		TestBitfieldClasses v2_1{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
-		TestBitfieldClasses v2_2{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
-		TestBitfieldClasses v3_1{};
+		auto v1_1 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
+		auto v1_2 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
+		auto v2_1 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
+		auto v2_2 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
+		auto v3_1 = TestBitfieldClasses{};
 
 		v1_1.assign(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented));
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented), v1_1.value());
@@ -246,12 +245,12 @@ private:
 
 	void testClear() const
 	{
-		TestBitfieldClasses v1{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported, TestBitfieldClass::Other };
-		TestBitfieldClasses v2{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
-		TestBitfieldClasses v3{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
-		TestBitfieldClasses v4{ TestBitfieldClass::Supported };
-		TestBitfieldClasses v5{ TestBitfieldClass::Other };
-		TestBitfieldClasses v6{};
+		auto v1 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported, TestBitfieldClass::Other };
+		auto v2 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
+		auto v3 = TestBitfieldClasses{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
+		auto v4 = TestBitfieldClasses{ TestBitfieldClass::Supported };
+		auto v5 = TestBitfieldClasses{ TestBitfieldClass::Other };
+		auto v6 = TestBitfieldClasses{};
 
 		v1.clear();
 		EXPECT_TRUE(v1.empty());
@@ -269,12 +268,12 @@ private:
 
 	void testEqualityOperator() const
 	{
-		TestBitfieldClasses const v1{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
-		TestBitfieldClasses const v2{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
-		TestBitfieldClasses const v3{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
-		TestBitfieldClasses const v4{ TestBitfieldClass::Implemented };
-		TestBitfieldClasses const v5{ TestBitfieldClass::Supported };
-		TestBitfieldClasses const v6{};
+		constexpr auto v1 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
+		constexpr auto v2 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
+		constexpr auto v3 = TestBitfieldClasses{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
+		constexpr auto v4 = TestBitfieldClasses{ TestBitfieldClass::Implemented };
+		constexpr auto v5 = TestBitfieldClasses{ TestBitfieldClass::Supported };
+		constexpr auto v6 = TestBitfieldClasses{};
 
 		EXPECT_TRUE((v1 == TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported }));
 		EXPECT_TRUE((v1 == TestBitfieldClasses{ TestBitfieldClass::NotSupported, TestBitfieldClass::Implemented, TestBitfieldClass::Supported }));
@@ -357,12 +356,12 @@ private:
 
 	void testDifferenceOperator() const
 	{
-		TestBitfieldClasses const v1{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
-		TestBitfieldClasses const v2{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
-		TestBitfieldClasses const v3{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
-		TestBitfieldClasses const v4{ TestBitfieldClass::Implemented };
-		TestBitfieldClasses const v5{ TestBitfieldClass::Supported };
-		TestBitfieldClasses const v6{};
+		constexpr auto v1 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
+		constexpr auto v2 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
+		constexpr auto v3 = TestBitfieldClasses{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
+		constexpr auto v4 = TestBitfieldClasses{ TestBitfieldClass::Implemented };
+		constexpr auto v5 = TestBitfieldClasses{ TestBitfieldClass::Supported };
+		constexpr auto v6 = TestBitfieldClasses{};
 
 		EXPECT_FALSE((v1 != TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported }));
 		EXPECT_FALSE((v1 != TestBitfieldClasses{ TestBitfieldClass::NotSupported, TestBitfieldClass::Implemented, TestBitfieldClass::Supported }));
@@ -445,12 +444,12 @@ private:
 
 	void testOrEqualOperator() const
 	{
-		TestBitfieldClasses const v1{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
-		TestBitfieldClasses const v2{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
-		TestBitfieldClasses const v3{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
-		TestBitfieldClasses const v4{ TestBitfieldClass::Implemented };
-		TestBitfieldClasses const v5{ TestBitfieldClass::Supported };
-		TestBitfieldClasses const v6{};
+		constexpr auto v1 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
+		constexpr auto v2 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
+		constexpr auto v3 = TestBitfieldClasses{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
+		constexpr auto v4 = TestBitfieldClasses{ TestBitfieldClass::Implemented };
+		constexpr auto v5 = TestBitfieldClasses{ TestBitfieldClass::Supported };
+		constexpr auto v6 = TestBitfieldClasses{};
 
 		{
 			auto v = v1;
@@ -490,11 +489,11 @@ private:
 
 	void testAndEqualOperator() const
 	{
-		TestBitfieldClasses const v1{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
-		TestBitfieldClasses const v2{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
-		TestBitfieldClasses const v3{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
-		TestBitfieldClasses const v4{ TestBitfieldClass::Implemented };
-		TestBitfieldClasses const v5{ TestBitfieldClass::Supported };
+		constexpr auto v1 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
+		constexpr auto v2 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
+		constexpr auto v3 = TestBitfieldClasses{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
+		constexpr auto v4 = TestBitfieldClasses{ TestBitfieldClass::Implemented };
+		constexpr auto v5 = TestBitfieldClasses{ TestBitfieldClass::Supported };
 
 		{
 			auto v = v1;
@@ -534,12 +533,12 @@ private:
 
 	void testOrOperator() const
 	{
-		TestBitfieldClasses const v1{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
-		TestBitfieldClasses const v2{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
-		TestBitfieldClasses const v3{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
-		TestBitfieldClasses const v4{ TestBitfieldClass::Implemented };
-		TestBitfieldClasses const v5{ TestBitfieldClass::Supported };
-		TestBitfieldClasses const v6{};
+		constexpr auto v1 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
+		constexpr auto v2 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
+		constexpr auto v3 = TestBitfieldClasses{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
+		constexpr auto v4 = TestBitfieldClasses{ TestBitfieldClass::Implemented };
+		constexpr auto v5 = TestBitfieldClasses{ TestBitfieldClass::Supported };
+		constexpr auto v6 = TestBitfieldClasses{};
 
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), (v1 | v2).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), (v2 | v1).value());
@@ -553,11 +552,11 @@ private:
 
 	void testAndOperator() const
 	{
-		TestBitfieldClasses const v1{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
-		TestBitfieldClasses const v2{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
-		TestBitfieldClasses const v3{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
-		TestBitfieldClasses const v4{ TestBitfieldClass::Implemented };
-		TestBitfieldClasses const v5{ TestBitfieldClass::Supported };
+		constexpr auto v1 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
+		constexpr auto v2 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
+		constexpr auto v3 = TestBitfieldClasses{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
+		constexpr auto v4 = TestBitfieldClasses{ TestBitfieldClass::Implemented };
+		constexpr auto v5 = TestBitfieldClasses{ TestBitfieldClass::Supported };
 
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported), (v1 & v2).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported), (v2 & v1).value());
@@ -571,12 +570,12 @@ private:
 
 	void testTestBit() const
 	{
-		TestBitfieldClasses const v1{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
-		TestBitfieldClasses const v2{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
-		TestBitfieldClasses const v3{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
-		TestBitfieldClasses const v4{ TestBitfieldClass::Implemented };
-		TestBitfieldClasses const v5{ TestBitfieldClass::Supported };
-		TestBitfieldClasses const v6{};
+		constexpr auto v1 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
+		constexpr auto v2 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
+		constexpr auto v3 = TestBitfieldClasses{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
+		constexpr auto v4 = TestBitfieldClasses{ TestBitfieldClass::Implemented };
+		constexpr auto v5 = TestBitfieldClasses{ TestBitfieldClass::Supported };
+		constexpr auto v6 = TestBitfieldClasses{};
 
 		EXPECT_TRUE(v1.test(TestBitfieldClass::Implemented));
 		EXPECT_TRUE(v1.test(TestBitfieldClass::Supported));
@@ -605,12 +604,12 @@ private:
 
 	void testSetBit() const
 	{
-		TestBitfieldClasses v1{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
-		TestBitfieldClasses v2{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
-		TestBitfieldClasses v3{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
-		TestBitfieldClasses v4{ TestBitfieldClass::Implemented };
-		TestBitfieldClasses v5{ TestBitfieldClass::Supported };
-		TestBitfieldClasses v6{};
+		auto v1 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
+		auto v2 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
+		auto v3 = TestBitfieldClasses{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
+		auto v4 = TestBitfieldClasses{ TestBitfieldClass::Implemented };
+		auto v5 = TestBitfieldClasses{ TestBitfieldClass::Supported };
+		auto v6 = TestBitfieldClasses{};
 
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v1.set(TestBitfieldClass::Implemented).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Implemented) | la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v1.set(TestBitfieldClass::Supported).value());
@@ -639,12 +638,12 @@ private:
 
 	void testCount() const
 	{
-		TestBitfieldClasses v1{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
-		TestBitfieldClasses v2{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::Other };
-		TestBitfieldClasses v3{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
-		TestBitfieldClasses v4{ TestBitfieldClass::Implemented, TestBitfieldClass::Other };
-		TestBitfieldClasses v5{ TestBitfieldClass::Supported };
-		TestBitfieldClasses v6{};
+		constexpr auto v1 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
+		constexpr auto v2 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::Other };
+		constexpr auto v3 = TestBitfieldClasses{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
+		constexpr auto v4 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Other };
+		constexpr auto v5 = TestBitfieldClasses{ TestBitfieldClass::Supported };
+		constexpr auto v6 = TestBitfieldClasses{};
 
 		EXPECT_EQ(3u, v1.count());
 		EXPECT_EQ(3u, v2.count());
@@ -656,12 +655,12 @@ private:
 
 	void testSize() const
 	{
-		TestBitfieldClasses v1{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
-		TestBitfieldClasses v2{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
-		TestBitfieldClasses v3{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
-		TestBitfieldClasses v4{ TestBitfieldClass::Implemented };
-		TestBitfieldClasses v5{ TestBitfieldClass::Supported };
-		TestBitfieldClasses v6{};
+		constexpr auto v1 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
+		constexpr auto v2 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
+		constexpr auto v3 = TestBitfieldClasses{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
+		constexpr auto v4 = TestBitfieldClasses{ TestBitfieldClass::Implemented };
+		constexpr auto v5 = TestBitfieldClasses{ TestBitfieldClass::Supported };
+		constexpr auto v6 = TestBitfieldClasses{};
 
 		EXPECT_EQ(sizeof(std::underlying_type_t<TestBitfieldClass>) * 8u, v1.size());
 		EXPECT_EQ(sizeof(std::underlying_type_t<TestBitfieldClass>) * 8u, v2.size());
@@ -673,12 +672,12 @@ private:
 
 	void testEmpty() const
 	{
-		TestBitfieldClasses v1{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
-		TestBitfieldClasses v2{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
-		TestBitfieldClasses v3{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
-		TestBitfieldClasses v4{ TestBitfieldClass::Implemented };
-		TestBitfieldClasses v5{ TestBitfieldClass::Supported };
-		TestBitfieldClasses v6{};
+		constexpr auto v1 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
+		constexpr auto v2 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
+		constexpr auto v3 = TestBitfieldClasses{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
+		constexpr auto v4 = TestBitfieldClasses{ TestBitfieldClass::Implemented };
+		constexpr auto v5 = TestBitfieldClasses{ TestBitfieldClass::Supported };
+		constexpr auto v6 = TestBitfieldClasses{};
 
 		EXPECT_FALSE(v1.empty());
 		EXPECT_FALSE(v2.empty());
@@ -690,12 +689,12 @@ private:
 
 	void testResetBit() const
 	{
-		TestBitfieldClasses v1{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
-		TestBitfieldClasses v2{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
-		TestBitfieldClasses v3{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
-		TestBitfieldClasses v4{ TestBitfieldClass::Implemented };
-		TestBitfieldClasses v5{ TestBitfieldClass::Supported };
-		TestBitfieldClasses v6{};
+		auto v1 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
+		auto v2 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
+		auto v3 = TestBitfieldClasses{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
+		auto v4 = TestBitfieldClasses{ TestBitfieldClass::Implemented };
+		auto v5 = TestBitfieldClasses{ TestBitfieldClass::Supported };
+		auto v6 = TestBitfieldClasses{};
 
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::Supported) | la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v1.reset(TestBitfieldClass::Implemented).value());
 		EXPECT_EQ(la::avdecc::utils::to_integral(TestBitfieldClass::NotSupported), v1.reset(TestBitfieldClass::Supported).value());
@@ -724,8 +723,8 @@ private:
 
 	void testIterator() const
 	{
-		TestBitfieldClasses const v1{ TestBitfieldClass::NotSupported, TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::Other };
-		TestBitfieldClasses const v2{ TestBitfieldClass::NotSupported, TestBitfieldClass::Implemented };
+		constexpr auto v1 = TestBitfieldClasses{ TestBitfieldClass::NotSupported, TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::Other };
+		constexpr auto v2 = TestBitfieldClasses{ TestBitfieldClass::NotSupported, TestBitfieldClass::Implemented };
 
 		{
 			auto it = v1.begin();
@@ -778,12 +777,12 @@ private:
 
 	void testAt() const
 	{
-		TestBitfieldClasses const v1{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
-		TestBitfieldClasses const v2{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::Other };
-		TestBitfieldClasses const v3{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
-		TestBitfieldClasses const v4{ TestBitfieldClass::Implemented, TestBitfieldClass::Other };
-		TestBitfieldClasses const v5{ TestBitfieldClass::Supported };
-		TestBitfieldClasses const v6{};
+		constexpr auto v1 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
+		constexpr auto v2 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::Other };
+		constexpr auto v3 = TestBitfieldClasses{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
+		constexpr auto v4 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Other };
+		constexpr auto v5 = TestBitfieldClasses{ TestBitfieldClass::Supported };
+		constexpr auto v6 = TestBitfieldClasses{};
 
 		EXPECT_EQ(TestBitfieldClass::Implemented, v1.at(0));
 		EXPECT_EQ(TestBitfieldClass::Supported, v1.at(1));
@@ -827,9 +826,49 @@ private:
 		}
 	}
 
+	void testGetBitSetPosition() const
+	{
+		constexpr auto v1 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
+		constexpr auto v2 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::Other };
+		constexpr auto v3 = TestBitfieldClasses{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
+		constexpr auto v4 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Other };
+		constexpr auto v5 = TestBitfieldClasses{ TestBitfieldClass::Supported };
+		constexpr auto v6 = TestBitfieldClasses{};
+
+		EXPECT_EQ(0u, v1.getBitSetPosition(TestBitfieldClass::Implemented));
+		EXPECT_EQ(1u, v1.getBitSetPosition(TestBitfieldClass::Supported));
+		EXPECT_EQ(2u, v1.getBitSetPosition(TestBitfieldClass::NotSupported));
+		EXPECT_THROW(v1.getBitSetPosition(TestBitfieldClass::Other);, std::out_of_range);
+
+		EXPECT_EQ(0u, v2.getBitSetPosition(TestBitfieldClass::Implemented));
+		EXPECT_EQ(1u, v2.getBitSetPosition(TestBitfieldClass::Supported));
+		EXPECT_EQ(2u, v2.getBitSetPosition(TestBitfieldClass::Other));
+		EXPECT_THROW(v2.getBitSetPosition(TestBitfieldClass::NotSupported);, std::out_of_range);
+
+		EXPECT_EQ(0u, v3.getBitSetPosition(TestBitfieldClass::Supported));
+		EXPECT_EQ(1u, v3.getBitSetPosition(TestBitfieldClass::NotSupported));
+		EXPECT_THROW(v3.getBitSetPosition(TestBitfieldClass::Implemented);, std::out_of_range);
+		EXPECT_THROW(v3.getBitSetPosition(TestBitfieldClass::Other);, std::out_of_range);
+
+		EXPECT_EQ(0u, v4.getBitSetPosition(TestBitfieldClass::Implemented));
+		EXPECT_EQ(1u, v4.getBitSetPosition(TestBitfieldClass::Other));
+		EXPECT_THROW(v4.getBitSetPosition(TestBitfieldClass::Supported);, std::out_of_range);
+		EXPECT_THROW(v4.getBitSetPosition(TestBitfieldClass::NotSupported);, std::out_of_range);
+
+		EXPECT_EQ(0u, v5.getBitSetPosition(TestBitfieldClass::Supported));
+		EXPECT_THROW(v5.getBitSetPosition(TestBitfieldClass::Implemented);, std::out_of_range);
+		EXPECT_THROW(v5.getBitSetPosition(TestBitfieldClass::NotSupported);, std::out_of_range);
+		EXPECT_THROW(v5.getBitSetPosition(TestBitfieldClass::Other);, std::out_of_range);
+
+		EXPECT_THROW(v6.getBitSetPosition(TestBitfieldClass::Implemented);, std::out_of_range);
+		EXPECT_THROW(v6.getBitSetPosition(TestBitfieldClass::Supported);, std::out_of_range);
+		EXPECT_THROW(v6.getBitSetPosition(TestBitfieldClass::NotSupported);, std::out_of_range);
+		EXPECT_THROW(v6.getBitSetPosition(TestBitfieldClass::Other);, std::out_of_range);
+	}
+
 	void testGetPosition() const
 	{
-		EXPECT_THROW(TestBitfieldClasses::getPosition(static_cast<TestBitfieldClass>(3)), std::out_of_range);
+		EXPECT_THROW(TestBitfieldClasses::getPosition(static_cast<TestBitfieldClass>(3)), std::logic_error);
 		EXPECT_EQ(0u, TestBitfieldClasses::getPosition(TestBitfieldClass::Implemented));
 		EXPECT_EQ(3u, TestBitfieldClasses::getPosition(TestBitfieldClass::Supported));
 		EXPECT_EQ(5u, TestBitfieldClasses::getPosition(TestBitfieldClass::NotSupported));
@@ -838,12 +877,12 @@ private:
 
 	void testEnumerateBits() const
 	{
-		TestBitfieldClasses const v1{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
-		TestBitfieldClasses const v2{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
-		TestBitfieldClasses const v3{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
-		TestBitfieldClasses const v4{ TestBitfieldClass::Implemented };
-		TestBitfieldClasses const v5{ TestBitfieldClass::Supported };
-		TestBitfieldClasses const v6{};
+		constexpr auto v1 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported, TestBitfieldClass::NotSupported };
+		constexpr auto v2 = TestBitfieldClasses{ TestBitfieldClass::Implemented, TestBitfieldClass::Supported };
+		constexpr auto v3 = TestBitfieldClasses{ TestBitfieldClass::NotSupported, TestBitfieldClass::Supported };
+		constexpr auto v4 = TestBitfieldClasses{ TestBitfieldClass::Implemented };
+		constexpr auto v5 = TestBitfieldClasses{ TestBitfieldClass::Supported };
+		constexpr auto v6 = TestBitfieldClasses{};
 
 		// V1
 		{
@@ -945,6 +984,7 @@ public:
 		testResetBit();
 		testIterator();
 		testAt();
+		testGetBitSetPosition();
 		testGetPosition();
 		testEnumerateBits();
 		testMemoryFootprint();

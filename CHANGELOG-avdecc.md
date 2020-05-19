@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Improved la::avdecc::utils::EnumBitfield class to be fully constexpr
+
 ### Fixed
 - [macOS 10.14 fails to load libpcap](https://github.com/L-Acoustics/avdecc/issues/78)
 
