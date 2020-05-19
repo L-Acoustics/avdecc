@@ -23,7 +23,6 @@
 */
 
 #include "la/avdecc/utils.hpp"
-#include "la/avdecc/internals/endian.hpp"
 
 #include "networkInterfaceHelper_common.hpp"
 
@@ -221,6 +220,7 @@ void LA_AVDECC_CALL_CONVENTION unregisterObserver(NetworkInterfaceObserver* cons
 	}
 }
 
+// Notifications from OS-dependant implementation
 void onNewInterfacesList(Interfaces&& interfaces) noexcept
 {
 	auto const lg = std::lock_guard(s_Monitor);
@@ -271,11 +271,7 @@ void onEnabledStateChanged(std::string const& interfaceName, bool const isEnable
 		if (intfc.isEnabled != isEnabled)
 		{
 			intfc.isEnabled = isEnabled;
-			s_Monitor.notifyObservers<NetworkInterfaceObserver>(
-				[&intfc](auto* obs)
-				{
-					obs->onInterfaceEnabledStateChanged(intfc, intfc.isEnabled);
-				});
+			notifyEnabledStateChanged(intfc, intfc.isEnabled);
 		}
 	}
 }
@@ -292,13 +288,86 @@ void onConnectedStateChanged(std::string const& interfaceName, bool const isConn
 		if (intfc.isConnected != isConnected)
 		{
 			intfc.isConnected = isConnected;
-			s_Monitor.notifyObservers<NetworkInterfaceObserver>(
-				[&intfc](auto* obs)
-				{
-					obs->onInterfaceConnectedStateChanged(intfc, intfc.isConnected);
-				});
+			notifyConnectedStateChanged(intfc, intfc.isConnected);
 		}
 	}
+}
+
+void onAliasChanged(std::string const& interfaceName, std::string&& alias) noexcept
+{
+	auto const lg = std::lock_guard(s_Monitor);
+
+	// Search the interface matching the name
+	auto intfcIt = s_NetworkInterfaces.find(interfaceName);
+	if (intfcIt != s_NetworkInterfaces.end())
+	{
+		auto& intfc = intfcIt->second;
+		if (intfc.alias != alias)
+		{
+			intfc.alias = std::move(alias);
+			notifyAliasChanged(intfc, intfc.alias);
+		}
+	}
+}
+
+void onIPAddressInfosChanged(std::string const& interfaceName, Interface::IPAddressInfos&& ipAddressInfos) noexcept
+{
+	auto const lg = std::lock_guard(s_Monitor);
+
+	// Search the interface matching the name
+	auto intfcIt = s_NetworkInterfaces.find(interfaceName);
+	if (intfcIt != s_NetworkInterfaces.end())
+	{
+		auto& intfc = intfcIt->second;
+		if (intfc.ipAddressInfos != ipAddressInfos)
+		{
+			intfc.ipAddressInfos = std::move(ipAddressInfos);
+			notifyIPAddressInfosChanged(intfc, intfc.ipAddressInfos);
+		}
+	}
+}
+
+void onGatewaysChanged(std::string const& interfaceName, Interface::Gateways&& gateways) noexcept
+{
+	auto const lg = std::lock_guard(s_Monitor);
+
+	// Search the interface matching the name
+	auto intfcIt = s_NetworkInterfaces.find(interfaceName);
+	if (intfcIt != s_NetworkInterfaces.end())
+	{
+		auto& intfc = intfcIt->second;
+		if (intfc.gateways != gateways)
+		{
+			intfc.gateways = std::move(gateways);
+			notifyGatewaysChanged(intfc, intfc.gateways);
+		}
+	}
+}
+
+// Observer notifications
+void notifyEnabledStateChanged(Interface const& intfc, bool const isEnabled) noexcept
+{
+	s_Monitor.notifyObserversMethod<NetworkInterfaceObserver>(&NetworkInterfaceObserver::onInterfaceEnabledStateChanged, intfc, isEnabled);
+}
+
+void notifyConnectedStateChanged(Interface const& intfc, bool const isConnected) noexcept
+{
+	s_Monitor.notifyObserversMethod<NetworkInterfaceObserver>(&NetworkInterfaceObserver::onInterfaceConnectedStateChanged, intfc, isConnected);
+}
+
+void notifyAliasChanged(Interface const& intfc, std::string const& alias) noexcept
+{
+	s_Monitor.notifyObserversMethod<NetworkInterfaceObserver>(&NetworkInterfaceObserver::onInterfaceAliasChanged, intfc, alias);
+}
+
+void notifyIPAddressInfosChanged(Interface const& intfc, Interface::IPAddressInfos const& ipAddressInfos) noexcept
+{
+	s_Monitor.notifyObserversMethod<NetworkInterfaceObserver>(&NetworkInterfaceObserver::onInterfaceIPAddressInfosChanged, intfc, ipAddressInfos);
+}
+
+void notifyGatewaysChanged(Interface const& intfc, Interface::Gateways const& gateways) noexcept
+{
+	s_Monitor.notifyObserversMethod<NetworkInterfaceObserver>(&NetworkInterfaceObserver::onInterfaceGateWaysChanged, intfc, gateways);
 }
 
 /* ************************************************************ */
@@ -502,11 +571,7 @@ IPAddress operator+(IPAddress const& lhs, std::uint32_t const value)
 	switch (lhs._type)
 	{
 		case IPAddress::Type::V4:
-		{
-			auto v = endianSwap<Endianness::NetworkEndian, Endianness::HostEndian>(lhs.getIPV4Packed());
-			v += value;
-			return IPAddress{ endianSwap<Endianness::HostEndian, Endianness::NetworkEndian>(v) };
-		}
+			return IPAddress{ lhs.getIPV4Packed() + value };
 		case IPAddress::Type::V6:
 			throw std::invalid_argument("IPV6 not supported yet");
 		default:
@@ -519,11 +584,7 @@ IPAddress operator-(IPAddress const& lhs, std::uint32_t const value)
 	switch (lhs._type)
 	{
 		case IPAddress::Type::V4:
-		{
-			auto v = endianSwap<Endianness::NetworkEndian, Endianness::HostEndian>(lhs.getIPV4Packed());
-			v -= value;
-			return IPAddress{ endianSwap<Endianness::HostEndian, Endianness::NetworkEndian>(v) };
-		}
+			return IPAddress{ lhs.getIPV4Packed() - value };
 		case IPAddress::Type::V6:
 			throw std::invalid_argument("IPV6 not supported yet");
 		default:
@@ -536,12 +597,8 @@ IPAddress& operator++(IPAddress& lhs)
 	switch (lhs._type)
 	{
 		case IPAddress::Type::V4:
-		{
-			auto v = endianSwap<Endianness::NetworkEndian, Endianness::HostEndian>(lhs.getIPV4Packed());
-			++v;
-			lhs.setValue(endianSwap<Endianness::HostEndian, Endianness::NetworkEndian>(v));
+			lhs.setValue(lhs.getIPV4Packed() + 1);
 			break;
-		}
 		case IPAddress::Type::V6:
 			throw std::invalid_argument("IPV6 not supported yet");
 		default:
@@ -556,12 +613,8 @@ IPAddress& operator--(IPAddress& lhs)
 	switch (lhs._type)
 	{
 		case IPAddress::Type::V4:
-		{
-			auto v = endianSwap<Endianness::NetworkEndian, Endianness::HostEndian>(lhs.getIPV4Packed());
-			--v;
-			lhs.setValue(endianSwap<Endianness::HostEndian, Endianness::NetworkEndian>(v));
+			lhs.setValue(lhs.getIPV4Packed() - 1);
 			break;
-		}
 		case IPAddress::Type::V6:
 			throw std::invalid_argument("IPV6 not supported yet");
 		default:
@@ -576,9 +629,7 @@ IPAddress operator&(IPAddress const& lhs, IPAddress const& rhs)
 	switch (lhs._type)
 	{
 		case IPAddress::Type::V4:
-		{
 			return IPAddress{ lhs.getIPV4Packed() & rhs.getIPV4Packed() };
-		}
 		case IPAddress::Type::V6:
 			throw std::invalid_argument("IPV6 not supported yet");
 		default:
@@ -591,9 +642,7 @@ IPAddress operator|(IPAddress const& lhs, IPAddress const& rhs)
 	switch (lhs._type)
 	{
 		case IPAddress::Type::V4:
-		{
 			return IPAddress{ lhs.getIPV4Packed() | rhs.getIPV4Packed() };
-		}
 		case IPAddress::Type::V6:
 			throw std::invalid_argument("IPV6 not supported yet");
 		default:
@@ -605,10 +654,10 @@ IPAddress::value_type_packed_v4 IPAddress::pack(value_type_v4 const ipv4) noexce
 {
 	value_type_packed_v4 ip{ 0u };
 
-	ip |= ipv4[0];
-	ip |= ipv4[1] << 8;
-	ip |= ipv4[2] << 16;
-	ip |= ipv4[3] << 24;
+	ip |= ipv4[0] << 24;
+	ip |= ipv4[1] << 16;
+	ip |= ipv4[2] << 8;
+	ip |= ipv4[3];
 
 	return ip;
 }
@@ -617,10 +666,10 @@ IPAddress::value_type_v4 IPAddress::unpack(value_type_packed_v4 const ipv4) noex
 {
 	value_type_v4 ip{};
 
-	ip[0] = ipv4 & 0xFF;
-	ip[1] = (ipv4 >> 8) & 0xFF;
-	ip[2] = (ipv4 >> 16) & 0xFF;
-	ip[3] = (ipv4 >> 24) & 0xFF;
+	ip[0] = (ipv4 >> 24) & 0xFF;
+	ip[1] = (ipv4 >> 16) & 0xFF;
+	ip[2] = (ipv4 >> 8) & 0xFF;
+	ip[3] = ipv4 & 0xFF;
 
 	return ip;
 }
@@ -632,18 +681,16 @@ std::size_t IPAddress::hash::operator()(IPAddress const& ip) const
 	switch (ip._type)
 	{
 		case Type::V4:
-		{
-			for (auto const v : ip._ipv4)
-			{
-				h = h * 0x100 + v;
-			}
-		}
+			h = ip.getIPV4Packed();
+			break;
 		case Type::V6:
 		{
+			// TODO: Improve this hash
 			for (auto const v : ip._ipv6)
 			{
 				h = h * 0x10 + v;
 			}
+			break;
 		}
 		default:
 			break;
@@ -722,35 +769,8 @@ static void checkValidIPAddressInfo(IPAddress const& address, IPAddress const& n
 	switch (addressType)
 	{
 		case IPAddress::Type::V4:
-		{
-			auto packed = endianSwap<Endianness::NetworkEndian, Endianness::HostEndian>(netmask.getIPV4Packed());
-			auto maskStarted = false;
-			for (auto i = 0u; i < (sizeof(IPAddress::value_type_packed_v4) * 8); ++i)
-			{
-				auto const isSet = packed & 0x00000001;
-				// Bit is not set, check if mask was already started
-				if (!isSet)
-				{
-					// Already started
-					if (maskStarted)
-					{
-						throw std::invalid_argument("netmask is not contiguous");
-					}
-				}
-				// Bit is set, start the mask
-				else
-				{
-					maskStarted = true;
-				}
-				packed >>= 1;
-			}
-			// At least one bit must be set
-			if (!maskStarted)
-			{
-				throw std::invalid_argument("netmask cannot be empty");
-			}
+			validateNetmaskV4(netmask);
 			break;
-		}
 		case IPAddress::Type::V6:
 			throw std::invalid_argument("IPV6 not supported yet");
 		default:
@@ -816,8 +836,8 @@ bool IPAddressInfo::isPrivateNetworkAddress() const
 			constexpr auto PrivateClassCMask = IPAddress::value_type_packed_v4{ 0xFFFF0000 }; // 255.255.0.0
 
 			// Get the packed address and mask for easy comparison
-			auto const adrs = endianSwap<Endianness::NetworkEndian, Endianness::HostEndian>(address.getIPV4Packed());
-			auto const mask = endianSwap<Endianness::NetworkEndian, Endianness::HostEndian>(netmask.getIPV4Packed());
+			auto const adrs = address.getIPV4Packed();
+			auto const mask = netmask.getIPV4Packed();
 
 			// Check if the address is in any of the ranges
 			if (isInRange(PrivateClassAStart, PrivateClassAEnd, PrivateClassAMask, adrs, mask) || isInRange(PrivateClassBStart, PrivateClassBEnd, PrivateClassBMask, adrs, mask) || isInRange(PrivateClassCStart, PrivateClassCEnd, PrivateClassCMask, adrs, mask))

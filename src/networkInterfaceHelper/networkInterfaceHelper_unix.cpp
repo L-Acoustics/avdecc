@@ -208,11 +208,23 @@ void onFirstObserverRegistered() noexcept
 							auto const& newIntfc = newIntfcIt->second;
 							if (previousIntfc.isEnabled != newIntfc.isEnabled)
 							{
-								onEnabledStateChanged(name, newIntfc.isEnabled);
+								notifyEnabledStateChanged(newIntfc, newIntfc.isEnabled);
 							}
 							if (previousIntfc.isConnected != newIntfc.isConnected)
 							{
-								onConnectedStateChanged(name, newIntfc.isConnected);
+								notifyConnectedStateChanged(newIntfc, newIntfc.isConnected);
+							}
+							if (previousIntfc.alias != newIntfc.alias)
+							{
+								notifyAliasChanged(newIntfc, newIntfc.alias);
+							}
+							if (previousIntfc.ipAddressInfos != newIntfc.ipAddressInfos)
+							{
+								notifyIPAddressInfosChanged(newIntfc, newIntfc.ipAddressInfos);
+							}
+							if (previousIntfc.gateways != newIntfc.gateways)
+							{
+								notifyGatewaysChanged(newIntfc, newIntfc.gateways);
 							}
 						}
 					}

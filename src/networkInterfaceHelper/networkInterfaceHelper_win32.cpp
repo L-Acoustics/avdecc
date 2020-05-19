@@ -24,6 +24,8 @@
 
 #include "networkInterfaceHelper_common.hpp"
 
+//#include "la/avdecc/internals/endian.hpp"
+
 #include <memory>
 #include <cstdint> // std::uint8_t
 #include <cstring> // memcpy
@@ -60,25 +62,6 @@ namespace avdecc
 {
 namespace networkInterface
 {
-inline IPAddress::value_type_packed_v4 makePackedMaskV4(std::uint8_t CountBits) noexcept
-{
-	if (CountBits >= 32)
-	{
-		return IPAddress::value_type_packed_v4(-1);
-	}
-	return ~(~IPAddress::value_type_packed_v4(0) << CountBits);
-}
-
-inline IPAddress::value_type_packed_v4 makePackedMaskV6(std::uint8_t CountBits) noexcept
-{
-#pragma message("TODO: Use value_type_packed_v6")
-	if (CountBits >= 128)
-	{
-		return IPAddress::value_type_packed_v4(-1);
-	}
-	return ~(~IPAddress::value_type_packed_v4(0) << CountBits);
-}
-
 static std::string wideCharToUTF8(PWCHAR const wide) noexcept
 {
 	// All APIs calling this method have to provide a NULL-terminated PWCHAR
@@ -453,7 +436,7 @@ static bool refreshInterfaces_WMI(Interfaces& interfaces) noexcept
 				}
 				else
 				{
-					i.ipAddressInfos.push_back(IPAddressInfo{ IPAddress{ reinterpret_cast<struct sockaddr_in*>(ua->Address.lpSockaddr)->sin_addr.S_un.S_addr }, IPAddress{ makePackedMaskV4(ua->OnLinkPrefixLength) } });
+					i.ipAddressInfos.push_back(IPAddressInfo{ IPAddress{ endianSwap<Endianness::NetworkEndian, Endianness::HostEndian>(reinterpret_cast<struct sockaddr_in*>(ua->Address.lpSockaddr)->sin_addr.S_un.S_addr) }, IPAddress{ makePackedMaskV4(ua->OnLinkPrefixLength) } });
 				}
 			}
 
@@ -475,7 +458,7 @@ static bool refreshInterfaces_WMI(Interfaces& interfaces) noexcept
 				}
 				else
 				{
-					i.gateways.push_back(IPAddress{ reinterpret_cast<struct sockaddr_in*>(ga->Address.lpSockaddr)->sin_addr.S_un.S_addr });
+					i.gateways.push_back(IPAddress{ endianSwap<Endianness::NetworkEndian, Endianness::HostEndian>(reinterpret_cast<struct sockaddr_in*>(ga->Address.lpSockaddr)->sin_addr.S_un.S_addr) });
 				}
 			}
 		}
@@ -537,7 +520,7 @@ static void refreshInterfaces_WinAPI(Interfaces& interfaces) noexcept
 			}
 			else
 			{
-				i.ipAddressInfos.push_back(IPAddressInfo{ IPAddress{ reinterpret_cast<struct sockaddr_in*>(ua->Address.lpSockaddr)->sin_addr.S_un.S_addr }, IPAddress{ makePackedMaskV4(ua->OnLinkPrefixLength) } });
+				i.ipAddressInfos.push_back(IPAddressInfo{ IPAddress{ endianSwap<Endianness::NetworkEndian, Endianness::HostEndian>(reinterpret_cast<struct sockaddr_in*>(ua->Address.lpSockaddr)->sin_addr.S_un.S_addr) }, IPAddress{ makePackedMaskV4(ua->OnLinkPrefixLength) } });
 			}
 		}
 
@@ -559,7 +542,7 @@ static void refreshInterfaces_WinAPI(Interfaces& interfaces) noexcept
 			}
 			else
 			{
-				i.gateways.push_back(IPAddress{ reinterpret_cast<struct sockaddr_in*>(ga->Address.lpSockaddr)->sin_addr.S_un.S_addr });
+				i.gateways.push_back(IPAddress{ endianSwap<Endianness::NetworkEndian, Endianness::HostEndian>(reinterpret_cast<struct sockaddr_in*>(ga->Address.lpSockaddr)->sin_addr.S_un.S_addr) });
 			}
 		}
 
@@ -635,11 +618,23 @@ public:
 						auto const& newIntfc = newIntfcIt->second;
 						if (previousIntfc.isEnabled != newIntfc.isEnabled)
 						{
-							onEnabledStateChanged(name, newIntfc.isEnabled);
+							notifyEnabledStateChanged(newIntfc, newIntfc.isEnabled);
 						}
 						if (previousIntfc.isConnected != newIntfc.isConnected)
 						{
-							onConnectedStateChanged(name, newIntfc.isConnected);
+							notifyConnectedStateChanged(newIntfc, newIntfc.isConnected);
+						}
+						if (previousIntfc.alias != newIntfc.alias)
+						{
+							notifyAliasChanged(newIntfc, newIntfc.alias);
+						}
+						if (previousIntfc.ipAddressInfos != newIntfc.ipAddressInfos)
+						{
+							notifyIPAddressInfosChanged(newIntfc, newIntfc.ipAddressInfos);
+						}
+						if (previousIntfc.gateways != newIntfc.gateways)
+						{
+							notifyGatewaysChanged(newIntfc, newIntfc.gateways);
 						}
 					}
 				}
