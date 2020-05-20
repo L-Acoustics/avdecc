@@ -463,7 +463,7 @@ function(setup_deploy_runtime TARGET_NAME)
 	get_sign_command_options(SIGN_COMMAND_OPTIONS)
 
 	# cmakeUtils deploy runtime
-	cu_deploy_runtime_target(${ARGV} VCPKG_INSTALLED_PATH . ${SIGN_COMMAND_OPTIONS})
+	cu_deploy_runtime_target(${ARGV} ${SIGN_COMMAND_OPTIONS})
 
 	# Check for install and sign of the binary itself
 	cmake_parse_arguments(SDR "INSTALL;SIGN" "" "" ${ARGN})
