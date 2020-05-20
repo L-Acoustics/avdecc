@@ -1,5 +1,20 @@
 # Internal utility macros and functions for avdecc library
 
+# Avoid multi inclusion of this file (cannot use include_guard as multiple copies of this file are included from multiple places)
+if(LA_AVDECC_INTERNALS_INCLUDED)
+	return()
+endif()
+set(LA_AVDECC_INTERNALS_INCLUDED true)
+
+# Some global variables
+set(LA_ROOT_DIR "${PROJECT_SOURCE_DIR}") # Folder containing the main CMakeLists.txt for the repository including this file
+set(LA_TOP_LEVEL_BINARY_DIR "${PROJECT_BINARY_DIR}") # Folder containing the top level binary files (CMake root output folder)
+set(SIGNTOOL_TIMESTAMP_SERVER "http://timestamp.comodoca.com")
+set(CMAKE_MACROS_FOLDER "${CMAKE_CURRENT_LIST_DIR}")
+
+# Include TargetSetupDeploy script from cmakeUtils
+include(${CMAKE_CURRENT_LIST_DIR}/cmakeUtils/helpers/TargetSetupDeploy.cmake)
+
 ###############################################################################
 # Set parallel build
 # Sets the parallel build option for IDE that supports it
@@ -154,6 +169,22 @@ function(setup_symbols TARGET_NAME)
 endfunction()
 
 ###############################################################################
+# Setup Xcode automatic codesigning (required since Catalina).
+function(setup_xcode_codesigning TARGET_NAME)
+	# Set codesigning for macOS
+	if(APPLE)
+		if("${CMAKE_GENERATOR}" STREQUAL "Xcode")
+			# Force identity
+			set_target_properties(${TARGET_NAME} PROPERTIES XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "${LA_TEAM_IDENTIFIER}")
+			# For xcode code signing to go deeply so all our dylibs are signed as well (will fail with xcode >= 11 otherwise)
+			set_target_properties(${TARGET_NAME} PROPERTIES XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS "--deep --strict --force --options=runtime")
+			# Enable Hardened Runtime (required to notarize applications)
+			set_target_properties(${TARGET_NAME} PROPERTIES XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME YES)
+		endif()
+	endif()
+endfunction()
+
+###############################################################################
 # Set Precompiled Headers on a target
 function(set_precompiled_headers TARGET_NAME HEADER_NAME SOURCE_NAME)
 	if(CMAKE_HOST_WIN32 AND MSVC)
@@ -232,6 +263,9 @@ function(setup_library_options TARGET_NAME BASE_LIB_NAME)
 	# Add a postfix in debug mode
 	set_target_properties(${TARGET_NAME} PROPERTIES DEBUG_POSTFIX "-d")
 
+	# Set xcode automatic codesigning
+	setup_xcode_codesigning(${TARGET_NAME})
+
 	# Use cmake folders
 	set_target_properties(${TARGET_NAME} PROPERTIES FOLDER "Libraries")
 
@@ -254,31 +288,86 @@ function(setup_headers_install_rules FILES_LIST INCLUDE_ABSOLUTE_BASE_FOLDER)
 endfunction()
 
 ###############################################################################
-# Setup common install rules for a library target
-function(setup_library_install_rules TARGET_NAME)
+# Internal function
+function(get_sign_command_options OUT_VAR)
+	set(${OUT_VAR} SIGNTOOL_OPTIONS ${LA_SIGNTOOL_OPTIONS} /d \"${LA_COMPANY_NAME} ${PROJECT_NAME}\" CODESIGN_OPTIONS --timestamp --deep --strict --force --options=runtime CODESIGN_IDENTITY \"${LA_TEAM_IDENTIFIER}\" PARENT_SCOPE)
+endfunction()
+
+#
+function(setup_signing_command TARGET_NAME)
+	# Xcode already forces automatic signing, so only sign for the other cases
+	if(NOT "${CMAKE_GENERATOR}" STREQUAL "Xcode")
+		# Get signing options
+		get_sign_command_options(SIGN_COMMAND_OPTIONS)
+
+		# Expand options to individual parameters
+		string(REPLACE ";" " " SIGN_COMMAND_OPTIONS "${SIGN_COMMAND_OPTIONS}")
+
+		is_macos_bundle(${TARGET_NAME} isBundle)
+		if(${isBundle})
+			set(binary_path "$<TARGET_BUNDLE_DIR:${TARGET_NAME}>")
+		else()
+			set(binary_path "$<TARGET_FILE:${TARGET_NAME}>")
+		endif()
+
+		# Generate code-signing code
+		string(CONCAT CODESIGNING_CODE
+			"include(\"${CMAKE_MACROS_FOLDER}/cmakeUtils/helpers/SignBinary.cmake\")\n"
+			"cu_sign_binary(BINARY_PATH \"${binary_path}\" ${SIGN_COMMAND_OPTIONS})\n"
+		)
+		# Write to a cmake file
+		set(CODESIGN_SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/codesign_$<CONFIG>_${TARGET_NAME}.cmake)
+		file(GENERATE
+			OUTPUT ${CODESIGN_SCRIPT}
+			CONTENT ${CODESIGNING_CODE}
+		)
+		# Run the codesign script as POST_BUILD command on the target
+		add_custom_command(TARGET ${TARGET_NAME}
+			POST_BUILD
+			COMMAND ${CMAKE_COMMAND} -P ${CODESIGN_SCRIPT}
+			VERBATIM
+		)
+	endif()
+endfunction()
+
+###############################################################################
+# Setup install rules for a library target, as well a signing if specified
+# Optional parameters:
+#  - INSTALL -> Generate CMake install rules
+#  - SIGN -> Code sign (ignored for everything but SHARED_LIBRARY)
+function(setup_deploy_library TARGET_NAME)
 	# Get target type for specific options
 	get_target_property(targetType ${TARGET_NAME} TYPE)
 
-	# Static library install rules
-	if(${targetType} STREQUAL "STATIC_LIBRARY")
-		install(TARGETS ${TARGET_NAME} EXPORT ${TARGET_NAME} ARCHIVE DESTINATION lib)
-		install(EXPORT ${TARGET_NAME} DESTINATION cmake)
+	# Parse arguments
+	cmake_parse_arguments(SDL "INSTALL;SIGN" "" "" ${ARGN})
 
-	# Shared library install rules
-	elseif(${targetType} STREQUAL "SHARED_LIBRARY")
-		install(TARGETS ${TARGET_NAME} EXPORT ${TARGET_NAME} RUNTIME DESTINATION bin LIBRARY DESTINATION lib ARCHIVE DESTINATION lib)
-		install(EXPORT ${TARGET_NAME} DESTINATION cmake)
+	if(SDL_INSTALL)
+		# Static library install rules
+		if(${targetType} STREQUAL "STATIC_LIBRARY")
+			install(TARGETS ${TARGET_NAME} EXPORT ${TARGET_NAME} ARCHIVE DESTINATION lib)
+			install(EXPORT ${TARGET_NAME} DESTINATION cmake)
 
-	# Interface library install rules
-	elseif(${targetType} STREQUAL "INTERFACE_LIBRARY")
-		install(TARGETS ${TARGET_NAME} EXPORT ${TARGET_NAME})
-		install(EXPORT ${TARGET_NAME} DESTINATION cmake)
+		# Shared library install rules
+		elseif(${targetType} STREQUAL "SHARED_LIBRARY")
+			# Check for SIGN option
+			if(SDL_SIGN)
+				setup_signing_command(${TARGET_NAME})
+			endif()
 
-	# Unsupported target type
-	else()
-		message(FATAL_ERROR "Unsupported target type for setup_library_install_rules macro: ${targetType}")
+			install(TARGETS ${TARGET_NAME} EXPORT ${TARGET_NAME} RUNTIME DESTINATION bin LIBRARY DESTINATION lib ARCHIVE DESTINATION lib)
+			install(EXPORT ${TARGET_NAME} DESTINATION cmake)
+
+		# Interface library install rules
+		elseif(${targetType} STREQUAL "INTERFACE_LIBRARY")
+			install(TARGETS ${TARGET_NAME} EXPORT ${TARGET_NAME})
+			install(EXPORT ${TARGET_NAME} DESTINATION cmake)
+
+		# Unsupported target type
+		else()
+			message(FATAL_ERROR "Unsupported target type for setup_deploy_library macro: ${targetType}")
+		endif()
 	endif()
-
 endfunction()
 
 ###############################################################################
@@ -338,10 +427,6 @@ function(setup_executable_options TARGET_NAME)
 			set_target_properties(${TARGET_NAME} PROPERTIES INSTALL_RPATH "@executable_path/../Frameworks")
 			# Directly use install rpath for app bundles, since we copy dylibs into the bundle during post build
 			set_target_properties(${TARGET_NAME} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
-			# For xcode automatic code signing to go deeply so all our dylibs are signed as well (will fail with xcode >= 11 otherwise)
-			set_target_properties(${TARGET_NAME} PROPERTIES XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS "--deep --strict --force --options=runtime")
-			# Enable Hardened Runtime (required to notarize applications)
-			set_target_properties(${TARGET_NAME} PROPERTIES XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME YES)
 		else()
 			set_target_properties(${TARGET_NAME} PROPERTIES INSTALL_RPATH "@executable_path/../lib")
 			# Directly use install rpath for command line apps too
@@ -353,101 +438,42 @@ function(setup_executable_options TARGET_NAME)
 		set_target_properties(${TARGET_NAME} PROPERTIES INSTALL_RPATH "../lib")
 	endif()
 	
+	# Set xcode automatic codesigning
+	setup_xcode_codesigning(${TARGET_NAME})
+
 	target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}" "${LA_ROOT_DIR}/include")
 
 endfunction()
 
 ###############################################################################
-# Sign a binary.
-function(sign_target TARGET_NAME)
-	# Get the postfix for each configuration, in case we want to sign the target with another target than Release (someday)
-	foreach(VAR ${CMAKE_CONFIGURATION_TYPES})
-		set(confPostfix "${VAR}_POSTFIX")
-		string(TOUPPER "${VAR}_POSTFIX" upperConfPostfix)
-		get_target_property(${TARGET_NAME}_${confPostfix} ${TARGET_NAME} ${upperConfPostfix}) # Postfix property must be get using uppercase configuration name
-		if(NOT ${TARGET_NAME}_${confPostfix})
-			set(${TARGET_NAME}_${confPostfix} "")
-		endif()
-		# Use the install target to set a variable containing the postfix, since during install we cannot access variable from the cache or the global scope
-		install(CODE "set(${TARGET_NAME}_${confPostfix} \"${${TARGET_NAME}_${confPostfix}}\")")
-	endforeach()
-
+# Setup runtime deployment rules for an executable target, for easy debug and install (if specified)
+# Optional parameters:
+#  - INSTALL -> Generate CMake install rules
+#  - SIGN -> Code sign all binaries
+function(setup_deploy_runtime TARGET_NAME)
+	# Get target type for specific options
 	get_target_property(targetType ${TARGET_NAME} TYPE)
 
-	if(targetType STREQUAL "UTILITY")
-		get_target_property(targetType ${TARGET_NAME} LA_FORCED_TYPE)
-		if(NOT targetType)
-			message(FATAL_ERROR "LA_FORCED_TYPE property must be set for UTILITY target (example SHARED_LIBRARY)")
-		endif()
+	# Only for executables
+	if(NOT ${targetType} STREQUAL "EXECUTABLE")
+		message(FATAL_ERROR "Unsupported target type for setup_deploy_runtime macro: ${targetType}")
 	endif()
 
-	if(WIN32)
-		install(CODE "\
-				if(NOT \${CMAKE_INSTALL_CONFIG_NAME} STREQUAL \"Debug\")\n\
-					set(targetLocation \"${CMAKE_CURRENT_BINARY_DIR}/\${CMAKE_INSTALL_CONFIG_NAME}/${CMAKE_${targetType}_PREFIX}${TARGET_NAME}\${${TARGET_NAME}_\${CMAKE_INSTALL_CONFIG_NAME}_POSTFIX}${CMAKE_${targetType}_SUFFIX}\")\n\
-					execute_process(COMMAND \"${CMAKE_COMMAND}\" -E echo \"Signing ${TARGET_NAME}\")\n\
-					execute_process(COMMAND signtool sign ${LA_SIGNTOOL_OPTIONS} /d \"${LA_COMPANY_NAME} ${PROJECT_NAME}\" \"\${targetLocation}\")\n\
-				endif()\n\
-		")
+	# Get signing options
+	get_sign_command_options(SIGN_COMMAND_OPTIONS)
 
-	elseif(APPLE)
-		if(NOT LA_TEAM_IDENTIFIER)
-			message(FATAL_ERROR "LA_TEAM_IDENTIFIER variable must be set before trying to sign a binary with sign_target().")
-		endif()
-		is_macos_bundle(${TARGET_NAME} isBundle)
-		if(${isBundle})
-			set(addTargetPath ".app")
-			# MacOS Catalina requires code signing even for local builds, so always sign
-			add_custom_command(
-				TARGET ${TARGET_NAME}
-				POST_BUILD
-				COMMAND codesign -s ${LA_TEAM_IDENTIFIER} --timestamp --deep --strict --force --options=runtime "$<TARGET_FILE_DIR:${TARGET_NAME}>/../.."
-				COMMENT "Signing Bundle ${TARGET_NAME} for easy debug"
-				VERBATIM
-			)
+	# cmakeUtils deploy runtime
+	cu_deploy_runtime_target(${ARGV} VCPKG_INSTALLED_PATH . ${SIGN_COMMAND_OPTIONS})
 
-		else()
-			set(addTargetPath "")
-		endif()
-		install(
-			CODE "\
-				set(targetLocation \"${CMAKE_CURRENT_BINARY_DIR}/\${CMAKE_INSTALL_CONFIG_NAME}/${CMAKE_${targetType}_PREFIX}${TARGET_NAME}\${${TARGET_NAME}_\${CMAKE_INSTALL_CONFIG_NAME}_POSTFIX}${CMAKE_${targetType}_SUFFIX}${addTargetPath}\")\n\
-				execute_process(COMMAND \"${CMAKE_COMMAND}\" -E echo \"Signing ${TARGET_NAME}\")\n\
-				execute_process(COMMAND codesign -s \"${LA_TEAM_IDENTIFIER}\" --timestamp --deep --strict --force --options=runtime \"\${targetLocation}\")\n\
-		")
+	# Check for install and sign of the binary itself
+	cmake_parse_arguments(SDR "INSTALL;SIGN" "" "" ${ARGN})
+
+	if(SDR_SIGN)
+		setup_signing_command(${TARGET_NAME})
 	endif()
 
-endfunction()
-
-###############################################################################
-# Copy the runtime part of MODULE_NAME to the output folder of TARGET_NAME for
-# easy debugging from the IDE.
-function(copy_runtime TARGET_NAME MODULE_NAME)
-	# Get module type
-	get_target_property(moduleType ${MODULE_NAME} TYPE)
-	# Module is not a shared library, no need to copy
-	if(NOT ${moduleType} STREQUAL "SHARED_LIBRARY")
-		return()
-	endif()
-
-	is_macos_bundle(${TARGET_NAME} isBundle)
-	if(WIN32)
-		set(addSubDestPath "")
-	else()
-		# For mac non-bundle apps and linux we copy the dylibs to the lib sub folder, so it matches the same rpath than when installing (since we use install_rpath)
-		set(addSubDestPath "/../lib")
-	endif()
-
-	# Copy shared library to output folder as post-build (for easy test/debug)
-	if(WIN32 OR NOT ${isBundle}) # No need to copy for macOS bundle, it's already done as post-build event
-		add_custom_command(
-			TARGET ${TARGET_NAME}
-			POST_BUILD
-			COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${TARGET_NAME}>${addSubDestPath}"
-			COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${MODULE_NAME}> "$<TARGET_FILE_DIR:${TARGET_NAME}>${addSubDestPath}"
-			COMMENT "Copying ${MODULE_NAME} shared library to ${TARGET_NAME} output folder for easy debug"
-			VERBATIM
-		)
+	if(SDR_INSTALL)
+		install(TARGETS ${TARGET_NAME} BUNDLE DESTINATION . RUNTIME DESTINATION bin)
 	endif()
 endfunction()
 
@@ -476,8 +502,3 @@ macro(setup_project PRJ_NAME PRJ_VERSION PRJ_DESC)
 	set(LA_PROJECT_PRODUCTVERSION "${LA_PROJECT_VERSIONMAJ}.${LA_PROJECT_VERSIONMIN}.${LA_PROJECT_VERSIONPATCH}")
 	set(LA_PROJECT_FILEVERSION_STRING "${LA_PROJECT_VERSIONMAJ}.${LA_PROJECT_VERSIONMIN}.${LA_PROJECT_VERSIONPATCH}.${LA_PROJECT_VERSIONBETA}")
 endmacro(setup_project)
-
-###############################################################################
-# Global variables (must stay at the end of the file)
-set(LA_ROOT_DIR "${PROJECT_SOURCE_DIR}") # Folder containing the main CMakeLists.txt for the repository including this file
-set(LA_TOP_LEVEL_BINARY_DIR "${PROJECT_BINARY_DIR}") # Folder containing the top level binary files (CMake root output folder)

@@ -320,15 +320,8 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 		target_link_libraries(la_avdecc_cxx PUBLIC nlohmann_json)
 	endif()
 
-	# Sign binary (this is done during installation phase, either from this project or from a project including this one)
-	if(ENABLE_AVDECC_SIGNING)
-		sign_target(la_avdecc_cxx)
-	endif()
-
-	# Set installation rule
-	if(INSTALL_AVDECC_LIB_SHARED_CXX)
-		setup_library_install_rules(la_avdecc_cxx)
-	endif()
+	# Setup install (and signing)
+	setup_deploy_library(la_avdecc_cxx ${INSTALL_SHARED_FLAG} ${SIGN_FLAG})
 endif()
 
 # Runtime-shared static library
@@ -358,13 +351,12 @@ if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 		target_link_libraries(la_avdecc_static PUBLIC nlohmann_json)
 	endif()
 
-	# Set installation rule
-	if(INSTALL_AVDECC_LIB_STATIC)
-		setup_library_install_rules(la_avdecc_static)
-		# We must install wpcap link library for windows, so the target using la_avdecc_static can properly link
-		if(NOT ${BUILD_AVDECC_INTERFACE_PCAP_DYNAMIC_LINKING} AND WIN32)
-			install(FILES "${LA_WINPCAP_LIB_DIR}/wpcap.lib" DESTINATION lib)
-		endif()
+	# Setup install (and signing)
+	setup_deploy_library(la_avdecc_static ${INSTALL_STATIC_FLAG} ${SIGN_FLAG})
+
+	# We must install wpcap link library for windows, so the target using la_avdecc_static can properly link
+	if(INSTALL_AVDECC_LIB_STATIC AND NOT ${BUILD_AVDECC_INTERFACE_PCAP_DYNAMIC_LINKING} AND WIN32)
+		install(FILES "${LA_WINPCAP_LIB_DIR}/wpcap.lib" DESTINATION lib)
 	endif()
 endif()
 

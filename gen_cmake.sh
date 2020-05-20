@@ -27,7 +27,7 @@ default_VisualToolset="v142"
 default_VisualToolchain="x64"
 default_VisualArch="x86"
 default_VisualSdk="8.1"
-default_signtoolOptions="/a /sm /q /fd sha256 /tr http://timestamp.digicert.com"
+default_signtoolOptions="/a /sm /q /fd sha256 /tr http://timestamp.comodoca.com"
 
 # 
 cmake_generator=""
