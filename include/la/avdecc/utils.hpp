@@ -774,6 +774,32 @@ void invokeProtectedMethod(Method&& method, Object* const object, Parameters&&..
 	}
 }
 
+/**
+* @brief Function to safely call a class method, forwarding all parameters to it and returning specified ReturnType (should be default-constructible).
+* @details Calls the specified class method, protecting the caller from any thrown exception in the handler itself.
+*/
+template<class ReturnType, typename Method, class Object, typename... Parameters>
+ReturnType invokeProtectedMethodWithReturn(Method&& method, Object* const object, Parameters&&... params) noexcept
+{
+	if (method != nullptr && object != nullptr)
+	{
+		try
+		{
+			return (object->*method)(std::forward<Parameters>(params)...);
+		}
+		catch (std::exception const& e)
+		{
+			/* Forcing the assert to fail, but with code so we don't get a warning on gcc */
+			AVDECC_ASSERT(method == nullptr, (std::string("invokeProtectedMethodWithReturn caught an exception in method: ") + e.what()).c_str());
+			(void)e;
+		}
+		catch (...)
+		{
+		}
+	}
+	return ReturnType{};
+}
+
 /** Useful template to create strongly typed defines that can be extended using inheritance */
 template<class Derived, typename DataType, typename = std::enable_if_t<std::is_arithmetic<DataType>::value || std::is_enum<DataType>::value>>
 class TypedDefine
