@@ -100,10 +100,8 @@ do
 			if isMac; then
 				echo " -id <TeamIdentifier> -> iTunes team identifier for binary signing."
 			fi
-			if isLinux; then
-				echo " -debug -> Force debug configuration (Linux only)"
-				echo " -release -> Force release configuration (Linux only)"
-			fi
+			echo " -debug -> Force debug configuration (Single-Configuration generators only)"
+			echo " -release -> Force release configuration (Single-Configuration generators only)"
 			echo " -sign -> Sign binaries (Default: No signing)"
 			exit 3
 			;;
@@ -235,22 +233,10 @@ do
 			fi
 			;;
 		-debug)
-			if isLinux; then
-				cmake_config="Debug"
-				add_cmake_opt+=("-DCMAKE_BUILD_TYPE=${cmake_config}")
-			else
-				echo "ERROR: -debug option is only supported on Linux platform"
-				exit 4
-			fi
+			cmake_config="Debug"
 			;;
 		-release)
-			if isLinux; then
-				cmake_config="Release"
-				add_cmake_opt+=("-DCMAKE_BUILD_TYPE=${cmake_config}")
-			else
-				echo "ERROR: -release option is only supported on Linux platform"
-				exit 4
-			fi
+			cmake_config="Release"
 			;;
 		-sign)
 			add_cmake_opt+=("-DENABLE_AVDECC_SIGNING=TRUE")
@@ -286,14 +272,6 @@ if isWindows; then
 	fi
 fi
 
-# Check if at least a -debug or -release option has been passed on linux
-if isLinux; then
-	if [ -z $cmake_config ]; then
-		echo "ERROR: Linux requires either -debug or -release option to be specified"
-		exit 4
-	fi
-fi
-
 # Using -vs2017 option
 if [ $useVS2017 -eq 1 ]; then
 	generator="Visual Studio 15 2017"
@@ -305,8 +283,20 @@ if [ $useVSclang -eq 1 ]; then
 	toolset="ClangCL"
 fi
 
+# Check if at least a -debug or -release option has been passed for Single-Configuration generators
+if isSingleConfigurationGenerator "$generator"; then
+	if [ -z $cmake_config ]; then
+		echo "ERROR: Single-Configuration generator '$generator' requires either -debug or -release option to be specified"
+		exit 4
+	fi
+	add_cmake_opt+=("-DCMAKE_BUILD_TYPE=${cmake_config}")
+else
+	# Clear any -debug or -release passed to a Multi-Configurations generator
+	cmake_config=""
+fi
+
 if [ $outputFolderForced -eq 0 ]; then
-	getOutputFolder outputFolder "${outputFolderBasePath}" "${arch}" "${toolset}" "${cmake_config}"
+	getOutputFolder outputFolder "${outputFolderBasePath}" "${arch}" "${toolset}" "${cmake_config}" "${generator}"
 fi
 
 generator_arch_option=""
