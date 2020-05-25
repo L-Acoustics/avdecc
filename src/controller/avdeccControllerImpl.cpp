@@ -2372,18 +2372,19 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 			// For all (advertised) ControlledEntities, check if they are connected to this talker
 			for (auto const& entityKV : _controlledEntities)
 			{
-				auto const& entity = *(entityKV.second);
+				auto const listenerEntityID = entityKV.first;
+				auto const& listenerEntity = *(entityKV.second);
 
 				// Don't process self, nor not yet advertised entities
-				if (entityKV.first == entityID || !entity.wasAdvertised())
+				if (listenerEntityID == entityID || !listenerEntity.wasAdvertised())
 				{
 					continue;
 				}
-				if (entity.getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+				if (listenerEntity.getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported))
 				{
 					try
 					{
-						auto const& configurationNode = entity.getCurrentConfigurationNode();
+						auto const& configurationNode = listenerEntity.getCurrentConfigurationNode();
 						for (auto const& [streamIndex, streamInputNode] : configurationNode.streamInputs)
 						{
 							if (streamInputNode.dynamicModel)
@@ -2401,7 +2402,7 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 										// Connected to our talker
 										if (streamInputNode.dynamicModel->connectionInfo.talkerStream == talkerIdentification)
 										{
-											controlledEntity.addStreamOutputConnection(streamOutputIndex, { entityID, streamIndex });
+											controlledEntity.addStreamOutputConnection(streamOutputIndex, { listenerEntityID, streamIndex });
 											// Do not trigger any notification, we are just about to advertise the entity
 										}
 									}

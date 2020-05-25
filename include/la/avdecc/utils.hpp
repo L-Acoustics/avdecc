@@ -38,7 +38,7 @@
 #include <cstring> // strncmp
 #include <sstream> // stringstream
 #include <limits> // numeric_limits
-#include <stdexcept> // out_of_range / invalid_argument
+#include <stdexcept> // out_of_range / invalid_argument / logic_error
 #include <set>
 #include <vector>
 #include <mutex>
@@ -323,35 +323,35 @@ public:
 		using pointer = value_type*;
 		using const_pointer = value_type const*;
 
-		iterator(underlying_value_type const value, std::uint8_t const currentBitPosition) noexcept
+		constexpr iterator(underlying_value_type const value, std::uint8_t const currentBitPosition) noexcept
 			: _value(value)
 			, _currentBitPosition(currentBitPosition)
 		{
 			findNextBitSet();
 		}
 		// Pre-increment operator
-		self_name& operator++() noexcept
+		constexpr self_name& operator++() noexcept
 		{
 			++_currentBitPosition;
 			findNextBitSet();
 			return *this;
 		}
 		// Post-increment operator
-		self_name operator++(int) noexcept
+		constexpr self_name operator++(int) noexcept
 		{
 			auto tmp(*this);
 			operator++();
 			return tmp;
 		}
 		// Addition operator
-		self_name operator+(size_t const count) const noexcept
+		constexpr self_name operator+(size_t const count) const noexcept
 		{
 			auto tmp(*this);
 			tmp.operator+=(count);
 			return tmp;
 		}
 		// Addition assignment operator
-		self_name& operator+=(size_t const count) noexcept
+		constexpr self_name& operator+=(size_t const count) noexcept
 		{
 			for (auto c = 0u; c < count; ++c)
 			{
@@ -364,21 +364,21 @@ public:
 			}
 			return *this;
 		}
-		value_type operator*() const noexcept
+		constexpr value_type operator*() const noexcept
 		{
 			return static_cast<value_type>(_currentValue);
 		}
-		bool operator==(self_name const& other) const noexcept
+		constexpr bool operator==(self_name const& other) const noexcept
 		{
 			return _currentBitPosition == other._currentBitPosition;
 		}
-		bool operator!=(self_name const& other) const noexcept
+		constexpr bool operator!=(self_name const& other) const noexcept
 		{
 			return !operator==(other);
 		}
 
 	private:
-		void updateCurrentValue() noexcept
+		constexpr void updateCurrentValue() noexcept
 		{
 			// Make a mask for current bit
 			auto mask = pow(underlying_value_type(2), _currentBitPosition);
@@ -386,7 +386,7 @@ public:
 			// Extract the current bit
 			_currentValue = _value & mask;
 		}
-		void findNextBitSet() noexcept
+		constexpr void findNextBitSet() noexcept
 		{
 			while (_currentBitPosition < EndBit)
 			{
@@ -406,7 +406,7 @@ public:
 
 	/** Construct a bitfield using individual bits passed as variadic parameters. If passed value is not valid (not exactly one bit set), this leads to undefined behavior. */
 	template<typename... Values>
-	explicit EnumBitfield(value_type const value, Values const... values) noexcept
+	constexpr explicit EnumBitfield(value_type const value, Values const... values) noexcept
 		: _value(to_integral(value))
 	{
 		checkInvalidValue(value);
@@ -435,7 +435,7 @@ public:
 	}
 
 	/** Clears the specified flag. If passed value is not valid (not exactly one bit set), this leads to undefined behavior. */
-	constexpr EnumBitfield& reset(value_type const flag) noexcept
+	EnumBitfield& reset(value_type const flag) noexcept
 	{
 		checkInvalidValue(flag);
 		_value &= ~to_integral(flag);
@@ -499,7 +499,7 @@ public:
 	}
 
 	/** OR operator (sets the bits that are present in either lhs or rhs, clears all other bits) */
-	friend EnumBitfield operator|(EnumBitfield const lhs, EnumBitfield const rhs) noexcept
+	friend constexpr EnumBitfield operator|(EnumBitfield const lhs, EnumBitfield const rhs) noexcept
 	{
 		auto result = EnumBitfield{};
 		result._value = lhs._value | rhs._value;
@@ -507,54 +507,61 @@ public:
 	}
 
 	/** AND operator (sets the bits that are present in both lhs and rhs, clears all other bits) */
-	friend EnumBitfield operator&(EnumBitfield const lhs, EnumBitfield const rhs) noexcept
+	friend constexpr EnumBitfield operator&(EnumBitfield const lhs, EnumBitfield const rhs) noexcept
 	{
 		auto result = EnumBitfield{};
 		result._value = lhs._value & rhs._value;
 		return result;
 	}
 
-	/** Returns the value at the specified position. Specified position must be inclusively comprised btw 0 and (count() - 1) or an out_of_range exception will be thrown. */
-	inline value_type at(size_t const position) const
+	/** Returns the value at the specified bit set position (only counting bits that are set). Specified position must be inclusively comprised btw 0 and (count() - 1) or an out_of_range exception will be thrown. */
+	constexpr value_type at(size_t const setPosition) const
 	{
-		if (position >= count())
+		if (setPosition >= count())
 		{
 			throw std::out_of_range("EnumBitfield::at() out of range");
 		}
-		return *(begin() + position);
+		return *(begin() + setPosition);
+	}
+
+	/** Returns the bit set position for the specified value (only counting bits that are set). Specified value must be set or an out_of_range exception will be thrown. */
+	constexpr size_t getBitSetPosition(value_type const value) const
+	{
+		checkInvalidValue(value);
+		if (!test(value))
+		{
+			throw std::out_of_range("EnumBitfield::getBitSetPosition() out of range");
+		}
+		return getBitPosition(to_integral(value), _value);
 	}
 
 	/** Returns the bit position for the specified value. Specified value must has exactly one bit set or an out_of_range exception will be thrown. */
-	static inline size_t getPosition(value_type const value)
+	static constexpr size_t getPosition(value_type const value)
 	{
-		auto const v = to_integral(value);
-		if (countBits(v) != 1u)
-		{
-			throw std::out_of_range("EnumBitfield::getPosition() out of range");
-		}
-		return getBitPosition(v);
+		checkInvalidValue(value);
+		return getBitPosition(to_integral(value));
 	}
 
 	/** Returns the begin iterator */
-	inline iterator begin() noexcept
+	constexpr iterator begin() noexcept
 	{
 		return iterator(_value, 0);
 	}
 
 	/** Returns the begin const iterator */
-	inline iterator const begin() const noexcept
+	constexpr iterator const begin() const noexcept
 	{
 		return iterator(_value, 0);
 	}
 
 	/** Returns the end iterator */
-	inline iterator end() noexcept
+	constexpr iterator end() noexcept
 	{
 		return iterator(_value, value_size);
 	}
 
 	/** Returns the end const iterator */
-	inline iterator const end() const noexcept
+	constexpr iterator const end() const noexcept
 	{
 		return iterator(_value, value_size);
 	}
@@ -575,17 +582,20 @@ public:
 	EnumBitfield& operator=(EnumBitfield&&) noexcept = default;
 
 private:
-	static inline void checkInvalidValue([[maybe_unused]] value_type const value)
+	static constexpr void checkInvalidValue([[maybe_unused]] value_type const value)
 	{
-		AVDECC_ASSERT(countBits(to_integral(value)) == 1, "Invalid value: not exactly one 1 bit set");
+		if (countBits(to_integral(value)) != 1)
+		{
+			throw std::logic_error("Invalid value: not exactly one 1 bit set");
+		}
 	}
 	static constexpr size_t countBits(underlying_value_type const value) noexcept
 	{
 		return (value == 0u) ? 0u : 1u + countBits(value & (value - 1u));
 	}
-	static constexpr size_t getBitPosition(underlying_value_type const value) noexcept
+	static constexpr size_t getBitPosition(underlying_value_type const value, underlying_value_type const setBitValue = static_cast<underlying_value_type>(-1)) noexcept
 	{
-		return (value == 1u) ? 0u : 1u + getBitPosition(value >> 1);
+		return (value == 1u) ? 0u : (setBitValue & 0x1) + getBitPosition(value >> 1, setBitValue >> 1);
 	}
 
 	underlying_value_type _value{};
@@ -762,6 +772,32 @@ void invokeProtectedMethod(Method&& method, Object* const object, Parameters&&..
 		{
 		}
 	}
+}
+
+/**
+* @brief Function to safely call a class method, forwarding all parameters to it and returning specified ReturnType (should be default-constructible).
+* @details Calls the specified class method, protecting the caller from any thrown exception in the handler itself.
+*/
+template<class ReturnType, typename Method, class Object, typename... Parameters>
+ReturnType invokeProtectedMethodWithReturn(Method&& method, Object* const object, Parameters&&... params) noexcept
+{
+	if (method != nullptr && object != nullptr)
+	{
+		try
+		{
+			return (object->*method)(std::forward<Parameters>(params)...);
+		}
+		catch (std::exception const& e)
+		{
+			/* Forcing the assert to fail, but with code so we don't get a warning on gcc */
+			AVDECC_ASSERT(method == nullptr, (std::string("invokeProtectedMethodWithReturn caught an exception in method: ") + e.what()).c_str());
+			(void)e;
+		}
+		catch (...)
+		{
+		}
+	}
+	return ReturnType{};
 }
 
 /** Useful template to create strongly typed defines that can be extended using inheritance */

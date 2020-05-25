@@ -51,9 +51,9 @@ using MacAddress = std::array<std::uint8_t, 6>;
 class LA_AVDECC_API IPAddress final
 {
 public:
-	using value_type_v4 = std::array<std::uint8_t, 4>; // "a.b.c.d" -> [0] = d, [1] = c, [2] = b, [3] = a
-	using value_type_v6 = std::array<std::uint16_t, 8>; // "aa::bb::cc::dd::ee::ff::gg::hh" -> [0] = hh, [1] = gg, ..., [7] = aa
-	using value_type_packed_v4 = std::uint32_t; // Packed version of an IP V4 in network-byte-order (ie. big-endian)
+	using value_type_v4 = std::array<std::uint8_t, 4>; // "a.b.c.d" -> [0] = a, [1] = b, [2] = c, [3] = d
+	using value_type_v6 = std::array<std::uint16_t, 8>; // "aa::bb::cc::dd::ee::ff::gg::hh" -> [0] = aa, [1] = bb, ..., [7] = hh
+	using value_type_packed_v4 = std::uint32_t; // Packed version of an IP V4: "a.b.c.d" -> MSB = a, LSB = d
 
 	enum class Type
 	{
@@ -214,6 +214,9 @@ struct IPAddressInfo
 /* ************************************************************ */
 struct Interface
 {
+	using IPAddressInfos = std::vector<IPAddressInfo>;
+	using Gateways = std::vector<IPAddress>;
+
 	enum class Type
 	{
 		None = 0, /**< Only used for initialization purpose. Never returned as a real Interface::Type */
@@ -227,8 +230,8 @@ struct Interface
 	std::string description{}; /** Description of the interface (system chosen) (UTF-8) */
 	std::string alias{}; /** Alias of the interface (often user chosen) (UTF-8) */
 	MacAddress macAddress{}; /** Mac address */
-	std::vector<IPAddressInfo> ipAddressInfos{}; /** List of IPAddressInfo attached to this interface */
-	std::vector<IPAddress> gateways{}; /** List of Gateways available for this interface */
+	IPAddressInfos ipAddressInfos{}; /** List of IPAddressInfo attached to this interface */
+	Gateways gateways{}; /** List of Gateways available for this interface */
 	Type type{ Type::None }; /** The type of interface */
 	bool isEnabled{ false }; /** True if this interface is enabled */
 	bool isConnected{ false }; /** True if this interface is connected to a working network (able to send and receive packets) */
@@ -253,10 +256,20 @@ class NetworkInterfaceObserver : public la::avdecc::utils::Observer<NetworkInter
 public:
 	virtual ~NetworkInterfaceObserver() noexcept {}
 
+	/** Called when an Interface was added */
 	virtual void onInterfaceAdded(la::avdecc::networkInterface::Interface const& intfc) noexcept = 0;
+	/** Called when an Interface was removed */
 	virtual void onInterfaceRemoved(la::avdecc::networkInterface::Interface const& intfc) noexcept = 0;
+	/** Called when the isEnabled field of the specified Interface changed */
 	virtual void onInterfaceEnabledStateChanged(la::avdecc::networkInterface::Interface const& intfc, bool const isEnabled) noexcept = 0;
+	/** Called when the isConnected field of the specified Interface changed */
 	virtual void onInterfaceConnectedStateChanged(la::avdecc::networkInterface::Interface const& intfc, bool const isConnected) noexcept = 0;
+	/** Called when the alias field of the specified Interface changed */
+	virtual void onInterfaceAliasChanged(la::avdecc::networkInterface::Interface const& intfc, std::string const& alias) noexcept = 0;
+	/** Called when the ipAddressInfos field of the specified Interface changed */
+	virtual void onInterfaceIPAddressInfosChanged(la::avdecc::networkInterface::Interface const& intfc, la::avdecc::networkInterface::Interface::IPAddressInfos const& ipAddressInfos) noexcept = 0;
+	/** Called when the gateways field of the specified Interface changed */
+	virtual void onInterfaceGateWaysChanged(la::avdecc::networkInterface::Interface const& intfc, la::avdecc::networkInterface::Interface::Gateways const& gateways) noexcept = 0;
 };
 
 using EnumerateInterfacesHandler = std::function<void(la::avdecc::networkInterface::Interface const&)>;

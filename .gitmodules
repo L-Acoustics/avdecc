@@ -7,3 +7,6 @@
 [submodule "externals/3rdparty/json"]
 	path = externals/3rdparty/json
 	url = https://github.com/nlohmann/json
+[submodule "scripts/bashUtils"]
+	path = scripts/bashUtils
+	url = https://github.com/christophe-calmejane/bashUtils.git
