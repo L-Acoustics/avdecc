@@ -174,8 +174,10 @@ function(setup_xcode_codesigning TARGET_NAME)
 	# Set codesigning for macOS
 	if(APPLE)
 		if("${CMAKE_GENERATOR}" STREQUAL "Xcode")
-			# Force identity
-			set_target_properties(${TARGET_NAME} PROPERTIES XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "${LA_TEAM_IDENTIFIER}")
+			# Force Xcode signing identity but only if defined to something valid (we will re-sign later anyway)
+			if(NOT "${LA_TEAM_IDENTIFIER}" STREQUAL "-")
+				set_target_properties(${TARGET_NAME} PROPERTIES XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "${LA_TEAM_IDENTIFIER}")
+			endif()
 			# For xcode code signing to go deeply so all our dylibs are signed as well (will fail with xcode >= 11 otherwise)
 			set_target_properties(${TARGET_NAME} PROPERTIES XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS "--deep --strict --force --options=runtime")
 			# Enable Hardened Runtime (required to notarize applications)
