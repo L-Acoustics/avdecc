@@ -55,7 +55,7 @@ C language bindings over la_avdecc library.
 ## Minimum requirements for compilation
 
 ### All platforms
-- CMake 3.13
+- CMake 3.15
 
 ### Windows
 - Windows 10
@@ -68,7 +68,7 @@ C language bindings over la_avdecc library.
 - Xcode 10
 
 ### Linux
-- C++17 compliant compiler (minimum recommended gcc 8.2.1)
+- C++17 compliant compiler (minimum recommended g++ 8.2.1)
 - Make
 - pcap developer package
 - ncurses developer package (optional, for examples)
