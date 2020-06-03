@@ -100,6 +100,8 @@ using compile_t = int (*)(pcap_t*, bpf_program*, const char*, int, bpf_u_int32);
 using setfilter_t = int (*)(pcap_t*, bpf_program*);
 using freecode_t = void (*)(bpf_program*);
 using next_ex_t = int (*)(pcap_t*, pcap_pkthdr**, const u_char**);
+using loop_t = int (*)(pcap_t*, int, pcap_handler, u_char*);
+using breakloop_t = void (*)(pcap_t*);
 using sendpacket_t = int (*)(pcap_t*, const u_char*, int);
 
 struct PcapInterface::pImpl
@@ -112,6 +114,8 @@ struct PcapInterface::pImpl
 	setfilter_t setfilter_ptr{ nullptr };
 	freecode_t freecode_ptr{ nullptr };
 	next_ex_t next_ex_ptr{ nullptr };
+	loop_t loop_ptr{ nullptr };
+	breakloop_t breakloop_ptr{ nullptr };
 	sendpacket_t sendpacket_ptr{ nullptr };
 };
 
@@ -134,9 +138,11 @@ PcapInterface::PcapInterface()
 			_pImpl->setfilter_ptr = reinterpret_cast<setfilter_t>(DL_SYM(handle, "pcap_setfilter"));
 			_pImpl->freecode_ptr = reinterpret_cast<freecode_t>(DL_SYM(handle, "pcap_freecode"));
 			_pImpl->next_ex_ptr = reinterpret_cast<next_ex_t>(DL_SYM(handle, "pcap_next_ex"));
+			_pImpl->loop_ptr = reinterpret_cast<loop_t>(DL_SYM(handle, "pcap_loop"));
+			_pImpl->breakloop_ptr = reinterpret_cast<breakloop_t>(DL_SYM(handle, "pcap_breakloop"));
 			_pImpl->sendpacket_ptr = reinterpret_cast<sendpacket_t>(DL_SYM(handle, "pcap_sendpacket"));
 
-			foundAllFunctions = _pImpl->open_live_ptr && _pImpl->fileno_ptr && _pImpl->close_ptr && _pImpl->compile_ptr && _pImpl->setfilter_ptr && _pImpl->freecode_ptr && _pImpl->next_ex_ptr && _pImpl->sendpacket_ptr;
+			foundAllFunctions = _pImpl->open_live_ptr && _pImpl->fileno_ptr && _pImpl->close_ptr && _pImpl->compile_ptr && _pImpl->setfilter_ptr && _pImpl->freecode_ptr && _pImpl->next_ex_ptr && _pImpl->loop_ptr && _pImpl->breakloop_ptr && _pImpl->sendpacket_ptr;
 		}
 
 		if (foundAllFunctions)
@@ -214,6 +220,18 @@ int PcapInterface::next_ex(pcap_t* p, struct pcap_pkthdr** pkt_header, const u_c
 {
 	assert((_pImpl != nullptr) && (_pImpl->libraryHandle != nullptr) && (_pImpl->next_ex_ptr != nullptr));
 	return _pImpl->next_ex_ptr(p, pkt_header, pkt_data);
+}
+
+int PcapInterface::loop(pcap_t* p, int cnt, pcap_handler callback, u_char* user) const
+{
+	assert((_pImpl != nullptr) && (_pImpl->libraryHandle != nullptr) && (_pImpl->loop_ptr != nullptr));
+	return _pImpl->loop_ptr(p, cnt, callback, user);
+}
+
+void PcapInterface::breakloop(pcap_t* p) const
+{
+	assert((_pImpl != nullptr) && (_pImpl->libraryHandle != nullptr) && (_pImpl->breakloop_ptr != nullptr));
+	_pImpl->breakloop_ptr(p);
 }
 
 int PcapInterface::sendpacket(pcap_t* p, const u_char* buf, int size) const
