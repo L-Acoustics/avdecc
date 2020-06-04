@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Fixed
 - [Deadlock when shutting down PCap ProtocolInterface on linux](https://github.com/L-Acoustics/avdecc/issues/81)
+- Possible crash (uncaught exception) on macOS when enumerating network interfaces
 
 ## [3.0.1] - 2020-05-25
 ### Changed

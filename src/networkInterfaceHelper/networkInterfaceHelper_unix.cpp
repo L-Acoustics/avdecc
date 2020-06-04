@@ -157,7 +157,13 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 				mask[NI_MAXHOST - 1] = 0;
 
 				// Add the IP address of that interface
-				interface.ipAddressInfos.emplace_back(IPAddressInfo{ IPAddress{ host }, IPAddress{ mask } });
+				try
+				{
+					interface.ipAddressInfos.emplace_back(IPAddressInfo{ IPAddress{ host }, IPAddress{ mask } });
+				}
+				catch (...)
+				{
+				}
 			}
 		}
 	}

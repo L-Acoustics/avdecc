@@ -198,9 +198,24 @@ static Interface::IPAddressInfos getIPAddressInfoFromKey(CFStringRef const ipKey
 		{
 			for (auto ipIndex = NSUInteger{ 0u }; ipIndex < [addresses count]; ++ipIndex)
 			{
-				auto* const address = (NSString*)[addresses objectAtIndex:ipIndex];
-				auto* const netmask = netmasks == nullptr ? @"255.255.255.255" : (NSString*)[netmasks objectAtIndex:ipIndex];
-				ipAddressInfos.push_back(IPAddressInfo{ IPAddress{ std::string{ [address UTF8String] } }, IPAddress{ std::string{ [netmask UTF8String] } } });
+				auto const* const address = (NSString*)[addresses objectAtIndex:ipIndex];
+				auto const* netmask = @"255.255.255.255";
+				if (netmasks)
+				{
+					auto const* mask = (NSString*)[netmasks objectAtIndex:ipIndex];
+					// Empty netmask is allowed in manual IP
+					if (mask.length > 0)
+					{
+						netmask = mask;
+					}
+				}
+				try
+				{
+					ipAddressInfos.push_back(IPAddressInfo{ IPAddress{ std::string{ [address UTF8String] } }, IPAddress{ std::string{ [netmask UTF8String] } } });
+				}
+				catch (...)
+				{
+				}
 			}
 		}
 
