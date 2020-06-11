@@ -34,6 +34,7 @@
 #include <algorithm>
 #include <optional>
 #include <map>
+#include <chrono>
 
 namespace la
 {
@@ -418,6 +419,15 @@ public:
 
 	/** Disables entity advertising on the specified interfaceIndex if set, otherwise on all interfaces. */
 	virtual void disableEntityAdvertising(std::optional<model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept = 0;
+
+	/** Requests a remote entities discovery. */
+	virtual bool discoverRemoteEntities() const noexcept = 0;
+
+	/** Requests a targetted remote entity discovery. */
+	virtual bool discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept = 0;
+
+	/** Sets automatic discovery delay. 0 (default) for no automatic discovery. */
+	virtual void setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) noexcept = 0;
 
 	/** BasicLockable concept lock method */
 	virtual void lock() noexcept = 0;

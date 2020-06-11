@@ -382,6 +382,12 @@ public:
 	virtual void enableEntityAdvertising(std::uint32_t const availableDuration, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) = 0;
 	/** Disables entity advertising on the specified interfaceIndex if set, otherwise on all interfaces. */
 	virtual void disableEntityAdvertising(std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept = 0;
+	/** Requests a remote entities discovery. */
+	virtual bool discoverRemoteEntities() const noexcept = 0;
+	/** Requests a targetted remote entity discovery. */
+	virtual bool discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept = 0;
+	/** Sets automatic discovery delay. 0 (default) for no automatic discovery. */
+	virtual void setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) noexcept = 0;
 	/** Enables the EntityModel cache */
 	virtual void enableEntityModelCache() noexcept = 0;
 	/** Disables the EntityModel cache */

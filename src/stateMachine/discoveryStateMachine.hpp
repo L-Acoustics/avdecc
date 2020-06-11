@@ -44,6 +44,8 @@ class Manager;
 class DiscoveryStateMachine final
 {
 public:
+	static constexpr auto DefaultDiscoverySendDelay = std::chrono::milliseconds{ 10000u }; // Default delay between 2 DISCOVER message broadcast
+
 	class Delegate
 	{
 	public:
@@ -59,6 +61,8 @@ public:
 	DiscoveryStateMachine(Manager* manager, Delegate* const delegate) noexcept;
 	~DiscoveryStateMachine() noexcept;
 
+	void setDiscoveryDelay(std::chrono::milliseconds const delay = DefaultDiscoverySendDelay) noexcept; // 0 as delay means never send automatic DISCOVER messages
+	void discoverMessageSent() noexcept;
 	void checkRemoteEntitiesTimeoutExpiracy() noexcept;
 	void checkDiscovery() noexcept;
 	void handleAdpEntityAvailable(Adpdu const& adpdu) noexcept;
@@ -75,7 +79,7 @@ private:
 	struct DiscoveredEntityInfo
 	{
 		entity::Entity entity{ {}, {} };
-		std::unordered_map<entity::model::AvbInterfaceIndex, std::chrono::time_point<std::chrono::system_clock>> timeouts{};
+		std::unordered_map<entity::model::AvbInterfaceIndex, std::chrono::time_point<std::chrono::steady_clock>> timeouts{};
 	};
 	using DiscoveredEntities = std::unordered_map<UniqueIdentifier, DiscoveredEntityInfo, UniqueIdentifier::hash>;
 
@@ -87,7 +91,8 @@ private:
 	Manager* _manager{ nullptr };
 	Delegate* _delegate{ nullptr };
 	DiscoveredEntities _discoveredEntities{};
-	std::chrono::time_point<std::chrono::system_clock> _lastDiscovery{};
+	std::chrono::milliseconds _discoveryDelay{};
+	std::chrono::time_point<std::chrono::steady_clock> _lastDiscovery{ std::chrono::steady_clock::now() };
 };
 
 } // namespace stateMachine

@@ -50,7 +50,11 @@ ControllerEntityImpl::ControllerEntityImpl(protocol::ProtocolInterface* const pr
 	_controllerCapabilityDelegate = std::make_unique<controller::CapabilityDelegate>(getProtocolInterface(), controllerDelegate, *this, getEntityID());
 
 	// Register observer
-	getProtocolInterface()->registerObserver(this);
+	auto* const pi = getProtocolInterface();
+	pi->registerObserver(this);
+
+	// Send a first DISCOVER message
+	pi->discoverRemoteEntities();
 }
 
 ControllerEntityImpl::~ControllerEntityImpl() noexcept

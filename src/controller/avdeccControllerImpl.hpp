@@ -75,6 +75,9 @@ private:
 	/* Controller configuration */
 	virtual void enableEntityAdvertising(std::uint32_t const availableDuration, std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) override;
 	virtual void disableEntityAdvertising(std::optional<entity::model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) noexcept override;
+	virtual bool discoverRemoteEntities() const noexcept override;
+	virtual bool discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept override;
+	virtual void setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) noexcept override;
 	virtual void enableEntityModelCache() noexcept override;
 	virtual void disableEntityModelCache() noexcept override;
 	virtual void enableFullStaticEntityModelEnumeration() noexcept override;

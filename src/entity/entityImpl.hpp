@@ -82,6 +82,21 @@ public:
 		_protocolInterface->disableEntityAdvertising(*this);
 	}
 
+	virtual bool discoverRemoteEntities() const noexcept override
+	{
+		return !_protocolInterface->discoverRemoteEntities();
+	}
+
+	virtual bool discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept override
+	{
+		return !_protocolInterface->discoverRemoteEntity(entityID);
+	}
+
+	virtual void setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) noexcept override
+	{
+		_protocolInterface->setAutomaticDiscoveryDelay(delay);
+	}
+
 	/** Sets the entity capabilities and flag for announcement */
 	virtual void setEntityCapabilities(EntityCapabilities const entityCapabilities) noexcept override
 	{

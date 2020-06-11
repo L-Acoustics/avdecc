@@ -39,6 +39,7 @@
 #include <vector>
 #include <memory>
 #include <functional>
+#include <chrono>
 
 namespace la
 {
@@ -444,6 +445,12 @@ public:
 	using LocalEntity::enableEntityAdvertising;
 	/** Disables entity advertising on the specified interfaceIndex if set, otherwise on all interfaces. */
 	using LocalEntity::disableEntityAdvertising;
+	/** Requests a remote entities discovery. */
+	using LocalEntity::discoverRemoteEntities;
+	/** Requests a targetted remote entity discovery. */
+	using LocalEntity::discoverRemoteEntity;
+	/** Sets automatic discovery delay. 0 (default) for no automatic discovery. */
+	using LocalEntity::setAutomaticDiscoveryDelay;
 
 	/* Other methods */
 	virtual void setControllerDelegate(controller::Delegate* const delegate) noexcept = 0;

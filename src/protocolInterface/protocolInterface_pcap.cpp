@@ -280,6 +280,11 @@ private:
 		return _stateMachineManager.discoverRemoteEntity(entityID);
 	}
 
+	virtual Error setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) const noexcept override
+	{
+		return _stateMachineManager.setAutomaticDiscoveryDelay(delay);
+	}
+
 	virtual bool isDirectMessageSupported() const noexcept override
 	{
 		return true;

@@ -45,6 +45,7 @@
 #include <stdexcept>
 #include <functional>
 #include <optional>
+#include <chrono>
 
 namespace la
 {
@@ -256,6 +257,8 @@ public:
 	virtual Error discoverRemoteEntities() const noexcept = 0;
 	/** Requests a targetted remote entity discovery. */
 	virtual Error discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept = 0;
+	/** Sets automatic discovery delay. 0 (default) for no automatic discovery. */
+	virtual Error setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) const noexcept = 0;
 
 	/* ************************************************************ */
 	/* Sending entry points                                         */
