@@ -304,6 +304,7 @@ private:
 	virtual Error disableEntityAdvertising(entity::LocalEntity const& entity) noexcept override;
 	virtual Error discoverRemoteEntities() const noexcept override;
 	virtual Error discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept override;
+	virtual Error setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) const noexcept override;
 	virtual bool isDirectMessageSupported() const noexcept override;
 	virtual Error sendAdpMessage(Adpdu const& adpdu) const noexcept override;
 	virtual Error sendAecpMessage(Aecpdu const& aecpdu) const noexcept override;
@@ -484,6 +485,11 @@ ProtocolInterface::Error ProtocolInterfaceVirtualImpl::discoverRemoteEntities() 
 ProtocolInterface::Error ProtocolInterfaceVirtualImpl::discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept
 {
 	return _stateMachineManager.discoverRemoteEntity(entityID);
+}
+
+ProtocolInterface::Error ProtocolInterfaceVirtualImpl::setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) const noexcept
+{
+	return _stateMachineManager.setAutomaticDiscoveryDelay(delay);
 }
 
 bool ProtocolInterfaceVirtualImpl::isDirectMessageSupported() const noexcept

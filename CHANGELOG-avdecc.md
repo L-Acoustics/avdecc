@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Automatic discovery delay is now configurable for a Controller Entity
+
 ### Fixed
 - [Deadlock when shutting down PCap ProtocolInterface on linux](https://github.com/L-Acoustics/avdecc/issues/81)
 - Possible crash (uncaught exception) on macOS when enumerating network interfaces

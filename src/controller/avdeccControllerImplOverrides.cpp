@@ -343,6 +343,24 @@ void ControllerImpl::disableEntityAdvertising(std::optional<entity::model::AvbIn
 	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Controller advertising disabled");
 }
 
+bool ControllerImpl::discoverRemoteEntities() const noexcept
+{
+	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Requesting remote entities discovery");
+	return _controller->discoverRemoteEntities();
+}
+
+bool ControllerImpl::discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept
+{
+	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Requesting remote entity {} discovery", utils::toHexString(entityID, true));
+	return _controller->discoverRemoteEntity(entityID);
+}
+
+void ControllerImpl::setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) noexcept
+{
+	_controller->setAutomaticDiscoveryDelay(delay);
+	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Controller automatic discovery delay set to {} msec", delay.count());
+}
+
 void ControllerImpl::enableEntityModelCache() noexcept
 {
 	EntityModelCache::getInstance().enableCache();

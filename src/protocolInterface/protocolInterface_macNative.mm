@@ -474,6 +474,11 @@ private:
 		return ProtocolInterface::Error::TransportError;
 	}
 
+	virtual Error setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) const noexcept override
+	{
+		return _stateMachineManager.setAutomaticDiscoveryDelay(delay);
+	}
+
 	virtual bool isDirectMessageSupported() const noexcept override
 	{
 		return false;
@@ -710,7 +715,7 @@ private:
 
 #pragma mark Private variables
 	BridgeInterface* _bridge{ nullptr };
-	stateMachine::Manager _stateMachineManager{ this, this, nullptr, nullptr, nullptr }; // stateMachineManager only required to create the discovery thread (which will callback 'this')
+	mutable stateMachine::Manager _stateMachineManager{ this, this, nullptr, nullptr, nullptr }; // stateMachineManager only required to create the discovery thread (which will callback 'this')
 	bool _shouldTerminate{ false };
 	std::thread _stateMachineThread{}; // Can safely be declared here, will be joined during destruction
 	CommandEntities _commandEntities{};

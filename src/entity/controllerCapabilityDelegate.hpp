@@ -28,6 +28,8 @@
 
 #include "entityImpl.hpp"
 
+#include <chrono>
+
 namespace la
 {
 namespace avdecc

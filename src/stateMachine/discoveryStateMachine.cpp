@@ -39,8 +39,6 @@ namespace protocol
 {
 namespace stateMachine
 {
-static constexpr auto DiscoverySendDelay = 10000u; // Delay (in milliseconds) between 2 DISCOVER message broadcast
-
 /* ************************************************************ */
 /* Public methods                                               */
 /* ************************************************************ */
@@ -52,13 +50,24 @@ DiscoveryStateMachine::DiscoveryStateMachine(Manager* manager, Delegate* const d
 
 DiscoveryStateMachine::~DiscoveryStateMachine() noexcept {}
 
+void DiscoveryStateMachine::setDiscoveryDelay(std::chrono::milliseconds const delay) noexcept
+{
+	_discoveryDelay = delay;
+	_lastDiscovery = std::chrono::steady_clock::now();
+}
+
+void DiscoveryStateMachine::discoverMessageSent() noexcept
+{
+	_lastDiscovery = std::chrono::steady_clock::now();
+}
+
 void DiscoveryStateMachine::checkRemoteEntitiesTimeoutExpiracy() noexcept
 {
 	// Lock
 	auto const lg = std::lock_guard{ *_manager };
 
 	// Get current time
-	auto const now = std::chrono::system_clock::now();
+	auto const now = std::chrono::steady_clock::now();
 
 	// Process all Discovered Entities on the attached Protocol Interface
 	for (auto discoveredEntityKV = _discoveredEntities.begin(); discoveredEntityKV != _discoveredEntities.end(); /* Iterate inside the loop */)
@@ -115,15 +124,20 @@ void DiscoveryStateMachine::checkRemoteEntitiesTimeoutExpiracy() noexcept
 
 void DiscoveryStateMachine::checkDiscovery() noexcept
 {
-	auto const now = std::chrono::system_clock::now();
-
-	if (now >= (_lastDiscovery + std::chrono::milliseconds(DiscoverySendDelay)))
+	if (_discoveryDelay.count() == 0)
 	{
-		// Time to send a discovery request
-		_manager->getProtocolInterface()->discoverRemoteEntities();
+		return;
+	}
 
-		// Store the time we sent our discovery message
+	auto const now = std::chrono::steady_clock::now();
+
+	if (now >= (_lastDiscovery + _discoveryDelay))
+	{
+		// Update time now so we don't enter the loop again, in case the message is delayed a bit by the manager (which will trigger a discoverMessageSent when the message is actually sent)
 		_lastDiscovery = now;
+
+		// Time to send a discovery request
+		_manager->discoverRemoteEntities();
 	}
 }
 
@@ -173,7 +187,7 @@ void DiscoveryStateMachine::handleAdpEntityAvailable(Adpdu const& adpdu) noexcep
 	}
 
 	// Compute timeout value and always update
-	discoveredInfo->timeouts[avbInterfaceIndex] = std::chrono::system_clock::now() + std::chrono::seconds(2 * adpdu.getValidTime());
+	discoveredInfo->timeouts[avbInterfaceIndex] = std::chrono::steady_clock::now() + std::chrono::seconds(2 * adpdu.getValidTime());
 
 	// Notify delegate
 	if (notify && _delegate != nullptr)
