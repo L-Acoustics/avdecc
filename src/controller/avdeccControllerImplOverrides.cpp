@@ -358,7 +358,14 @@ bool ControllerImpl::discoverRemoteEntity(UniqueIdentifier const entityID) const
 void ControllerImpl::setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) noexcept
 {
 	_controller->setAutomaticDiscoveryDelay(delay);
-	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Controller automatic discovery delay set to {} msec", delay.count());
+	if (delay.count() == 0)
+	{
+		LOG_CONTROLLER_INFO(_controller->getEntityID(), "Controller automatic discovery disabled");
+	}
+	else
+	{
+		LOG_CONTROLLER_INFO(_controller->getEntityID(), "Controller automatic discovery delay set to {} msec", delay.count());
+	}
 }
 
 void ControllerImpl::enableEntityModelCache() noexcept
