@@ -439,6 +439,57 @@ LA_AVDECC_BINDINGS_C_API avdecc_local_entity_error_t LA_AVDECC_BINDINGS_C_CALL_C
 	return static_cast<avdecc_local_entity_error_t>(avdecc_local_entity_error_no_error);
 }
 
+LA_AVDECC_BINDINGS_C_API avdecc_local_entity_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_LocalEntity_discoverRemoteEntities(LA_AVDECC_LOCAL_ENTITY_HANDLE const handle)
+{
+	try
+	{
+		auto& obj = s_AggregateEntityManager.getObject(handle);
+		if (!obj.discoverRemoteEntities())
+		{
+			return static_cast<avdecc_local_entity_error_t>(avdecc_local_entity_error_invalid_parameters);
+		}
+	}
+	catch (...)
+	{
+		return static_cast<avdecc_local_entity_error_t>(avdecc_local_entity_error_invalid_entity_handle);
+	}
+
+	return static_cast<avdecc_local_entity_error_t>(avdecc_local_entity_error_no_error);
+}
+
+LA_AVDECC_BINDINGS_C_API avdecc_local_entity_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_LocalEntity_discoverRemoteEntity(LA_AVDECC_LOCAL_ENTITY_HANDLE const handle, avdecc_unique_identifier_t const entityID)
+{
+	try
+	{
+		auto& obj = s_AggregateEntityManager.getObject(handle);
+		if (!obj.discoverRemoteEntity(la::avdecc::UniqueIdentifier{ entityID }))
+		{
+			return static_cast<avdecc_local_entity_error_t>(avdecc_local_entity_error_invalid_parameters);
+		}
+	}
+	catch (...)
+	{
+		return static_cast<avdecc_local_entity_error_t>(avdecc_local_entity_error_invalid_entity_handle);
+	}
+
+	return static_cast<avdecc_local_entity_error_t>(avdecc_local_entity_error_no_error);
+}
+
+LA_AVDECC_BINDINGS_C_API avdecc_local_entity_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_LocalEntity_setAutomaticDiscoveryDelay(LA_AVDECC_LOCAL_ENTITY_HANDLE const handle, unsigned int const millisecondsDelay)
+{
+	try
+	{
+		auto& obj = s_AggregateEntityManager.getObject(handle);
+		obj.setAutomaticDiscoveryDelay(std::chrono::milliseconds{ millisecondsDelay });
+	}
+	catch (...)
+	{
+		return static_cast<avdecc_local_entity_error_t>(avdecc_local_entity_error_invalid_entity_handle);
+	}
+
+	return static_cast<avdecc_local_entity_error_t>(avdecc_local_entity_error_no_error);
+}
+
 /* Enumeration and Control Protocol (AECP) AEM */
 
 LA_AVDECC_BINDINGS_C_API avdecc_local_entity_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_LocalEntity_acquireEntity(LA_AVDECC_LOCAL_ENTITY_HANDLE const handle, avdecc_unique_identifier_t const entityID, avdecc_bool_t const isPersistent, avdecc_entity_model_descriptor_type_t const descriptorType, avdecc_entity_model_descriptor_index_t const descriptorIndex, avdecc_local_entity_acquire_entity_cb const onResult)
