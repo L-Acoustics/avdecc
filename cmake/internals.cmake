@@ -9,7 +9,6 @@ set(LA_AVDECC_INTERNALS_INCLUDED true)
 # Some global variables
 set(LA_ROOT_DIR "${PROJECT_SOURCE_DIR}") # Folder containing the main CMakeLists.txt for the repository including this file
 set(LA_TOP_LEVEL_BINARY_DIR "${PROJECT_BINARY_DIR}") # Folder containing the top level binary files (CMake root output folder)
-set(SIGNTOOL_TIMESTAMP_SERVER "http://timestamp.comodoca.com")
 set(CMAKE_MACROS_FOLDER "${CMAKE_CURRENT_LIST_DIR}")
 
 # Include TargetSetupDeploy script from cmakeUtils
