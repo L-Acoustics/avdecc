@@ -10,9 +10,9 @@ cmake_minimum_required(VERSION 3.13)
 # It should have 3 digits (x.y.z) on main branch, and 4 digits (x.y.z.w) on dev and task branches. The last digit being used as beta label.
 # As soon as an API change occurs in dev or task branch, update the version number by following SemVer rules (so the API breaking changes are not lost/forgotten).
 # Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task) which will be labelled 1.5.0-beta3
-set(LA_AVDECC_VERSION 3.0.1)
-set(LA_AVDECC_CONTROLLER_VERSION 3.0.1)
-set(LA_AVDECC_C_VERSION 1.0.1)
+set(LA_AVDECC_VERSION 3.0.2)
+set(LA_AVDECC_CONTROLLER_VERSION 3.0.2)
+set(LA_AVDECC_C_VERSION 1.0.2)
 
 ############ Override from command line "CMake -D<OPTION>=TRUE/FALSE/0/1/ON/OFF"
 
@@ -22,7 +22,7 @@ option(BUILD_AVDECC_TESTS "Build unit tests." FALSE)
 option(BUILD_AVDECC_LIB_SHARED_CXX "Build C++ shared library." TRUE)
 option(BUILD_AVDECC_LIB_STATIC_RT_SHARED "Build static library (runtime shared)." TRUE)
 option(BUILD_AVDECC_DOC "Build documentation." FALSE)
-option(BUILD_AVDECC_BINDINGS_C "Build avdecc C bindings library." FALSE)
+option(BUILD_AVDECC_BINDINGS_C "Build avdecc C bindings library." TRUE)
 option(BUILD_AVDECC_CONTROLLER "Build avdecc controller library." TRUE)
 option(BUILD_AVDECC_INTERFACE_PCAP "Build the pcap protocol interface." TRUE)
 option(BUILD_AVDECC_INTERFACE_PCAP_DYNAMIC_LINKING "Pcap protocol interface uses dynamic shared library linking (instead of static linking)." FALSE)

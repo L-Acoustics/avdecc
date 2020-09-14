@@ -43,6 +43,9 @@
 #include <memory>
 #include <chrono>
 #include <cstdlib>
+#ifdef __linux__
+#	include <csignal>
+#endif // __linux__
 
 namespace la
 {
@@ -104,54 +107,57 @@ public:
 		_captureThread = std::thread(
 			[this]
 			{
-				int res = 0;
-				struct pcap_pkthdr* header;
-				std::uint8_t const* pkt_data;
-
 				utils::setCurrentThreadName("avdecc::PCapInterface::Capture");
 				auto* const pcap = _pcap.get();
 
-				while (!_shouldTerminate && (res = _pcapLibrary.next_ex(pcap, &header, &pkt_data)) >= 0)
-				{
-					if (res == 0) /* Timeout elapsed */
-						continue;
+#ifdef __linux__
+				// Empty signal handler for when shutdown() wakes up this thread during termination
+				std::signal(SIGTERM, [](int){});
+#endif // __linux__
 
-					// Packet received, process it
-					auto des = DeserializationBuffer(pkt_data, header->caplen);
-					EtherLayer2 etherLayer2;
-					deserialize<EtherLayer2>(&etherLayer2, des);
-
-					// Don't ignore self mac, another entity might be on the computer
-
-					// Check ether type (shouldn't be needed, pcap filter is active)
-					std::uint16_t etherType = AVDECC_UNPACK_TYPE(*((std::uint16_t*)(pkt_data + 12)), std::uint16_t);
-					if (etherType != AvtpEtherType)
-						continue;
-
-					std::uint8_t const* avtpdu = &pkt_data[14]; // Start of AVB Transport Protocol
-					auto avtpdu_size = header->caplen - 14;
-					// Check AVTP control bit (meaning AVDECC packet)
-					std::uint8_t avtp_sub_type_control = avtpdu[0];
-					if ((avtp_sub_type_control & 0xF0) == 0)
-						continue;
-
-					// Try to detect possible deadlock
-					{
-						_watchDog.registerWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + utils::toHexString(reinterpret_cast<size_t>(this)), std::chrono::milliseconds{ 1000u });
-						dispatchAvdeccMessage(avtpdu, avtpdu_size, etherLayer2);
-						_watchDog.unregisterWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + utils::toHexString(reinterpret_cast<size_t>(this)));
-					}
-				}
+				_pcapLibrary.loop(pcap, -1, &ProtocolInterfacePcapImpl::pcapLoopHandler, reinterpret_cast<u_char*>(this));
 
 				// Notify observers if we exited the loop because of an error
 				if (!_shouldTerminate)
 				{
+					// pcap_loop returned but we never asked for termination
 					notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onTransportError, this);
 				}
 			});
 
 		// Start the state machines
 		_stateMachineManager.startStateMachines();
+	}
+
+	static void pcapLoopHandler(u_char* user, const struct pcap_pkthdr* header, const u_char* pkt_data)
+	{
+		auto* self = reinterpret_cast<ProtocolInterfacePcapImpl*>(user);
+
+		// Packet received, process it
+		auto des = DeserializationBuffer(pkt_data, header->caplen);
+		EtherLayer2 etherLayer2;
+		deserialize<EtherLayer2>(&etherLayer2, des);
+
+		// Don't ignore self mac, another entity might be on the computer
+
+		// Check ether type (shouldn't be needed, pcap filter is active)
+		std::uint16_t etherType = AVDECC_UNPACK_TYPE(*((std::uint16_t*)(pkt_data + 12)), std::uint16_t);
+		if (etherType != AvtpEtherType)
+			return;
+
+		std::uint8_t const* avtpdu = &pkt_data[14]; // Start of AVB Transport Protocol
+		auto avtpdu_size = header->caplen - 14;
+		// Check AVTP control bit (meaning AVDECC packet)
+		std::uint8_t avtp_sub_type_control = avtpdu[0];
+		if ((avtp_sub_type_control & 0xF0) == 0)
+			return;
+
+		// Try to detect possible deadlock
+		{
+			self->_watchDog.registerWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + utils::toHexString(reinterpret_cast<size_t>(self)), std::chrono::milliseconds{ 1000u });
+			self->dispatchAvdeccMessage(avtpdu, avtpdu_size, etherLayer2);
+			self->_watchDog.unregisterWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + utils::toHexString(reinterpret_cast<size_t>(self)));
+		}
 	}
 
 	/** Destructor */
@@ -186,7 +192,18 @@ private:
 
 		// Wait for the thread to complete its pending tasks
 		if (_captureThread.joinable())
+		{
+			if (auto pcap = _pcap.get(); AVDECC_ASSERT_WITH_RET(pcap, "pcap should not be null if the thread exists"))
+			{
+				// Ask pcap_loop to terminate
+				_pcapLibrary.breakloop(pcap);
+			}
+#ifdef __linux__
+			// On linux when using 3PCAP we also have to wake up the thread using a signal (see pcap_breakloop manpage, "multi-threaded application" section)
+			pthread_kill(_captureThread.native_handle(), SIGTERM);
+#endif // __linux__
 			_captureThread.join();
+		}
 
 		// Release the pcapLibrary
 		_pcap.reset();
@@ -261,6 +278,11 @@ private:
 	virtual Error discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept override
 	{
 		return _stateMachineManager.discoverRemoteEntity(entityID);
+	}
+
+	virtual Error setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) const noexcept override
+	{
+		return _stateMachineManager.setAutomaticDiscoveryDelay(delay);
 	}
 
 	virtual bool isDirectMessageSupported() const noexcept override

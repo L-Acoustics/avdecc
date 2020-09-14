@@ -47,6 +47,8 @@ public:
 	int setfilter(pcap_t*, struct bpf_program*) const;
 	void freecode(struct bpf_program*) const;
 	int next_ex(pcap_t*, struct pcap_pkthdr**, const u_char**) const;
+	int loop(pcap_t*, int, pcap_handler, u_char*) const;
+	void breakloop(pcap_t*) const;
 	int sendpacket(pcap_t*, const u_char*, int) const;
 
 private:

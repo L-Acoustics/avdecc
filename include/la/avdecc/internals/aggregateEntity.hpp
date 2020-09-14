@@ -74,6 +74,12 @@ public:
 	using LocalEntity::enableEntityAdvertising;
 	/** Disables entity advertising on the specified interfaceIndex if set, otherwise on all interfaces. */
 	using LocalEntity::disableEntityAdvertising;
+	/** Requests a remote entities discovery. */
+	using LocalEntity::discoverRemoteEntities;
+	/** Requests a targetted remote entity discovery. */
+	using LocalEntity::discoverRemoteEntity;
+	/** Sets automatic discovery delay. 0 (default) for no automatic discovery. */
+	using LocalEntity::setAutomaticDiscoveryDelay;
 
 	virtual void setControllerDelegate(controller::Delegate* const delegate) noexcept = 0;
 	//virtual void setListenerDelegate(listener::Delegate* const delegate) noexcept = 0;

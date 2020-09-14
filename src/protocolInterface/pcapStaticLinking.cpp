@@ -49,7 +49,7 @@ int PcapInterface::fileno(pcap_t* p) const
 
 void PcapInterface::close(pcap_t* p) const
 {
-	return pcap_close(p);
+	pcap_close(p);
 }
 
 int PcapInterface::compile(pcap_t* p, struct bpf_program* fp, const char* str, int optimize, bpf_u_int32 netmask) const
@@ -64,12 +64,22 @@ int PcapInterface::setfilter(pcap_t* p, struct bpf_program* fp) const
 
 void PcapInterface::freecode(bpf_program* fp) const
 {
-	return pcap_freecode(fp);
+	pcap_freecode(fp);
 }
 
 int PcapInterface::next_ex(pcap_t* p, struct pcap_pkthdr** pkt_header, const u_char** pkt_data) const
 {
 	return pcap_next_ex(p, pkt_header, pkt_data);
+}
+
+int PcapInterface::loop(pcap_t* p, int cnt, pcap_handler callback, u_char* user) const
+{
+	return pcap_loop(p, cnt, callback, user);
+}
+
+void PcapInterface::breakloop(pcap_t* p) const
+{
+	pcap_breakloop(p);
 }
 
 int PcapInterface::sendpacket(pcap_t* p, const u_char* buf, int size) const
