@@ -119,15 +119,8 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 		target_link_libraries(la_avdecc_controller_cxx PRIVATE nlohmann_json)
 	endif()
 
-	# Sign binary (this is done during installation phase, either from this project or from a project including this one)
-	if(ENABLE_AVDECC_SIGNING)
-		sign_target(la_avdecc_controller_cxx)
-	endif()
-
-	# Set installation rule
-	if(INSTALL_AVDECC_LIB_SHARED_CXX)
-		setup_library_install_rules(la_avdecc_controller_cxx)
-	endif()
+	# Setup install (and signing)
+	setup_deploy_library(la_avdecc_controller_cxx ${INSTALL_SHARED_FLAG} ${SIGN_FLAG})
 endif()
 
 # Runtime-shared static library
@@ -157,10 +150,8 @@ if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 	# Link with avdecc using static library
 	target_link_libraries(la_avdecc_controller_static PUBLIC la_avdecc_static)
 
-	# Set installation rule
-	if(INSTALL_AVDECC_LIB_STATIC)
-		setup_library_install_rules(la_avdecc_controller_static)
-	endif()
+	# Setup install (and signing)
+	setup_deploy_library(la_avdecc_controller_static ${INSTALL_STATIC_FLAG} ${SIGN_FLAG})
 endif()
 
 # Set installation rules

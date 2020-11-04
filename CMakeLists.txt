@@ -1,7 +1,7 @@
 # Avdecc Library
 
 # Minimum CMake version
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.15)
 
 ############ Versioning
 
@@ -94,6 +94,24 @@ endif()
 set(TARGET_ARCH 32)
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
 	set(TARGET_ARCH 64)
+endif()
+if(${INSTALL_AVDECC_LIB_SHARED_CXX})
+	set(INSTALL_SHARED_FLAG "INSTALL")
+endif()
+if(${INSTALL_AVDECC_LIB_STATIC})
+	set(INSTALL_STATIC_FLAG "INSTALL")
+endif()
+if(${INSTALL_AVDECC_BINDINGS})
+	set(INSTALL_BINDINGS_FLAG "INSTALL")
+endif()
+if(${INSTALL_AVDECC_EXAMPLES})
+	set(INSTALL_EXAMPLE_FLAG "INSTALL")
+endif()
+if(${INSTALL_AVDECC_TESTS})
+	set(INSTALL_TEST_FLAG "INSTALL")
+endif()
+if(${ENABLE_AVDECC_SIGNING})
+	set(SIGN_FLAG "SIGN")
 endif()
 
 ############ Check dependencies

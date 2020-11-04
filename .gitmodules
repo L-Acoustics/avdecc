@@ -10,3 +10,6 @@
 [submodule "scripts/bashUtils"]
 	path = scripts/bashUtils
 	url = https://github.com/christophe-calmejane/bashUtils.git
+[submodule "cmake/cmakeUtils"]
+	path = cmake/cmakeUtils
+	url = https://github.com/christophe-calmejane/cmakeUtils.git
