@@ -229,7 +229,7 @@ void Manager::startStateMachines() noexcept
 
 				auto watchDogSharedPointer = watchDog::WatchDog::getInstance();
 				auto& watchDog = *watchDogSharedPointer;
-				watchDog.registerWatch("avdecc::StateMachine", std::chrono::milliseconds{ 1000u });
+				watchDog.registerWatch("avdecc::StateMachine", std::chrono::milliseconds{ 1000u }, true);
 
 				while (!_shouldTerminate)
 				{
@@ -246,12 +246,12 @@ void Manager::startStateMachines() noexcept
 					_commandStateMachine.checkInflightCommandsTimeoutExpiracy();
 
 					// Try to detect deadlocks
-					watchDog.alive("avdecc::StateMachine");
+					watchDog.alive("avdecc::StateMachine", true);
 
 					// Wait a little bit so we don't burn the CPU
 					std::this_thread::sleep_for(std::chrono::milliseconds(5));
 				}
-				watchDog.unregisterWatch("avdecc::StateMachine");
+				watchDog.unregisterWatch("avdecc::StateMachine", true);
 			});
 	}
 }

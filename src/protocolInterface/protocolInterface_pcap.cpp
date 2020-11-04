@@ -154,9 +154,9 @@ public:
 
 		// Try to detect possible deadlock
 		{
-			self->_watchDog.registerWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + utils::toHexString(reinterpret_cast<size_t>(self)), std::chrono::milliseconds{ 1000u });
+			self->_watchDog.registerWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + utils::toHexString(reinterpret_cast<size_t>(self)), std::chrono::milliseconds{ 1000u }, true);
 			self->dispatchAvdeccMessage(avtpdu, avtpdu_size, etherLayer2);
-			self->_watchDog.unregisterWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + utils::toHexString(reinterpret_cast<size_t>(self)));
+			self->_watchDog.unregisterWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + utils::toHexString(reinterpret_cast<size_t>(self)), true);
 		}
 	}
 

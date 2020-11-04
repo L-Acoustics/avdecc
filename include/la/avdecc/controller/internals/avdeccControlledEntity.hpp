@@ -314,7 +314,7 @@ private:
 	{
 		if (_controlledEntity)
 		{
-			_watchDog.get().registerWatch("avdecc::controller::ControlledEntityGuard::" + utils::toHexString(reinterpret_cast<size_t>(this)), std::chrono::milliseconds{ 500u });
+			_watchDog.get().registerWatch("avdecc::controller::ControlledEntityGuard::" + utils::toHexString(reinterpret_cast<size_t>(this)), std::chrono::milliseconds{ 500u }, true);
 		}
 	}
 
@@ -322,7 +322,7 @@ private:
 	{
 		if (_controlledEntity)
 		{
-			_watchDog.get().unregisterWatch("avdecc::controller::ControlledEntityGuard::" + utils::toHexString(reinterpret_cast<size_t>(this)));
+			_watchDog.get().unregisterWatch("avdecc::controller::ControlledEntityGuard::" + utils::toHexString(reinterpret_cast<size_t>(this)), true);
 		}
 	}
 
