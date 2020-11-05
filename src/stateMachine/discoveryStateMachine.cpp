@@ -239,6 +239,18 @@ void DiscoveryStateMachine::handleAdpEntityDeparting(Adpdu const& adpdu) noexcep
 	utils::invokeProtectedMethod(&Delegate::onRemoteEntityOffline, _delegate, entityID);
 }
 
+void DiscoveryStateMachine::notifyDiscoveredRemoteEntities(Delegate& delegate) const noexcept
+{
+	// Lock
+	auto const lg = std::lock_guard{ *_manager };
+
+	for (auto const& [entityID, entityInfo] : _discoveredEntities)
+	{
+		utils::invokeProtectedMethod(&Delegate::onRemoteEntityOnline, &delegate, entityInfo.entity);
+	}
+}
+
+
 /* ************************************************************ */
 /* Private methods                                              */
 /* ************************************************************ */
