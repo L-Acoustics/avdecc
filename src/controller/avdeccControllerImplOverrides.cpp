@@ -127,7 +127,7 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 					}
 
 					// Now actually notify, outside the lock
-					for (auto const entityID : identificationsStopped)
+					for (auto const& entityID : identificationsStopped)
 					{
 						if (_shouldTerminate)
 						{

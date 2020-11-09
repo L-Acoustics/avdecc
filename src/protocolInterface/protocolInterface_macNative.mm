@@ -1331,7 +1331,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	}
 
 	// Remove ACMP handlers that were not removed
-	for (auto const entityID : registeredAcmpHandlers)
+	for (auto const& entityID : registeredAcmpHandlers)
 	{
 		[self deinitEntity:entityID];
 	}
