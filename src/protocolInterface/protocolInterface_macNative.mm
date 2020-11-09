@@ -113,6 +113,8 @@ struct LockInformation
 	LockInformation _lock; /** Lock to protect the ProtocolInterface */
 	std::unordered_map<la::avdecc::UniqueIdentifier, std::uint32_t, la::avdecc::UniqueIdentifier::hash> _lastAvailableIndex; /** Last received AvailableIndex for each entity */
 	std::unordered_map<la::avdecc::UniqueIdentifier, la::avdecc::entity::LocalEntity&, la::avdecc::UniqueIdentifier::hash> _localProcessEntities; /** Local entities declared by the running process */
+	std::unordered_map<la::avdecc::UniqueIdentifier, la::avdecc::entity::Entity, la::avdecc::UniqueIdentifier::hash> _localMachineEntities; /** Local entities declared by the local machine */
+	std::unordered_map<la::avdecc::UniqueIdentifier, la::avdecc::entity::Entity, la::avdecc::UniqueIdentifier::hash> _remoteEntities; /** Remove entities discovered */
 	std::unordered_set<la::avdecc::UniqueIdentifier, la::avdecc::UniqueIdentifier::hash> _registeredAcmpHandlers; /** List of ACMP handlers that have been registered (that must be removed upon destruction, since there is no removeAllHandlers method) */
 
 	std::mutex _lockQueues; /** Lock to protect _entityQueues */
@@ -141,6 +143,7 @@ struct LockInformation
 - (void)dealloc;
 
 // la::avdecc::protocol::ProtocolInterface bridge methods
+- (void)notifyDiscoveredEntities:(la::avdecc::protocol::ProtocolInterface::Observer&)obs;
 - (la::avdecc::UniqueIdentifier)getDynamicEID;
 - (void)releaseDynamicEID:(la::avdecc::UniqueIdentifier)entityID;
 // Registration of a local process entity (an entity declared inside this process, not all local computer entities)
@@ -603,6 +606,15 @@ private:
 	virtual std::uint32_t getVuAecpCommandTimeoutMsec(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, la::avdecc::protocol::VuAecpdu const& aecpdu) const noexcept override
 	{
 		return getVuAecpCommandTimeout(protocolIdentifier, aecpdu);
+	}
+
+#pragma mark la::avdecc::utils::Subject overrides
+	virtual void onObserverRegistered(observer_type* const observer) noexcept override
+	{
+		if (observer)
+		{
+			[_bridge notifyDiscoveredEntities:static_cast<ProtocolInterface::Observer&>(*observer)];
+		}
 	}
 
 private:
@@ -1318,6 +1330,8 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 		auto const lg = std::lock_guard{ _lock };
 		localProcessEntities = std::move(_localProcessEntities);
 		registeredAcmpHandlers = std::move(_registeredAcmpHandlers);
+		_localMachineEntities.clear();
+		_remoteEntities.clear();
 	}
 
 	// Remove Local Entities that were not removed
@@ -1364,6 +1378,25 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 }
 
 #pragma mark la::avdecc::protocol::ProtocolInterface bridge methods
+- (void)notifyDiscoveredEntities:(la::avdecc::protocol::ProtocolInterface::Observer&)obs {
+	auto const lg = std::lock_guard{ _lock };
+
+	for (auto const& [entityID, entity] : _localProcessEntities)
+	{
+		la::avdecc::utils::invokeProtectedMethod(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOnline, &obs, _protocolInterface, entity);
+	}
+
+	for (auto const& [entityID, entity] : _localMachineEntities)
+	{
+		la::avdecc::utils::invokeProtectedMethod(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOnline, &obs, _protocolInterface, entity);
+	}
+
+	for (auto const& [entityID, entity] : _remoteEntities)
+	{
+		la::avdecc::utils::invokeProtectedMethod(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOnline, &obs, _protocolInterface, entity);
+	}
+}
+
 - (la::avdecc::UniqueIdentifier)getDynamicEID {
 	return la::avdecc::UniqueIdentifier{ [AVBCentralManager nextAvailableDynamicEntityID] };
 }
@@ -1789,13 +1822,19 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 
 // Notification of an arriving local computer entity
 - (void)didAddLocalEntity:(AVB17221Entity*)newEntity on17221EntityDiscovery:(AVB17221EntityDiscovery*)entityDiscovery {
-	[self initEntity:la::avdecc::UniqueIdentifier{ newEntity.entityID }];
+	auto const entityID = la::avdecc::UniqueIdentifier{ newEntity.entityID };
+	auto e = [FromNative makeEntity:newEntity];
+
+	// Initialize entity
+	[self initEntity:entityID];
 
 	// Lock
 	auto const lg = std::lock_guard{ _lock };
 
+	// Add the entity to our cache of local entities declared by the local machine
+	_localMachineEntities.insert_or_assign(entityID, e);
+
 	// Notify observers
-	auto e = [FromNative makeEntity:newEntity];
 	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOnline, _protocolInterface, e);
 }
 
@@ -1806,6 +1845,9 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 
 	// Lock
 	auto const lg = std::lock_guard{ _lock };
+
+	// Remove from declared entities
+	_localMachineEntities.erase(oldEntityID);
 
 	// Notify observers
 	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOffline, _protocolInterface, oldEntityID);
@@ -1836,6 +1878,9 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	// Lock
 	auto const lg = std::lock_guard{ _lock };
 
+	// Update the entity
+	_localMachineEntities.insert_or_assign(e.getEntityID(), e);
+
 	// If a change occured in a forbidden flag, simulate offline/online for this entity
 	if ((changedProperties & kAVB17221EntityPropertyChangedShouldntChangeMask) != 0)
 	{
@@ -1849,7 +1894,11 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 }
 
 - (void)didAddRemoteEntity:(AVB17221Entity*)newEntity on17221EntityDiscovery:(AVB17221EntityDiscovery*)entityDiscovery {
-	[self initEntity:la::avdecc::UniqueIdentifier{ newEntity.entityID }];
+	auto const entityID = la::avdecc::UniqueIdentifier{ newEntity.entityID };
+	auto e = [FromNative makeEntity:newEntity];
+
+	// Initialize entity
+	[self initEntity:entityID];
 
 	// Lock
 	auto const lg = std::lock_guard{ _lock };
@@ -1861,8 +1910,10 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 		previousResult.first->second = newEntity.availableIndex;
 	}
 
+	// Add the entity to our cache of remote entities
+	_remoteEntities.insert_or_assign(entityID, e);
+
 	// Notify observers
-	auto e = [FromNative makeEntity:newEntity];
 	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOnline, _protocolInterface, e);
 }
 
@@ -1872,6 +1923,9 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 
 	// Lock
 	auto const lg = std::lock_guard{ _lock };
+
+	// Remove from declared entities
+	_remoteEntities.erase(oldEntityID);
 
 	// Clear entity from available index list
 	_lastAvailableIndex.erase(oldEntityID);
@@ -1929,6 +1983,9 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 		return;
 
 	auto e = [FromNative makeEntity:entity];
+
+	// Update the entity
+	_remoteEntities.insert_or_assign(e.getEntityID(), e);
 
 	// If a change occured in a forbidden flag, simulate offline/online for this entity
 	if ((changedProperties & kAVB17221EntityPropertyChangedShouldntChangeMask) != 0)
