@@ -481,6 +481,24 @@ bool Manager::isLocalEntity(UniqueIdentifier const entityID) noexcept
 	return _localEntities.find(entityID) != _localEntities.end();
 }
 
+void Manager::notifyDiscoveredEntities(DiscoveryStateMachine::Delegate& delegate) noexcept
+{
+	// Notify local entities
+	{
+		auto const lg = std::lock_guard{ *this };
+
+		for (auto const& [entityID, entity] : _localEntities)
+		{
+			// Notify delegate
+			utils::invokeProtectedMethod(&DiscoveryStateMachine::Delegate::onLocalEntityOnline, &delegate, entity);
+		}
+	}
+
+	// Notify remote entities
+	_discoveryStateMachine.notifyDiscoveredRemoteEntities(delegate);
+}
+
+
 /* ************************************************************ */
 /* Advertising entry points                                     */
 /* ************************************************************ */

@@ -110,7 +110,7 @@ struct adl_serializer<la::avdecc::entity::model::EntityCounters>
 	{
 		auto object = json::object();
 
-		for (auto const [name, value] : counters)
+		for (auto const& [name, value] : counters)
 		{
 			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
 			object[n.get<std::string>()] = value;
@@ -145,7 +145,7 @@ struct adl_serializer<la::avdecc::entity::model::AvbInterfaceCounters>
 	{
 		auto object = json::object();
 
-		for (auto const [name, value] : counters)
+		for (auto const& [name, value] : counters)
 		{
 			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
 			auto const key = n.get<std::string>();
@@ -188,7 +188,7 @@ struct adl_serializer<la::avdecc::entity::model::ClockDomainCounters>
 	{
 		auto object = json::object();
 
-		for (auto const [name, value] : counters)
+		for (auto const& [name, value] : counters)
 		{
 			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
 			auto const key = n.get<std::string>();
@@ -231,7 +231,7 @@ struct adl_serializer<la::avdecc::entity::model::StreamInputCounters>
 	{
 		auto object = json::object();
 
-		for (auto const [name, value] : counters)
+		for (auto const& [name, value] : counters)
 		{
 			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
 			auto const key = n.get<std::string>();
@@ -274,7 +274,7 @@ struct adl_serializer<la::avdecc::entity::model::StreamOutputCounters>
 	{
 		auto object = json::object();
 
-		for (auto const [name, value] : counters)
+		for (auto const& [name, value] : counters)
 		{
 			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
 			auto const key = n.get<std::string>();

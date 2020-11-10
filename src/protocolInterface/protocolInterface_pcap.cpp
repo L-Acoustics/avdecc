@@ -572,6 +572,45 @@ private:
 	}
 
 	/* ************************************************************ */
+	/* la::avdecc::utils::Subject overrides                         */
+	/* ************************************************************ */
+	virtual void onObserverRegistered(observer_type* const observer) noexcept override
+	{
+		if (observer)
+		{
+			class DiscoveryDelegate final : public stateMachine::DiscoveryStateMachine::Delegate
+			{
+			public:
+				DiscoveryDelegate(ProtocolInterface& pi, ProtocolInterface::Observer& obs)
+					: _pi{ pi }
+					, _obs{ obs }
+				{
+				}
+
+			private:
+				virtual void onLocalEntityOnline(la::avdecc::entity::Entity const& entity) noexcept override
+				{
+					utils::invokeProtectedMethod(&ProtocolInterface::Observer::onLocalEntityOnline, &_obs, &_pi, entity);
+				}
+				virtual void onLocalEntityOffline(la::avdecc::UniqueIdentifier const /*entityID*/) noexcept override {}
+				virtual void onLocalEntityUpdated(la::avdecc::entity::Entity const& /*entity*/) noexcept override {}
+				virtual void onRemoteEntityOnline(la::avdecc::entity::Entity const& entity) noexcept override
+				{
+					utils::invokeProtectedMethod(&ProtocolInterface::Observer::onRemoteEntityOnline, &_obs, &_pi, entity);
+				}
+				virtual void onRemoteEntityOffline(la::avdecc::UniqueIdentifier const /*entityID*/) noexcept override {}
+				virtual void onRemoteEntityUpdated(la::avdecc::entity::Entity const& /*entity*/) noexcept override {}
+
+				ProtocolInterface& _pi;
+				ProtocolInterface::Observer& _obs;
+			};
+			auto discoveryDelegate = DiscoveryDelegate{ *this, static_cast<ProtocolInterface::Observer&>(*observer) };
+
+			_stateMachineManager.notifyDiscoveredEntities(discoveryDelegate);
+		}
+	}
+
+	/* ************************************************************ */
 	/* Private methods                                              */
 	/* ************************************************************ */
 	Error sendPacket(SerializationBuffer const& buffer) const noexcept

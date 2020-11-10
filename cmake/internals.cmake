@@ -291,7 +291,7 @@ endfunction()
 ###############################################################################
 # Internal function
 function(get_sign_command_options OUT_VAR)
-	set(${OUT_VAR} SIGNTOOL_OPTIONS ${LA_SIGNTOOL_OPTIONS} /d \"${LA_COMPANY_NAME} ${PROJECT_NAME}\" CODESIGN_OPTIONS --timestamp --deep --strict --force --options=runtime CODESIGN_IDENTITY \"${LA_TEAM_IDENTIFIER}\" PARENT_SCOPE)
+	set(${OUT_VAR} SIGNTOOL_OPTIONS ${LA_SIGNTOOL_OPTIONS} /d \"${LA_COMPANY_NAME} ${PROJECT_NAME}\" CODESIGN_OPTIONS --timestamp --deep --strict --force --options=runtime CODESIGN_IDENTITY \"${LA_BINARY_SIGNING_IDENTITY}\" PARENT_SCOPE)
 endfunction()
 
 #

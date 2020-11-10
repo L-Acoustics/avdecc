@@ -80,6 +80,7 @@ public:
 	ProtocolInterfaceDelegate* getProtocolInterfaceDelegate() noexcept;
 	std::optional<entity::model::AvbInterfaceIndex> getMatchingInterfaceIndex(entity::LocalEntity const& entity) const noexcept;
 	bool isLocalEntity(UniqueIdentifier const entityID) noexcept;
+	void notifyDiscoveredEntities(DiscoveryStateMachine::Delegate& delegate) noexcept;
 
 	/* ************************************************************ */
 	/* Advertising entry points                                     */

@@ -477,7 +477,7 @@ std::vector<avdecc_entity_model_descriptors_count_t> make_descriptors_count(std:
 {
 	auto m = std::vector<avdecc_entity_model_descriptors_count_t>{};
 
-	for (auto const [descriptorType, count] : counts)
+	for (auto const& [descriptorType, count] : counts)
 	{
 		m.emplace_back(avdecc_entity_model_descriptors_count_t{ static_cast<avdecc_entity_model_descriptor_type_t>(descriptorType), count });
 	}
