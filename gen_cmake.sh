@@ -26,7 +26,6 @@ default_VisualGeneratorArch="Win32"
 default_VisualToolset="v142"
 default_VisualToolchain="x64"
 default_VisualArch="x86"
-default_VisualSdk="8.1"
 default_signtoolOptions="/a /sm /q /fd sha256 /tr http://timestamp.sectigo.com"
 
 # 
@@ -53,7 +52,6 @@ else
 		generator_arch="$default_VisualGeneratorArch"
 		toolset="$default_VisualToolset"
 		toolchain="$default_VisualToolchain"
-		platformSdk="$default_VisualSdk"
 		arch="$default_VisualArch"
 		defaultOutputFolder="${outputFolderBasePath}_<arch>_<toolset>"
 	else
@@ -354,13 +352,8 @@ if [ ! -z "${toolset}" ]; then
 	fi
 fi
 
-sdk_option=""
-if [ ! -z "${platformSdk}" ]; then
-	sdk_option="-DCMAKE_SYSTEM_VERSION=$platformSdk"
-fi
-
 echo "Generating cmake project..."
-"$cmake_path" -H. -B"${outputFolder}" "-G${generator}" $generator_arch_option $toolset_option $sdk_option $cmake_opt "${add_cmake_opt[@]}"
+"$cmake_path" -H. -B"${outputFolder}" "-G${generator}" $generator_arch_option $toolset_option $cmake_opt "${add_cmake_opt[@]}"
 
 echo ""
 echo "All done, generated project lies in ${outputFolder}"
