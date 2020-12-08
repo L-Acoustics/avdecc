@@ -210,8 +210,6 @@ function(setup_library_options TARGET_NAME BASE_LIB_NAME)
 	if(NOT APPLE AND NOT WIN32)
 		# Build using fPIC
 		target_compile_options(${TARGET_NAME} PRIVATE -fPIC)
-		# Add pthread library
-		set(ADD_LINK_LIBRARIES pthread)
 	endif()
 
 	# Static library special options

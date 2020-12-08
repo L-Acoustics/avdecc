@@ -21,6 +21,11 @@ set(ADD_PUBLIC_COMPILE_OPTIONS "")
 set(PCH_HEADER_NAME "pch.hpp")
 set(PCH_SOURCE_NAME "pch.cpp")
 
+if(CMAKE_SYSTEM_NAME STREQUAL Linux)
+	# Add pthread library on linux
+	list(APPEND ADD_LINK_LIBS "-lpthread")
+endif()
+
 # Disable windows MINMAX
 if(WIN32)
 	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DNOMINMAX")
