@@ -41,13 +41,13 @@ public:
 	using value_type = std::uint64_t;
 
 	/** Default constructor. */
-	UniqueIdentifier() noexcept
+	constexpr UniqueIdentifier() noexcept
 		: _eui(0xFFFFFFFFFFFFFFFF)
 	{
 	}
 
 	/** Constructor to create a UniqueIdentifier from the underlying value. */
-	explicit UniqueIdentifier(value_type const eui) noexcept
+	explicit constexpr UniqueIdentifier(value_type const eui) noexcept
 		: _eui(eui)
 	{
 	}
