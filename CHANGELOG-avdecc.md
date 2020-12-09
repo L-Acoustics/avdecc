@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - When an observer registers to a ProtocolInterface, it now immediately receives notifications about already known entities (both local and remote)
 
+### Fixed
+- [ControllerCapability methods trigger the result handler in case of Protocol exception](https://github.com/L-Acoustics/avdecc/issues/83)
+
 ## [3.0.2] - 2020-09-14
 ### Added
 - Automatic discovery delay is now configurable for a Controller Entity
