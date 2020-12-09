@@ -83,6 +83,7 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAdpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAecpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAemAecpdu.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAemPayloadSizes.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAvtpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolDefines.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolMvuAecpdu.hpp
@@ -96,7 +97,6 @@ set (PUBLIC_HEADER_FILES
 # Low level Protocol
 set (HEADER_FILES_PROTOCOL
 	protocol/protocolAemPayloads.hpp
-	protocol/protocolAemPayloadSizes.hpp
 	protocol/protocolMvuPayloads.hpp
 	protocol/protocolMvuPayloadSizes.hpp
 )

@@ -25,6 +25,7 @@
 // Public API
 #include <la/avdecc/controller/avdeccController.hpp>
 #include <la/avdecc/internals/protocolAemAecpdu.hpp>
+#include <la/avdecc/internals/protocolAemPayloadSizes.hpp>
 
 // Internal API
 #include "controller/avdeccControlledEntityImpl.hpp"
@@ -369,13 +370,35 @@ TEST(StreamConnectionState, Comparison)
 	}
 }
 
-TEST(Controller, VirtualEntityLoad)
+namespace
+{
+class Controller_F : public ::testing::Test
+{
+public:
+	virtual void SetUp() override
+	{
+		_controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en");
+	}
+
+	virtual void TearDown() override {}
+
+	la::avdecc::controller::Controller& getController() noexcept
+	{
+		return *_controller;
+	}
+
+private:
+	la::avdecc::controller::Controller::UniquePointer _controller{ nullptr, nullptr };
+};
+} // namespace
+
+TEST_F(Controller_F, VirtualEntityLoad)
 {
 	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
 	//static std::promise<void> commandResultPromise{};
 	{
-		auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en");
-		auto const [error, message] = controller->loadVirtualEntityFromJson("data/SimpleEntity.json", flags);
+		auto& controller = getController();
+		auto const [error, message] = controller.loadVirtualEntityFromJson("data/SimpleEntity.json", flags);
 		EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
 		EXPECT_STREQ("", message.c_str());
 	}
@@ -383,4 +406,144 @@ TEST(Controller, VirtualEntityLoad)
 	// Wait for the handler to complete
 	//auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(1));
 	//ASSERT_NE(std::future_status::timeout, status);
+}
+
+/*
+ * TESTING https://github.com/L-Acoustics/avdecc/issues/84
+ * Callback returns BadArguments if passed too many mappings
+ */
+TEST_F(Controller_F, BadArgumentsIfTooManyMappingsPassed)
+{
+	auto constexpr MaxMappingsInAddRemove = (la::avdecc::protocol::AemAecpdu::MaximumSendPayloadBufferLength - la::avdecc::protocol::aemPayload::AecpAemAddAudioMappingsCommandPayloadMinSize) / 8;
+
+	// In order to trigger an exception we have to pass more than MaxMappingsInAddRemove mappings (63 for standard IEEE1722.1 spec)
+	auto validMappings = la::avdecc::entity::model::AudioMappings{};
+	for (auto i = 1u; i <= MaxMappingsInAddRemove; ++i)
+	{
+		validMappings.push_back({});
+	}
+	auto invalidMappings = validMappings;
+	invalidMappings.push_back({});
+
+	auto& controller = getController();
+
+	// Valid AddStreamPortInputAudioMappings
+	{
+		static auto handlerPromise = std::promise<la::avdecc::entity::LocalEntity::AemCommandStatus>{};
+		controller.addStreamPortInputAudioMappings({}, {}, validMappings,
+			[](auto const* const /*entity*/, auto const status)
+			{
+				handlerPromise.set_value(status);
+			});
+
+		auto fut = handlerPromise.get_future();
+		auto status = fut.wait_for(std::chrono::seconds(1));
+		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
+		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::UnknownEntity, fut.get());
+	}
+
+	// Invalid AddStreamPortInputAudioMappings
+	{
+		static auto handlerPromise = std::promise<la::avdecc::entity::LocalEntity::AemCommandStatus>{};
+		controller.addStreamPortInputAudioMappings({}, {}, invalidMappings,
+			[](auto const* const /*entity*/, auto const status)
+			{
+				handlerPromise.set_value(status);
+			});
+
+		auto fut = handlerPromise.get_future();
+		auto status = fut.wait_for(std::chrono::seconds(1));
+		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
+		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::BadArguments, fut.get());
+	}
+
+	// Valid AddStreamPortOutputAudioMappings
+	{
+		static auto handlerPromise = std::promise<la::avdecc::entity::LocalEntity::AemCommandStatus>{};
+		controller.addStreamPortOutputAudioMappings({}, {}, validMappings,
+			[](auto const* const /*entity*/, auto const status)
+			{
+				handlerPromise.set_value(status);
+			});
+
+		auto fut = handlerPromise.get_future();
+		auto status = fut.wait_for(std::chrono::seconds(1));
+		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
+		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::UnknownEntity, fut.get());
+	}
+
+	// Invalid AddStreamPortOutputAudioMappings
+	{
+		static auto handlerPromise = std::promise<la::avdecc::entity::LocalEntity::AemCommandStatus>{};
+		controller.addStreamPortOutputAudioMappings({}, {}, invalidMappings,
+			[](auto const* const /*entity*/, auto const status)
+			{
+				handlerPromise.set_value(status);
+			});
+
+		auto fut = handlerPromise.get_future();
+		auto status = fut.wait_for(std::chrono::seconds(1));
+		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
+		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::BadArguments, fut.get());
+	}
+
+	// Valid RemoveStreamPortInputAudioMappings
+	{
+		static auto handlerPromise = std::promise<la::avdecc::entity::LocalEntity::AemCommandStatus>{};
+		controller.removeStreamPortInputAudioMappings({}, {}, validMappings,
+			[](auto const* const /*entity*/, auto const status)
+			{
+				handlerPromise.set_value(status);
+			});
+
+		auto fut = handlerPromise.get_future();
+		auto status = fut.wait_for(std::chrono::seconds(1));
+		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
+		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::UnknownEntity, fut.get());
+	}
+
+	// Invalid RemoveStreamPortInputAudioMappings
+	{
+		static auto handlerPromise = std::promise<la::avdecc::entity::LocalEntity::AemCommandStatus>{};
+		controller.removeStreamPortInputAudioMappings({}, {}, invalidMappings,
+			[](auto const* const /*entity*/, auto const status)
+			{
+				handlerPromise.set_value(status);
+			});
+
+		auto fut = handlerPromise.get_future();
+		auto status = fut.wait_for(std::chrono::seconds(1));
+		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
+		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::BadArguments, fut.get());
+	}
+
+	// Valid RemoveStreamPortOutputAudioMappings
+	{
+		static auto handlerPromise = std::promise<la::avdecc::entity::LocalEntity::AemCommandStatus>{};
+		controller.removeStreamPortOutputAudioMappings({}, {}, validMappings,
+			[](auto const* const /*entity*/, auto const status)
+			{
+				handlerPromise.set_value(status);
+			});
+
+		auto fut = handlerPromise.get_future();
+		auto status = fut.wait_for(std::chrono::seconds(1));
+		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
+		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::UnknownEntity, fut.get());
+	}
+
+	// Invalid RemoveStreamPortOutputAudioMappings
+	{
+		static auto handlerPromise = std::promise<la::avdecc::entity::LocalEntity::AemCommandStatus>{};
+		controller.removeStreamPortOutputAudioMappings({}, {}, invalidMappings,
+			[](auto const* const /*entity*/, auto const status)
+			{
+				handlerPromise.set_value(status);
+			});
+
+		auto fut = handlerPromise.get_future();
+		auto status = fut.wait_for(std::chrono::seconds(1));
+		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
+		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::BadArguments, fut.get());
+	}
 }

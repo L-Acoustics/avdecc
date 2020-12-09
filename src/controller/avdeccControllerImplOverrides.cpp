@@ -34,6 +34,7 @@
 #	include <la/avdecc/internals/jsonTypes.hpp>
 #endif // ENABLE_AVDECC_FEATURE_JSON
 #include <la/avdecc/internals/serialization.hpp>
+#include <la/avdecc/internals/protocolAemPayloadSizes.hpp>
 
 #include <cstdlib> // free / malloc
 #include <cstring> // strerror
@@ -1584,6 +1585,14 @@ void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, ent
 
 void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, AddStreamPortInputAudioMappingsHandler const& handler) const noexcept
 {
+	// Validate parameters in regard with protocol restrictions
+	auto constexpr MaxMappings = (protocol::AemAecpdu::MaximumSendPayloadBufferLength - protocol::aemPayload::AecpAemAddAudioMappingsCommandPayloadMinSize) / 8;
+	if (mappings.size() > MaxMappings)
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::BadArguments);
+		return;
+	}
+
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
 	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
@@ -1626,6 +1635,14 @@ void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targ
 
 void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, AddStreamPortOutputAudioMappingsHandler const& handler) const noexcept
 {
+	// Validate parameters in regard with protocol restrictions
+	auto constexpr MaxMappings = (protocol::AemAecpdu::MaximumSendPayloadBufferLength - protocol::aemPayload::AecpAemAddAudioMappingsCommandPayloadMinSize) / 8;
+	if (mappings.size() > MaxMappings)
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::BadArguments);
+		return;
+	}
+
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
 	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
@@ -1668,6 +1685,14 @@ void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const tar
 
 void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, RemoveStreamPortInputAudioMappingsHandler const& handler) const noexcept
 {
+	// Validate parameters in regard with protocol restrictions
+	auto constexpr MaxMappings = (protocol::AemAecpdu::MaximumSendPayloadBufferLength - protocol::aemPayload::AecpAemRemoveAudioMappingsCommandPayloadMinSize) / 8;
+	if (mappings.size() > MaxMappings)
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::BadArguments);
+		return;
+	}
+
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
 	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 
@@ -1710,6 +1735,14 @@ void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const t
 
 void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, RemoveStreamPortOutputAudioMappingsHandler const& handler) const noexcept
 {
+	// Validate parameters in regard with protocol restrictions
+	auto constexpr MaxMappings = (protocol::AemAecpdu::MaximumSendPayloadBufferLength - protocol::aemPayload::AecpAemRemoveAudioMappingsCommandPayloadMinSize) / 8;
+	if (mappings.size() > MaxMappings)
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::BadArguments);
+		return;
+	}
+
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
 	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
 

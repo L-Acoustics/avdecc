@@ -61,8 +61,8 @@ private:
 } // namespace
 
 /*
- * TESTING Callback triggered when there is a serialization exception, with a ProtocolError status
- * https://github.com/L-Acoustics/avdecc/issues/83
+ * TESTING https://github.com/L-Acoustics/avdecc/issues/83
+ * Callback triggered when there is a serialization exception, with a ProtocolError status
  */
 TEST_F(ControllerCapabilityDelegate_F, AddStreamPortInputAudioMappings)
 {

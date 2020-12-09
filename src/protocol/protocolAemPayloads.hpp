@@ -25,10 +25,9 @@
 #pragma once
 
 #include "la/avdecc/memoryBuffer.hpp"
+#include "la/avdecc/internals/protocolAemPayloadSizes.hpp"
 #include "la/avdecc/internals/serialization.hpp"
 #include "la/avdecc/internals/entityModel.hpp"
-
-#include "protocolAemPayloadSizes.hpp"
 
 #if defined(ENABLE_AVDECC_CUSTOM_ANY)
 #	include "la/avdecc/internals/any.hpp"
