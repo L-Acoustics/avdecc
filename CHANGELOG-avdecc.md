@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - [ControllerCapability methods trigger the result handler in case of Protocol exception](https://github.com/L-Acoustics/avdecc/issues/83)
+- [Aecpdu::MaximumLength_BigPayloads increased to fill maximum Ethernet frame size (if compile defined is set) allowing up to 184 mappings to be received from a Milan entity](https://github.com/L-Acoustics/avdecc/issues/82)
 
 ## [3.0.2] - 2020-09-14
 ### Added
