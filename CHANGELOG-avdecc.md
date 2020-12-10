@@ -7,10 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Changed
 - When an observer registers to a ProtocolInterface, it now immediately receives notifications about already known entities (both local and remote)
+- ControllerEntity now always sends messages to the same AvbInterface in case of cable redundancy
 
 ### Fixed
 - [ControllerCapability methods trigger the result handler in case of Protocol exception](https://github.com/L-Acoustics/avdecc/issues/83)
 - [Aecpdu::MaximumLength_BigPayloads increased to fill maximum Ethernet frame size (if compile defined is set) allowing up to 184 mappings to be received from a Milan entity](https://github.com/L-Acoustics/avdecc/issues/82)
+- [Detection of main AvbInterface loss in cable redundancy](https://github.com/L-Acoustics/avdecc/issues/55)
 
 ## [3.0.2] - 2020-09-14
 ### Added

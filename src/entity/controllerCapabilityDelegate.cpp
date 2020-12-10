@@ -1501,13 +1501,13 @@ void CapabilityDelegate::onRemoteEntityOnline(protocol::ProtocolInterface* const
 		{
 #ifdef __cpp_lib_unordered_map_try_emplace
 			AVDECC_ASSERT(_discoveredEntities.find(entityID) == _discoveredEntities.end(), "CapabilityDelegate::onRemoteEntityOnline: Entity already online");
-			_discoveredEntities.insert_or_assign(entityID, entity);
+			_discoveredEntities.insert_or_assign(entityID, DiscoveredEntity{ entity, getMainInterfaceIndex(entity) });
 #else // !__cpp_lib_unordered_map_try_emplace
 			auto it = _discoveredEntities.find(entityID);
 			if (AVDECC_ASSERT_WITH_RET(it == _discoveredEntities.end(), "CapabilityDelegate::onRemoteEntityOnline: Entity already online"))
-				_discoveredEntities.insert(std::make_pair(entityID, entity));
+				_discoveredEntities.insert(std::make_pair(entityID, DiscoveredEntity{ entity, getMainInterfaceIndex(entity) }));
 			else
-				it->second = entity;
+				it->second = DiscoveredEntity{ entity, getMainInterfaceIndex(entity) };
 #endif // __cpp_lib_unordered_map_try_emplace
 		}
 	}
@@ -1530,27 +1530,59 @@ void CapabilityDelegate::onRemoteEntityOffline(protocol::ProtocolInterface* cons
 
 void CapabilityDelegate::onRemoteEntityUpdated(protocol::ProtocolInterface* const pi, Entity const& entity) noexcept
 {
+	enum class Action
+	{
+		NotifyUpdate = 0,
+		ForwardOnline = 1,
+		ForwardOffline = 2,
+	};
+
 	auto const entityID = entity.getEntityID();
+	auto action = Action::NotifyUpdate;
 	{
 		// Lock ProtocolInterface
 		std::lock_guard<decltype(*pi)> const lg(*pi);
 
-		// Store or replace entity
+		auto discoveredEntityIt = _discoveredEntities.find(entityID);
+		if (AVDECC_ASSERT_WITH_RET(discoveredEntityIt != _discoveredEntities.end(), "CapabilityDelegate::onRemoteEntityUpdated: Entity not found"))
 		{
-#ifdef __cpp_lib_unordered_map_try_emplace
-			AVDECC_ASSERT(_discoveredEntities.find(entityID) != _discoveredEntities.end(), "CapabilityDelegate::onRemoteEntityUpdated: Entity offline");
-			_discoveredEntities.insert_or_assign(entityID, entity);
-#else // !__cpp_lib_unordered_map_try_emplace
-			auto it = _discoveredEntities.find(entityID);
-			if (!AVDECC_ASSERT_WITH_RET(it != _discoveredEntities.end(), "CapabilityDelegate::onRemoteEntityUpdated: Entity offline"))
-				_discoveredEntities.insert(std::make_pair(entityID, entity));
+			auto& discoveredEntity = discoveredEntityIt->second;
+
+			// Entity still has its "main" interface index, we can proceed with the update
+			if (entity.hasInterfaceIndex(discoveredEntity.mainInterfaceIndex))
+			{
+				discoveredEntity.entity = entity;
+			}
 			else
-				it->second = entity;
-#endif // __cpp_lib_unordered_map_try_emplace
+			{
+				LOG_CONTROLLER_ENTITY_INFO(entityID, "Entity 'main' (first discovered) AvbInterface timed out, forcing it offline");
+				// Fallback to EntityOffline
+				action = Action::ForwardOffline;
+			}
+		}
+		else
+		{
+			// Fallback to EntityOnline
+			action = Action::ForwardOnline;
 		}
 	}
 
-	utils::invokeProtectedMethod(&controller::Delegate::onEntityUpdate, _controllerDelegate, &_controllerInterface, entityID, entity);
+	// To everything else outside the lock
+	switch (action)
+	{
+		case Action::NotifyUpdate:
+			utils::invokeProtectedMethod(&controller::Delegate::onEntityUpdate, _controllerDelegate, &_controllerInterface, entityID, entity);
+			break;
+		case Action::ForwardOnline:
+			onRemoteEntityOnline(pi, entity);
+			break;
+		case Action::ForwardOffline:
+			onRemoteEntityOffline(pi, entityID);
+			break;
+		default:
+			AVDECC_ASSERT(false, "Unhandled Action");
+			break;
+	}
 }
 
 /* **** AECP notifications **** */
@@ -1651,6 +1683,12 @@ void CapabilityDelegate::onAecpResponseTime(protocol::ProtocolInterface* const /
 /* ************************************************************************** */
 /* Internal methods                                                           */
 /* ************************************************************************** */
+model::AvbInterfaceIndex CapabilityDelegate::getMainInterfaceIndex(Entity const& entity) const noexcept
+{
+	// Get the "main" avb interface index (ie. the first in the list)
+	return entity.getInterfacesInformation().begin()->first;
+}
+
 bool CapabilityDelegate::isResponseForController(protocol::AcmpMessageType const messageType) const noexcept
 {
 	if (messageType == protocol::AcmpMessageType::ConnectRxResponse || messageType == protocol::AcmpMessageType::DisconnectRxResponse || messageType == protocol::AcmpMessageType::GetRxStateResponse || messageType == protocol::AcmpMessageType::GetTxConnectionResponse)
@@ -1672,7 +1710,8 @@ void CapabilityDelegate::sendAemAecpCommand(UniqueIdentifier const targetEntityI
 		if (it != _discoveredEntities.end())
 		{
 			// Get entity mac address
-			targetMacAddress = it->second.getAnyMacAddress();
+			auto const& discoveredEntity = it->second;
+			targetMacAddress = discoveredEntity.entity.getMacAddress(discoveredEntity.mainInterfaceIndex);
 		}
 	}
 
@@ -1711,7 +1750,8 @@ void CapabilityDelegate::sendAaAecpCommand(UniqueIdentifier const targetEntityID
 		if (it != _discoveredEntities.end())
 		{
 			// Get entity mac address
-			targetMacAddress = it->second.getAnyMacAddress();
+			auto const& discoveredEntity = it->second;
+			targetMacAddress = discoveredEntity.entity.getMacAddress(discoveredEntity.mainInterfaceIndex);
 		}
 	}
 
@@ -1750,7 +1790,8 @@ void CapabilityDelegate::sendMvuAecpCommand(UniqueIdentifier const targetEntityI
 		if (it != _discoveredEntities.end())
 		{
 			// Get entity mac address
-			targetMacAddress = it->second.getAnyMacAddress();
+			auto const& discoveredEntity = it->second;
+			targetMacAddress = discoveredEntity.entity.getMacAddress(discoveredEntity.mainInterfaceIndex);
 		}
 	}
 
