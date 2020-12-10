@@ -547,3 +547,55 @@ TEST_F(Controller_F, BadArgumentsIfTooManyMappingsPassed)
 		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::BadArguments, fut.get());
 	}
 }
+
+/*
+ * TESTING https://github.com/L-Acoustics/avdecc/issues/85
+ * Controller should properly handle cable redundancy
+ */
+TEST(Controller, AdpduFromSameDeviceDifferentInterfaces)
+{
+	// Create a controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en");
+
+	auto const sendAdpAvailable = [gPTP = controller->getControllerEID()](auto const& entityID, auto const interfaceIndex)
+	{
+		auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { static_cast<la::avdecc::networkInterface::MacAddress::value_type>(interfaceIndex), 0x06, 0x05, 0x04, 0x03, 0x02 } }));
+
+		// Build adpdu frame
+		auto adpdu = la::avdecc::protocol::Adpdu{};
+		// Set Ether2 fields
+		adpdu.setSrcAddress(intfc->getMacAddress());
+		adpdu.setDestAddress(la::avdecc::protocol::Adpdu::Multicast_Mac_Address);
+		// Set ADP fields
+		adpdu.setMessageType(la::avdecc::protocol::AdpMessageType::EntityAvailable);
+		adpdu.setValidTime(2);
+		adpdu.setEntityID(entityID);
+		adpdu.setEntityModelID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
+		adpdu.setEntityCapabilities(la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemInterfaceIndexValid, la::avdecc::entity::EntityCapability::GptpSupported });
+		adpdu.setTalkerStreamSources(0);
+		adpdu.setTalkerCapabilities({});
+		adpdu.setListenerStreamSinks(0);
+		adpdu.setListenerCapabilities({});
+		adpdu.setControllerCapabilities(la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented });
+		adpdu.setAvailableIndex(1);
+		adpdu.setGptpGrandmasterID(gPTP);
+		adpdu.setGptpDomainNumber(0);
+		adpdu.setIdentifyControlIndex(0);
+		adpdu.setInterfaceIndex(interfaceIndex);
+		adpdu.setAssociationID(la::avdecc::UniqueIdentifier{});
+
+		// Send the adp message
+		intfc->sendAdpMessage(adpdu);
+
+		// Wait for the message to actually be sent (destroying the protocol interface won't flush pending messages, not at this date with the current code)
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	};
+
+	// Simulate ADP messages from the 2 interfaces of the same Entity
+	constexpr auto EntityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
+	sendAdpAvailable(EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 0 });
+	sendAdpAvailable(EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 1 });
+
+	auto const entity = controller->getControlledEntityGuard(EntityID);
+	EXPECT_EQ(2u, entity->getEntity().getInterfacesInformation().size());
+}
