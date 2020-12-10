@@ -60,8 +60,8 @@ TEST(ControllerEntity, DispatchWhileSending)
 	la::avdecc::InstrumentationNotifier::getInstance().registerObserver(&instrumentationObserver);
 
 	auto pi = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }));
-	auto const commonInformation{ la::avdecc::entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported }, 0u, la::avdecc::entity::TalkerCapabilities{}, 0u, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented }, std::nullopt, std::nullopt } };
-	auto const interfaceInfo{ la::avdecc::entity::Entity::InterfaceInformation{ la::avdecc::networkInterface::MacAddress{ { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }, 31u, 0u, std::nullopt, std::nullopt } };
+	auto const commonInformation = la::avdecc::entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemSupported }, 0u, la::avdecc::entity::TalkerCapabilities{}, 0u, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented }, std::nullopt, std::nullopt };
+	auto const interfaceInfo = la::avdecc::entity::Entity::InterfaceInformation{ la::avdecc::networkInterface::MacAddress{ { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }, 31u, 0u, std::nullopt, std::nullopt };
 	auto controllerGuard = std::make_unique<la::avdecc::entity::LocalEntityGuard<la::avdecc::entity::ControllerEntityImpl>>(pi.get(), commonInformation, la::avdecc::entity::Entity::InterfacesInformation{ { la::avdecc::entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } }, nullptr);
 	auto* const controller = static_cast<la::avdecc::entity::ControllerEntity*>(controllerGuard.get());
 
@@ -75,6 +75,83 @@ TEST(ControllerEntity, DispatchWhileSending)
 	// Wait for the test to be completed
 	status = testCompletedPromise.get_future().wait_for(std::chrono::seconds(5));
 	ASSERT_NE(std::future_status::timeout, status) << "Dead lock!";
+}
+
+/*
+ * TESTING https://github.com/L-Acoustics/avdecc/issues/55
+ * ControllerEntity should detect when the main AvbInterface is lost
+ */
+TEST(ControllerEntity, DetectMainAvbInterfaceLost)
+{
+	static constexpr auto EntityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
+	static auto entityOfflinePromise = std::promise<void>{};
+
+	class Delegate final : public la::avdecc::entity::controller::Delegate
+	{
+	private:
+		virtual void onEntityOffline(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID) noexcept override
+		{
+			if (entityID == EntityID)
+			{
+				entityOfflinePromise.set_value();
+			}
+		}
+	};
+
+	// Create a ControllerEntity
+	auto controllerProtocolInterface = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }));
+	auto const commonInformation = la::avdecc::entity::Entity::CommonInformation{ la::avdecc::UniqueIdentifier{ 0x0102030405060708 }, la::avdecc::UniqueIdentifier{ 0x1122334455667788 }, la::avdecc::entity::EntityCapabilities{}, 0u, la::avdecc::entity::TalkerCapabilities{}, 0u, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented }, std::nullopt, std::nullopt };
+	auto const interfaceInfo = la::avdecc::entity::Entity::InterfaceInformation{ la::avdecc::networkInterface::MacAddress{ { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }, 31u, 0u, std::nullopt, std::nullopt };
+	auto controllerGuard = std::make_unique<la::avdecc::entity::LocalEntityGuard<la::avdecc::entity::ControllerEntityImpl>>(controllerProtocolInterface.get(), commonInformation, la::avdecc::entity::Entity::InterfacesInformation{ { la::avdecc::entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } }, nullptr);
+	auto delegate = Delegate{};
+	static_cast<la::avdecc::entity::ControllerEntity&>(*controllerGuard).setControllerDelegate(&delegate);
+
+	auto const sendAdpAvailable = [](auto const& entityID, auto const interfaceIndex, auto const validTime)
+	{
+		auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { static_cast<la::avdecc::networkInterface::MacAddress::value_type>(interfaceIndex), 0x06, 0x05, 0x04, 0x03, 0x02 } }));
+
+		// Build adpdu frame
+		auto adpdu = la::avdecc::protocol::Adpdu{};
+		// Set Ether2 fields
+		adpdu.setSrcAddress(intfc->getMacAddress());
+		adpdu.setDestAddress(la::avdecc::protocol::Adpdu::Multicast_Mac_Address);
+		// Set ADP fields
+		adpdu.setMessageType(la::avdecc::protocol::AdpMessageType::EntityAvailable);
+		adpdu.setValidTime(validTime);
+		adpdu.setEntityID(entityID);
+		adpdu.setEntityModelID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
+		adpdu.setEntityCapabilities(la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemInterfaceIndexValid });
+		adpdu.setTalkerStreamSources(0);
+		adpdu.setTalkerCapabilities({});
+		adpdu.setListenerStreamSinks(0);
+		adpdu.setListenerCapabilities({});
+		adpdu.setControllerCapabilities(la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented });
+		adpdu.setAvailableIndex(1);
+		adpdu.setGptpGrandmasterID({});
+		adpdu.setGptpDomainNumber(0);
+		adpdu.setIdentifyControlIndex(0);
+		adpdu.setInterfaceIndex(interfaceIndex);
+		adpdu.setAssociationID(la::avdecc::UniqueIdentifier{});
+
+		// Send the adp message
+		intfc->sendAdpMessage(adpdu);
+
+		// Wait for the message to actually be sent (destroying the protocol interface won't flush pending messages, not at this date with the current code)
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	};
+
+	// Simulate ADP Available messages from the 2 interfaces of the same Entity
+	// The first discovered interface will be used as the "main" interface
+	// Use a low validTime for the main interface so it will timeout quickly
+	sendAdpAvailable(EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 0 }, std::uint8_t{ 2 });
+	sendAdpAvailable(EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 1 }, std::uint8_t{ 20 });
+
+	// Wait for the "main" interface to timeout
+	std::this_thread::sleep_for(std::chrono::seconds(5));
+
+	// Wait for the handler to complete
+	auto status = entityOfflinePromise.get_future().wait_for(std::chrono::seconds(1));
+	ASSERT_NE(std::future_status::timeout, status);
 }
 
 //TEST(ControllerEntity, DestroyWhileSending)
