@@ -1501,13 +1501,13 @@ void CapabilityDelegate::onRemoteEntityOnline(protocol::ProtocolInterface* const
 		{
 #ifdef __cpp_lib_unordered_map_try_emplace
 			AVDECC_ASSERT(_discoveredEntities.find(entityID) == _discoveredEntities.end(), "CapabilityDelegate::onRemoteEntityOnline: Entity already online");
-			_discoveredEntities.insert_or_assign(entityID, entity);
+			_discoveredEntities.insert_or_assign(entityID, DiscoveredEntity{ entity, getMainInterfaceIndex(entity) });
 #else // !__cpp_lib_unordered_map_try_emplace
 			auto it = _discoveredEntities.find(entityID);
 			if (AVDECC_ASSERT_WITH_RET(it == _discoveredEntities.end(), "CapabilityDelegate::onRemoteEntityOnline: Entity already online"))
-				_discoveredEntities.insert(std::make_pair(entityID, entity));
+				_discoveredEntities.insert(std::make_pair(entityID, DiscoveredEntity{ entity, getMainInterfaceIndex(entity) }));
 			else
-				it->second = entity;
+				it->second = DiscoveredEntity{ entity, getMainInterfaceIndex(entity) };
 #endif // __cpp_lib_unordered_map_try_emplace
 		}
 	}
@@ -1539,13 +1539,13 @@ void CapabilityDelegate::onRemoteEntityUpdated(protocol::ProtocolInterface* cons
 		{
 #ifdef __cpp_lib_unordered_map_try_emplace
 			AVDECC_ASSERT(_discoveredEntities.find(entityID) != _discoveredEntities.end(), "CapabilityDelegate::onRemoteEntityUpdated: Entity offline");
-			_discoveredEntities.insert_or_assign(entityID, entity);
+			_discoveredEntities.insert_or_assign(entityID, DiscoveredEntity{ entity, getMainInterfaceIndex(entity) });
 #else // !__cpp_lib_unordered_map_try_emplace
 			auto it = _discoveredEntities.find(entityID);
 			if (!AVDECC_ASSERT_WITH_RET(it != _discoveredEntities.end(), "CapabilityDelegate::onRemoteEntityUpdated: Entity offline"))
-				_discoveredEntities.insert(std::make_pair(entityID, entity));
+				_discoveredEntities.insert(std::make_pair(entityID, DiscoveredEntity{ entity, getMainInterfaceIndex(entity) }));
 			else
-				it->second = entity;
+				it->second = DiscoveredEntity{ entity, getMainInterfaceIndex(entity) };
 #endif // __cpp_lib_unordered_map_try_emplace
 		}
 	}
@@ -1651,6 +1651,12 @@ void CapabilityDelegate::onAecpResponseTime(protocol::ProtocolInterface* const /
 /* ************************************************************************** */
 /* Internal methods                                                           */
 /* ************************************************************************** */
+model::AvbInterfaceIndex CapabilityDelegate::getMainInterfaceIndex(Entity const& entity) const noexcept
+{
+	// Get the "main" avb interface index (ie. the first in the list)
+	return entity.getInterfacesInformation().begin()->first;
+}
+
 bool CapabilityDelegate::isResponseForController(protocol::AcmpMessageType const messageType) const noexcept
 {
 	if (messageType == protocol::AcmpMessageType::ConnectRxResponse || messageType == protocol::AcmpMessageType::DisconnectRxResponse || messageType == protocol::AcmpMessageType::GetRxStateResponse || messageType == protocol::AcmpMessageType::GetTxConnectionResponse)
@@ -1672,7 +1678,8 @@ void CapabilityDelegate::sendAemAecpCommand(UniqueIdentifier const targetEntityI
 		if (it != _discoveredEntities.end())
 		{
 			// Get entity mac address
-			targetMacAddress = it->second.getAnyMacAddress();
+			auto const& discoveredEntity = it->second;
+			targetMacAddress = discoveredEntity.entity.getMacAddress(discoveredEntity.mainInterfaceIndex);
 		}
 	}
 
@@ -1711,7 +1718,8 @@ void CapabilityDelegate::sendAaAecpCommand(UniqueIdentifier const targetEntityID
 		if (it != _discoveredEntities.end())
 		{
 			// Get entity mac address
-			targetMacAddress = it->second.getAnyMacAddress();
+			auto const& discoveredEntity = it->second;
+			targetMacAddress = discoveredEntity.entity.getMacAddress(discoveredEntity.mainInterfaceIndex);
 		}
 	}
 
@@ -1750,7 +1758,8 @@ void CapabilityDelegate::sendMvuAecpCommand(UniqueIdentifier const targetEntityI
 		if (it != _discoveredEntities.end())
 		{
 			// Get entity mac address
-			targetMacAddress = it->second.getAnyMacAddress();
+			auto const& discoveredEntity = it->second;
+			targetMacAddress = discoveredEntity.entity.getMacAddress(discoveredEntity.mainInterfaceIndex);
 		}
 	}
 

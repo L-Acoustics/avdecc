@@ -171,7 +171,18 @@ public:
 	CapabilityDelegate& operator=(CapabilityDelegate&&) = delete;
 
 private:
-	using DiscoveredEntities = std::unordered_map<UniqueIdentifier, Entity, UniqueIdentifier::hash>;
+	struct DiscoveredEntity
+	{
+		Entity entity;
+		model::AvbInterfaceIndex mainInterfaceIndex{};
+
+		DiscoveredEntity(Entity const& entity, model::AvbInterfaceIndex const mainInterfaceIndex)
+			: entity{ entity }
+			, mainInterfaceIndex{ mainInterfaceIndex }
+		{
+		}
+	};
+	using DiscoveredEntities = std::unordered_map<UniqueIdentifier, DiscoveredEntity, UniqueIdentifier::hash>;
 
 	/* ************************************************************************** */
 	/* CapabilityDelegate overrides                                               */
@@ -195,6 +206,7 @@ private:
 	/* ************************************************************************** */
 	/* Internal methods                                                           */
 	/* ************************************************************************** */
+	model::AvbInterfaceIndex getMainInterfaceIndex(Entity const& entity) const noexcept;
 	bool isResponseForController(protocol::AcmpMessageType const messageType) const noexcept;
 	void sendAemAecpCommand(UniqueIdentifier const targetEntityID, protocol::AemCommandType const commandType, void const* const payload, size_t const payloadLength, LocalEntityImpl<>::OnAemAECPErrorCallback const& onErrorCallback, LocalEntityImpl<>::AnswerCallback const& answerCallback) const noexcept;
 	void sendAaAecpCommand(UniqueIdentifier const targetEntityID, addressAccess::Tlvs const& tlvs, LocalEntityImpl<>::OnAaAECPErrorCallback const& onErrorCallback, LocalEntityImpl<>::AnswerCallback const& answerCallback) const noexcept;
