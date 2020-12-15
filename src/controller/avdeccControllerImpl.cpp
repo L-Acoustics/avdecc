@@ -88,10 +88,14 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 	auto const associationID = entity.getAssociationID();
 	setAssociationAndNotify(controlledEntity, associationID ? *associationID : UniqueIdentifier::getNullUniqueIdentifier());
 
-	// Check if Capabilities changed
-	if (oldEntity.getEntityCapabilities() != entity.getEntityCapabilities())
+	// Only do checks if entity was advertised to the user (we already changed the values anyway)
+	if (controlledEntity.wasAdvertised())
 	{
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityCapabilitiesChanged, this, &controlledEntity);
+		// Check if Capabilities changed
+		if (oldEntity.getEntityCapabilities() != entity.getEntityCapabilities())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityCapabilitiesChanged, this, &controlledEntity);
+		}
 	}
 
 	// Update the full entity info (for information not separately handled)
