@@ -62,7 +62,7 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 			auto shouldUpdate = false;
 
 			// Get Old Information
-			try
+			if (oldEntity.hasInterfaceIndex(avbInterfaceIndex))
 			{
 				auto const& oldInfo = oldEntity.getInterfaceInformation(avbInterfaceIndex);
 				// gPTP changed (or didn't have)
@@ -71,9 +71,9 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 					shouldUpdate = true;
 				}
 			}
-			catch (la::avdecc::Exception const&)
+			// The AvbInterface was not found in the previous stored entity. Looks like cable redundancy and we just discovered the other interface
+			else
 			{
-				// The AvbInterface was not found in the previous stored entity. Looks like cable redundancy and we just discovered the other interface
 				shouldUpdate = true;
 			}
 
