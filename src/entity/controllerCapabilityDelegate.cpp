@@ -1535,6 +1535,7 @@ void CapabilityDelegate::onRemoteEntityUpdated(protocol::ProtocolInterface* cons
 		NotifyUpdate = 0,
 		ForwardOnline = 1,
 		ForwardOffline = 2,
+		ForwardOfflineOnline = 3,
 	};
 
 	auto const entityID = entity.getEntityID();
@@ -1555,9 +1556,18 @@ void CapabilityDelegate::onRemoteEntityUpdated(protocol::ProtocolInterface* cons
 			}
 			else
 			{
-				LOG_CONTROLLER_ENTITY_INFO(entityID, "Entity 'main' (first discovered) AvbInterface timed out, forcing it offline");
-				// Fallback to EntityOffline
-				action = Action::ForwardOffline;
+				if (AVDECC_ASSERT_WITH_RET(!entity.getInterfacesInformation().empty(), "CapabilityDelegate::onRemoteEntityUpdated called but entity has no valid AvbInterface"))
+				{
+					LOG_CONTROLLER_ENTITY_INFO(entityID, "Entity 'main' (first discovered) AvbInterface timed out, forcing it offline/online");
+					// Fallback to EntityOffline then EntityOnline
+					action = Action::ForwardOfflineOnline;
+				}
+				else
+				{
+					LOG_CONTROLLER_ENTITY_INFO(entityID, "Entity 'main' (first discovered) AvbInterface timed out but no other interface (should not happen), forcing it offline");
+					// Fallback to EntityOffline
+					action = Action::ForwardOffline;
+				}
 			}
 		}
 		else
@@ -1578,6 +1588,10 @@ void CapabilityDelegate::onRemoteEntityUpdated(protocol::ProtocolInterface* cons
 			break;
 		case Action::ForwardOffline:
 			onRemoteEntityOffline(pi, entityID);
+			break;
+		case Action::ForwardOfflineOnline:
+			onRemoteEntityOffline(pi, entityID);
+			onRemoteEntityOnline(pi, entity);
 			break;
 		default:
 			AVDECC_ASSERT(false, "Unhandled Action");
