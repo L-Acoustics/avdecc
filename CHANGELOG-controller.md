@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Fixed
 - [Add/Remove StreaPort mappings validates protocol limits](https://github.com/L-Acoustics/avdecc/issues/84)
+- [Better handling of cable redundancy](https://github.com/L-Acoustics/avdecc/issues/85)
 
 ## [3.0.2] - 2020-09-14
 ### Added
