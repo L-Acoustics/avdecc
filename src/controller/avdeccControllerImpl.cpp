@@ -59,6 +59,7 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 		if (information.gptpGrandmasterID)
 		{
 			auto const avbInterfaceIndex = infoKV.first;
+			auto shouldUpdate = false;
 
 			// Get Old Information
 			try
@@ -67,12 +68,18 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 				// gPTP changed (or didn't have)
 				if (!oldInfo.gptpGrandmasterID || *oldInfo.gptpGrandmasterID != *information.gptpGrandmasterID || *oldInfo.gptpDomainNumber != *information.gptpDomainNumber)
 				{
-					updateGptpInformation(controlledEntity, avbInterfaceIndex, information.macAddress, *information.gptpGrandmasterID, *information.gptpDomainNumber);
+					shouldUpdate = true;
 				}
 			}
 			catch (la::avdecc::Exception const&)
 			{
-				AVDECC_ASSERT(false, "Should have previous information when updateEntity is triggered (otherwise it should have been entityOnline or entityOffline");
+				// The AvbInterface was not found in the previous stored entity. Looks like cable redundancy and we just discovered the other interface
+				shouldUpdate = true;
+			}
+
+			if (shouldUpdate)
+			{
+				updateGptpInformation(controlledEntity, avbInterfaceIndex, information.macAddress, *information.gptpGrandmasterID, *information.gptpDomainNumber);
 			}
 		}
 	}
