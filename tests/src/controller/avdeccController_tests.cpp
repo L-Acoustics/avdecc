@@ -627,7 +627,7 @@ TEST(Controller, AdpRedundantInterfaceNotifications)
 				s_CallOrder.push_back(std::uint8_t{ 0 });
 			}
 		}
-		virtual void onEntityRedundantInterfaceOnline(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept override
+		virtual void onEntityRedundantInterfaceOnline(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::AvbInterfaceIndex const avbInterfaceIndex, la::avdecc::entity::Entity::InterfaceInformation const& /*interfaceInfo*/) noexcept override
 		{
 			if (avbInterfaceIndex == la::avdecc::entity::model::AvbInterfaceIndex{ 1 })
 			{

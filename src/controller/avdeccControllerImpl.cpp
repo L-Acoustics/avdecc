@@ -69,14 +69,12 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 		}
 
 		// Check for any added interface (don't compare info yet, just if one was added)
-		for (auto const& infoKV : newInterfacesInfo)
+		for (auto const& [newIndex, interfaceInfo] : newInterfacesInfo)
 		{
-			auto const newIndex = infoKV.first;
-
 			// Not present in old list, it was added
 			if (!oldEntity.hasInterfaceIndex(newIndex))
 			{
-				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityRedundantInterfaceOnline, this, &controlledEntity, newIndex);
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityRedundantInterfaceOnline, this, &controlledEntity, newIndex, interfaceInfo);
 			}
 		}
 	}
