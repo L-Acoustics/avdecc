@@ -50,8 +50,39 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 	// Get previous entity info, so we can check what changed
 	auto oldEntity = controlledEntity.getEntity();
 
+	auto const& oldInterfacesInfo = oldEntity.getInterfacesInformation();
+	auto const& newInterfacesInfo = entity.getInterfacesInformation();
+
+	// Only do checks if entity was advertised to the user
+	if (controlledEntity.wasAdvertised())
+	{
+		// Check for any removed interface (don't compare info yet, just if one was removed)
+		for (auto const& oldInfoKV : oldInterfacesInfo)
+		{
+			auto const oldIndex = oldInfoKV.first;
+
+			// Not present in new list, it was removed
+			if (!entity.hasInterfaceIndex(oldIndex))
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityRedundantInterfaceOffline, this, &controlledEntity, oldIndex);
+			}
+		}
+
+		// Check for any added interface (don't compare info yet, just if one was added)
+		for (auto const& infoKV : newInterfacesInfo)
+		{
+			auto const newIndex = infoKV.first;
+
+			// Not present in old list, it was added
+			if (!oldEntity.hasInterfaceIndex(newIndex))
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityRedundantInterfaceOnline, this, &controlledEntity, newIndex);
+			}
+		}
+	}
+
 	// For each interface, check if gPTP info changed (if we have the info)
-	for (auto const& infoKV : entity.getInterfacesInformation())
+	for (auto const& infoKV : newInterfacesInfo)
 	{
 		auto const& information = infoKV.second;
 
