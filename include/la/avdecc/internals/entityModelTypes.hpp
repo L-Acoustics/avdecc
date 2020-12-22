@@ -349,7 +349,7 @@ public:
 	using value_type = char;
 
 	/** Default constructor */
-	AvdeccFixedString() noexcept {}
+	constexpr AvdeccFixedString() noexcept {}
 
 	/** Constructor from a std::string */
 	AvdeccFixedString(std::string const& str) noexcept
@@ -475,16 +475,16 @@ public:
 	using value_type = std::uint32_t;
 
 	/** Default constructor. */
-	SamplingRate() noexcept {}
+	constexpr SamplingRate() noexcept {}
 
 	/** Constructor to create a SamplingRate from the underlying value. */
-	explicit SamplingRate(value_type const value) noexcept
+	explicit constexpr SamplingRate(value_type const value) noexcept
 		: _value(value)
 	{
 	}
 
 	/** Constructor to create a SamplingRate from pull and baseFrequency values. */
-	SamplingRate(std::uint8_t const pull, std::uint32_t const baseFrequency) noexcept
+	constexpr SamplingRate(std::uint8_t const pull, std::uint32_t const baseFrequency) noexcept
 		: _value((pull << 29) + (baseFrequency & 0x1FFFFFFF))
 	{
 	}
@@ -599,10 +599,10 @@ public:
 	using value_type = std::uint64_t;
 
 	/** Default constructor. */
-	StreamFormat() noexcept {}
+	constexpr StreamFormat() noexcept {}
 
 	/** Constructor to create a StreamFormat from the underlying value. */
-	StreamFormat(value_type const value) noexcept
+	explicit constexpr StreamFormat(value_type const value) noexcept
 		: _value(value)
 	{
 	}
@@ -681,7 +681,6 @@ private:
 	value_type _value{ NullStreamFormat };
 };
 
-
 /** Localized String Reference - Clause 7.3.6 */
 class LocalizedStringReference final
 {
@@ -689,16 +688,16 @@ public:
 	using value_type = std::uint16_t;
 
 	/** Default constructor. */
-	LocalizedStringReference() noexcept {}
+	constexpr LocalizedStringReference() noexcept {}
 
 	/** Constructor to create a LocalizedStringReference from the underlying value. */
-	explicit LocalizedStringReference(value_type const value) noexcept
+	explicit constexpr LocalizedStringReference(value_type const value) noexcept
 		: _value(value)
 	{
 	}
 
 	/** Constructor to create a LocalizedStringReference from offset and index values. */
-	LocalizedStringReference(std::uint16_t const offset, std::uint8_t const index) noexcept
+	constexpr LocalizedStringReference(std::uint16_t const offset, std::uint8_t const index) noexcept
 	{
 		setOffsetIndex(offset, index);
 	}

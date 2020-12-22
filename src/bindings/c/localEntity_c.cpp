@@ -1139,7 +1139,7 @@ LA_AVDECC_BINDINGS_C_API avdecc_local_entity_error_t LA_AVDECC_BINDINGS_C_CALL_C
 	try
 	{
 		auto& obj = s_AggregateEntityManager.getObject(handle);
-		obj.setStreamInputFormat(la::avdecc::UniqueIdentifier{ entityID }, streamIndex, streamFormat,
+		obj.setStreamInputFormat(la::avdecc::UniqueIdentifier{ entityID }, streamIndex, la::avdecc::entity::model::StreamFormat{ streamFormat },
 			[handle, onResult](la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamFormat const streamFormat)
 			{
 				la::avdecc::utils::invokeProtectedHandler(onResult, handle, entityID, static_cast<avdecc_local_entity_aem_command_status_t>(status), streamIndex, streamFormat);
@@ -1177,7 +1177,7 @@ LA_AVDECC_BINDINGS_C_API avdecc_local_entity_error_t LA_AVDECC_BINDINGS_C_CALL_C
 	try
 	{
 		auto& obj = s_AggregateEntityManager.getObject(handle);
-		obj.setStreamOutputFormat(la::avdecc::UniqueIdentifier{ entityID }, streamIndex, streamFormat,
+		obj.setStreamOutputFormat(la::avdecc::UniqueIdentifier{ entityID }, streamIndex, la::avdecc::entity::model::StreamFormat{ streamFormat },
 			[handle, onResult](la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamFormat const streamFormat)
 			{
 				la::avdecc::utils::invokeProtectedHandler(onResult, handle, entityID, static_cast<avdecc_local_entity_aem_command_status_t>(status), streamIndex, streamFormat);
