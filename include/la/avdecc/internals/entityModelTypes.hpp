@@ -532,7 +532,7 @@ public:
 	/** True if the SamplingRate contains a valid underlying value, false otherwise. */
 	constexpr bool isValid() const noexcept
 	{
-		// Clause 7.3.1.2 says base_frequency ranges from 1 to 536'870'911, so we 0 detect invalid value.
+		// Clause 7.3.1.2 says base_frequency ranges from 1 to 536'870'911, so we can use 0 to detect invalid value.
 		return (_value & 0x1FFFFFFF) != 0;
 	}
 

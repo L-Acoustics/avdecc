@@ -336,7 +336,7 @@ entity::model::AudioUnitDescriptor deserializeReadAudioUnitDescriptorResponse(Ae
 		if (des.remaining() < samplingRatesSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Compute deserializer offset for sampling rates (Clause 7.4.5.2 says the sampling_rates_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+		// Compute deserializer offset for sampling rates (Clause 7.2.3 says the sampling_rates_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
 		samplingRatesOffset += sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
 
 		// Set deserializer position
@@ -389,7 +389,7 @@ entity::model::StreamDescriptor deserializeReadStreamDescriptorResponse(AemAecpd
 		des >> streamDescriptor.backedupTalkerEntityID >> streamDescriptor.backedupTalkerUnique;
 		des >> streamDescriptor.avbInterfaceIndex >> streamDescriptor.bufferLength;
 
-		// Compute deserializer offset for formats (Clause 7.4.5.2 says the formats_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+		// Compute deserializer offset for formats (Clause 7.2.6 says the formats_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
 		formatsOffset += sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
 
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
@@ -400,7 +400,7 @@ entity::model::StreamDescriptor deserializeReadStreamDescriptorResponse(AemAecpd
 		if (remainingBytesBeforeFormats >= (sizeof(redundantOffset) + sizeof(numberOfRedundantStreams)))
 		{
 			des >> redundantOffset >> numberOfRedundantStreams;
-			// Compute deserializer offset for redundant streams association (Clause 7.4.5.2 says the redundant_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+			// Compute deserializer offset for redundant streams association (Clause 7.2.6 says the redundant_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
 			redundantOffset += sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
 			endDescriptorOffset = redundantOffset;
 		}
@@ -808,7 +808,7 @@ entity::model::AudioMapDescriptor deserializeReadAudioMapDescriptorResponse(AemA
 		if (des.remaining() < mappingsSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Compute deserializer offset for sampling rates (Clause 7.4.5.2 says the mappings_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+		// Compute deserializer offset for sampling rates (Clause 7.2.19 says the mappings_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
 		mappingsOffset += sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
 
 		// Set deserializer position
@@ -861,7 +861,7 @@ entity::model::ClockDomainDescriptor deserializeReadClockDomainDescriptorRespons
 		if (des.remaining() < clockSourcesSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Compute deserializer offset for sampling rates (Clause 7.4.5.2 says the clock_sources_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+		// Compute deserializer offset for sampling rates (Clause 7.2.32 says the clock_sources_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
 		clockSourcesOffset += sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
 
 		// Set deserializer position

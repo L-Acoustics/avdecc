@@ -29,11 +29,6 @@
 #include "la/avdecc/internals/serialization.hpp"
 #include "la/avdecc/internals/entityModel.hpp"
 
-#if defined(ENABLE_AVDECC_CUSTOM_ANY)
-#	include "la/avdecc/internals/any.hpp"
-#else // !ENABLE_AVDECC_CUSTOM_ANY
-#	include <any>
-#endif // ENABLE_AVDECC_CUSTOM_ANY
 #include <cstdint>
 #include <tuple>
 

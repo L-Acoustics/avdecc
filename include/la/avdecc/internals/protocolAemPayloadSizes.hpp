@@ -54,7 +54,7 @@ constexpr size_t AecpAemControllerAvailableResponsePayloadSize = 0u;
 constexpr size_t AecpAemReadDescriptorCommandPayloadSize = 8u;
 
 /** READ_DESCRIPTOR Response - Clause 7.4.5.2 */
-constexpr size_t AecpAemReadCommonDescriptorResponsePayloadSize = 8u;
+constexpr size_t AecpAemReadCommonDescriptorResponsePayloadSize = 8u; // configuration_index (2), reserved (2), descriptor_type (2), descriptor_index (2)
 constexpr size_t AecpAemReadEntityDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 308u;
 constexpr size_t AecpAemReadConfigurationDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 70u;
 constexpr size_t AecpAemReadAudioUnitDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 140u;
