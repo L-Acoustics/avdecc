@@ -511,7 +511,7 @@ void AggregateEntityImpl::setAudioUnitName(UniqueIdentifier const targetEntityID
 	}
 }
 
-void AggregateEntityImpl::getAudioUnitName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const audioUnitIndex, GetAudioUnitNameHandler const& handler) const noexcept
+void AggregateEntityImpl::getAudioUnitName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AudioUnitIndex const audioUnitIndex, GetAudioUnitNameHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{
@@ -559,7 +559,7 @@ void AggregateEntityImpl::setAvbInterfaceName(UniqueIdentifier const targetEntit
 	}
 }
 
-void AggregateEntityImpl::getAvbInterfaceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const avbInterfaceIndex, GetAvbInterfaceNameHandler const& handler) const noexcept
+void AggregateEntityImpl::getAvbInterfaceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AvbInterfaceIndex const avbInterfaceIndex, GetAvbInterfaceNameHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{
@@ -575,7 +575,7 @@ void AggregateEntityImpl::setClockSourceName(UniqueIdentifier const targetEntity
 	}
 }
 
-void AggregateEntityImpl::getClockSourceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const clockSourceIndex, GetClockSourceNameHandler const& handler) const noexcept
+void AggregateEntityImpl::getClockSourceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClockSourceIndex const clockSourceIndex, GetClockSourceNameHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{
@@ -591,7 +591,7 @@ void AggregateEntityImpl::setMemoryObjectName(UniqueIdentifier const targetEntit
 	}
 }
 
-void AggregateEntityImpl::getMemoryObjectName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const memoryObjectIndex, GetMemoryObjectNameHandler const& handler) const noexcept
+void AggregateEntityImpl::getMemoryObjectName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::MemoryObjectIndex const memoryObjectIndex, GetMemoryObjectNameHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{
@@ -607,7 +607,7 @@ void AggregateEntityImpl::setAudioClusterName(UniqueIdentifier const targetEntit
 	}
 }
 
-void AggregateEntityImpl::getAudioClusterName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const audioClusterIndex, GetAudioClusterNameHandler const& handler) const noexcept
+void AggregateEntityImpl::getAudioClusterName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClusterIndex const audioClusterIndex, GetAudioClusterNameHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{
@@ -623,7 +623,7 @@ void AggregateEntityImpl::setClockDomainName(UniqueIdentifier const targetEntity
 	}
 }
 
-void AggregateEntityImpl::getClockDomainName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const clockDomainIndex, GetClockDomainNameHandler const& handler) const noexcept
+void AggregateEntityImpl::getClockDomainName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClockDomainIndex const clockDomainIndex, GetClockDomainNameHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{

@@ -821,7 +821,7 @@ void CapabilityDelegate::setAudioUnitName(UniqueIdentifier const targetEntityID,
 	}
 }
 
-void CapabilityDelegate::getAudioUnitName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const audioUnitIndex, Interface::GetAudioUnitNameHandler const& handler) const noexcept
+void CapabilityDelegate::getAudioUnitName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AudioUnitIndex const audioUnitIndex, Interface::GetAudioUnitNameHandler const& handler) const noexcept
 {
 	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, audioUnitIndex, s_emptyAvdeccFixedString);
 	try
@@ -911,7 +911,7 @@ void CapabilityDelegate::setAvbInterfaceName(UniqueIdentifier const targetEntity
 	}
 }
 
-void CapabilityDelegate::getAvbInterfaceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const avbInterfaceIndex, Interface::GetAvbInterfaceNameHandler const& handler) const noexcept
+void CapabilityDelegate::getAvbInterfaceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AvbInterfaceIndex const avbInterfaceIndex, Interface::GetAvbInterfaceNameHandler const& handler) const noexcept
 {
 	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, avbInterfaceIndex, s_emptyAvdeccFixedString);
 	try
@@ -941,7 +941,7 @@ void CapabilityDelegate::setClockSourceName(UniqueIdentifier const targetEntityI
 	}
 }
 
-void CapabilityDelegate::getClockSourceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const clockSourceIndex, Interface::GetClockSourceNameHandler const& handler) const noexcept
+void CapabilityDelegate::getClockSourceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClockSourceIndex const clockSourceIndex, Interface::GetClockSourceNameHandler const& handler) const noexcept
 {
 	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, clockSourceIndex, s_emptyAvdeccFixedString);
 	try
@@ -971,7 +971,7 @@ void CapabilityDelegate::setMemoryObjectName(UniqueIdentifier const targetEntity
 	}
 }
 
-void CapabilityDelegate::getMemoryObjectName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const memoryObjectIndex, Interface::GetMemoryObjectNameHandler const& handler) const noexcept
+void CapabilityDelegate::getMemoryObjectName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::MemoryObjectIndex const memoryObjectIndex, Interface::GetMemoryObjectNameHandler const& handler) const noexcept
 {
 	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, memoryObjectIndex, s_emptyAvdeccFixedString);
 	try
@@ -1001,7 +1001,7 @@ void CapabilityDelegate::setAudioClusterName(UniqueIdentifier const targetEntity
 	}
 }
 
-void CapabilityDelegate::getAudioClusterName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const audioClusterIndex, Interface::GetAudioClusterNameHandler const& handler) const noexcept
+void CapabilityDelegate::getAudioClusterName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClusterIndex const audioClusterIndex, Interface::GetAudioClusterNameHandler const& handler) const noexcept
 {
 	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, audioClusterIndex, s_emptyAvdeccFixedString);
 	try
@@ -1031,7 +1031,7 @@ void CapabilityDelegate::setClockDomainName(UniqueIdentifier const targetEntityI
 	}
 }
 
-void CapabilityDelegate::getClockDomainName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const clockDomainIndex, Interface::GetClockDomainNameHandler const& handler) const noexcept
+void CapabilityDelegate::getClockDomainName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClockDomainIndex const clockDomainIndex, Interface::GetClockDomainNameHandler const& handler) const noexcept
 {
 	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, clockDomainIndex, s_emptyAvdeccFixedString);
 	try

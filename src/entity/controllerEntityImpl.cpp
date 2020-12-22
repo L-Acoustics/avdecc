@@ -337,7 +337,7 @@ void ControllerEntityImpl::setAudioUnitName(UniqueIdentifier const targetEntityI
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setAudioUnitName(targetEntityID, configurationIndex, audioUnitIndex, audioUnitName, handler);
 }
 
-void ControllerEntityImpl::getAudioUnitName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const audioUnitIndex, GetAudioUnitNameHandler const& handler) const noexcept
+void ControllerEntityImpl::getAudioUnitName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AudioUnitIndex const audioUnitIndex, GetAudioUnitNameHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getAudioUnitName(targetEntityID, configurationIndex, audioUnitIndex, handler);
 }
@@ -367,7 +367,7 @@ void ControllerEntityImpl::setAvbInterfaceName(UniqueIdentifier const targetEnti
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setAvbInterfaceName(targetEntityID, configurationIndex, avbInterfaceIndex, avbInterfaceName, handler);
 }
 
-void ControllerEntityImpl::getAvbInterfaceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const avbInterfaceIndex, GetAvbInterfaceNameHandler const& handler) const noexcept
+void ControllerEntityImpl::getAvbInterfaceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AvbInterfaceIndex const avbInterfaceIndex, GetAvbInterfaceNameHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getAvbInterfaceName(targetEntityID, configurationIndex, avbInterfaceIndex, handler);
 }
@@ -377,7 +377,7 @@ void ControllerEntityImpl::setClockSourceName(UniqueIdentifier const targetEntit
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setClockSourceName(targetEntityID, configurationIndex, clockSourceIndex, clockSourceName, handler);
 }
 
-void ControllerEntityImpl::getClockSourceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const clockSourceIndex, GetClockSourceNameHandler const& handler) const noexcept
+void ControllerEntityImpl::getClockSourceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClockSourceIndex const clockSourceIndex, GetClockSourceNameHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getClockSourceName(targetEntityID, configurationIndex, clockSourceIndex, handler);
 }
@@ -387,7 +387,7 @@ void ControllerEntityImpl::setMemoryObjectName(UniqueIdentifier const targetEnti
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setMemoryObjectName(targetEntityID, configurationIndex, memoryObjectIndex, memoryObjectName, handler);
 }
 
-void ControllerEntityImpl::getMemoryObjectName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const memoryObjectIndex, GetMemoryObjectNameHandler const& handler) const noexcept
+void ControllerEntityImpl::getMemoryObjectName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::MemoryObjectIndex const memoryObjectIndex, GetMemoryObjectNameHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getMemoryObjectName(targetEntityID, configurationIndex, memoryObjectIndex, handler);
 }
@@ -397,7 +397,7 @@ void ControllerEntityImpl::setAudioClusterName(UniqueIdentifier const targetEnti
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setAudioClusterName(targetEntityID, configurationIndex, audioClusterIndex, audioClusterName, handler);
 }
 
-void ControllerEntityImpl::getAudioClusterName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const audioClusterIndex, GetAudioClusterNameHandler const& handler) const noexcept
+void ControllerEntityImpl::getAudioClusterName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClusterIndex const audioClusterIndex, GetAudioClusterNameHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getAudioClusterName(targetEntityID, configurationIndex, audioClusterIndex, handler);
 }
@@ -407,7 +407,7 @@ void ControllerEntityImpl::setClockDomainName(UniqueIdentifier const targetEntit
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setClockDomainName(targetEntityID, configurationIndex, clockDomainIndex, clockDomainName, handler);
 }
 
-void ControllerEntityImpl::getClockDomainName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const clockDomainIndex, GetClockDomainNameHandler const& handler) const noexcept
+void ControllerEntityImpl::getClockDomainName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClockDomainIndex const clockDomainIndex, GetClockDomainNameHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getClockDomainName(targetEntityID, configurationIndex, clockDomainIndex, handler);
 }
