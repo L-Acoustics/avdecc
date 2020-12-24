@@ -305,6 +305,134 @@ std::string LA_AVDECC_CALL_CONVENTION audioClusterFormatToString(AudioClusterFor
 	}
 }
 
+std::string LA_AVDECC_CALL_CONVENTION controlTypeToString(ControlType const controlType) noexcept
+{
+	switch (controlType)
+	{
+		case ControlType::Enable:
+			return "ENABLE";
+		case ControlType::Identify:
+			return "IDENTIFY";
+		case ControlType::Mute:
+			return "MUTE";
+		case ControlType::Invert:
+			return "INVERT";
+		case ControlType::Gain:
+			return "GAIN";
+		case ControlType::Attenuate:
+			return "ATTENUATE";
+		case ControlType::Delay:
+			return "DELAY";
+		case ControlType::SrcMode:
+			return "SRC MODE";
+		case ControlType::Snapshot:
+			return "CONTROLTYPE";
+		case ControlType::PowLineFreq:
+			return "POW LINE FREQ";
+		case ControlType::PowerStatus:
+			return "POWER STATUS";
+		case ControlType::FanStatus:
+			return "FAN STATUS";
+		case ControlType::Temperature:
+			return "TEMPERATURE";
+		case ControlType::Altitude:
+			return "ALTITUDE";
+		case ControlType::AbsoluteHumidity:
+			return "ABSOLUTE HUMIDITY";
+		case ControlType::RelativeHumidity:
+			return "RELATIVE HUMIDITY";
+		case ControlType::Orientation:
+			return "ORIENTATION";
+		case ControlType::Velocity:
+			return "VELOCITY";
+		case ControlType::Acceleration:
+			return "ACCELERATION";
+		case ControlType::FilterResponse:
+			return "FILTER RESPONSE";
+		case ControlType::Panpot:
+			return "PANPOT";
+		case ControlType::Phantom:
+			return "PHANTOM";
+		case ControlType::AudioScale:
+			return "AUDIO SCALE";
+		case ControlType::AudioMeters:
+			return "AUDIO METERS";
+		case ControlType::AudioSpectrum:
+			return "AUDIO SPECTRUM";
+		case ControlType::ScanningMode:
+			return "SCANNING MODE";
+		case ControlType::AutoExpMode:
+			return "AUTO EXP MODE";
+		case ControlType::AutoExpPrio:
+			return "AUTO EXP PRIO";
+		case ControlType::ExpTime:
+			return "EXP TIME";
+		case ControlType::Focus:
+			return "FOCUS";
+		case ControlType::FocusAuto:
+			return "FOCUS AUTO";
+		case ControlType::Iris:
+			return "IRIS";
+		case ControlType::Zoom:
+			return "ZOOM";
+		case ControlType::Privacy:
+			return "PRIVACY";
+		case ControlType::Backlight:
+			return "BACKLIGHT";
+		case ControlType::Brightness:
+			return "BRIGHTNESS";
+		case ControlType::Contrast:
+			return "CONTRAST";
+		case ControlType::Hue:
+			return "HUE";
+		case ControlType::Saturation:
+			return "SATURATION";
+		case ControlType::Sharpness:
+			return "SHARPNESS";
+		case ControlType::Gamma:
+			return "GAMMA";
+		case ControlType::WhiteBalTemp:
+			return "WHITE BAL TEMP";
+		case ControlType::WhiteBalTempAuto:
+			return "WHITE BAL TEMP AUTO";
+		case ControlType::WhiteBalComp:
+			return "WHITE BAL COMP";
+		case ControlType::WhiteBalCompAuto:
+			return "WHITE BAL COMP AUTO";
+		case ControlType::DigitalZoom:
+			return "DIGITAL ZOOM";
+		case ControlType::MediaPlaylist:
+			return "MEDIA PLAYLIST";
+		case ControlType::MediaPlaylistName:
+			return "MEDIA PLAYLIST NAME";
+		case ControlType::MediaDisk:
+			return "MEDIA DISK";
+		case ControlType::MediaDiskName:
+			return "MEDIA DISK NAME";
+		case ControlType::MediaTrack:
+			return "MEDIA TRACK";
+		case ControlType::MediaTrackName:
+			return "MEDIA TRACK NAME";
+		case ControlType::MediaSpeed:
+			return "MEDIA SPEED";
+		case ControlType::MediaSamplePosition:
+			return "MEDIA SAMPLE POSITION";
+		case ControlType::MediaPlaybackTransport:
+			return "MEDIA PLAYBACK TRANSPORT";
+		case ControlType::MediaRecordTransport:
+			return "MEDIA RECORD TRANSPORT";
+		case ControlType::Frequency:
+			return "FREQUENCY";
+		case ControlType::Modulation:
+			return "MODULATION";
+		case ControlType::Polarization:
+			return "POLARIZATION";
+		default:
+			AVDECC_ASSERT(false, "Not handled!");
+			return "UNKNOWN";
+	}
+}
+
 } // namespace model
 } // namespace entity
 } // namespace avdecc

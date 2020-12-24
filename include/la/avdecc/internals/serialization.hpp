@@ -142,6 +142,18 @@ public:
 		return operator<<(v.getValue());
 	}
 
+	/** Serializes a ControlValueUnit */
+	Serializer& operator<<(entity::model::ControlValueUnit const& v)
+	{
+		return operator<<(v.getValue());
+	}
+
+	/** Serializes a ControlValueType */
+	Serializer& operator<<(entity::model::ControlValueType const& v)
+	{
+		return operator<<(v.getValue());
+	}
+
 	/** Serializes a LocalizedStringReference */
 	Serializer& operator<<(entity::model::LocalizedStringReference const& v)
 	{
@@ -303,6 +315,24 @@ public:
 	Deserializer& operator>>(entity::model::StreamFormat& v)
 	{
 		entity::model::StreamFormat::value_type value;
+		operator>>(value);
+		v.setValue(value);
+		return *this;
+	}
+
+	/** Unpacks a ControlValueUnit */
+	Deserializer& operator>>(entity::model::ControlValueUnit& v)
+	{
+		entity::model::ControlValueUnit::value_type value;
+		operator>>(value);
+		v.setValue(value);
+		return *this;
+	}
+
+	/** Unpacks a ControlValueType */
+	Deserializer& operator>>(entity::model::ControlValueType& v)
+	{
+		entity::model::ControlValueType::value_type value;
 		operator>>(value);
 		v.setValue(value);
 		return *this;

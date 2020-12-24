@@ -77,6 +77,12 @@
 #include "stateMachine/stateMachineManager.hpp"
 #include "stateMachine/stateMachineManager.hpp"
 
+#if defined(ENABLE_AVDECC_CUSTOM_ANY)
+#	include "la/avdecc/internals/any.hpp"
+#else // !ENABLE_AVDECC_CUSTOM_ANY
+#	include <any>
+#endif // ENABLE_AVDECC_CUSTOM_ANY
+
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -102,3 +108,4 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <typeindex>

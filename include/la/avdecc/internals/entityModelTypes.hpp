@@ -312,6 +312,86 @@ struct AudioMapping
 
 using AudioMappings = std::vector<AudioMapping>;
 
+/** Control Type - Clause 7.3.4 */
+enum class ControlType : std::uint64_t
+{
+	Enable = 0x90e0f00000000000,
+	Identify = 0x90e0f00000000001,
+	Mute = 0x90e0f00000000002,
+	Invert = 0x90e0f00000000003,
+	Gain = 0x90e0f00000000004,
+	Attenuate = 0x90e0f00000000005,
+	Delay = 0x90e0f00000000006,
+	SrcMode = 0x90e0f00000000007,
+	Snapshot = 0x90e0f00000000008,
+	PowLineFreq = 0x90e0f00000000009,
+	PowerStatus = 0x90e0f0000000000a,
+	FanStatus = 0x90e0f0000000000b,
+	Temperature = 0x90e0f0000000000c,
+	Altitude = 0x90e0f0000000000d,
+	AbsoluteHumidity = 0x90e0f0000000000e,
+	RelativeHumidity = 0x90e0f0000000000f,
+	Orientation = 0x90e0f00000000010,
+	Velocity = 0x90e0f00000000011,
+	Acceleration = 0x90e0f00000000012,
+	FilterResponse = 0x90e0f00000000013,
+	/* 0x90e0f00000000014 to 0x90e0f0000000ffff reserved for future use */
+	Panpot = 0x90e0f00000010000,
+	Phantom = 0x90e0f00000010001,
+	AudioScale = 0x90e0f00000010002,
+	AudioMeters = 0x90e0f00000010003,
+	AudioSpectrum = 0x90e0f00000010004,
+	/* 0x90e0f00000010005 to 0x90e0f0000001ffff reserved for future use */
+	ScanningMode = 0x90e0f00000020000,
+	AutoExpMode = 0x90e0f00000020001,
+	AutoExpPrio = 0x90e0f00000020002,
+	ExpTime = 0x90e0f00000020003,
+	Focus = 0x90e0f00000020004,
+	FocusAuto = 0x90e0f00000020005,
+	Iris = 0x90e0f00000020006,
+	Zoom = 0x90e0f00000020007,
+	Privacy = 0x90e0f00000020008,
+	Backlight = 0x90e0f00000020009,
+	Brightness = 0x90e0f0000002000a,
+	Contrast = 0x90e0f0000002000b,
+	Hue = 0x90e0f0000002000c,
+	Saturation = 0x90e0f0000002000d,
+	Sharpness = 0x90e0f0000002000e,
+	Gamma = 0x90e0f0000002000f,
+	WhiteBalTemp = 0x90e0f00000020010,
+	WhiteBalTempAuto = 0x90e0f00000020011,
+	WhiteBalComp = 0x90e0f00000020012,
+	WhiteBalCompAuto = 0x90e0f00000020013,
+	DigitalZoom = 0x90e0f00000020014,
+	/* 0x90e0f00000020015 to 0x90e0f0000002ffff reserved for future use */
+	MediaPlaylist = 0x90e0f00000030000,
+	MediaPlaylistName = 0x90e0f00000030001,
+	MediaDisk = 0x90e0f00000030002,
+	MediaDiskName = 0x90e0f00000030003,
+	MediaTrack = 0x90e0f00000030004,
+	MediaTrackName = 0x90e0f00000030005,
+	MediaSpeed = 0x90e0f00000030006,
+	MediaSamplePosition = 0x90e0f00000030007,
+	MediaPlaybackTransport = 0x90e0f00000030008,
+	MediaRecordTransport = 0x90e0f00000030009,
+	/* 0x90e0f0000003000a to 0x90e0f0000003ffff reserved for future use */
+	Frequency = 0x90e0f00000040000,
+	Modulation = 0x90e0f00000040001,
+	Polarization = 0x90e0f00000040002,
+	/* 0x90e0f00000040003 to 0x90e0f0ffffffffff reserved for future use */
+};
+constexpr bool operator==(ControlType const lhs, ControlType const rhs)
+{
+	return static_cast<std::underlying_type_t<ControlType>>(lhs) == static_cast<std::underlying_type_t<ControlType>>(rhs);
+}
+
+constexpr bool operator==(ControlType const lhs, std::underlying_type_t<ControlType> const rhs)
+{
+	return static_cast<std::underlying_type_t<ControlType>>(lhs) == rhs;
+}
+
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION controlTypeToString(ControlType const controlType) noexcept;
+
 /** MSRP Mapping - Clause 7.4.40.2.1 */
 struct MsrpMapping
 {
@@ -726,7 +806,7 @@ public:
 		return ((offset * 7u) + index) & 0xFFFF;
 	}
 
-	/** Setter to change the offset and index values from this LocalizedStringReference. */
+	/** Setter to change the offset and index values for this LocalizedStringReference. */
 	constexpr void setOffsetIndex(std::uint16_t const offset, std::uint8_t const index) noexcept
 	{
 		_value = (offset << 3) + (index & 0x07);
@@ -799,6 +879,540 @@ public:
 private:
 	static constexpr value_type NullLocalizedStringReference = 0xFFFF;
 	value_type _value{ NullLocalizedStringReference };
+};
+
+/** Control Value Unit - Clause 7.3.3 */
+class ControlValueUnit final
+{
+public:
+	using value_type = std::uint16_t;
+
+	enum class Unit : std::uint8_t
+	{
+		// Unitless Quantities
+		Unitless = 0x00,
+		Count = 0x01,
+		Percent = 0x02,
+		FStop = 0x03,
+		// 0x04 to 0x07 reserved
+
+		// Time Quantities
+		Seconds = 0x08,
+		Minutes = 0x09,
+		Hours = 0x0a,
+		Days = 0x0b,
+		Months = 0x0c,
+		Years = 0x0d,
+		Samples = 0x0e,
+		Frames = 0x0f,
+
+		// Frequency Quantities
+		Hertz = 0x10,
+		Semitones = 0x11,
+		Cents = 0x12,
+		Octaves = 0x13,
+		Fps = 0x14,
+		// 0x15 to 0x17 reserved
+
+		// Distance Quantities
+		Metres = 0x18,
+		// 0x19 to 0x1f reserved
+
+		// Temperature Quantities
+		Kelvin = 0x20,
+		// 0x21 to 0x27 reserved
+
+		// Mass Quantities
+		Grams = 0x28,
+		// 0x29 to 0x2f reserved
+
+		// Voltage Quantities
+		Volts = 0x30,
+		Dbv = 0x31,
+		Dbu = 0x32,
+		// 0x33 to 0x37 reserved
+
+		// Current Quantities
+		Amps = 0x38,
+		// 0x39 to 0x3f reserved
+
+		// Power Quantities
+		Watts = 0x40,
+		Dbm = 0x41,
+		Dbw = 0x42,
+		// 0x43 to 0x47 reserved
+
+		// Pressure Quantities
+		Pascals = 0x48,
+		// 0x49 to 0x4f reserved
+
+		// Memory Quantities
+		Bits = 0x50,
+		Bytes = 0x51,
+		KibiBytes = 0x52,
+		MebiBytes = 0x53,
+		GibiBytes = 0x54,
+		TebiBytes = 0x55,
+		// 0x56 to 0x57 reserved
+
+		// Bandwidth Quantities
+		BitsPerSec = 0x58,
+		BytesPerSec = 0x59,
+		KibiBytesPerSec = 0x5a,
+		MebiBytesPerSec = 0x5b,
+		GibiBytesPerSec = 0x5c,
+		TebiBytesPerSec = 0x5d,
+		// 0x5e to 0x5f reserved
+
+		// Luminosity Quantities
+		Candelas = 0x60,
+		// 0x61 to 0x67 reserved
+
+		// Energy Quantities
+		Joules = 0x68,
+		// 0x69 to 0x6f reserved
+
+		// Angle Quantities
+		Radians = 0x70,
+		// 0x71 to 0x77 reserved
+
+		// Force Quantities
+		Newtons = 0x78,
+		// 0x79 to 0x7f reserved
+
+		// Resistance Quantities
+		Ohms = 0x80,
+		// 0x81 to 0x87 reserved
+
+		// Velocity Quantities
+		MetresPerSec = 0x88,
+		RadiansPerSec = 0x89,
+		// 0x8a to 0x8f reserved
+
+		// Acceleration Quantities
+		MetresPerSecSquared = 0x90,
+		RadiansPerSecSquared = 0x91,
+		// 0x92 to 0x97 reserved
+
+		// Magnetic Flux and Fields Quantities
+		Teslas = 0x98,
+		Webers = 0x99,
+		AmpsPerMetre = 0x9a,
+		// 0x9b to 0x9f reserved
+
+		// Area Quantities
+		MetresSquared = 0xa0,
+		// 0xa1 to 0xa7 reserved
+
+		// Volume Quantities
+		MetresCubed = 0xa8,
+		Litres = 0xa9,
+		// 0xaa to 0xaf reserved
+
+		// Level and Loudness Quantities
+		Db = 0xb0,
+		DbPeak = 0xb1,
+		DbRms = 0xb2,
+		Dbfs = 0xb3,
+		DbfsPeak = 0xb4,
+		DbfsRms = 0xb5,
+		Dbtp = 0xb6,
+		DbSplA = 0xb7,
+		DbZ = 0xb8,
+		DbSplC = 0xb9,
+		DbSpl = 0xba,
+		Lu = 0xbb,
+		Lufs = 0xbc,
+		DbA = 0xbd,
+		// 0xbe to 0xbf reserved
+	};
+
+	/** Default constructor. */
+	constexpr ControlValueUnit() noexcept {}
+
+	/** Constructor to create a ControlValueUnit from the underlying value. */
+	explicit constexpr ControlValueUnit(value_type const value) noexcept
+		: _value(value)
+	{
+	}
+
+	/** Constructor to create a ControlValueUnit from multiplier and unit values. */
+	constexpr ControlValueUnit(std::int8_t const multiplier, Unit const unit) noexcept
+	{
+		setMultiplierUnit(multiplier, unit);
+	}
+
+	/** Setter to change the underlying value. */
+	constexpr void setValue(value_type const value) noexcept
+	{
+		_value = value;
+	}
+
+	/** Getter to retrieve the underlying value. */
+	constexpr value_type getValue() const noexcept
+	{
+		return _value;
+	}
+
+	/** Getter to retrieve the multiplier from this ControlValueUnit. */
+	constexpr std::int8_t getMultiplier() const noexcept
+	{
+		return static_cast<std::int8_t>(_value >> 8);
+	}
+
+	/** Getter to retrieve unit from this ControlValueUnit. */
+	constexpr Unit getUnit() const noexcept
+	{
+		return static_cast<Unit>(_value & 0x0000FFFF);
+	}
+
+	/** Setter to change the multiplier and unit values for this ControlValueUnit. */
+	constexpr void setMultiplierUnit(std::int8_t const multiplier, Unit const unit) noexcept
+	{
+		_value = (static_cast<std::uint8_t>(multiplier) << 8) + utils::to_integral(unit);
+	}
+
+	/** Getter to retrieve the multiplier and unit values from this ControlValueUnit. */
+	constexpr std::pair<std::int8_t, Unit> getMultiplierUnit() const noexcept
+	{
+		return std::make_pair(getMultiplier(), getUnit());
+	}
+
+	/** Underlying value operator (equivalent to getValue()). */
+	constexpr operator value_type() const noexcept
+	{
+		return getValue();
+	}
+
+	/** Equality operator. Returns true if the underlying values are equal. */
+	constexpr friend bool operator==(ControlValueUnit const& lhs, ControlValueUnit const& rhs) noexcept
+	{
+		return lhs._value == rhs._value;
+	}
+
+	/** Non equality operator. */
+	constexpr friend bool operator!=(ControlValueUnit const& lhs, ControlValueUnit const& rhs) noexcept
+	{
+		return !operator==(lhs, rhs);
+	}
+
+	/** operator< */
+	constexpr friend bool operator<(ControlValueUnit const& lhs, ControlValueUnit const& rhs) noexcept
+	{
+		return lhs._value < rhs._value;
+	}
+
+	/** Hash functor to be used for std::hash */
+	struct hash
+	{
+		std::size_t operator()(ControlValueUnit const& ref) const
+		{
+			return std::hash<value_type>()(ref._value);
+		}
+	};
+
+	// Defaulted compiler auto-generated methods
+	ControlValueUnit(ControlValueUnit&&) = default;
+	ControlValueUnit(ControlValueUnit const&) = default;
+	ControlValueUnit& operator=(ControlValueUnit const&) = default;
+	ControlValueUnit& operator=(ControlValueUnit&&) = default;
+
+private:
+	static constexpr value_type NullControlValueUnit = 0u;
+	value_type _value{ NullControlValueUnit };
+};
+
+/** Control Value Type - Clause 7.3.5 */
+class ControlValueType final
+{
+public:
+	using value_type = std::uint16_t;
+
+	enum class Type : std::uint16_t
+	{
+		ControlLinearInt8 = 0x0000,
+		ControlLinearUInt8 = 0x0001,
+		ControlLinearInt16 = 0x0002,
+		ControlLinearUInt16 = 0x0003,
+		ControlLinearInt32 = 0x0004,
+		ControlLinearUInt32 = 0x0005,
+		ControlLinearInt64 = 0x0006,
+		ControlLinearUInt64 = 0x0007,
+		ControlLinearFloat = 0x0008,
+		ControlLinearDouble = 0x0009,
+		ControlSelectorInt8 = 0x000a,
+		ControlSelectorUInt8 = 0x000b,
+		ControlSelectorInt16 = 0x000c,
+		ControlSelectorUInt16 = 0x000d,
+		ControlSelectorInt32 = 0x000e,
+		ControlSelectorUInt32 = 0x000f,
+		ControlSelectorInt64 = 0x0010,
+		ControlSelectorUInt64 = 0x0011,
+		ControlSelectorFloat = 0x0012,
+		ControlSelectorDouble = 0x0013,
+		ControlSelectorString = 0x0014,
+		ControlArrayInt8 = 0x0015,
+		ControlArrayUInt8 = 0x0016,
+		ControlArrayInt16 = 0x0017,
+		ControlArrayUInt16 = 0x0018,
+		ControlArrayInt32 = 0x0019,
+		ControlArrayUInt32 = 0x001a,
+		ControlArrayInt64 = 0x001b,
+		ControlArrayUInt64 = 0x001c,
+		ControlArrayFloat = 0x001d,
+		ControlArrayDouble = 0x001e,
+		ControlUtf8 = 0x001f,
+		ControlBodePlot = 0x0020,
+		ControlSmpteTime = 0x0021,
+		ControlSampleRate = 0x0022,
+		ControlGptpTime = 0x0023,
+		// 0x0024 to 0x3ffd reserved for future use
+		ControlVendor = 0x3ffe,
+		Exapnsion = 0x3fff,
+	};
+
+	/** Default constructor. */
+	constexpr ControlValueType() noexcept {}
+
+	/** Constructor to create a ControlValueType from the underlying value. */
+	explicit constexpr ControlValueType(value_type const value) noexcept
+		: _value(value)
+	{
+	}
+
+	/** Constructor to create a ControlValueType from isReadOnly, isUnknown and type values. */
+	constexpr ControlValueType(bool const isReadOnly, bool const isUnknown, Type const type) noexcept
+	{
+		setReadOnlyUnknownType(isReadOnly, isUnknown, type);
+	}
+
+	/** Setter to change the underlying value. */
+	constexpr void setValue(value_type const value) noexcept
+	{
+		_value = value;
+	}
+
+	/** Getter to retrieve the underlying value. */
+	constexpr value_type getValue() const noexcept
+	{
+		return _value;
+	}
+
+	/** Getter to retrieve the readOnly bit from this ControlValueType. */
+	constexpr bool isReadOnly() const noexcept
+	{
+		return ((_value >> 15) & 0x1) == 1;
+	}
+
+	/** Getter to retrieve the isUnknown bit from this ControlValueType. */
+	constexpr bool isUnknown() const noexcept
+	{
+		return ((_value >> 14) & 0x1) == 1;
+	}
+
+	/** Getter to retrieve Type from this ControlValueType. */
+	constexpr Type getType() const noexcept
+	{
+		return static_cast<Type>(_value & 0x3FFF);
+	}
+
+	constexpr void setReadOnlyUnknownType(bool const isReadOnly, bool const isUnknown, Type const type) noexcept
+	{
+		_value = ((isReadOnly & 0x1) << 15) + ((isUnknown & 0x1) << 14) + (utils::to_integral(type) & 0x3FFF);
+	}
+
+	/** Underlying value operator (equivalent to getValue()). */
+	constexpr operator value_type() const noexcept
+	{
+		return getValue();
+	}
+
+	/** Equality operator. Returns true if the underlying values are equal. */
+	constexpr friend bool operator==(ControlValueType const& lhs, ControlValueType const& rhs) noexcept
+	{
+		return lhs._value == rhs._value;
+	}
+
+	/** Non equality operator. */
+	constexpr friend bool operator!=(ControlValueType const& lhs, ControlValueType const& rhs) noexcept
+	{
+		return !operator==(lhs, rhs);
+	}
+
+	/** operator< */
+	constexpr friend bool operator<(ControlValueType const& lhs, ControlValueType const& rhs) noexcept
+	{
+		return lhs._value < rhs._value;
+	}
+
+	/** Hash functor to be used for std::hash */
+	struct hash
+	{
+		std::size_t operator()(ControlValueType const& ref) const
+		{
+			return std::hash<value_type>()(ref._value);
+		}
+	};
+
+	// Defaulted compiler auto-generated methods
+	ControlValueType(ControlValueType&&) = default;
+	ControlValueType(ControlValueType const&) = default;
+	ControlValueType& operator=(ControlValueType const&) = default;
+	ControlValueType& operator=(ControlValueType&&) = default;
+
+private:
+	static constexpr value_type NullControlValueType = 1u << 14;
+	value_type _value{ NullControlValueType };
+};
+
+/** Control Values - Clause 7.3.5 */
+class ControlValues
+{
+public:
+	constexpr ControlValues(ControlValueType::Type const type) noexcept
+		: _type{ type }
+	{
+	}
+
+	ControlValueType::Type getType() const noexcept
+	{
+		return _type;
+	}
+
+	virtual std::uint16_t getNumberOfValues() const noexcept = 0;
+
+	// Defaulted compiler auto-generated methods
+	ControlValues(ControlValues const&) = default;
+	ControlValues(ControlValues&&) = default;
+	ControlValues& operator=(ControlValues const&) = default;
+	ControlValues& operator=(ControlValues&&) = default;
+
+private:
+	ControlValueType::Type _type{};
+};
+
+/** Linear Values - Clause 7.3.5.2.1 */
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
+struct LinearValueStatic
+{
+	using size_type = SizeType;
+
+	SizeType minimum{ 0 };
+	SizeType maximum{ 0 };
+	SizeType step{ 0 };
+	SizeType defaultValue{ 0 };
+	ControlValueUnit unit{ 0 };
+	LocalizedStringReference localizedName{};
+};
+
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
+struct LinearValueDynamic
+{
+	using size_type = SizeType;
+
+	SizeType currentValue{ 0 }; // The actual default value should be the one from LinearValueStatic
+};
+
+template<typename ValueType, typename SizeType = typename ValueType::size_type, typename = std::enable_if_t<std::is_same_v<ValueType, LinearValueStatic<SizeType>> | std::is_same_v<ValueType, LinearValueDynamic<SizeType>>>>
+class LinearValues final : public ControlValues
+{
+public:
+	using value_type = ValueType;
+	using size_type = typename ValueType::size_type;
+	using Values = std::vector<ValueType>;
+
+	constexpr LinearValues() noexcept
+		: ControlValues{ getControlValueType() }
+	{
+	}
+
+	explicit LinearValues(Values const& values) noexcept
+		: _values{ values }
+	{
+	}
+
+	explicit LinearValues(Values&& values) noexcept
+		: _values{ std::move(values) }
+	{
+	}
+
+	void addValue(value_type const& value) noexcept
+	{
+		_values.push_back(value);
+	}
+
+	void addValue(value_type&& value) noexcept
+	{
+		_values.emplace_back(std::move(value));
+	}
+
+	Values const& getValues() const noexcept
+	{
+		return _values;
+	}
+
+	Values& getValues() noexcept
+	{
+		return _values;
+	}
+
+	virtual std::uint16_t getNumberOfValues() const noexcept override
+	{
+		return static_cast<std::uint16_t>(_values.size());
+	}
+
+	// Defaulted compiler auto-generated methods
+	LinearValues(LinearValues const&) = default;
+	LinearValues(LinearValues&&) = default;
+	LinearValues& operator=(LinearValues const&) = default;
+	LinearValues& operator=(LinearValues&&) = default;
+
+private:
+	constexpr ControlValueType::Type getControlValueType() noexcept
+	{
+		if constexpr (std::is_same_v<size_type, std::int8_t>)
+		{
+			return ControlValueType::Type::ControlLinearInt8;
+		}
+		else if constexpr (std::is_same_v<size_type, std::uint8_t>)
+		{
+			return ControlValueType::Type::ControlLinearUInt8;
+		}
+		else if constexpr (std::is_same_v<size_type, std::int16_t>)
+		{
+			return ControlValueType::Type::ControlLinearInt16;
+		}
+		else if constexpr (std::is_same_v<size_type, std::uint16_t>)
+		{
+			return ControlValueType::Type::ControlLinearUInt16;
+		}
+		else if constexpr (std::is_same_v<size_type, std::int32_t>)
+		{
+			return ControlValueType::Type::ControlLinearInt32;
+		}
+		else if constexpr (std::is_same_v<size_type, std::uint32_t>)
+		{
+			return ControlValueType::Type::ControlLinearUInt32;
+		}
+		else if constexpr (std::is_same_v<size_type, std::int64_t>)
+		{
+			return ControlValueType::Type::ControlLinearInt64;
+		}
+		else if constexpr (std::is_same_v<size_type, std::uint64_t>)
+		{
+			return ControlValueType::Type::ControlLinearUInt64;
+		}
+		else if constexpr (std::is_same_v<size_type, float>)
+		{
+			return ControlValueType::Type::ControlLinearFloat;
+		}
+		else if constexpr (std::is_same_v<size_type, double>)
+		{
+			return ControlValueType::Type::ControlLinearDouble;
+		}
+	}
+
+	Values _values{};
 };
 
 /** Stream Identification (EntityID/StreamIndex couple) */

@@ -833,6 +833,110 @@ entity::model::AudioMapDescriptor deserializeReadAudioMapDescriptorResponse(AemA
 	return audioMapDescriptor;
 }
 
+template<typename SizeType>
+static inline void unpackLinearValues(Deserializer& des, entity::model::ControlDescriptor& controlDescriptor, std::uint16_t const numberOfValues)
+{
+	auto valuesStatic = entity::model::LinearValues<entity::model::LinearValueStatic<SizeType>>{};
+	auto valuesDynamic = entity::model::LinearValues<entity::model::LinearValueDynamic<SizeType>>{};
+
+	for (auto i = 0u; i < numberOfValues; ++i)
+	{
+		auto valueStatic = typename decltype(valuesStatic)::value_type{};
+		auto valueDynamic = typename decltype(valuesDynamic)::value_type{};
+
+		des >> valueStatic.minimum >> valueStatic.maximum >> valueStatic.step >> valueStatic.defaultValue >> valueDynamic.currentValue >> valueStatic.unit >> valueStatic.localizedName;
+
+		valuesStatic.addValue(std::move(valueStatic));
+		valuesDynamic.addValue(std::move(valueDynamic));
+	}
+
+	controlDescriptor.valuesStatic = std::move(valuesStatic);
+	controlDescriptor.valuesDynamic = std::move(valuesDynamic);
+}
+
+entity::model::ControlDescriptor deserializeReadControlDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
+{
+	auto controlDescriptor = entity::model::ControlDescriptor{};
+
+	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	if (status == AecpStatus::Success)
+	{
+		auto* const commandPayload = payload.first;
+		auto const commandPayloadLength = payload.second;
+
+		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadControlDescriptorResponsePayloadMinSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Check control descriptor payload - Clause 7.2.22
+		auto des = Deserializer{ commandPayload, commandPayloadLength };
+		auto numberOfValues = std::uint16_t{ 0u };
+		auto valuesOffset = std::uint16_t{ 0u };
+
+		des.setPosition(commonSize); // Skip already unpacked common header
+		des >> controlDescriptor.objectName >> controlDescriptor.localizedDescription;
+		des >> controlDescriptor.blockLatency >> controlDescriptor.controlLatency >> controlDescriptor.controlDomain;
+		des >> controlDescriptor.controlValueType >> controlDescriptor.controlType >> controlDescriptor.resetTime;
+		des >> valuesOffset >> numberOfValues;
+		des >> controlDescriptor.signalType >> controlDescriptor.signalIndex >> controlDescriptor.signalOutput;
+
+		// No need to check descriptor variable size, we'll let the ControlValueType specific unpacker throw if needed
+
+		// Compute deserializer offset for values (Clause 7.2.22 says the values_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+		valuesOffset += sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
+
+		// Set deserializer position
+		if (valuesOffset < des.usedBytes())
+			throw IncorrectPayloadSizeException();
+		des.setPosition(valuesOffset);
+
+		// Unpack Control Values based on ControlValueType
+		switch (controlDescriptor.controlValueType.getType())
+		{
+			case entity::model::ControlValueType::Type::ControlLinearInt8:
+				unpackLinearValues<std::int8_t>(des, controlDescriptor, numberOfValues);
+				break;
+			case entity::model::ControlValueType::Type::ControlLinearUInt8:
+				unpackLinearValues<std::uint8_t>(des, controlDescriptor, numberOfValues);
+				break;
+			case entity::model::ControlValueType::Type::ControlLinearInt16:
+				unpackLinearValues<std::int16_t>(des, controlDescriptor, numberOfValues);
+				break;
+			case entity::model::ControlValueType::Type::ControlLinearUInt16:
+				unpackLinearValues<std::uint16_t>(des, controlDescriptor, numberOfValues);
+				break;
+			case entity::model::ControlValueType::Type::ControlLinearInt32:
+				unpackLinearValues<std::int32_t>(des, controlDescriptor, numberOfValues);
+				break;
+			case entity::model::ControlValueType::Type::ControlLinearUInt32:
+				unpackLinearValues<std::uint32_t>(des, controlDescriptor, numberOfValues);
+				break;
+			case entity::model::ControlValueType::Type::ControlLinearInt64:
+				unpackLinearValues<std::int64_t>(des, controlDescriptor, numberOfValues);
+				break;
+			case entity::model::ControlValueType::Type::ControlLinearUInt64:
+				unpackLinearValues<std::uint64_t>(des, controlDescriptor, numberOfValues);
+				break;
+			case entity::model::ControlValueType::Type::ControlLinearFloat:
+				unpackLinearValues<float>(des, controlDescriptor, numberOfValues);
+				break;
+			case entity::model::ControlValueType::Type::ControlLinearDouble:
+				unpackLinearValues<double>(des, controlDescriptor, numberOfValues);
+				break;
+			default:
+				LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Unsupported ControlValueType for READ_CONTROL_DESCRIPTOR RESPONSE: {}", des.remaining());
+				throw UnsupportedValueException();
+				break;
+		}
+
+		if (des.remaining() != 0)
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_CONTROL_DESCRIPTOR RESPONSE: {}", des.remaining());
+		}
+	}
+
+	return controlDescriptor;
+}
+
 entity::model::ClockDomainDescriptor deserializeReadClockDomainDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
 {
 	entity::model::ClockDomainDescriptor clockDomainDescriptor{};
