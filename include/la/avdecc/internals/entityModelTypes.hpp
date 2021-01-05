@@ -30,6 +30,11 @@
 #include "uniqueIdentifier.hpp"
 #include "exports.hpp"
 
+#if defined(ENABLE_AVDECC_CUSTOM_ANY)
+#	include "any.hpp"
+#else // !ENABLE_AVDECC_CUSTOM_ANY
+#	include <any>
+#endif // ENABLE_AVDECC_CUSTOM_ANY
 #include <cstdint>
 #include <string>
 #include <array>
@@ -1122,6 +1127,8 @@ private:
 	value_type _value{ NullControlValueUnit };
 };
 
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION controlValueUnitToString(ControlValueUnit::Unit const controlValueUnit) noexcept;
+
 /** Control Value Type - Clause 7.3.5 */
 class ControlValueType final
 {
@@ -1168,7 +1175,7 @@ public:
 		ControlGptpTime = 0x0023,
 		// 0x0024 to 0x3ffd reserved for future use
 		ControlVendor = 0x3ffe,
-		Exapnsion = 0x3fff,
+		Expansion = 0x3fff,
 	};
 
 	/** Default constructor. */
@@ -1265,21 +1272,95 @@ private:
 	value_type _value{ NullControlValueType };
 };
 
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION controlValueTypeToString(ControlValueType::Type const controlValueType) noexcept;
+
 /** Control Values - Clause 7.3.5 */
-class ControlValues
+class ControlValues final
 {
 public:
-	constexpr ControlValues(ControlValueType::Type const type) noexcept
-		: _type{ type }
+	/** Traits to handle ValueDetails behavior. */
+	template<typename ValueDetailsType>
+	struct control_value_details_traits
 	{
+		static constexpr bool is_value_details = false;
+		static constexpr bool is_dynamic = false;
+		static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::Expansion; // Not the best default value but none is provided by the standard
+	};
+
+	constexpr ControlValues() noexcept {}
+
+	template<class ValueDetailsType, typename Traits = control_value_details_traits<std::decay_t<ValueDetailsType>>>
+	explicit ControlValues(ValueDetailsType const& values) noexcept
+		: _isValid{ true }
+		, _type{ Traits::control_value_type }
+		, _areDynamic{ Traits::is_dynamic }
+		, _countValues{ values.size() }
+		, _values{ values }
+	{
+		static_assert(Traits::is_value_details, "ControlValues::ControlValues, control_value_details_traits::is_value_details trait not defined for requested ValueDetailsType. Did you include entityModelControlValuesTraits.hpp?");
 	}
 
-	ControlValueType::Type getType() const noexcept
+	template<class ValueDetailsType, typename Traits = control_value_details_traits<std::decay_t<ValueDetailsType>>>
+	explicit ControlValues(ValueDetailsType&& values) noexcept
+		: _isValid{ true }
+		, _type{ Traits::control_value_type }
+		, _areDynamic{ Traits::is_dynamic }
+		, _countValues{ values.size() } // Careful with order here, we are moving 'values'
+		, _values{ std::move(values) }
+	{
+		static_assert(Traits::is_value_details, "ControlValues::ControlValues, control_value_details_traits::is_value_details trait not defined for requested ValueDetailsType. Did you include entityModelControlValuesTraits.hpp?");
+	}
+
+	constexpr ControlValueType::Type getType() const noexcept
 	{
 		return _type;
 	}
 
-	virtual std::uint16_t getNumberOfValues() const noexcept = 0;
+	constexpr bool areDynamicValues() const noexcept
+	{
+		return _areDynamic;
+	}
+
+	constexpr std::uint16_t size() const noexcept
+	{
+		return _countValues;
+	}
+
+	constexpr bool empty() const noexcept
+	{
+		return _countValues == 0;
+	}
+
+	/** True if the ControlValues contains valid values, false otherwise. */
+	constexpr bool isValid() const noexcept
+	{
+		return _isValid;
+	}
+
+	/** Validity bool operator (equivalent to isValid()). */
+	explicit constexpr operator bool() const noexcept
+	{
+		return isValid();
+	}
+
+	template<class ValueDetailsType, typename Traits = control_value_details_traits<std::decay_t<ValueDetailsType>>>
+	std::decay_t<ValueDetailsType> getValues() const
+	{
+		static_assert(Traits::is_value_details, "ControlValues::getValues, control_value_details_traits::is_value_details trait not defined for requested ValueDetailsType. Did you include entityModelControlValuesTraits.hpp?");
+		if (!isValid())
+		{
+			throw std::invalid_argument("ControlValues::getValues, no valid values to get");
+		}
+		if (_type != Traits::control_value_type)
+		{
+			throw std::invalid_argument("ControlValues::getValues, incorrect ControlValueType::Type");
+		}
+		if (_areDynamic != Traits::is_dynamic)
+		{
+			throw std::invalid_argument("ControlValues::getValues, static/dynamic mismatch");
+		}
+		return std::any_cast<std::decay_t<ValueDetailsType>>(_values);
+	}
 
 	// Defaulted compiler auto-generated methods
 	ControlValues(ControlValues const&) = default;
@@ -1288,131 +1369,11 @@ public:
 	ControlValues& operator=(ControlValues&&) = default;
 
 private:
+	bool _isValid{ false };
 	ControlValueType::Type _type{};
-};
-
-/** Linear Values - Clause 7.3.5.2.1 */
-template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
-struct LinearValueStatic
-{
-	using size_type = SizeType;
-
-	SizeType minimum{ 0 };
-	SizeType maximum{ 0 };
-	SizeType step{ 0 };
-	SizeType defaultValue{ 0 };
-	ControlValueUnit unit{ 0 };
-	LocalizedStringReference localizedName{};
-};
-
-template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
-struct LinearValueDynamic
-{
-	using size_type = SizeType;
-
-	SizeType currentValue{ 0 }; // The actual default value should be the one from LinearValueStatic
-};
-
-template<typename ValueType, typename SizeType = typename ValueType::size_type, typename = std::enable_if_t<std::is_same_v<ValueType, LinearValueStatic<SizeType>> | std::is_same_v<ValueType, LinearValueDynamic<SizeType>>>>
-class LinearValues final : public ControlValues
-{
-public:
-	using value_type = ValueType;
-	using size_type = typename ValueType::size_type;
-	using Values = std::vector<ValueType>;
-
-	constexpr LinearValues() noexcept
-		: ControlValues{ getControlValueType() }
-	{
-	}
-
-	explicit LinearValues(Values const& values) noexcept
-		: _values{ values }
-	{
-	}
-
-	explicit LinearValues(Values&& values) noexcept
-		: _values{ std::move(values) }
-	{
-	}
-
-	void addValue(value_type const& value) noexcept
-	{
-		_values.push_back(value);
-	}
-
-	void addValue(value_type&& value) noexcept
-	{
-		_values.emplace_back(std::move(value));
-	}
-
-	Values const& getValues() const noexcept
-	{
-		return _values;
-	}
-
-	Values& getValues() noexcept
-	{
-		return _values;
-	}
-
-	virtual std::uint16_t getNumberOfValues() const noexcept override
-	{
-		return static_cast<std::uint16_t>(_values.size());
-	}
-
-	// Defaulted compiler auto-generated methods
-	LinearValues(LinearValues const&) = default;
-	LinearValues(LinearValues&&) = default;
-	LinearValues& operator=(LinearValues const&) = default;
-	LinearValues& operator=(LinearValues&&) = default;
-
-private:
-	constexpr ControlValueType::Type getControlValueType() noexcept
-	{
-		if constexpr (std::is_same_v<size_type, std::int8_t>)
-		{
-			return ControlValueType::Type::ControlLinearInt8;
-		}
-		else if constexpr (std::is_same_v<size_type, std::uint8_t>)
-		{
-			return ControlValueType::Type::ControlLinearUInt8;
-		}
-		else if constexpr (std::is_same_v<size_type, std::int16_t>)
-		{
-			return ControlValueType::Type::ControlLinearInt16;
-		}
-		else if constexpr (std::is_same_v<size_type, std::uint16_t>)
-		{
-			return ControlValueType::Type::ControlLinearUInt16;
-		}
-		else if constexpr (std::is_same_v<size_type, std::int32_t>)
-		{
-			return ControlValueType::Type::ControlLinearInt32;
-		}
-		else if constexpr (std::is_same_v<size_type, std::uint32_t>)
-		{
-			return ControlValueType::Type::ControlLinearUInt32;
-		}
-		else if constexpr (std::is_same_v<size_type, std::int64_t>)
-		{
-			return ControlValueType::Type::ControlLinearInt64;
-		}
-		else if constexpr (std::is_same_v<size_type, std::uint64_t>)
-		{
-			return ControlValueType::Type::ControlLinearUInt64;
-		}
-		else if constexpr (std::is_same_v<size_type, float>)
-		{
-			return ControlValueType::Type::ControlLinearFloat;
-		}
-		else if constexpr (std::is_same_v<size_type, double>)
-		{
-			return ControlValueType::Type::ControlLinearDouble;
-		}
-	}
-
-	Values _values{};
+	bool _areDynamic{ false };
+	std::uint16_t _countValues{ 0u };
+	std::any _values{};
 };
 
 /** Stream Identification (EntityID/StreamIndex couple) */

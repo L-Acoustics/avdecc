@@ -719,6 +719,22 @@ void AggregateEntityImpl::getClockSource(UniqueIdentifier const targetEntityID, 
 	}
 }
 
+void AggregateEntityImpl::setControlValues(UniqueIdentifier const targetEntityID, model::ControlIndex const controlIndex, model::ControlValues const& controlValues, SetControlValuesHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setControlValues(targetEntityID, controlIndex, controlValues, handler);
+	}
+}
+
+void AggregateEntityImpl::getControlValues(UniqueIdentifier const targetEntityID, model::ControlIndex const controlIndex, GetControlValuesHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getControlValues(targetEntityID, controlIndex, handler);
+	}
+}
+
 void AggregateEntityImpl::startStreamInput(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, StartStreamInputHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))

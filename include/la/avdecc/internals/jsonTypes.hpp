@@ -28,6 +28,8 @@
 
 #include "la/avdecc/utils.hpp"
 #include "la/avdecc/avdecc.hpp"
+#include "la/avdecc/internals/entityModelControlValues.hpp"
+#include "la/avdecc/internals/entityModelControlValuesTraits.hpp"
 
 #include "logItems.hpp"
 
@@ -35,7 +37,6 @@
 
 #include <optional>
 #include <chrono>
-#include <typeindex>
 #include <stdexcept> // invalid_argument
 
 using json = nlohmann::json;
@@ -1172,7 +1173,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(ControlValueType::Type, {
 																											 { ControlValueType::Type::ControlSampleRate, "CONTROL_SAMPLE_RATE" },
 																											 { ControlValueType::Type::ControlGptpTime, "CONTROL_GPTP_TIME" },
 																											 { ControlValueType::Type::ControlVendor, "CONTROL_VENDOR" },
-																											 { ControlValueType::Type::Exapnsion, "EXAPNSION" },
+																											 { ControlValueType::Type::Expansion, "EXPANSION" },
 																										 });
 
 /* ControlType conversion */
@@ -1858,9 +1859,10 @@ inline void from_json(json const& j, LinearValueDynamic<SizeType>& value)
 }
 
 /* LinearValues conversion */
-template<typename ValueType, typename SizeType = typename ValueType::size_type, typename = std::enable_if_t<std::is_same_v<ValueType, LinearValueStatic<SizeType>> | std::is_same_v<ValueType, LinearValueDynamic<SizeType>>>>
+template<typename ValueType, typename Traits = ControlValues::control_value_details_traits<LinearValues<ValueType>>>
 inline void to_json(json& j, LinearValues<ValueType> const& values)
 {
+	static_assert(Traits::is_value_details, "to_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
 	auto arr = json::array();
 
 	for (auto const& val : values.getValues())
@@ -1870,9 +1872,10 @@ inline void to_json(json& j, LinearValues<ValueType> const& values)
 
 	j = std::move(arr);
 }
-template<typename ValueType, typename SizeType = typename ValueType::size_type, typename = std::enable_if_t<std::is_same_v<ValueType, LinearValueStatic<SizeType>> | std::is_same_v<ValueType, LinearValueDynamic<SizeType>>>>
+template<typename ValueType, typename Traits = ControlValues::control_value_details_traits<LinearValues<ValueType>>>
 inline void from_json(json const& j, LinearValues<ValueType>& values)
 {
+	static_assert(Traits::is_value_details, "from_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
 	for (auto const& jval : j)
 	{
 		auto val = typename std::decay_t<decltype(values)>::value_type{};
@@ -1882,67 +1885,68 @@ inline void from_json(json const& j, LinearValues<ValueType>& values)
 }
 
 /* ControlValues Dispatcher Helper Templates */
-template<class ControlValuesClass>
-inline std::function<json(std::any const&)> createToJsonDispatchFunctor() noexcept
+template<class ValueDetailsType, typename Traits = ControlValues::control_value_details_traits<std::decay_t<ValueDetailsType>>>
+inline std::function<json(ControlValues const&)> createToJsonDispatchFunctor() noexcept
 {
-	return [](std::any const& controlValues)
+	static_assert(Traits::is_value_details, "createToJsonDispatchFunctor, control_value_details_traits::is_value_details trait not defined for requested ValueDetailsType. Did you include entityModelControlValuesTraits.hpp?");
+	return [](ControlValues const& controlValues)
 	{
 		auto j = json{};
 		try
 		{
-			auto const& values = std::any_cast<ControlValuesClass const>(controlValues);
-			j[keyName::ControlValues_Type] = values.getType();
+			auto const& values = controlValues.getValues<ValueDetailsType>();
+			j[keyName::ControlValues_Type] = controlValues.getType();
 			j[keyName::ControlValues_Values] = values;
 		}
-		catch (std::bad_any_cast const&)
+		catch (...)
 		{
 		}
 		return j;
 	};
 }
 template<class ControlValuesClass>
-inline std::function<std::any(json const&)> createFromJsonDispatchFunctor() noexcept
+inline std::function<ControlValues(json const&)> createFromJsonDispatchFunctor() noexcept
 {
 	return [](json const& j)
 	{
 		auto controlValues = ControlValuesClass{};
 		j.get_to(controlValues);
-		return controlValues;
+		return ControlValues{ controlValues };
 	};
 }
 
 template<bool IsDynamic>
-inline void createToJsonDispatchTable(std::unordered_map<std::type_index, std::function<json(std::any const&)>>& dispatchTable)
+inline void createToJsonDispatchTable(std::unordered_map<ControlValueType::Type, std::function<json(ControlValues const&)>>& dispatchTable)
 {
 	if constexpr (IsDynamic)
 	{
-		dispatchTable[std::type_index(typeid(LinearValues<LinearValueDynamic<std::int8_t>>))] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int8_t>>>();
-		dispatchTable[std::type_index(typeid(LinearValues<LinearValueDynamic<std::uint8_t>>))] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::uint8_t>>>();
-		dispatchTable[std::type_index(typeid(LinearValues<LinearValueDynamic<std::int16_t>>))] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int16_t>>>();
-		dispatchTable[std::type_index(typeid(LinearValues<LinearValueDynamic<std::uint16_t>>))] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::uint16_t>>>();
-		dispatchTable[std::type_index(typeid(LinearValues<LinearValueDynamic<std::int32_t>>))] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int32_t>>>();
-		dispatchTable[std::type_index(typeid(LinearValues<LinearValueDynamic<std::uint32_t>>))] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::uint32_t>>>();
-		dispatchTable[std::type_index(typeid(LinearValues<LinearValueDynamic<std::int64_t>>))] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int64_t>>>();
-		dispatchTable[std::type_index(typeid(LinearValues<LinearValueDynamic<std::uint64_t>>))] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::uint64_t>>>();
-		dispatchTable[std::type_index(typeid(LinearValues<LinearValueDynamic<float>>))] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<float>>>();
-		dispatchTable[std::type_index(typeid(LinearValues<LinearValueDynamic<double>>))] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<double>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearInt8] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int8_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt8] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::uint8_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearInt16] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int16_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt16] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::uint16_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearInt32] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int32_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt32] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::uint32_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearInt64] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int64_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt64] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::uint64_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearFloat] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<float>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearDouble] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<double>>>();
 	}
 	else
 	{
-		dispatchTable[std::type_index(typeid(LinearValues<LinearValueStatic<std::int8_t>>))] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int8_t>>>();
-		dispatchTable[std::type_index(typeid(LinearValues<LinearValueStatic<std::uint8_t>>))] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::uint8_t>>>();
-		dispatchTable[std::type_index(typeid(LinearValues<LinearValueStatic<std::int16_t>>))] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int16_t>>>();
-		dispatchTable[std::type_index(typeid(LinearValues<LinearValueStatic<std::uint16_t>>))] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::uint16_t>>>();
-		dispatchTable[std::type_index(typeid(LinearValues<LinearValueStatic<std::int32_t>>))] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int32_t>>>();
-		dispatchTable[std::type_index(typeid(LinearValues<LinearValueStatic<std::uint32_t>>))] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::uint32_t>>>();
-		dispatchTable[std::type_index(typeid(LinearValues<LinearValueStatic<std::int64_t>>))] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int64_t>>>();
-		dispatchTable[std::type_index(typeid(LinearValues<LinearValueStatic<std::uint64_t>>))] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::uint64_t>>>();
-		dispatchTable[std::type_index(typeid(LinearValues<LinearValueStatic<float>>))] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<float>>>();
-		dispatchTable[std::type_index(typeid(LinearValues<LinearValueStatic<double>>))] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<double>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearInt8] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int8_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt8] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::uint8_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearInt16] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int16_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt16] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::uint16_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearInt32] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int32_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt32] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::uint32_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearInt64] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int64_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt64] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::uint64_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearFloat] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<float>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearDouble] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<double>>>();
 	}
 }
 template<bool IsDynamic>
-inline void createFromJsonDispatchTable(std::unordered_map<ControlValueType::Type, std::function<std::any(json const&)>>& dispatchTable)
+inline void createFromJsonDispatchTable(std::unordered_map<ControlValueType::Type, std::function<ControlValues(json const&)>>& dispatchTable)
 {
 	if constexpr (IsDynamic)
 	{
@@ -1975,7 +1979,7 @@ inline void createFromJsonDispatchTable(std::unordered_map<ControlValueType::Typ
 /* ControlNodeStaticModel conversion */
 inline void to_json(json& j, ControlNodeStaticModel const& s)
 {
-	static auto s_toJsonDispatch = std::unordered_map<std::type_index, std::function<json(std::any const&)>>{};
+	static auto s_toJsonDispatch = std::unordered_map<ControlValueType::Type, std::function<json(ControlValues const&)>>{};
 
 	if (s_toJsonDispatch.empty())
 	{
@@ -1996,7 +2000,7 @@ inline void to_json(json& j, ControlNodeStaticModel const& s)
 	j[keyName::ControlNode_Static_ControlValueType] = s.controlValueType;
 
 	// Pack type dependant values
-	auto const& valueType = s.values.type();
+	auto const valueType = s.values.getType();
 	if (auto const& it = s_toJsonDispatch.find(valueType); it != s_toJsonDispatch.end())
 	{
 		j[keyName::ControlNode_Static_Values] = it->second(s.values);
@@ -2008,7 +2012,7 @@ inline void to_json(json& j, ControlNodeStaticModel const& s)
 }
 inline void from_json(json const& j, ControlNodeStaticModel& s)
 {
-	static auto s_fromJsonDispatch = std::unordered_map<ControlValueType::Type, std::function<std::any(json const&)>>{};
+	static auto s_fromJsonDispatch = std::unordered_map<ControlValueType::Type, std::function<ControlValues(json const&)>>{};
 
 	if (s_fromJsonDispatch.empty())
 	{
@@ -2047,7 +2051,7 @@ inline void from_json(json const& j, ControlNodeStaticModel& s)
 /* ControlNodeDynamicModel conversion */
 inline void to_json(json& j, ControlNodeDynamicModel const& d)
 {
-	static auto s_toJsonDispatch = std::unordered_map<std::type_index, std::function<json(std::any const&)>>{};
+	static auto s_toJsonDispatch = std::unordered_map<ControlValueType::Type, std::function<json(ControlValues const&)>>{};
 
 	if (s_toJsonDispatch.empty())
 	{
@@ -2059,7 +2063,7 @@ inline void to_json(json& j, ControlNodeDynamicModel const& d)
 	j[keyName::ControlNode_Dynamic_ObjectName] = d.objectName;
 
 	// Pack type dependant values
-	auto const& valueType = d.values.type();
+	auto const valueType = d.values.getType();
 	if (auto const& it = s_toJsonDispatch.find(valueType); it != s_toJsonDispatch.end())
 	{
 		j[keyName::ControlNode_Dynamic_Values] = it->second(d.values);
@@ -2071,7 +2075,7 @@ inline void to_json(json& j, ControlNodeDynamicModel const& d)
 }
 inline void from_json(json const& j, ControlNodeDynamicModel& d)
 {
-	static auto s_fromJsonDispatch = std::unordered_map<ControlValueType::Type, std::function<std::any(json const&)>>{};
+	static auto s_fromJsonDispatch = std::unordered_map<ControlValueType::Type, std::function<ControlValues(json const&)>>{};
 
 	if (s_fromJsonDispatch.empty())
 	{

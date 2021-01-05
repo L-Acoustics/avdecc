@@ -326,7 +326,7 @@ std::string LA_AVDECC_CALL_CONVENTION controlTypeToString(ControlType const cont
 		case ControlType::SrcMode:
 			return "SRC MODE";
 		case ControlType::Snapshot:
-			return "CONTROLTYPE";
+			return "SNAPSHOT";
 		case ControlType::PowLineFreq:
 			return "POW LINE FREQ";
 		case ControlType::PowerStatus:
@@ -427,6 +427,240 @@ std::string LA_AVDECC_CALL_CONVENTION controlTypeToString(ControlType const cont
 			return "MODULATION";
 		case ControlType::Polarization:
 			return "POLARIZATION";
+		default:
+			AVDECC_ASSERT(false, "Not handled!");
+			return "UNKNOWN";
+	}
+}
+
+std::string LA_AVDECC_CALL_CONVENTION controlValueUnitToString(ControlValueUnit::Unit const controlValueUnit) noexcept
+{
+	switch (controlValueUnit)
+	{
+		case ControlValueUnit::Unit::Unitless:
+			return "UNITLESS";
+		case ControlValueUnit::Unit::Count:
+			return "COUNT";
+		case ControlValueUnit::Unit::Percent:
+			return "PERCENT";
+		case ControlValueUnit::Unit::FStop:
+			return "FSTOP";
+		case ControlValueUnit::Unit::Seconds:
+			return "SECONDS";
+		case ControlValueUnit::Unit::Minutes:
+			return "MINUTES";
+		case ControlValueUnit::Unit::Hours:
+			return "HOURS";
+		case ControlValueUnit::Unit::Days:
+			return "DAYS";
+		case ControlValueUnit::Unit::Months:
+			return "MONTHS";
+		case ControlValueUnit::Unit::Years:
+			return "YEARS";
+		case ControlValueUnit::Unit::Samples:
+			return "SAMPLES";
+		case ControlValueUnit::Unit::Frames:
+			return "FRAMES";
+		case ControlValueUnit::Unit::Hertz:
+			return "HERTZ";
+		case ControlValueUnit::Unit::Semitones:
+			return "SEMITONES";
+		case ControlValueUnit::Unit::Cents:
+			return "CENTS";
+		case ControlValueUnit::Unit::Octaves:
+			return "OCTAVES";
+		case ControlValueUnit::Unit::Fps:
+			return "FPS";
+		case ControlValueUnit::Unit::Metres:
+			return "METRES";
+		case ControlValueUnit::Unit::Kelvin:
+			return "KELVIN";
+		case ControlValueUnit::Unit::Grams:
+			return "GRAMS";
+		case ControlValueUnit::Unit::Volts:
+			return "VOLTS";
+		case ControlValueUnit::Unit::Dbv:
+			return "DBV";
+		case ControlValueUnit::Unit::Dbu:
+			return "DBU";
+		case ControlValueUnit::Unit::Amps:
+			return "AMPS";
+		case ControlValueUnit::Unit::Watts:
+			return "WATTS";
+		case ControlValueUnit::Unit::Dbm:
+			return "DBM";
+		case ControlValueUnit::Unit::Dbw:
+			return "DBW";
+		case ControlValueUnit::Unit::Pascals:
+			return "PASCALS";
+		case ControlValueUnit::Unit::Bits:
+			return "BITS";
+		case ControlValueUnit::Unit::Bytes:
+			return "BYTES";
+		case ControlValueUnit::Unit::KibiBytes:
+			return "KIBIBYTES";
+		case ControlValueUnit::Unit::MebiBytes:
+			return "MEBIBYTES";
+		case ControlValueUnit::Unit::GibiBytes:
+			return "GIBIBYTES";
+		case ControlValueUnit::Unit::TebiBytes:
+			return "TEBIBYTES";
+		case ControlValueUnit::Unit::BitsPerSec:
+			return "BITS_PER_SEC";
+		case ControlValueUnit::Unit::BytesPerSec:
+			return "BYTES_PER_SEC";
+		case ControlValueUnit::Unit::KibiBytesPerSec:
+			return "KIBIBYTES_PER_SEC";
+		case ControlValueUnit::Unit::MebiBytesPerSec:
+			return "MEBIBYTES_PER_SEC";
+		case ControlValueUnit::Unit::GibiBytesPerSec:
+			return "GIBIBYTES_PER_SEC";
+		case ControlValueUnit::Unit::TebiBytesPerSec:
+			return "TEBIBYTES_PER_SEC";
+		case ControlValueUnit::Unit::Candelas:
+			return "CANDELAS";
+		case ControlValueUnit::Unit::Joules:
+			return "JOULES";
+		case ControlValueUnit::Unit::Radians:
+			return "RADIANS";
+		case ControlValueUnit::Unit::Newtons:
+			return "NEWTONS";
+		case ControlValueUnit::Unit::Ohms:
+			return "OHMS";
+		case ControlValueUnit::Unit::MetresPerSec:
+			return "METRES_PER_SEC";
+		case ControlValueUnit::Unit::RadiansPerSec:
+			return "RADIANS_PER_SEC";
+		case ControlValueUnit::Unit::MetresPerSecSquared:
+			return "METRES_PER_SEC_SQUARED";
+		case ControlValueUnit::Unit::RadiansPerSecSquared:
+			return "RADIANS_PER_SEC_SQUARED";
+		case ControlValueUnit::Unit::Teslas:
+			return "TESLAS";
+		case ControlValueUnit::Unit::Webers:
+			return "WEBERS";
+		case ControlValueUnit::Unit::AmpsPerMetre:
+			return "AMPS_PER_METRE";
+		case ControlValueUnit::Unit::MetresSquared:
+			return "METRES_SQUARED";
+		case ControlValueUnit::Unit::MetresCubed:
+			return "METRES_CUBED";
+		case ControlValueUnit::Unit::Litres:
+			return "LITRES";
+		case ControlValueUnit::Unit::Db:
+			return "DB";
+		case ControlValueUnit::Unit::DbPeak:
+			return "DB_PEAK";
+		case ControlValueUnit::Unit::DbRms:
+			return "DB_RMS";
+		case ControlValueUnit::Unit::Dbfs:
+			return "DBFS";
+		case ControlValueUnit::Unit::DbfsPeak:
+			return "DBFS_PEAK";
+		case ControlValueUnit::Unit::DbfsRms:
+			return "DBFS_RMS";
+		case ControlValueUnit::Unit::Dbtp:
+			return "DBTP";
+		case ControlValueUnit::Unit::DbSplA:
+			return "DB_SPL_A";
+		case ControlValueUnit::Unit::DbZ:
+			return "DB_Z";
+		case ControlValueUnit::Unit::DbSplC:
+			return "DB_SPL_C";
+		case ControlValueUnit::Unit::DbSpl:
+			return "DB_SPL";
+		case ControlValueUnit::Unit::Lu:
+			return "LU";
+		case ControlValueUnit::Unit::Lufs:
+			return "LUFS";
+		case ControlValueUnit::Unit::DbA:
+			return "DB_A";
+		default:
+			AVDECC_ASSERT(false, "Not handled!");
+			return "UNKNOWN";
+	}
+}
+
+std::string LA_AVDECC_CALL_CONVENTION controlValueTypeToString(ControlValueType::Type const controlValueType) noexcept
+{
+	switch (controlValueType)
+	{
+		case ControlValueType::Type::ControlLinearInt8:
+			return "CONTROL_LINEAR_INT8";
+		case ControlValueType::Type::ControlLinearUInt8:
+			return "CONTROL_LINEAR_UINT8";
+		case ControlValueType::Type::ControlLinearInt16:
+			return "CONTROL_LINEAR_INT16";
+		case ControlValueType::Type::ControlLinearUInt16:
+			return "CONTROL_LINEAR_UINT16";
+		case ControlValueType::Type::ControlLinearInt32:
+			return "CONTROL_LINEAR_INT32";
+		case ControlValueType::Type::ControlLinearUInt32:
+			return "CONTROL_LINEAR_UINT32";
+		case ControlValueType::Type::ControlLinearInt64:
+			return "CONTROL_LINEAR_INT64";
+		case ControlValueType::Type::ControlLinearUInt64:
+			return "CONTROL_LINEAR_UINT64";
+		case ControlValueType::Type::ControlLinearFloat:
+			return "CONTROL_LINEAR_FLOAT";
+		case ControlValueType::Type::ControlLinearDouble:
+			return "CONTROL_LINEAR_DOUBLE";
+		case ControlValueType::Type::ControlSelectorInt8:
+			return "CONTROL_SELECTOR_INT8";
+		case ControlValueType::Type::ControlSelectorUInt8:
+			return "CONTROL_SELECTOR_UINT8";
+		case ControlValueType::Type::ControlSelectorInt16:
+			return "CONTROL_SELECTOR_INT16";
+		case ControlValueType::Type::ControlSelectorUInt16:
+			return "CONTROL_SELECTOR_UINT16";
+		case ControlValueType::Type::ControlSelectorInt32:
+			return "CONTROL_SELECTOR_INT32";
+		case ControlValueType::Type::ControlSelectorUInt32:
+			return "CONTROL_SELECTOR_UINT32";
+		case ControlValueType::Type::ControlSelectorInt64:
+			return "CONTROL_SELECTOR_INT64";
+		case ControlValueType::Type::ControlSelectorUInt64:
+			return "CONTROL_SELECTOR_UINT64";
+		case ControlValueType::Type::ControlSelectorFloat:
+			return "CONTROL_SELECTOR_FLOAT";
+		case ControlValueType::Type::ControlSelectorDouble:
+			return "CONTROL_SELECTOR_DOUBLE";
+		case ControlValueType::Type::ControlSelectorString:
+			return "CONTROL_SELECTOR_STRING";
+		case ControlValueType::Type::ControlArrayInt8:
+			return "CONTROL_ARRAY_INT8";
+		case ControlValueType::Type::ControlArrayUInt8:
+			return "CONTROL_ARRAY_UINT8";
+		case ControlValueType::Type::ControlArrayInt16:
+			return "CONTROL_ARRAY_INT16";
+		case ControlValueType::Type::ControlArrayUInt16:
+			return "CONTROL_ARRAY_UINT16";
+		case ControlValueType::Type::ControlArrayInt32:
+			return "CONTROL_ARRAY_INT32";
+		case ControlValueType::Type::ControlArrayUInt32:
+			return "CONTROL_ARRAY_UINT32";
+		case ControlValueType::Type::ControlArrayInt64:
+			return "CONTROL_ARRAY_INT64";
+		case ControlValueType::Type::ControlArrayUInt64:
+			return "CONTROL_ARRAY_UINT64";
+		case ControlValueType::Type::ControlArrayFloat:
+			return "CONTROL_ARRAY_FLOAT";
+		case ControlValueType::Type::ControlArrayDouble:
+			return "CONTROL_ARRAY_DOUBLE";
+		case ControlValueType::Type::ControlUtf8:
+			return "CONTROL_UTF8";
+		case ControlValueType::Type::ControlBodePlot:
+			return "CONTROL_BODE_PLOT";
+		case ControlValueType::Type::ControlSmpteTime:
+			return "CONTROL_SMPTE_TIME";
+		case ControlValueType::Type::ControlSampleRate:
+			return "CONTROL_SAMPLE_RATE";
+		case ControlValueType::Type::ControlGptpTime:
+			return "CONTROL_GPTP_TIME";
+		case ControlValueType::Type::ControlVendor:
+			return "CONTROL_VENDOR";
+		case ControlValueType::Type::Expansion:
+			return "EXPANSION";
 		default:
 			AVDECC_ASSERT(false, "Not handled!");
 			return "UNKNOWN";

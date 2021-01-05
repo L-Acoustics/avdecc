@@ -146,6 +146,16 @@ constexpr size_t AecpAemGetClockSourceCommandPayloadSize = 4u;
 /** GET_CLOCK_SOURCE Response - Clause 7.4.24.2 */
 constexpr size_t AecpAemGetClockSourceResponsePayloadSize = 8u;
 
+/** SET_CONTROL Command and Response - Clause 7.4.25.1 */
+constexpr size_t AecpAemSetControlCommandPayloadMinSize = 4u;
+constexpr size_t AecpAemSetControlResponsePayloadMinSize = 4u;
+
+/** GET_CONTROL Command - Clause 7.4.26.1 */
+constexpr size_t AecpAemGetControlCommandPayloadSize = 4u;
+
+/** GET_CONTROL Response - Clause 7.4.26.2 */
+constexpr size_t AecpAemGetControlResponsePayloadMinSize = 4u;
+
 /** START_STREAMING Command and Response - Clause 7.4.35.1 */
 constexpr size_t AecpAemStartStreamingCommandPayloadSize = 4u;
 constexpr size_t AecpAemStartStreamingResponsePayloadSize = 4u;

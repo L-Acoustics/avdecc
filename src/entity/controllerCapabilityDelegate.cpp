@@ -45,6 +45,7 @@ namespace controller
 /* ************************************************************************** */
 static model::AudioMappings const s_emptyMappings{}; // Empty AudioMappings used by timeout callback (needs a ref to an AudioMappings)
 static model::StreamInfo const s_emptyStreamInfo{}; // Empty StreamInfo used by timeout callback (needs a ref to a StreamInfo)
+static MemoryBuffer const s_emptyPackedControlValues{}; // Empty ControlValues used by timeout callback (needs a ref to a MemoryBuffer)
 static model::AvbInfo const s_emptyAvbInfo{}; // Empty AvbInfo used by timeout callback (needs a ref to an AvbInfo)
 static model::AsPath const s_emptyAsPath{}; // Empty AsPath used by timeout callback (needs a ref to an AsPath)
 static model::AvdeccFixedString const s_emptyAvdeccFixedString{}; // Empty AvdeccFixedString used by timeout callback (needs a ref to a std::string)
@@ -1207,6 +1208,41 @@ void CapabilityDelegate::getClockSource(UniqueIdentifier const targetEntityID, m
 	catch ([[maybe_unused]] std::exception const& e)
 	{
 		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getClockSource: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::setControlValues(UniqueIdentifier const targetEntityID, model::ControlIndex const controlIndex, model::ControlValues const& controlValues, Interface::SetControlValuesHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, controlIndex, s_emptyPackedControlValues);
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetControlCommand(model::DescriptorType::Control, controlIndex, controlValues);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetControl, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] protocol::aemPayload::UnsupportedValueException const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setControlValues: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setControlValues: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::getControlValues(UniqueIdentifier const targetEntityID, model::ControlIndex const controlIndex, Interface::GetControlValuesHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, controlIndex, s_emptyPackedControlValues);
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetControlCommand(model::DescriptorType::Control, controlIndex);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetControl, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getControlValues: {}", e.what());
 		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
 	}
 }
@@ -2911,6 +2947,48 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 
 				// Notify handlers
 				answerCallback.invoke<controller::Interface::GetClockSourceHandler>(controllerInterface, targetID, status, descriptorIndex, clockSourceIndex);
+			}
+		},
+		// Set Control
+		{ protocol::AemCommandType::SetControl.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+			{
+	// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const [descriptorType, descriptorIndex, packedControlValues] = protocol::aemPayload::deserializeSetControlResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeSetControlResponse(aem.getPayload());
+				//entity::model::DescriptorType const descriptorType = std::get<0>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				MemoryBuffer const& packedControlValues = std::get<2>(result);
+#endif // __cpp_structured_bindings
+
+				auto const targetID = aem.getTargetEntityID();
+
+				// Notify handlers
+				answerCallback.invoke<controller::Interface::SetControlValuesHandler>(controllerInterface, targetID, status, descriptorIndex, packedControlValues);
+				if (aem.getUnsolicited() && delegate && !!status)
+				{
+					utils::invokeProtectedMethod(&controller::Delegate::onControlValuesChanged, delegate, controllerInterface, targetID, descriptorIndex, packedControlValues);
+				}
+			}
+		},
+		// Get Control
+		{ protocol::AemCommandType::GetControl.getValue(),[](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
+			{
+	// Deserialize payload
+#ifdef __cpp_structured_bindings
+				auto const [descriptorType, descriptorIndex, controlValues] = protocol::aemPayload::deserializeGetControlResponse(aem.getPayload());
+#else // !__cpp_structured_bindings
+				auto const result = protocol::aemPayload::deserializeGetControlResponse(aem.getPayload());
+				//entity::model::DescriptorType const descriptorType = std::get<0>(result);
+				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
+				entity::model::ControlValues const controlValues = std::get<2>(result);
+#endif // __cpp_structured_bindings
+
+				auto const targetID = aem.getTargetEntityID();
+
+				// Notify handlers
+				answerCallback.invoke<controller::Interface::GetControlValuesHandler>(controllerInterface, targetID, status, descriptorIndex, controlValues);
 			}
 		},
 		// Start Streaming

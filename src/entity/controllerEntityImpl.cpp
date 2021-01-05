@@ -467,6 +467,16 @@ void ControllerEntityImpl::getClockSource(UniqueIdentifier const targetEntityID,
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getClockSource(targetEntityID, clockDomainIndex, handler);
 }
 
+void ControllerEntityImpl::setControlValues(UniqueIdentifier const targetEntityID, model::ControlIndex const controlIndex, model::ControlValues const& controlValues, SetControlValuesHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setControlValues(targetEntityID, controlIndex, controlValues, handler);
+}
+
+void ControllerEntityImpl::getControlValues(UniqueIdentifier const targetEntityID, model::ControlIndex const controlIndex, GetControlValuesHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getControlValues(targetEntityID, controlIndex, handler);
+}
+
 void ControllerEntityImpl::startStreamInput(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, StartStreamInputHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).startStreamInput(targetEntityID, streamIndex, handler);

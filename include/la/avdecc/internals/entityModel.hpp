@@ -316,8 +316,8 @@ struct ControlDescriptor
 	DescriptorIndex signalIndex{ DescriptorIndex(0u) };
 	std::uint16_t signalOutput{ 0u };
 	ControlValueType controlValueType{};
-	std::any valuesStatic{};
-	std::any valuesDynamic{};
+	ControlValues valuesStatic{};
+	ControlValues valuesDynamic{};
 };
 
 /** SIGNAL_SELECTOR Descriptor - Clause 7.2.23 */

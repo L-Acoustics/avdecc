@@ -144,6 +144,11 @@ private:
 		serializeNode(parent);
 		serializeNode(node);
 	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept override
+	{
+		serializeNode(parent);
+		serializeNode(node);
+	}
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::ClockDomainNode const& node) noexcept override
 	{
 		serializeNode(parent);

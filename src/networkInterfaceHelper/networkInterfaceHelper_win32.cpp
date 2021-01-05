@@ -22,9 +22,9 @@
 * @author Christophe Calmejane
 */
 
-#include "networkInterfaceHelper_common.hpp"
+#include "la/avdecc/internals/endian.hpp"
 
-//#include "la/avdecc/internals/endian.hpp"
+#include "networkInterfaceHelper_common.hpp"
 
 #include <memory>
 #include <cstdint> // std::uint8_t

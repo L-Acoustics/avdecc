@@ -27,8 +27,8 @@
 #include "la/avdecc/memoryBuffer.hpp"
 #include "la/avdecc/internals/serialization.hpp"
 #include "la/avdecc/internals/entityModel.hpp"
+#include "la/avdecc/internals/protocolMvuPayloadSizes.hpp"
 
-#include "protocolMvuPayloadSizes.hpp"
 
 #include <cstdint>
 #include <tuple>

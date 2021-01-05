@@ -188,7 +188,7 @@ struct ControlNodeStaticModel
 	DescriptorIndex signalIndex{ DescriptorIndex(0u) };
 	std::uint16_t signalOutput{ 0u };
 	ControlValueType controlValueType{};
-	std::any values{};
+	ControlValues values{};
 };
 
 struct ClockDomainNodeStaticModel

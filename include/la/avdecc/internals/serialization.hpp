@@ -224,10 +224,28 @@ private:
 class Deserializer
 {
 public:
-	Deserializer(void const* const ptr, size_t const size)
-		: _ptr(ptr)
-		, _size(size)
+	Deserializer(void const* const ptr, size_t const size) noexcept
+		: _ptr{ ptr }
+		, _size{ size }
 	{
+	}
+
+	Deserializer(MemoryBuffer const& buffer) noexcept
+		: _ptr{ buffer.data() }
+		, _size{ buffer.size() }
+	{
+	}
+
+	/** Gets raw pointer to deserialization buffer */
+	void const* data() const
+	{
+		return _ptr;
+	}
+
+	/** Gets size of deserialization buffer */
+	size_t size() const
+	{
+		return _size;
 	}
 
 	/** Unpacks any arithmetic (including enums) */
@@ -403,6 +421,15 @@ public:
 	void const* currentData() const noexcept
 	{
 		return static_cast<std::uint8_t const*>(_ptr) + _pos;
+	}
+
+	bool operator==(Deserializer const& other) const
+	{
+		return _ptr == other._ptr && _pos == other._pos && _size == other._size;
+	}
+	bool operator!=(Deserializer const& other) const
+	{
+		return !operator==(other);
 	}
 
 private:

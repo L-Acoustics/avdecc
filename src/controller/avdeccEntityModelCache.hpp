@@ -144,6 +144,10 @@ public:
 						KV.second.dynamicModel = {};
 					}
 					// AudioMapNodeModel doesn't have dynamic model
+					for (auto& KV : config.controlModels)
+					{
+						KV.second.dynamicModel = {};
+					}
 					for (auto& KV : config.clockDomainModels)
 					{
 						KV.second.dynamicModel = {};
