@@ -25,15 +25,10 @@
 #pragma once
 
 #include "la/avdecc/memoryBuffer.hpp"
-#include "la/avdecc/internals/protocolAemPayloadSizes.hpp"
 #include "la/avdecc/internals/serialization.hpp"
 #include "la/avdecc/internals/entityModel.hpp"
+#include "la/avdecc/internals/protocolAemPayloadSizes.hpp"
 
-#if defined(ENABLE_AVDECC_CUSTOM_ANY)
-#	include "la/avdecc/internals/any.hpp"
-#else // !ENABLE_AVDECC_CUSTOM_ANY
-#	include <any>
-#endif // ENABLE_AVDECC_CUSTOM_ANY
 #include <cstdint>
 #include <tuple>
 
@@ -54,6 +49,14 @@ public:
 	}
 };
 
+class UnsupportedValueException final : public Exception
+{
+public:
+	UnsupportedValueException()
+		: Exception("Unsupported value")
+	{
+	}
+};
 // All serialization methods might throw a std::invalid_argument if serialization goes wrong
 // All deserialization methods might throw a la::avdecc:Exception if deserialization goes wrong
 
@@ -107,6 +110,7 @@ entity::model::ExternalPortDescriptor deserializeReadExternalPortDescriptorRespo
 entity::model::InternalPortDescriptor deserializeReadInternalPortDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status);
 entity::model::AudioClusterDescriptor deserializeReadAudioClusterDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status);
 entity::model::AudioMapDescriptor deserializeReadAudioMapDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status);
+entity::model::ControlDescriptor deserializeReadControlDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status);
 entity::model::ClockDomainDescriptor deserializeReadClockDomainDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status);
 
 /** WRITE_DESCRIPTOR Command - Clause 7.4.6.1 */
@@ -207,6 +211,22 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 /** GET_CLOCK_SOURCE Response - Clause 7.4.24.2 */
 Serializer<AecpAemGetClockSourceResponsePayloadSize> serializeGetClockSourceResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::ClockSourceIndex const clockSourceIndex);
 std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::ClockSourceIndex> deserializeGetClockSourceResponse(AemAecpdu::Payload const& payload);
+
+/** SET_CONTROL Command - Clause 7.4.25.1 */
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeSetControlCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::ControlValues const& controlValues);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, MemoryBuffer> deserializeSetControlCommand(AemAecpdu::Payload const& payload);
+
+/** SET_CONTROL Response - Clause 7.4.25.1 */
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeSetControlResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::ControlValues const& controlValues);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, MemoryBuffer> deserializeSetControlResponse(AemAecpdu::Payload const& payload);
+
+/** GET_CONTROL Command - Clause 7.4.26.1 */
+Serializer<AecpAemGetControlCommandPayloadSize> serializeGetControlCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeGetControlCommand(AemAecpdu::Payload const& payload);
+
+/** GET_CONTROL Response - Clause 7.4.26.2 */
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeGetControlResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::ControlValues const& controlValues);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, MemoryBuffer> deserializeGetControlResponse(AemAecpdu::Payload const& payload);
 
 /** START_STREAMING Command - Clause 7.4.35.1 */
 Serializer<AecpAemStartStreamingCommandPayloadSize> serializeStartStreamingCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex);

@@ -142,6 +142,18 @@ public:
 		return operator<<(v.getValue());
 	}
 
+	/** Serializes a ControlValueUnit */
+	Serializer& operator<<(entity::model::ControlValueUnit const& v)
+	{
+		return operator<<(v.getValue());
+	}
+
+	/** Serializes a ControlValueType */
+	Serializer& operator<<(entity::model::ControlValueType const& v)
+	{
+		return operator<<(v.getValue());
+	}
+
 	/** Serializes a LocalizedStringReference */
 	Serializer& operator<<(entity::model::LocalizedStringReference const& v)
 	{
@@ -212,10 +224,28 @@ private:
 class Deserializer
 {
 public:
-	Deserializer(void const* const ptr, size_t const size)
-		: _ptr(ptr)
-		, _size(size)
+	Deserializer(void const* const ptr, size_t const size) noexcept
+		: _ptr{ ptr }
+		, _size{ size }
 	{
+	}
+
+	Deserializer(MemoryBuffer const& buffer) noexcept
+		: _ptr{ buffer.data() }
+		, _size{ buffer.size() }
+	{
+	}
+
+	/** Gets raw pointer to deserialization buffer */
+	void const* data() const
+	{
+		return _ptr;
+	}
+
+	/** Gets size of deserialization buffer */
+	size_t size() const
+	{
+		return _size;
 	}
 
 	/** Unpacks any arithmetic (including enums) */
@@ -308,6 +338,24 @@ public:
 		return *this;
 	}
 
+	/** Unpacks a ControlValueUnit */
+	Deserializer& operator>>(entity::model::ControlValueUnit& v)
+	{
+		entity::model::ControlValueUnit::value_type value;
+		operator>>(value);
+		v.setValue(value);
+		return *this;
+	}
+
+	/** Unpacks a ControlValueType */
+	Deserializer& operator>>(entity::model::ControlValueType& v)
+	{
+		entity::model::ControlValueType::value_type value;
+		operator>>(value);
+		v.setValue(value);
+		return *this;
+	}
+
 	/** Unpacks a LocalizedStringReference */
 	Deserializer& operator>>(entity::model::LocalizedStringReference& v)
 	{
@@ -373,6 +421,15 @@ public:
 	void const* currentData() const noexcept
 	{
 		return static_cast<std::uint8_t const*>(_ptr) + _pos;
+	}
+
+	bool operator==(Deserializer const& other) const
+	{
+		return _ptr == other._ptr && _pos == other._pos && _size == other._size;
+	}
+	bool operator!=(Deserializer const& other) const
+	{
+		return !operator==(other);
 	}
 
 private:

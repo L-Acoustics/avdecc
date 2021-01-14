@@ -22,6 +22,9 @@
 * @author Christophe Calmejane
 */
 
+#include "la/avdecc/internals/entityModelControlValuesTraits.hpp"
+
+#include "protocolAemControlValuesPayloads.hpp"
 #include "protocolAemPayloads.hpp"
 #include "logHelper.hpp"
 
@@ -336,7 +339,7 @@ entity::model::AudioUnitDescriptor deserializeReadAudioUnitDescriptorResponse(Ae
 		if (des.remaining() < samplingRatesSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Compute deserializer offset for sampling rates (Clause 7.4.5.2 says the sampling_rates_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+		// Compute deserializer offset for sampling rates (Clause 7.2.3 says the sampling_rates_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
 		samplingRatesOffset += sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
 
 		// Set deserializer position
@@ -389,7 +392,7 @@ entity::model::StreamDescriptor deserializeReadStreamDescriptorResponse(AemAecpd
 		des >> streamDescriptor.backedupTalkerEntityID >> streamDescriptor.backedupTalkerUnique;
 		des >> streamDescriptor.avbInterfaceIndex >> streamDescriptor.bufferLength;
 
-		// Compute deserializer offset for formats (Clause 7.4.5.2 says the formats_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+		// Compute deserializer offset for formats (Clause 7.2.6 says the formats_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
 		formatsOffset += sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
 
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
@@ -400,7 +403,7 @@ entity::model::StreamDescriptor deserializeReadStreamDescriptorResponse(AemAecpd
 		if (remainingBytesBeforeFormats >= (sizeof(redundantOffset) + sizeof(numberOfRedundantStreams)))
 		{
 			des >> redundantOffset >> numberOfRedundantStreams;
-			// Compute deserializer offset for redundant streams association (Clause 7.4.5.2 says the redundant_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+			// Compute deserializer offset for redundant streams association (Clause 7.2.6 says the redundant_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
 			redundantOffset += sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
 			endDescriptorOffset = redundantOffset;
 		}
@@ -808,7 +811,7 @@ entity::model::AudioMapDescriptor deserializeReadAudioMapDescriptorResponse(AemA
 		if (des.remaining() < mappingsSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Compute deserializer offset for sampling rates (Clause 7.4.5.2 says the mappings_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+		// Compute deserializer offset for sampling rates (Clause 7.2.19 says the mappings_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
 		mappingsOffset += sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
 
 		// Set deserializer position
@@ -831,6 +834,86 @@ entity::model::AudioMapDescriptor deserializeReadAudioMapDescriptorResponse(AemA
 	}
 
 	return audioMapDescriptor;
+}
+
+static inline void createUnpackFullControlValuesDispatchTable(std::unordered_map<entity::model::ControlValueType::Type, std::function<std::tuple<entity::model::ControlValues, entity::model::ControlValues>(Deserializer&, std::uint16_t)>>& dispatchTable)
+{
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt8>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt8>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt16>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt16>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt32] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt32>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt32] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt32>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt64] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt64>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt64] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt64>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearFloat] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearFloat>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearDouble>::unpackFullControlValues;
+}
+
+entity::model::ControlDescriptor deserializeReadControlDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
+{
+	static auto s_Dispatch = std::unordered_map<entity::model::ControlValueType::Type, std::function<std::tuple<entity::model::ControlValues, entity::model::ControlValues>(Deserializer&, std::uint16_t)>>{};
+
+	if (s_Dispatch.empty())
+	{
+		// Create the dispatch table
+		createUnpackFullControlValuesDispatchTable(s_Dispatch);
+	}
+
+	auto controlDescriptor = entity::model::ControlDescriptor{};
+
+	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	if (status == AecpStatus::Success)
+	{
+		auto* const commandPayload = payload.first;
+		auto const commandPayloadLength = payload.second;
+
+		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadControlDescriptorResponsePayloadMinSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Check control descriptor payload - Clause 7.2.22
+		auto des = Deserializer{ commandPayload, commandPayloadLength };
+		auto numberOfValues = std::uint16_t{ 0u };
+		auto valuesOffset = std::uint16_t{ 0u };
+
+		des.setPosition(commonSize); // Skip already unpacked common header
+		des >> controlDescriptor.objectName >> controlDescriptor.localizedDescription;
+		des >> controlDescriptor.blockLatency >> controlDescriptor.controlLatency >> controlDescriptor.controlDomain;
+		des >> controlDescriptor.controlValueType >> controlDescriptor.controlType >> controlDescriptor.resetTime;
+		des >> valuesOffset >> numberOfValues;
+		des >> controlDescriptor.signalType >> controlDescriptor.signalIndex >> controlDescriptor.signalOutput;
+
+		// No need to check descriptor variable size, we'll let the ControlValueType specific unpacker throw if needed
+
+		// Compute deserializer offset for values (Clause 7.2.22 says the values_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+		valuesOffset += sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
+
+		// Set deserializer position
+		if (valuesOffset < des.usedBytes())
+			throw IncorrectPayloadSizeException();
+		des.setPosition(valuesOffset);
+
+		// Unpack Control Values based on ControlValueType
+		auto const valueType = controlDescriptor.controlValueType.getType();
+		if (auto const& it = s_Dispatch.find(valueType); it != s_Dispatch.end())
+		{
+			auto [valuesStatic, valuesDynamic] = it->second(des, numberOfValues);
+			controlDescriptor.valuesStatic = std::move(valuesStatic);
+			controlDescriptor.valuesDynamic = std::move(valuesDynamic);
+		}
+		else
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Unsupported ControlValueType for READ_CONTROL_DESCRIPTOR RESPONSE: {}", valueType);
+			throw UnsupportedValueException();
+		}
+
+		if (des.remaining() != 0)
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_CONTROL_DESCRIPTOR RESPONSE: {}", des.remaining());
+		}
+	}
+
+	return controlDescriptor;
 }
 
 entity::model::ClockDomainDescriptor deserializeReadClockDomainDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
@@ -861,7 +944,7 @@ entity::model::ClockDomainDescriptor deserializeReadClockDomainDescriptorRespons
 		if (des.remaining() < clockSourcesSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Compute deserializer offset for sampling rates (Clause 7.4.5.2 says the clock_sources_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+		// Compute deserializer offset for sampling rates (Clause 7.2.32 says the clock_sources_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
 		clockSourcesOffset += sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
 
 		// Set deserializer position
@@ -1571,6 +1654,141 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	// Same as SET_CLOCK_SOURCE Command
 	static_assert(AecpAemGetClockSourceResponsePayloadSize == AecpAemSetClockSourceCommandPayloadSize, "GET_CLOCK_SOURCE Response no longer the same as SET_CLOCK_SOURCE Command");
 	return deserializeSetClockSourceCommand(payload);
+}
+
+/** SET_CONTROL Command - Clause 7.4.25.1 */
+static inline void createPackDynamicControlValuesDispatchTable(std::unordered_map<entity::model::ControlValueType::Type, std::function<void(Serializer<AemAecpdu::MaximumSendPayloadBufferLength>&, entity::model::ControlValues const&)>>& dispatchTable)
+{
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt8>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt8>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt16>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt16>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt32] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt32>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt32] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt32>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt64] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt64>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt64] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt64>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearFloat] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearFloat>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearDouble>::packDynamicControlValues;
+}
+
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeSetControlCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::ControlValues const& controlValues)
+{
+	static auto s_Dispatch = std::unordered_map<entity::model::ControlValueType::Type, std::function<void(Serializer<AemAecpdu::MaximumSendPayloadBufferLength>&, entity::model::ControlValues const&)>>{};
+
+	if (s_Dispatch.empty())
+	{
+		// Create the dispatch table
+		createPackDynamicControlValuesDispatchTable(s_Dispatch);
+	}
+
+	Serializer<AemAecpdu::MaximumSendPayloadBufferLength> ser;
+	ser << descriptorType << descriptorIndex;
+
+	// Serialize variable data
+	if (!controlValues.empty())
+	{
+		auto const valueType = controlValues.getType();
+		if (auto const& it = s_Dispatch.find(valueType); it != s_Dispatch.end())
+		{
+			it->second(ser, controlValues);
+		}
+		else
+		{
+			LOG_AEM_PAYLOAD_TRACE("serializeSetControlCommand warning: Unsupported ControlValueType: {}", valueType);
+			throw UnsupportedValueException();
+		}
+	}
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, MemoryBuffer> deserializeSetControlCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemSetControlCommandPayloadMinSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+	MemoryBuffer memoryBuffer{};
+
+	des >> descriptorType >> descriptorIndex;
+
+	// Unpack remaining data
+	auto const remaining = des.remaining();
+	if (remaining != 0)
+	{
+		memoryBuffer.set_size(remaining);
+		des >> memoryBuffer;
+	}
+
+	return std::make_tuple(descriptorType, descriptorIndex, memoryBuffer);
+}
+
+/** SET_CONTROL Response - Clause 7.4.25.1 */
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeSetControlResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::ControlValues const& controlValues)
+{
+	// Same as SET_CONTROL Command
+	static_assert(AecpAemSetControlResponsePayloadMinSize == AecpAemSetControlCommandPayloadMinSize, "SET_CONTROL Response no longer the same as SET_CONTROL Command");
+	return serializeSetControlCommand(descriptorType, descriptorIndex, controlValues);
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, MemoryBuffer> deserializeSetControlResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as SET_CONTROL Command
+	static_assert(AecpAemSetControlResponsePayloadMinSize == AecpAemSetControlCommandPayloadMinSize, "SET_CONTROL Response no longer the same as SET_CONTROL Command");
+	return deserializeSetControlCommand(payload);
+}
+
+/** GET_CONTROL Command - Clause 7.4.26.1 */
+Serializer<AecpAemGetControlCommandPayloadSize> serializeGetControlCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	Serializer<AecpAemGetControlCommandPayloadSize> ser;
+
+	ser << descriptorType << descriptorIndex;
+
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeGetControlCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetControlCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+
+	des >> descriptorType >> descriptorIndex;
+
+	AVDECC_ASSERT(des.usedBytes() == AecpAemGetControlCommandPayloadSize, "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(descriptorType, descriptorIndex);
+}
+
+/** GET_CONTROL Response - Clause 7.4.26.2 */
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeGetControlResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::ControlValues const& controlValues)
+{
+	// Same as SET_CONTROL Command
+	static_assert(AecpAemGetControlResponsePayloadMinSize == AecpAemSetControlCommandPayloadMinSize, "GET_CONTROL Response no longer the same as SET_CONTROL Command");
+	return serializeSetControlCommand(descriptorType, descriptorIndex, controlValues);
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, MemoryBuffer> deserializeGetControlResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as SET_CONTROL Command
+	static_assert(AecpAemGetControlResponsePayloadMinSize == AecpAemSetControlCommandPayloadMinSize, "GET_CONTROL Response no longer the same as SET_CONTROL Command");
+	return deserializeSetControlCommand(payload);
 }
 
 /** START_STREAMING Command - Clause 7.4.35.1 */

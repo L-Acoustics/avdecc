@@ -57,7 +57,7 @@ public:
 	/* Life cycle                                                                 */
 
 	/** Default constructor */
-	MemoryBuffer() noexcept {}
+	constexpr MemoryBuffer() noexcept {}
 
 	/** Contructor from a std::vector */
 	template<typename T>
@@ -142,21 +142,27 @@ public:
 
 	/* ************************************************************************** */
 	/* Comparison operators                                                       */
-	bool operator==(MemoryBuffer const& buffer) const noexcept
+	bool operator==(MemoryBuffer const& other) const noexcept
 	{
 		// First check for size, so we don't have to process the whole data
-		if (_size != buffer._size)
+		if (_size != other._size)
 		{
 			return false;
 		}
 
+		// Compare pointers first
+		if (_data == other._data)
+		{
+			return true;
+		}
+
 		// Now we can compare the data
-		return std::memcmp(_data, buffer._data, _size) == 0;
+		return std::memcmp(_data, other._data, _size) == 0;
 	}
 
-	bool operator!=(MemoryBuffer const& buffer) const noexcept
+	bool operator!=(MemoryBuffer const& other) const noexcept
 	{
-		return !operator==(buffer);
+		return !operator==(other);
 	}
 
 	/* ************************************************************************** */
@@ -247,6 +253,16 @@ public:
 		return _capacity;
 	}
 
+	/** True if the buffer has been allocated */
+	constexpr bool isValid() const noexcept
+	{
+		return _data != nullptr;
+	}
+
+	explicit constexpr operator bool() const noexcept
+	{
+		return isValid();
+	}
 
 	/* ************************************************************************** */
 	/* Capacity modifiers                                                         */

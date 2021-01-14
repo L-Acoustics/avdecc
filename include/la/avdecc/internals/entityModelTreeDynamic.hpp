@@ -118,6 +118,12 @@ struct AudioClusterNodeDynamicModel
 //{
 //};
 
+struct ControlNodeDynamicModel
+{
+	AvdeccFixedString objectName{};
+	ControlValues values{};
+};
+
 struct ClockDomainNodeDynamicModel
 {
 	AvdeccFixedString objectName{};

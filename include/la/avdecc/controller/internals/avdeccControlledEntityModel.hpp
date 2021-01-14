@@ -218,6 +218,15 @@ struct LocaleNode : public EntityModelNode
 	//LocaleNodeDynamicModel* dynamicModel{ nullptr };
 };
 
+struct ControlNode : public EntityModelNode
+{
+	// AEM Static info
+	entity::model::ControlNodeStaticModel const* staticModel{ nullptr };
+
+	// AEM Dynamic info
+	entity::model::ControlNodeDynamicModel* dynamicModel{ nullptr };
+};
+
 struct ClockDomainNode : public EntityModelNode
 {
 	// Children
@@ -242,6 +251,7 @@ struct ConfigurationNode : public EntityModelNode
 	std::map<entity::model::ClockSourceIndex, ClockSourceNode> clockSources{};
 	std::map<entity::model::MemoryObjectIndex, MemoryObjectNode> memoryObjects{};
 	std::map<entity::model::LocaleIndex, LocaleNode> locales{};
+	std::map<entity::model::ControlIndex, ControlNode> controls{};
 	std::map<entity::model::ClockDomainIndex, ClockDomainNode> clockDomains{};
 
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
@@ -284,6 +294,7 @@ public:
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::StreamPortNode const& /*node*/) noexcept {}
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::AudioClusterNode const& /*node*/) noexcept {}
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::AudioMapNode const& /*node*/) noexcept {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept {}
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::ClockDomainNode const& /*node*/) noexcept {}
 	// Virtual parenting to show ClockSourceNode which have the specified ClockDomainNode as parent
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::ClockDomainNode const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& /*node*/) noexcept {}

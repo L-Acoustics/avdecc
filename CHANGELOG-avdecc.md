@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [Support for Control Descriptors (only Linear Values are currently supported)](https://github.com/L-Acoustics/avdecc/issues/88)
+
 ### Changed
 - When an observer registers to a ProtocolInterface, it now immediately receives notifications about already known entities (both local and remote)
 - ControllerEntity now always sends messages to the same AvbInterface in case of cable redundancy

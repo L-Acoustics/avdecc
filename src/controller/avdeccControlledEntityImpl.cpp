@@ -353,6 +353,17 @@ model::AudioMapNode const& ControlledEntityImpl::getAudioMapNode(entity::model::
 }
 #endif
 
+model::ControlNode const& ControlledEntityImpl::getControlNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const controlIndex) const
+{
+	auto const& configNode = getConfigurationNode(configurationIndex);
+
+	auto const it = configNode.controls.find(controlIndex);
+	if (it == configNode.controls.end())
+		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid control index");
+
+	return it->second;
+}
+
 model::ClockDomainNode const& ControlledEntityImpl::getClockDomainNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) const
 {
 	auto const& configNode = getConfigurationNode(configurationIndex);
@@ -679,6 +690,14 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor, bool
 						// Visit StringsNode (LocaleNode is parent)
 						visitor->visit(this, &configuration, &locale, strings);
 					}
+				}
+
+				// Loop over ControlNode
+				for (auto const& domainKV : configuration.controls)
+				{
+					auto const& domain = domainKV.second;
+					// Visit ControlNode (ConfigurationNode is parent)
+					visitor->visit(this, &configuration, domain);
 				}
 
 				// Loop over ClockDomainNode
@@ -1093,6 +1112,12 @@ void ControlledEntityImpl::setClockSource(entity::model::ClockDomainIndex const 
 {
 	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), clockDomainIndex, &entity::model::ConfigurationTree::clockDomainModels);
 	dynamicModel.clockSourceIndex = clockSourceIndex;
+}
+
+void ControlledEntityImpl::setControlValues(entity::model::ControlIndex const controlIndex, entity::model::ControlValues const& controlValues) noexcept
+{
+	auto& dynamicModel = getNodeDynamicModel(getCurrentConfigurationIndex(), controlIndex, &entity::model::ConfigurationTree::controlModels);
+	dynamicModel.values = controlValues;
 }
 
 void ControlledEntityImpl::setMemoryObjectLength(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length) noexcept
@@ -1604,6 +1629,36 @@ void ControlledEntityImpl::setAudioMapDescriptor(entity::model::AudioMapDescript
 	}
 }
 
+void ControlledEntityImpl::setControlDescriptor(entity::model::ControlDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const controlIndex) noexcept
+{
+	// Copy static model
+	{
+		// Get or create a new model::ControlNodeStaticModel
+		auto& m = getNodeStaticModel(configurationIndex, controlIndex, &entity::model::ConfigurationTree::controlModels);
+		m.localizedDescription = descriptor.localizedDescription;
+
+		m.blockLatency = descriptor.blockLatency;
+		m.controlLatency = descriptor.controlLatency;
+		m.controlDomain = descriptor.controlDomain;
+		m.controlType = descriptor.controlType;
+		m.resetTime = descriptor.resetTime;
+		m.signalType = descriptor.signalType;
+		m.signalIndex = descriptor.signalIndex;
+		m.signalOutput = descriptor.signalOutput;
+		m.controlValueType = descriptor.controlValueType;
+		m.values = descriptor.valuesStatic;
+	}
+
+	// Copy dynamic model
+	{
+		// Get or create a new model::ControlNodeDynamicModel
+		auto& m = getNodeDynamicModel(configurationIndex, controlIndex, &entity::model::ConfigurationTree::controlModels);
+		// Changeable fields through commands
+		m.objectName = descriptor.objectName;
+		m.values = descriptor.valuesDynamic;
+	}
+}
+
 void ControlledEntityImpl::setClockDomainDescriptor(entity::model::ClockDomainDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) noexcept
 {
 	// Copy static model
@@ -2077,6 +2132,10 @@ std::string ControlledEntityImpl::descriptorDynamicInfoTypeToString(DescriptorDy
 			return protocol::AemCommandType::GetMemoryObjectLength;
 		case DescriptorDynamicInfoType::AudioClusterName:
 			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (AUDIO_CLUSTER)";
+		case DescriptorDynamicInfoType::ControlName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (CONTROL)";
+		case DescriptorDynamicInfoType::ControlValues:
+			return protocol::AemCommandType::GetControl;
 		case DescriptorDynamicInfoType::ClockDomainName:
 			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (CLOCK_DOMAIN)";
 		case DescriptorDynamicInfoType::ClockDomainSourceIndex:
@@ -2259,6 +2318,18 @@ void ControlledEntityImpl::buildEntityModelGraph() noexcept
 							stringsNode.staticModel = &stringsIt->second.staticModel;
 						}
 					}
+				}
+
+				// Build controls (ControlNode)
+				for (auto& [controlIndex, controlModels] : configTree.controlModels)
+				{
+					auto const& controlStaticModel = controlModels.staticModel;
+					auto& controlDynamicModel = controlModels.dynamicModel;
+
+					auto& controlNode = configNode.controls[controlIndex];
+					initNode(controlNode, entity::model::DescriptorType::Control, controlIndex);
+					controlNode.staticModel = &controlStaticModel;
+					controlNode.dynamicModel = &controlDynamicModel;
 				}
 
 				// Build clock domains (ClockDomainNode)

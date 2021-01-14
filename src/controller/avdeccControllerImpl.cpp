@@ -31,6 +31,7 @@
 #	include <la/avdecc/internals/jsonTypes.hpp>
 #endif // ENABLE_AVDECC_FEATURE_JSON
 #include <la/avdecc/internals/streamFormatInfo.hpp>
+#include <la/avdecc/internals/entityModelControlValues.hpp>
 
 // According to clarification (from IEEE1722.1 call) a device should always send the complete, up-to-date, status in a GET/SET_STREAM_INFO response (either unsolicited or not)
 // This means that we should always replace the previously stored StreamInfo data with the last one received
@@ -818,6 +819,19 @@ void ControllerImpl::updateAudioClusterName(ControlledEntityImpl& controlledEnti
 	}
 }
 
+void ControllerImpl::updateControlName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const controlIndex, entity::model::AvdeccFixedString const& controlName) const noexcept
+{
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+	controlledEntity.setObjectName(configurationIndex, controlIndex, &entity::model::ConfigurationTree::controlModels, controlName);
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onControlNameChanged, this, &controlledEntity, configurationIndex, controlIndex, controlName);
+	}
+}
+
 void ControllerImpl::updateClockDomainName(ControlledEntityImpl& controlledEntity, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::AvdeccFixedString const& clockDomainName) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
@@ -897,6 +911,29 @@ void ControllerImpl::updateClockSource(ControlledEntityImpl& controlledEntity, e
 	{
 		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onClockSourceChanged, this, &controlledEntity, clockDomainIndex, clockSourceIndex);
 	}
+}
+
+bool ControllerImpl::updateControlValues(ControlledEntityImpl& controlledEntity, entity::model::ControlIndex const controlIndex, MemoryBuffer const& packedControlValues) const noexcept
+{
+	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+
+	auto const& controlStaticModel = controlledEntity.getNodeStaticModel(controlledEntity.getCurrentConfigurationIndex(), controlIndex, &entity::model::ConfigurationTree::controlModels);
+	auto const controlValuesOpt = entity::model::unpackDynamicControlValues(packedControlValues, controlStaticModel.controlValueType.getType(), controlStaticModel.values.size());
+
+	if (controlValuesOpt)
+	{
+		auto const& controlValues = *controlValuesOpt;
+		controlledEntity.setControlValues(controlIndex, controlValues);
+
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onControlValuesChanged, this, &controlledEntity, controlIndex, controlValues);
+		}
+
+		return true;
+	}
+	return false;
 }
 
 void ControllerImpl::updateStreamInputRunningStatus(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, bool const isRunning) const noexcept
@@ -1707,6 +1744,13 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 				controller->readAudioMapDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAudioMapDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
+		case entity::model::DescriptorType::Control:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "readControlDescriptor (ConfigurationIndex={}, ControlIndex={})", configurationIndex, descriptorIndex);
+				controller->readControlDescriptor(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onControlDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
 		case entity::model::DescriptorType::ClockDomain:
 			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
 			{
@@ -2001,6 +2045,20 @@ void ControllerImpl::queryInformation(ControlledEntityImpl* const entity, entity
 				controller->getAudioClusterName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onAudioClusterNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 			};
 			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::ControlName:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getControlName (ConfigurationIndex={} ControlIndex={})", configurationIndex, descriptorIndex);
+				controller->getControlName(entityID, configurationIndex, descriptorIndex, std::bind(&ControllerImpl::onControlNameResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+			};
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::ControlValues:
+			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
+			{
+				LOG_CONTROLLER_TRACE(entityID, "getControl (ConfigurationIndex={} ControlIndex={})", configurationIndex, descriptorIndex);
+				controller->getControlValues(entityID, descriptorIndex, std::bind(&ControllerImpl::onControlValuesResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, configurationIndex));
+			};
+			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName:
 			queryFunc = [this, entityID, configurationIndex, descriptorIndex](entity::ControllerEntity* const controller) noexcept
 			{
@@ -2288,6 +2346,17 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 					{
 						// Get AudioClusterName
 						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, index);
+					}
+				}
+				// Get DynamicModel for each Control descriptors
+				{
+					auto const count = configTree.controlModels.size();
+					for (auto index = entity::model::ControlIndex(0); index < count; ++index)
+					{
+						// Get ControlName
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlName, index);
+						// Get ControlValues
+						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlValues, index);
 					}
 				}
 				// Get DynamicModel for each ClockDomain descriptors
@@ -2731,6 +2800,8 @@ ControllerImpl::FailureAction ControllerImpl::getFailureActionForControlStatus(e
 /* This method handles non-success AemCommandStatus returned while trying to RegisterUnsolicitedNotifications */
 bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity) noexcept
 {
+	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
+
 	auto const action = getFailureActionForAemCommandStatus(status);
 	switch (action)
 	{
@@ -2810,6 +2881,8 @@ bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity:
 /* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetMilanModel (MVU) */
 bool ControllerImpl::processGetMilanModelFailureStatus(entity::ControllerEntity::MvuCommandStatus const status, ControlledEntityImpl* const entity, ControlledEntityImpl::MilanInfoType const milanInfoType, bool const optionalForMilan) noexcept
 {
+	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
+
 	auto const action = getFailureActionForMvuCommandStatus(status);
 	switch (action)
 	{
@@ -2888,6 +2961,8 @@ bool ControllerImpl::processGetMilanModelFailureStatus(entity::ControllerEntity:
 /* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetStaticModel (AEM) */
 bool ControllerImpl::processGetStaticModelFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
 {
+	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
+
 	auto const action = getFailureActionForAemCommandStatus(status);
 	switch (action)
 	{
@@ -2969,6 +3044,8 @@ bool ControllerImpl::processGetStaticModelFailureStatus(entity::ControllerEntity
 /* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetDynamicInfo for AECP commands */
 bool ControllerImpl::processGetAecpDynamicInfoFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex, bool const optionalForMilan) noexcept
 {
+	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
+
 	auto const action = getFailureActionForAemCommandStatus(status);
 	switch (action)
 	{
@@ -3056,6 +3133,8 @@ bool ControllerImpl::processGetAecpDynamicInfoFailureStatus(entity::ControllerEn
 /* This method handles non-success ControlStatus returned while getting EnumerationSteps::GetDynamicInfo for ACMP commands */
 bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, bool const optionalForMilan) noexcept
 {
+	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
+
 	auto const action = getFailureActionForControlStatus(status);
 	switch (action)
 	{
@@ -3139,6 +3218,8 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 /* This method handles non-success ControlStatus returned while getting EnumerationSteps::GetDynamicInfo for ACMP commands with a connection index */
 bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEntity::ControlStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::StreamIdentification const& talkerStream, std::uint16_t const subIndex, bool const optionalForMilan) noexcept
 {
+	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
+
 	auto const action = getFailureActionForControlStatus(status);
 	switch (action)
 	{
@@ -3222,39 +3303,34 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 /* This method handles non-success AemCommandStatus returned while getting EnumerationSteps::GetDescriptorDynamicInfo (AEM) */
 bool ControllerImpl::processGetDescriptorDynamicInfoFailureStatus(entity::ControllerEntity::AemCommandStatus const status, ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, bool const optionalForMilan) noexcept
 {
+	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
+
 	auto const action = getFailureActionForAemCommandStatus(status);
+	auto checkScheduleRetry = false;
+	auto fallbackStaticModelEnumeration = false;
+
 	switch (action)
 	{
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
 			removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
-			[[fallthrough]];
+			fallbackStaticModelEnumeration = true;
+			break;
 		case FailureAction::NotAuthenticated:
 			AVDECC_ASSERT(false, "TODO: Handle authentication properly (https://github.com/L-Acoustics/avdecc/issues/49)");
 			return true;
 		case FailureAction::WarningContinue:
 			return true;
 		case FailureAction::TimedOut:
-			[[fallthrough]];
+			checkScheduleRetry = true;
+			fallbackStaticModelEnumeration = true;
+			break;
 		case FailureAction::Busy:
-		{
-#ifdef __cpp_structured_bindings
-			auto const [shouldRetry, retryTimer] = entity->getQueryDescriptorDynamicInfoRetryTimer();
-#else // !__cpp_structured_bindings
-			auto const result = entity->getQueryDescriptorDynamicInfoRetryTimer();
-			auto const shouldRetry = std::get<0>(result);
-			auto const retryTimer = std::get<1>(result);
-#endif // __cpp_structured_bindings
-			if (shouldRetry)
-			{
-				queryInformation(entity, configurationIndex, descriptorDynamicInfoType, descriptorIndex, retryTimer);
-				return true;
-			}
-			[[fallthrough]];
-		}
+			checkScheduleRetry = true;
+			fallbackStaticModelEnumeration = true;
+			break;
 		case FailureAction::NotSupported:
-		{
-			if (action == FailureAction::NotSupported && !optionalForMilan)
+			if (!optionalForMilan)
 			{
 				// Remove "Milan compatibility" as device does not support mandatory command
 				if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
@@ -3263,25 +3339,47 @@ bool ControllerImpl::processGetDescriptorDynamicInfoFailureStatus(entity::Contro
 					removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
 				}
 			}
-
-			// Failed to retrieve single DescriptorDynamicInformation, retrieve the corresponding descriptor instead if possible, otherwise switch back to full StaticModel enumeration
-			auto const success = fetchCorrespondingDescriptor(entity, configurationIndex, descriptorDynamicInfoType, descriptorIndex);
-
-			// Fallback to full StaticModel enumeration
-			if (!success)
-			{
-				entity->setIgnoreCachedEntityModel();
-				entity->clearAllExpectedDescriptorDynamicInfo();
-				entity->addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
-				LOG_CONTROLLER_ERROR(entity->getEntity().getEntityID(), "Failed to use cached EntityModel (too many DescriptorDynamic query retries), falling back to full StaticModel enumeration");
-			}
-			return true;
-		}
+			fallbackStaticModelEnumeration = true;
+			break;
 		case FailureAction::ErrorFatal:
 			return false;
 		default:
 			return false;
 	}
+
+	if (checkScheduleRetry)
+	{
+#ifdef __cpp_structured_bindings
+		auto const [shouldRetry, retryTimer] = entity->getQueryDescriptorDynamicInfoRetryTimer();
+#else // !__cpp_structured_bindings
+		auto const result = entity->getQueryDescriptorDynamicInfoRetryTimer();
+		auto const shouldRetry = std::get<0>(result);
+		auto const retryTimer = std::get<1>(result);
+#endif // __cpp_structured_bindings
+		if (shouldRetry)
+		{
+			queryInformation(entity, configurationIndex, descriptorDynamicInfoType, descriptorIndex, retryTimer);
+			return true;
+		}
+	}
+
+	if (fallbackStaticModelEnumeration)
+	{
+		// Failed to retrieve single DescriptorDynamicInformation, retrieve the corresponding descriptor instead if possible, otherwise switch back to full StaticModel enumeration
+		auto const success = fetchCorrespondingDescriptor(entity, configurationIndex, descriptorDynamicInfoType, descriptorIndex);
+
+		// Fallback to full StaticModel enumeration
+		if (!success)
+		{
+			entity->setIgnoreCachedEntityModel();
+			entity->clearAllExpectedDescriptorDynamicInfo();
+			entity->addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
+			LOG_CONTROLLER_ERROR(entity->getEntity().getEntityID(), "Failed to use cached EntityModel (too many DescriptorDynamic query retries), falling back to full StaticModel enumeration");
+		}
+		return true;
+	}
+
+	return false;
 }
 
 bool ControllerImpl::fetchCorrespondingDescriptor(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex) noexcept
@@ -3345,6 +3443,16 @@ bool ControllerImpl::fetchCorrespondingDescriptor(ControlledEntityImpl* const en
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName:
 			descriptorType = entity::model::DescriptorType::AudioCluster;
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::ControlName:
+			descriptorType = entity::model::DescriptorType::Control;
+			// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
+			entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlValues, descriptorIndex);
+			break;
+		case ControlledEntityImpl::DescriptorDynamicInfoType::ControlValues:
+			descriptorType = entity::model::DescriptorType::Control;
+			// Clear other DescriptorDynamicInfo that will be retrieved by the full Descriptor
+			entity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlName, descriptorIndex);
 			break;
 		case ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName:
 			descriptorType = entity::model::DescriptorType::ClockDomain;

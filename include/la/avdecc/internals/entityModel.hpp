@@ -33,6 +33,11 @@
 #include "protocolDefines.hpp"
 #include "entityModelTypes.hpp"
 
+#if defined(ENABLE_AVDECC_CUSTOM_ANY)
+#	include "la/avdecc/internals/any.hpp"
+#else // !ENABLE_AVDECC_CUSTOM_ANY
+#	include <any>
+#endif // ENABLE_AVDECC_CUSTOM_ANY
 #include <cstdint>
 #include <string>
 #include <array>
@@ -298,6 +303,22 @@ struct AudioMapDescriptor
 /** SENSOR_MAP Descriptor - Clause 7.2.21 */
 
 /** CONTROL Descriptor - Clause 7.2.22 */
+struct ControlDescriptor
+{
+	AvdeccFixedString objectName{};
+	LocalizedStringReference localizedDescription{};
+	std::uint32_t blockLatency{ 0u };
+	std::uint32_t controlLatency{ 0u };
+	std::uint16_t controlDomain{ 0u };
+	ControlType controlType{};
+	std::uint32_t resetTime{ 0u };
+	DescriptorType signalType{ DescriptorType::Invalid };
+	DescriptorIndex signalIndex{ DescriptorIndex(0u) };
+	std::uint16_t signalOutput{ 0u };
+	ControlValueType controlValueType{};
+	ControlValues valuesStatic{};
+	ControlValues valuesDynamic{};
+};
 
 /** SIGNAL_SELECTOR Descriptor - Clause 7.2.23 */
 
