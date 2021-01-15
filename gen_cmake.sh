@@ -26,7 +26,7 @@ default_VisualGeneratorArch="Win32"
 default_VisualToolset="v142"
 default_VisualToolchain="x64"
 default_VisualArch="x86"
-default_signtoolOptions="/a /sm /q /fd sha256 /tr http://timestamp.sectigo.com"
+default_signtoolOptions="/a /sm /q /fd sha256 /tr http://timestamp.sectigo.com /td sha256"
 
 # 
 cmake_generator=""
