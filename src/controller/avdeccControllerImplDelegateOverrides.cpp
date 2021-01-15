@@ -775,13 +775,13 @@ void ControllerImpl::onEntityIdentifyNotification(entity::controller::Interface 
 
 	if (controlledEntity)
 	{
-		// Lock to protect _identifications
+		// Lock to protect _entityIdentifications
 		auto const lg = std::lock_guard{ _lock };
 
 		// Get current time
 		auto const currentTime = std::chrono::system_clock::now();
 
-		auto [it, inserted] = _identifications.insert(std::make_pair(entityID, currentTime));
+		auto [it, inserted] = _entityIdentifications.insert(std::make_pair(entityID, currentTime));
 		if (inserted)
 		{
 			// Notify

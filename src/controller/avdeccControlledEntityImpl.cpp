@@ -165,6 +165,11 @@ std::optional<entity::model::MilanInfo> ControlledEntityImpl::getMilanInfo() con
 	return _milanInfo;
 }
 
+std::optional<entity::model::ControlIndex> ControlledEntityImpl::getIdentifyControlIndex() const noexcept
+{
+	return _identifyControlIndex;
+}
+
 bool ControlledEntityImpl::isEntityModelValidForCaching() const noexcept
 {
 	if (_gotFatalEnumerateError || _entityTree.configurationTrees.empty())
@@ -1983,6 +1988,11 @@ std::pair<bool, std::chrono::milliseconds> ControlledEntityImpl::getQueryDescrip
 entity::Entity& ControlledEntityImpl::getEntity() noexcept
 {
 	return _entity;
+}
+
+void ControlledEntityImpl::setIdentifyControlIndex(entity::model::ControlIndex const identifyControlIndex) noexcept
+{
+	_identifyControlIndex = identifyControlIndex;
 }
 
 bool ControlledEntityImpl::shouldIgnoreCachedEntityModel() const noexcept

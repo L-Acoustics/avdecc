@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - [Support for Control Descriptors (only Linear Values are currently supported)](https://github.com/L-Acoustics/avdecc/issues/88)
+- [Support for Controller to Entity Identification](https://github.com/L-Acoustics/avdecc/issues/13)
 
 ### Changed
 - When an observer registers to a ProtocolInterface, it now immediately receives notifications about already known entities (both local and remote)

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - [onEntityRedundantInterfaceOnline/onEntityRedundantInterfaceOffline observer events](https://github.com/L-Acoustics/avdecc/issues/86)
 - [Support for Control Descriptors (only Linear Values are currently supported)](https://github.com/L-Acoustics/avdecc/issues/88)
+- [Support for Controller to Entity Identification](https://github.com/L-Acoustics/avdecc/issues/13)
 
 ### Fixed
 - [Add/Remove StreaPort mappings validates protocol limits](https://github.com/L-Acoustics/avdecc/issues/84)

@@ -201,6 +201,7 @@ public:
 	virtual UniqueIdentifier getLockingControllerID() const noexcept override;
 	virtual entity::Entity const& getEntity() const noexcept override;
 	virtual std::optional<entity::model::MilanInfo> getMilanInfo() const noexcept override;
+	virtual std::optional<entity::model::ControlIndex> getIdentifyControlIndex() const noexcept override;
 	virtual bool isEntityModelValidForCaching() const noexcept override;
 
 	virtual model::EntityNode const& getEntityNode() const override;
@@ -439,6 +440,7 @@ public:
 
 	// Other getters/setters
 	entity::Entity& getEntity() noexcept;
+	void setIdentifyControlIndex(entity::model::ControlIndex const identifyControlIndex) noexcept;
 	bool shouldIgnoreCachedEntityModel() const noexcept;
 	void setIgnoreCachedEntityModel() noexcept;
 	EnumerationSteps getEnumerationSteps() const noexcept;
@@ -513,6 +515,7 @@ private:
 	LockInformation::SharedPointer _sharedLock{ nullptr };
 	bool const _isVirtual{ false };
 	bool _ignoreCachedEntityModel{ false };
+	std::optional<entity::model::ControlIndex> _identifyControlIndex{ std::nullopt };
 	std::uint16_t _registerUnsolRetryCount{ 0u };
 	std::uint16_t _queryMilanInfoRetryCount{ 0u };
 	std::uint16_t _queryDescriptorRetryCount{ 0u };

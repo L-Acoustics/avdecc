@@ -918,7 +918,9 @@ bool ControllerImpl::updateControlValues(ControlledEntityImpl& controlledEntity,
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto const& controlStaticModel = controlledEntity.getNodeStaticModel(controlledEntity.getCurrentConfigurationIndex(), controlIndex, &entity::model::ConfigurationTree::controlModels);
-	auto const controlValuesOpt = entity::model::unpackDynamicControlValues(packedControlValues, controlStaticModel.controlValueType.getType(), controlStaticModel.values.size());
+	auto const controlValueType = controlStaticModel.controlValueType.getType();
+	auto const controlValueSize = controlStaticModel.values.size();
+	auto const controlValuesOpt = entity::model::unpackDynamicControlValues(packedControlValues, controlValueType, controlValueSize);
 
 	if (controlValuesOpt)
 	{
@@ -929,6 +931,24 @@ bool ControllerImpl::updateControlValues(ControlledEntityImpl& controlledEntity,
 		if (controlledEntity.wasAdvertised())
 		{
 			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onControlValuesChanged, this, &controlledEntity, controlIndex, controlValues);
+
+			// Check for Identify Control
+			if (controlStaticModel.controlType == entity::model::ControlType::Identify && controlValueType == entity::model::ControlValueType::Type::ControlLinearUInt8 && controlValueSize == 1)
+			{
+				auto const identifyOpt = getIdentifyControlValue(controlValues);
+				if (identifyOpt)
+				{
+					// Notify
+					if (*identifyOpt)
+					{
+						notifyObserversMethod<Controller::Observer>(&Controller::Observer::onIdentificationStarted, this, &controlledEntity);
+					}
+					else
+					{
+						notifyObserversMethod<Controller::Observer>(&Controller::Observer::onIdentificationStopped, this, &controlledEntity);
+					}
+				}
+			}
 		}
 
 		return true;
@@ -1380,6 +1400,40 @@ void ControllerImpl::updateOperationStatus(ControlledEntityImpl& controlledEntit
 /* ************************************************************ */
 /* Private methods                                              */
 /* ************************************************************ */
+entity::model::ControlValues ControllerImpl::makeIdentifyControlValues(bool const isEnabled) noexcept
+{
+	auto values = entity::model::LinearValues<entity::model::LinearValueDynamic<std::uint8_t>>{};
+
+	values.addValue({ isEnabled ? std::uint8_t{ 0xFF } : std::uint8_t{ 0x00 } });
+
+	return entity::model::ControlValues{ values };
+}
+
+std::optional<bool> ControllerImpl::getIdentifyControlValue(entity::model::ControlValues const& values) noexcept
+{
+	AVDECC_ASSERT(values.areDynamicValues() && values.getType() == entity::model::ControlValueType::Type::ControlLinearUInt8, "Doesn't look like Identify Control Value");
+	try
+	{
+		if (values.size() == 1)
+		{
+			auto const dynamicValues = values.getValues<entity::model::LinearValues<entity::model::LinearValueDynamic<std::uint8_t>>>(); // We have to store the copie or it will go out of scope if using it directly in the range-based loop
+			auto const& value = dynamicValues.getValues()[0];
+			if (value.currentValue == 0)
+			{
+				return false;
+			}
+			else if (value.currentValue == 255)
+			{
+				return true;
+			}
+		}
+	}
+	catch (...)
+	{
+	}
+	return std::nullopt;
+}
+
 void ControllerImpl::removeExclusiveAccessTokens(UniqueIdentifier const entityID, ExclusiveAccessToken::AccessType const type) const noexcept
 {
 	auto tokensToInvalidate = decltype(_exclusiveAccessTokens)::mapped_type{};
@@ -2452,22 +2506,164 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const entity) n
 	}
 }
 
+bool ControllerImpl::validateIdentifyControl(ControlledEntityImpl& controlledEntity, model::ControlNode const& identifyControlNode) const noexcept
+{
+	AVDECC_ASSERT(identifyControlNode.staticModel->controlType == entity::model::ControlType::Identify, "validateIdentifyControl should only be called on an IDENTIFY Control Descriptor Type");
+	auto const& e = controlledEntity.getEntity();
+	auto const entityID = e.getEntityID();
+	auto const controlIndex = identifyControlNode.descriptorIndex;
+
+	try
+	{
+		auto const controlValueType = identifyControlNode.staticModel->controlValueType.getType();
+		if (controlValueType == entity::model::ControlValueType::Type::ControlLinearUInt8)
+		{
+			auto const staticValues = identifyControlNode.staticModel->values.getValues<entity::model::LinearValues<entity::model::LinearValueStatic<std::uint8_t>>>();
+			if (staticValues.size() == 1)
+			{
+				auto const& staticValue = staticValues.getValues()[0];
+				if (staticValue.minimum == 0 && staticValue.maximum == 255 && staticValue.step == 255 && staticValue.unit.getMultiplier() == 0 && staticValue.unit.getUnit() == entity::model::ControlValueUnit::Unit::Unitless)
+				{
+					auto const dynamicValues = identifyControlNode.dynamicModel->values.getValues<entity::model::LinearValues<entity::model::LinearValueDynamic<std::uint8_t>>>();
+					if (dynamicValues.size() == 1)
+					{
+						auto const& dynamicValue = dynamicValues.getValues()[0];
+						if (dynamicValue.currentValue == 0 || dynamicValue.currentValue == 255)
+						{
+							// Warning only checks
+							if (identifyControlNode.staticModel->signalType != entity::model::DescriptorType::Invalid || identifyControlNode.staticModel->signalIndex != 0)
+							{
+								LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: SignalType should be set to INVALID and SignalIndex to 0", controlIndex);
+								// Flag the entity as "Not fully IEEE1722.1 compliant"
+								removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+							}
+
+							// All (or almost) ok
+							return true;
+						}
+						else
+						{
+							LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: CurrentValue should either be 0 or 255 but is {}", controlIndex, dynamicValue.currentValue);
+							// Flag the entity as "Not fully IEEE1722.1 compliant"
+							removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+						}
+					}
+					else
+					{
+						LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: Should only contain one value but has {}", controlIndex, dynamicValues.size());
+						// Flag the entity as "Not fully IEEE1722.1 compliant"
+						removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					}
+				}
+				else
+				{
+					LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: One or many fields are incorrect and should be min=0, max=255, step=255, Unit=UNITLESS/0", controlIndex);
+					// Flag the entity as "Not fully IEEE1722.1 compliant"
+					removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+				}
+			}
+			else
+			{
+				LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: Should only contain one value but has {}", controlIndex, staticValues.size());
+				// Flag the entity as "Not fully IEEE1722.1 compliant"
+				removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			}
+		}
+		else
+		{
+			LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: ControlValueType should be CONTROL_LINEAR_UINT8 but is {}", controlIndex, entity::model::controlValueTypeToString(controlValueType));
+			// Flag the entity as "Not fully IEEE1722.1 compliant"
+			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+		}
+	}
+	catch (std::invalid_argument const& e)
+	{
+		LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: {}", controlIndex, e.what());
+		// Flag the entity as "Not fully IEEE1722.1 compliant"
+		removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+	}
+	catch (...)
+	{
+		LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: Unknown exception trying to read descriptor", controlIndex);
+		// Flag the entity as "Not fully IEEE1722.1 compliant"
+		removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+	}
+
+	return false;
+}
+
 void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept
 {
 	auto const& e = controlledEntity.getEntity();
 	auto const entityID = e.getEntityID();
+	auto const isAemSupported = e.getEntityCapabilities().test(entity::EntityCapability::AemSupported);
 
 	// Save the enumeration time
 	controlledEntity.setEndEnumerationTime(std::chrono::steady_clock::now());
 
-	// If AEM is supported, build the Entity Model Graph
-	if (e.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+	// If AEM is supported
+	if (isAemSupported)
 	{
+		// Build the Entity Model Graph
 		controlledEntity.buildEntityModelGraph();
+
+		// Validate Identify Control Descriptor
+		if (e.getEntityCapabilities().test(entity::EntityCapability::AemIdentifyControlIndexValid))
+		{
+			auto const identifyIndexOpt = e.getIdentifyControlIndex();
+			if (identifyIndexOpt)
+			{
+				auto const identifyIndex = *identifyIndexOpt;
+				try
+				{
+					auto const& identifyControlNode = controlledEntity.getControlNode(controlledEntity.getCurrentConfigurationNode().descriptorIndex, identifyIndex);
+					auto const controlType = identifyControlNode.staticModel->controlType;
+					if (controlType == entity::model::ControlType::Identify)
+					{
+						if (validateIdentifyControl(controlledEntity, identifyControlNode))
+						{
+							// Register the Identify Control Index
+							controlledEntity.setIdentifyControlIndex(identifyIndex);
+						}
+					}
+					else
+					{
+						LOG_CONTROLLER_WARN(entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: ControlType should be IDENTIFY but is ", entity::model::controlTypeToString(controlType));
+						// Flag the entity as "Not fully IEEE1722.1 compliant"
+						removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					}
+				}
+				catch (Exception const& e)
+				{
+					LOG_CONTROLLER_WARN(entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: {}", e.what());
+					// Flag the entity as "Not fully IEEE1722.1 compliant"
+					removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+				}
+			}
+		}
+		else
+		{
+			// Search for an Identify Control Descriptor
+			auto const& configurationNode = controlledEntity.getCurrentConfigurationNode();
+			for (auto const& [controlIndex, controlNode] : configurationNode.controls)
+			{
+				auto const controlType = controlNode.staticModel->controlType;
+				if (controlType == entity::model::ControlType::Identify)
+				{
+					if (validateIdentifyControl(controlledEntity, controlNode))
+					{
+						// Register the Identify Control Index
+						controlledEntity.setIdentifyControlIndex(controlIndex);
+						break;
+					}
+				}
+			}
+#pragma message("TODO: When JackDecriptors will be implemented, search for Identify in Jacks as well")
+		}
 	}
 
 	// For a Talker, we want to build an accurate list of connections, based on the known listeners (already advertised only, the other ones will update once ready to advertise themselves)
-	if (e.getTalkerCapabilities().test(entity::TalkerCapability::Implemented) && e.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+	if (e.getTalkerCapabilities().test(entity::TalkerCapability::Implemented) && isAemSupported)
 	{
 		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
@@ -2533,7 +2729,7 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 	}
 
 	// For a Listener, we want to inform all the talkers we are connected to (already advertised only, the other ones will update once ready to advertise themselves)
-	if (e.getListenerCapabilities().test(entity::ListenerCapability::Implemented) && e.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+	if (e.getListenerCapabilities().test(entity::ListenerCapability::Implemented) && isAemSupported)
 	{
 		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
@@ -2573,9 +2769,10 @@ void ControllerImpl::onPreUnadvertiseEntity(ControlledEntityImpl& controlledEnti
 {
 	auto const& e = controlledEntity.getEntity();
 	auto const entityID = e.getEntityID();
+	auto const isAemSupported = e.getEntityCapabilities().test(entity::EntityCapability::AemSupported);
 
 	// For a Listener, we want to inform all the talkers we are connected to, that we left
-	if (e.getListenerCapabilities().test(entity::ListenerCapability::Implemented) && e.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+	if (e.getListenerCapabilities().test(entity::ListenerCapability::Implemented) && isAemSupported)
 	{
 		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 

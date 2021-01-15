@@ -127,6 +127,7 @@ private:
 	virtual void startUploadMemoryObjectOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorIndex const descriptorIndex, std::uint64_t const dataLength, StartMemoryObjectOperationHandler const& handler) const noexcept override;
 	virtual void abortOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, AbortOperationHandler const& handler) const noexcept override;
 	virtual void setMemoryObjectLength(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length, SetMemoryObjectLengthHandler const& handler) const noexcept override;
+	virtual void identifyEntity(UniqueIdentifier const targetEntityID, std::chrono::milliseconds const duration, IdentifyEntityHandler const& handler) const noexcept override;
 
 	/* Enumeration and Control Protocol (AECP) AA */
 	virtual void readDeviceMemory(UniqueIdentifier const targetEntityID, std::uint64_t const address, std::uint64_t const length, ReadDeviceMemoryProgressHandler const& progressHandler, ReadDeviceMemoryCompletionHandler const& completionHandler) const noexcept override;
@@ -551,10 +552,17 @@ private:
 	};
 	using DelayedQueries = std::deque<DelayedQuery>;
 	using StartOperationHandler = std::function<void(controller::ControlledEntity const* const entity, entity::ControllerEntity::AemCommandStatus const status, entity::model::OperationID const operationID, MemoryBuffer const& memoryBuffer)>;
+	struct ControllerIdentificationState
+	{
+		std::chrono::time_point<std::chrono::system_clock> expireTime{};
+		entity::model::ControlIndex controlIndex{};
+	};
 
 	/* ************************************************************ */
 	/* Private methods                                              */
 	/* ************************************************************ */
+	static entity::model::ControlValues makeIdentifyControlValues(bool const isEnabled) noexcept;
+	static std::optional<bool> getIdentifyControlValue(entity::model::ControlValues const& values) noexcept;
 	void removeExclusiveAccessTokens(UniqueIdentifier const entityID, ExclusiveAccessToken::AccessType const type) const noexcept;
 	bool areControlledEntitiesSelfLocked() const noexcept;
 	std::tuple<model::AcquireState, UniqueIdentifier> getAcquiredInfoFromStatus(ControlledEntityImpl& entity, UniqueIdentifier const owningEntity, entity::ControllerEntity::AemCommandStatus const status, bool const releaseEntityResult) const noexcept;
@@ -572,6 +580,7 @@ private:
 	void getDynamicInfo(ControlledEntityImpl* const entity) noexcept;
 	void getDescriptorDynamicInfo(ControlledEntityImpl* const entity) noexcept;
 	void checkEnumerationSteps(ControlledEntityImpl* const entity) noexcept;
+	bool validateIdentifyControl(ControlledEntityImpl& controlledEntity, model::ControlNode const& identifyControlNode) const noexcept;
 	void onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept;
 	void onPreUnadvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept;
 	FailureAction getFailureActionForMvuCommandStatus(entity::ControllerEntity::MvuCommandStatus const status) const noexcept;
@@ -656,7 +665,8 @@ private:
 	bool _fullStaticModelEnumeration{ false };
 	bool _shouldTerminate{ false };
 	DelayedQueries _delayedQueries{};
-	std::unordered_map<UniqueIdentifier, std::chrono::time_point<std::chrono::system_clock>, UniqueIdentifier::hash> _identifications{};
+	std::unordered_map<UniqueIdentifier, std::chrono::time_point<std::chrono::system_clock>, UniqueIdentifier::hash> _entityIdentifications{}; // Holds Entity to Controller Identification Information
+	mutable std::unordered_map<UniqueIdentifier, ControllerIdentificationState, UniqueIdentifier::hash> _controllerIdentifications{}; // Holds Controller to Entity Identification Information
 	mutable std::unordered_map<UniqueIdentifier, std::set<ExclusiveAccessTokenImpl*>, UniqueIdentifier::hash> _exclusiveAccessTokens{};
 	std::thread _stateMachinesThread{};
 };

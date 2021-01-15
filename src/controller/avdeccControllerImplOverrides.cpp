@@ -93,7 +93,8 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 		[this]
 		{
 			utils::setCurrentThreadName("avdecc::controller::StateMachines");
-			std::unordered_set<UniqueIdentifier, UniqueIdentifier::hash> identificationsStopped{};
+			auto entityIdentificationsStopped = std::unordered_set<UniqueIdentifier, UniqueIdentifier::hash>{};
+			decltype(_controllerIdentifications) controllerIdentificationsStopped{};
 			decltype(_delayedQueries) queriesToSend{};
 			while (!_shouldTerminate)
 			{
@@ -101,13 +102,14 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 				{
 					// Check all ongoing identifications if we didn't receive any new message for some time, and copy them so we can notify outside the loop
 					{
-						// Lock to protect _identifications
+						// Lock to protect _entityIdentifications and _controllerIdentifications
 						auto const lg = std::lock_guard{ _lock };
 
 						// Get current time
 						auto const currentTime = std::chrono::system_clock::now();
 
-						for (auto it = _identifications.begin(); it != _identifications.end(); /* Iterate inside the loop */)
+						// Check Entity to Controller Identification expiration
+						for (auto it = _entityIdentifications.begin(); it != _entityIdentifications.end(); /* Iterate inside the loop */)
 						{
 							auto const entityID = it->first;
 							auto const lastNotificationTime = it->second;
@@ -115,10 +117,29 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 							if (currentTime > (lastNotificationTime + std::chrono::milliseconds(1200)))
 							{
 								// Move the entityID to the "to process" list
-								identificationsStopped.insert(entityID);
+								entityIdentificationsStopped.insert(entityID);
 
 								// Remove the entity from the list
-								it = _identifications.erase(it);
+								it = _entityIdentifications.erase(it);
+							}
+							else
+							{
+								++it;
+							}
+						}
+
+						// Check Controller to Entity Identification expiration
+						for (auto it = _controllerIdentifications.begin(); it != _controllerIdentifications.end(); /* Iterate inside the loop */)
+						{
+							auto& [entityID, state] = *it;
+
+							if (currentTime > state.expireTime)
+							{
+								// Move to the "to process" list
+								controllerIdentificationsStopped[entityID] = std::move(state);
+
+								// Remove the entity from the list
+								it = _controllerIdentifications.erase(it);
 							}
 							else
 							{
@@ -127,8 +148,8 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 						}
 					}
 
-					// Now actually notify, outside the lock
-					for (auto const& entityID : identificationsStopped)
+					// Now actually process expirations, outside the lock
+					for (auto const& entityID : entityIdentificationsStopped)
 					{
 						if (_shouldTerminate)
 						{
@@ -145,9 +166,41 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 							notifyObserversMethod<Controller::Observer>(&Controller::Observer::onIdentificationStopped, this, controlledEntity.get());
 						}
 					}
+					for (auto const& [entityID, state] : controllerIdentificationsStopped)
+					{
+						if (_shouldTerminate)
+						{
+							break;
+						}
 
-					// Clear the list
-					identificationsStopped.clear();
+						// Take a "scoped locked" shared copy of the ControlledEntity
+						auto controlledEntity = getControlledEntityImplGuard(entityID, true);
+
+						// Entity still online
+						if (controlledEntity)
+						{
+							// Disable Identification
+							_controller->setControlValues(entityID, state.controlIndex, makeIdentifyControlValues(false),
+								[this](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ControlIndex const controlIndex, MemoryBuffer const& packedControlValues)
+								{
+									// Take a "scoped locked" shared copy of the ControlledEntity
+									auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+									if (controlledEntity)
+									{
+										// Update source
+										if (!!status) // Only change the control values in case of success
+										{
+											updateControlValues(*controlledEntity, controlIndex, packedControlValues);
+										}
+									}
+								});
+						}
+					}
+
+					// Clear the lists
+					entityIdentificationsStopped.clear();
+					controllerIdentificationsStopped.clear();
 				}
 
 				// Delayed Queries
@@ -1489,7 +1542,7 @@ void ControllerImpl::setControlValues(UniqueIdentifier const targetEntityID, ent
 					}
 
 					// Invoke result handler
-					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, st);
 				}
 				else // The entity went offline right after we sent our message
 				{
@@ -1896,6 +1949,69 @@ void ControllerImpl::setMemoryObjectLength(UniqueIdentifier const targetEntityID
 					if (!!status)
 					{
 						updateMemoryObjectLength(*entity, configurationIndex, memoryObjectIndex, length);
+					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					utils::invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
+	}
+	else
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::identifyEntity(UniqueIdentifier const targetEntityID, std::chrono::milliseconds const duration, IdentifyEntityHandler const& handler) const noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(targetEntityID, true);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User identifyEntity ()");
+
+		auto const identifyIndexOpt = controlledEntity->getIdentifyControlIndex();
+		if (!identifyIndexOpt)
+		{
+			LOG_CONTROLLER_TRACE(targetEntityID, "User identifyEntity not sent because entity does not have a valid Identify Control Descriptor");
+			utils::invokeProtectedHandler(handler, controlledEntity.get(), entity::ControllerEntity::AemCommandStatus::NoSuchDescriptor);
+			return;
+		}
+
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
+		_controller->setControlValues(targetEntityID, *identifyIndexOpt, makeIdentifyControlValues(true),
+			[this, handler, duration](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ControlIndex const controlIndex, MemoryBuffer const& packedControlValues)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User identifyEntity (): {}", entity::ControllerEntity::statusToString(status));
+
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+
+					// Update source
+					if (!!status) // Only change the control values in case of success
+					{
+						updateControlValues(*entity, controlIndex, packedControlValues);
+
+						// Register to the State Machine, if duration is not 0
+						if (duration != std::chrono::milliseconds{ 0 })
+						{
+							// Lock to protect _entityIdentifications
+							auto const lg = std::lock_guard{ _lock };
+
+							// Get current time
+							auto const currentTime = std::chrono::system_clock::now();
+
+							_controllerIdentifications[entityID] = ControllerIdentificationState{ currentTime + duration, controlIndex };
+						}
 					}
 
 					// Invoke result handler
