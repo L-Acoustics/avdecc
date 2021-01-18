@@ -4,6 +4,8 @@ All notable changes to the Avdecc Controller Library will be documented in this 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
 ## [3.1.0] - 2021-01-18
 ### Added
 - [onEntityRedundantInterfaceOnline/onEntityRedundantInterfaceOffline observer events](https://github.com/L-Acoustics/avdecc/issues/86)
