@@ -41,13 +41,13 @@ public:
 	using value_type = std::uint64_t;
 
 	/** Default constructor. */
-	UniqueIdentifier() noexcept
+	constexpr UniqueIdentifier() noexcept
 		: _eui(0xFFFFFFFFFFFFFFFF)
 	{
 	}
 
 	/** Constructor to create a UniqueIdentifier from the underlying value. */
-	explicit UniqueIdentifier(value_type const eui) noexcept
+	explicit constexpr UniqueIdentifier(value_type const eui) noexcept
 		: _eui(eui)
 	{
 	}
@@ -66,13 +66,13 @@ public:
 
 	/** Returns the VendorID as a OUI-24 (by default) or OUI-64 if using std::uint64_t type. It's the caller's responsibility to know if it needs to get the OUI-24 or OUI-36. */
 	template<typename Type = std::uint32_t>
-	constexpr std::enable_if_t<std::is_same_v<Type, std::uint32_t> | std::is_same<Type, std::uint64_t>::value, Type> getVendorID() const noexcept
+	constexpr std::enable_if_t<std::is_same_v<Type, std::uint32_t> | std::is_same_v<Type, std::uint64_t>, Type> getVendorID() const noexcept
 	{
-		if constexpr (std::is_same<Type, std::uint32_t>::value)
+		if constexpr (std::is_same_v<Type, std::uint32_t>)
 		{
 			return static_cast<Type>((_eui >> 40) & 0x0000000000FFFFFF);
 		}
-		else if constexpr (std::is_same<Type, std::uint64_t>::value)
+		else if constexpr (std::is_same_v<Type, std::uint64_t>)
 		{
 			return static_cast<Type>((_eui >> 28) & 0x0000000FFFFFFFFF);
 		}

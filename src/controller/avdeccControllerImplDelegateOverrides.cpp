@@ -503,6 +503,18 @@ void ControllerImpl::onAudioClusterNameChanged(entity::controller::Interface con
 	}
 }
 
+void ControllerImpl::onControlNameChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const controlIndex, entity::model::AvdeccFixedString const& controlName) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+		updateControlName(entity, configurationIndex, controlIndex, controlName);
+	}
+}
+
 void ControllerImpl::onClockDomainNameChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::AvdeccFixedString const& clockDomainName) noexcept
 {
 	// Take a "scoped locked" shared copy of the ControlledEntity
@@ -536,6 +548,18 @@ void ControllerImpl::onClockSourceChanged(entity::controller::Interface const* c
 	{
 		auto& entity = *controlledEntity;
 		updateClockSource(entity, clockDomainIndex, clockSourceIndex);
+	}
+}
+
+void ControllerImpl::onControlValuesChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ControlIndex const controlIndex, MemoryBuffer const& packedControlValues) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+		updateControlValues(entity, controlIndex, packedControlValues);
 	}
 }
 
@@ -751,13 +775,13 @@ void ControllerImpl::onEntityIdentifyNotification(entity::controller::Interface 
 
 	if (controlledEntity)
 	{
-		// Lock to protect _identifications
+		// Lock to protect _entityIdentifications
 		auto const lg = std::lock_guard{ _lock };
 
 		// Get current time
 		auto const currentTime = std::chrono::system_clock::now();
 
-		auto [it, inserted] = _identifications.insert(std::make_pair(entityID, currentTime));
+		auto [it, inserted] = _entityIdentifications.insert(std::make_pair(entityID, currentTime));
 		if (inserted)
 		{
 			// Notify

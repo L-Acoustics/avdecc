@@ -41,6 +41,7 @@
 #endif // ENABLE_AVDECC_FEATURE_JSON
 
 #include <la/avdecc/internals/entityModelTree.hpp>
+#include <la/avdecc/internals/entityModelControlValues.hpp>
 #include <la/avdecc/internals/serialization.hpp>
 #ifdef ENABLE_AVDECC_FEATURE_JSON
 #	include <la/avdecc/internals/jsonSerialization.hpp>

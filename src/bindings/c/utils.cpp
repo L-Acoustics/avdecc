@@ -477,7 +477,7 @@ std::vector<avdecc_entity_model_descriptors_count_t> make_descriptors_count(std:
 {
 	auto m = std::vector<avdecc_entity_model_descriptors_count_t>{};
 
-	for (auto const [descriptorType, count] : counts)
+	for (auto const& [descriptorType, count] : counts)
 	{
 		m.emplace_back(avdecc_entity_model_descriptors_count_t{ static_cast<avdecc_entity_model_descriptor_type_t>(descriptorType), count });
 	}
@@ -1203,7 +1203,7 @@ entity::model::StreamInfo make_stream_info(avdecc_entity_model_stream_info_cp co
 	auto i = entity::model::StreamInfo{};
 
 	i.streamInfoFlags.assign(info->stream_info_flags);
-	i.streamFormat = info->stream_format;
+	i.streamFormat = entity::model::StreamFormat{ info->stream_format };
 	i.streamID = UniqueIdentifier{ info->stream_id };
 	i.msrpAccumulatedLatency = info->msrp_accumulated_latency;
 	i.streamDestMac = make_macAddress(&info->stream_dest_mac);

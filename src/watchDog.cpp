@@ -64,26 +64,29 @@ public:
 						auto const lg = std::lock_guard{ _lock };
 
 						auto const currentTime = std::chrono::system_clock::now();
-						for (auto& [name, watchInfo] : _watched)
+						for (auto& [threadId, watchedMap] : _watched)
 						{
-#ifdef _WIN32
-							// If debugger is present, update the last alive time and don't check the timeout
-							if (IsDebuggerPresent())
+							for (auto& [name, watchInfo] : watchedMap)
 							{
-								watchInfo.lastAlive = currentTime;
-							}
+#ifdef _WIN32
+								// If debugger is present, update the last alive time and don't check the timeout
+								if (IsDebuggerPresent())
+								{
+									watchInfo.lastAlive = currentTime;
+								}
 #endif // _WIN32
 
-							// Check if we timed out
-							if (!watchInfo.ignore && std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - watchInfo.lastAlive).count() > watchInfo.maximumInterval.count())
-							{
-								_observers.notifyObserversMethod<Observer>(&Observer::onIntervalExceeded, name, watchInfo.maximumInterval);
+								// Check if we timed out
+								if (!watchInfo.ignore && std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - watchInfo.lastAlive).count() > watchInfo.maximumInterval.count())
+								{
+									_observers.notifyObserversMethod<Observer>(&Observer::onIntervalExceeded, name, watchInfo.maximumInterval);
 
-								auto stream = std::stringstream{};
-								stream << "WatchDog event '" << name << "' exceeded the maximum allowed time (ThreadId: 0x" << std::hex << watchInfo.threadId << "). Deadlock?";
-								AVDECC_ASSERT(false, stream.str());
+									auto stream = std::stringstream{};
+									stream << "WatchDog event '" << name << "' exceeded the maximum allowed time (ThreadId: 0x" << std::hex << watchInfo.threadId << "). Deadlock?";
+									AVDECC_ASSERT(false, stream.str());
 
-								watchInfo.ignore = true;
+									watchInfo.ignore = true;
+								}
 							}
 						}
 					}
@@ -120,32 +123,63 @@ private:
 		_observers.unregisterObserver(observer);
 	}
 
-	virtual void registerWatch(std::string const& name, std::chrono::milliseconds const maximumInterval) noexcept override
+	virtual void registerWatch(std::string const& name, std::chrono::milliseconds const maximumInterval, bool const isThreadSpecific) noexcept override
 	{
 		auto const lg = std::lock_guard{ _lock };
-		_watched[name] = { maximumInterval, std::this_thread::get_id() };
+
+		auto const thisId = std::this_thread::get_id();
+		auto const threadId = isThreadSpecific ? thisId : std::thread::id{};
+
+		auto& watched = _watched[threadId];
+
+		AVDECC_ASSERT(watched.count(name) == 0, "WatchDog already exists for this 'name'");
+		watched[name] = { maximumInterval, thisId };
 	}
 
-	virtual void unregisterWatch(std::string const& name) noexcept override
+	virtual void unregisterWatch(std::string const& name, bool const isThreadSpecific) noexcept override
 	{
 		auto const lg = std::lock_guard{ _lock };
-		AVDECC_ASSERT_WITH_RET(_watched.erase(name) == 1, "Cannot unregisterWatch, 'name' not found");
-	}
 
-	virtual void alive(std::string const& name) noexcept override
-	{
-		auto const lg = std::lock_guard{ _lock };
-		auto const watchIt = _watched.find(name);
-		if (watchIt != _watched.end())
+		auto const threadId = isThreadSpecific ? std::this_thread::get_id() : std::thread::id{};
+
+		if (auto watchedThreadIt = _watched.find(threadId); AVDECC_ASSERT_WITH_RET(watchedThreadIt != _watched.end(), "Cannot unregisterWatch, no watch for this thread"))
 		{
-			watchIt->second.threadId = std::this_thread::get_id();
-			watchIt->second.lastAlive = std::chrono::system_clock::now();
+			auto& watchedThread = watchedThreadIt->second;
+			AVDECC_ASSERT_WITH_RET(watchedThread.erase(name) == 1, "Cannot unregisterWatch, 'name' not found");
+
+			// Last one
+			if (watchedThread.size() == 0)
+			{
+				_watched.erase(watchedThreadIt);
+			}
 		}
 	}
 
+	virtual void alive(std::string const& name, bool const isThreadSpecific) noexcept override
+	{
+		auto const lg = std::lock_guard{ _lock };
+
+		auto const thisId = std::this_thread::get_id();
+		auto const threadId = isThreadSpecific ? thisId : std::thread::id{};
+
+		if (auto watchedThreadIt = _watched.find(threadId); AVDECC_ASSERT_WITH_RET(watchedThreadIt != _watched.end(), "Cannot alive, no watch for this thread"))
+		{
+			auto& watchedThread = watchedThreadIt->second;
+
+			if (auto watchedIt = watchedThread.find(name); AVDECC_ASSERT_WITH_RET(watchedIt != watchedThread.end(), "Cannot alive, 'name' not found"))
+			{
+				watchedIt->second.threadId = thisId;
+				watchedIt->second.lastAlive = std::chrono::system_clock::now();
+			}
+		}
+	}
+
+	using WatchedMap = std::unordered_map<std::string, WatchInfo>;
+
 	// Private members
 	std::mutex _lock{};
-	std::unordered_map<std::string, WatchInfo> _watched{};
+	std::unordered_map<std::thread::id, WatchedMap> _watched{};
+	//WatchedMap _watched{};
 	bool _shouldTerminate{ false };
 	std::thread _watchThread{};
 	Subject _observers{};

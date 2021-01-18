@@ -102,6 +102,12 @@ struct AudioMapNodeModels
 	AudioMapNodeStaticModel staticModel{};
 };
 
+struct ControlNodeModels
+{
+	ControlNodeStaticModel staticModel{};
+	ControlNodeDynamicModel dynamicModel{};
+};
+
 struct ClockDomainNodeModels
 {
 	ClockDomainNodeStaticModel staticModel{};
@@ -129,6 +135,7 @@ struct ConfigurationTree
 	//std::map<InternalPortIndex, InternalPortNodeModels> internalPortOutputModels{};
 	std::map<ClusterIndex, AudioClusterNodeModels> audioClusterModels{};
 	std::map<MapIndex, AudioMapNodeModels> audioMapModels{};
+	std::map<ControlIndex, ControlNodeModels> controlModels{};
 	std::map<ClockDomainIndex, ClockDomainNodeModels> clockDomainModels{};
 
 	// AEM Static info

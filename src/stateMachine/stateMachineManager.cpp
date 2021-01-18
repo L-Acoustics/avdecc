@@ -229,7 +229,7 @@ void Manager::startStateMachines() noexcept
 
 				auto watchDogSharedPointer = watchDog::WatchDog::getInstance();
 				auto& watchDog = *watchDogSharedPointer;
-				watchDog.registerWatch("avdecc::StateMachine", std::chrono::milliseconds{ 1000u });
+				watchDog.registerWatch("avdecc::StateMachine", std::chrono::milliseconds{ 1000u }, true);
 
 				while (!_shouldTerminate)
 				{
@@ -246,12 +246,12 @@ void Manager::startStateMachines() noexcept
 					_commandStateMachine.checkInflightCommandsTimeoutExpiracy();
 
 					// Try to detect deadlocks
-					watchDog.alive("avdecc::StateMachine");
+					watchDog.alive("avdecc::StateMachine", true);
 
 					// Wait a little bit so we don't burn the CPU
 					std::this_thread::sleep_for(std::chrono::milliseconds(5));
 				}
-				watchDog.unregisterWatch("avdecc::StateMachine");
+				watchDog.unregisterWatch("avdecc::StateMachine", true);
 			});
 	}
 }
@@ -480,6 +480,24 @@ bool Manager::isLocalEntity(UniqueIdentifier const entityID) noexcept
 
 	return _localEntities.find(entityID) != _localEntities.end();
 }
+
+void Manager::notifyDiscoveredEntities(DiscoveryStateMachine::Delegate& delegate) noexcept
+{
+	// Notify local entities
+	{
+		auto const lg = std::lock_guard{ *this };
+
+		for (auto const& [entityID, entity] : _localEntities)
+		{
+			// Notify delegate
+			utils::invokeProtectedMethod(&DiscoveryStateMachine::Delegate::onLocalEntityOnline, &delegate, entity);
+		}
+	}
+
+	// Notify remote entities
+	_discoveryStateMachine.notifyDiscoveredRemoteEntities(delegate);
+}
+
 
 /* ************************************************************ */
 /* Advertising entry points                                     */

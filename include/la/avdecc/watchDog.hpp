@@ -66,9 +66,9 @@ public:
 	virtual void registerObserver(Observer* const observer) noexcept = 0;
 	virtual void unregisterObserver(Observer* const observer) noexcept = 0;
 
-	virtual void registerWatch(std::string const& name, std::chrono::milliseconds const maximumInterval) noexcept = 0;
-	virtual void unregisterWatch(std::string const& name) noexcept = 0;
-	virtual void alive(std::string const& name) noexcept = 0;
+	virtual void registerWatch(std::string const& name, std::chrono::milliseconds const maximumInterval, bool const isThreadSpecific) noexcept = 0;
+	virtual void unregisterWatch(std::string const& name, bool const isThreadSpecific) noexcept = 0;
+	virtual void alive(std::string const& name, bool const isThreadSpecific) noexcept = 0;
 
 	// Deleted compiler auto-generated methods
 	WatchDog(WatchDog&&) = delete;

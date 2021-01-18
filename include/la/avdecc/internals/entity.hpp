@@ -141,6 +141,17 @@ public:
 		return _commonInformation.entityID;
 	}
 
+	/** Gets the mac address associated with the specified AvbInterfaceIndex. Returns an invalid MacAddress if there is no such interface index. */
+	la::avdecc::networkInterface::MacAddress getMacAddress(model::AvbInterfaceIndex const interfaceIndex) const noexcept
+	{
+		if (hasInterfaceIndex(interfaceIndex))
+		{
+			auto const& info = getInterfaceInformation(interfaceIndex);
+			return info.macAddress;
+		}
+		return {};
+	}
+
 	/** Gets any mac address for the entity */
 	la::avdecc::networkInterface::MacAddress getAnyMacAddress() const
 	{

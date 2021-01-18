@@ -68,14 +68,8 @@ setup_library_options(la_avdecc_c "la_avdecc_c")
 # Link with avdecc
 target_link_libraries(la_avdecc_c PRIVATE la_avdecc_cxx)
 
-# Set installation rule
-if(INSTALL_AVDECC_BINDINGS)
-	# Sign binary (this is done during installation phase)
-	if(ENABLE_AVDECC_SIGNING)
-		sign_target(la_avdecc_c)
-	endif()
-	setup_library_install_rules(la_avdecc_c)
-endif()
+# Setup install (and signing)
+setup_deploy_library(la_avdecc_c ${INSTALL_BINDINGS_FLAG} ${SIGN_FLAG})
 
 # Set installation rules
 if(INSTALL_AVDECC_BINDINGS AND INSTALL_AVDECC_HEADERS)

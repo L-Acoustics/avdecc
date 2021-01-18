@@ -67,6 +67,7 @@ public:
 	void checkDiscovery() noexcept;
 	void handleAdpEntityAvailable(Adpdu const& adpdu) noexcept;
 	void handleAdpEntityDeparting(Adpdu const& adpdu) noexcept;
+	void notifyDiscoveredRemoteEntities(Delegate& delegate) const noexcept;
 
 private:
 	// Private types

@@ -28,6 +28,8 @@
 
 #include "la/avdecc/utils.hpp"
 #include "la/avdecc/avdecc.hpp"
+#include "la/avdecc/internals/entityModelControlValues.hpp"
+#include "la/avdecc/internals/entityModelControlValuesTraits.hpp"
 
 #include "logItems.hpp"
 
@@ -110,7 +112,7 @@ struct adl_serializer<la::avdecc::entity::model::EntityCounters>
 	{
 		auto object = json::object();
 
-		for (auto const [name, value] : counters)
+		for (auto const& [name, value] : counters)
 		{
 			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
 			object[n.get<std::string>()] = value;
@@ -145,7 +147,7 @@ struct adl_serializer<la::avdecc::entity::model::AvbInterfaceCounters>
 	{
 		auto object = json::object();
 
-		for (auto const [name, value] : counters)
+		for (auto const& [name, value] : counters)
 		{
 			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
 			auto const key = n.get<std::string>();
@@ -188,7 +190,7 @@ struct adl_serializer<la::avdecc::entity::model::ClockDomainCounters>
 	{
 		auto object = json::object();
 
-		for (auto const [name, value] : counters)
+		for (auto const& [name, value] : counters)
 		{
 			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
 			auto const key = n.get<std::string>();
@@ -231,7 +233,7 @@ struct adl_serializer<la::avdecc::entity::model::StreamInputCounters>
 	{
 		auto object = json::object();
 
-		for (auto const [name, value] : counters)
+		for (auto const& [name, value] : counters)
 		{
 			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
 			auto const key = n.get<std::string>();
@@ -274,7 +276,7 @@ struct adl_serializer<la::avdecc::entity::model::StreamOutputCounters>
 	{
 		auto object = json::object();
 
-		for (auto const [name, value] : counters)
+		for (auto const& [name, value] : counters)
 		{
 			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
 			auto const key = n.get<std::string>();
@@ -717,6 +719,7 @@ constexpr auto NodeName_StreamPortInputDescriptors = "stream_port_input_descript
 constexpr auto NodeName_StreamPortOutputDescriptors = "stream_port_output_descriptors";
 constexpr auto NodeName_AudioClusterDescriptors = "audio_cluster_descriptors";
 constexpr auto NodeName_AudioMapDescriptors = "audio_map_descriptors";
+constexpr auto NodeName_ControlDescriptors = "control_descriptors";
 constexpr auto NodeName_ClockDomainDescriptors = "clock_domain_descriptors";
 
 /* Globals */
@@ -846,12 +849,48 @@ constexpr auto AudioClusterNode_Dynamic_ObjectName = "object_name";
 /* AudioMapNode */
 constexpr auto AudioMapNode_Static_Mappings = "mappings";
 
+/* ControlNode */
+constexpr auto ControlNode_Static_LocalizedDescription = "localized_description";
+constexpr auto ControlNode_Static_BlockLatency = "block_latency";
+constexpr auto ControlNode_Static_ControlLatency = "control_latency";
+constexpr auto ControlNode_Static_ControlDomain = "control_domain";
+constexpr auto ControlNode_Static_ControlType = "control_type";
+constexpr auto ControlNode_Static_ResetTime = "reset_time";
+constexpr auto ControlNode_Static_SignalType = "signal_type";
+constexpr auto ControlNode_Static_SignalIndex = "signal_index";
+constexpr auto ControlNode_Static_SignalOutput = "signal_output";
+constexpr auto ControlNode_Static_ControlValueType = "control_value_type";
+constexpr auto ControlNode_Static_Values = "values";
+constexpr auto ControlNode_Dynamic_ObjectName = "object_name";
+constexpr auto ControlNode_Dynamic_Values = "values";
+
+/* ControlValueType */
+constexpr auto ControlValueType_ReadOnly = "read_only";
+constexpr auto ControlValueType_Unknown = "unknown";
+constexpr auto ControlValueType_Type = "value_type";
+
+/* ControlValues */
+constexpr auto ControlValues_Type = "type";
+constexpr auto ControlValues_Values = "values";
+
+/* LinearValue */
+constexpr auto LinearValue_Minimum = "minimum";
+constexpr auto LinearValue_Maximum = "maximum";
+constexpr auto LinearValue_Step = "step";
+constexpr auto LinearValue_Default = "default";
+constexpr auto LinearValue_Unit = "unit";
+constexpr auto LinearValue_String = "string";
+
 /* ClockDomainNode */
 constexpr auto ClockDomainNode_Static_LocalizedDescription = "localized_description";
 constexpr auto ClockDomainNode_Static_ClockSources = "clock_sources";
 constexpr auto ClockDomainNode_Dynamic_ObjectName = "object_name";
 constexpr auto ClockDomainNode_Dynamic_ClockSourceIndex = "clock_source_index";
 constexpr auto ClockDomainNode_Dynamic_Counters = "counters";
+
+/* ControlValueUnit */
+constexpr auto ControlValueUnit_Multiplier = "multiplier";
+constexpr auto ControlValueUnit_Code = "code";
 
 /* LocalizedStringReference */
 constexpr auto LocalizedStringReference_Index = "index";
@@ -1022,6 +1061,184 @@ NLOHMANN_JSON_SERIALIZE_ENUM(AudioClusterFormat, {
 																									 { AudioClusterFormat::Smpte, "SMPTE" },
 																								 });
 
+/* ControlValueUnit::Unit conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(ControlValueUnit::Unit, {
+																											 { ControlValueUnit::Unit::Unitless, "UNITLESS" },
+																											 { ControlValueUnit::Unit::Count, "COUNT" },
+																											 { ControlValueUnit::Unit::Percent, "PERCENT" },
+																											 { ControlValueUnit::Unit::FStop, "FSTOP" },
+																											 { ControlValueUnit::Unit::Seconds, "SECONDS" },
+																											 { ControlValueUnit::Unit::Minutes, "MINUTES" },
+																											 { ControlValueUnit::Unit::Hours, "HOURS" },
+																											 { ControlValueUnit::Unit::Days, "DAYS" },
+																											 { ControlValueUnit::Unit::Months, "MONTHS" },
+																											 { ControlValueUnit::Unit::Years, "YEARS" },
+																											 { ControlValueUnit::Unit::Samples, "SAMPLES" },
+																											 { ControlValueUnit::Unit::Frames, "FRAMES" },
+																											 { ControlValueUnit::Unit::Hertz, "HERTZ" },
+																											 { ControlValueUnit::Unit::Semitones, "SEMITONES" },
+																											 { ControlValueUnit::Unit::Cents, "CENTS" },
+																											 { ControlValueUnit::Unit::Octaves, "OCTAVES" },
+																											 { ControlValueUnit::Unit::Fps, "FPS" },
+																											 { ControlValueUnit::Unit::Metres, "METRES" },
+																											 { ControlValueUnit::Unit::Kelvin, "KELVIN" },
+																											 { ControlValueUnit::Unit::Grams, "GRAMS" },
+																											 { ControlValueUnit::Unit::Volts, "VOLTS" },
+																											 { ControlValueUnit::Unit::Dbv, "DBV" },
+																											 { ControlValueUnit::Unit::Dbu, "DBU" },
+																											 { ControlValueUnit::Unit::Amps, "AMPS" },
+																											 { ControlValueUnit::Unit::Watts, "WATTS" },
+																											 { ControlValueUnit::Unit::Dbm, "DBM" },
+																											 { ControlValueUnit::Unit::Dbw, "DBW" },
+																											 { ControlValueUnit::Unit::Pascals, "PASCALS" },
+																											 { ControlValueUnit::Unit::Bits, "BITS" },
+																											 { ControlValueUnit::Unit::Bytes, "BYTES" },
+																											 { ControlValueUnit::Unit::KibiBytes, "KIBIBYTES" },
+																											 { ControlValueUnit::Unit::MebiBytes, "MEBIBYTES" },
+																											 { ControlValueUnit::Unit::GibiBytes, "GIBIBYTES" },
+																											 { ControlValueUnit::Unit::TebiBytes, "TEBIBYTES" },
+																											 { ControlValueUnit::Unit::BitsPerSec, "BITS_PER_SEC" },
+																											 { ControlValueUnit::Unit::BytesPerSec, "BYTES_PER_SEC" },
+																											 { ControlValueUnit::Unit::KibiBytesPerSec, "KIBIBYTES_PER_SEC" },
+																											 { ControlValueUnit::Unit::MebiBytesPerSec, "MEBIBYTES_PER_SEC" },
+																											 { ControlValueUnit::Unit::GibiBytesPerSec, "GIBIBYTES_PER_SEC" },
+																											 { ControlValueUnit::Unit::TebiBytesPerSec, "TEBIBYTES_PER_SEC" },
+																											 { ControlValueUnit::Unit::Candelas, "CANDELAS" },
+																											 { ControlValueUnit::Unit::Joules, "JOULES" },
+																											 { ControlValueUnit::Unit::Radians, "RADIANS" },
+																											 { ControlValueUnit::Unit::Newtons, "NEWTONS" },
+																											 { ControlValueUnit::Unit::Ohms, "OHMS" },
+																											 { ControlValueUnit::Unit::MetresPerSec, "METRES_PER_SEC" },
+																											 { ControlValueUnit::Unit::RadiansPerSec, "RADIANS_PER_SEC" },
+																											 { ControlValueUnit::Unit::MetresPerSecSquared, "METRES_PER_SEC_SQUARED" },
+																											 { ControlValueUnit::Unit::RadiansPerSecSquared, "RADIANS_PER_SEC_SQUARED" },
+																											 { ControlValueUnit::Unit::Teslas, "TESLAS" },
+																											 { ControlValueUnit::Unit::Webers, "WEBERS" },
+																											 { ControlValueUnit::Unit::AmpsPerMetre, "AMPS_PER_METRE" },
+																											 { ControlValueUnit::Unit::MetresSquared, "METRES_SQUARED" },
+																											 { ControlValueUnit::Unit::MetresCubed, "METRES_CUBED" },
+																											 { ControlValueUnit::Unit::Litres, "LITRES" },
+																											 { ControlValueUnit::Unit::Db, "DB" },
+																											 { ControlValueUnit::Unit::DbPeak, "DB_PEAK" },
+																											 { ControlValueUnit::Unit::DbRms, "DB_RMS" },
+																											 { ControlValueUnit::Unit::Dbfs, "DBFS" },
+																											 { ControlValueUnit::Unit::DbfsPeak, "DBFS_PEAK" },
+																											 { ControlValueUnit::Unit::DbfsRms, "DBFS_RMS" },
+																											 { ControlValueUnit::Unit::Dbtp, "DBTP" },
+																											 { ControlValueUnit::Unit::DbSplA, "DB_SPL_A" },
+																											 { ControlValueUnit::Unit::DbZ, "DB_Z" },
+																											 { ControlValueUnit::Unit::DbSplC, "DB_SPL_C" },
+																											 { ControlValueUnit::Unit::DbSpl, "DB_SPL" },
+																											 { ControlValueUnit::Unit::Lu, "LU" },
+																											 { ControlValueUnit::Unit::Lufs, "LUFS" },
+																											 { ControlValueUnit::Unit::DbA, "DB_A" },
+																										 });
+
+/* ControlValueType::Type conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(ControlValueType::Type, {
+																											 { ControlValueType::Type::ControlLinearInt8, "CONTROL_LINEAR_INT8" },
+																											 { ControlValueType::Type::ControlLinearUInt8, "CONTROL_LINEAR_UINT8" },
+																											 { ControlValueType::Type::ControlLinearInt16, "CONTROL_LINEAR_INT16" },
+																											 { ControlValueType::Type::ControlLinearUInt16, "CONTROL_LINEAR_UINT16" },
+																											 { ControlValueType::Type::ControlLinearInt32, "CONTROL_LINEAR_INT32" },
+																											 { ControlValueType::Type::ControlLinearUInt32, "CONTROL_LINEAR_UINT32" },
+																											 { ControlValueType::Type::ControlLinearInt64, "CONTROL_LINEAR_INT64" },
+																											 { ControlValueType::Type::ControlLinearUInt64, "CONTROL_LINEAR_UINT64" },
+																											 { ControlValueType::Type::ControlLinearFloat, "CONTROL_LINEAR_FLOAT" },
+																											 { ControlValueType::Type::ControlLinearDouble, "CONTROL_LINEAR_DOUBLE" },
+																											 { ControlValueType::Type::ControlSelectorInt8, "CONTROL_SELECTOR_INT8" },
+																											 { ControlValueType::Type::ControlSelectorUInt8, "CONTROL_SELECTOR_UINT8" },
+																											 { ControlValueType::Type::ControlSelectorInt16, "CONTROL_SELECTOR_INT16" },
+																											 { ControlValueType::Type::ControlSelectorUInt16, "CONTROL_SELECTOR_UINT16" },
+																											 { ControlValueType::Type::ControlSelectorInt32, "CONTROL_SELECTOR_INT32" },
+																											 { ControlValueType::Type::ControlSelectorUInt32, "CONTROL_SELECTOR_UINT32" },
+																											 { ControlValueType::Type::ControlSelectorInt64, "CONTROL_SELECTOR_INT64" },
+																											 { ControlValueType::Type::ControlSelectorUInt64, "CONTROL_SELECTOR_UINT64" },
+																											 { ControlValueType::Type::ControlSelectorFloat, "CONTROL_SELECTOR_FLOAT" },
+																											 { ControlValueType::Type::ControlSelectorDouble, "CONTROL_SELECTOR_DOUBLE" },
+																											 { ControlValueType::Type::ControlSelectorString, "CONTROL_SELECTOR_STRING" },
+																											 { ControlValueType::Type::ControlArrayInt8, "CONTROL_ARRAY_INT8" },
+																											 { ControlValueType::Type::ControlArrayUInt8, "CONTROL_ARRAY_UINT8" },
+																											 { ControlValueType::Type::ControlArrayInt16, "CONTROL_ARRAY_INT16" },
+																											 { ControlValueType::Type::ControlArrayUInt16, "CONTROL_ARRAY_UINT16" },
+																											 { ControlValueType::Type::ControlArrayInt32, "CONTROL_ARRAY_INT32" },
+																											 { ControlValueType::Type::ControlArrayUInt32, "CONTROL_ARRAY_UINT32" },
+																											 { ControlValueType::Type::ControlArrayInt64, "CONTROL_ARRAY_INT64" },
+																											 { ControlValueType::Type::ControlArrayUInt64, "CONTROL_ARRAY_UINT64" },
+																											 { ControlValueType::Type::ControlArrayFloat, "CONTROL_ARRAY_FLOAT" },
+																											 { ControlValueType::Type::ControlArrayDouble, "CONTROL_ARRAY_DOUBLE" },
+																											 { ControlValueType::Type::ControlUtf8, "CONTROL_UTF8" },
+																											 { ControlValueType::Type::ControlBodePlot, "CONTROL_BODE_PLOT" },
+																											 { ControlValueType::Type::ControlSmpteTime, "CONTROL_SMPTE_TIME" },
+																											 { ControlValueType::Type::ControlSampleRate, "CONTROL_SAMPLE_RATE" },
+																											 { ControlValueType::Type::ControlGptpTime, "CONTROL_GPTP_TIME" },
+																											 { ControlValueType::Type::ControlVendor, "CONTROL_VENDOR" },
+																											 { ControlValueType::Type::Expansion, "EXPANSION" },
+																										 });
+
+/* ControlType conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(ControlType, {
+																						{ ControlType::Enable, "ENABLE" },
+																						{ ControlType::Identify, "IDENTIFY" },
+																						{ ControlType::Mute, "MUTE" },
+																						{ ControlType::Invert, "INVERT" },
+																						{ ControlType::Gain, "GAIN" },
+																						{ ControlType::Attenuate, "ATTENUATE" },
+																						{ ControlType::Delay, "DELAY" },
+																						{ ControlType::SrcMode, "SRC_MODE" },
+																						{ ControlType::Snapshot, "SNAPSHOT" },
+																						{ ControlType::PowLineFreq, "POW_LINE_FREQ" },
+																						{ ControlType::PowerStatus, "POWER_STATUS" },
+																						{ ControlType::FanStatus, "FAN_STATUS" },
+																						{ ControlType::Temperature, "TEMPERATURE" },
+																						{ ControlType::Altitude, "ALTITUDE" },
+																						{ ControlType::AbsoluteHumidity, "ABSOLUTE_HUMIDITY" },
+																						{ ControlType::RelativeHumidity, "RELATIVE_HUMIDITY" },
+																						{ ControlType::Orientation, "ORIENTATION" },
+																						{ ControlType::Velocity, "VELOCITY" },
+																						{ ControlType::Acceleration, "ACCELERATION" },
+																						{ ControlType::FilterResponse, "FILTER_RESPONSE" },
+																						{ ControlType::Panpot, "PANPOT" },
+																						{ ControlType::Phantom, "PHANTOM" },
+																						{ ControlType::AudioScale, "AUDIO_SCALE" },
+																						{ ControlType::AudioMeters, "AUDIO_METERS" },
+																						{ ControlType::AudioSpectrum, "AUDIO_SPECTRUM" },
+																						{ ControlType::ScanningMode, "SCANNING_MODE" },
+																						{ ControlType::AutoExpMode, "AUTO_EXP_MODE" },
+																						{ ControlType::AutoExpPrio, "AUTO_EXP_PRIO" },
+																						{ ControlType::ExpTime, "EXP_TIME" },
+																						{ ControlType::Focus, "FOCUS" },
+																						{ ControlType::FocusAuto, "FOCUS_AUTO" },
+																						{ ControlType::Iris, "IRIS" },
+																						{ ControlType::Zoom, "ZOOM" },
+																						{ ControlType::Privacy, "PRIVACY" },
+																						{ ControlType::Backlight, "BACKLIGHT" },
+																						{ ControlType::Brightness, "BRIGHTNESS" },
+																						{ ControlType::Contrast, "CONTRAST" },
+																						{ ControlType::Hue, "HUE" },
+																						{ ControlType::Saturation, "SATURATION" },
+																						{ ControlType::Sharpness, "SHARPNESS" },
+																						{ ControlType::Gamma, "GAMMA" },
+																						{ ControlType::WhiteBalTemp, "WHITE_BAL_TEMP" },
+																						{ ControlType::WhiteBalTempAuto, "WHITE_BAL_TEMP_AUTO" },
+																						{ ControlType::WhiteBalComp, "WHITE_BAL_COMP" },
+																						{ ControlType::WhiteBalCompAuto, "WHITE_BAL_COMP_AUTO" },
+																						{ ControlType::DigitalZoom, "DIGITAL_ZOOM" },
+																						{ ControlType::MediaPlaylist, "MEDIA_PLAYLIST" },
+																						{ ControlType::MediaPlaylistName, "MEDIA_PLAYLIST_NAME" },
+																						{ ControlType::MediaDisk, "MEDIA_DISK" },
+																						{ ControlType::MediaDiskName, "MEDIA_DISK_NAME" },
+																						{ ControlType::MediaTrack, "MEDIA_TRACK" },
+																						{ ControlType::MediaTrackName, "MEDIA_TRACK_NAME" },
+																						{ ControlType::MediaSpeed, "MEDIA_SPEED" },
+																						{ ControlType::MediaSamplePosition, "MEDIA_SAMPLE_POSITION" },
+																						{ ControlType::MediaPlaybackTransport, "MEDIA_PLAYBACK_TRANSPORT" },
+																						{ ControlType::MediaRecordTransport, "MEDIA_RECORD_TRANSPORT" },
+																						{ ControlType::Frequency, "FREQUENCY" },
+																						{ ControlType::Modulation, "MODULATION" },
+																						{ ControlType::Polarization, "POLARIZATION" },
+																					});
+
 /* StreamInputConnectionInfo::State conversion */
 NLOHMANN_JSON_SERIALIZE_ENUM(StreamInputConnectionInfo::State, {
 																																 { StreamInputConnectionInfo::State::NotConnected, "NOT_CONNECTED" },
@@ -1047,6 +1264,30 @@ inline void to_json(json& j, StreamFormat const& sf)
 inline void from_json(json const& j, StreamFormat& sf)
 {
 	sf.setValue(utils::convertFromString<StreamFormat::value_type>(j.get<std::string>().c_str()));
+}
+
+/* ControlValueUnit conversion */
+inline void to_json(json& j, ControlValueUnit const& cvu)
+{
+	auto const [multiplier, unit] = cvu.getMultiplierUnit();
+	j[keyName::ControlValueUnit_Multiplier] = multiplier;
+	j[keyName::ControlValueUnit_Code] = unit;
+}
+inline void from_json(json const& j, ControlValueUnit& cvu)
+{
+	cvu.setMultiplierUnit(j.at(keyName::ControlValueUnit_Multiplier), j.at(keyName::ControlValueUnit_Code));
+}
+
+/* ControlValueType conversion */
+inline void to_json(json& j, ControlValueType const& cvt)
+{
+	j[keyName::ControlValueType_ReadOnly] = cvt.isReadOnly();
+	j[keyName::ControlValueType_Unknown] = cvt.isUnknown();
+	j[keyName::ControlValueType_Type] = cvt.getType();
+}
+inline void from_json(json const& j, ControlValueType& cvt)
+{
+	cvt.setReadOnlyUnknownType(j.at(keyName::ControlValueType_ReadOnly), j.at(keyName::ControlValueType_Unknown), j.at(keyName::ControlValueType_Type));
 }
 
 /* LocalizedStringReference conversion */
@@ -1581,6 +1822,284 @@ inline void to_json(json& j, AudioMapNodeStaticModel const& s)
 inline void from_json(json const& j, AudioMapNodeStaticModel& s)
 {
 	j.at(keyName::AudioMapNode_Static_Mappings).get_to(s.mappings);
+}
+
+/* LinearValueStatic conversion */
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>>
+inline void to_json(json& j, LinearValueStatic<SizeType> const& value)
+{
+	j[keyName::LinearValue_Minimum] = value.minimum;
+	j[keyName::LinearValue_Maximum] = value.maximum;
+	j[keyName::LinearValue_Step] = value.step;
+	j[keyName::LinearValue_Default] = value.defaultValue;
+	j[keyName::LinearValue_Unit] = value.unit;
+	j[keyName::LinearValue_String] = value.localizedName;
+}
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>>
+inline void from_json(json const& j, LinearValueStatic<SizeType>& value)
+{
+	j.at(keyName::LinearValue_Minimum).get_to(value.minimum);
+	j.at(keyName::LinearValue_Maximum).get_to(value.maximum);
+	j.at(keyName::LinearValue_Step).get_to(value.step);
+	j.at(keyName::LinearValue_Default).get_to(value.defaultValue);
+	j.at(keyName::LinearValue_Unit).get_to(value.unit);
+	get_optional_value(j, keyName::LinearValue_String, value.localizedName);
+}
+
+/* LinearValueDynamic conversion */
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>>
+inline void to_json(json& j, LinearValueDynamic<SizeType> const& value)
+{
+	j = value.currentValue;
+}
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>>
+inline void from_json(json const& j, LinearValueDynamic<SizeType>& value)
+{
+	value.currentValue = j;
+}
+
+/* LinearValues conversion */
+template<typename ValueType, typename Traits = ControlValues::control_value_details_traits<LinearValues<ValueType>>>
+inline void to_json(json& j, LinearValues<ValueType> const& values)
+{
+	static_assert(Traits::is_value_details, "to_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
+	auto arr = json::array();
+
+	for (auto const& val : values.getValues())
+	{
+		arr.push_back(val);
+	}
+
+	j = std::move(arr);
+}
+template<typename ValueType, typename Traits = ControlValues::control_value_details_traits<LinearValues<ValueType>>>
+inline void from_json(json const& j, LinearValues<ValueType>& values)
+{
+	static_assert(Traits::is_value_details, "from_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
+	for (auto const& jval : j)
+	{
+		auto val = typename std::decay_t<decltype(values)>::value_type{};
+		jval.get_to(val);
+		values.addValue(std::move(val));
+	}
+}
+
+/* ControlValues Dispatcher Helper Templates */
+template<class ValueDetailsType, typename Traits = ControlValues::control_value_details_traits<std::decay_t<ValueDetailsType>>>
+inline std::function<json(ControlValues const&)> createToJsonDispatchFunctor() noexcept
+{
+	static_assert(Traits::is_value_details, "createToJsonDispatchFunctor, control_value_details_traits::is_value_details trait not defined for requested ValueDetailsType. Did you include entityModelControlValuesTraits.hpp?");
+	return [](ControlValues const& controlValues)
+	{
+		auto j = json{};
+		try
+		{
+			auto const& values = controlValues.getValues<ValueDetailsType>();
+			j[keyName::ControlValues_Type] = controlValues.getType();
+			j[keyName::ControlValues_Values] = values;
+		}
+		catch (...)
+		{
+		}
+		return j;
+	};
+}
+template<class ControlValuesClass>
+inline std::function<ControlValues(json const&)> createFromJsonDispatchFunctor() noexcept
+{
+	return [](json const& j)
+	{
+		auto controlValues = ControlValuesClass{};
+		j.get_to(controlValues);
+		return ControlValues{ controlValues };
+	};
+}
+
+template<bool IsDynamic>
+inline void createToJsonDispatchTable(std::unordered_map<ControlValueType::Type, std::function<json(ControlValues const&)>>& dispatchTable)
+{
+	if constexpr (IsDynamic)
+	{
+		dispatchTable[ControlValueType::Type::ControlLinearInt8] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int8_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt8] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::uint8_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearInt16] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int16_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt16] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::uint16_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearInt32] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int32_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt32] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::uint32_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearInt64] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int64_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt64] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::uint64_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearFloat] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<float>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearDouble] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<double>>>();
+	}
+	else
+	{
+		dispatchTable[ControlValueType::Type::ControlLinearInt8] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int8_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt8] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::uint8_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearInt16] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int16_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt16] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::uint16_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearInt32] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int32_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt32] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::uint32_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearInt64] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int64_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt64] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::uint64_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearFloat] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<float>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearDouble] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<double>>>();
+	}
+}
+template<bool IsDynamic>
+inline void createFromJsonDispatchTable(std::unordered_map<ControlValueType::Type, std::function<ControlValues(json const&)>>& dispatchTable)
+{
+	if constexpr (IsDynamic)
+	{
+		dispatchTable[ControlValueType::Type::ControlLinearInt8] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int8_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt8] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::uint8_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearInt16] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int16_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt16] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::uint16_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearInt32] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int32_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt32] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::uint32_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearInt64] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int64_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt64] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::uint64_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearFloat] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<float>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearDouble] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<double>>>();
+	}
+	else
+	{
+		dispatchTable[ControlValueType::Type::ControlLinearInt8] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int8_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt8] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<std::uint8_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearInt16] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int16_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt16] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<std::uint16_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearInt32] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int32_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt32] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<std::uint32_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearInt64] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int64_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearUInt64] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<std::uint64_t>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearFloat] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<float>>>();
+		dispatchTable[ControlValueType::Type::ControlLinearDouble] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<double>>>();
+	}
+}
+
+/* ControlNodeStaticModel conversion */
+inline void to_json(json& j, ControlNodeStaticModel const& s)
+{
+	static auto s_toJsonDispatch = std::unordered_map<ControlValueType::Type, std::function<json(ControlValues const&)>>{};
+
+	if (s_toJsonDispatch.empty())
+	{
+		// Create the dispatch table
+		createToJsonDispatchTable<false>(s_toJsonDispatch);
+	}
+
+	// Pack non-type dependant values
+	j[keyName::ControlNode_Static_LocalizedDescription] = s.localizedDescription;
+	j[keyName::ControlNode_Static_BlockLatency] = s.blockLatency;
+	j[keyName::ControlNode_Static_ControlLatency] = s.controlLatency;
+	j[keyName::ControlNode_Static_ControlDomain] = s.controlDomain;
+	j[keyName::ControlNode_Static_ControlType] = s.controlType;
+	j[keyName::ControlNode_Static_ResetTime] = s.resetTime;
+	j[keyName::ControlNode_Static_SignalType] = s.signalType;
+	j[keyName::ControlNode_Static_SignalIndex] = s.signalIndex;
+	j[keyName::ControlNode_Static_SignalOutput] = s.signalOutput;
+	j[keyName::ControlNode_Static_ControlValueType] = s.controlValueType;
+
+	// Pack type dependant values
+	auto const valueType = s.values.getType();
+	if (auto const& it = s_toJsonDispatch.find(valueType); it != s_toJsonDispatch.end())
+	{
+		j[keyName::ControlNode_Static_Values] = it->second(s.values);
+	}
+	else
+	{
+		throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InternalError, "Unsupported ControlValues Type" };
+	}
+}
+inline void from_json(json const& j, ControlNodeStaticModel& s)
+{
+	static auto s_fromJsonDispatch = std::unordered_map<ControlValueType::Type, std::function<ControlValues(json const&)>>{};
+
+	if (s_fromJsonDispatch.empty())
+	{
+		// Create the dispatch table
+		createFromJsonDispatchTable<false>(s_fromJsonDispatch);
+	}
+
+	// Unpack non-type dependant values
+	get_optional_value(j, keyName::ControlNode_Static_LocalizedDescription, s.localizedDescription);
+	j.at(keyName::ControlNode_Static_BlockLatency).get_to(s.blockLatency);
+	j.at(keyName::ControlNode_Static_ControlLatency).get_to(s.controlLatency);
+	j.at(keyName::ControlNode_Static_ControlDomain).get_to(s.controlDomain);
+	j.at(keyName::ControlNode_Static_ControlType).get_to(s.controlType);
+	j.at(keyName::ControlNode_Static_ResetTime).get_to(s.resetTime);
+	j.at(keyName::ControlNode_Static_SignalType).get_to(s.signalType);
+	j.at(keyName::ControlNode_Static_SignalIndex).get_to(s.signalIndex);
+	j.at(keyName::ControlNode_Static_SignalOutput).get_to(s.signalOutput);
+	j.at(keyName::ControlNode_Static_ControlValueType).get_to(s.controlValueType);
+
+	// Unpack type dependant values
+	auto const& jvalues = j.at(keyName::ControlNode_Static_Values);
+	if (!jvalues.is_null())
+	{
+		auto const type = jvalues.at(keyName::ControlValues_Type).get<ControlValueType::Type>();
+		if (auto const& it = s_fromJsonDispatch.find(type); it != s_fromJsonDispatch.end())
+		{
+			s.values = it->second(jvalues.at(keyName::ControlValues_Values));
+		}
+		else
+		{
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InternalError, "Unsupported ControlValues Type" };
+		}
+	}
+}
+
+/* ControlNodeDynamicModel conversion */
+inline void to_json(json& j, ControlNodeDynamicModel const& d)
+{
+	static auto s_toJsonDispatch = std::unordered_map<ControlValueType::Type, std::function<json(ControlValues const&)>>{};
+
+	if (s_toJsonDispatch.empty())
+	{
+		// Create the dispatch table
+		createToJsonDispatchTable<true>(s_toJsonDispatch);
+	}
+
+	// Pack non-type dependant values
+	j[keyName::ControlNode_Dynamic_ObjectName] = d.objectName;
+
+	// Pack type dependant values
+	auto const valueType = d.values.getType();
+	if (auto const& it = s_toJsonDispatch.find(valueType); it != s_toJsonDispatch.end())
+	{
+		j[keyName::ControlNode_Dynamic_Values] = it->second(d.values);
+	}
+	else
+	{
+		throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InternalError, "Unsupported ControlValues Type" };
+	}
+}
+inline void from_json(json const& j, ControlNodeDynamicModel& d)
+{
+	static auto s_fromJsonDispatch = std::unordered_map<ControlValueType::Type, std::function<ControlValues(json const&)>>{};
+
+	if (s_fromJsonDispatch.empty())
+	{
+		// Create the dispatch table
+		createFromJsonDispatchTable<true>(s_fromJsonDispatch);
+	}
+
+	// Unpack non-type dependant values
+	get_optional_value(j, keyName::ControlNode_Dynamic_ObjectName, d.objectName);
+
+	// Unpack type dependant values
+	auto const& jvalues = j.at(keyName::ControlNode_Dynamic_Values);
+	if (!jvalues.is_null())
+	{
+		auto const type = jvalues.at(keyName::ControlValues_Type).get<ControlValueType::Type>();
+		if (auto const& it = s_fromJsonDispatch.find(type); it != s_fromJsonDispatch.end())
+		{
+			d.values = it->second(jvalues.at(keyName::ControlValues_Values));
+		}
+		else
+		{
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InternalError, "Unsupported ControlValues Type" };
+		}
+	}
 }
 
 /* ClockDomainNodeStaticModel conversion */

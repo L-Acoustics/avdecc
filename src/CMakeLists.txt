@@ -21,6 +21,11 @@ set(ADD_PUBLIC_COMPILE_OPTIONS "")
 set(PCH_HEADER_NAME "pch.hpp")
 set(PCH_SOURCE_NAME "pch.cpp")
 
+if(CMAKE_SYSTEM_NAME STREQUAL Linux)
+	# Add pthread library on linux
+	list(APPEND ADD_LINK_LIBS "-lpthread")
+endif()
+
 # Disable windows MINMAX
 if(WIN32)
 	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DNOMINMAX")
@@ -63,6 +68,8 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityAddressAccessTypes.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityEnums.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModel.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelControlValues.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelControlValuesTraits.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTree.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTreeCommon.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTreeDynamic.hpp
@@ -78,9 +85,11 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAdpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAecpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAemAecpdu.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAemPayloadSizes.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAvtpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolDefines.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolMvuAecpdu.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolMvuPayloadSizes.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolVuAecpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolInterface.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/serialization.hpp
@@ -90,10 +99,9 @@ set (PUBLIC_HEADER_FILES
 
 # Low level Protocol
 set (HEADER_FILES_PROTOCOL
+	protocol/protocolAemControlValuesPayloads.hpp
 	protocol/protocolAemPayloads.hpp
-	protocol/protocolAemPayloadSizes.hpp
 	protocol/protocolMvuPayloads.hpp
-	protocol/protocolMvuPayloadSizes.hpp
 )
 
 set (SOURCE_FILES_PROTOCOL
@@ -149,6 +157,7 @@ set (SOURCE_FILES_ENTITY
 	entity/aggregateEntityImpl.cpp
 	entity/controllerCapabilityDelegate.cpp
 	entity/controllerEntityImpl.cpp
+	entity/entityModelControlValues.cpp
 )
 
 # Common files
@@ -320,15 +329,8 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 		target_link_libraries(la_avdecc_cxx PUBLIC nlohmann_json)
 	endif()
 
-	# Sign binary (this is done during installation phase, either from this project or from a project including this one)
-	if(ENABLE_AVDECC_SIGNING)
-		sign_target(la_avdecc_cxx)
-	endif()
-
-	# Set installation rule
-	if(INSTALL_AVDECC_LIB_SHARED_CXX)
-		setup_library_install_rules(la_avdecc_cxx)
-	endif()
+	# Setup install (and signing)
+	setup_deploy_library(la_avdecc_cxx ${INSTALL_SHARED_FLAG} ${SIGN_FLAG})
 endif()
 
 # Runtime-shared static library
@@ -358,13 +360,12 @@ if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 		target_link_libraries(la_avdecc_static PUBLIC nlohmann_json)
 	endif()
 
-	# Set installation rule
-	if(INSTALL_AVDECC_LIB_STATIC)
-		setup_library_install_rules(la_avdecc_static)
-		# We must install wpcap link library for windows, so the target using la_avdecc_static can properly link
-		if(NOT ${BUILD_AVDECC_INTERFACE_PCAP_DYNAMIC_LINKING} AND WIN32)
-			install(FILES "${LA_WINPCAP_LIB_DIR}/wpcap.lib" DESTINATION lib)
-		endif()
+	# Setup install (and signing)
+	setup_deploy_library(la_avdecc_static ${INSTALL_STATIC_FLAG} ${SIGN_FLAG})
+
+	# We must install wpcap link library for windows, so the target using la_avdecc_static can properly link
+	if(INSTALL_AVDECC_LIB_STATIC AND NOT ${BUILD_AVDECC_INTERFACE_PCAP_DYNAMIC_LINKING} AND WIN32)
+		install(FILES "${LA_WINPCAP_LIB_DIR}/wpcap.lib" DESTINATION lib)
 	endif()
 endif()
 

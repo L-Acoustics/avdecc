@@ -270,6 +270,55 @@
                             }
                         }
                     ],
+                    "control_descriptors": [
+                        {
+                            "_index (informative)": 0,
+                            "dynamic": {
+                                "object_name": "",
+                                "values": {
+                                    "type": "CONTROL_LINEAR_UINT8",
+                                    "values": [
+                                        0
+                                    ]
+                                }
+                            },
+                            "static": {
+                                "block_latency": 0,
+                                "control_domain": 0,
+                                "control_latency": 0,
+                                "control_type": "IDENTIFY",
+                                "control_value_type": {
+                                    "read_only": false,
+                                    "unknown": false,
+                                    "value_type": "CONTROL_LINEAR_UINT8"
+                                },
+                                "localized_description": {
+                                    "index": 5,
+                                    "offset": 1
+                                },
+                                "reset_time": 0,
+                                "signal_index": 0,
+                                "signal_output": 0,
+                                "signal_type": "INVALID",
+                                "values": {
+                                    "type": "CONTROL_LINEAR_UINT8",
+                                    "values": [
+                                        {
+                                            "default": 0,
+                                            "maximum": 255,
+                                            "minimum": 0,
+                                            "step": 255,
+                                            "string": null,
+                                            "unit": {
+                                                "code": "UNITLESS",
+                                                "multiplier": 0
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    ],
                     "dynamic": {
                         "object_name": ""
                     },

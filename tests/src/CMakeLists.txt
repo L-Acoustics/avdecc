@@ -18,6 +18,7 @@ set(TESTS_SOURCE
 	avdeccFixedString_tests.cpp
 	controllerEntity_tests.cpp
 	commandStateMachine_tests.cpp
+	controllerCapabilityDelegate_tests.cpp
 	enum_tests.cpp
 	instrumentationObserver.hpp
 	logger_tests.cpp
@@ -67,7 +68,5 @@ add_custom_command(
 	VERBATIM
 )
 
-# Set installation rule
-if(INSTALL_AVDECC_TESTS)
-	install(TARGETS Tests RUNTIME CONFIGURATIONS Release DESTINATION bin)
-endif()
+# Deploy and install target and its runtime dependencies (call this AFTER ALL dependencies have been added to the target)
+setup_deploy_runtime(Tests ${INSTALL_TEST_FLAG} ${SIGN_FLAG})
