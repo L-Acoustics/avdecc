@@ -25,6 +25,7 @@
 // Public API
 #include <la/avdecc/controller/avdeccController.hpp>
 #include <la/avdecc/internals/protocolAemAecpdu.hpp>
+#include <la/avdecc/internals/protocolAemPayloadSizes.hpp>
 
 // Internal API
 #include "controller/avdeccControlledEntityImpl.hpp"
@@ -36,6 +37,8 @@
 #include <thread>
 #include <chrono>
 #include <future>
+#include <vector>
+#include <cstdint>
 
 namespace
 {
@@ -138,6 +141,11 @@ private:
 	{
 		serializeNode(grandGrandParent);
 		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept override
+	{
 		serializeNode(parent);
 		serializeNode(node);
 	}
@@ -369,13 +377,35 @@ TEST(StreamConnectionState, Comparison)
 	}
 }
 
-TEST(Controller, VirtualEntityLoad)
+namespace
+{
+class Controller_F : public ::testing::Test
+{
+public:
+	virtual void SetUp() override
+	{
+		_controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en");
+	}
+
+	virtual void TearDown() override {}
+
+	la::avdecc::controller::Controller& getController() noexcept
+	{
+		return *_controller;
+	}
+
+private:
+	la::avdecc::controller::Controller::UniquePointer _controller{ nullptr, nullptr };
+};
+} // namespace
+
+TEST_F(Controller_F, VirtualEntityLoad)
 {
 	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
 	//static std::promise<void> commandResultPromise{};
 	{
-		auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en");
-		auto const [error, message] = controller->loadVirtualEntityFromJson("data/SimpleEntity.json", flags);
+		auto& controller = getController();
+		auto const [error, message] = controller.loadVirtualEntityFromJson("data/SimpleEntity.json", flags);
 		EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
 		EXPECT_STREQ("", message.c_str());
 	}
@@ -383,4 +413,317 @@ TEST(Controller, VirtualEntityLoad)
 	// Wait for the handler to complete
 	//auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(1));
 	//ASSERT_NE(std::future_status::timeout, status);
+}
+
+/*
+ * TESTING https://github.com/L-Acoustics/avdecc/issues/84
+ * Callback returns BadArguments if passed too many mappings
+ */
+TEST_F(Controller_F, BadArgumentsIfTooManyMappingsPassed)
+{
+	auto constexpr MaxMappingsInAddRemove = (la::avdecc::protocol::AemAecpdu::MaximumSendPayloadBufferLength - la::avdecc::protocol::aemPayload::AecpAemAddAudioMappingsCommandPayloadMinSize) / 8;
+
+	// In order to trigger an exception we have to pass more than MaxMappingsInAddRemove mappings (63 for standard IEEE1722.1 spec)
+	auto validMappings = la::avdecc::entity::model::AudioMappings{};
+	for (auto i = 1u; i <= MaxMappingsInAddRemove; ++i)
+	{
+		validMappings.push_back({});
+	}
+	auto invalidMappings = validMappings;
+	invalidMappings.push_back({});
+
+	auto& controller = getController();
+
+	// Valid AddStreamPortInputAudioMappings
+	{
+		static auto handlerPromise = std::promise<la::avdecc::entity::LocalEntity::AemCommandStatus>{};
+		controller.addStreamPortInputAudioMappings({}, {}, validMappings,
+			[](auto const* const /*entity*/, auto const status)
+			{
+				handlerPromise.set_value(status);
+			});
+
+		auto fut = handlerPromise.get_future();
+		auto status = fut.wait_for(std::chrono::seconds(1));
+		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
+		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::UnknownEntity, fut.get());
+	}
+
+	// Invalid AddStreamPortInputAudioMappings
+	{
+		static auto handlerPromise = std::promise<la::avdecc::entity::LocalEntity::AemCommandStatus>{};
+		controller.addStreamPortInputAudioMappings({}, {}, invalidMappings,
+			[](auto const* const /*entity*/, auto const status)
+			{
+				handlerPromise.set_value(status);
+			});
+
+		auto fut = handlerPromise.get_future();
+		auto status = fut.wait_for(std::chrono::seconds(1));
+		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
+		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::BadArguments, fut.get());
+	}
+
+	// Valid AddStreamPortOutputAudioMappings
+	{
+		static auto handlerPromise = std::promise<la::avdecc::entity::LocalEntity::AemCommandStatus>{};
+		controller.addStreamPortOutputAudioMappings({}, {}, validMappings,
+			[](auto const* const /*entity*/, auto const status)
+			{
+				handlerPromise.set_value(status);
+			});
+
+		auto fut = handlerPromise.get_future();
+		auto status = fut.wait_for(std::chrono::seconds(1));
+		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
+		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::UnknownEntity, fut.get());
+	}
+
+	// Invalid AddStreamPortOutputAudioMappings
+	{
+		static auto handlerPromise = std::promise<la::avdecc::entity::LocalEntity::AemCommandStatus>{};
+		controller.addStreamPortOutputAudioMappings({}, {}, invalidMappings,
+			[](auto const* const /*entity*/, auto const status)
+			{
+				handlerPromise.set_value(status);
+			});
+
+		auto fut = handlerPromise.get_future();
+		auto status = fut.wait_for(std::chrono::seconds(1));
+		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
+		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::BadArguments, fut.get());
+	}
+
+	// Valid RemoveStreamPortInputAudioMappings
+	{
+		static auto handlerPromise = std::promise<la::avdecc::entity::LocalEntity::AemCommandStatus>{};
+		controller.removeStreamPortInputAudioMappings({}, {}, validMappings,
+			[](auto const* const /*entity*/, auto const status)
+			{
+				handlerPromise.set_value(status);
+			});
+
+		auto fut = handlerPromise.get_future();
+		auto status = fut.wait_for(std::chrono::seconds(1));
+		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
+		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::UnknownEntity, fut.get());
+	}
+
+	// Invalid RemoveStreamPortInputAudioMappings
+	{
+		static auto handlerPromise = std::promise<la::avdecc::entity::LocalEntity::AemCommandStatus>{};
+		controller.removeStreamPortInputAudioMappings({}, {}, invalidMappings,
+			[](auto const* const /*entity*/, auto const status)
+			{
+				handlerPromise.set_value(status);
+			});
+
+		auto fut = handlerPromise.get_future();
+		auto status = fut.wait_for(std::chrono::seconds(1));
+		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
+		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::BadArguments, fut.get());
+	}
+
+	// Valid RemoveStreamPortOutputAudioMappings
+	{
+		static auto handlerPromise = std::promise<la::avdecc::entity::LocalEntity::AemCommandStatus>{};
+		controller.removeStreamPortOutputAudioMappings({}, {}, validMappings,
+			[](auto const* const /*entity*/, auto const status)
+			{
+				handlerPromise.set_value(status);
+			});
+
+		auto fut = handlerPromise.get_future();
+		auto status = fut.wait_for(std::chrono::seconds(1));
+		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
+		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::UnknownEntity, fut.get());
+	}
+
+	// Invalid RemoveStreamPortOutputAudioMappings
+	{
+		static auto handlerPromise = std::promise<la::avdecc::entity::LocalEntity::AemCommandStatus>{};
+		controller.removeStreamPortOutputAudioMappings({}, {}, invalidMappings,
+			[](auto const* const /*entity*/, auto const status)
+			{
+				handlerPromise.set_value(status);
+			});
+
+		auto fut = handlerPromise.get_future();
+		auto status = fut.wait_for(std::chrono::seconds(1));
+		ASSERT_NE(std::future_status::timeout, status) << "Handler not called";
+		EXPECT_EQ(la::avdecc::entity::LocalEntity::AemCommandStatus::BadArguments, fut.get());
+	}
+}
+
+/*
+ * TESTING https://github.com/L-Acoustics/avdecc/issues/85
+ * Controller should properly handle cable redundancy
+ */
+TEST(Controller, AdpduFromSameDeviceDifferentInterfaces)
+{
+	// Create a controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en");
+
+	auto const sendAdpAvailable = [gPTP = controller->getControllerEID()](auto const& entityID, auto const interfaceIndex)
+	{
+		auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { static_cast<la::avdecc::networkInterface::MacAddress::value_type>(interfaceIndex), 0x06, 0x05, 0x04, 0x03, 0x02 } }));
+
+		// Build adpdu frame
+		auto adpdu = la::avdecc::protocol::Adpdu{};
+		// Set Ether2 fields
+		adpdu.setSrcAddress(intfc->getMacAddress());
+		adpdu.setDestAddress(la::avdecc::protocol::Adpdu::Multicast_Mac_Address);
+		// Set ADP fields
+		adpdu.setMessageType(la::avdecc::protocol::AdpMessageType::EntityAvailable);
+		adpdu.setValidTime(2);
+		adpdu.setEntityID(entityID);
+		adpdu.setEntityModelID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
+		adpdu.setEntityCapabilities(la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemInterfaceIndexValid, la::avdecc::entity::EntityCapability::GptpSupported });
+		adpdu.setTalkerStreamSources(0);
+		adpdu.setTalkerCapabilities({});
+		adpdu.setListenerStreamSinks(0);
+		adpdu.setListenerCapabilities({});
+		adpdu.setControllerCapabilities(la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented });
+		adpdu.setAvailableIndex(1);
+		adpdu.setGptpGrandmasterID(gPTP);
+		adpdu.setGptpDomainNumber(0);
+		adpdu.setIdentifyControlIndex(0);
+		adpdu.setInterfaceIndex(interfaceIndex);
+		adpdu.setAssociationID(la::avdecc::UniqueIdentifier{});
+
+		// Send the adp message
+		intfc->sendAdpMessage(adpdu);
+
+		// Wait for the message to actually be sent (destroying the protocol interface won't flush pending messages, not at this date with the current code)
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	};
+
+	// Simulate ADP messages from the 2 interfaces of the same Entity
+	constexpr auto EntityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
+	sendAdpAvailable(EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 0 });
+	sendAdpAvailable(EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 1 });
+
+	{
+		auto const entity = controller->getControlledEntityGuard(EntityID);
+		ASSERT_TRUE(!!entity);
+		EXPECT_EQ(2u, entity->getEntity().getInterfacesInformation().size());
+	}
+}
+
+/*
+ * TESTING https://github.com/L-Acoustics/avdecc/issues/86
+ * Controller should properly handle cable redundancy
+ */
+TEST(Controller, AdpRedundantInterfaceNotifications)
+{
+	static auto s_CallOrder = std::vector<std::uint8_t>{};
+
+	class Obs final : public la::avdecc::controller::Controller::Observer
+	{
+	private:
+		virtual void onEntityOnline(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity) noexcept override
+		{
+			if (entity->getEntity().getInterfacesInformation().size() == 1)
+			{
+				s_CallOrder.push_back(std::uint8_t{ 1 });
+			}
+			else
+			{
+				s_CallOrder.push_back(std::uint8_t{ 0 });
+			}
+		}
+		virtual void onEntityRedundantInterfaceOnline(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::AvbInterfaceIndex const avbInterfaceIndex, la::avdecc::entity::Entity::InterfaceInformation const& /*interfaceInfo*/) noexcept override
+		{
+			if (avbInterfaceIndex == la::avdecc::entity::model::AvbInterfaceIndex{ 1 })
+			{
+				s_CallOrder.push_back(std::uint8_t{ 2 });
+			}
+			else
+			{
+			}
+		}
+		virtual void onEntityRedundantInterfaceOffline(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::AvbInterfaceIndex const avbInterfaceIndex) noexcept override
+		{
+			if (avbInterfaceIndex == la::avdecc::entity::model::AvbInterfaceIndex{ 1 })
+			{
+				s_CallOrder.push_back(std::uint8_t{ 3 });
+			}
+			else
+			{
+				s_CallOrder.push_back(std::uint8_t{ 0 });
+			}
+		}
+		DECLARE_AVDECC_OBSERVER_GUARD(Obs);
+	};
+
+	// Create a controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en");
+
+	// Add an observer
+	auto obs = Obs{};
+	controller->registerObserver(&obs);
+
+	auto const sendAdpAvailable = [](auto const& entityID, auto const interfaceIndex, auto const validTime)
+	{
+		auto intfc = std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("VirtualInterface", { { static_cast<la::avdecc::networkInterface::MacAddress::value_type>(interfaceIndex), 0x06, 0x05, 0x04, 0x03, 0x02 } }));
+
+		// Build adpdu frame
+		auto adpdu = la::avdecc::protocol::Adpdu{};
+		// Set Ether2 fields
+		adpdu.setSrcAddress(intfc->getMacAddress());
+		adpdu.setDestAddress(la::avdecc::protocol::Adpdu::Multicast_Mac_Address);
+		// Set ADP fields
+		adpdu.setMessageType(la::avdecc::protocol::AdpMessageType::EntityAvailable);
+		adpdu.setValidTime(validTime);
+		adpdu.setEntityID(entityID);
+		adpdu.setEntityModelID(la::avdecc::UniqueIdentifier::getNullUniqueIdentifier());
+		adpdu.setEntityCapabilities(la::avdecc::entity::EntityCapabilities{ la::avdecc::entity::EntityCapability::AemInterfaceIndexValid });
+		adpdu.setTalkerStreamSources(0);
+		adpdu.setTalkerCapabilities({});
+		adpdu.setListenerStreamSinks(0);
+		adpdu.setListenerCapabilities({});
+		adpdu.setControllerCapabilities(la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented });
+		adpdu.setAvailableIndex(1);
+		adpdu.setGptpGrandmasterID({});
+		adpdu.setGptpDomainNumber(0);
+		adpdu.setIdentifyControlIndex(0);
+		adpdu.setInterfaceIndex(interfaceIndex);
+		adpdu.setAssociationID(la::avdecc::UniqueIdentifier{});
+
+		// Send the adp message
+		intfc->sendAdpMessage(adpdu);
+
+		// Wait for the message to actually be sent (destroying the protocol interface won't flush pending messages, not at this date with the current code)
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	};
+
+	// Simulate ADP messages from the 2 interfaces of the same Entity
+	constexpr auto EntityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
+	sendAdpAvailable(EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 0 }, std::uint8_t{ 20 });
+	sendAdpAvailable(EntityID, la::avdecc::entity::model::AvbInterfaceIndex{ 1 }, std::uint8_t{ 2 });
+
+	// Should have 2 interfaces
+	{
+		auto const entity = controller->getControlledEntityGuard(EntityID);
+		ASSERT_TRUE(!!entity);
+		EXPECT_EQ(2u, entity->getEntity().getInterfacesInformation().size());
+	}
+
+	// Wait for the "secondary" interface to timeout
+	std::this_thread::sleep_for(std::chrono::seconds(5));
+
+	// Should only have one interface left
+	{
+		auto const entity = controller->getControlledEntityGuard(EntityID);
+		ASSERT_TRUE(!!entity);
+		EXPECT_EQ(1u, entity->getEntity().getInterfacesInformation().size());
+	}
+
+	// Validate we passed all required events in the correct order
+	ASSERT_EQ(3u, s_CallOrder.size());
+	auto order = decltype(s_CallOrder)::value_type{ 1u };
+	for (auto const val : s_CallOrder)
+	{
+		EXPECT_EQ(order++, val);
+	}
 }

@@ -54,6 +54,7 @@ struct Context
 	StreamPortIndex nextExpectedStreamPortOutputIndex{ 0u };
 	ClusterIndex nextExpectedAudioClusterIndex{ 0u };
 	MapIndex nextExpectedAudioMapIndex{ 0u };
+	ControlIndex nextExpectedControlIndex{ 0u };
 	ClockDomainIndex nextExpectedClockDomainIndex{ 0u };
 
 	bool getSanityCheckError{ false };
@@ -374,6 +375,9 @@ json dumpConfigurationTrees(std::map<ConfigurationIndex, ConfigurationTree> cons
 		// Dump Locales
 		config[keyName::NodeName_LocaleDescriptors] = dumpLocaleModels(c, configTree, dumpFlags);
 
+		// Dump Controls
+		config[keyName::NodeName_ControlDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::controlModels, c.nextExpectedControlIndex, "Control", 0, configTree.controlModels.size());
+
 		// Dump ClockDomains
 		config[keyName::NodeName_ClockDomainDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::clockDomainModels, c.nextExpectedClockDomainIndex, "ClockDomain", 0, configTree.clockDomainModels.size());
 
@@ -692,6 +696,9 @@ EntityTree::ConfigurationTrees readConfigurationTrees(json const& object, Flags 
 
 		// Read Locales
 		readLocaleModels(j.at(keyName::NodeName_LocaleDescriptors), flags, c, config, ignoreDynamicModel);
+
+		// Read Controls
+		readLeafModels(j, flags, keyName::NodeName_ControlDescriptors, c.nextExpectedControlIndex, config.controlModels, ignoreDynamicModel);
 
 		// Read ClockDomains
 		readLeafModels(j, flags, keyName::NodeName_ClockDomainDescriptors, c.nextExpectedClockDomainIndex, config.clockDomainModels, ignoreDynamicModel);

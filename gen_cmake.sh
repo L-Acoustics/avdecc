@@ -26,7 +26,7 @@ default_VisualGeneratorArch="Win32"
 default_VisualToolset="v142"
 default_VisualToolchain="x64"
 default_VisualArch="x86"
-default_signtoolOptions="/a /sm /q /fd sha256 /tr http://timestamp.sectigo.com"
+default_signtoolOptions="/a /sm /q /fd sha256 /tr http://timestamp.sectigo.com /td sha256"
 
 # 
 cmake_generator=""
@@ -37,7 +37,7 @@ arch=""
 toolset=""
 cmake_config=""
 outputFolderBasePath="_build"
-defaultOutputFolder="${outputFolderBasePath}_<platform>_<arch>_<toolset>_<config>"
+defaultOutputFolder="${outputFolderBasePath}_<platform>_<arch>_<generator>_<toolset>_<config>"
 declare -a supportedArchs=()
 if isMac; then
 	cmake_path="/Applications/CMake.app/Contents/bin/cmake"

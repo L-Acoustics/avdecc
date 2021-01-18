@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [onEntityRedundantInterfaceOnline/onEntityRedundantInterfaceOffline observer events](https://github.com/L-Acoustics/avdecc/issues/86)
+- [Support for Control Descriptors (only Linear Values are currently supported)](https://github.com/L-Acoustics/avdecc/issues/88)
+- [Support for Controller to Entity Identification](https://github.com/L-Acoustics/avdecc/issues/13)
+
+### Fixed
+- [Add/Remove StreaPort mappings validates protocol limits](https://github.com/L-Acoustics/avdecc/issues/84)
+- [Better handling of cable redundancy](https://github.com/L-Acoustics/avdecc/issues/85)
 
 ## [3.0.2] - 2020-09-14
 ### Added

@@ -68,6 +68,8 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityAddressAccessTypes.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityEnums.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModel.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelControlValues.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelControlValuesTraits.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTree.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTreeCommon.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTreeDynamic.hpp
@@ -83,9 +85,11 @@ set (PUBLIC_HEADER_FILES
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAdpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAecpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAemAecpdu.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAemPayloadSizes.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAvtpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolDefines.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolMvuAecpdu.hpp
+	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolMvuPayloadSizes.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolVuAecpdu.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolInterface.hpp
 	${LA_ROOT_DIR}/include/la/avdecc/internals/serialization.hpp
@@ -95,10 +99,9 @@ set (PUBLIC_HEADER_FILES
 
 # Low level Protocol
 set (HEADER_FILES_PROTOCOL
+	protocol/protocolAemControlValuesPayloads.hpp
 	protocol/protocolAemPayloads.hpp
-	protocol/protocolAemPayloadSizes.hpp
 	protocol/protocolMvuPayloads.hpp
-	protocol/protocolMvuPayloadSizes.hpp
 )
 
 set (SOURCE_FILES_PROTOCOL
@@ -154,6 +157,7 @@ set (SOURCE_FILES_ENTITY
 	entity/aggregateEntityImpl.cpp
 	entity/controllerCapabilityDelegate.cpp
 	entity/controllerEntityImpl.cpp
+	entity/entityModelControlValues.cpp
 )
 
 # Common files

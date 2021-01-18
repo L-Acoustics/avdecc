@@ -1203,7 +1203,7 @@ entity::model::StreamInfo make_stream_info(avdecc_entity_model_stream_info_cp co
 	auto i = entity::model::StreamInfo{};
 
 	i.streamInfoFlags.assign(info->stream_info_flags);
-	i.streamFormat = info->stream_format;
+	i.streamFormat = entity::model::StreamFormat{ info->stream_format };
 	i.streamID = UniqueIdentifier{ info->stream_id };
 	i.msrpAccumulatedLatency = info->msrp_accumulated_latency;
 	i.streamDestMac = make_macAddress(&info->stream_dest_mac);

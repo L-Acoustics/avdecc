@@ -34,6 +34,9 @@ TEST(MemoryBuffer, DefaultConstructor)
 	ASSERT_EQ(0u, b.capacity());
 	ASSERT_EQ(0u, b.size());
 	ASSERT_TRUE(b.empty());
+	ASSERT_FALSE(b.isValid());
+	ASSERT_TRUE(!b);
+	ASSERT_FALSE(!!b);
 }
 
 TEST(MemoryBuffer, StringConstructor)
@@ -43,6 +46,9 @@ TEST(MemoryBuffer, StringConstructor)
 	ASSERT_EQ(5u, b.capacity());
 	ASSERT_EQ(5u, b.size());
 	ASSERT_FALSE(b.empty());
+	ASSERT_TRUE(b.isValid());
+	ASSERT_FALSE(!b);
+	ASSERT_TRUE(!!b);
 	ASSERT_EQ(0, std::string(b.data(), b.data() + b.size()).compare(s));
 }
 
@@ -53,8 +59,13 @@ TEST(MemoryBuffer, VectorConstructor)
 	ASSERT_EQ(v.size() * sizeof(decltype(v)::value_type), b.capacity());
 	ASSERT_EQ(3u, b.size());
 	ASSERT_FALSE(b.empty());
+	ASSERT_TRUE(b.isValid());
+	ASSERT_FALSE(!b);
+	ASSERT_TRUE(!!b);
 	for (auto i = 0u; i < v.size(); ++i)
+	{
 		ASSERT_EQ(v[i], b.data()[i]);
+	}
 }
 
 TEST(MemoryBuffer, BufferConstructor)
@@ -64,6 +75,9 @@ TEST(MemoryBuffer, BufferConstructor)
 	ASSERT_EQ(5u, b.capacity());
 	ASSERT_EQ(5u, b.size());
 	ASSERT_FALSE(b.empty());
+	ASSERT_TRUE(b.isValid());
+	ASSERT_FALSE(!b);
+	ASSERT_TRUE(!!b);
 	ASSERT_EQ(0, std::string(b.data(), b.data() + b.size()).compare(s));
 }
 
@@ -75,6 +89,9 @@ TEST(MemoryBuffer, CopyConstructor)
 	ASSERT_EQ(5u, b1.capacity());
 	ASSERT_EQ(5u, b1.size());
 	ASSERT_FALSE(b1.empty());
+	ASSERT_TRUE(b1.isValid());
+	ASSERT_FALSE(!b1);
+	ASSERT_TRUE(!!b1);
 	ASSERT_EQ(0, std::string(b1.data(), b1.data() + b1.size()).compare(s));
 
 	la::avdecc::MemoryBuffer b2(b1);
@@ -82,6 +99,9 @@ TEST(MemoryBuffer, CopyConstructor)
 	ASSERT_NE(b2.data(), b1.data());
 	ASSERT_EQ(b2.size(), b1.size());
 	ASSERT_FALSE(b2.empty());
+	ASSERT_TRUE(b2.isValid());
+	ASSERT_FALSE(!b2);
+	ASSERT_TRUE(!!b2);
 	ASSERT_GE(b2.capacity(), b1.size());
 
 	b1.clear();
@@ -90,6 +110,9 @@ TEST(MemoryBuffer, CopyConstructor)
 	ASSERT_EQ(0u, b3.capacity());
 	ASSERT_EQ(0u, b3.size());
 	ASSERT_TRUE(b3.empty());
+	ASSERT_FALSE(b3.isValid());
+	ASSERT_TRUE(!b3);
+	ASSERT_FALSE(!!b3);
 }
 
 TEST(MemoryBuffer, CopyOperator)
@@ -100,6 +123,9 @@ TEST(MemoryBuffer, CopyOperator)
 	ASSERT_EQ(5u, b1.capacity());
 	ASSERT_EQ(5u, b1.size());
 	ASSERT_FALSE(b1.empty());
+	ASSERT_TRUE(b1.isValid());
+	ASSERT_FALSE(!b1);
+	ASSERT_TRUE(!!b1);
 	ASSERT_EQ(0, std::string(b1.data(), b1.data() + b1.size()).compare(s));
 
 	la::avdecc::MemoryBuffer b2;
@@ -107,11 +133,17 @@ TEST(MemoryBuffer, CopyOperator)
 	ASSERT_EQ(0u, b2.capacity());
 	ASSERT_EQ(0u, b2.size());
 	ASSERT_TRUE(b2.empty());
+	ASSERT_FALSE(b2.isValid());
+	ASSERT_TRUE(!b2);
+	ASSERT_FALSE(!!b2);
 	b2 = b1;
 	ASSERT_NE(nullptr, b2.data());
 	ASSERT_NE(b2.data(), b1.data());
 	ASSERT_EQ(b2.size(), b1.size());
 	ASSERT_FALSE(b2.empty());
+	ASSERT_TRUE(b2.isValid());
+	ASSERT_FALSE(!b2);
+	ASSERT_TRUE(!!b2);
 	ASSERT_GE(b2.capacity(), b1.size());
 
 	b1.clear();
@@ -120,11 +152,17 @@ TEST(MemoryBuffer, CopyOperator)
 	ASSERT_EQ(0u, b3.capacity());
 	ASSERT_EQ(0u, b3.size());
 	ASSERT_TRUE(b3.empty());
+	ASSERT_FALSE(b3.isValid());
+	ASSERT_TRUE(!b3);
+	ASSERT_FALSE(!!b3);
 	b3 = b1;
 	ASSERT_EQ(nullptr, b3.data());
 	ASSERT_EQ(0u, b3.capacity());
 	ASSERT_EQ(0u, b3.size());
 	ASSERT_TRUE(b3.empty());
+	ASSERT_FALSE(b3.isValid());
+	ASSERT_TRUE(!b3);
+	ASSERT_FALSE(!!b3);
 }
 
 TEST(MemoryBuffer, MoveOperator)
@@ -142,6 +180,9 @@ TEST(MemoryBuffer, MoveOperator)
 	ASSERT_EQ(0u, b2.capacity());
 	ASSERT_EQ(0u, b2.size());
 	ASSERT_TRUE(b2.empty());
+	ASSERT_FALSE(b2.isValid());
+	ASSERT_TRUE(!b2);
+	ASSERT_FALSE(!!b2);
 	auto tb2 = b1;
 	b2 = std::move(tb2);
 	ASSERT_NE(nullptr, b2.data());
@@ -153,6 +194,9 @@ TEST(MemoryBuffer, MoveOperator)
 	ASSERT_EQ(0u, tb2.capacity());
 	ASSERT_EQ(0u, tb2.size());
 	ASSERT_TRUE(tb2.empty());
+	ASSERT_FALSE(tb2.isValid());
+	ASSERT_TRUE(!tb2);
+	ASSERT_FALSE(!!tb2);
 	auto b2_raw = b2.data();
 	ASSERT_EQ('H', *b2_raw);
 	// Now move again to b2, which should invalidate (free) previous pointer
@@ -164,16 +208,25 @@ TEST(MemoryBuffer, MoveOperator)
 	ASSERT_EQ(0u, b3.capacity());
 	ASSERT_EQ(0u, b3.size());
 	ASSERT_TRUE(b3.empty());
+	ASSERT_FALSE(b3.isValid());
+	ASSERT_TRUE(!b3);
+	ASSERT_FALSE(!!b3);
 	auto tb3 = b1;
 	b3 = std::move(tb3);
 	ASSERT_EQ(nullptr, b3.data());
 	ASSERT_EQ(0u, b3.capacity());
 	ASSERT_EQ(0u, b3.size());
 	ASSERT_TRUE(b3.empty());
+	ASSERT_FALSE(b3.isValid());
+	ASSERT_TRUE(!b3);
+	ASSERT_FALSE(!!b3);
 	ASSERT_EQ(nullptr, tb3.data());
 	ASSERT_EQ(0u, tb3.capacity());
 	ASSERT_EQ(0u, tb3.size());
 	ASSERT_TRUE(tb3.empty());
+	ASSERT_FALSE(tb3.isValid());
+	ASSERT_TRUE(!tb3);
+	ASSERT_FALSE(!!tb3);
 }
 
 TEST(MemoryBuffer, MoveConstructor)

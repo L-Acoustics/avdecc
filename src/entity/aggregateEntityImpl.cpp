@@ -319,6 +319,14 @@ void AggregateEntityImpl::readAudioMapDescriptor(UniqueIdentifier const targetEn
 	}
 }
 
+void AggregateEntityImpl::readControlDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ControlIndex const controlIndex, ControlDescriptorHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).readControlDescriptor(targetEntityID, configurationIndex, controlIndex, handler);
+	}
+}
+
 void AggregateEntityImpl::readClockDomainDescriptor(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClockDomainIndex const clockDomainIndex, ClockDomainDescriptorHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
@@ -511,7 +519,7 @@ void AggregateEntityImpl::setAudioUnitName(UniqueIdentifier const targetEntityID
 	}
 }
 
-void AggregateEntityImpl::getAudioUnitName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const audioUnitIndex, GetAudioUnitNameHandler const& handler) const noexcept
+void AggregateEntityImpl::getAudioUnitName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AudioUnitIndex const audioUnitIndex, GetAudioUnitNameHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{
@@ -559,7 +567,7 @@ void AggregateEntityImpl::setAvbInterfaceName(UniqueIdentifier const targetEntit
 	}
 }
 
-void AggregateEntityImpl::getAvbInterfaceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const avbInterfaceIndex, GetAvbInterfaceNameHandler const& handler) const noexcept
+void AggregateEntityImpl::getAvbInterfaceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AvbInterfaceIndex const avbInterfaceIndex, GetAvbInterfaceNameHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{
@@ -575,7 +583,7 @@ void AggregateEntityImpl::setClockSourceName(UniqueIdentifier const targetEntity
 	}
 }
 
-void AggregateEntityImpl::getClockSourceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const clockSourceIndex, GetClockSourceNameHandler const& handler) const noexcept
+void AggregateEntityImpl::getClockSourceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClockSourceIndex const clockSourceIndex, GetClockSourceNameHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{
@@ -591,7 +599,7 @@ void AggregateEntityImpl::setMemoryObjectName(UniqueIdentifier const targetEntit
 	}
 }
 
-void AggregateEntityImpl::getMemoryObjectName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const memoryObjectIndex, GetMemoryObjectNameHandler const& handler) const noexcept
+void AggregateEntityImpl::getMemoryObjectName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::MemoryObjectIndex const memoryObjectIndex, GetMemoryObjectNameHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{
@@ -607,11 +615,27 @@ void AggregateEntityImpl::setAudioClusterName(UniqueIdentifier const targetEntit
 	}
 }
 
-void AggregateEntityImpl::getAudioClusterName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const audioClusterIndex, GetAudioClusterNameHandler const& handler) const noexcept
+void AggregateEntityImpl::getAudioClusterName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClusterIndex const audioClusterIndex, GetAudioClusterNameHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{
 		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getAudioClusterName(targetEntityID, configurationIndex, audioClusterIndex, handler);
+	}
+}
+
+void AggregateEntityImpl::setControlName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ControlIndex const controlIndex, model::AvdeccFixedString const& controlName, SetControlNameHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setControlName(targetEntityID, configurationIndex, controlIndex, controlName, handler);
+	}
+}
+
+void AggregateEntityImpl::getControlName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ControlIndex const controlIndex, GetControlNameHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getControlName(targetEntityID, configurationIndex, controlIndex, handler);
 	}
 }
 
@@ -623,7 +647,7 @@ void AggregateEntityImpl::setClockDomainName(UniqueIdentifier const targetEntity
 	}
 }
 
-void AggregateEntityImpl::getClockDomainName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::StreamIndex const clockDomainIndex, GetClockDomainNameHandler const& handler) const noexcept
+void AggregateEntityImpl::getClockDomainName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::ClockDomainIndex const clockDomainIndex, GetClockDomainNameHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{
@@ -692,6 +716,22 @@ void AggregateEntityImpl::getClockSource(UniqueIdentifier const targetEntityID, 
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{
 		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getClockSource(targetEntityID, clockDomainIndex, handler);
+	}
+}
+
+void AggregateEntityImpl::setControlValues(UniqueIdentifier const targetEntityID, model::ControlIndex const controlIndex, model::ControlValues const& controlValues, SetControlValuesHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setControlValues(targetEntityID, controlIndex, controlValues, handler);
+	}
+}
+
+void AggregateEntityImpl::getControlValues(UniqueIdentifier const targetEntityID, model::ControlIndex const controlIndex, GetControlValuesHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getControlValues(targetEntityID, controlIndex, handler);
 	}
 }
 

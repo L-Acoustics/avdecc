@@ -156,12 +156,12 @@ void DiscoveryStateMachine::handleAdpEntityAvailable(Adpdu const& adpdu) noexcep
 	}
 
 	auto const entityID = adpdu.getEntityID();
-	auto notify{ true };
-	auto update{ false };
-	auto simulateOffline{ false };
-	DiscoveredEntityInfo* discoveredInfo{ nullptr };
-	auto entity{ makeEntity(adpdu) };
-	auto const avbInterfaceIndex{ entity.getInterfacesInformation().begin()->first };
+	auto notify = true;
+	auto update = false;
+	auto simulateOffline = false;
+	auto* discoveredInfo = static_cast<DiscoveredEntityInfo*>(nullptr);
+	auto entity = makeEntity(adpdu);
+	auto const avbInterfaceIndex = entity.getInterfacesInformation().begin()->first;
 
 	// Lock
 	auto const lg = std::lock_guard{ *_manager };
@@ -327,7 +327,7 @@ DiscoveryStateMachine::EntityUpdateAction DiscoveryStateMachine::updateEntity(en
 	auto const newInterfaceInfoIt = newEntity.getInterfacesInformation().begin();
 	auto const avbInterfaceIndex = newInterfaceInfoIt->first;
 	auto& newInterfaceInfo = newInterfaceInfoIt->second;
-	auto result{ EntityUpdateAction::NoNotify };
+	auto result = EntityUpdateAction::NoNotify;
 
 	auto interfaceInfoIt = interfacesInfo.find(avbInterfaceIndex);
 	// This interface already exists, check fields that are not allowed to change from an ADPDU to another

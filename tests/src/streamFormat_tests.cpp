@@ -29,7 +29,7 @@
 
 TEST(StreamFormatInfo, NotAVTPFormat)
 {
-	auto format = la::avdecc::entity::model::StreamFormatInfo::create(0x8000000000000000);
+	auto format = la::avdecc::entity::model::StreamFormatInfo::create(la::avdecc::entity::model::StreamFormat{ 0x8000000000000000 });
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::Type::Unsupported, format->getType());
 }
 
