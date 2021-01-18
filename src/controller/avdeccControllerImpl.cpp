@@ -2608,57 +2608,83 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 		controlledEntity.buildEntityModelGraph();
 
 		// Validate Identify Control Descriptor
-		if (e.getEntityCapabilities().test(entity::EntityCapability::AemIdentifyControlIndexValid))
+		auto identifyControlIndex = std::optional<entity::model::ControlIndex>{ std::nullopt };
+		try
 		{
-			auto const identifyIndexOpt = e.getIdentifyControlIndex();
-			if (identifyIndexOpt)
+#pragma message("TODO: When JackDecriptors will be implemented, search for Identify in Jacks as well")
+			auto const& configurationNode = controlledEntity.getCurrentConfigurationNode();
+			if (e.getEntityCapabilities().test(entity::EntityCapability::AemIdentifyControlIndexValid))
 			{
-				auto const identifyIndex = *identifyIndexOpt;
-				try
+				auto const indexOpt = e.getIdentifyControlIndex();
+				if (indexOpt)
 				{
-					auto const& identifyControlNode = controlledEntity.getControlNode(controlledEntity.getCurrentConfigurationNode().descriptorIndex, identifyIndex);
-					auto const controlType = identifyControlNode.staticModel->controlType;
-					if (controlType == entity::model::ControlType::Identify)
+					auto const identifyIndex = *indexOpt;
+					if (auto const nodeIt = configurationNode.controls.find(identifyIndex); nodeIt != configurationNode.controls.end())
 					{
-						if (validateIdentifyControl(controlledEntity, identifyControlNode))
+						auto const& identifyControlNode = nodeIt->second;
+						auto const controlType = identifyControlNode.staticModel->controlType;
+						if (controlType == entity::model::ControlType::Identify)
 						{
-							// Register the Identify Control Index
-							controlledEntity.setIdentifyControlIndex(identifyIndex);
+							if (validateIdentifyControl(controlledEntity, identifyControlNode))
+							{
+								identifyControlIndex = indexOpt;
+							}
+							// Note: No need to remove compatibility flag or log a warning, the validateIdentifyControl method will do it
+						}
+						else
+						{
+							LOG_CONTROLLER_WARN(entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: ControlType should be IDENTIFY but is ", entity::model::controlTypeToString(controlType));
+							// Flag the entity as "Not fully IEEE1722.1 compliant"
+							removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 						}
 					}
 					else
 					{
-						LOG_CONTROLLER_WARN(entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: ControlType should be IDENTIFY but is ", entity::model::controlTypeToString(controlType));
+						LOG_CONTROLLER_WARN(entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: No such CONTROL at index {}", identifyIndex);
 						// Flag the entity as "Not fully IEEE1722.1 compliant"
 						removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 					}
 				}
-				catch (Exception const& e)
+				else
 				{
-					LOG_CONTROLLER_WARN(entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: {}", e.what());
+					LOG_CONTROLLER_WARN(entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: CONTROL index not defined in ADP");
 					// Flag the entity as "Not fully IEEE1722.1 compliant"
 					removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 				}
 			}
-		}
-		else
-		{
-			// Search for an Identify Control Descriptor
-			auto const& configurationNode = controlledEntity.getCurrentConfigurationNode();
-			for (auto const& [controlIndex, controlNode] : configurationNode.controls)
+
+			// No ControlIndex in ADP (or not valid)
+			if (!identifyControlIndex)
 			{
-				auto const controlType = controlNode.staticModel->controlType;
-				if (controlType == entity::model::ControlType::Identify)
+				// Search for an Identify Control Descriptor
+				for (auto const& [controlIndex, controlNode] : configurationNode.controls)
 				{
-					if (validateIdentifyControl(controlledEntity, controlNode))
+					auto const controlType = controlNode.staticModel->controlType;
+					if (controlType == entity::model::ControlType::Identify)
 					{
-						// Register the Identify Control Index
-						controlledEntity.setIdentifyControlIndex(controlIndex);
-						break;
+						if (validateIdentifyControl(controlledEntity, controlNode))
+						{
+							identifyControlIndex = controlIndex;
+							break;
+						}
 					}
 				}
 			}
-#pragma message("TODO: When JackDecriptors will be implemented, search for Identify in Jacks as well")
+
+			// Found a valid Identify ControlIndex
+			if (identifyControlIndex)
+			{
+				// Register the Identify Control Index
+				controlledEntity.setIdentifyControlIndex(*identifyControlIndex);
+			}
+		}
+		catch (ControlledEntity::Exception const&)
+		{
+			// Ignore exception
+		}
+		catch (...)
+		{
+			AVDECC_ASSERT(false, "Unhandled exception");
 		}
 	}
 
