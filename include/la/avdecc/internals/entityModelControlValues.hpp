@@ -21,6 +21,7 @@
 * @file entityModelControlValues.hpp
 * @author Christophe Calmejane
 * @brief Avdecc entity model control descriptor values.
+* @warning All structures have to be exported on unix-like systems (using LA_AVDECC_TYPE_INFO_EXPORT) so type_info is correctly visible outside the shared library (required for std::any_cast to work)
 */
 
 #pragma once
@@ -42,7 +43,7 @@ namespace model
 {
 /** Linear Values - Clause 7.3.5.2.1 */
 template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
-struct LinearValueStatic
+struct LA_AVDECC_TYPE_INFO_EXPORT LinearValueStatic
 {
 	SizeType minimum{ 0 };
 	SizeType maximum{ 0 };
@@ -53,13 +54,13 @@ struct LinearValueStatic
 };
 
 template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
-struct LinearValueDynamic
+struct LA_AVDECC_TYPE_INFO_EXPORT LinearValueDynamic
 {
 	SizeType currentValue{ 0 }; // The actual default value should be the one from LinearValueStatic
 };
 
 template<typename ValueType>
-class LinearValues final
+class LA_AVDECC_TYPE_INFO_EXPORT LinearValues final
 {
 public:
 	using control_value_details_traits = ControlValues::control_value_details_traits<LinearValues<ValueType>>;
