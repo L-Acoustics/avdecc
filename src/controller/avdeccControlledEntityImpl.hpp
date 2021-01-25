@@ -283,6 +283,28 @@ public:
 		return it->second.dynamicModel;
 	}
 
+	// Tree validators, to check if a specific part exists yet without throwing
+	bool hasAnyConfigurationTree() const noexcept;
+	bool hasConfigurationTree(entity::model::ConfigurationIndex const configurationIndex) const noexcept;
+	template<typename FieldPointer, typename DescriptorIndexType>
+	bool hasTreeModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer entity::model::ConfigurationTree::*Field) const noexcept
+	{
+		AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
+
+		if (gotFatalEnumerationError() || !_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+		{
+			return false;
+		}
+
+		if (auto const configIt = _entityTree.configurationTrees.find(configurationIndex); configIt != _entityTree.configurationTrees.end())
+		{
+			auto const& configTree = configIt->second;
+			return (configTree.*Field).find(index) != (configTree.*Field).end();
+		}
+
+		return false;
+	}
+
 	// Non-const Tree getters
 	entity::model::EntityTree& getEntityTree() noexcept;
 	entity::model::ConfigurationTree& getConfigurationTree(entity::model::ConfigurationIndex const configurationIndex) noexcept;

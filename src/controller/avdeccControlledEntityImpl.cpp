@@ -788,6 +788,22 @@ entity::model::ConfigurationNodeDynamicModel const& ControlledEntityImpl::getCon
 	return getConfigurationTree(configurationIndex).dynamicModel;
 }
 
+// Tree validators, to check if a specific part exists yet without throwing
+bool ControlledEntityImpl::hasAnyConfigurationTree() const noexcept
+{
+	return !_entityTree.configurationTrees.empty();
+}
+
+bool ControlledEntityImpl::hasConfigurationTree(entity::model::ConfigurationIndex const configurationIndex) const noexcept
+{
+	if (gotFatalEnumerationError() || !_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+	{
+		return false;
+	}
+
+	return _entityTree.configurationTrees.find(configurationIndex) != _entityTree.configurationTrees.end();
+}
+
 // Non-const Tree getters
 entity::model::EntityTree& ControlledEntityImpl::getEntityTree() noexcept
 {
@@ -1266,7 +1282,6 @@ void ControlledEntityImpl::setEntityDescriptor(entity::model::EntityDescriptor c
 	if (!AVDECC_ASSERT_WITH_RET(!_advertised, "EntityDescriptor should never be set twice on an entity. Only the dynamic part should be set again."))
 	{
 		// Wipe everything and set as enumeration error
-		_entityTree = {};
 		_entityTree = {};
 		_entityNode = {};
 		_gotFatalEnumerateError = true;
