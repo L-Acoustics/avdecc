@@ -305,131 +305,142 @@ std::string LA_AVDECC_CALL_CONVENTION audioClusterFormatToString(AudioClusterFor
 	}
 }
 
-std::string LA_AVDECC_CALL_CONVENTION controlTypeToString(ControlType const controlType) noexcept
+std::string LA_AVDECC_CALL_CONVENTION controlTypeToString(ControlType const& controlType) noexcept
+{
+	auto const vendorID = controlType.getVendorID();
+	if (vendorID == StandardControlTypeVendorID)
+	{
+		return standardControlTypeToString(static_cast<StandardControlType>(controlType.getValue()));
+	}
+
+	return "VENDOR: " + utils::toHexString<std::uint32_t, 6>(vendorID, true, true) + " VALUE: " + utils::toHexString<std::uint64_t, 10>(controlType.getVendorValue(), true, true);
+}
+
+std::string LA_AVDECC_CALL_CONVENTION standardControlTypeToString(StandardControlType const controlType) noexcept
 {
 	switch (controlType)
 	{
-		case ControlType::Enable:
+		case StandardControlType::Enable:
 			return "ENABLE";
-		case ControlType::Identify:
+		case StandardControlType::Identify:
 			return "IDENTIFY";
-		case ControlType::Mute:
+		case StandardControlType::Mute:
 			return "MUTE";
-		case ControlType::Invert:
+		case StandardControlType::Invert:
 			return "INVERT";
-		case ControlType::Gain:
+		case StandardControlType::Gain:
 			return "GAIN";
-		case ControlType::Attenuate:
+		case StandardControlType::Attenuate:
 			return "ATTENUATE";
-		case ControlType::Delay:
+		case StandardControlType::Delay:
 			return "DELAY";
-		case ControlType::SrcMode:
+		case StandardControlType::SrcMode:
 			return "SRC MODE";
-		case ControlType::Snapshot:
+		case StandardControlType::Snapshot:
 			return "SNAPSHOT";
-		case ControlType::PowLineFreq:
+		case StandardControlType::PowLineFreq:
 			return "POW LINE FREQ";
-		case ControlType::PowerStatus:
+		case StandardControlType::PowerStatus:
 			return "POWER STATUS";
-		case ControlType::FanStatus:
+		case StandardControlType::FanStatus:
 			return "FAN STATUS";
-		case ControlType::Temperature:
+		case StandardControlType::Temperature:
 			return "TEMPERATURE";
-		case ControlType::Altitude:
+		case StandardControlType::Altitude:
 			return "ALTITUDE";
-		case ControlType::AbsoluteHumidity:
+		case StandardControlType::AbsoluteHumidity:
 			return "ABSOLUTE HUMIDITY";
-		case ControlType::RelativeHumidity:
+		case StandardControlType::RelativeHumidity:
 			return "RELATIVE HUMIDITY";
-		case ControlType::Orientation:
+		case StandardControlType::Orientation:
 			return "ORIENTATION";
-		case ControlType::Velocity:
+		case StandardControlType::Velocity:
 			return "VELOCITY";
-		case ControlType::Acceleration:
+		case StandardControlType::Acceleration:
 			return "ACCELERATION";
-		case ControlType::FilterResponse:
+		case StandardControlType::FilterResponse:
 			return "FILTER RESPONSE";
-		case ControlType::Panpot:
+		case StandardControlType::Panpot:
 			return "PANPOT";
-		case ControlType::Phantom:
+		case StandardControlType::Phantom:
 			return "PHANTOM";
-		case ControlType::AudioScale:
+		case StandardControlType::AudioScale:
 			return "AUDIO SCALE";
-		case ControlType::AudioMeters:
+		case StandardControlType::AudioMeters:
 			return "AUDIO METERS";
-		case ControlType::AudioSpectrum:
+		case StandardControlType::AudioSpectrum:
 			return "AUDIO SPECTRUM";
-		case ControlType::ScanningMode:
+		case StandardControlType::ScanningMode:
 			return "SCANNING MODE";
-		case ControlType::AutoExpMode:
+		case StandardControlType::AutoExpMode:
 			return "AUTO EXP MODE";
-		case ControlType::AutoExpPrio:
+		case StandardControlType::AutoExpPrio:
 			return "AUTO EXP PRIO";
-		case ControlType::ExpTime:
+		case StandardControlType::ExpTime:
 			return "EXP TIME";
-		case ControlType::Focus:
+		case StandardControlType::Focus:
 			return "FOCUS";
-		case ControlType::FocusAuto:
+		case StandardControlType::FocusAuto:
 			return "FOCUS AUTO";
-		case ControlType::Iris:
+		case StandardControlType::Iris:
 			return "IRIS";
-		case ControlType::Zoom:
+		case StandardControlType::Zoom:
 			return "ZOOM";
-		case ControlType::Privacy:
+		case StandardControlType::Privacy:
 			return "PRIVACY";
-		case ControlType::Backlight:
+		case StandardControlType::Backlight:
 			return "BACKLIGHT";
-		case ControlType::Brightness:
+		case StandardControlType::Brightness:
 			return "BRIGHTNESS";
-		case ControlType::Contrast:
+		case StandardControlType::Contrast:
 			return "CONTRAST";
-		case ControlType::Hue:
+		case StandardControlType::Hue:
 			return "HUE";
-		case ControlType::Saturation:
+		case StandardControlType::Saturation:
 			return "SATURATION";
-		case ControlType::Sharpness:
+		case StandardControlType::Sharpness:
 			return "SHARPNESS";
-		case ControlType::Gamma:
+		case StandardControlType::Gamma:
 			return "GAMMA";
-		case ControlType::WhiteBalTemp:
+		case StandardControlType::WhiteBalTemp:
 			return "WHITE BAL TEMP";
-		case ControlType::WhiteBalTempAuto:
+		case StandardControlType::WhiteBalTempAuto:
 			return "WHITE BAL TEMP AUTO";
-		case ControlType::WhiteBalComp:
+		case StandardControlType::WhiteBalComp:
 			return "WHITE BAL COMP";
-		case ControlType::WhiteBalCompAuto:
+		case StandardControlType::WhiteBalCompAuto:
 			return "WHITE BAL COMP AUTO";
-		case ControlType::DigitalZoom:
+		case StandardControlType::DigitalZoom:
 			return "DIGITAL ZOOM";
-		case ControlType::MediaPlaylist:
+		case StandardControlType::MediaPlaylist:
 			return "MEDIA PLAYLIST";
-		case ControlType::MediaPlaylistName:
+		case StandardControlType::MediaPlaylistName:
 			return "MEDIA PLAYLIST NAME";
-		case ControlType::MediaDisk:
+		case StandardControlType::MediaDisk:
 			return "MEDIA DISK";
-		case ControlType::MediaDiskName:
+		case StandardControlType::MediaDiskName:
 			return "MEDIA DISK NAME";
-		case ControlType::MediaTrack:
+		case StandardControlType::MediaTrack:
 			return "MEDIA TRACK";
-		case ControlType::MediaTrackName:
+		case StandardControlType::MediaTrackName:
 			return "MEDIA TRACK NAME";
-		case ControlType::MediaSpeed:
+		case StandardControlType::MediaSpeed:
 			return "MEDIA SPEED";
-		case ControlType::MediaSamplePosition:
+		case StandardControlType::MediaSamplePosition:
 			return "MEDIA SAMPLE POSITION";
-		case ControlType::MediaPlaybackTransport:
+		case StandardControlType::MediaPlaybackTransport:
 			return "MEDIA PLAYBACK TRANSPORT";
-		case ControlType::MediaRecordTransport:
+		case StandardControlType::MediaRecordTransport:
 			return "MEDIA RECORD TRANSPORT";
-		case ControlType::Frequency:
+		case StandardControlType::Frequency:
 			return "FREQUENCY";
-		case ControlType::Modulation:
+		case StandardControlType::Modulation:
 			return "MODULATION";
-		case ControlType::Polarization:
+		case StandardControlType::Polarization:
 			return "POLARIZATION";
 		default:
 			AVDECC_ASSERT(false, "Not handled!");
-			return "UNKNOWN";
+			return "UNKNOWN STANDARD CONTROL TYPE";
 	}
 }
 

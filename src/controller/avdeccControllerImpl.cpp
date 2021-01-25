@@ -933,7 +933,7 @@ bool ControllerImpl::updateControlValues(ControlledEntityImpl& controlledEntity,
 			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onControlValuesChanged, this, &controlledEntity, controlIndex, controlValues);
 
 			// Check for Identify Control
-			if (controlStaticModel.controlType == entity::model::ControlType::Identify && controlValueType == entity::model::ControlValueType::Type::ControlLinearUInt8 && controlValueSize == 1)
+			if (entity::model::StandardControlType::Identify == controlStaticModel.controlType.getValue() && controlValueType == entity::model::ControlValueType::Type::ControlLinearUInt8 && controlValueSize == 1)
 			{
 				auto const identifyOpt = getIdentifyControlValue(controlValues);
 				if (identifyOpt)
@@ -2508,7 +2508,7 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const entity) n
 
 bool ControllerImpl::validateIdentifyControl(ControlledEntityImpl& controlledEntity, model::ControlNode const& identifyControlNode) const noexcept
 {
-	AVDECC_ASSERT(identifyControlNode.staticModel->controlType == entity::model::ControlType::Identify, "validateIdentifyControl should only be called on an IDENTIFY Control Descriptor Type");
+	AVDECC_ASSERT(entity::model::StandardControlType::Identify == identifyControlNode.staticModel->controlType.getValue(), "validateIdentifyControl should only be called on an IDENTIFY Control Descriptor Type");
 	auto const& e = controlledEntity.getEntity();
 	auto const entityID = e.getEntityID();
 	auto const controlIndex = identifyControlNode.descriptorIndex;
@@ -2623,7 +2623,7 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 					{
 						auto const& identifyControlNode = nodeIt->second;
 						auto const controlType = identifyControlNode.staticModel->controlType;
-						if (controlType == entity::model::ControlType::Identify)
+						if (entity::model::StandardControlType::Identify == controlType.getValue())
 						{
 							if (validateIdentifyControl(controlledEntity, identifyControlNode))
 							{
@@ -2653,14 +2653,15 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 				}
 			}
 
-			// No ControlIndex in ADP (or not valid)
-			if (!identifyControlIndex)
+			// Validate Controls while searching for a valid Identify Control Descriptor
+			for (auto const& [controlIndex, controlNode] : configurationNode.controls)
 			{
-				// Search for an Identify Control Descriptor
-				for (auto const& [controlIndex, controlNode] : configurationNode.controls)
+				auto const controlType = controlNode.staticModel->controlType;
+
+				// No ControlIndex in ADP (or not valid)
+				if (!identifyControlIndex)
 				{
-					auto const controlType = controlNode.staticModel->controlType;
-					if (controlType == entity::model::ControlType::Identify)
+					if (entity::model::StandardControlType::Identify == controlType.getValue())
 					{
 						if (validateIdentifyControl(controlledEntity, controlNode))
 						{
@@ -2668,6 +2669,14 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 							break;
 						}
 					}
+				}
+
+				// Validate ControlType
+				if (!controlType.isValid())
+				{
+					LOG_CONTROLLER_WARN(entityID, "control_type for CONTROL descriptor at index {} is not a valid EUI-64: {}", controlIndex, utils::toHexString(controlType));
+					// Flag the entity as "Not fully IEEE1722.1 compliant"
+					removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 				}
 			}
 
@@ -2680,7 +2689,9 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 		}
 		catch (ControlledEntity::Exception const&)
 		{
-			// Ignore exception
+			LOG_CONTROLLER_WARN(entityID, "Invalid current CONFIGURATION descriptor");
+			// Flag the entity as "Not fully IEEE1722.1 compliant"
+			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 		}
 		catch (...)
 		{

@@ -780,6 +780,10 @@ EntityTree LA_AVDECC_CALL_CONVENTION createEntityTree(json const& object, Flags 
 	{
 		throw; // Rethrow, this is already the correct exception type
 	}
+	catch (std::invalid_argument const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InvalidValue, e.what() };
+	}
 	catch (...)
 	{
 		// Check that only DeserializationException exception type propagate outside the shared library, otherwise it will be sliced and the caller won't be able to catch it properly (on macOS)

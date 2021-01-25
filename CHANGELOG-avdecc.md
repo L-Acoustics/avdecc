@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Renamed la::avdecc::entity::model::ControlType to la::avdecc::entity::model::StandardControlType
+- la::avdecc::entity::model::ControlType is now an EUI-64
+
 ### Fixed
 - [Correctly exporting all ControlValues structures](https://github.com/L-Acoustics/avdecc/issues/90)
 
