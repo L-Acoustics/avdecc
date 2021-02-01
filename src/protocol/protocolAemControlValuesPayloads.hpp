@@ -159,6 +159,60 @@ struct control_values_payload_traits<entity::model::ControlValueType::Type::Cont
 };
 
 
+/** UTF-8 String Value - Clause 7.3.5.2.4 */
+template<>
+struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlUtf8>
+{
+	static std::tuple<entity::model::ControlValues, entity::model::ControlValues> unpackFullControlValues(Deserializer& des, std::uint16_t const numberOfValues)
+	{
+		return std::make_tuple(entity::model::ControlValues{ entity::model::UTF8StringValueStatic{} }, unpackDynamicControlValues(des, numberOfValues));
+	}
+
+	static entity::model::ControlValues unpackDynamicControlValues(Deserializer& des, std::uint16_t const numberOfValues)
+	{
+		if (numberOfValues != 1)
+		{
+			throw std::invalid_argument("CONTROL_UTF8 should only have 1 value");
+		}
+		auto valuesDynamic = entity::model::UTF8StringValueDynamic{};
+
+		auto const length = des.remaining();
+		if (length == 0u)
+		{
+			throw std::invalid_argument("CONTROL_UTF8 should have at least one byte (NULL terminated)");
+		}
+
+		if (length >= valuesDynamic.currentValue.size())
+		{
+			throw std::invalid_argument("CONTROL_UTF8 should not exceed " + std::to_string(valuesDynamic.currentValue.size()) + " bytes");
+		}
+		des.unpackBuffer(valuesDynamic.currentValue.data(), length);
+
+		// Validate NULL terminated string
+		if (valuesDynamic.currentValue[length - 1] != decltype(valuesDynamic)::value_type{ 0u })
+		{
+			LOG_AEM_PAYLOAD_WARN("Unpack CONTROL value warning: UTF-8 string is not NULL terminated (Clause 7.3.5.2.4)");
+			valuesDynamic.currentValue[length - 1] = decltype(valuesDynamic)::value_type{ 0u };
+		}
+
+		return entity::model::ControlValues{ std::move(valuesDynamic) };
+	}
+
+	static void packDynamicControlValues(Serializer<AemAecpdu::MaximumSendPayloadBufferLength>& /*ser*/, entity::model::ControlValues const& values)
+	{
+		if (values.size() != 1)
+		{
+			throw std::invalid_argument("CONTROL_UTF8 should only have 1 value");
+		}
+
+		auto const linearValues = values.getValues<entity::model::UTF8StringValueDynamic>(); // We have to store the copy or it will go out of scope if using it directly in the range-based loop
+		//for (auto const& val : linearValues.getValues())
+		//{
+		//	ser << val.currentValue;
+		//}
+	}
+};
+
 } // namespace aemPayload
 } // namespace protocol
 } // namespace avdecc

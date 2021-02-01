@@ -147,6 +147,22 @@ struct ControlValues::control_value_details_traits<LinearValues<LinearValueDynam
 	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlLinearDouble;
 };
 
+/** UTF-8 String Value - Clause 7.3.5.2.4 */
+template<>
+struct ControlValues::control_value_details_traits<UTF8StringValueStatic>
+{
+	static constexpr bool is_value_details = true;
+	static constexpr bool is_dynamic = false;
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlUtf8;
+};
+template<>
+struct ControlValues::control_value_details_traits<UTF8StringValueDynamic>
+{
+	static constexpr bool is_value_details = true;
+	static constexpr bool is_dynamic = true;
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlUtf8;
+};
+
 } // namespace model
 } // namespace entity
 } // namespace avdecc

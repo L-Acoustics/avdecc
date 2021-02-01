@@ -121,6 +121,28 @@ private:
 	Values _values{};
 };
 
+/** UTF-8 String Value - Clause 7.3.5.2.4 */
+struct LA_AVDECC_TYPE_INFO_EXPORT UTF8StringValueStatic
+{
+	static constexpr size_t MaxLength = 406;
+
+	std::uint16_t countValues() const noexcept
+	{
+		return 1;
+	}
+};
+struct LA_AVDECC_TYPE_INFO_EXPORT UTF8StringValueDynamic
+{
+	using value_type = std::uint8_t;
+	using Values = std::array<std::uint8_t, UTF8StringValueStatic::MaxLength>;
+	Values currentValue{};
+
+	std::uint16_t countValues() const noexcept
+	{
+		return 1;
+	}
+};
+
 LA_AVDECC_API std::optional<ControlValues> LA_AVDECC_CALL_CONVENTION unpackDynamicControlValues(MemoryBuffer const& packedControlValues, ControlValueType::Type const valueType, std::uint16_t const numberOfValues) noexcept;
 
 } // namespace model
