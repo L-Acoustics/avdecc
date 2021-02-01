@@ -2873,6 +2873,12 @@ ControllerImpl::FailureAction ControllerImpl::getFailureActionForMvuCommandStatu
 			return FailureAction::NotSupported;
 		}
 
+		// Cases the library do not implement
+		case entity::ControllerEntity::MvuCommandStatus::PartialImplementation:
+		{
+			return FailureAction::WarningContinue;
+		}
+
 		// Cases that are errors and we want to discard this entity
 		case entity::ControllerEntity::MvuCommandStatus::UnknownEntity:
 			[[fallthrough]];
@@ -2937,6 +2943,12 @@ ControllerImpl::FailureAction ControllerImpl::getFailureActionForAemCommandStatu
 		case entity::ControllerEntity::AemCommandStatus::NotSupported:
 		{
 			return FailureAction::NotSupported;
+		}
+
+		// Cases the library do not implement
+		case entity::ControllerEntity::AemCommandStatus::PartialImplementation:
+		{
+			return FailureAction::WarningContinue;
 		}
 
 		// Cases that are errors and we want to discard this entity

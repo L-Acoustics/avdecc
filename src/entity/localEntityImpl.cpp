@@ -66,6 +66,10 @@ std::string LA_AVDECC_CALL_CONVENTION LocalEntity::statusToString(AemCommandStat
 		case AemCommandStatus::StreamIsRunning:
 			return "The Stream is currently streaming and the command is one which cannot be executed on an Active Stream.";
 		// Library Error Codes
+		case AemCommandStatus::PartialImplementation:
+			return "The library does not fully implement this command, please report this.";
+		case AemCommandStatus::Busy:
+			return "The library is busy, try again later.";
 		case AemCommandStatus::NetworkError:
 			return "Network error.";
 		case AemCommandStatus::ProtocolError:
@@ -104,6 +108,10 @@ std::string LA_AVDECC_CALL_CONVENTION LocalEntity::statusToString(AaCommandStatu
 		case AaCommandStatus::Unsupported:
 			return "A requested action was unsupported. Typically used when an unknown EXECUTE was encountered or if EXECUTE is not supported.";
 		// Library Error Codes
+		case AaCommandStatus::PartialImplementation:
+			return "The library does not fully implement this command, please report this.";
+		case AaCommandStatus::Busy:
+			return "The library is busy, try again later.";
 		case AaCommandStatus::Aborted:
 			return "Operation aborted.";
 		case AaCommandStatus::NetworkError:
@@ -134,6 +142,10 @@ std::string LA_AVDECC_CALL_CONVENTION LocalEntity::statusToString(MvuCommandStat
 		case MvuCommandStatus::BadArguments:
 			return "One or more of the values in the fields of the frame were deemed to be bad by the AVDECC Entity (unsupported, incorrect combination, etc.).";
 		// Library Error Codes
+		case MvuCommandStatus::PartialImplementation:
+			return "The library does not fully implement this command, please report this.";
+		case MvuCommandStatus::Busy:
+			return "The library is busy, try again later.";
 		case MvuCommandStatus::NetworkError:
 			return "Network error.";
 		case MvuCommandStatus::ProtocolError:

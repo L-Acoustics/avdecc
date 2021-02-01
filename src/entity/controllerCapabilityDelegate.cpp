@@ -3489,7 +3489,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		catch ([[maybe_unused]] protocol::aemPayload::UnsupportedValueException const& e)
 		{
 			LOG_CONTROLLER_ENTITY_ERROR(aem.getTargetEntityID(), "Failed to process {} AEM response: {}", std::string(aem.getCommandType()), e.what());
-			utils::invokeProtectedHandler(onErrorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+			utils::invokeProtectedHandler(onErrorCallback, LocalEntity::AemCommandStatus::PartialImplementation);
 			return;
 		}
 		catch ([[maybe_unused]] std::exception const& e) // Mainly unpacking errors

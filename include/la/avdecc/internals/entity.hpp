@@ -335,7 +335,8 @@ public:
 		NotSupported = 11, /**< The command is implemented but the target of the command is not supported. For example trying to set the value of a read - only Control. */
 		StreamIsRunning = 12, /**< The Stream is currently streaming and the command is one which cannot be executed on an Active Stream. */
 		// Library Error Codes
-		Busy = 93, /**< The library is busy, try again later */
+		PartialImplementation = 992, /**< The library does not fully implement this command, please report this */
+		Busy = 993, /**< The library is busy, try again later */
 		NetworkError = 995, /**< Network error */
 		ProtocolError = 996, /**< Failed to unpack the message due to an error in the protocol */
 		TimedOut = 997, /**< The command timed out */
@@ -356,7 +357,8 @@ public:
 		DataInvalid = 6, /**< The data for writing is invalid .*/
 		Unsupported = 7, /**< A requested action was unsupported. Typically used when an unknown EXECUTE was encountered or if EXECUTE is not supported. */
 		// Library Error Codes
-		Busy = 93, /**< The library is busy, try again later */
+		PartialImplementation = 992, /**< The library does not fully implement this command, please report this */
+		Busy = 993, /**< The library is busy, try again later */
 		Aborted = 994, /**< Request aborted */
 		NetworkError = 995, /**< Network error */
 		ProtocolError = 996, /**< Failed to unpack the message due to an error in the protocol */
@@ -373,6 +375,8 @@ public:
 		NotImplemented = 1,
 		BadArguments = 2,
 		// Library Error Codes
+		PartialImplementation = 992, /**< The library does not fully implement this command, please report this */
+		Busy = 993, /**< The library is busy, try again later */
 		NetworkError = 995,
 		ProtocolError = 996,
 		TimedOut = 997,
