@@ -1299,7 +1299,7 @@ public:
 		: _isValid{ true }
 		, _type{ Traits::control_value_type }
 		, _areDynamic{ Traits::is_dynamic }
-		, _countValues{ values.size() }
+		, _countValues{ values.countValues() }
 		, _values{ values }
 	{
 		static_assert(Traits::is_value_details, "ControlValues::ControlValues, control_value_details_traits::is_value_details trait not defined for requested ValueDetailsType. Did you include entityModelControlValuesTraits.hpp?");
@@ -1310,7 +1310,7 @@ public:
 		: _isValid{ true }
 		, _type{ Traits::control_value_type }
 		, _areDynamic{ Traits::is_dynamic }
-		, _countValues{ values.size() } // Careful with order here, we are moving 'values'
+		, _countValues{ values.countValues() } // Careful with order here, we are moving 'values'
 		, _values{ std::move(values) }
 	{
 		static_assert(Traits::is_value_details, "ControlValues::ControlValues, control_value_details_traits::is_value_details trait not defined for requested ValueDetailsType. Did you include entityModelControlValuesTraits.hpp?");

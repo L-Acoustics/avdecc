@@ -32,6 +32,7 @@
 #include "exports.hpp"
 
 #include <optional>
+#include <array>
 
 namespace la
 {
@@ -100,7 +101,7 @@ public:
 		return _values;
 	}
 
-	std::uint16_t size() const noexcept
+	std::uint16_t countValues() const noexcept
 	{
 		return static_cast<std::uint16_t>(_values.size());
 	}

@@ -40,6 +40,7 @@ namespace protocol
 {
 namespace aemPayload
 {
+/** Exception when receiving a payload that has an invalid size */
 class IncorrectPayloadSizeException final : public Exception
 {
 public:
@@ -49,6 +50,7 @@ public:
 	}
 };
 
+/** Exception when receiving a payload the library does not handle yet */
 class UnsupportedValueException final : public Exception
 {
 public:

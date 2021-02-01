@@ -63,9 +63,9 @@ struct BaseValuesPayloadTraits
 {
 	using StaticTraits = entity::model::ControlValues::control_value_details_traits<StaticValueType>;
 	using DynamicTraits = entity::model::ControlValues::control_value_details_traits<DynamicValueType>;
-	static_assert(!StaticTraits::is_dynamic, "LinearValuesPayloadTraits, StaticValueType is not a static type");
-	static_assert(DynamicTraits::is_dynamic, "LinearValuesPayloadTraits, DynamicValueType is not a dynamic type");
-	static_assert(std::is_same_v<typename StaticTraits::size_type, typename DynamicTraits::size_type>, "LinearValuesPayloadTraits, StaticValueType and DynamicValueType syze_type does not match");
+	static_assert(!StaticTraits::is_dynamic, "StaticValueType is not a static type");
+	static_assert(DynamicTraits::is_dynamic, "DynamicValueType is not a dynamic type");
+	static_assert(std::is_same_v<typename StaticTraits::size_type, typename DynamicTraits::size_type>, "StaticValueType and DynamicValueType syze_type does not match");
 };
 
 /** Linear Values - Clause 7.3.5.2.1 */
@@ -109,7 +109,7 @@ struct LinearValuesPayloadTraits : BaseValuesPayloadTraits<StaticValueType, Dyna
 
 	static void packDynamicControlValues(Serializer<AemAecpdu::MaximumSendPayloadBufferLength>& ser, entity::model::ControlValues const& values)
 	{
-		auto const linearValues = values.getValues<DynamicValueType>(); // We have to store the copie or it will go out of scope if using it directly in the range-based loop
+		auto const linearValues = values.getValues<DynamicValueType>(); // We have to store the copy or it will go out of scope if using it directly in the range-based loop
 		for (auto const& val : linearValues.getValues())
 		{
 			ser << val.currentValue;

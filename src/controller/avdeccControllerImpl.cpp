@@ -1416,7 +1416,7 @@ std::optional<bool> ControllerImpl::getIdentifyControlValue(entity::model::Contr
 	{
 		if (values.size() == 1)
 		{
-			auto const dynamicValues = values.getValues<entity::model::LinearValues<entity::model::LinearValueDynamic<std::uint8_t>>>(); // We have to store the copie or it will go out of scope if using it directly in the range-based loop
+			auto const dynamicValues = values.getValues<entity::model::LinearValues<entity::model::LinearValueDynamic<std::uint8_t>>>(); // We have to store the copy or it will go out of scope if using it directly in the range-based loop
 			auto const& value = dynamicValues.getValues()[0];
 			if (value.currentValue == 0)
 			{
@@ -2519,13 +2519,13 @@ bool ControllerImpl::validateIdentifyControl(ControlledEntityImpl& controlledEnt
 		if (controlValueType == entity::model::ControlValueType::Type::ControlLinearUInt8)
 		{
 			auto const staticValues = identifyControlNode.staticModel->values.getValues<entity::model::LinearValues<entity::model::LinearValueStatic<std::uint8_t>>>();
-			if (staticValues.size() == 1)
+			if (staticValues.countValues() == 1)
 			{
 				auto const& staticValue = staticValues.getValues()[0];
 				if (staticValue.minimum == 0 && staticValue.maximum == 255 && staticValue.step == 255 && staticValue.unit.getMultiplier() == 0 && staticValue.unit.getUnit() == entity::model::ControlValueUnit::Unit::Unitless)
 				{
 					auto const dynamicValues = identifyControlNode.dynamicModel->values.getValues<entity::model::LinearValues<entity::model::LinearValueDynamic<std::uint8_t>>>();
-					if (dynamicValues.size() == 1)
+					if (dynamicValues.countValues() == 1)
 					{
 						auto const& dynamicValue = dynamicValues.getValues()[0];
 						if (dynamicValue.currentValue == 0 || dynamicValue.currentValue == 255)
@@ -2550,7 +2550,7 @@ bool ControllerImpl::validateIdentifyControl(ControlledEntityImpl& controlledEnt
 					}
 					else
 					{
-						LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: Should only contain one value but has {}", controlIndex, dynamicValues.size());
+						LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: Should only contain one value but has {}", controlIndex, dynamicValues.countValues());
 						// Flag the entity as "Not fully IEEE1722.1 compliant"
 						removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 					}
@@ -2564,7 +2564,7 @@ bool ControllerImpl::validateIdentifyControl(ControlledEntityImpl& controlledEnt
 			}
 			else
 			{
-				LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: Should only contain one value but has {}", controlIndex, staticValues.size());
+				LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: Should only contain one value but has {}", controlIndex, staticValues.countValues());
 				// Flag the entity as "Not fully IEEE1722.1 compliant"
 				removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			}
