@@ -37,6 +37,7 @@
 
 #include <optional>
 #include <chrono>
+#include <unordered_map>
 #include <stdexcept> // invalid_argument
 
 using json = nlohmann::json;

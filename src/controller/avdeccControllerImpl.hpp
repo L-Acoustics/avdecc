@@ -63,7 +63,9 @@ public:
 
 	void unregisterExclusiveAccessToken(la::avdecc::UniqueIdentifier const entityID, ExclusiveAccessTokenImpl* const token) const noexcept;
 
+#ifndef la_avdecc_controller_cxx_STATICS /* Keep everything public when compiling the static library so unit tests can access all methods */
 private:
+#endif // !la_avdecc_controller_cxx_STATICS
 	virtual ~ControllerImpl() override;
 
 	/* ************************************************************ */
@@ -85,7 +87,6 @@ private:
 	virtual void disableFullStaticEntityModelEnumeration() noexcept override;
 
 	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadEntityModelFile(std::string const& filePath) noexcept override;
-
 
 	/* Enumeration and Control Protocol (AECP) AEM */
 	virtual void acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, AcquireEntityHandler const& handler) const noexcept override;
@@ -581,6 +582,7 @@ private:
 	void getDescriptorDynamicInfo(ControlledEntityImpl* const entity) noexcept;
 	void checkEnumerationSteps(ControlledEntityImpl* const entity) noexcept;
 	bool validateIdentifyControl(ControlledEntityImpl& controlledEntity, model::ControlNode const& identifyControlNode) const noexcept;
+	bool validateControlValues(UniqueIdentifier const entityID, entity::model::ControlIndex const controlIndex, entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) const noexcept;
 	void onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept;
 	void onPreUnadvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept;
 	FailureAction getFailureActionForMvuCommandStatus(entity::ControllerEntity::MvuCommandStatus const status) const noexcept;

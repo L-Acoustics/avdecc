@@ -925,6 +925,13 @@ bool ControllerImpl::updateControlValues(ControlledEntityImpl& controlledEntity,
 	if (controlValuesOpt)
 	{
 		auto const& controlValues = *controlValuesOpt;
+
+		// Validate ControlValues
+		if (!validateControlValues(controlledEntity.getEntity().getEntityID(), controlIndex, controlStaticModel.values, controlValues))
+		{
+			// Flag the entity as "Not fully IEEE1722.1 compliant"
+			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+		}
 		controlledEntity.setControlValues(controlIndex, controlValues);
 
 		// Entity was advertised to the user, notify observers
@@ -2592,6 +2599,46 @@ bool ControllerImpl::validateIdentifyControl(ControlledEntityImpl& controlledEnt
 	return false;
 }
 
+bool ControllerImpl::validateControlValues(UniqueIdentifier const entityID, entity::model::ControlIndex const controlIndex, entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) const noexcept
+{
+	if (!staticValues)
+	{
+		LOG_CONTROLLER_WARN(entityID, "StaticValues for ControlDescriptor at Index {} are not initialized", controlIndex);
+		return false;
+	}
+
+	if (staticValues.areDynamicValues())
+	{
+		LOG_CONTROLLER_WARN(entityID, "StaticValues for ControlDescriptor at Index {} are dynamic instead of static", controlIndex);
+		return false;
+	}
+
+	if (!dynamicValues)
+	{
+		LOG_CONTROLLER_WARN(entityID, "DynamicValues for ControlDescriptor at Index {} are not initialized", controlIndex);
+		return false;
+	}
+
+	if (!dynamicValues.areDynamicValues())
+	{
+		LOG_CONTROLLER_WARN(entityID, "DynamicValues for ControlDescriptor at Index {} are static instead of dynamic", controlIndex);
+		return false;
+	}
+
+	auto const resultOpt = entity::model::validateControlValues(staticValues, dynamicValues);
+
+	// No error during validation
+	if (!resultOpt)
+	{
+		return true;
+	}
+
+	auto const& errMessage = *resultOpt;
+
+	LOG_CONTROLLER_WARN(entityID, "DynamicValues for ControlDescriptor at Index {} are not a valid: {}", controlIndex, errMessage);
+	return false;
+}
+
 void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept
 {
 	auto const& e = controlledEntity.getEntity();
@@ -2675,6 +2722,13 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 				if (!controlType.isValid())
 				{
 					LOG_CONTROLLER_WARN(entityID, "control_type for CONTROL descriptor at index {} is not a valid EUI-64: {}", controlIndex, utils::toHexString(controlType));
+					// Flag the entity as "Not fully IEEE1722.1 compliant"
+					removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+				}
+
+				// Validate ControlValues
+				if (!validateControlValues(entityID, controlIndex, controlNode.staticModel->values, controlNode.dynamicModel->values))
+				{
 					// Flag the entity as "Not fully IEEE1722.1 compliant"
 					removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 				}

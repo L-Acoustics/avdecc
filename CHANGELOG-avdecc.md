@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Validating Control dynamic values (based on static values)
+
 ### Changed
 - Renamed la::avdecc::entity::model::ControlType to la::avdecc::entity::model::StandardControlType
 - la::avdecc::entity::model::ControlType is now an EUI-64

@@ -144,6 +144,7 @@ struct LA_AVDECC_TYPE_INFO_EXPORT UTF8StringValueDynamic
 };
 
 LA_AVDECC_API std::optional<ControlValues> LA_AVDECC_CALL_CONVENTION unpackDynamicControlValues(MemoryBuffer const& packedControlValues, ControlValueType::Type const valueType, std::uint16_t const numberOfValues) noexcept;
+LA_AVDECC_API std::optional<std::string> LA_AVDECC_CALL_CONVENTION validateControlValues(ControlValues const& staticValues, ControlValues const& dynamicValues) noexcept;
 
 } // namespace model
 } // namespace entity

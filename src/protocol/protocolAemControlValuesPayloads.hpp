@@ -30,6 +30,8 @@
 #include "la/avdecc/internals/serialization.hpp"
 
 #include <tuple>
+#include <optional>
+#include <string>
 
 namespace la
 {
@@ -54,6 +56,10 @@ struct control_values_payload_traits
 	static void packDynamicControlValues(Serializer<AemAecpdu::MaximumSendPayloadBufferLength>& /*ser*/, entity::model::ControlValues const& /*values*/)
 	{
 		throw std::invalid_argument("No template specialization found for this ControlValueType");
+	}
+	static std::optional<std::string> validateControlValues(entity::model::ControlValues const& /*staticValues*/, entity::model::ControlValues const& /*dynamicValues*/) noexcept
+	{
+		return "No template specialization found for this ControlValueType";
 	}
 	static constexpr entity::model::ControlValueType::Type control_value_type = Type;
 };
@@ -114,6 +120,46 @@ struct LinearValuesPayloadTraits : BaseValuesPayloadTraits<StaticValueType, Dyna
 		{
 			ser << val.currentValue;
 		}
+	}
+
+	static std::optional<std::string> validateControlValues(entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) noexcept
+	{
+		using value_size = typename DynamicValueType::control_value_details_traits::size_type;
+
+		auto pos = decltype(std::declval<decltype(staticValues)>().size()){ 0u };
+
+		auto const staticLinearValues = staticValues.getValues<StaticValueType>(); // We have to store the copy or it will go out of scope if using it directly in the range-based loop
+		auto const dynamicLinearValues = dynamicValues.getValues<DynamicValueType>(); // We have to store the copy or it will go out of scope
+
+		for (auto const& staticValue : staticLinearValues.getValues())
+		{
+			auto const& dynamicValue = dynamicLinearValues.getValues()[pos];
+
+			// Check lower bound
+			if (dynamicValue.currentValue < staticValue.minimum)
+			{
+				return "DynamicValue " + std::to_string(pos) + " is out of bounds (lower than minimum value of " + std::to_string(utils::forceNumeric(staticValue.minimum)) + "): " + std::to_string(utils::forceNumeric(dynamicValue.currentValue));
+			}
+			// Check upper bound
+			if (dynamicValue.currentValue > staticValue.maximum)
+			{
+				return "DynamicValue " + std::to_string(pos) + " is out of bounds (greater than maximum value of " + std::to_string(utils::forceNumeric(staticValue.maximum)) + "): " + std::to_string(utils::forceNumeric(dynamicValue.currentValue));
+			}
+			// Check step
+			if (staticValue.step != value_size{ 0 })
+			{
+				if constexpr (std::is_integral_v<value_size>)
+				{
+					auto const adjustedValue = static_cast<value_size>(dynamicValue.currentValue - staticValue.minimum);
+					if ((adjustedValue % staticValue.step) != 0)
+					{
+						return "DynamicValue " + std::to_string(pos) + " is not a multiple of step: " + std::to_string(utils::forceNumeric(dynamicValue.currentValue));
+					}
+				}
+			}
+			++pos;
+		}
+		return std::nullopt;
 	}
 };
 
@@ -210,6 +256,12 @@ struct control_values_payload_traits<entity::model::ControlValueType::Type::Cont
 		//{
 		//	ser << val.currentValue;
 		//}
+		throw std::invalid_argument("TODO: packDynamicControlValues for UTF8 String");
+	}
+
+	static std::optional<std::string> validateControlValues(entity::model::ControlValues const& /*staticValues*/, entity::model::ControlValues const& /*dynamicValues*/) noexcept
+	{
+		return std::nullopt;
 	}
 };
 
