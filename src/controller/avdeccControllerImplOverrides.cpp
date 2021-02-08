@@ -489,12 +489,6 @@ void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool c
 		_controller->acquireEntity(targetEntityID, isPersistent, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
 			{
-#if _MSC_VER < 1920
-#	pragma message("REMOVE THIS WHEN the required version to build is VS 2019")
-				// Visual Studio 15.9 is bugged and (again) ignore the maybe_unused attribute in lambda
-				(void)descriptorType;
-				(void)descriptorIndex;
-#endif // _MSC_VER
 				LOG_CONTROLLER_TRACE(entityID, "User acquireEntityResult (OwningController={} DescriptorType={} DescriptorIndex={}): {}", utils::toHexString(owningEntity, true), utils::to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntity
@@ -549,12 +543,6 @@ void ControllerImpl::releaseEntity(UniqueIdentifier const targetEntityID, Releas
 		_controller->releaseEntity(targetEntityID, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const owningEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
 			{
-#if _MSC_VER < 1920
-#	pragma message("REMOVE THIS WHEN the required version to build is VS 2019")
-				// Visual Studio 15.9 is bugged and (again) ignore the maybe_unused attribute in lambda
-				(void)descriptorType;
-				(void)descriptorIndex;
-#endif // _MSC_VER
 				LOG_CONTROLLER_TRACE(entityID, "User releaseEntity (OwningController={} DescriptorType={} DescriptorIndex={}): {}", utils::toHexString(owningEntity, true), utils::to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntity
@@ -618,12 +606,6 @@ void ControllerImpl::lockEntity(UniqueIdentifier const targetEntityID, LockEntit
 		_controller->lockEntity(targetEntityID, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const lockingEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
 			{
-#if _MSC_VER < 1920
-#	pragma message("REMOVE THIS WHEN the required version to build is VS 2019")
-				// Visual Studio 15.9 is bugged and (again) ignore the maybe_unused attribute in lambda
-				(void)descriptorType;
-				(void)descriptorIndex;
-#endif // _MSC_VER
 				LOG_CONTROLLER_TRACE(entityID, "User lockEntityResult (LockingController={} DescriptorType={} DescriptorIndex={}): {}", utils::toHexString(lockingEntity, true), utils::to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntity
@@ -678,12 +660,6 @@ void ControllerImpl::unlockEntity(UniqueIdentifier const targetEntityID, UnlockE
 		_controller->unlockEntity(targetEntityID, descriptorType, descriptorIndex,
 			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const lockingEntity, [[maybe_unused]] entity::model::DescriptorType const descriptorType, [[maybe_unused]] entity::model::DescriptorIndex const descriptorIndex)
 			{
-#if _MSC_VER < 1920
-#	pragma message("REMOVE THIS WHEN the required version to build is VS 2019")
-				// Visual Studio 15.9 is bugged and (again) ignore the maybe_unused attribute in lambda
-				(void)descriptorType;
-				(void)descriptorIndex;
-#endif // _MSC_VER
 				LOG_CONTROLLER_TRACE(entityID, "User unlockEntity (LockingController={} DescriptorType={} DescriptorIndex={}): {}", utils::toHexString(lockingEntity, true), utils::to_integral(descriptorType), descriptorIndex, entity::ControllerEntity::statusToString(status));
 
 				// Take a "scoped locked" shared copy of the ControlledEntity
@@ -2387,11 +2363,6 @@ void ControllerImpl::disconnectStream(entity::model::StreamIdentification const&
 		_controller->disconnectStream(talkerStream, listenerStream,
 			[this, handler](entity::controller::Interface const* const /*controller*/, [[maybe_unused]] entity::model::StreamIdentification const& talkerStream, entity::model::StreamIdentification const& listenerStream, std::uint16_t const /*connectionCount*/, entity::ConnectionFlags const flags, entity::ControllerEntity::ControlStatus const status)
 			{
-#if _MSC_VER < 1920
-#	pragma message("REMOVE THIS WHEN the required version to build is VS 2019")
-				// Visual Studio 15.9 is bugged and (again) ignore the maybe_unused attribute in lambda
-				(void)talkerStream;
-#endif // _MSC_VER
 				LOG_CONTROLLER_TRACE(UniqueIdentifier::getNullUniqueIdentifier(), "User disconnectStream (TalkerID={} TalkerIndex={} ListenerID={} ListenerIndex={}): {}", utils::toHexString(talkerStream.entityID, true), talkerStream.streamIndex, utils::toHexString(listenerStream.entityID, true), listenerStream.streamIndex, entity::ControllerEntity::statusToString(status));
 
 				if (!!status || status == entity::ControllerEntity::ControlStatus::NotConnected) // No error, update the connection state
