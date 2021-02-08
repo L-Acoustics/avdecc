@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - [Correctly exporting all ControlValues structures](https://github.com/L-Acoustics/avdecc/issues/90)
+- Ignoring AECP response from an incorrect source
 
 ## [3.1.0] - 2021-01-18
 ### Added

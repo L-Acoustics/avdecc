@@ -285,6 +285,13 @@ void CommandStateMachine::handleAecpResponse(Aecpdu const& aecpdu) noexcept
 				{
 					auto& info = *commandIt;
 
+					// Validate the sender
+					if (info.command->getDestAddress() != aecpdu.getSrcAddress())
+					{
+						LOG_CONTROLLER_STATE_MACHINE_WARN(targetID, "AECP response with sequenceID {} received from a different sender than recipient ({} expected but received from {}), ignoring response", sequenceID, networkInterface::macAddressToString(info.command->getDestAddress(), true), networkInterface::macAddressToString(aecpdu.getSrcAddress(), true));
+						return;
+					}
+
 					// Check for special cases where we should re-arm the timer
 					if (shouldRearmTimer(aecpdu))
 					{
@@ -308,7 +315,7 @@ void CommandStateMachine::handleAecpResponse(Aecpdu const& aecpdu) noexcept
 				{
 					// Statistics
 					utils::invokeProtectedMethod(&Delegate::onAecpUnexpectedResponse, _delegate, targetID);
-					LOG_CONTROLLER_STATE_MACHINE_DEBUG(targetID, std::string("AECP command with sequenceID ") + std::to_string(sequenceID) + " unexpected (timed out already?)");
+					LOG_CONTROLLER_STATE_MACHINE_DEBUG(targetID, std::string("AECP response with sequenceID ") + std::to_string(sequenceID) + " unexpected (timed out already?)");
 				}
 			}
 		}
