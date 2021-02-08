@@ -1321,7 +1321,7 @@ void ControllerImpl::updateStreamPortInputAudioMappingsAdded(ControlledEntityImp
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.addStreamPortInputAudioMappings(streamPortIndex, mappings);
+	controlledEntity.addStreamPortInputAudioMappings(streamPortIndex, validateMappings<entity::model::DescriptorType::StreamPortInput>(controlledEntity, streamPortIndex, mappings));
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -1334,7 +1334,7 @@ void ControllerImpl::updateStreamPortInputAudioMappingsRemoved(ControlledEntityI
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.removeStreamPortInputAudioMappings(streamPortIndex, mappings);
+	controlledEntity.removeStreamPortInputAudioMappings(streamPortIndex, validateMappings<entity::model::DescriptorType::StreamPortInput>(controlledEntity, streamPortIndex, mappings));
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -1347,7 +1347,7 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsAdded(ControlledEntityIm
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.addStreamPortOutputAudioMappings(streamPortIndex, mappings);
+	controlledEntity.addStreamPortOutputAudioMappings(streamPortIndex, validateMappings<entity::model::DescriptorType::StreamPortOutput>(controlledEntity, streamPortIndex, mappings));
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -1360,7 +1360,7 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntity
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.removeStreamPortOutputAudioMappings(streamPortIndex, mappings);
+	controlledEntity.removeStreamPortOutputAudioMappings(streamPortIndex, validateMappings<entity::model::DescriptorType::StreamPortOutput>(controlledEntity, streamPortIndex, mappings));
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -2511,6 +2511,33 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const entity) n
 			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityOnline, this, entity);
 		}
 	}
+}
+
+entity::model::AudioMappings ControllerImpl::validateMappings(ControlledEntityImpl& controlledEntity, std::uint16_t const maxStreams, std::uint16_t const maxClusters, entity::model::AudioMappings const& mappings) const noexcept
+{
+	auto fixedMappings = std::decay_t<decltype(mappings)>{};
+
+	for (auto const& mapping : mappings)
+	{
+		if (mapping.streamIndex >= maxStreams)
+		{
+			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid Mapping received: StreamIndex is greater than maximum declared streams in ADP ({} >= {})", mapping.streamIndex, maxStreams);
+			// Flag the entity as "Misbehaving"
+			addCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::Misbehaving);
+			continue;
+		}
+		if (mapping.clusterOffset >= maxClusters)
+		{
+			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid Mapping received: ClusterOffset is greater than cluster in the StreamPort ({} >= {})", mapping.clusterOffset, maxClusters);
+			// Flag the entity as "Misbehaving"
+			addCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::Misbehaving);
+			continue;
+		}
+
+		fixedMappings.push_back(mapping);
+	}
+
+	return fixedMappings;
 }
 
 bool ControllerImpl::validateIdentifyControl(ControlledEntityImpl& controlledEntity, model::ControlNode const& identifyControlNode) const noexcept

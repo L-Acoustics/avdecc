@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Fixed
 - [Discard unsol notifications received before descriptor has been read](https://github.com/L-Acoustics/avdecc/issues/91)
+- Detecting invalid Add/Remove mappings response from an entity
 
 ## [3.1.0] - 2021-01-18
 ### Added

@@ -581,6 +581,33 @@ private:
 	void getDynamicInfo(ControlledEntityImpl* const entity) noexcept;
 	void getDescriptorDynamicInfo(ControlledEntityImpl* const entity) noexcept;
 	void checkEnumerationSteps(ControlledEntityImpl* const entity) noexcept;
+	template<entity::model::DescriptorType StreamPortType>
+	entity::model::AudioMappings validateMappings(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) const noexcept
+	{
+		static_assert(StreamPortType == entity::model::DescriptorType::StreamPortInput || StreamPortType == entity::model::DescriptorType::StreamPortOutput, "Can only validate StreamPortInput and StreamPortOutput");
+
+		try
+		{
+			auto const& entity = controlledEntity.getEntity();
+			if constexpr (StreamPortType == entity::model::DescriptorType::StreamPortInput)
+			{
+				auto const maxSinks = entity.getCommonInformation().listenerStreamSinks;
+				auto const& staticModel = controlledEntity.getNodeStaticModel(controlledEntity.getCurrentConfigurationIndex(), streamPortIndex, &entity::model::ConfigurationTree::streamPortInputModels);
+				return validateMappings(controlledEntity, maxSinks, staticModel.numberOfClusters, mappings);
+			}
+			else if constexpr (StreamPortType == entity::model::DescriptorType::StreamPortOutput)
+			{
+				auto const maxSources = entity.getCommonInformation().talkerStreamSources;
+				auto const& staticModel = controlledEntity.getNodeStaticModel(controlledEntity.getCurrentConfigurationIndex(), streamPortIndex, &entity::model::ConfigurationTree::streamPortOutputModels);
+				return validateMappings(controlledEntity, maxSources, staticModel.numberOfClusters, mappings);
+			}
+		}
+		catch (...)
+		{
+			return {};
+		}
+	}
+	entity::model::AudioMappings validateMappings(ControlledEntityImpl& controlledEntity, std::uint16_t const maxStreams, std::uint16_t const maxClusters, entity::model::AudioMappings const& mappings) const noexcept;
 	bool validateIdentifyControl(ControlledEntityImpl& controlledEntity, model::ControlNode const& identifyControlNode) const noexcept;
 	bool validateControlValues(UniqueIdentifier const entityID, entity::model::ControlIndex const controlIndex, entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) const noexcept;
 	void onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept;
