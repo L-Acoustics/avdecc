@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include "logHelper.hpp"
+
 #include "la/avdecc/internals/entityModelControlValues.hpp"
 #include "la/avdecc/internals/entityModelControlValuesTraits.hpp"
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
@@ -244,19 +246,36 @@ struct control_values_payload_traits<entity::model::ControlValueType::Type::Cont
 		return entity::model::ControlValues{ std::move(valuesDynamic) };
 	}
 
-	static void packDynamicControlValues(Serializer<AemAecpdu::MaximumSendPayloadBufferLength>& /*ser*/, entity::model::ControlValues const& values)
+	static void packDynamicControlValues(Serializer<AemAecpdu::MaximumSendPayloadBufferLength>& ser, entity::model::ControlValues const& values)
 	{
 		if (values.size() != 1)
 		{
 			throw std::invalid_argument("CONTROL_UTF8 should only have 1 value");
 		}
 
-		auto const linearValues = values.getValues<entity::model::UTF8StringValueDynamic>(); // We have to store the copy or it will go out of scope if using it directly in the range-based loop
-		//for (auto const& val : linearValues.getValues())
-		//{
-		//	ser << val.currentValue;
-		//}
-		throw std::invalid_argument("TODO: packDynamicControlValues for UTF8 String");
+		auto linearValues = values.getValues<entity::model::UTF8StringValueDynamic>();
+		auto constexpr maxLength = linearValues.currentValue.size();
+		auto constexpr nullCharacter = decltype(linearValues)::value_type{ 0u };
+
+		// Count the number of bytes to copy (including the trailing NULL)
+		auto length = size_t{ 0 };
+		for (auto const c : linearValues.currentValue)
+		{
+			++length;
+			if (c == nullCharacter)
+			{
+				break;
+			}
+		}
+
+		// Validate NULL terminated string
+		if (length == maxLength && linearValues.currentValue[maxLength - 1] != nullCharacter)
+		{
+			LOG_AEM_PAYLOAD_WARN("pack CONTROL value warning: UTF-8 string is not NULL terminated (Clause 7.3.5.2.4)");
+			linearValues.currentValue[maxLength - 1] = nullCharacter;
+		}
+
+		ser.packBuffer(linearValues.currentValue.data(), length);
 	}
 
 	static std::optional<std::string> validateControlValues(entity::model::ControlValues const& /*staticValues*/, entity::model::ControlValues const& /*dynamicValues*/) noexcept
