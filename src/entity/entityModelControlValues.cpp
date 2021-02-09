@@ -137,10 +137,9 @@ std::optional<std::string> LA_AVDECC_CALL_CONVENTION validateControlValues(Contr
 	{
 		return it->second(staticValues, dynamicValues);
 	}
-	else
-	{
-		return "Unsupported ControlValueType: " + std::to_string(utils::to_integral(valueType));
-	}
+
+	// In case we don't handle this kind of ControlType, just validate the values
+	return std::nullopt;
 }
 
 } // namespace model
