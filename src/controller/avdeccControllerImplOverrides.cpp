@@ -1703,8 +1703,7 @@ void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, ent
 void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, AddStreamPortInputAudioMappingsHandler const& handler) const noexcept
 {
 	// Validate parameters in regard with protocol restrictions
-	auto constexpr MaxMappings = (protocol::AemAecpdu::MaximumSendPayloadBufferLength - protocol::aemPayload::AecpAemAddAudioMappingsCommandPayloadMinSize) / 8;
-	if (mappings.size() > MaxMappings)
+	if (mappings.size() > protocol::aemPayload::AecpAemMaxAddRemoveAudioMappings)
 	{
 		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::BadArguments);
 		return;
@@ -1753,8 +1752,7 @@ void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targ
 void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, AddStreamPortOutputAudioMappingsHandler const& handler) const noexcept
 {
 	// Validate parameters in regard with protocol restrictions
-	auto constexpr MaxMappings = (protocol::AemAecpdu::MaximumSendPayloadBufferLength - protocol::aemPayload::AecpAemAddAudioMappingsCommandPayloadMinSize) / 8;
-	if (mappings.size() > MaxMappings)
+	if (mappings.size() > protocol::aemPayload::AecpAemMaxAddRemoveAudioMappings)
 	{
 		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::BadArguments);
 		return;
@@ -1803,8 +1801,7 @@ void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const tar
 void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, RemoveStreamPortInputAudioMappingsHandler const& handler) const noexcept
 {
 	// Validate parameters in regard with protocol restrictions
-	auto constexpr MaxMappings = (protocol::AemAecpdu::MaximumSendPayloadBufferLength - protocol::aemPayload::AecpAemRemoveAudioMappingsCommandPayloadMinSize) / 8;
-	if (mappings.size() > MaxMappings)
+	if (mappings.size() > protocol::aemPayload::AecpAemMaxAddRemoveAudioMappings)
 	{
 		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::BadArguments);
 		return;
@@ -1853,8 +1850,7 @@ void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const t
 void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const targetEntityID, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, RemoveStreamPortOutputAudioMappingsHandler const& handler) const noexcept
 {
 	// Validate parameters in regard with protocol restrictions
-	auto constexpr MaxMappings = (protocol::AemAecpdu::MaximumSendPayloadBufferLength - protocol::aemPayload::AecpAemRemoveAudioMappingsCommandPayloadMinSize) / 8;
-	if (mappings.size() > MaxMappings)
+	if (mappings.size() > protocol::aemPayload::AecpAemMaxAddRemoveAudioMappings)
 	{
 		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::BadArguments);
 		return;
