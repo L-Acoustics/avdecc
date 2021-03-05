@@ -449,6 +449,8 @@ endfunction()
 # Optional parameters:
 #  - INSTALL -> Generate CMake install rules
 #  - SIGN -> Code sign all binaries
+#  - "BUNDLE_DIR <install directory>" => directory where to install BUNDLE file type (defaults to ".")
+#  - "RUNTIME_DIR <install directory>" => directory where to install RUNTIME file type (defaults to "bin")
 function(setup_deploy_runtime TARGET_NAME)
 	# Get target type for specific options
 	get_target_property(targetType ${TARGET_NAME} TYPE)
@@ -465,14 +467,24 @@ function(setup_deploy_runtime TARGET_NAME)
 	cu_deploy_runtime_target(${ARGV} ${SIGN_COMMAND_OPTIONS})
 
 	# Check for install and sign of the binary itself
-	cmake_parse_arguments(SDR "INSTALL;SIGN" "" "" ${ARGN})
+	cmake_parse_arguments(SDR "INSTALL;SIGN" "BUNDLE_DIR;RUNTIME_DIR" "" ${ARGN})
+
+	# Install directories
+	set(BUNDLE_INSTALL_DIR ".")
+	if(SDR_BUNDLE_DIR)
+		set(BUNDLE_INSTALL_DIR "${SDR_BUNDLE_DIR}")
+	endif()
+	set(RUNTIME_INSTALL_DIR "bin")
+	if(SDR_RUNTIME_DIR)
+		set(RUNTIME_INSTALL_DIR "${SDR_RUNTIME_DIR}")
+	endif()
 
 	if(SDR_SIGN)
 		setup_signing_command(${TARGET_NAME})
 	endif()
 
 	if(SDR_INSTALL)
-		install(TARGETS ${TARGET_NAME} BUNDLE DESTINATION . RUNTIME DESTINATION bin)
+		install(TARGETS ${TARGET_NAME} BUNDLE DESTINATION ${BUNDLE_INSTALL_DIR} RUNTIME DESTINATION ${RUNTIME_INSTALL_DIR})
 	endif()
 endfunction()
 
