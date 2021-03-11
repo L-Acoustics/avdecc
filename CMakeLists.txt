@@ -204,7 +204,7 @@ endif()
 
 ############ Compiler compatibility
 
-if(WIN32)
+if(MSVC)
 	if(${MSVC_VERSION} STRLESS 1923)
 		message(FATAL_ERROR "Microsoft Visual C++ v16.3 required (MSVC_VERSION >= 1923), you have ${MSVC_VERSION}")
 	endif()
