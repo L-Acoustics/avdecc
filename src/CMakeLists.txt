@@ -37,18 +37,20 @@ if(WIN32)
 endif()
 
 # Network interface helper
-if(WIN32)
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 	set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER
 		networkInterfaceHelper/networkInterfaceHelper_win32.cpp
 	)
-elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
+elseif(CMAKE_SYSTEM_NAME MATCHES "(Linux)")
 	set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER
 		networkInterfaceHelper/networkInterfaceHelper_unix.cpp
 	)
-elseif(CMAKE_HOST_APPLE)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER
 		networkInterfaceHelper/networkInterfaceHelper_mac.mm
 	)
+else()
+	message(FATAL_ERROR "Network helper undefined for system: ${CMAKE_SYSTEM_NAME}")
 endif()
 set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER ${SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER} networkInterfaceHelper/networkInterfaceHelper_common.cpp)
 set (HEADER_FILES_CPP_NETWORK_INTERFACE_HELPER networkInterfaceHelper/networkInterfaceHelper_common.hpp)
