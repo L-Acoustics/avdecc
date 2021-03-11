@@ -41,13 +41,13 @@ if(WIN32)
 	set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER
 		networkInterfaceHelper/networkInterfaceHelper_win32.cpp
 	)
-elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
-	set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER
-		networkInterfaceHelper/networkInterfaceHelper_unix.cpp
-	)
 elseif(CMAKE_HOST_APPLE)
 	set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER
 		networkInterfaceHelper/networkInterfaceHelper_mac.mm
+	)
+elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+	set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER
+		networkInterfaceHelper/networkInterfaceHelper_unix.cpp
 	)
 endif()
 set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER ${SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER} networkInterfaceHelper/networkInterfaceHelper_common.cpp)
