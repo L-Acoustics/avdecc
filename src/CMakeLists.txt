@@ -21,7 +21,7 @@ set(ADD_PUBLIC_COMPILE_OPTIONS "")
 set(PCH_HEADER_NAME "pch.hpp")
 set(PCH_SOURCE_NAME "pch.cpp")
 
-if(CMAKE_SYSTEM_NAME STREQUAL Linux)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 	# Add pthread library on linux
 	list(APPEND ADD_LINK_LIBS "-lpthread")
 endif()
@@ -49,6 +49,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER
 		networkInterfaceHelper/networkInterfaceHelper_mac.mm
 	)
+	list(APPEND ADD_LINK_LIBS "-framework Foundation -framework SystemConfiguration -framework IOKit")
 else()
 	message(FATAL_ERROR "Network helper undefined for system: ${CMAKE_SYSTEM_NAME}")
 endif()
@@ -237,11 +238,6 @@ if(BUILD_AVDECC_INTERFACE_VIRTUAL)
 		protocolInterface/protocolInterface_virtual.hpp
 	)
 	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DHAVE_PROTOCOL_INTERFACE_VIRTUAL")
-endif()
-
-# Set other required base libraries
-if(CMAKE_HOST_APPLE)
-	list(APPEND ADD_LINK_LIBS "-framework Foundation -framework SystemConfiguration -framework IOKit")
 endif()
 
 # Features
