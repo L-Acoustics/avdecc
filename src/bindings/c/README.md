@@ -1,6 +1,6 @@
 # LA AVDECC C BINDINGS
 
-Copyright (C) 2016-2020, L-Acoustics and its contributors
+Copyright (C) 2016-2021, L-Acoustics and its contributors
 
 ## What is LA_avdecc_c
 LA_avdecc_c is C bindings over LA_avdecc library.
