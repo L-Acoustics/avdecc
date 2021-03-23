@@ -187,12 +187,13 @@ endfunction()
 
 ###############################################################################
 # Set Precompiled Headers on a target
-function(set_precompiled_headers TARGET_NAME HEADER_NAME SOURCE_NAME)
+function(set_precompiled_headers TARGET_NAME HEADER_NAME)
+	# Currently, only activating for MSVC
+	# gcc is actually 2x slower when activating precompiled headers
+	# xcode doesn't need it, and it actually fails when compiling objective-c++ files
 	if(CMAKE_HOST_WIN32 AND MSVC)
-		# -Yu: Use Precompiled Header; -FI: Force Include Precompiled Header
-		target_compile_options(${TARGET_NAME} PRIVATE -Yu${HEADER_NAME} -FI${HEADER_NAME})
-		# -Yc: Create Precompiled Headers, needed to create the PCH itself
-		set_source_files_properties(${SOURCE_NAME} PROPERTIES COMPILE_FLAGS -Yc${HEADER_NAME})
+		target_precompile_headers(${TARGET_NAME} PRIVATE ${HEADER_NAME})
+		target_sources(${TARGET_NAME} PRIVATE ${HEADER_NAME})
 	endif()
 endfunction()
 
