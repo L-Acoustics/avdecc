@@ -218,11 +218,17 @@ function(setup_library_options TARGET_NAME BASE_LIB_NAME)
 		target_link_libraries(${TARGET_NAME} PUBLIC ${LINK_LIBRARIES} ${ADD_LINK_LIBRARIES})
 		# Compile c++ as static exports
 		target_compile_options(${TARGET_NAME} PUBLIC "-D${BASE_LIB_NAME}_cxx_STATICS")
+		# Defaults to hidden symbols for Gcc/Clang
+		if(NOT MSVC)
+			if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+				target_compile_options(${TARGET_NAME} PRIVATE -fvisibility=hidden)
+			endif()
+		endif()
 
 	# Shared library special options
 	elseif(${targetType} STREQUAL "SHARED_LIBRARY")
 		target_link_libraries(${TARGET_NAME} PRIVATE ${LINK_LIBRARIES} ${ADD_LINK_LIBRARIES})
-		# Gcc/Clang needs specific flags for shared libraries
+		# Defaults to hidden symbols for Gcc/Clang
 		if(NOT MSVC)
 			if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 				target_compile_options(${TARGET_NAME} PRIVATE -fvisibility=hidden)
