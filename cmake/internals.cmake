@@ -198,6 +198,30 @@ function(set_precompiled_headers TARGET_NAME HEADER_NAME)
 endfunction()
 
 ###############################################################################
+# Setup ASAN options for the target
+function(setup_asan_options TARGET_NAME)
+	get_target_property(targetType ${TARGET_NAME} TYPE)
+	if(MSVC)
+		target_compile_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Debug>:-fsanitize=address>)
+		if(NOT ${targetType} STREQUAL "STATIC_LIBRARY")
+			target_link_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Debug>:/INCREMENTAL:NO>)
+		endif()
+
+		# We have to change global flags as there is no cl.exe flag to cancel /RTC
+		string(REPLACE "/RTC1" "" CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
+		string(REPLACE "/RTC1" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+		set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}" CACHE STRING "Force C flags for ASAN" FORCE)
+		set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}" CACHE STRING "Force C++ flags for ASAN" FORCE)
+
+	elseif(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+		target_compile_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Debug>:-fsanitize=address>)
+		if(NOT ${targetType} STREQUAL "STATIC_LIBRARY")
+			target_link_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Debug>:-fsanitize=address>)
+		endif()
+	endif()
+endfunction()
+
+###############################################################################
 # Setup common options for a library target
 function(setup_library_options TARGET_NAME BASE_LIB_NAME)
 	# Get target type for specific options
@@ -252,6 +276,11 @@ function(setup_library_options TARGET_NAME BASE_LIB_NAME)
 	# Unsupported target type
 	else()
 		message(FATAL_ERROR "Unsupported target type for setup_library_options: ${targetType}")
+	endif()
+
+	# Setup ASAN options
+	if(LA_ENABLE_ASAN)
+		setup_asan_options(${TARGET_NAME})
 	endif()
 
 	# Set full warnings (including treat warnings as error)
@@ -402,6 +431,11 @@ function(setup_executable_options TARGET_NAME)
 
 	# Add link libraries
 	target_link_libraries(${TARGET_NAME} PRIVATE ${LINK_LIBRARIES})
+
+	# Setup ASAN options
+	if(LA_ENABLE_ASAN)
+		setup_asan_options(${TARGET_NAME})
+	endif()
 
 	# Set full warnings (including treat warnings as error)
 	set_maximum_warnings(${TARGET_NAME})

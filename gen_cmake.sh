@@ -114,6 +114,7 @@ do
 			echo " -debug -> Force debug configuration (Single-Configuration generators only)"
 			echo " -release -> Force release configuration (Single-Configuration generators only)"
 			echo " -sign -> Sign binaries (Default: No signing)"
+			echo " -asan -> Enable Address Sanitizer (Default: Off)"
 			exit 3
 			;;
 		-o)
@@ -310,6 +311,9 @@ do
 			;;
 		-sign)
 			doSign=1
+			;;
+		-asan)
+			add_cmake_opt+=("-DLA_ENABLE_ASAN=TRUE")
 			;;
 		*)
 			echo "ERROR: Unknown option '$1' (use -h for help)"
