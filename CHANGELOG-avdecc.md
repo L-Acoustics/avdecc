@@ -4,6 +4,18 @@ All notable changes to the Avdecc Library will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [3.1.1] - 2021-04-02
+### Added
+- Validating Control dynamic values (based on static values)
+
+### Changed
+- Renamed la::avdecc::entity::model::ControlType to la::avdecc::entity::model::StandardControlType
+- la::avdecc::entity::model::ControlType is now an EUI-64
+
+### Fixed
+- [Correctly exporting all ControlValues structures](https://github.com/L-Acoustics/avdecc/issues/90)
+- Ignoring AECP response from an incorrect source
+
 ## [3.1.0] - 2021-01-18
 ### Added
 - [Support for Control Descriptors (only Linear Values are currently supported)](https://github.com/L-Acoustics/avdecc/issues/88)

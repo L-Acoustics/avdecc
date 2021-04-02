@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2020, L-Acoustics and its contributors
+* Copyright (C) 2016-2021, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -182,7 +182,7 @@ struct ControlNodeStaticModel
 	std::uint32_t blockLatency{ 0u };
 	std::uint32_t controlLatency{ 0u };
 	std::uint16_t controlDomain{ 0u };
-	ControlType controlType{};
+	UniqueIdentifier controlType{};
 	std::uint32_t resetTime{ 0u };
 	DescriptorType signalType{ DescriptorType::Invalid };
 	DescriptorIndex signalIndex{ DescriptorIndex(0u) };

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2020, L-Acoustics and its contributors
+* Copyright (C) 2016-2021, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -848,6 +848,7 @@ static inline void createUnpackFullControlValuesDispatchTable(std::unordered_map
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt64] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt64>::unpackFullControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearFloat] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearFloat>::unpackFullControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearDouble>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlUtf8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlUtf8>::unpackFullControlValues;
 }
 
 entity::model::ControlDescriptor deserializeReadControlDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)

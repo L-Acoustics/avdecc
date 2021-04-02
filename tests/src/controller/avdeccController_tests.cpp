@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2020, L-Acoustics and its contributors
+* Copyright (C) 2016-2021, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -26,9 +26,11 @@
 #include <la/avdecc/controller/avdeccController.hpp>
 #include <la/avdecc/internals/protocolAemAecpdu.hpp>
 #include <la/avdecc/internals/protocolAemPayloadSizes.hpp>
+#include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
 
 // Internal API
 #include "controller/avdeccControlledEntityImpl.hpp"
+#include "controller/avdeccControllerImpl.hpp"
 #include "entity/controllerEntityImpl.hpp"
 #include "protocolInterface/protocolInterface_virtual.hpp"
 
@@ -42,6 +44,29 @@
 
 namespace
 {
+class LogObserver : public la::avdecc::logger::Logger::Observer
+{
+public:
+	virtual ~LogObserver() noexcept override
+	{
+		la::avdecc::logger::Logger::getInstance().unregisterObserver(this);
+	}
+
+private:
+	virtual void onLogItem(la::avdecc::logger::Level const level, la::avdecc::logger::LogItem const* const item) noexcept override
+	{
+		if (item->getLayer() == la::avdecc::logger::Layer::Serialization)
+		{
+			auto const* const i = static_cast<la::avdecc::logger::LogItemSerialization const*>(item);
+			std::cout << "[" << la::avdecc::logger::Logger::getInstance().levelToString(level) << "] [" << la::avdecc::networkInterface::macAddressToString(i->getSource(), true) << "] " << i->getMessage() << std::endl;
+		}
+		else
+		{
+			std::cout << "[" << la::avdecc::logger::Logger::getInstance().levelToString(level) << "] " << item->getMessage() << std::endl;
+		}
+	}
+};
+
 class EntityModelVisitor : public la::avdecc::controller::model::EntityModelVisitor
 {
 public:
@@ -725,5 +750,104 @@ TEST(Controller, AdpRedundantInterfaceNotifications)
 	for (auto const val : s_CallOrder)
 	{
 		EXPECT_EQ(order++, val);
+	}
+}
+
+TEST(Controller, ValidControlValues)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Load entity
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en");
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/SimpleEntity.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+	auto constexpr ControlIndex = la::avdecc::entity::model::ControlIndex{ 0u };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+	auto& c = static_cast<la::avdecc::controller::ControllerImpl&>(*controller);
+
+	EXPECT_TRUE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	try
+	{
+		// Get ControlNode
+		auto const& controlNode = e.getControlNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, ControlIndex);
+		auto const& staticValues = controlNode.staticModel->values;
+
+		ASSERT_EQ(1u, staticValues.size()) << "VirtualEntity should have 1 value in its ControlNode";
+		ASSERT_EQ(la::avdecc::entity::model::ControlValueType::Type::ControlLinearUInt8, staticValues.getType()) << "VirtualEntity should have ControlLinearUInt8 type in its ControlNode";
+		ASSERT_TRUE(!!staticValues) << "VirtualEntity should have valid values in its ControlNode";
+		ASSERT_TRUE(!staticValues.areDynamicValues()) << "VirtualEntity should have static values in its ControlNode";
+
+		// Expect to pass ControlValues validation with a value set to minimum
+		EXPECT_TRUE(c.validateControlValues(EntityID, ControlIndex, staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{ { { 0u } } } }));
+
+		// Expect to pass ControlValues validation with a value set to maximum
+		EXPECT_TRUE(c.validateControlValues(EntityID, ControlIndex, staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{ { { 255u } } } }));
+	}
+	catch (la::avdecc::controller::ControlledEntity::Exception const&)
+	{
+		ASSERT_FALSE(true) << "ControlNode not found";
+	}
+}
+
+TEST(Controller, InvalidControlValues)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Load entity
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en");
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/SimpleEntity.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+	auto constexpr ControlIndex = la::avdecc::entity::model::ControlIndex{ 0u };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+	auto& c = static_cast<la::avdecc::controller::ControllerImpl&>(*controller);
+
+	EXPECT_TRUE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	try
+	{
+		// Get ControlNode
+		auto const& controlNode = e.getControlNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, ControlIndex);
+		auto const& staticValues = controlNode.staticModel->values;
+
+		ASSERT_EQ(1u, staticValues.size()) << "VirtualEntity should have 1 value in its ControlNode";
+		ASSERT_EQ(la::avdecc::entity::model::ControlValueType::Type::ControlLinearUInt8, staticValues.getType()) << "VirtualEntity should have ControlLinearUInt8 type in its ControlNode";
+		ASSERT_TRUE(!!staticValues) << "VirtualEntity should have valid values in its ControlNode";
+		ASSERT_TRUE(!staticValues.areDynamicValues()) << "VirtualEntity should have static values in its ControlNode";
+
+		// Expect to not pass ControlValues validation with non-valid dynamic values
+		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues, {}));
+
+		// Expect to not pass ControlValues validation with static values instead of dynamic values
+		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueStatic<std::uint8_t>>{} }));
+
+		// Expect to not pass ControlValues validation with a different type of dynamic values
+		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::int8_t>>{} }));
+
+		// Expect to not pass ControlValues validation with a different count of values
+		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{} }));
+
+		// Expect to not pass ControlValues validation with a value not multiple of Step for LinearValues
+		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{ { { 1u } } } }));
+
+		// Expect to not pass ControlValues validation with a value outside bounds // TODO: Cannot test with an IDENTIFY Control, have to create another Control
+	}
+	catch (la::avdecc::controller::ControlledEntity::Exception const&)
+	{
+		ASSERT_FALSE(true) << "ControlNode not found";
 	}
 }

@@ -187,12 +187,37 @@ endfunction()
 
 ###############################################################################
 # Set Precompiled Headers on a target
-function(set_precompiled_headers TARGET_NAME HEADER_NAME SOURCE_NAME)
+function(set_precompiled_headers TARGET_NAME HEADER_NAME)
+	# Currently, only activating for MSVC
+	# gcc is actually 2x slower when activating precompiled headers
+	# xcode doesn't need it, and it actually fails when compiling objective-c++ files
 	if(CMAKE_HOST_WIN32 AND MSVC)
-		# -Yu: Use Precompiled Header; -FI: Force Include Precompiled Header
-		target_compile_options(${TARGET_NAME} PRIVATE -Yu${HEADER_NAME} -FI${HEADER_NAME})
-		# -Yc: Create Precompiled Headers, needed to create the PCH itself
-		set_source_files_properties(${SOURCE_NAME} PROPERTIES COMPILE_FLAGS -Yc${HEADER_NAME})
+		target_precompile_headers(${TARGET_NAME} PRIVATE ${HEADER_NAME})
+		target_sources(${TARGET_NAME} PRIVATE ${HEADER_NAME})
+	endif()
+endfunction()
+
+###############################################################################
+# Setup ASAN options for the target
+function(setup_asan_options TARGET_NAME)
+	get_target_property(targetType ${TARGET_NAME} TYPE)
+	if(MSVC)
+		target_compile_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Debug>:-fsanitize=address>)
+		if(NOT ${targetType} STREQUAL "STATIC_LIBRARY")
+			target_link_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Debug>:/INCREMENTAL:NO>)
+		endif()
+
+		# We have to change global flags as there is no cl.exe flag to cancel /RTC
+		string(REPLACE "/RTC1" "" CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
+		string(REPLACE "/RTC1" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+		set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}" CACHE STRING "Force C flags for ASAN" FORCE)
+		set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}" CACHE STRING "Force C++ flags for ASAN" FORCE)
+
+	elseif(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+		target_compile_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Debug>:-fsanitize=address>)
+		if(NOT ${targetType} STREQUAL "STATIC_LIBRARY")
+			target_link_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Debug>:-fsanitize=address>)
+		endif()
 	endif()
 endfunction()
 
@@ -217,11 +242,17 @@ function(setup_library_options TARGET_NAME BASE_LIB_NAME)
 		target_link_libraries(${TARGET_NAME} PUBLIC ${LINK_LIBRARIES} ${ADD_LINK_LIBRARIES})
 		# Compile c++ as static exports
 		target_compile_options(${TARGET_NAME} PUBLIC "-D${BASE_LIB_NAME}_cxx_STATICS")
+		# Defaults to hidden symbols for Gcc/Clang
+		if(NOT MSVC)
+			if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+				target_compile_options(${TARGET_NAME} PRIVATE -fvisibility=hidden)
+			endif()
+		endif()
 
 	# Shared library special options
 	elseif(${targetType} STREQUAL "SHARED_LIBRARY")
 		target_link_libraries(${TARGET_NAME} PRIVATE ${LINK_LIBRARIES} ${ADD_LINK_LIBRARIES})
-		# Gcc/Clang needs specific flags for shared libraries
+		# Defaults to hidden symbols for Gcc/Clang
 		if(NOT MSVC)
 			if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 				target_compile_options(${TARGET_NAME} PRIVATE -fvisibility=hidden)
@@ -245,6 +276,11 @@ function(setup_library_options TARGET_NAME BASE_LIB_NAME)
 	# Unsupported target type
 	else()
 		message(FATAL_ERROR "Unsupported target type for setup_library_options: ${targetType}")
+	endif()
+
+	# Setup ASAN options
+	if(LA_ENABLE_ASAN)
+		setup_asan_options(${TARGET_NAME})
 	endif()
 
 	# Set full warnings (including treat warnings as error)
@@ -396,6 +432,11 @@ function(setup_executable_options TARGET_NAME)
 	# Add link libraries
 	target_link_libraries(${TARGET_NAME} PRIVATE ${LINK_LIBRARIES})
 
+	# Setup ASAN options
+	if(LA_ENABLE_ASAN)
+		setup_asan_options(${TARGET_NAME})
+	endif()
+
 	# Set full warnings (including treat warnings as error)
 	set_maximum_warnings(${TARGET_NAME})
 	
@@ -449,6 +490,8 @@ endfunction()
 # Optional parameters:
 #  - INSTALL -> Generate CMake install rules
 #  - SIGN -> Code sign all binaries
+#  - "BUNDLE_DIR <install directory>" => directory where to install BUNDLE file type (defaults to ".")
+#  - "RUNTIME_DIR <install directory>" => directory where to install RUNTIME file type (defaults to "bin")
 function(setup_deploy_runtime TARGET_NAME)
 	# Get target type for specific options
 	get_target_property(targetType ${TARGET_NAME} TYPE)
@@ -465,14 +508,24 @@ function(setup_deploy_runtime TARGET_NAME)
 	cu_deploy_runtime_target(${ARGV} ${SIGN_COMMAND_OPTIONS})
 
 	# Check for install and sign of the binary itself
-	cmake_parse_arguments(SDR "INSTALL;SIGN" "" "" ${ARGN})
+	cmake_parse_arguments(SDR "INSTALL;SIGN" "BUNDLE_DIR;RUNTIME_DIR" "" ${ARGN})
+
+	# Install directories
+	set(BUNDLE_INSTALL_DIR ".")
+	if(SDR_BUNDLE_DIR)
+		set(BUNDLE_INSTALL_DIR "${SDR_BUNDLE_DIR}")
+	endif()
+	set(RUNTIME_INSTALL_DIR "bin")
+	if(SDR_RUNTIME_DIR)
+		set(RUNTIME_INSTALL_DIR "${SDR_RUNTIME_DIR}")
+	endif()
 
 	if(SDR_SIGN)
 		setup_signing_command(${TARGET_NAME})
 	endif()
 
 	if(SDR_INSTALL)
-		install(TARGETS ${TARGET_NAME} BUNDLE DESTINATION . RUNTIME DESTINATION bin)
+		install(TARGETS ${TARGET_NAME} BUNDLE DESTINATION ${BUNDLE_INSTALL_DIR} RUNTIME DESTINATION ${RUNTIME_INSTALL_DIR})
 	endif()
 endfunction()
 

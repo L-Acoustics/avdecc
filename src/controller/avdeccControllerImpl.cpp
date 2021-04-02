@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2020, L-Acoustics and its contributors
+* Copyright (C) 2016-2021, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -347,7 +347,7 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 			auto const formatType = entity::model::StreamFormatInfo::create(info.streamFormat)->getType();
 			if (formatType != entity::model::StreamFormatInfo::Type::None && formatType != entity::model::StreamFormatInfo::Type::Unsupported)
 			{
-				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit set but stream_format field appears to contain a valid value in GET_STREAM_INFO response");
+				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit not set but stream_format field appears to contain a valid value in GET_STREAM_INFO response");
 			}
 		}
 		// Or Invalid StreamFormat
@@ -527,7 +527,7 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 			auto const formatType = entity::model::StreamFormatInfo::create(info.streamFormat)->getType();
 			if (formatType != entity::model::StreamFormatInfo::Type::None && formatType != entity::model::StreamFormatInfo::Type::Unsupported)
 			{
-				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit set but stream_format field appears to contain a valid value in GET_STREAM_INFO response");
+				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "StreamFormatValid bit not set but stream_format field appears to contain a valid value in GET_STREAM_INFO response");
 			}
 		}
 		// Or Invalid StreamFormat
@@ -925,6 +925,13 @@ bool ControllerImpl::updateControlValues(ControlledEntityImpl& controlledEntity,
 	if (controlValuesOpt)
 	{
 		auto const& controlValues = *controlValuesOpt;
+
+		// Validate ControlValues
+		if (!validateControlValues(controlledEntity.getEntity().getEntityID(), controlIndex, controlStaticModel.values, controlValues))
+		{
+			// Flag the entity as "Not fully IEEE1722.1 compliant"
+			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+		}
 		controlledEntity.setControlValues(controlIndex, controlValues);
 
 		// Entity was advertised to the user, notify observers
@@ -933,7 +940,7 @@ bool ControllerImpl::updateControlValues(ControlledEntityImpl& controlledEntity,
 			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onControlValuesChanged, this, &controlledEntity, controlIndex, controlValues);
 
 			// Check for Identify Control
-			if (controlStaticModel.controlType == entity::model::ControlType::Identify && controlValueType == entity::model::ControlValueType::Type::ControlLinearUInt8 && controlValueSize == 1)
+			if (entity::model::StandardControlType::Identify == controlStaticModel.controlType.getValue() && controlValueType == entity::model::ControlValueType::Type::ControlLinearUInt8 && controlValueSize == 1)
 			{
 				auto const identifyOpt = getIdentifyControlValue(controlValues);
 				if (identifyOpt)
@@ -1314,7 +1321,7 @@ void ControllerImpl::updateStreamPortInputAudioMappingsAdded(ControlledEntityImp
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.addStreamPortInputAudioMappings(streamPortIndex, mappings);
+	controlledEntity.addStreamPortInputAudioMappings(streamPortIndex, validateMappings<entity::model::DescriptorType::StreamPortInput>(controlledEntity, streamPortIndex, mappings));
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -1327,7 +1334,7 @@ void ControllerImpl::updateStreamPortInputAudioMappingsRemoved(ControlledEntityI
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.removeStreamPortInputAudioMappings(streamPortIndex, mappings);
+	controlledEntity.removeStreamPortInputAudioMappings(streamPortIndex, validateMappings<entity::model::DescriptorType::StreamPortInput>(controlledEntity, streamPortIndex, mappings));
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -1340,7 +1347,7 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsAdded(ControlledEntityIm
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.addStreamPortOutputAudioMappings(streamPortIndex, mappings);
+	controlledEntity.addStreamPortOutputAudioMappings(streamPortIndex, validateMappings<entity::model::DescriptorType::StreamPortOutput>(controlledEntity, streamPortIndex, mappings));
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -1353,7 +1360,7 @@ void ControllerImpl::updateStreamPortOutputAudioMappingsRemoved(ControlledEntity
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.removeStreamPortOutputAudioMappings(streamPortIndex, mappings);
+	controlledEntity.removeStreamPortOutputAudioMappings(streamPortIndex, validateMappings<entity::model::DescriptorType::StreamPortOutput>(controlledEntity, streamPortIndex, mappings));
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
@@ -1416,7 +1423,7 @@ std::optional<bool> ControllerImpl::getIdentifyControlValue(entity::model::Contr
 	{
 		if (values.size() == 1)
 		{
-			auto const dynamicValues = values.getValues<entity::model::LinearValues<entity::model::LinearValueDynamic<std::uint8_t>>>(); // We have to store the copie or it will go out of scope if using it directly in the range-based loop
+			auto const dynamicValues = values.getValues<entity::model::LinearValues<entity::model::LinearValueDynamic<std::uint8_t>>>(); // We have to store the copy or it will go out of scope if using it directly in the range-based loop
 			auto const& value = dynamicValues.getValues()[0];
 			if (value.currentValue == 0)
 			{
@@ -2506,9 +2513,36 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const entity) n
 	}
 }
 
+entity::model::AudioMappings ControllerImpl::validateMappings(ControlledEntityImpl& controlledEntity, std::uint16_t const maxStreams, std::uint16_t const maxClusters, entity::model::AudioMappings const& mappings) const noexcept
+{
+	auto fixedMappings = std::decay_t<decltype(mappings)>{};
+
+	for (auto const& mapping : mappings)
+	{
+		if (mapping.streamIndex >= maxStreams)
+		{
+			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid Mapping received: StreamIndex is greater than maximum declared streams in ADP ({} >= {})", mapping.streamIndex, maxStreams);
+			// Flag the entity as "Misbehaving"
+			addCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::Misbehaving);
+			continue;
+		}
+		if (mapping.clusterOffset >= maxClusters)
+		{
+			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid Mapping received: ClusterOffset is greater than cluster in the StreamPort ({} >= {})", mapping.clusterOffset, maxClusters);
+			// Flag the entity as "Misbehaving"
+			addCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::Misbehaving);
+			continue;
+		}
+
+		fixedMappings.push_back(mapping);
+	}
+
+	return fixedMappings;
+}
+
 bool ControllerImpl::validateIdentifyControl(ControlledEntityImpl& controlledEntity, model::ControlNode const& identifyControlNode) const noexcept
 {
-	AVDECC_ASSERT(identifyControlNode.staticModel->controlType == entity::model::ControlType::Identify, "validateIdentifyControl should only be called on an IDENTIFY Control Descriptor Type");
+	AVDECC_ASSERT(entity::model::StandardControlType::Identify == identifyControlNode.staticModel->controlType.getValue(), "validateIdentifyControl should only be called on an IDENTIFY Control Descriptor Type");
 	auto const& e = controlledEntity.getEntity();
 	auto const entityID = e.getEntityID();
 	auto const controlIndex = identifyControlNode.descriptorIndex;
@@ -2519,13 +2553,13 @@ bool ControllerImpl::validateIdentifyControl(ControlledEntityImpl& controlledEnt
 		if (controlValueType == entity::model::ControlValueType::Type::ControlLinearUInt8)
 		{
 			auto const staticValues = identifyControlNode.staticModel->values.getValues<entity::model::LinearValues<entity::model::LinearValueStatic<std::uint8_t>>>();
-			if (staticValues.size() == 1)
+			if (staticValues.countValues() == 1)
 			{
 				auto const& staticValue = staticValues.getValues()[0];
 				if (staticValue.minimum == 0 && staticValue.maximum == 255 && staticValue.step == 255 && staticValue.unit.getMultiplier() == 0 && staticValue.unit.getUnit() == entity::model::ControlValueUnit::Unit::Unitless)
 				{
 					auto const dynamicValues = identifyControlNode.dynamicModel->values.getValues<entity::model::LinearValues<entity::model::LinearValueDynamic<std::uint8_t>>>();
-					if (dynamicValues.size() == 1)
+					if (dynamicValues.countValues() == 1)
 					{
 						auto const& dynamicValue = dynamicValues.getValues()[0];
 						if (dynamicValue.currentValue == 0 || dynamicValue.currentValue == 255)
@@ -2550,7 +2584,7 @@ bool ControllerImpl::validateIdentifyControl(ControlledEntityImpl& controlledEnt
 					}
 					else
 					{
-						LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: Should only contain one value but has {}", controlIndex, dynamicValues.size());
+						LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: Should only contain one value but has {}", controlIndex, dynamicValues.countValues());
 						// Flag the entity as "Not fully IEEE1722.1 compliant"
 						removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 					}
@@ -2564,7 +2598,7 @@ bool ControllerImpl::validateIdentifyControl(ControlledEntityImpl& controlledEnt
 			}
 			else
 			{
-				LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: Should only contain one value but has {}", controlIndex, staticValues.size());
+				LOG_CONTROLLER_WARN(entityID, "ControlDescriptor at Index {} is not a valid Identify Control: Should only contain one value but has {}", controlIndex, staticValues.countValues());
 				// Flag the entity as "Not fully IEEE1722.1 compliant"
 				removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			}
@@ -2589,6 +2623,46 @@ bool ControllerImpl::validateIdentifyControl(ControlledEntityImpl& controlledEnt
 		removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 	}
 
+	return false;
+}
+
+bool ControllerImpl::validateControlValues(UniqueIdentifier const entityID, entity::model::ControlIndex const controlIndex, entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) const noexcept
+{
+	if (!staticValues)
+	{
+		LOG_CONTROLLER_WARN(entityID, "StaticValues for ControlDescriptor at Index {} are not initialized", controlIndex);
+		return false;
+	}
+
+	if (staticValues.areDynamicValues())
+	{
+		LOG_CONTROLLER_WARN(entityID, "StaticValues for ControlDescriptor at Index {} are dynamic instead of static", controlIndex);
+		return false;
+	}
+
+	if (!dynamicValues)
+	{
+		LOG_CONTROLLER_WARN(entityID, "DynamicValues for ControlDescriptor at Index {} are not initialized", controlIndex);
+		return false;
+	}
+
+	if (!dynamicValues.areDynamicValues())
+	{
+		LOG_CONTROLLER_WARN(entityID, "DynamicValues for ControlDescriptor at Index {} are static instead of dynamic", controlIndex);
+		return false;
+	}
+
+	auto const resultOpt = entity::model::validateControlValues(staticValues, dynamicValues);
+
+	// No error during validation
+	if (!resultOpt)
+	{
+		return true;
+	}
+
+	auto const& errMessage = *resultOpt;
+
+	LOG_CONTROLLER_WARN(entityID, "DynamicValues for ControlDescriptor at Index {} are not a valid: {}", controlIndex, errMessage);
 	return false;
 }
 
@@ -2623,7 +2697,7 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 					{
 						auto const& identifyControlNode = nodeIt->second;
 						auto const controlType = identifyControlNode.staticModel->controlType;
-						if (controlType == entity::model::ControlType::Identify)
+						if (entity::model::StandardControlType::Identify == controlType.getValue())
 						{
 							if (validateIdentifyControl(controlledEntity, identifyControlNode))
 							{
@@ -2633,7 +2707,7 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 						}
 						else
 						{
-							LOG_CONTROLLER_WARN(entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: ControlType should be IDENTIFY but is ", entity::model::controlTypeToString(controlType));
+							LOG_CONTROLLER_WARN(entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: ControlType should be IDENTIFY but is {}", entity::model::controlTypeToString(controlType));
 							// Flag the entity as "Not fully IEEE1722.1 compliant"
 							removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 						}
@@ -2653,14 +2727,15 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 				}
 			}
 
-			// No ControlIndex in ADP (or not valid)
-			if (!identifyControlIndex)
+			// Validate Controls while searching for a valid Identify Control Descriptor
+			for (auto const& [controlIndex, controlNode] : configurationNode.controls)
 			{
-				// Search for an Identify Control Descriptor
-				for (auto const& [controlIndex, controlNode] : configurationNode.controls)
+				auto const controlType = controlNode.staticModel->controlType;
+
+				// No ControlIndex in ADP (or not valid)
+				if (!identifyControlIndex)
 				{
-					auto const controlType = controlNode.staticModel->controlType;
-					if (controlType == entity::model::ControlType::Identify)
+					if (entity::model::StandardControlType::Identify == controlType.getValue())
 					{
 						if (validateIdentifyControl(controlledEntity, controlNode))
 						{
@@ -2668,6 +2743,21 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 							break;
 						}
 					}
+				}
+
+				// Validate ControlType
+				if (!controlType.isValid())
+				{
+					LOG_CONTROLLER_WARN(entityID, "control_type for CONTROL descriptor at index {} is not a valid EUI-64: {}", controlIndex, utils::toHexString(controlType));
+					// Flag the entity as "Not fully IEEE1722.1 compliant"
+					removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+				}
+
+				// Validate ControlValues
+				if (!validateControlValues(entityID, controlIndex, controlNode.staticModel->values, controlNode.dynamicModel->values))
+				{
+					// Flag the entity as "Not fully IEEE1722.1 compliant"
+					removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 				}
 			}
 
@@ -2680,7 +2770,9 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 		}
 		catch (ControlledEntity::Exception const&)
 		{
-			// Ignore exception
+			LOG_CONTROLLER_WARN(entityID, "Invalid current CONFIGURATION descriptor");
+			// Flag the entity as "Not fully IEEE1722.1 compliant"
+			removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 		}
 		catch (...)
 		{
@@ -2862,6 +2954,12 @@ ControllerImpl::FailureAction ControllerImpl::getFailureActionForMvuCommandStatu
 			return FailureAction::NotSupported;
 		}
 
+		// Cases the library do not implement
+		case entity::ControllerEntity::MvuCommandStatus::PartialImplementation:
+		{
+			return FailureAction::WarningContinue;
+		}
+
 		// Cases that are errors and we want to discard this entity
 		case entity::ControllerEntity::MvuCommandStatus::UnknownEntity:
 			[[fallthrough]];
@@ -2926,6 +3024,12 @@ ControllerImpl::FailureAction ControllerImpl::getFailureActionForAemCommandStatu
 		case entity::ControllerEntity::AemCommandStatus::NotSupported:
 		{
 			return FailureAction::NotSupported;
+		}
+
+		// Cases the library do not implement
+		case entity::ControllerEntity::AemCommandStatus::PartialImplementation:
+		{
+			return FailureAction::WarningContinue;
 		}
 
 		// Cases that are errors and we want to discard this entity

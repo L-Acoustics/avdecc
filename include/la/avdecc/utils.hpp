@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2020, L-Acoustics and its contributors
+* Copyright (C) 2016-2021, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -209,7 +209,7 @@ T convertFromString(char const* const str)
 }
 
 /** Useful template to convert any integer value to it's hex representation. Can be filled with zeros (ex: int16(0x123) = 0x0123) and printed in uppercase. */
-template<typename T>
+template<typename T, size_t FillWidth = sizeof(T) * 2>
 inline std::string toHexString(T const v, bool const zeroFilled = false, bool const upper = false) noexcept
 {
 	static_assert(std::numeric_limits<T>::is_integer, "toHexString requires an integer value");
@@ -219,7 +219,7 @@ inline std::string toHexString(T const v, bool const zeroFilled = false, bool co
 		std::stringstream stream;
 		stream << "0x";
 		if (zeroFilled)
-			stream << std::setfill('0') << std::setw(sizeof(T) * 2);
+			stream << std::setfill('0') << std::setw(FillWidth);
 		if (upper)
 			stream << std::uppercase;
 		stream << std::hex << forceNumeric(v);
@@ -233,7 +233,7 @@ inline std::string toHexString(T const v, bool const zeroFilled = false, bool co
 
 /** UniqueIdentifier overload */
 template<>
-inline std::string toHexString<UniqueIdentifier>(UniqueIdentifier const v, bool const zeroFilled, bool const upper) noexcept
+inline std::string toHexString<UniqueIdentifier, sizeof(UniqueIdentifier::value_type) * 2>(UniqueIdentifier const v, bool const zeroFilled, bool const upper) noexcept
 {
 	return toHexString(v.getValue(), zeroFilled, upper);
 }

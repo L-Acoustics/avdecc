@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2020, L-Acoustics and its contributors
+* Copyright (C) 2016-2021, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -318,7 +318,12 @@ struct AudioMapping
 using AudioMappings = std::vector<AudioMapping>;
 
 /** Control Type - Clause 7.3.4 */
-enum class ControlType : std::uint64_t
+using ControlType = UniqueIdentifier;
+constexpr std::uint32_t StandardControlTypeVendorID = 0x90e0f0;
+
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION controlTypeToString(ControlType const& controlType) noexcept;
+
+enum class StandardControlType : std::uint64_t
 {
 	Enable = 0x90e0f00000000000,
 	Identify = 0x90e0f00000000001,
@@ -385,17 +390,17 @@ enum class ControlType : std::uint64_t
 	Polarization = 0x90e0f00000040002,
 	/* 0x90e0f00000040003 to 0x90e0f0ffffffffff reserved for future use */
 };
-constexpr bool operator==(ControlType const lhs, ControlType const rhs)
+constexpr bool operator==(StandardControlType const lhs, StandardControlType const rhs)
 {
-	return static_cast<std::underlying_type_t<ControlType>>(lhs) == static_cast<std::underlying_type_t<ControlType>>(rhs);
+	return static_cast<std::underlying_type_t<StandardControlType>>(lhs) == static_cast<std::underlying_type_t<StandardControlType>>(rhs);
 }
 
-constexpr bool operator==(ControlType const lhs, std::underlying_type_t<ControlType> const rhs)
+constexpr bool operator==(StandardControlType const lhs, std::underlying_type_t<StandardControlType> const rhs)
 {
-	return static_cast<std::underlying_type_t<ControlType>>(lhs) == rhs;
+	return static_cast<std::underlying_type_t<StandardControlType>>(lhs) == rhs;
 }
 
-LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION controlTypeToString(ControlType const controlType) noexcept;
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION standardControlTypeToString(StandardControlType const controlType) noexcept;
 
 /** MSRP Mapping - Clause 7.4.40.2.1 */
 struct MsrpMapping
@@ -1294,7 +1299,7 @@ public:
 		: _isValid{ true }
 		, _type{ Traits::control_value_type }
 		, _areDynamic{ Traits::is_dynamic }
-		, _countValues{ values.size() }
+		, _countValues{ values.countValues() }
 		, _values{ values }
 	{
 		static_assert(Traits::is_value_details, "ControlValues::ControlValues, control_value_details_traits::is_value_details trait not defined for requested ValueDetailsType. Did you include entityModelControlValuesTraits.hpp?");
@@ -1305,7 +1310,7 @@ public:
 		: _isValid{ true }
 		, _type{ Traits::control_value_type }
 		, _areDynamic{ Traits::is_dynamic }
-		, _countValues{ values.size() } // Careful with order here, we are moving 'values'
+		, _countValues{ values.countValues() } // Careful with order here, we are moving 'values'
 		, _values{ std::move(values) }
 	{
 		static_assert(Traits::is_value_details, "ControlValues::ControlValues, control_value_details_traits::is_value_details trait not defined for requested ValueDetailsType. Did you include entityModelControlValuesTraits.hpp?");

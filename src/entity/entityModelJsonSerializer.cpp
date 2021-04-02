@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2020, L-Acoustics and its contributors
+* Copyright (C) 2016-2021, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -779,6 +779,10 @@ EntityTree LA_AVDECC_CALL_CONVENTION createEntityTree(json const& object, Flags 
 	catch (avdecc::jsonSerializer::DeserializationException const&)
 	{
 		throw; // Rethrow, this is already the correct exception type
+	}
+	catch (std::invalid_argument const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InvalidValue, e.what() };
 	}
 	catch (...)
 	{

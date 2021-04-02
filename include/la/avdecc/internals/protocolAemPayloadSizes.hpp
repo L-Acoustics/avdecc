@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2020, L-Acoustics and its contributors
+* Copyright (C) 2016-2021, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -234,6 +234,9 @@ constexpr size_t AecpAemGetMemoryObjectLengthCommandPayloadSize = 4u;
 
 /** GET_MEMORY_OBJECT_LENGTH Response - Clause 7.4.73.2 */
 constexpr size_t AecpAemGetMemoryObjectLengthResponsePayloadSize = 12u;
+
+static_assert(AecpAemAddAudioMappingsCommandPayloadMinSize == AecpAemRemoveAudioMappingsCommandPayloadMinSize, "Add and Remove no longer the same size, we should split AecpAemMaxAddRemoveAudioMappings in 2");
+constexpr size_t AecpAemMaxAddRemoveAudioMappings = (AemAecpdu::MaximumSendPayloadBufferLength - AecpAemRemoveAudioMappingsCommandPayloadMinSize) / 8;
 
 } // namespace aemPayload
 } // namespace protocol

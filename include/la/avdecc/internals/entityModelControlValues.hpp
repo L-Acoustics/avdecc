@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2020, L-Acoustics and its contributors
+* Copyright (C) 2016-2021, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -21,6 +21,7 @@
 * @file entityModelControlValues.hpp
 * @author Christophe Calmejane
 * @brief Avdecc entity model control descriptor values.
+* @warning All structures have to be exported on unix-like systems (using LA_AVDECC_TYPE_INFO_EXPORT) so type_info is correctly visible outside the shared library (required for std::any_cast to work)
 */
 
 #pragma once
@@ -31,6 +32,7 @@
 #include "exports.hpp"
 
 #include <optional>
+#include <array>
 
 namespace la
 {
@@ -42,7 +44,7 @@ namespace model
 {
 /** Linear Values - Clause 7.3.5.2.1 */
 template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
-struct LinearValueStatic
+struct LA_AVDECC_TYPE_INFO_EXPORT LinearValueStatic
 {
 	SizeType minimum{ 0 };
 	SizeType maximum{ 0 };
@@ -53,13 +55,13 @@ struct LinearValueStatic
 };
 
 template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
-struct LinearValueDynamic
+struct LA_AVDECC_TYPE_INFO_EXPORT LinearValueDynamic
 {
 	SizeType currentValue{ 0 }; // The actual default value should be the one from LinearValueStatic
 };
 
 template<typename ValueType>
-class LinearValues final
+class LA_AVDECC_TYPE_INFO_EXPORT LinearValues final
 {
 public:
 	using control_value_details_traits = ControlValues::control_value_details_traits<LinearValues<ValueType>>;
@@ -99,7 +101,7 @@ public:
 		return _values;
 	}
 
-	std::uint16_t size() const noexcept
+	std::uint16_t countValues() const noexcept
 	{
 		return static_cast<std::uint16_t>(_values.size());
 	}
@@ -119,7 +121,30 @@ private:
 	Values _values{};
 };
 
+/** UTF-8 String Value - Clause 7.3.5.2.4 */
+struct LA_AVDECC_TYPE_INFO_EXPORT UTF8StringValueStatic
+{
+	static constexpr size_t MaxLength = 406;
+
+	std::uint16_t countValues() const noexcept
+	{
+		return 1;
+	}
+};
+struct LA_AVDECC_TYPE_INFO_EXPORT UTF8StringValueDynamic
+{
+	using value_type = std::uint8_t;
+	using Values = std::array<std::uint8_t, UTF8StringValueStatic::MaxLength>;
+	Values currentValue{};
+
+	std::uint16_t countValues() const noexcept
+	{
+		return 1;
+	}
+};
+
 LA_AVDECC_API std::optional<ControlValues> LA_AVDECC_CALL_CONVENTION unpackDynamicControlValues(MemoryBuffer const& packedControlValues, ControlValueType::Type const valueType, std::uint16_t const numberOfValues) noexcept;
+LA_AVDECC_API std::optional<std::string> LA_AVDECC_CALL_CONVENTION validateControlValues(ControlValues const& staticValues, ControlValues const& dynamicValues) noexcept;
 
 } // namespace model
 } // namespace entity

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2020, L-Acoustics and its contributors
+* Copyright (C) 2016-2021, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -76,6 +76,70 @@ std::optional<ControlValues> LA_AVDECC_CALL_CONVENTION unpackDynamicControlValue
 		LOG_AEM_PAYLOAD_TRACE("unpackDynamicControlValues error: Cannot unpack ControlValueType {}: {}", controlValueTypeToString(valueType), e.what());
 	}
 	return {};
+}
+
+static inline void createValidateControlValuesDispatchTable(std::unordered_map<entity::model::ControlValueType::Type, std::function<std::optional<std::string>(entity::model::ControlValues const&, entity::model::ControlValues const&)>>& dispatchTable)
+{
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt8] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt8>::validateControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt8] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt8>::validateControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt16] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt16>::validateControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt16] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt16>::validateControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt32] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt32>::validateControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt32] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt32>::validateControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt64] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt64>::validateControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt64] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt64>::validateControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearFloat] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearFloat>::validateControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlLinearDouble] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearDouble>::validateControlValues;
+}
+
+std::optional<std::string> LA_AVDECC_CALL_CONVENTION validateControlValues(ControlValues const& staticValues, ControlValues const& dynamicValues) noexcept
+{
+	static auto s_Dispatch = std::unordered_map<entity::model::ControlValueType::Type, std::function<std::optional<std::string>(entity::model::ControlValues const&, entity::model::ControlValues const&)>>{};
+
+	if (s_Dispatch.empty())
+	{
+		// Create the dispatch table
+		createValidateControlValuesDispatchTable(s_Dispatch);
+	}
+
+	if (!staticValues)
+	{
+		return "StaticValues  are not initialized";
+	}
+
+	if (staticValues.areDynamicValues())
+	{
+		return "StaticValues are dynamic instead of static";
+	}
+
+	if (!dynamicValues)
+	{
+		return "DynamicValues are not initialized";
+	}
+
+	if (!dynamicValues.areDynamicValues())
+	{
+		return "DynamicValues are static instead of dynamic";
+	}
+
+	auto const valueType = staticValues.getType();
+	if (valueType != dynamicValues.getType())
+	{
+		return "DynamicValues type does not match StaticValues type";
+	}
+
+	if (staticValues.size() != dynamicValues.size())
+	{
+		return "Values count does not match (" + std::to_string(staticValues.size()) + " static values, " + std::to_string(dynamicValues.size()) + " dynamic ones)";
+	}
+
+	if (auto const& it = s_Dispatch.find(valueType); it != s_Dispatch.end())
+	{
+		return it->second(staticValues, dynamicValues);
+	}
+
+	// In case we don't handle this kind of ControlType, just validate the values
+	return std::nullopt;
 }
 
 } // namespace model

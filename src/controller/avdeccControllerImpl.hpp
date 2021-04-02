@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2020, L-Acoustics and its contributors
+* Copyright (C) 2016-2021, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -63,7 +63,9 @@ public:
 
 	void unregisterExclusiveAccessToken(la::avdecc::UniqueIdentifier const entityID, ExclusiveAccessTokenImpl* const token) const noexcept;
 
+#ifndef la_avdecc_controller_cxx_STATICS /* Keep everything public when compiling the static library so unit tests can access all methods */
 private:
+#endif // !la_avdecc_controller_cxx_STATICS
 	virtual ~ControllerImpl() override;
 
 	/* ************************************************************ */
@@ -85,7 +87,6 @@ private:
 	virtual void disableFullStaticEntityModelEnumeration() noexcept override;
 
 	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadEntityModelFile(std::string const& filePath) noexcept override;
-
 
 	/* Enumeration and Control Protocol (AECP) AEM */
 	virtual void acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, AcquireEntityHandler const& handler) const noexcept override;
@@ -580,7 +581,35 @@ private:
 	void getDynamicInfo(ControlledEntityImpl* const entity) noexcept;
 	void getDescriptorDynamicInfo(ControlledEntityImpl* const entity) noexcept;
 	void checkEnumerationSteps(ControlledEntityImpl* const entity) noexcept;
+	template<entity::model::DescriptorType StreamPortType>
+	entity::model::AudioMappings validateMappings(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings) const noexcept
+	{
+		static_assert(StreamPortType == entity::model::DescriptorType::StreamPortInput || StreamPortType == entity::model::DescriptorType::StreamPortOutput, "Can only validate StreamPortInput and StreamPortOutput");
+
+		try
+		{
+			auto const& entity = controlledEntity.getEntity();
+			if constexpr (StreamPortType == entity::model::DescriptorType::StreamPortInput)
+			{
+				auto const maxSinks = entity.getCommonInformation().listenerStreamSinks;
+				auto const& staticModel = controlledEntity.getNodeStaticModel(controlledEntity.getCurrentConfigurationIndex(), streamPortIndex, &entity::model::ConfigurationTree::streamPortInputModels);
+				return validateMappings(controlledEntity, maxSinks, staticModel.numberOfClusters, mappings);
+			}
+			else if constexpr (StreamPortType == entity::model::DescriptorType::StreamPortOutput)
+			{
+				auto const maxSources = entity.getCommonInformation().talkerStreamSources;
+				auto const& staticModel = controlledEntity.getNodeStaticModel(controlledEntity.getCurrentConfigurationIndex(), streamPortIndex, &entity::model::ConfigurationTree::streamPortOutputModels);
+				return validateMappings(controlledEntity, maxSources, staticModel.numberOfClusters, mappings);
+			}
+		}
+		catch (...)
+		{
+			return {};
+		}
+	}
+	entity::model::AudioMappings validateMappings(ControlledEntityImpl& controlledEntity, std::uint16_t const maxStreams, std::uint16_t const maxClusters, entity::model::AudioMappings const& mappings) const noexcept;
 	bool validateIdentifyControl(ControlledEntityImpl& controlledEntity, model::ControlNode const& identifyControlNode) const noexcept;
+	bool validateControlValues(UniqueIdentifier const entityID, entity::model::ControlIndex const controlIndex, entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) const noexcept;
 	void onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept;
 	void onPreUnadvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept;
 	FailureAction getFailureActionForMvuCommandStatus(entity::ControllerEntity::MvuCommandStatus const status) const noexcept;

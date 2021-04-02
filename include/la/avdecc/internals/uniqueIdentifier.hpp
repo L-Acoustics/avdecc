@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2020, L-Acoustics and its contributors
+* Copyright (C) 2016-2021, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -75,6 +75,20 @@ public:
 		else if constexpr (std::is_same_v<Type, std::uint64_t>)
 		{
 			return static_cast<Type>((_eui >> 28) & 0x0000000FFFFFFFFF);
+		}
+	}
+
+	/** Returns the Value for the Vendor. Value being the remaining part after the OUI-24 (by default) or OUI-64 if using std::uint64_t type. It's the caller's responsibility to know if it needs to get the value after OUI-24 or OUI-36. */
+	template<typename Type = std::uint64_t>
+	constexpr std::enable_if_t<std::is_same_v<Type, std::uint64_t> | std::is_same_v<Type, std::uint32_t>, Type> getVendorValue() const noexcept
+	{
+		if constexpr (std::is_same_v<Type, std::uint64_t>)
+		{
+			return static_cast<Type>(_eui) & 0x000000FFFFFFFFFF;
+		}
+		else if constexpr (std::is_same_v<Type, std::uint32_t>)
+		{
+			return static_cast<Type>(_eui) & 0x0FFFFFFF;
 		}
 	}
 

@@ -286,7 +286,7 @@
                                 "block_latency": 0,
                                 "control_domain": 0,
                                 "control_latency": 0,
-                                "control_type": "IDENTIFY",
+                                "control_type": "0x90e0f00000000001",
                                 "control_value_type": {
                                     "read_only": false,
                                     "unknown": false,
