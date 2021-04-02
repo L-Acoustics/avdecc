@@ -3940,6 +3940,61 @@ void ControllerImpl::addTalkerStreamConnection(ControlledEntityImpl* const talke
 }
 
 #ifdef ENABLE_AVDECC_FEATURE_JSON
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> ControllerImpl::loadControlledEntityFromJson(json const& object, entity::model::jsonSerializer::Flags const flags)
+{
+	auto controlledEntity = createControlledEntityFromJson(object, flags);
+
+	auto& entity = *controlledEntity;
+
+	// Set the Entity Model for our virtual entity
+	if (flags.test(entity::model::jsonSerializer::Flag::ProcessStaticModel) || flags.test(entity::model::jsonSerializer::Flag::ProcessDynamicModel))
+	{
+		jsonSerializer::setEntityModel(entity, object.at(jsonSerializer::keyName::ControlledEntity_EntityModel), flags);
+	}
+
+	// Set the Entity State
+	if (flags.test(entity::model::jsonSerializer::Flag::ProcessState))
+	{
+		jsonSerializer::setEntityState(entity, object.at(jsonSerializer::keyName::ControlledEntity_EntityState));
+	}
+
+	// Set the Statistics
+	if (flags.test(entity::model::jsonSerializer::Flag::ProcessStatistics))
+	{
+		auto const it = object.find(jsonSerializer::keyName::ControlledEntity_Statistics);
+		if (it != object.end())
+		{
+			jsonSerializer::setEntityStatistics(entity, *it);
+		}
+	}
+
+	// Choose a locale
+	chooseLocale(&entity, entity.getCurrentConfigurationIndex());
+
+	// Add the entity
+	auto const entityID = entity.getEntity().getEntityID();
+	{
+		// Lock to protect _controlledEntities
+		std::lock_guard<decltype(_lock)> const lg(_lock);
+
+		auto entityIt = _controlledEntities.find(entityID);
+		if (entityIt != _controlledEntities.end())
+		{
+			return { avdecc::jsonSerializer::DeserializationError::DuplicateEntityID, utils::toHexString(entityID, true) };
+		}
+		_controlledEntities.insert(std::make_pair(entityID, controlledEntity));
+	}
+
+	// Ready to advertise
+	{
+		auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), to simulate being called from a Networking Thread. THIS IS A HACK!
+		checkEnumerationSteps(&entity);
+	}
+	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Successfully loaded virtual entity with ID {}", utils::toHexString(entityID, true));
+
+	return { avdecc::jsonSerializer::DeserializationError::NoError, "" };
+}
+
 ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntityFromJson(json const& object, entity::model::jsonSerializer::Flags const flags)
 {
 	try

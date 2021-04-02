@@ -67,6 +67,7 @@ enum class DeserializationError
 	OtherError = 8, /**< Other json conversion error. */
 	DuplicateEntityID = 9, /**< An Entity already exists with the same EntityID. */
 	NotCompliant = 10, /**< Model is not full compliant with IEEE1722.1 and IgnoreSanityChecks flag was not set. */
+	Incomplete = 11, /**< Deserialization partially done (had errors but continued anyway). */
 	NotSupported = 98, /**< Deserialization feature not supported by the library (was not compiled). */
 	InternalError = 99, /**< Internal error, please report the issue. */
 };
