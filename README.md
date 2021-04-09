@@ -22,7 +22,7 @@ We use GitHub issues for tracking requests and bugs.
 * [nlohmann JSON](https://github.com/nlohmann/json) to read and write JSON files
 
 ### <a name="compatibleEntities"></a>Tested AVB entities:
-* L-Acoustics: LA4X, LA12X, P1
+* L-Acoustics: LA4X, LA12X, LA2Xi, P1
 * Biamp: Tesira Forte
 * Avid: S6L
 * MOTU: 112D, 828, Traveller, StageBox16
