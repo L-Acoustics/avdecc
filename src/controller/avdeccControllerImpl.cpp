@@ -28,6 +28,7 @@
 
 #ifdef ENABLE_AVDECC_FEATURE_JSON
 #	include "avdeccControllerJsonTypes.hpp"
+# include "avdeccControlledEntityJsonSerializer.hpp"
 #	include <la/avdecc/internals/jsonTypes.hpp>
 #endif // ENABLE_AVDECC_FEATURE_JSON
 #include <la/avdecc/internals/streamFormatInfo.hpp>
