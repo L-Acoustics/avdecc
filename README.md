@@ -30,6 +30,7 @@ We use GitHub issues for tracking requests and bugs.
 * QSC: Q-SYS Cores
 * Apple: macOS Talker, Listener and Controller (El Capitan and later)
 * AudioScience: Hono AVB Mini
+* d&b audiotechnik: DS20
 
 ## la_avdecc library
 
