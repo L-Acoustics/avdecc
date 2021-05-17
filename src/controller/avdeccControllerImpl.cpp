@@ -2493,7 +2493,7 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const entity) n
 			auto const& entityID = e.getEntityID();
 			auto const& entityModelID = e.getEntityModelID();
 			// If AEM Cache is Enabled and the entity has an EntityModelID defined
-			if (entityModelCache.isCacheEnabled() && entityModelID)
+			if (entityModelCache.isCacheEnabled() && entityModelID && !entity->shouldIgnoreCachedEntityModel())
 			{
 				if (EntityModelCache::isValidEntityModelID(entityModelID))
 				{

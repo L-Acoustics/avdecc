@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - Support for multiple Virtual Entities loading from FullNetworkState file
+- More IEEE1722.1 compliance checks (same fields btw ADP and ENTITY_DESCRIPTOR)
 
 ## [3.1.1] - 2021-04-02
 ### Fixed

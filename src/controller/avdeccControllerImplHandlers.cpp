@@ -109,7 +109,7 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 				if (!processRegisterUnsolFailureStatus(status, &entity))
 				{
 					controlledEntity->setGetFatalEnumerationError();
-					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::RegisterUnsol);
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, &entity, QueryCommandError::RegisterUnsol);
 					return;
 				}
 			}
@@ -134,58 +134,76 @@ void ControllerImpl::onEntityDescriptorResult(entity::controller::Interface cons
 
 	if (controlledEntity)
 	{
-		if (controlledEntity->checkAndClearExpectedDescriptor(0, entity::model::DescriptorType::Entity, 0))
+		auto& entity = *controlledEntity;
+
+		if (entity.checkAndClearExpectedDescriptor(0, entity::model::DescriptorType::Entity, 0))
 		{
 			if (!!status)
 			{
+				// Validate some fields
+				auto const& e = entity.getEntity();
+				if (descriptor.entityID != e.getEntityID())
+				{
+					LOG_CONTROLLER_WARN(entityID, "EntityID is expected to be identical in ADP and ENTITY_DESCRIPTOR");
+					removeCompatibilityFlag(entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					entity.setIgnoreCachedEntityModel();
+				}
+				if (descriptor.entityModelID != e.getEntityModelID())
+				{
+					LOG_CONTROLLER_WARN(entityID, "EntityModelID is expected to be identical in ADP and ENTITY_DESCRIPTOR");
+					removeCompatibilityFlag(entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					entity.setIgnoreCachedEntityModel();
+				}
+
 				// Search in the AEM cache for the AEM of the active configuration (if not ignored)
+				auto const entityModelID = descriptor.entityModelID;
 				auto cachedModel = std::optional<entity::model::EntityTree>{ std::nullopt };
 				auto const& entityModelCache = EntityModelCache::getInstance();
 				// If AEM Cache is Enabled and the entity has an EntityModelID defined
-				if (!controlledEntity->shouldIgnoreCachedEntityModel() && entityModelCache.isCacheEnabled() && descriptor.entityModelID)
+				if (!entity.shouldIgnoreCachedEntityModel() && entityModelCache.isCacheEnabled() && entityModelID)
 				{
-					if (EntityModelCache::isValidEntityModelID(descriptor.entityModelID))
+					if (EntityModelCache::isValidEntityModelID(entityModelID))
 					{
-						cachedModel = entityModelCache.getCachedEntityTree(descriptor.entityModelID);
+						cachedModel = entityModelCache.getCachedEntityTree(entityModelID);
 					}
 					else
 					{
-						LOG_CONTROLLER_INFO(entityID, "AEM-CACHE: Ignoring invalid EntityModelID {} (invalid Vendor OUI-24)", utils::toHexString(descriptor.entityModelID, true, false));
+						LOG_CONTROLLER_INFO(entityID, "AEM-CACHE: Ignoring invalid EntityModelID {} (invalid Vendor OUI-24)", utils::toHexString(entityModelID, true, false));
 					}
 				}
 
 				// Already cached, no need to get the remaining of EnumerationSteps::GetStaticModel, proceed with EnumerationSteps::GetDescriptorDynamicInfo
-				if (cachedModel && controlledEntity->setCachedEntityTree(*cachedModel, descriptor, _fullStaticModelEnumeration))
+				if (cachedModel && entity.setCachedEntityTree(*cachedModel, descriptor, _fullStaticModelEnumeration))
 				{
-					LOG_CONTROLLER_INFO(entityID, "AEM-CACHE: Loaded model for EntityModelID {}", utils::toHexString(descriptor.entityModelID, true, false));
-					controlledEntity->addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
+					LOG_CONTROLLER_INFO(entityID, "AEM-CACHE: Loaded model for EntityModelID {}", utils::toHexString(entityModelID, true, false));
+					entity.addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
 				}
 				else
 				{
-					controlledEntity->setEntityDescriptor(descriptor);
+					entity.setEntityDescriptor(descriptor);
 					for (auto index = entity::model::ConfigurationIndex(0u); index < descriptor.configurationsCount; ++index)
 					{
-						queryInformation(controlledEntity.get(), index, entity::model::DescriptorType::Configuration, 0u);
+						queryInformation(&entity, index, entity::model::DescriptorType::Configuration, 0u);
 					}
 				}
 			}
 			else
 			{
-				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), 0, entity::model::DescriptorType::Entity, 0))
+				if (!processGetStaticModelFailureStatus(status, &entity, 0, entity::model::DescriptorType::Entity, 0))
 				{
-					controlledEntity->setGetFatalEnumerationError();
-					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::EntityDescriptor);
+					entity.setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, &entity, QueryCommandError::EntityDescriptor);
 					return;
 				}
 			}
 		}
 
 		// Got all expected descriptors
-		if (controlledEntity->gotAllExpectedDescriptors())
+		if (entity.gotAllExpectedDescriptors())
 		{
 			// Clear this enumeration step and check for next one
-			controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
-			checkEnumerationSteps(controlledEntity.get());
+			entity.clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
+			checkEnumerationSteps(&entity);
 		}
 	}
 }
