@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support for multiple Virtual Entities loading from FullNetworkState file
 - More IEEE1722.1 compliance checks (same fields btw ADP and ENTITY_DESCRIPTOR)
 
+### Fixed
+- [onIdentificationStarted correctly triggered if entity is in identification when discovered](https://github.com/L-Acoustics/avdecc/issues/93)
+
 ## [3.1.1] - 2021-04-02
 ### Fixed
 - [Discard unsol notifications received before descriptor has been read](https://github.com/L-Acoustics/avdecc/issues/91)

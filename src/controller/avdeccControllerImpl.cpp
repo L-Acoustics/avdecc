@@ -28,7 +28,7 @@
 
 #ifdef ENABLE_AVDECC_FEATURE_JSON
 #	include "avdeccControllerJsonTypes.hpp"
-# include "avdeccControlledEntityJsonSerializer.hpp"
+#	include "avdeccControlledEntityJsonSerializer.hpp"
 #	include <la/avdecc/internals/jsonTypes.hpp>
 #endif // ENABLE_AVDECC_FEATURE_JSON
 #include <la/avdecc/internals/streamFormatInfo.hpp>
@@ -2510,6 +2510,9 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const entity) n
 			// Advertise the entity
 			entity->setAdvertised(true);
 			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityOnline, this, entity);
+
+			// Do some final steps after advertising entity
+			onPostAdvertiseEntity(*entity);
 		}
 	}
 }
@@ -2881,6 +2884,34 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 		{
 			AVDECC_ASSERT(false, "Unexpected exception");
 		}
+	}
+}
+
+void ControllerImpl::onPostAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept
+{
+	try
+	{
+		// The entity has an Identify ControlIndex
+		auto const identifyControlIndex = controlledEntity.getIdentifyControlIndex();
+		if (identifyControlIndex)
+		{
+			// Check if identify is currently in progress
+			auto const& configurationNode = controlledEntity.getCurrentConfigurationNode();
+			auto const& controlNode = configurationNode.controls.at(*identifyControlIndex);
+			auto const identifyOpt = getIdentifyControlValue(controlNode.dynamicModel->values);
+			if (identifyOpt)
+			{
+				// Notify
+				if (*identifyOpt)
+				{
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onIdentificationStarted, this, &controlledEntity);
+				}
+			}
+		}
+	}
+	catch (...)
+	{
+		AVDECC_ASSERT(false, "Identify Control Descriptor was validated, this should not throw");
 	}
 }
 
