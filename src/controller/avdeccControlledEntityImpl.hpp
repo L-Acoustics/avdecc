@@ -203,6 +203,7 @@ public:
 	virtual std::optional<entity::model::MilanInfo> getMilanInfo() const noexcept override;
 	virtual std::optional<entity::model::ControlIndex> getIdentifyControlIndex() const noexcept override;
 	virtual bool isEntityModelValidForCaching() const noexcept override;
+	virtual bool isIdentifying() const noexcept override;
 
 	virtual model::EntityNode const& getEntityNode() const override;
 	virtual model::ConfigurationNode const& getConfigurationNode(entity::model::ConfigurationIndex const configurationIndex) const override;

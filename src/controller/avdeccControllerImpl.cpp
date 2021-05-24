@@ -2889,29 +2889,10 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 
 void ControllerImpl::onPostAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept
 {
-	try
+	// If entity is currently identifying itself, notify
+	if (controlledEntity.isIdentifying())
 	{
-		// The entity has an Identify ControlIndex
-		auto const identifyControlIndex = controlledEntity.getIdentifyControlIndex();
-		if (identifyControlIndex)
-		{
-			// Check if identify is currently in progress
-			auto const& configurationNode = controlledEntity.getCurrentConfigurationNode();
-			auto const& controlNode = configurationNode.controls.at(*identifyControlIndex);
-			auto const identifyOpt = getIdentifyControlValue(controlNode.dynamicModel->values);
-			if (identifyOpt)
-			{
-				// Notify
-				if (*identifyOpt)
-				{
-					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onIdentificationStarted, this, &controlledEntity);
-				}
-			}
-		}
-	}
-	catch (...)
-	{
-		AVDECC_ASSERT(false, "Identify Control Descriptor was validated, this should not throw");
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onIdentificationStarted, this, &controlledEntity);
 	}
 }
 

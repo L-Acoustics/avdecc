@@ -124,7 +124,8 @@ public:
 	virtual entity::Entity const& getEntity() const noexcept = 0;
 	virtual std::optional<entity::model::MilanInfo> getMilanInfo() const noexcept = 0; // Retrieve MilanInfo, guaranteed to be present if CompatibilityFlag::Milan is set
 	virtual std::optional<entity::model::ControlIndex> getIdentifyControlIndex() const noexcept = 0; // Retrieve the Identify Control Index, if the entity has a valid one
-	virtual bool isEntityModelValidForCaching() const noexcept = 0; // True is the Entity Model is valid for caching
+	virtual bool isEntityModelValidForCaching() const noexcept = 0; // True if the Entity Model is valid for caching
+	virtual bool isIdentifying() const noexcept = 0; // True if the Entity is currently identifying itself
 
 	virtual model::EntityNode const& getEntityNode() const = 0; // Throws Exception::NotSupported if EM not supported by the Entity
 	virtual model::ConfigurationNode const& getConfigurationNode(entity::model::ConfigurationIndex const configurationIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
