@@ -26,6 +26,8 @@
 #include "avdeccControllerLogHelper.hpp"
 #include "avdeccEntityModelCache.hpp"
 
+#include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
+
 #include <algorithm>
 #include <cassert>
 #include <typeindex>
