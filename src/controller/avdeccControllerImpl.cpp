@@ -2492,8 +2492,8 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const entity) n
 			auto const& e = entity->getEntity();
 			auto const& entityID = e.getEntityID();
 			auto const& entityModelID = e.getEntityModelID();
-			// If AEM Cache is Enabled and the entity has an EntityModelID defined
-			if (entityModelCache.isCacheEnabled() && entityModelID && !entity->shouldIgnoreCachedEntityModel())
+			// If AEM Cache is Enabled, the entity has a valid non-Group EntityModelID, and it's not in the ignore list
+			if (entityModelCache.isCacheEnabled() && entityModelID && !entityModelID.isGroupIdentifier() && !entity->shouldIgnoreCachedEntityModel())
 			{
 				if (EntityModelCache::isValidEntityModelID(entityModelID))
 				{
