@@ -92,6 +92,18 @@ public:
 		}
 	}
 
+	/** Returns true if the UniqueIdentifier is Group (aka Multicast/Broadcast). Returns false if the UniqueIdentifier is Individual (aka Unicast), or invalid. */
+	constexpr bool isGroupIdentifier() const noexcept
+	{
+		return isValid() && ((_eui & 0x0100000000000000) == 0x0100000000000000);
+	}
+
+	/** Returns true if the UniqueIdentifier is Locally Administrated. Returns false if the UniqueIdentifier is Universally Administered, or invalid. */
+	constexpr bool isLocalIdentifier() const noexcept
+	{
+		return isValid() && ((_eui & 0x0200000000000000) == 0x0200000000000000);
+	}
+
 	/** True if the UniqueIdentifier contains a valid underlying value, false otherwise. */
 	constexpr bool isValid() const noexcept
 	{

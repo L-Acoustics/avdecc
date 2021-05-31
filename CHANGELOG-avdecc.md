@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- isGroupIdentifier and isLocalIdentifier methods to la::avdecc::UniqueIdentifier
+
 ### Fixed
 - [Incorrect generated AUDIO_MAP index when loading a virtual entity](https://github.com/L-Acoustics/avdecc/issues/94)
 
