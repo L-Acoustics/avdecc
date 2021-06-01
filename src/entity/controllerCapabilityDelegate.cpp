@@ -22,6 +22,10 @@
 * @author Christophe Calmejane
 */
 
+#ifndef __cpp_structured_bindings
+#	error "__cpp_structured_bindings not supported by the compiler. Check minimum requirements."
+#endif
+
 #include "la/avdecc/utils.hpp"
 
 #include "controllerCapabilityDelegate.hpp"
@@ -1937,17 +1941,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Acquire Entity
 		{ protocol::AemCommandType::AcquireEntity.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[flags, ownerID, descriptorType, descriptorIndex] = protocol::aemPayload::deserializeAcquireEntityResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeAcquireEntityResponse(aem.getPayload());
-				protocol::AemAcquireEntityFlags const flags = std::get<0>(result);
-				UniqueIdentifier const ownerID = std::get<1>(result);
-				entity::model::DescriptorType const descriptorType = std::get<2>(result);
-				entity::model::DescriptorIndex const descriptorIndex = std::get<3>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				if ((flags & protocol::AemAcquireEntityFlags::Release) == protocol::AemAcquireEntityFlags::Release)
@@ -1971,17 +1966,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Lock Entity
 		{ protocol::AemCommandType::LockEntity.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[flags, lockedID, descriptorType, descriptorIndex] = protocol::aemPayload::deserializeLockEntityResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeLockEntityResponse(aem.getPayload());
-				protocol::AemLockEntityFlags const flags = std::get<0>(result);
-				UniqueIdentifier const lockedID = std::get<1>(result);
-				entity::model::DescriptorType const descriptorType = std::get<2>(result);
-				entity::model::DescriptorIndex const descriptorIndex = std::get<3>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				if ((flags & protocol::AemLockEntityFlags::Unlock) == protocol::AemLockEntityFlags::Unlock)
@@ -2020,17 +2006,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		{ protocol::AemCommandType::ReadDescriptor.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
 				auto const payload = aem.getPayload();
-		// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[commonSize, configurationIndex, descriptorType, descriptorIndex] = protocol::aemPayload::deserializeReadDescriptorCommonResponse(payload);
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeReadDescriptorCommonResponse(payload);
-				size_t const commonSize = std::get<0>(result);
-				entity::model::ConfigurationIndex const configurationIndex = std::get<1>(result);
-				entity::model::DescriptorType const descriptorType = std::get<2>(result);
-				entity::model::DescriptorIndex const descriptorIndex = std::get<3>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 				auto const aemStatus = protocol::AemAecpStatus(static_cast<protocol::AemAecpStatus::value_type>(status));
 
@@ -2244,14 +2221,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Set Configuration
 		{ protocol::AemCommandType::SetConfiguration.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[configurationIndex] = protocol::aemPayload::deserializeSetConfigurationResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeSetConfigurationResponse(aem.getPayload());
-				model::ConfigurationIndex const configurationIndex = std::get<0>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2265,14 +2236,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Get Configuration
 		{ protocol::AemCommandType::GetConfiguration.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[configurationIndex] = protocol::aemPayload::deserializeGetConfigurationResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeGetConfigurationResponse(aem.getPayload());
-				model::ConfigurationIndex const configurationIndex = std::get<0>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2282,16 +2247,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Set Stream Format
 		{ protocol::AemCommandType::SetStreamFormat.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[descriptorType, descriptorIndex, streamFormat] = protocol::aemPayload::deserializeSetStreamFormatResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeSetStreamFormatResponse(aem.getPayload());
-				model::DescriptorType const descriptorType = std::get<0>(result);
-				model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-				entity::model::StreamFormat const streamFormat = std::get<2>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2318,16 +2275,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Get Stream Format
 		{ protocol::AemCommandType::GetStreamFormat.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[descriptorType, descriptorIndex, streamFormat] = protocol::aemPayload::deserializeGetStreamFormatResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeGetStreamFormatResponse(aem.getPayload());
-				model::DescriptorType const descriptorType = std::get<0>(result);
-				model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-				entity::model::StreamFormat const streamFormat = std::get<2>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2346,16 +2295,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Set Stream Info
 		{ protocol::AemCommandType::SetStreamInfo.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[descriptorType, descriptorIndex, streamInfo] = protocol::aemPayload::deserializeSetStreamInfoResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeSetStreamInfoResponse(aem.getPayload());
-				model::DescriptorType const descriptorType = std::get<0>(result);
-				model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-				entity::model::StreamInfo const streamInfo = std::get<2>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2382,16 +2323,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Get Stream Info
 		{ protocol::AemCommandType::GetStreamInfo.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[descriptorType, descriptorIndex, streamInfo] = protocol::aemPayload::deserializeGetStreamInfoResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeGetStreamInfoResponse(aem.getPayload());
-				model::DescriptorType const descriptorType = std::get<0>(result);
-				model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-				entity::model::StreamInfo const streamInfo = std::get<2>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2418,18 +2351,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Set Name
 		{ protocol::AemCommandType::SetName.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[descriptorType, descriptorIndex, nameIndex, configurationIndex, name] = protocol::aemPayload::deserializeSetNameResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeSetNameResponse(aem.getPayload());
-				model::DescriptorType const descriptorType = std::get<0>(result);
-				model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-				std::uint16_t const nameIndex = std::get<2>(result);
-				model::ConfigurationIndex const configurationIndex = std::get<3>(result);
-				model::AvdeccFixedString const name = std::get<4>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2650,18 +2573,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Get Name
 		{ protocol::AemCommandType::GetName.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[descriptorType, descriptorIndex, nameIndex, configurationIndex, name] = protocol::aemPayload::deserializeGetNameResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeGetNameResponse(aem.getPayload());
-				model::DescriptorType const descriptorType = std::get<0>(result);
-				model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-				std::uint16_t const nameIndex = std::get<2>(result);
-				model::ConfigurationIndex const configurationIndex = std::get<3>(result);
-				model::AvdeccFixedString const name = std::get<4>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2834,16 +2747,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Set Sampling Rate
 		{ protocol::AemCommandType::SetSamplingRate.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[descriptorType, descriptorIndex, samplingRate] = protocol::aemPayload::deserializeSetSamplingRateResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeSetSamplingRateResponse(aem.getPayload());
-				entity::model::DescriptorType const descriptorType = std::get<0>(result);
-				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-				entity::model::SamplingRate const samplingRate = std::get<2>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2878,16 +2783,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Get Sampling Rate
 		{ protocol::AemCommandType::GetSamplingRate.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[descriptorType, descriptorIndex, samplingRate] = protocol::aemPayload::deserializeGetSamplingRateResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeGetSamplingRateResponse(aem.getPayload());
-				entity::model::DescriptorType const descriptorType = std::get<0>(result);
-				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-				entity::model::SamplingRate const samplingRate = std::get<2>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2910,16 +2807,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Set Clock Source
 		{ protocol::AemCommandType::SetClockSource.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[descriptorType, descriptorIndex, clockSourceIndex] = protocol::aemPayload::deserializeSetClockSourceResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeSetClockSourceResponse(aem.getPayload());
-				//entity::model::DescriptorType const descriptorType = std::get<0>(result);
-				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-				entity::model::ClockSourceIndex const clockSourceIndex = std::get<2>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2933,16 +2822,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Get Clock Source
 		{ protocol::AemCommandType::GetClockSource.getValue(),[](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[descriptorType, descriptorIndex, clockSourceIndex] = protocol::aemPayload::deserializeGetClockSourceResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeGetClockSourceResponse(aem.getPayload());
-				//entity::model::DescriptorType const descriptorType = std::get<0>(result);
-				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-				entity::model::ClockSourceIndex const clockSourceIndex = std::get<2>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2952,16 +2833,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Set Control
 		{ protocol::AemCommandType::SetControl.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const [descriptorType, descriptorIndex, packedControlValues] = protocol::aemPayload::deserializeSetControlResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeSetControlResponse(aem.getPayload());
-				//entity::model::DescriptorType const descriptorType = std::get<0>(result);
-				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-				MemoryBuffer const& packedControlValues = std::get<2>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2975,16 +2848,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Get Control
 		{ protocol::AemCommandType::GetControl.getValue(),[](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const [descriptorType, descriptorIndex, controlValues] = protocol::aemPayload::deserializeGetControlResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeGetControlResponse(aem.getPayload());
-				//entity::model::DescriptorType const descriptorType = std::get<0>(result);
-				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-				entity::model::ControlValues const controlValues = std::get<2>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2994,15 +2859,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Start Streaming
 		{ protocol::AemCommandType::StartStreaming.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[descriptorType, descriptorIndex] = protocol::aemPayload::deserializeStartStreamingResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeStartStreamingResponse(aem.getPayload());
-				entity::model::DescriptorType const descriptorType = std::get<0>(result);
-				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -3029,15 +2887,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Stop Streaming
 		{ protocol::AemCommandType::StopStreaming.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[descriptorType, descriptorIndex] = protocol::aemPayload::deserializeStopStreamingResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeStopStreamingResponse(aem.getPayload());
-				entity::model::DescriptorType const descriptorType = std::get<0>(result);
-				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -3085,16 +2936,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// GetAvbInfo
 		{ protocol::AemCommandType::GetAvbInfo.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[descriptorType, descriptorIndex, avbInfo] = protocol::aemPayload::deserializeGetAvbInfoResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeGetAvbInfoResponse(aem.getPayload());
-				entity::model::DescriptorType const descriptorType = std::get<0>(result);
-				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-				entity::model::AvbInfo const avbInfo = std::get<2>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -3113,15 +2956,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// GetAsPath
 		{ protocol::AemCommandType::GetAsPath.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[descriptorIndex, asPath] = protocol::aemPayload::deserializeGetAsPathResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeGetAsPathResponse(aem.getPayload());
-				entity::model::DescriptorIndex const descriptorIndex = std::get<0>(result);
-				entity::model::AsPath const asPath = std::get<1>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -3135,17 +2971,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// GetCounters
 		{ protocol::AemCommandType::GetCounters.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[descriptorType, descriptorIndex, validFlags, counters] = protocol::aemPayload::deserializeGetCountersResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeGetCountersResponse(aem.getPayload());
-				entity::model::DescriptorType const descriptorType = std::get<0>(result);
-				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-				entity::model::DescriptorCounterValidFlag const validFlags = std::get<2>(result);
-				entity::model::DescriptorCounters const& counters = std::get<3>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -3219,18 +3046,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Get Audio Map
 		{ protocol::AemCommandType::GetAudioMap.getValue(), []([[maybe_unused]] controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[descriptorType, descriptorIndex, mapIndex, numberOfMaps, mappings] = protocol::aemPayload::deserializeGetAudioMapResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeGetAudioMapResponse(aem.getPayload());
-				entity::model::DescriptorType const descriptorType = std::get<0>(result);
-				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-				entity::model::MapIndex const mapIndex = std::get<2>(result);
-				entity::model::MapIndex const numberOfMaps = std::get<3>(result);
-				entity::model::AudioMappings const& mappings = std::get<4>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -3261,19 +3078,11 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Add Audio Mappings
 		{ protocol::AemCommandType::AddAudioMappings.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[descriptorType, descriptorIndex, mappings] = protocol::aemPayload::deserializeAddAudioMappingsResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeAddAudioMappingsResponse(aem.getPayload());
-				entity::model::DescriptorType const descriptorType = std::get<0>(result);
-				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-				entity::model::AudioMappings const& mappings = std::get<2>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
-		// Notify handlers
+				// Notify handlers
 				if (descriptorType == model::DescriptorType::StreamPortInput)
 				{
 					answerCallback.invoke<controller::Interface::AddStreamPortInputAudioMappingsHandler>(controllerInterface, targetID, status, descriptorIndex, mappings);
@@ -3297,19 +3106,11 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Remove Audio Mappings
 		{ protocol::AemCommandType::RemoveAudioMappings.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[descriptorType, descriptorIndex, mappings] = protocol::aemPayload::deserializeRemoveAudioMappingsResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeRemoveAudioMappingsResponse(aem.getPayload());
-				entity::model::DescriptorType const descriptorType = std::get<0>(result);
-				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-				entity::model::AudioMappings const& mappings = std::get<2>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
-		// Notify handlers
+				// Notify handlers
 				if (descriptorType == model::DescriptorType::StreamPortInput)
 				{
 					answerCallback.invoke<controller::Interface::RemoveStreamPortInputAudioMappingsHandler>(controllerInterface, targetID, status, descriptorIndex, mappings);
@@ -3333,18 +3134,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Start Operation
 		{ protocol::AemCommandType::StartOperation.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[descriptorType, descriptorIndex, operationID, operationType, memoryBuffer] = protocol::aemPayload::deserializeStartOperationResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeStartOperationResponse(aem.getPayload());
-				entity::model::DescriptorType const descriptorType = std::get<0>(result);
-				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-				entity::model::OperationID const operationID = std::get<2>(result);
-				entity::model::MemoryObjectOperationType const operationType = std::get<3>(result);
-				MemoryBuffer const memoryBuffer = std::get<4>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -3354,16 +3145,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Abort Operation
 		{ protocol::AemCommandType::AbortOperation.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[descriptorType, descriptorIndex, operationID] = protocol::aemPayload::deserializeAbortOperationResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeAbortOperationResponse(aem.getPayload());
-				entity::model::DescriptorType const descriptorType = std::get<0>(result);
-				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-				entity::model::OperationID const operationID = std::get<2>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -3373,17 +3156,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Operation Status
 		{ protocol::AemCommandType::OperationStatus.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const /*status*/, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& /*answerCallback*/)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[descriptorType, descriptorIndex, operationID, percentComplete] = protocol::aemPayload::deserializeOperationStatusResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeOperationStatusResponse(aem.getPayload());
-				entity::model::DescriptorType const descriptorType = std::get<0>(result);
-				entity::model::DescriptorIndex const descriptorIndex = std::get<1>(result);
-				entity::model::OperationID const operationID = std::get<2>(result);
-				std::uint16_t const percentComplete = std::get<3>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -3394,16 +3168,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Set Memory Object Length
 		{ protocol::AemCommandType::SetMemoryObjectLength.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[configurationIndex, memoryObjectIndex, length] = protocol::aemPayload::deserializeSetMemoryObjectLengthResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeSetMemoryObjectLengthResponse(aem.getPayload());
-				entity::model::ConfigurationIndex const configurationIndex = std::get<0>(result);
-				entity::model::MemoryObjectIndex const memoryObjectIndex = std::get<1>(result);
-				std::uint64_t const length = std::get<2>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -3417,16 +3183,8 @@ void CapabilityDelegate::processAemAecpResponse(protocol::Aecpdu const* const re
 		// Get Memory Object Length
 		{ protocol::AemCommandType::GetMemoryObjectLength.getValue(),[](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback)
 			{
-	// Deserialize payload
-#ifdef __cpp_structured_bindings
+				// Deserialize payload
 				auto const[configurationIndex, memoryObjectIndex, length] = protocol::aemPayload::deserializeGetMemoryObjectLengthResponse(aem.getPayload());
-#else // !__cpp_structured_bindings
-				auto const result = protocol::aemPayload::deserializeGetMemoryObjectLengthResponse(aem.getPayload());
-				entity::model::ConfigurationIndex const configurationIndex = std::get<0>(result);
-				entity::model::MemoryObjectIndex const memoryObjectIndex = std::get<1>(result);
-				std::uint64_t const length = std::get<2>(result);
-#endif // __cpp_structured_bindings
-
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers

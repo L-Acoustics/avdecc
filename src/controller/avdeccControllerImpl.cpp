@@ -22,6 +22,10 @@
 * @author Christophe Calmejane
 */
 
+#ifndef __cpp_structured_bindings
+#	error "__cpp_structured_bindings not supported by the compiler. Check minimum requirements."
+#endif
+
 #include "avdeccControllerImpl.hpp"
 #include "avdeccControllerLogHelper.hpp"
 #include "avdeccEntityModelCache.hpp"
@@ -3168,13 +3172,7 @@ bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity:
 			[[fallthrough]];
 		case FailureAction::Busy:
 		{
-#ifdef __cpp_structured_bindings
 			auto const [shouldRetry, retryTimer] = entity->getRegisterUnsolRetryTimer();
-#else // !__cpp_structured_bindings
-			auto const result = entity->getRegisterUnsolRetryTimer();
-			auto const shouldRetry = std::get<0>(result);
-			auto const retryTimer = std::get<1>(result);
-#endif // __cpp_structured_bindings
 			if (shouldRetry)
 			{
 				registerUnsol(entity);
@@ -3256,13 +3254,7 @@ bool ControllerImpl::processGetMilanModelFailureStatus(entity::ControllerEntity:
 			[[fallthrough]];
 		case FailureAction::Busy:
 		{
-#ifdef __cpp_structured_bindings
 			auto const [shouldRetry, retryTimer] = entity->getQueryMilanInfoRetryTimer();
-#else // !__cpp_structured_bindings
-			auto const result = entity->getQueryMilanInfoRetryTimer();
-			auto const shouldRetry = std::get<0>(result);
-			auto const retryTimer = std::get<1>(result);
-#endif // __cpp_structured_bindings
 			if (shouldRetry)
 			{
 				queryInformation(entity, milanInfoType, retryTimer);
@@ -3329,13 +3321,7 @@ bool ControllerImpl::processGetStaticModelFailureStatus(entity::ControllerEntity
 			[[fallthrough]];
 		case FailureAction::Busy:
 		{
-#ifdef __cpp_structured_bindings
 			auto const [shouldRetry, retryTimer] = entity->getQueryDescriptorRetryTimer();
-#else // !__cpp_structured_bindings
-			auto const result = entity->getQueryDescriptorRetryTimer();
-			auto const shouldRetry = std::get<0>(result);
-			auto const retryTimer = std::get<1>(result);
-#endif // __cpp_structured_bindings
 			if (shouldRetry)
 			{
 				queryInformation(entity, configurationIndex, descriptorType, descriptorIndex, retryTimer);
@@ -3415,13 +3401,7 @@ bool ControllerImpl::processGetAecpDynamicInfoFailureStatus(entity::ControllerEn
 			[[fallthrough]];
 		case FailureAction::Busy:
 		{
-#ifdef __cpp_structured_bindings
 			auto const [shouldRetry, retryTimer] = entity->getQueryDynamicInfoRetryTimer();
-#else // !__cpp_structured_bindings
-			auto const result = entity->getQueryDynamicInfoRetryTimer();
-			auto const shouldRetry = std::get<0>(result);
-			auto const retryTimer = std::get<1>(result);
-#endif // __cpp_structured_bindings
 			if (shouldRetry)
 			{
 				queryInformation(entity, configurationIndex, dynamicInfoType, descriptorIndex, subIndex, retryTimer);
@@ -3502,13 +3482,7 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 			[[fallthrough]];
 		case FailureAction::Busy:
 		{
-#ifdef __cpp_structured_bindings
 			auto const [shouldRetry, retryTimer] = entity->getQueryDynamicInfoRetryTimer();
-#else // !__cpp_structured_bindings
-			auto const result = entity->getQueryDynamicInfoRetryTimer();
-			auto const shouldRetry = std::get<0>(result);
-			auto const retryTimer = std::get<1>(result);
-#endif // __cpp_structured_bindings
 			if (shouldRetry)
 			{
 				queryInformation(entity, configurationIndex, dynamicInfoType, descriptorIndex, 0u, retryTimer);
@@ -3587,13 +3561,7 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 			[[fallthrough]];
 		case FailureAction::Busy:
 		{
-#ifdef __cpp_structured_bindings
 			auto const [shouldRetry, retryTimer] = entity->getQueryDynamicInfoRetryTimer();
-#else // !__cpp_structured_bindings
-			auto const result = entity->getQueryDynamicInfoRetryTimer();
-			auto const shouldRetry = std::get<0>(result);
-			auto const retryTimer = std::get<1>(result);
-#endif // __cpp_structured_bindings
 			if (shouldRetry)
 			{
 				queryInformation(entity, configurationIndex, dynamicInfoType, talkerStream, subIndex, retryTimer);
@@ -3689,13 +3657,7 @@ bool ControllerImpl::processGetDescriptorDynamicInfoFailureStatus(entity::Contro
 
 	if (checkScheduleRetry)
 	{
-#ifdef __cpp_structured_bindings
 		auto const [shouldRetry, retryTimer] = entity->getQueryDescriptorDynamicInfoRetryTimer();
-#else // !__cpp_structured_bindings
-		auto const result = entity->getQueryDescriptorDynamicInfoRetryTimer();
-		auto const shouldRetry = std::get<0>(result);
-		auto const retryTimer = std::get<1>(result);
-#endif // __cpp_structured_bindings
 		if (shouldRetry)
 		{
 			queryInformation(entity, configurationIndex, descriptorDynamicInfoType, descriptorIndex, retryTimer);
