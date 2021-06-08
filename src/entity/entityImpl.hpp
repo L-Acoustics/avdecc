@@ -173,31 +173,43 @@ public:
 
 	struct AnswerCallback
 	{
+	public:
 		using Callback = std::function<void()>;
-		Callback onAnswer{ nullptr };
 		// Constructors
 		AnswerCallback() = default;
 		template<typename T>
 		AnswerCallback(T f)
-			: onAnswer(std::move(reinterpret_cast<Callback&>(f)))
+			: _onAnswer{ std::move(reinterpret_cast<Callback&>(f)) }
+			, _hash{ typeid(T).hash_code() }
 		{
 		}
 		// Call operator
 		template<typename T, typename... Ts>
-		void invoke(Ts&&... params) const noexcept
+		void invoke(Callback const& errorCallback, Ts&&... params) const noexcept
 		{
-			if (onAnswer)
+			if (_onAnswer)
 			{
-				try
+				if (AVDECC_ASSERT_WITH_RET(typeid(T).hash_code() == _hash, "Trying to call an AnswerCallback that is not of the expected typeid"))
 				{
-					reinterpret_cast<T const&>(onAnswer)(std::forward<Ts>(params)...);
+					try
+					{
+						reinterpret_cast<T const&>(_onAnswer)(std::forward<Ts>(params)...);
+					}
+					catch (...)
+					{
+						// Ignore throws in user handler
+					}
 				}
-				catch (...)
+				else
 				{
-					// Ignore throws in user handler
+					utils::invokeProtectedHandler(errorCallback);
 				}
 			}
 		}
+
+	private:
+		Callback _onAnswer{ nullptr };
+		std::size_t _hash{ 0u };
 	};
 
 	using OnAemAECPErrorCallback = std::function<void(LocalEntity::AemCommandStatus)>;
