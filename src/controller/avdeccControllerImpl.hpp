@@ -539,6 +539,7 @@ private:
 		BadArguments, /**< This query is either not supported, or had an error. Called should decide whether to continue or not. */
 		WarningContinue, /**< This query had a warning, but ignore and continue to next one. */
 		ErrorContinue, /**< This query had an error, flag it, ignore and continue to next one. */
+		MisbehaveContinue, /**< The entity misbehaved, flag it, ignore and continue to next one. */
 		ErrorFatal, /**< This query returned a fatal error, enumeration should be stopped immediately. */
 	};
 

@@ -142,7 +142,7 @@ void ControllerImpl::addCompatibilityFlag(ControlledEntityImpl& controlledEntity
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto const oldFlags = controlledEntity.getCompatibilityFlags();
-	auto newFlags{ oldFlags };
+	auto newFlags = oldFlags;
 
 	switch (flag)
 	{
@@ -162,8 +162,11 @@ void ControllerImpl::addCompatibilityFlag(ControlledEntityImpl& controlledEntity
 		case ControlledEntity::CompatibilityFlag::Misbehaving:
 			newFlags.reset(ControlledEntity::CompatibilityFlag::IEEE17221); // A misbehaving device is not IEEE1722.1 compatible
 			newFlags.reset(ControlledEntity::CompatibilityFlag::Milan); // A misbehaving is not Milan compatible
-			newFlags.set(flag);
-			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Entity is sending incoherent values (misbehaving)");
+			if (!newFlags.test(ControlledEntity::CompatibilityFlag::Misbehaving))
+			{
+				newFlags.set(flag);
+				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Entity is sending incoherent values (misbehaving)");
+			}
 			break;
 		default:
 			AVDECC_ASSERT(false, "Unknown CompatibilityFlag");
@@ -2953,6 +2956,12 @@ ControllerImpl::FailureAction ControllerImpl::getFailureActionForMvuCommandStatu
 			return FailureAction::TimedOut;
 		}
 
+		// Cases we want to flag as error and misbehaving entity, but continue enumeration
+		case entity::ControllerEntity::MvuCommandStatus::BaseProtocolViolation:
+		{
+			return FailureAction::MisbehaveContinue;
+		}
+
 		// Cases we want to flag as error (should not have happened, we have a possible non certified entity) but continue enumeration
 		case entity::ControllerEntity::MvuCommandStatus::ProtocolError:
 		{
@@ -3017,6 +3026,12 @@ ControllerImpl::FailureAction ControllerImpl::getFailureActionForAemCommandStatu
 			return FailureAction::NotAuthenticated;
 		}
 
+		// Cases we want to flag as error and misbehaving entity, but continue enumeration
+		case entity::ControllerEntity::AemCommandStatus::BaseProtocolViolation:
+		{
+			return FailureAction::MisbehaveContinue;
+		}
+
 		// Cases we want to flag as error (should not have happened, we have a possible non certified entity) but continue enumeration
 		case entity::ControllerEntity::AemCommandStatus::NoSuchDescriptor:
 			[[fallthrough]];
@@ -3069,6 +3084,12 @@ ControllerImpl::FailureAction ControllerImpl::getFailureActionForControlStatus(e
 {
 	switch (status)
 	{
+		// Cases we want to flag as error and misbehaving entity, but continue enumeration
+		case entity::ControllerEntity::ControlStatus::BaseProtocolViolation:
+		{
+			return FailureAction::MisbehaveContinue;
+		}
+
 		// Cases where the device seems busy
 		case entity::ControllerEntity::ControlStatus::StateUnavailable:
 			[[fallthrough]];
@@ -3146,9 +3167,14 @@ bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity:
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
 
+	auto const entityID = entity->getEntity().getEntityID();
 	auto const action = getFailureActionForAemCommandStatus(status);
 	switch (action)
 	{
+		case FailureAction::MisbehaveContinue:
+			// Flag the entity as "Misbehaving"
+			addCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Misbehaving);
+			return true;
 		case FailureAction::BadArguments:
 			[[fallthrough]];
 		case FailureAction::ErrorContinue:
@@ -3164,7 +3190,7 @@ bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity:
 			// Remove "Milan compatibility" as device does not support mandatory command
 			if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 			{
-				LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory command not supported by the entity: REGISTER_UNSOLICITED_NOTIFICATION");
+				LOG_CONTROLLER_WARN(entityID, "Milan mandatory command not supported by the entity: REGISTER_UNSOLICITED_NOTIFICATION");
 				removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
 			}
 			return true;
@@ -3185,7 +3211,7 @@ bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity:
 					// Remove "Milan compatibility" as device does not respond to mandatory command
 					if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 					{
-						LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many timeouts for Milan mandatory command: REGISTER_UNSOLICITED_NOTIFICATION");
+						LOG_CONTROLLER_WARN(entityID, "Too many timeouts for Milan mandatory command: REGISTER_UNSOLICITED_NOTIFICATION");
 						removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
 					}
 				}
@@ -3197,7 +3223,7 @@ bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity:
 							[[fallthrough]];
 						case entity::ControllerEntity::AemCommandStatus::AcquiredByOther: // Should not happen for a read operation but some devices are bugged
 						{
-							LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many unexpected errors for AEM command: REGISTER_UNSOLICITED_NOTIFICATION ({})", entity::LocalEntity::statusToString(status));
+							LOG_CONTROLLER_WARN(entityID, "Too many unexpected errors for AEM command: REGISTER_UNSOLICITED_NOTIFICATION ({})", entity::LocalEntity::statusToString(status));
 							// Flag the entity as "Not fully IEEE1722.1 compliant"
 							removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 							break;
@@ -3221,16 +3247,21 @@ bool ControllerImpl::processGetMilanModelFailureStatus(entity::ControllerEntity:
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
 
+	auto const entityID = entity->getEntity().getEntityID();
 	auto const action = getFailureActionForMvuCommandStatus(status);
 	switch (action)
 	{
+		case FailureAction::MisbehaveContinue:
+			// Flag the entity as "Misbehaving"
+			addCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Misbehaving);
+			return true;
 		case FailureAction::BadArguments:
 			[[fallthrough]];
 		case FailureAction::ErrorContinue:
 			// Remove "Milan compatibility" as device does not properly implement mandatory MVU
 			if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 			{
-				LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory MVU command not properly implemented by the entity");
+				LOG_CONTROLLER_WARN(entityID, "Milan mandatory MVU command not properly implemented by the entity");
 				removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
 			}
 			return true;
@@ -3245,7 +3276,7 @@ bool ControllerImpl::processGetMilanModelFailureStatus(entity::ControllerEntity:
 				// Remove "Milan compatibility" as device does not support mandatory MVU
 				if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 				{
-					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory MVU command not supported by the entity");
+					LOG_CONTROLLER_WARN(entityID, "Milan mandatory MVU command not supported by the entity");
 					removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
 				}
 			}
@@ -3269,14 +3300,14 @@ bool ControllerImpl::processGetMilanModelFailureStatus(entity::ControllerEntity:
 						// Remove "Milan compatibility" as device does not respond to mandatory command
 						if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 						{
-							LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many timeouts for Milan mandatory MVU command");
+							LOG_CONTROLLER_WARN(entityID, "Too many timeouts for Milan mandatory MVU command");
 							removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
 						}
 					}
 				}
 				else if (action == FailureAction::Busy)
 				{
-					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many unexpected errors for AEM command: REGISTER_UNSOLICITED_NOTIFICATION ({})", entity::LocalEntity::statusToString(status));
+					LOG_CONTROLLER_WARN(entityID, "Too many unexpected errors for AEM command: REGISTER_UNSOLICITED_NOTIFICATION ({})", entity::LocalEntity::statusToString(status));
 					// Flag the entity as "Not fully IEEE1722.1 compliant"
 					removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 				}
@@ -3295,9 +3326,14 @@ bool ControllerImpl::processGetStaticModelFailureStatus(entity::ControllerEntity
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
 
+	auto const entityID = entity->getEntity().getEntityID();
 	auto const action = getFailureActionForAemCommandStatus(status);
 	switch (action)
 	{
+		case FailureAction::MisbehaveContinue:
+			// Flag the entity as "Misbehaving"
+			addCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Misbehaving);
+			return true;
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
 			removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
@@ -3313,7 +3349,7 @@ bool ControllerImpl::processGetStaticModelFailureStatus(entity::ControllerEntity
 			// Remove "Milan compatibility" as device does not support mandatory descriptor
 			if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 			{
-				LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory descriptor not supported by the entity: {}", entity::model::descriptorTypeToString(descriptorType));
+				LOG_CONTROLLER_WARN(entityID, "Milan mandatory descriptor not supported by the entity: {}", entity::model::descriptorTypeToString(descriptorType));
 				removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
 			}
 			return true;
@@ -3334,7 +3370,7 @@ bool ControllerImpl::processGetStaticModelFailureStatus(entity::ControllerEntity
 					// Remove "Milan compatibility" as device does not respond to mandatory command
 					if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 					{
-						LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many timeouts for Milan mandatory descriptor: {}", entity::model::descriptorTypeToString(descriptorType));
+						LOG_CONTROLLER_WARN(entityID, "Too many timeouts for Milan mandatory descriptor: {}", entity::model::descriptorTypeToString(descriptorType));
 						removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
 					}
 				}
@@ -3348,7 +3384,7 @@ bool ControllerImpl::processGetStaticModelFailureStatus(entity::ControllerEntity
 							[[fallthrough]];
 						case entity::ControllerEntity::AemCommandStatus::NoResources: // Should not happen for a read operation but some devices are bugged
 						{
-							LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many unexpected errors for READ_DESCRIPTOR on {}: {}", entity::model::descriptorTypeToString(descriptorType), entity::LocalEntity::statusToString(status));
+							LOG_CONTROLLER_WARN(entityID, "Too many unexpected errors for READ_DESCRIPTOR on {}: {}", entity::model::descriptorTypeToString(descriptorType), entity::LocalEntity::statusToString(status));
 							// Flag the entity as "Not fully IEEE1722.1 compliant"
 							removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 							break;
@@ -3372,9 +3408,14 @@ bool ControllerImpl::processGetAecpDynamicInfoFailureStatus(entity::ControllerEn
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
 
+	auto const entityID = entity->getEntity().getEntityID();
 	auto const action = getFailureActionForAemCommandStatus(status);
 	switch (action)
 	{
+		case FailureAction::MisbehaveContinue:
+			// Flag the entity as "Misbehaving"
+			addCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Misbehaving);
+			return true;
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
 			removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
@@ -3392,7 +3433,7 @@ bool ControllerImpl::processGetAecpDynamicInfoFailureStatus(entity::ControllerEn
 				// Remove "Milan compatibility" as device does not support mandatory descriptor
 				if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 				{
-					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory dynamic info not supported by the entity: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+					LOG_CONTROLLER_WARN(entityID, "Milan mandatory dynamic info not supported by the entity: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
 					removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
 				}
 			}
@@ -3416,7 +3457,7 @@ bool ControllerImpl::processGetAecpDynamicInfoFailureStatus(entity::ControllerEn
 						// Remove "Milan compatibility" as device does not respond to mandatory command
 						if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 						{
-							LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many timeouts for Milan mandatory dynamic info: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+							LOG_CONTROLLER_WARN(entityID, "Too many timeouts for Milan mandatory dynamic info: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
 							removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
 						}
 					}
@@ -3431,7 +3472,7 @@ bool ControllerImpl::processGetAecpDynamicInfoFailureStatus(entity::ControllerEn
 							[[fallthrough]];
 						case entity::ControllerEntity::AemCommandStatus::NoResources: // Should not happen for a read operation but some devices are bugged
 						{
-							LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many unexpected errors for dynamic info query {}: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType), entity::LocalEntity::statusToString(status));
+							LOG_CONTROLLER_WARN(entityID, "Too many unexpected errors for dynamic info query {}: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType), entity::LocalEntity::statusToString(status));
 							// Flag the entity as "Not fully IEEE1722.1 compliant"
 							removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 							break;
@@ -3455,9 +3496,14 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
 
+	auto const entityID = entity->getEntity().getEntityID();
 	auto const action = getFailureActionForControlStatus(status);
 	switch (action)
 	{
+		case FailureAction::MisbehaveContinue:
+			// Flag the entity as "Misbehaving"
+			addCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Misbehaving);
+			return true;
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
 			removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
@@ -3473,7 +3519,7 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 				// Remove "Milan compatibility" as device does not support mandatory descriptor
 				if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 				{
-					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory ACMP command not supported by the entity: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+					LOG_CONTROLLER_WARN(entityID, "Milan mandatory ACMP command not supported by the entity: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
 					removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
 				}
 			}
@@ -3497,7 +3543,7 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 						// Remove "Milan compatibility" as device does not respond to mandatory command
 						if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 						{
-							LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many timeouts for Milan mandatory ACMP command: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+							LOG_CONTROLLER_WARN(entityID, "Too many timeouts for Milan mandatory ACMP command: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
 							removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
 						}
 					}
@@ -3510,7 +3556,7 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 							[[fallthrough]];
 						case entity::ControllerEntity::ControlStatus::CouldNotSendMessage:
 						{
-							LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many unexpected errors for ACMP command {}: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType), entity::LocalEntity::statusToString(status));
+							LOG_CONTROLLER_WARN(entityID, "Too many unexpected errors for ACMP command {}: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType), entity::LocalEntity::statusToString(status));
 							// Flag the entity as "Not fully IEEE1722.1 compliant"
 							removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 							break;
@@ -3534,9 +3580,14 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
 
+	auto const entityID = entity->getEntity().getEntityID();
 	auto const action = getFailureActionForControlStatus(status);
 	switch (action)
 	{
+		case FailureAction::MisbehaveContinue:
+			// Flag the entity as "Misbehaving"
+			addCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Misbehaving);
+			return true;
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
 			removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
@@ -3552,7 +3603,7 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 				// Remove "Milan compatibility" as device does not support mandatory descriptor
 				if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 				{
-					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory ACMP command not supported by the entity: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+					LOG_CONTROLLER_WARN(entityID, "Milan mandatory ACMP command not supported by the entity: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
 					removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
 				}
 			}
@@ -3576,7 +3627,7 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 						// Remove "Milan compatibility" as device does not respond to mandatory command
 						if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 						{
-							LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many timeouts for Milan mandatory ACMP command: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
+							LOG_CONTROLLER_WARN(entityID, "Too many timeouts for Milan mandatory ACMP command: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType));
 							removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
 						}
 					}
@@ -3589,7 +3640,7 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 							[[fallthrough]];
 						case entity::ControllerEntity::ControlStatus::CouldNotSendMessage:
 						{
-							LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Too many unexpected errors for ACMP command {}: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType), entity::LocalEntity::statusToString(status));
+							LOG_CONTROLLER_WARN(entityID, "Too many unexpected errors for ACMP command {}: {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType), entity::LocalEntity::statusToString(status));
 							// Flag the entity as "Not fully IEEE1722.1 compliant"
 							removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 							break;
@@ -3613,12 +3664,18 @@ bool ControllerImpl::processGetDescriptorDynamicInfoFailureStatus(entity::Contro
 {
 	AVDECC_ASSERT(!status, "Should not call this method with a SUCCESS status");
 
+	auto const entityID = entity->getEntity().getEntityID();
 	auto const action = getFailureActionForAemCommandStatus(status);
 	auto checkScheduleRetry = false;
 	auto fallbackStaticModelEnumeration = false;
 
 	switch (action)
 	{
+		case FailureAction::MisbehaveContinue:
+			// Flag the entity as "Misbehaving"
+			addCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Misbehaving);
+			fallbackStaticModelEnumeration = true;
+			break;
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
 			removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
@@ -3643,7 +3700,7 @@ bool ControllerImpl::processGetDescriptorDynamicInfoFailureStatus(entity::Contro
 				// Remove "Milan compatibility" as device does not support mandatory command
 				if (entity->getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 				{
-					LOG_CONTROLLER_WARN(entity->getEntity().getEntityID(), "Milan mandatory AECP command not supported by the entity: {}", ControlledEntityImpl::descriptorDynamicInfoTypeToString(descriptorDynamicInfoType));
+					LOG_CONTROLLER_WARN(entityID, "Milan mandatory AECP command not supported by the entity: {}", ControlledEntityImpl::descriptorDynamicInfoTypeToString(descriptorDynamicInfoType));
 					removeCompatibilityFlag(*entity, ControlledEntity::CompatibilityFlag::Milan);
 				}
 			}
@@ -3676,7 +3733,7 @@ bool ControllerImpl::processGetDescriptorDynamicInfoFailureStatus(entity::Contro
 			entity->setIgnoreCachedEntityModel();
 			entity->clearAllExpectedDescriptorDynamicInfo();
 			entity->addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
-			LOG_CONTROLLER_ERROR(entity->getEntity().getEntityID(), "Failed to use cached EntityModel (too many DescriptorDynamic query retries), falling back to full StaticModel enumeration");
+			LOG_CONTROLLER_ERROR(entityID, "Failed to use cached EntityModel (too many DescriptorDynamic query retries), falling back to full StaticModel enumeration");
 		}
 		return true;
 	}

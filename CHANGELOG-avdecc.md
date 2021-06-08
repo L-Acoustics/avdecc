@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - [Incorrect generated AUDIO_MAP index when loading a virtual entity](https://github.com/L-Acoustics/avdecc/issues/94)
+- [Possible stack corruption when receiving response violating the protocol](https://github.com/L-Acoustics/avdecc/issues/97)
 
 ## [3.1.1] - 2021-04-02
 ### Added
