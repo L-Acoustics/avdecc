@@ -83,7 +83,7 @@ void LA_AVDECC_CALL_CONVENTION AaAecpdu::deserialize(DeserializationBuffer& buff
 		throw std::invalid_argument("Not enough data to deserialize");
 	}
 
-	// Check is there are less advertised data than the required minimum
+	// Check if there are less advertised data than the required minimum
 	auto constexpr minCDL = HeaderLength + Aecpdu::HeaderLength;
 	if (_controlDataLength < minCDL)
 	{

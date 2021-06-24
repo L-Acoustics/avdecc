@@ -76,7 +76,7 @@ void LA_AVDECC_CALL_CONVENTION Acmpdu::deserialize(DeserializationBuffer& buffer
 		throw std::invalid_argument("Not enough data to deserialize");
 	}
 
-	// Check is there are less advertised data than the required minimum
+	// Check if there are less advertised data than the required minimum
 	if (_controlDataLength < Length)
 	{
 #if defined(IGNORE_INVALID_CONTROL_DATA_LENGTH)
