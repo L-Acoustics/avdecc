@@ -99,7 +99,7 @@ function(force_symbols_file TARGET_NAME)
 				set_target_properties(${TARGET_NAME} PROPERTIES
 					XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT[variant=Debug] "dwarf-with-dsym"
 					XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT[variant=Release] "dwarf-with-dsym"
-					XCODE_ATTRIBUTE_DEPLOYMENT_POSTPROCESSING[variant=Debug] "YES"
+					XCODE_ATTRIBUTE_DEPLOYMENT_POSTPROCESSING[variant=Debug] "NO"
 					XCODE_ATTRIBUTE_DEPLOYMENT_POSTPROCESSING[variant=Release] "YES"
 				)
 			endif()
