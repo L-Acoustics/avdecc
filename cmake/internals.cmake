@@ -429,6 +429,13 @@ function(setup_executable_options TARGET_NAME)
 		target_compile_options(${TARGET_NAME} PRIVATE -D_WIN32_WINNT=0x0600)
 	endif()
 
+	# Defaults to hidden symbols for Gcc/Clang
+	if(NOT MSVC)
+		if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+			target_compile_options(${TARGET_NAME} PRIVATE -fvisibility=hidden)
+		endif()
+	endif()
+
 	# Add link libraries
 	target_link_libraries(${TARGET_NAME} PRIVATE ${LINK_LIBRARIES})
 
