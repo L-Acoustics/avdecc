@@ -22,7 +22,6 @@ fi
 
 # Default values
 default_VisualGenerator="Visual Studio 16 2019"
-default_VisualGeneratorArch="Win32"
 default_VisualToolset="v142"
 default_VisualToolchain="x64"
 default_VisualArch="x86"
@@ -54,7 +53,6 @@ else
 	if isWindows; then
 		cmake_path="cmake.exe"
 		generator="$default_VisualGenerator"
-		generator_arch="$default_VisualGeneratorArch"
 		toolset="$default_VisualToolset"
 		toolchain="$default_VisualToolchain"
 		default_arch="$default_VisualArch"
@@ -100,7 +98,6 @@ do
 			if isWindows; then
 				echo " -t <visual toolset> -> Force visual toolset (Default: $toolset)"
 				echo " -tc <visual toolchain> -> Force visual toolchain (Default: $toolchain)"
-				echo " -64 -> Generate the 64 bits version of the project (Default: 32)"
 				echo " -vs2017 -> Compile using VS 2017 compiler instead of the default one"
 				echo " -clang -> Compile using clang for VisualStudio"
 				echo " -signtool-opt <options> -> Windows code signing options (Default: $default_signtoolOptions)"
@@ -194,13 +191,8 @@ do
 			fi
 			;;
 		-64)
-			if isWindows; then
-				generator="Visual Studio 15 2017 Win64"
-				arch="x64" # Changing arch not default_arch, as this is not a cross-compilation option
-			else
-				echo "ERROR: -64 option is only supported on Windows platform"
-				exit 4
-			fi
+			echo "ERROR: -64 option is deprecated, use -arch x64 instead"
+			exit 4
 			;;
 		-vs2017)
 			if isWindows; then
@@ -340,8 +332,24 @@ if [[ ! " ${supportedArchs[@]} " =~ " ${arch} " ]]; then
 	exit 4
 fi
 
+# Set correct generator architecture on Windows
+if [ "${platform}" == "win" ];
+then
+	case "${arch}" in
+		x86)
+			generator_arch="Win32"
+			;;
+		x64)
+			generator_arch="x64"
+			;;
+		*)
+			echo "ERROR: Unknown windows arch: ${arch} (add support for it)"
+			exit 4
+			;;
+	esac
+
 # Special case for Android cross-compilation, we must set the correct ABI
-if [ "${platform}" == "android" ];
+elif [ "${platform}" == "android" ];
 then
 	case "${arch}" in
 		x86)
