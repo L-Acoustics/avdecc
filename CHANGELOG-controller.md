@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 - [onIdentificationStarted correctly triggered if entity is in identification when discovered](https://github.com/L-Acoustics/avdecc/issues/93)
 - [Not caching AEM for entities which have I/G bit set in their EntityModelID EUI-64](https://github.com/L-Acoustics/avdecc/issues/95)
+- [AssociationID is now always stored as a std::optional<UniqueIdentifier>](https://github.com/L-Acoustics/avdecc/issues/79)
 
 ## [3.1.1] - 2021-04-02
 ### Fixed

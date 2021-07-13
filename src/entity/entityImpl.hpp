@@ -106,7 +106,7 @@ public:
 	}
 
 	/** Sets the association unique identifier and flag for announcement */
-	virtual void setAssociationID(UniqueIdentifier const associationID) noexcept override
+	virtual void setAssociationID(std::optional<UniqueIdentifier> const associationID) noexcept override
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
 		SuperClass::setAssociationID(associationID);

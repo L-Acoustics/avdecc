@@ -260,7 +260,7 @@ public:
 	}
 
 	/** Sets the association unique identifier */
-	virtual void setAssociationID(UniqueIdentifier const associationID) noexcept
+	virtual void setAssociationID(std::optional<UniqueIdentifier> const associationID) noexcept
 	{
 		_commonInformation.associationID = associationID;
 	}
