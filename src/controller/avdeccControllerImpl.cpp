@@ -121,7 +121,7 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 
 	// Set the new AssociationID and notify if it changed
 	auto const associationID = entity.getAssociationID();
-	setAssociationAndNotify(controlledEntity, associationID);
+	setAssociationIDAndNotify(controlledEntity, associationID);
 
 	// Only do checks if entity was advertised to the user (we already changed the values anyway)
 	if (controlledEntity.wasAdvertised())
@@ -853,7 +853,7 @@ void ControllerImpl::updateClockDomainName(ControlledEntityImpl& controlledEntit
 	}
 }
 
-void ControllerImpl::setAssociationAndNotify(ControlledEntityImpl& controlledEntity, std::optional<UniqueIdentifier> const associationID) const noexcept
+void ControllerImpl::setAssociationIDAndNotify(ControlledEntityImpl& controlledEntity, std::optional<UniqueIdentifier> const associationID) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
@@ -867,7 +867,7 @@ void ControllerImpl::setAssociationAndNotify(ControlledEntityImpl& controlledEnt
 		// Notify if AssociationID changed
 		if (previousAssociationID != associationID)
 		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityAssociationChanged, this, &controlledEntity);
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityAssociationIDChanged, this, &controlledEntity);
 		}
 	}
 }

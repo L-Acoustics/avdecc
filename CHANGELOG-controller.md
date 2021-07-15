@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - More IEEE1722.1 compliance checks (same fields btw ADP and ENTITY_DESCRIPTOR)
 - ControlledEntity::isIdentifying() method
 
+### Changed
+- Renamed onEntityAssociationChanged to onEntityAssociationIDChanged
+
 ### Fixed
 - [onIdentificationStarted correctly triggered if entity is in identification when discovered](https://github.com/L-Acoustics/avdecc/issues/93)
 - [Not caching AEM for entities which have I/G bit set in their EntityModelID EUI-64](https://github.com/L-Acoustics/avdecc/issues/95)
