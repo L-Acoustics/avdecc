@@ -1402,6 +1402,48 @@ void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, e
 	}
 }
 
+void ControllerImpl::setAssociationID(UniqueIdentifier const targetEntityID, UniqueIdentifier const associationID, SetAssociationIDHandler const& handler) const noexcept
+{
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setAssociationID (AssociationID={})", associationID);
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
+		_controller->setAssociation(targetEntityID, associationID,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const associationID)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User setAssociationID (AssociationID={}): {}", associationID, entity::ControllerEntity::statusToString(status));
+
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+
+					// Update association
+					if (!!status) // Only change the Association ID in case of success
+					{
+						updateAssociationID(*entity, associationID);
+					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					utils::invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
+	}
+	else
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
 void ControllerImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntityID, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate, SetAudioUnitSamplingRateHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope

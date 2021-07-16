@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - isGroupIdentifier and isLocalIdentifier methods to la::avdecc::UniqueIdentifier
+- [setAssociation and getAssociation controller commands](https://github.com/L-Acoustics/avdecc/issues/32)
 
 ### Fixed
 - [Incorrect generated AUDIO_MAP index when loading a virtual entity](https://github.com/L-Acoustics/avdecc/issues/94)

@@ -427,6 +427,16 @@ void ControllerEntityImpl::getClockDomainName(UniqueIdentifier const targetEntit
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getClockDomainName(targetEntityID, configurationIndex, clockDomainIndex, handler);
 }
 
+void ControllerEntityImpl::setAssociation(UniqueIdentifier const targetEntityID, UniqueIdentifier const associationID, SetAssociationHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setAssociationID(targetEntityID, associationID, handler);
+}
+
+void ControllerEntityImpl::getAssociation(UniqueIdentifier const targetEntityID, GetAssociationHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getAssociationID(targetEntityID, handler);
+}
+
 void ControllerEntityImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntityID, model::AudioUnitIndex const audioUnitIndex, model::SamplingRate const samplingRate, SetAudioUnitSamplingRateHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).setAudioUnitSamplingRate(targetEntityID, audioUnitIndex, samplingRate, handler);

@@ -1096,6 +1096,27 @@ void CapabilityDelegate::getClockDomainName(UniqueIdentifier const targetEntityI
 	}
 }
 
+void CapabilityDelegate::setAssociationID(UniqueIdentifier const targetEntityID, UniqueIdentifier const associationID, Interface::SetAssociationHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, UniqueIdentifier::getNullUniqueIdentifier());
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetAssociationIDCommand(associationID);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetAssociationID, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setAssociationID: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::getAssociationID(UniqueIdentifier const targetEntityID, Interface::GetAssociationHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, UniqueIdentifier::getNullUniqueIdentifier());
+	sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetAssociationID, nullptr, 0, errorCallback, handler);
+}
+
 void CapabilityDelegate::setAudioUnitSamplingRate(UniqueIdentifier const targetEntityID, model::AudioUnitIndex const audioUnitIndex, model::SamplingRate const samplingRate, Interface::SetAudioUnitSamplingRateHandler const& handler) const noexcept
 {
 	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, audioUnitIndex, model::SamplingRate::getNullSamplingRate());
@@ -2753,6 +2774,32 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 						LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled descriptorType in GET_NAME response: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
 						break;
 				}
+			}
+		},
+		// Set Association ID
+		{ protocol::AemCommandType::SetAssociationID.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
+			{
+				// Deserialize payload
+				auto const[associationID] = protocol::aemPayload::deserializeSetAssociationIDResponse(aem.getPayload());
+				auto const targetID = aem.getTargetEntityID();
+
+				// Notify handlers
+				answerCallback.invoke<controller::Interface::SetAssociationHandler>(protocolViolationCallback, controllerInterface, targetID, status, associationID);
+				if (aem.getUnsolicited() && delegate && !!status)
+				{
+					utils::invokeProtectedMethod(&controller::Delegate::onAssociationIDChanged, delegate, controllerInterface, targetID, associationID);
+				}
+			}
+		},
+		// Get Association ID
+		{ protocol::AemCommandType::GetAssociationID.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
+			{
+				// Deserialize payload
+				auto const[associationID] = protocol::aemPayload::deserializeGetAssociationIDResponse(aem.getPayload());
+				auto const targetID = aem.getTargetEntityID();
+
+				// Notify handlers
+				answerCallback.invoke<controller::Interface::GetAssociationHandler>(protocolViolationCallback, controllerInterface, targetID, status, associationID);
 			}
 		},
 		// Set Sampling Rate

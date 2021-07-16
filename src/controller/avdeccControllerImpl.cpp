@@ -119,15 +119,30 @@ void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity
 		}
 	}
 
-	// Set the new AssociationID and notify if it changed
+	auto const caps = entity.getEntityCapabilities();
+
+	// Until we have confirmation that an entity should always send the AssociationID value (if supported) in ADP, we have to check for the presence of the VALID bit before changing the value
+	// If this is confirmed, then we'll always change the value and use std::nullopt if the VALID bit is not set
 	auto const associationID = entity.getAssociationID();
-	setAssociationIDAndNotify(controlledEntity, associationID);
+	if (caps.test(entity::EntityCapability::AssociationIDValid))
+	{
+		// Set the new AssociationID and notify if it changed
+		updateAssociationID(controlledEntity, associationID);
+	}
+	else
+	{
+		// At least check if the AssociationID was set to something and print a warning
+		if (associationID.has_value())
+		{
+			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Entity previously declared a VALID AssociationID, but it's not defined anymore in ADP");
+		}
+	}
 
 	// Only do checks if entity was advertised to the user (we already changed the values anyway)
 	if (controlledEntity.wasAdvertised())
 	{
 		// Check if Capabilities changed
-		if (oldEntity.getEntityCapabilities() != entity.getEntityCapabilities())
+		if (oldEntity.getEntityCapabilities() != caps)
 		{
 			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityCapabilitiesChanged, this, &controlledEntity);
 		}
@@ -853,13 +868,22 @@ void ControllerImpl::updateClockDomainName(ControlledEntityImpl& controlledEntit
 	}
 }
 
-void ControllerImpl::setAssociationIDAndNotify(ControlledEntityImpl& controlledEntity, std::optional<UniqueIdentifier> const associationID) const noexcept
+void ControllerImpl::updateAssociationID(ControlledEntityImpl& controlledEntity, std::optional<UniqueIdentifier> const associationID) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto& entity = controlledEntity.getEntity();
 	auto const previousAssociationID = entity.getAssociationID();
 	entity.setAssociationID(associationID);
+
+	// Sanity check
+	auto const caps = entity.getEntityCapabilities();
+
+	if (!caps.test(entity::EntityCapability::AssociationIDSupported))
+	{
+		LOG_CONTROLLER_WARN(entity.getEntityID(), "Entity changed its ASSOCIATION_ID but it said ASSOCIATION_ID_NOT_SUPPORTED in ADPDU");
+		removeCompatibilityFlag(controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+	}
 
 	// Only do checks if entity was advertised to the user (we already changed the values anyway)
 	if (controlledEntity.wasAdvertised())
@@ -868,32 +892,10 @@ void ControllerImpl::setAssociationIDAndNotify(ControlledEntityImpl& controlledE
 		if (previousAssociationID != associationID)
 		{
 			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityAssociationIDChanged, this, &controlledEntity);
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAssociationIDChanged, this, &controlledEntity, associationID);
 		}
 	}
 }
-
-//void ControllerImpl::updateAssociationID(ControlledEntityImpl& controlledEntity, UniqueIdentifier const associationID) const noexcept
-//{
-//	// Set the new AssociationID and notify if it changed
-//	setAssociationAndNotify(controlledEntity, associationID);
-//
-//	// Update the Entity as well
-//	auto entity = controlledEntity.getEntity(); // Copy the entity so we can alter values in the copy and not the original
-//	auto const caps = entity.getEntityCapabilities();
-//
-//	if (!caps.test(entity::EntityCapability::AssociationIDSupported))
-//	{
-//		LOG_CONTROLLER_WARN(entity.getEntityID(), "Entity changed its ASSOCIATION_ID but it said ASSOCIATION_ID_NOT_SUPPORTED in ADPDU");
-//		return;
-//	}
-//
-//	// Only update the Entity if AssociationIDValid flag was not set in ADPDU
-//	if (caps.test(entity::EntityCapability::AssociationIDValid))
-//	{
-//		entity.setAssociationID(associationID);
-//		setEntityAndNotify(controlledEntity, entity);
-//	}
-//}
 
 void ControllerImpl::updateAudioUnitSamplingRate(ControlledEntityImpl& controlledEntity, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate) const noexcept
 {

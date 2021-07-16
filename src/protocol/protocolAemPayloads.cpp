@@ -1461,6 +1461,70 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::u
 	return deserializeSetNameCommand(payload);
 }
 
+/** SET_ASSOCIATION_ID Command - Clause 7.4.19.1 */
+Serializer<AecpAemSetAssociationIDCommandPayloadSize> serializeSetAssociationIDCommand(UniqueIdentifier const associationID)
+{
+	Serializer<AecpAemSetAssociationIDCommandPayloadSize> ser;
+
+	ser << associationID;
+
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<UniqueIdentifier> deserializeSetAssociationIDCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemSetAssociationIDCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	UniqueIdentifier associationID{};
+
+	des >> associationID;
+
+	AVDECC_ASSERT(des.usedBytes() == AecpAemSetAssociationIDCommandPayloadSize, "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(associationID);
+}
+
+/** SET_ASSOCIATION_ID Response - Clause 7.4.19.1 */
+Serializer<AecpAemSetAssociationIDResponsePayloadSize> serializeSetAssociationIDResponse(UniqueIdentifier const associationID)
+{
+	// Same as SET_ASSOCIATION_ID Command
+	static_assert(AecpAemSetAssociationIDResponsePayloadSize == AecpAemSetAssociationIDCommandPayloadSize, "SET_ASSOCIATION_ID Response no longer the same as SET_ASSOCIATION_ID Command");
+	return serializeSetAssociationIDCommand(associationID);
+}
+
+std::tuple<UniqueIdentifier> deserializeSetAssociationIDResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as SET_ASSOCIATION_ID Command
+	static_assert(AecpAemSetAssociationIDResponsePayloadSize == AecpAemSetAssociationIDCommandPayloadSize, "SET_ASSOCIATION_ID Response no longer the same as SET_ASSOCIATION_ID Command");
+	return deserializeSetAssociationIDCommand(payload);
+}
+
+/** GET_ASSOCIATION_ID Command - Clause 7.4.20.1 */
+// No payload
+
+/** GET_ASSOCIATION_ID Response - Clause 7.4.20.2 */
+Serializer<AecpAemGetAssociationIDResponsePayloadSize> serializeGetAssociationIDResponse(UniqueIdentifier const associationID)
+{
+	// Same as GET_ASSOCIATION_ID Command
+	static_assert(AecpAemGetAssociationIDResponsePayloadSize == AecpAemSetAssociationIDCommandPayloadSize, "GET_ASSOCIATION_ID Response no longer the same as SET_ASSOCIATION_ID Command");
+	return serializeSetAssociationIDCommand(associationID);
+}
+
+std::tuple<UniqueIdentifier> deserializeGetAssociationIDResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as GET_ASSOCIATION_ID Command
+	static_assert(AecpAemGetAssociationIDResponsePayloadSize == AecpAemSetAssociationIDCommandPayloadSize, "GET_ASSOCIATION_ID Response no longer the same as SET_ASSOCIATION_ID Command");
+	return deserializeSetAssociationIDCommand(payload);
+}
+
 /** SET_SAMPLING_RATE Command - Clause 7.4.21.1 */
 Serializer<AecpAemSetSamplingRateCommandPayloadSize> serializeSetSamplingRateCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::SamplingRate const samplingRate)
 {

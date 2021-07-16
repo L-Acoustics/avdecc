@@ -126,6 +126,16 @@ constexpr size_t AecpAemGetNameCommandPayloadSize = 8u;
 /** GET_NAME Response - Clause 7.4.18.2 */
 constexpr size_t AecpAemGetNameResponsePayloadSize = 72u;
 
+/** SET_ASSOCIATION_ID Command and Response - Clause 7.4.19.1 */
+constexpr size_t AecpAemSetAssociationIDCommandPayloadSize = 8u;
+constexpr size_t AecpAemSetAssociationIDResponsePayloadSize = 8u;
+
+/** GET_ASSOCIATION_ID Command - Clause 7.4.20.1 */
+constexpr size_t AecpAemGetAssociationIDCommandPayloadSize = 0u;
+
+/** GET_ASSOCIATION_ID Response - Clause 7.4.20.2 */
+constexpr size_t AecpAemGetAssociationIDResponsePayloadSize = 8u;
+
 /** SET_SAMPLING_RATE Command and Response - Clause 7.4.21.1 */
 constexpr size_t AecpAemSetSamplingRateCommandPayloadSize = 8u;
 constexpr size_t AecpAemSetSamplingRateResponsePayloadSize = 8u;
