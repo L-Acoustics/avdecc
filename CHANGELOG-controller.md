@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support for multiple Virtual Entities loading from FullNetworkState file
 - More IEEE1722.1 compliance checks (same fields btw ADP and ENTITY_DESCRIPTOR)
 - ControlledEntity::isIdentifying() method
+- [setAssociationID and getAssociationID commands](https://github.com/L-Acoustics/avdecc/issues/32)
+
+### Changed
+- Renamed onEntityAssociationChanged to onEntityAssociationIDChanged
 
 ### Fixed
 - [onIdentificationStarted correctly triggered if entity is in identification when discovered](https://github.com/L-Acoustics/avdecc/issues/93)

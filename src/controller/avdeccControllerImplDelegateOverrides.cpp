@@ -655,6 +655,18 @@ void ControllerImpl::onClockDomainNameChanged(entity::controller::Interface cons
 	}
 }
 
+void ControllerImpl::onAssociationIDChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, UniqueIdentifier const associationID) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+		updateAssociationID(entity, associationID);
+	}
+}
+
 void ControllerImpl::onAudioUnitSamplingRateChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate) noexcept
 {
 	// Take a "scoped locked" shared copy of the ControlledEntity
