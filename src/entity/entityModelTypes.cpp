@@ -678,6 +678,56 @@ std::string LA_AVDECC_CALL_CONVENTION controlValueTypeToString(ControlValueType:
 	}
 }
 
+std::string LA_AVDECC_CALL_CONVENTION msrpFailureCodeToString(MsrpFailureCode const msrpFailureCode) noexcept
+{
+	switch (msrpFailureCode)
+	{
+		case MsrpFailureCode::NoFailure:
+			return "NO_FAILURE";
+		case MsrpFailureCode::InsufficientBandwidth:
+			return "INSUFFICIENT_BANDWIDTH";
+		case MsrpFailureCode::InsufficientResources:
+			return "INSUFFICIENT_RESOURCES";
+		case MsrpFailureCode::InsufficientTrafficClassBandwidth:
+			return "INSUFFICIENT_TRAFFIC_CLASS_BANDWIDTH";
+		case MsrpFailureCode::StreamIDInUse:
+			return "STREAM_ID_IN_USE";
+		case MsrpFailureCode::StreamDestinationAddressInUse:
+			return "STREAM_DESTINATION_ADDRESS_IN_USE";
+		case MsrpFailureCode::StreamPreemptedByHigherRank:
+			return "STREAM_PREEMPTED_BY_HIGHER_RANK";
+		case MsrpFailureCode::LatencyHasChanged:
+			return "LATENCY_HAS_CHANGED";
+		case MsrpFailureCode::EgressPortNotAVBCapable:
+			return "EGRESS_PORT_NOT_AVB_CAPABLE";
+		case MsrpFailureCode::UseDifferentDestinationAddress:
+			return "USE_DIFFERENT_DESTINATION_ADDRESS";
+		case MsrpFailureCode::OutOfMSRPResources:
+			return "OUT_OF_MSRP_RESOURCES";
+		case MsrpFailureCode::OutOfMMRPResources:
+			return "OUT_OF_MMRP_RESOURCES";
+		case MsrpFailureCode::CannotStoreDestinationAddress:
+			return "CANNOT_STORE_DESTINATION_ADDRESS";
+		case MsrpFailureCode::PriorityIsNotAnSRCLass:
+			return "PRIORITY_IS_NOT_AN_SR_CLASS";
+		case MsrpFailureCode::MaxFrameSizeTooLarge:
+			return "MAX_FRAME_SIZE_TOO_LARGE";
+		case MsrpFailureCode::MaxFanInPortsLimitReached:
+			return "MAX_FAN_IN_PORTS_LIMIT_REACHED";
+		case MsrpFailureCode::FirstValueChangedForStreamID:
+			return "FIRST_VALUE_CHANGED_FOR_STREAM_ID";
+		case MsrpFailureCode::VlanBlockedOnEgress:
+			return "VLAN_BLOCKED_ON_EGRESS";
+		case MsrpFailureCode::VlanTaggingDisabledOnEgress:
+			return "VLAN_TAGGING_DISABLED_ON_EGRESS";
+		case MsrpFailureCode::SrClassPriorityMismatch:
+			return "SR_CLASS_PRIORITY_MISMATCH";
+		default:
+			AVDECC_ASSERT(false, "Not handled!");
+			return "UNKNOWN";
+	}
+}
+
 } // namespace model
 } // namespace entity
 } // namespace avdecc

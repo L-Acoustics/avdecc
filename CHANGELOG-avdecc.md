@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - isGroupIdentifier and isLocalIdentifier methods to la::avdecc::UniqueIdentifier
 - [setAssociation and getAssociation controller commands](https://github.com/L-Acoustics/avdecc/issues/32)
 
+### Changed
+- [Changed msrpFailureCode from uint8 to enum class](https://github.com/L-Acoustics/avdecc/issues/98)
+
 ### Fixed
 - [Incorrect generated AUDIO_MAP index when loading a virtual entity](https://github.com/L-Acoustics/avdecc/issues/94)
 - [Possible stack corruption when receiving response violating the protocol](https://github.com/L-Acoustics/avdecc/issues/97)

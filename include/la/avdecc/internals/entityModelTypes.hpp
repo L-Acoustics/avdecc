@@ -1422,6 +1422,42 @@ constexpr bool operator==(ProbingStatus const lhs, std::underlying_type_t<Probin
 	return static_cast<std::underlying_type_t<ProbingStatus>>(lhs) == rhs;
 }
 
+/** MSRP Failure Code - 802.1Q-2018 Table 35-6 */
+enum class MsrpFailureCode : std::uint8_t
+{
+	NoFailure = 0,
+	InsufficientBandwidth = 1,
+	InsufficientResources = 2,
+	InsufficientTrafficClassBandwidth = 3,
+	StreamIDInUse = 4,
+	StreamDestinationAddressInUse = 5,
+	StreamPreemptedByHigherRank = 6,
+	LatencyHasChanged = 7,
+	EgressPortNotAVBCapable = 8,
+	UseDifferentDestinationAddress = 9,
+	OutOfMSRPResources = 10,
+	OutOfMMRPResources = 11,
+	CannotStoreDestinationAddress = 12,
+	PriorityIsNotAnSRCLass = 13,
+	MaxFrameSizeTooLarge = 14,
+	MaxFanInPortsLimitReached = 15,
+	FirstValueChangedForStreamID = 16,
+	VlanBlockedOnEgress = 17,
+	VlanTaggingDisabledOnEgress = 18,
+	SrClassPriorityMismatch = 19,
+};
+constexpr bool operator==(MsrpFailureCode const lhs, MsrpFailureCode const rhs)
+{
+	return static_cast<std::underlying_type_t<MsrpFailureCode>>(lhs) == static_cast<std::underlying_type_t<MsrpFailureCode>>(rhs);
+}
+
+constexpr bool operator==(MsrpFailureCode const lhs, std::underlying_type_t<MsrpFailureCode> const rhs)
+{
+	return static_cast<std::underlying_type_t<MsrpFailureCode>>(lhs) == rhs;
+}
+
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION msrpFailureCodeToString(MsrpFailureCode const msrpFailureCode) noexcept;
+
 } // namespace model
 } // namespace entity
 } // namespace avdecc
