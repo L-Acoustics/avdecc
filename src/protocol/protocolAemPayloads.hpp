@@ -182,6 +182,21 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::u
 Serializer<AecpAemGetNameResponsePayloadSize> serializeGetNameResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& name);
 std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t, entity::model::ConfigurationIndex, entity::model::AvdeccFixedString> deserializeGetNameResponse(AemAecpdu::Payload const& payload);
 
+/** SET_ASSOCIATION_ID Command - Clause 7.4.19.1 */
+Serializer<AecpAemSetAssociationIDCommandPayloadSize> serializeSetAssociationIDCommand(UniqueIdentifier const associationID);
+std::tuple<UniqueIdentifier> deserializeSetAssociationIDCommand(AemAecpdu::Payload const& payload);
+
+/** SET_ASSOCIATION_ID Response - Clause 7.4.19.1 */
+Serializer<AecpAemSetAssociationIDResponsePayloadSize> serializeSetAssociationIDResponse(UniqueIdentifier const associationID);
+std::tuple<UniqueIdentifier> deserializeSetAssociationIDResponse(AemAecpdu::Payload const& payload);
+
+/** GET_ASSOCIATION_ID Command - Clause 7.4.20.1 */
+// No payload
+
+/** GET_ASSOCIATION_ID Response - Clause 7.4.20.2 */
+Serializer<AecpAemGetAssociationIDResponsePayloadSize> serializeGetAssociationIDResponse(UniqueIdentifier const associationID);
+std::tuple<UniqueIdentifier> deserializeGetAssociationIDResponse(AemAecpdu::Payload const& payload);
+
 /** SET_SAMPLING_RATE Command - Clause 7.4.21.1 */
 Serializer<AecpAemSetSamplingRateCommandPayloadSize> serializeSetSamplingRateCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::SamplingRate const samplingRate);
 std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::SamplingRate> deserializeSetSamplingRateCommand(AemAecpdu::Payload const& payload);

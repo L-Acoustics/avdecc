@@ -540,7 +540,7 @@ void readStreamPortModels(json const& object, Flags const flags, std::string con
 		{
 			// Get base cluster and map descriptor index
 			modelTree.staticModel.baseCluster = c.nextExpectedAudioClusterIndex;
-			modelTree.staticModel.baseMap = currentIndex;
+			modelTree.staticModel.baseMap = c.nextExpectedAudioMapIndex;
 
 			if constexpr (isStaticModelOptional)
 			{

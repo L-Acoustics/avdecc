@@ -108,7 +108,7 @@ void refreshInterfaces(Interfaces& interfaces) noexcept
 		/* For an AF_PACKET, get the mac and setup the interface struct */
 		if (family == AF_PACKET && ifa->ifa_data != nullptr)
 		{
-			la::avdecc::networkInterface::Interface interface;
+			Interface interface;
 			interface.id = ifa->ifa_name;
 			interface.description = ifa->ifa_name;
 			interface.alias = ifa->ifa_name;

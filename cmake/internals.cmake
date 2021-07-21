@@ -99,7 +99,7 @@ function(force_symbols_file TARGET_NAME)
 				set_target_properties(${TARGET_NAME} PROPERTIES
 					XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT[variant=Debug] "dwarf-with-dsym"
 					XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT[variant=Release] "dwarf-with-dsym"
-					XCODE_ATTRIBUTE_DEPLOYMENT_POSTPROCESSING[variant=Debug] "YES"
+					XCODE_ATTRIBUTE_DEPLOYMENT_POSTPROCESSING[variant=Debug] "NO"
 					XCODE_ATTRIBUTE_DEPLOYMENT_POSTPROCESSING[variant=Release] "YES"
 				)
 			endif()
@@ -178,7 +178,7 @@ function(setup_xcode_codesigning TARGET_NAME)
 				set_target_properties(${TARGET_NAME} PROPERTIES XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "${LA_TEAM_IDENTIFIER}")
 			endif()
 			# For xcode code signing to go deeply so all our dylibs are signed as well (will fail with xcode >= 11 otherwise)
-			set_target_properties(${TARGET_NAME} PROPERTIES XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS "--deep --strict --force --options=runtime")
+			set_target_properties(${TARGET_NAME} PROPERTIES XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS "--timestamp --deep --strict --force --options=runtime")
 			# Enable Hardened Runtime (required to notarize applications)
 			set_target_properties(${TARGET_NAME} PROPERTIES XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME YES)
 		endif()
@@ -429,6 +429,13 @@ function(setup_executable_options TARGET_NAME)
 		target_compile_options(${TARGET_NAME} PRIVATE -D_WIN32_WINNT=0x0600)
 	endif()
 
+	# Defaults to hidden symbols for Gcc/Clang
+	if(NOT MSVC)
+		if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+			target_compile_options(${TARGET_NAME} PRIVATE -fvisibility=hidden)
+		endif()
+	endif()
+
 	# Add link libraries
 	target_link_libraries(${TARGET_NAME} PRIVATE ${LINK_LIBRARIES})
 
@@ -539,6 +546,9 @@ macro(setup_project PRJ_NAME PRJ_VERSION PRJ_DESC)
 	set(LA_PROJECT_VERSIONMAJ ${PROJECT_VERSION_MAJOR})
 	set(LA_PROJECT_VERSIONMIN ${PROJECT_VERSION_MINOR})
 	set(LA_PROJECT_VERSIONPATCH ${PROJECT_VERSION_PATCH})
+	if(NOT LA_PROJECT_VERSIONPATCH)
+		set(LA_PROJECT_VERSIONPATCH 0)
+	endif()
 	set(LA_PROJECT_VERSIONBETA ${PROJECT_VERSION_TWEAK})
 	if(NOT LA_PROJECT_VERSIONBETA)
 		set(LA_PROJECT_VERSIONBETA 0)
@@ -553,4 +563,13 @@ macro(setup_project PRJ_NAME PRJ_VERSION PRJ_DESC)
 	set(LA_PROJECT_BUNDLEIDENTIFIER "${LA_PROJECT_BUNDLEIDENTIFIER}.${PRJ_NAME}")
 	set(LA_PROJECT_PRODUCTVERSION "${LA_PROJECT_VERSIONMAJ}.${LA_PROJECT_VERSIONMIN}.${LA_PROJECT_VERSIONPATCH}")
 	set(LA_PROJECT_FILEVERSION_STRING "${LA_PROJECT_VERSIONMAJ}.${LA_PROJECT_VERSIONMIN}.${LA_PROJECT_VERSIONPATCH}.${LA_PROJECT_VERSIONBETA}")
+
+	# Compute a build number based on version
+	math(EXPR LA_BUILD_NUMBER "${LA_PROJECT_VERSIONMAJ} * 1000000 + ${LA_PROJECT_VERSIONMIN} * 1000 + ${LA_PROJECT_VERSIONPATCH}")
+	if(${LA_PROJECT_VERSIONBETA} STREQUAL "0")
+		set(LA_BUILD_NUMBER "${LA_BUILD_NUMBER}.999")
+	else()
+		set(LA_BUILD_NUMBER "${LA_BUILD_NUMBER}.${LA_PROJECT_VERSIONBETA}")
+	endif()
+
 endmacro(setup_project)

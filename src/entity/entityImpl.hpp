@@ -46,8 +46,10 @@ namespace entity
 template<class SuperClass = LocalEntity>
 class LocalEntityImpl : public SuperClass, public protocol::ProtocolInterface::Observer, public protocol::ProtocolInterface::VendorUniqueDelegate
 {
+	static_assert(std::is_base_of_v<LocalEntity, SuperClass>, "SuperClass should be derived from LocalEntity");
+
 public:
-	LocalEntityImpl(protocol::ProtocolInterface* const protocolInterface, typename SuperClass::CommonInformation const& commonInformation, typename SuperClass::InterfacesInformation const& interfacesInformation)
+	LocalEntityImpl(protocol::ProtocolInterface* const protocolInterface, typename Entity::CommonInformation const& commonInformation, typename Entity::InterfacesInformation const& interfacesInformation)
 		: SuperClass(commonInformation, interfacesInformation)
 		, _protocolInterface(protocolInterface)
 	{
@@ -68,8 +70,7 @@ public:
 	virtual bool enableEntityAdvertising(std::uint32_t const availableDuration, std::optional<model::AvbInterfaceIndex> const interfaceIndex) noexcept override
 	{
 		std::uint8_t const validTime = static_cast<decltype(validTime)>(availableDuration / 2);
-		SuperClass::setValidTime(validTime, interfaceIndex);
-
+		Entity::setValidTime(validTime, interfaceIndex);
 		// TODO: When Entity will support multiple ProtocolInterfaces, call the correct one, based on interfaceIndex
 		// If interfaceIndex is not set, disable it for all interfaces
 		return !_protocolInterface->enableEntityAdvertising(*this);
@@ -101,43 +102,43 @@ public:
 	virtual void setEntityCapabilities(EntityCapabilities const entityCapabilities) noexcept override
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
-		SuperClass::setEntityCapabilities(entityCapabilities);
-		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::EntityCapabilities });
+		Entity::setEntityCapabilities(entityCapabilities);
+		_protocolInterface->setEntityNeedsAdvertise(*this, typename LocalEntity::AdvertiseFlags{ LocalEntity::AdvertiseFlag::EntityCapabilities });
 	}
 
 	/** Sets the association unique identifier and flag for announcement */
-	virtual void setAssociationID(UniqueIdentifier const associationID) noexcept override
+	virtual void setAssociationID(std::optional<UniqueIdentifier> const associationID) noexcept override
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
-		SuperClass::setAssociationID(associationID);
-		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::AssociationID });
+		Entity::setAssociationID(associationID);
+		_protocolInterface->setEntityNeedsAdvertise(*this, typename LocalEntity::AdvertiseFlags{ LocalEntity::AdvertiseFlag::AssociationID });
 	}
 
 	/** Sets the valid time value on the specified interfaceIndex if set, otherwise on all interfaces, and flag for announcement */
 	virtual void setValidTime(std::uint8_t const validTime, std::optional<model::AvbInterfaceIndex> const interfaceIndex = std::nullopt) override
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
-		SuperClass::setValidTime(validTime, interfaceIndex);
+		Entity::setValidTime(validTime, interfaceIndex);
 		// TODO: When Entity will support multiple ProtocolInterfaces, call the correct one, based on interfaceIndex
-		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::ValidTime });
+		_protocolInterface->setEntityNeedsAdvertise(*this, typename LocalEntity::AdvertiseFlags{ LocalEntity::AdvertiseFlag::ValidTime });
 	}
 
 	/** Sets the gptp grandmaster unique identifier and flag for announcement */
 	virtual void setGptpGrandmasterID(UniqueIdentifier const gptpGrandmasterID, model::AvbInterfaceIndex const interfaceIndex) override
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
-		SuperClass::setGptpGrandmasterID(gptpGrandmasterID, interfaceIndex);
+		Entity::setGptpGrandmasterID(gptpGrandmasterID, interfaceIndex);
 		// TODO: When Entity will support multiple ProtocolInterfaces, call the correct one, based on interfaceIndex
-		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::GptpGrandmasterID });
+		_protocolInterface->setEntityNeedsAdvertise(*this, typename LocalEntity::AdvertiseFlags{ LocalEntity::AdvertiseFlag::GptpGrandmasterID });
 	}
 
 	/** Sets th gptp domain number and flag for announcement */
 	virtual void setGptpDomainNumber(std::uint8_t const gptpDomainNumber, model::AvbInterfaceIndex const interfaceIndex) override
 	{
 		std::lock_guard<decltype(_lock)> const lg(_lock);
-		SuperClass::setGptpDomainNumber(gptpDomainNumber, interfaceIndex);
+		Entity::setGptpDomainNumber(gptpDomainNumber, interfaceIndex);
 		// TODO: When Entity will support multiple ProtocolInterfaces, call the correct one, based on interfaceIndex
-		_protocolInterface->setEntityNeedsAdvertise(*this, typename SuperClass::AdvertiseFlags{ SuperClass::AdvertiseFlag::GptpDomainNumber });
+		_protocolInterface->setEntityNeedsAdvertise(*this, typename LocalEntity::AdvertiseFlags{ LocalEntity::AdvertiseFlag::GptpDomainNumber });
 	}
 
 	/* ************************************************************************** */
@@ -173,31 +174,43 @@ public:
 
 	struct AnswerCallback
 	{
+	public:
 		using Callback = std::function<void()>;
-		Callback onAnswer{ nullptr };
 		// Constructors
 		AnswerCallback() = default;
 		template<typename T>
 		AnswerCallback(T f)
-			: onAnswer(std::move(reinterpret_cast<Callback&>(f)))
+			: _onAnswer{ std::move(reinterpret_cast<Callback&>(f)) }
+			, _hash{ typeid(T).hash_code() }
 		{
 		}
 		// Call operator
 		template<typename T, typename... Ts>
-		void invoke(Ts&&... params) const noexcept
+		void invoke(Callback const& errorCallback, Ts&&... params) const noexcept
 		{
-			if (onAnswer)
+			if (_onAnswer)
 			{
-				try
+				if (AVDECC_ASSERT_WITH_RET(typeid(T).hash_code() == _hash, "Trying to call an AnswerCallback that is not of the expected typeid"))
 				{
-					reinterpret_cast<T const&>(onAnswer)(std::forward<Ts>(params)...);
+					try
+					{
+						reinterpret_cast<T const&>(_onAnswer)(std::forward<Ts>(params)...);
+					}
+					catch (...)
+					{
+						// Ignore throws in user handler
+					}
 				}
-				catch (...)
+				else
 				{
-					// Ignore throws in user handler
+					utils::invokeProtectedHandler(errorCallback);
 				}
 			}
 		}
+
+	private:
+		Callback _onAnswer{ nullptr };
+		std::size_t _hash{ 0u };
 	};
 
 	using OnAemAECPErrorCallback = std::function<void(LocalEntity::AemCommandStatus)>;

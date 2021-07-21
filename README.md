@@ -56,7 +56,7 @@ C language bindings over la_avdecc library.
 ## Minimum requirements for compilation
 
 ### All platforms
-- CMake 3.15
+- CMake 3.18.3
 
 ### Windows
 - Windows 10
@@ -115,7 +115,8 @@ C language bindings over la_avdecc library.
 
 ## Known limitations
 
-- [Windows only] When plugging in a USB ethernet card for the first time, you either have to reboot the computer or restart the WinPCap driver (*net stop npf* then *net start npf*, from an elevated command prompt)
+- [Windows] When plugging in a USB ethernet card for the first time, you either have to reboot the computer or restart the WinPCap driver (*net stop npf* then *net start npf*, from an elevated command prompt)
+- [Linux] Administrative privileges are required to run PCap applications. You can either directly run samples as root with `sudo` or setup capabilities using `sudo setcap cap_net_raw+ep <application path>` then directly run the application
 
 ## Upcoming features
 
@@ -124,7 +125,6 @@ C language bindings over la_avdecc library.
 - Talker and Listener state machines (low level library)
 - Creation of a DiscoveryStateMachine so it can be used by Talker/Listener entities (moving code out of ControllerStateMachine)
 - Bindings libraries:
-  * C Controller (public APIs only)
   * Lua (public and private APIs)
 
 ## Contributing code

@@ -1184,6 +1184,30 @@ NLOHMANN_JSON_SERIALIZE_ENUM(StreamInputConnectionInfo::State, {
 																																 { StreamInputConnectionInfo::State::Connected, "CONNECTED" },
 																															 });
 
+/* MsrpFailureCode conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(MsrpFailureCode, {
+																								{ MsrpFailureCode::NoFailure, "NO_FAILURE" },
+																								{ MsrpFailureCode::InsufficientBandwidth, "INSUFFICIENT_BANDWIDTH" },
+																								{ MsrpFailureCode::InsufficientResources, "INSUFFICIENT_RESOURCES" },
+																								{ MsrpFailureCode::InsufficientTrafficClassBandwidth, "INSUFFICIENT_TRAFFIC_CLASS_BANDWIDTH" },
+																								{ MsrpFailureCode::StreamIDInUse, "STREAM_ID_IN_USE" },
+																								{ MsrpFailureCode::StreamDestinationAddressInUse, "STREAM_DESTINATION_ADDRESS_IN_USE" },
+																								{ MsrpFailureCode::StreamPreemptedByHigherRank, "STREAM_PREEMPTED_BY_HIGHER_RANK" },
+																								{ MsrpFailureCode::LatencyHasChanged, "LATENCY_HAS_CHANGED" },
+																								{ MsrpFailureCode::EgressPortNotAVBCapable, "EGRESS_PORT_NOT_AVB_CAPABLE" },
+																								{ MsrpFailureCode::UseDifferentDestinationAddress, "USE_DIFFERENT_DESTINATION_ADDRESS" },
+																								{ MsrpFailureCode::OutOfMSRPResources, "OUT_OF_MSRP_RESOURCES" },
+																								{ MsrpFailureCode::OutOfMMRPResources, "OUT_OF_MMRP_RESOURCES" },
+																								{ MsrpFailureCode::CannotStoreDestinationAddress, "CANNOT_STORE_DESTINATION_ADDRESS" },
+																								{ MsrpFailureCode::PriorityIsNotAnSRCLass, "PRIORITY_IS_NOT_AN_SR_CLASS" },
+																								{ MsrpFailureCode::MaxFrameSizeTooLarge, "MAX_FRAME_SIZE_TOO_LARGE" },
+																								{ MsrpFailureCode::MaxFanInPortsLimitReached, "MAX_FAN_IN_PORTS_LIMIT_REACHED" },
+																								{ MsrpFailureCode::FirstValueChangedForStreamID, "FIRST_VALUE_CHANGED_FOR_STREAM_ID" },
+																								{ MsrpFailureCode::VlanBlockedOnEgress, "VLAN_BLOCKED_ON_EGRESS" },
+																								{ MsrpFailureCode::VlanTaggingDisabledOnEgress, "VLAN_TAGGING_DISABLED_ON_EGRESS" },
+																								{ MsrpFailureCode::SrClassPriorityMismatch, "SR_CLASS_PRIORITY_MISMATCH" },
+																							});
+
 /* SamplingRate conversion */
 inline void to_json(json& j, SamplingRate const& sr)
 {
@@ -1346,7 +1370,24 @@ inline void from_json(json const& j, StreamDynamicInfo& info)
 			info.streamDestMac = networkInterface::stringToMacAddress(it->get<std::string>());
 		}
 	}
-	get_optional_value(j, keyName::StreamDynamicInfo_MsrpFailureCode, info.msrpFailureCode);
+	{
+		auto const it = j.find(keyName::StreamDynamicInfo_MsrpFailureCode);
+		if (it != j.end())
+		{
+			// Check for new format (string)
+			if (it->is_string())
+			{
+				it->get_to(info.msrpFailureCode);
+			}
+			// Convert from old format (number)
+			else
+			{
+				auto failureCode = std::uint8_t{ 0u };
+				it->get_to(failureCode);
+				info.msrpFailureCode = static_cast<decltype(info.msrpFailureCode)::value_type>(failureCode);
+			}
+		}
+	}
 	{
 		auto const it = j.find(keyName::StreamDynamicInfo_MsrpFailureBridgeID);
 		if (it != j.end())

@@ -44,6 +44,11 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 		networkInterfaceHelper/networkInterfaceHelper_mac.mm
 	)
 	list(APPEND ADD_LINK_LIBS "-framework Foundation -framework SystemConfiguration -framework IOKit")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+	set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER
+		networkInterfaceHelper/networkInterfaceHelper_ios.mm
+	)
+	list(APPEND ADD_LINK_LIBS "-framework Foundation -framework SystemConfiguration")
 else()
 	message(FATAL_ERROR "Network helper undefined for system: ${CMAKE_SYSTEM_NAME}")
 endif()

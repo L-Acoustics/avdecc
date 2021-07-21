@@ -396,7 +396,7 @@ IPAddress::IPAddress(value_type_packed_v4 const ipv4) noexcept
 IPAddress::IPAddress(std::string const& ipString)
 {
 	// TODO: Handle IPV6 later: https://tools.ietf.org/html/rfc5952
-	auto tokens = la::avdecc::utils::tokenizeString(ipString, '.', false);
+	auto tokens = utils::tokenizeString(ipString, '.', false);
 
 	value_type_v4 ip{};
 	if (tokens.size() != ip.size())
@@ -406,7 +406,7 @@ IPAddress::IPAddress(std::string const& ipString)
 	for (auto i = 0u; i < ip.size(); ++i)
 	{
 		// Using std::uint16_t for convertFromString since it's not possible to use 'char' type for this method
-		auto const tokenValue = la::avdecc::utils::convertFromString<std::uint16_t>(tokens[i].c_str());
+		auto const tokenValue = utils::convertFromString<std::uint16_t>(tokens[i].c_str());
 		// Check if parsed value doesn't exceed max value for a value_type_v4 single element
 		if (tokenValue > std::integral_constant<decltype(tokenValue), std::numeric_limits<decltype(ip)::value_type>::max()>::value)
 		{

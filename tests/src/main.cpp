@@ -23,9 +23,13 @@
 */
 
 #include <gtest/gtest.h>
+#include <la/avdecc/utils.hpp>
 
 int main(int argc, char* argv[])
 {
+	// Disable asserts when running unit tests, so we can test fallback code
+	la::avdecc::utils::disableAssert();
+
 	try
 	{
 		::testing::InitGoogleTest(&argc, argv);

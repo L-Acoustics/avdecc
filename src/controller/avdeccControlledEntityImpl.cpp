@@ -26,6 +26,8 @@
 #include "avdeccControllerLogHelper.hpp"
 #include "avdeccEntityModelCache.hpp"
 
+#include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
+
 #include <algorithm>
 #include <cassert>
 #include <typeindex>
@@ -178,6 +180,48 @@ bool ControlledEntityImpl::isEntityModelValidForCaching() const noexcept
 	}
 
 	return isEntityModelComplete(_entityTree, static_cast<std::uint16_t>(_entityTree.configurationTrees.size()));
+}
+
+bool ControlledEntityImpl::isIdentifying() const noexcept
+{
+	// The entity has an Identify ControlIndex
+	auto const identifyControlIndex = getIdentifyControlIndex();
+	if (identifyControlIndex)
+	{
+		try
+		{
+			// Check if identify is currently in progress
+			auto const& configurationNode = getCurrentConfigurationNode();
+			auto const& controlNode = configurationNode.controls.at(*identifyControlIndex);
+
+			// Get and check the control value
+			auto const& values = controlNode.dynamicModel->values;
+			AVDECC_ASSERT(values.areDynamicValues() && values.getType() == entity::model::ControlValueType::Type::ControlLinearUInt8, "Doesn't look like Identify Control Value");
+
+			if (values.size() == 1)
+			{
+				auto const dynamicValues = values.getValues<entity::model::LinearValues<entity::model::LinearValueDynamic<std::uint8_t>>>(); // We have to store the copy or it will go out of scope
+				auto const& value = dynamicValues.getValues()[0];
+				if (value.currentValue == 0)
+				{
+					return false;
+				}
+				else if (value.currentValue == 255)
+				{
+					return true;
+				}
+			}
+		}
+		catch (std::invalid_argument const&)
+		{
+			AVDECC_ASSERT(false, "Identify Control Descriptor values doesn't seem valid");
+		}
+		catch (...)
+		{
+			AVDECC_ASSERT(false, "Identify Control Descriptor was validated, this should not throw");
+		}
+	}
+	return false;
 }
 
 model::EntityNode const& ControlledEntityImpl::getEntityNode() const
