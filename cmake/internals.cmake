@@ -191,7 +191,7 @@ function(set_precompiled_headers TARGET_NAME HEADER_NAME)
 	# Currently, only activating for MSVC
 	# gcc is actually 2x slower when activating precompiled headers
 	# xcode doesn't need it, and it actually fails when compiling objective-c++ files
-	if(CMAKE_HOST_WIN32 AND MSVC)
+	if(CMAKE_HOST_WIN32 AND MSVC AND NOT "${CMAKE_GENERATOR}" STREQUAL "Fastbuild")
 		target_precompile_headers(${TARGET_NAME} PRIVATE ${HEADER_NAME})
 		target_sources(${TARGET_NAME} PRIVATE ${HEADER_NAME})
 	endif()
