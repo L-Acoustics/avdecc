@@ -84,7 +84,7 @@ C language bindings over la_avdecc library.
 - [Install WinPcap Developer's Pack](externals/3rdparty/winpcap/README.md)
 - Using the provided bash script (*gen_cmake.sh*):
   * Run the script with whatever optional parameters required (run *gen_cmake.sh -h* to display the help)
-  * Go into the generated output folder (*_build_x86* by default)
+  * Go into the generated output folder
   * Open the generated Visual Studio solution *LA_avdecc.sln*
   * Compile everything from Visual Studio
 - Manually issuing a CMake command:
@@ -95,7 +95,7 @@ C language bindings over la_avdecc library.
 ### macOS
 - Using the provided bash script (*gen_cmake.sh*):
   * Run the script with whatever optional parameters required (run *gen_cmake.sh -h* to display the help)
-  * Go into the generated output folder (*_build_x86_64-apple-darwinX.Y.Z* by default)
+  * Go into the generated output folder
   * Open the generated Xcode solution *LA_avdecc.xcodeproj*
   * Compile everything from Xcode
 - Manually issuing a CMake command:
@@ -106,7 +106,7 @@ C language bindings over la_avdecc library.
 ### Linux
 - Using the provided bash script (*gen_cmake.sh*):
   * Run the script with either *-debug* or *-release* and whatever optional parameters required (run *gen_cmake.sh -h* to display the help)
-  * Go into the generated output folder (*_build_x86_64-linux-gnu* by default)
+  * Go into the generated output folder
   * Run *make* to compile everything
 - Manually issuing a CMake command:
   * Run a proper CMake command to generate Unix Makefiles (or any other CMake generator matching your build toolchain)
