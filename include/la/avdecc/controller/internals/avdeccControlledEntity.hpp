@@ -194,6 +194,8 @@ protected:
 	virtual ~ControlledEntity() noexcept = default;
 };
 
+using SharedControlledEntity = std::shared_ptr<ControlledEntity>;
+
 /* ************************************************************************** */
 /* ControlledEntityGuard                                                      */
 /* ************************************************************************** */
@@ -305,7 +307,6 @@ public:
 
 private:
 	friend class ControllerImpl;
-	using SharedControlledEntity = std::shared_ptr<ControlledEntity>;
 	// Ownership (and locked state) is transfered during construction
 	ControlledEntityGuard(SharedControlledEntity&& entity)
 		: _controlledEntity(std::move(entity))

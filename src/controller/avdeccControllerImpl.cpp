@@ -3974,7 +3974,7 @@ void ControllerImpl::addTalkerStreamConnection(ControlledEntityImpl* const talke
 }
 
 #ifdef ENABLE_AVDECC_FEATURE_JSON
-std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> ControllerImpl::loadControlledEntityFromJson(json const& object, entity::model::jsonSerializer::Flags const flags)
+ControllerImpl::SharedControlledEntityImpl ControllerImpl::loadControlledEntityFromJson(json const& object, entity::model::jsonSerializer::Flags const flags)
 {
 	auto controlledEntity = createControlledEntityFromJson(object, flags);
 
@@ -4005,6 +4005,16 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 	// Choose a locale
 	chooseLocale(&entity, entity.getCurrentConfigurationIndex());
 
+	auto const entityID = entity.getEntity().getEntityID();
+	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Successfully loaded virtual entity with ID {}", utils::toHexString(entityID, true));
+
+	return controlledEntity;
+}
+
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> ControllerImpl::registerVirtualControlledEntity(SharedControlledEntityImpl&& controlledEntity) noexcept
+{
+	auto& entity = *controlledEntity;
+
 	// Add the entity
 	auto const entityID = entity.getEntity().getEntityID();
 	{
@@ -4022,9 +4032,10 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 	// Ready to advertise
 	{
 		auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), to simulate being called from a Networking Thread. THIS IS A HACK!
+#	pragma message("TODO: When the global event scheduler will be used instead of multiple event threads (networking/timeout), call checkEnumerationSteps from the scheduler queue")
 		checkEnumerationSteps(&entity);
 	}
-	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Successfully loaded virtual entity with ID {}", utils::toHexString(entityID, true));
+	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Successfully registered virtual entity with ID {}", utils::toHexString(entityID, true));
 
 	return { avdecc::jsonSerializer::DeserializationError::NoError, "" };
 }
@@ -4119,6 +4130,168 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntit
 	catch (std::invalid_argument const& e)
 	{
 		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InvalidValue, e.what() };
+	}
+}
+
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vector<ControllerImpl::SharedControlledEntityImpl>> ControllerImpl::deserializeJsonNetworkState(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError) noexcept
+{
+	// Try to open the input file
+	auto const mode = std::ios::binary | std::ios::in;
+	auto ifs = std::ifstream{ filePath, mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
+
+	// Failed to open file for reading
+	if (!ifs.is_open())
+	{
+		return { avdecc::jsonSerializer::DeserializationError::AccessDenied, std::strerror(errno), {} };
+	}
+
+	auto object = json{};
+	auto error = avdecc::jsonSerializer::DeserializationError::NoError;
+	auto errorText = std::string{};
+	auto controlledEntities = std::vector<SharedControlledEntityImpl>{};
+
+	try
+	{
+		// Load the JSON object from disk
+		if (flags.test(entity::model::jsonSerializer::Flag::BinaryFormat))
+		{
+			object = json::from_msgpack(ifs);
+		}
+		else
+		{
+			ifs >> object;
+		}
+
+		// Try to deserialize
+		// Read information of the dump itself
+		auto const dumpVersion = object.at(jsonSerializer::keyName::Controller_DumpVersion).get<decltype(jsonSerializer::keyValue::Controller_DumpVersion)>();
+		if (dumpVersion != jsonSerializer::keyValue::Controller_DumpVersion)
+		{
+			return { avdecc::jsonSerializer::DeserializationError::UnsupportedDumpVersion, std::string("Unsupported dump version: ") + std::to_string(dumpVersion), {} };
+		}
+
+		// Get entities
+		auto const& entitiesObject = object.at(jsonSerializer::keyName::Controller_Entities);
+		if (!entitiesObject.is_array())
+		{
+			return { avdecc::jsonSerializer::DeserializationError::InvalidValue, std::string("Unsupported value type for ") + jsonSerializer::keyName::Controller_Entities + " (array expected)", {} };
+		}
+		for (auto const& entityObject : entitiesObject)
+		{
+			try
+			{
+				auto controlledEntity = loadControlledEntityFromJson(entityObject, flags);
+				controlledEntities.push_back(std::move(controlledEntity));
+			}
+			catch (avdecc::jsonSerializer::DeserializationException const& e)
+			{
+				if (continueOnError)
+				{
+					error = avdecc::jsonSerializer::DeserializationError::Incomplete;
+					errorText = e.what();
+					continue;
+				}
+				return { e.getError(), e.what(), {} };
+			}
+		}
+	}
+	catch (json::type_error const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::InvalidValue, e.what(), {} };
+	}
+	catch (json::parse_error const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::ParseError, e.what(), {} };
+	}
+	catch (json::out_of_range const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::MissingKey, e.what(), {} };
+	}
+	catch (json::other_error const& e)
+	{
+		if (e.id == 555)
+		{
+			return { avdecc::jsonSerializer::DeserializationError::InvalidKey, e.what(), {} };
+		}
+		else
+		{
+			return { avdecc::jsonSerializer::DeserializationError::OtherError, e.what(), {} };
+		}
+	}
+	catch (json::exception const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::OtherError, e.what(), {} };
+	}
+	catch (std::invalid_argument const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::InvalidValue, e.what(), {} };
+	}
+
+	return std::make_tuple(error, errorText, controlledEntities);
+}
+
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, ControllerImpl::SharedControlledEntityImpl> ControllerImpl::deserializeJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags) noexcept
+{
+	// Try to open the input file
+	auto const mode = std::ios::binary | std::ios::in;
+	auto ifs = std::ifstream{ filePath, mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
+
+	// Failed to open file for reading
+	if (!ifs.is_open())
+	{
+		return { avdecc::jsonSerializer::DeserializationError::AccessDenied, std::strerror(errno), nullptr };
+	}
+
+	// Load the JSON object from disk
+	auto object = json{};
+	try
+	{
+		if (flags.test(entity::model::jsonSerializer::Flag::BinaryFormat))
+		{
+			object = json::from_msgpack(ifs);
+		}
+		else
+		{
+			ifs >> object;
+		}
+	}
+	catch (json::type_error const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::InvalidValue, e.what(), nullptr };
+	}
+	catch (json::parse_error const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::ParseError, e.what(), nullptr };
+	}
+	catch (json::out_of_range const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::MissingKey, e.what(), nullptr };
+	}
+	catch (json::other_error const& e)
+	{
+		if (e.id == 555)
+		{
+			return { avdecc::jsonSerializer::DeserializationError::InvalidKey, e.what(), nullptr };
+		}
+		else
+		{
+			return { avdecc::jsonSerializer::DeserializationError::OtherError, e.what(), nullptr };
+		}
+	}
+	catch (json::exception const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::OtherError, e.what(), nullptr };
+	}
+
+	// Try to deserialize
+	try
+	{
+		auto controlledEntity = loadControlledEntityFromJson(object, flags);
+		return { avdecc::jsonSerializer::DeserializationError::NoError, "", controlledEntity };
+	}
+	catch (avdecc::jsonSerializer::DeserializationException const& e)
+	{
+		return { e.getError(), e.what(), nullptr };
 	}
 }
 #endif // ENABLE_AVDECC_FEATURE_JSON
