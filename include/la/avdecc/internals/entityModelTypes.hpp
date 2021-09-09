@@ -1438,7 +1438,7 @@ enum class MsrpFailureCode : std::uint8_t
 	OutOfMSRPResources = 10,
 	OutOfMMRPResources = 11,
 	CannotStoreDestinationAddress = 12,
-	PriorityIsNotAnSRCLass = 13,
+	PriorityIsNotAnSRClass = 13,
 	MaxFrameSizeTooLarge = 14,
 	MaxFanInPortsLimitReached = 15,
 	FirstValueChangedForStreamID = 16,

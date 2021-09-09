@@ -708,7 +708,7 @@ std::string LA_AVDECC_CALL_CONVENTION msrpFailureCodeToString(MsrpFailureCode co
 			return "OUT_OF_MMRP_RESOURCES";
 		case MsrpFailureCode::CannotStoreDestinationAddress:
 			return "CANNOT_STORE_DESTINATION_ADDRESS";
-		case MsrpFailureCode::PriorityIsNotAnSRCLass:
+		case MsrpFailureCode::PriorityIsNotAnSRClass:
 			return "PRIORITY_IS_NOT_AN_SR_CLASS";
 		case MsrpFailureCode::MaxFrameSizeTooLarge:
 			return "MAX_FRAME_SIZE_TOO_LARGE";

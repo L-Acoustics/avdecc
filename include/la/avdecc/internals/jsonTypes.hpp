@@ -1199,7 +1199,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(MsrpFailureCode, {
 																								{ MsrpFailureCode::OutOfMSRPResources, "OUT_OF_MSRP_RESOURCES" },
 																								{ MsrpFailureCode::OutOfMMRPResources, "OUT_OF_MMRP_RESOURCES" },
 																								{ MsrpFailureCode::CannotStoreDestinationAddress, "CANNOT_STORE_DESTINATION_ADDRESS" },
-																								{ MsrpFailureCode::PriorityIsNotAnSRCLass, "PRIORITY_IS_NOT_AN_SR_CLASS" },
+																								{ MsrpFailureCode::PriorityIsNotAnSRClass, "PRIORITY_IS_NOT_AN_SR_CLASS" },
 																								{ MsrpFailureCode::MaxFrameSizeTooLarge, "MAX_FRAME_SIZE_TOO_LARGE" },
 																								{ MsrpFailureCode::MaxFanInPortsLimitReached, "MAX_FAN_IN_PORTS_LIMIT_REACHED" },
 																								{ MsrpFailureCode::FirstValueChangedForStreamID, "FIRST_VALUE_CHANGED_FOR_STREAM_ID" },
