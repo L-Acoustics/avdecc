@@ -335,7 +335,7 @@ avdecc_entity_model_stream_info_t make_stream_info(entity::model::StreamInfo con
 	i.stream_id = info.streamID;
 	i.msrp_accumulated_latency = info.msrpAccumulatedLatency;
 	std::memcpy(i.stream_dest_mac, info.streamDestMac.data(), sizeof(i.stream_dest_mac));
-	i.msrp_failure_code = info.msrpFailureCode;
+	i.msrp_failure_code = static_cast<avdecc_entity_model_msrp_failure_code_t>(info.msrpFailureCode);
 	i.msrp_failure_bridge_id = info.msrpFailureBridgeID;
 	i.stream_vlan_id = info.streamVlanID;
 	// Milan additions
@@ -1207,7 +1207,7 @@ entity::model::StreamInfo make_stream_info(avdecc_entity_model_stream_info_cp co
 	i.streamID = UniqueIdentifier{ info->stream_id };
 	i.msrpAccumulatedLatency = info->msrp_accumulated_latency;
 	i.streamDestMac = make_macAddress(&info->stream_dest_mac);
-	i.msrpFailureCode = info->msrp_failure_code;
+	i.msrpFailureCode = static_cast<entity::model::MsrpFailureCode>(info->msrp_failure_code);
 	i.msrpFailureBridgeID = info->msrp_failure_bridge_id;
 	i.streamVlanID = info->stream_vlan_id;
 	// Milan additions
