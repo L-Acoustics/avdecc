@@ -26,6 +26,16 @@ setup_executable_options(SimpleController)
 # Deploy and install target and its runtime dependencies (call this AFTER ALL dependencies have been added to the target)
 setup_deploy_runtime(SimpleController ${INSTALL_EXAMPLE_FLAG} ${SIGN_FLAG})
 
+# StreamFormatInfo
+add_executable(StreamFormatInfo streamFormatInfo.cpp)
+set_target_properties(StreamFormatInfo PROPERTIES FOLDER "Examples")
+# Using avdecc library
+target_link_libraries(StreamFormatInfo PRIVATE la_avdecc_cxx)
+# Setup common options
+setup_executable_options(StreamFormatInfo)
+# Deploy and install target and its runtime dependencies (call this AFTER ALL dependencies have been added to the target)
+setup_deploy_runtime(StreamFormatInfo ${INSTALL_EXAMPLE_FLAG} ${SIGN_FLAG})
+
 # Network interfaces enumerator using la_avdecc_cxx
 add_executable(NetworkInterfacesEnumeratorCxx networkInterfacesEnumeratorCxx.cpp)
 set_target_properties(NetworkInterfacesEnumeratorCxx PROPERTIES FOLDER "Examples")
