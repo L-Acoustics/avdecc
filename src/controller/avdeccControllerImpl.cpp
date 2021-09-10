@@ -3974,9 +3974,9 @@ void ControllerImpl::addTalkerStreamConnection(ControlledEntityImpl* const talke
 }
 
 #ifdef ENABLE_AVDECC_FEATURE_JSON
-ControllerImpl::SharedControlledEntityImpl ControllerImpl::loadControlledEntityFromJson(json const& object, entity::model::jsonSerializer::Flags const flags)
+ControllerImpl::SharedControlledEntityImpl ControllerImpl::loadControlledEntityFromJson(json const& object, entity::model::jsonSerializer::Flags const flags, bool const useSharedLock)
 {
-	auto controlledEntity = createControlledEntityFromJson(object, flags);
+	auto controlledEntity = createControlledEntityFromJson(object, flags, useSharedLock);
 
 	auto& entity = *controlledEntity;
 
@@ -4040,7 +4040,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 	return { avdecc::jsonSerializer::DeserializationError::NoError, "" };
 }
 
-ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntityFromJson(json const& object, entity::model::jsonSerializer::Flags const flags)
+ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntityFromJson(json const& object, entity::model::jsonSerializer::Flags const flags, bool const useSharedLock)
 {
 	try
 	{
@@ -4071,7 +4071,7 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntit
 			}
 		}
 
-		auto controlledEntity = std::make_shared<ControlledEntityImpl>(entity::Entity{ commonInfo, intfcsInfo }, _entitiesSharedLockInformation, true);
+		auto controlledEntity = std::make_shared<ControlledEntityImpl>(entity::Entity{ commonInfo, intfcsInfo }, useSharedLock ? _entitiesSharedLockInformation : std::make_shared<ControlledEntityImpl::LockInformation>(), true);
 		auto& entity = *controlledEntity;
 
 		// Start Enumeration timer
@@ -4133,7 +4133,7 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntit
 	}
 }
 
-std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vector<ControllerImpl::SharedControlledEntityImpl>> ControllerImpl::deserializeJsonNetworkState(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError) noexcept
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vector<ControllerImpl::SharedControlledEntityImpl>> ControllerImpl::deserializeJsonNetworkState(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError, bool const useSharedLock) noexcept
 {
 	// Try to open the input file
 	auto const mode = std::ios::binary | std::ios::in;
@@ -4180,7 +4180,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vecto
 		{
 			try
 			{
-				auto controlledEntity = loadControlledEntityFromJson(entityObject, flags);
+				auto controlledEntity = loadControlledEntityFromJson(entityObject, flags, useSharedLock);
 				controlledEntities.push_back(std::move(controlledEntity));
 			}
 			catch (avdecc::jsonSerializer::DeserializationException const& e)
@@ -4230,7 +4230,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vecto
 	return std::make_tuple(error, errorText, controlledEntities);
 }
 
-std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, ControllerImpl::SharedControlledEntityImpl> ControllerImpl::deserializeJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags) noexcept
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, ControllerImpl::SharedControlledEntityImpl> ControllerImpl::deserializeJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const useSharedLock) noexcept
 {
 	// Try to open the input file
 	auto const mode = std::ios::binary | std::ios::in;
@@ -4286,7 +4286,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, Controller
 	// Try to deserialize
 	try
 	{
-		auto controlledEntity = loadControlledEntityFromJson(object, flags);
+		auto controlledEntity = loadControlledEntityFromJson(object, flags, useSharedLock);
 		return { avdecc::jsonSerializer::DeserializationError::NoError, "", controlledEntity };
 	}
 	catch (avdecc::jsonSerializer::DeserializationException const& e)

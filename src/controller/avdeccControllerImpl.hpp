@@ -634,11 +634,11 @@ private:
 	void clearTalkerStreamConnections(ControlledEntityImpl* const talkerEntity, entity::model::StreamIndex const talkerStreamIndex) const noexcept;
 	void addTalkerStreamConnection(ControlledEntityImpl* const talkerEntity, entity::model::StreamIndex const talkerStreamIndex, entity::model::StreamIdentification const& listenerStream) const noexcept;
 #ifdef ENABLE_AVDECC_FEATURE_JSON
-	SharedControlledEntityImpl loadControlledEntityFromJson(nlohmann::json const& object, entity::model::jsonSerializer::Flags const flags);
+	SharedControlledEntityImpl loadControlledEntityFromJson(nlohmann::json const& object, entity::model::jsonSerializer::Flags const flags, bool const useSharedLock);
 	std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> registerVirtualControlledEntity(SharedControlledEntityImpl&& controlledEntity) noexcept;
-	SharedControlledEntityImpl createControlledEntityFromJson(nlohmann::json const& object, entity::model::jsonSerializer::Flags const flags); // Throws DeserializationException
-	std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vector<SharedControlledEntityImpl>> deserializeJsonNetworkState(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError) noexcept;
-	std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, SharedControlledEntityImpl> deserializeJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags) noexcept;
+	SharedControlledEntityImpl createControlledEntityFromJson(nlohmann::json const& object, entity::model::jsonSerializer::Flags const flags, bool const useSharedLock); // Throws DeserializationException
+	std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vector<SharedControlledEntityImpl>> deserializeJsonNetworkState(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError, bool const useSharedLock) noexcept;
+	std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, SharedControlledEntityImpl> deserializeJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const useSharedLock) noexcept;
 #endif // ENABLE_AVDECC_FEATURE_JSON
 	entity::addressAccess::Tlv makeNextReadDeviceMemoryTlv(std::uint64_t const baseAddress, std::uint64_t const length, std::uint64_t const currentSize) const noexcept;
 	entity::addressAccess::Tlv makeNextWriteDeviceMemoryTlv(std::uint64_t const baseAddress, DeviceMemoryBuffer const& memoryBuffer, std::uint64_t const currentSize) const noexcept;
