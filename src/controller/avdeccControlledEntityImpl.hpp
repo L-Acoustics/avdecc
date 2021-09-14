@@ -484,8 +484,8 @@ public:
 	static std::string dynamicInfoTypeToString(DynamicInfoType const dynamicInfoType) noexcept;
 	static std::string descriptorDynamicInfoTypeToString(DescriptorDynamicInfoType const descriptorDynamicInfoType) noexcept;
 
-	// Other Controller restricted methods
-	void buildEntityModelGraph() noexcept;
+	// Controller restricted methods
+	void onEntityFullyLoaded() noexcept; // To be called when the entity has been fully loaded and is ready to be shared
 
 	// Compiler auto-generated methods
 	ControlledEntityImpl(ControlledEntityImpl&&) = delete;
@@ -529,6 +529,7 @@ protected:
 
 private:
 	// Private methods
+	void buildEntityModelGraph() noexcept;
 	bool isEntityModelComplete(entity::model::EntityTree const& entityTree, std::uint16_t const configurationsCount) const noexcept;
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	void buildRedundancyNodes(model::ConfigurationNode& configNode) noexcept;
