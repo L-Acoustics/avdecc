@@ -38,6 +38,8 @@
 #include <la/avdecc/internals/streamFormatInfo.hpp>
 #include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
 
+#include <fstream>
+
 // According to clarification (from IEEE1722.1 call) a device should always send the complete, up-to-date, status in a GET/SET_STREAM_INFO response (either unsolicited or not)
 // This means that we should always replace the previously stored StreamInfo data with the last one received
 #define REPLACE_STREAM_INFO
