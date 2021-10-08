@@ -63,9 +63,9 @@ public:
 
 	void unregisterExclusiveAccessToken(la::avdecc::UniqueIdentifier const entityID, ExclusiveAccessTokenImpl* const token) const noexcept;
 
-#ifndef la_avdecc_controller_cxx_STATICS /* Keep everything public when compiling the static library so unit tests can access all methods */
+#ifndef la_avdecc_controller_static_STATICS /* Keep everything public when compiling the static library so unit tests can access all methods */
 private:
-#endif // !la_avdecc_controller_cxx_STATICS
+#endif // !la_avdecc_controller_static_STATICS
 	virtual ~ControllerImpl() override;
 
 	/* ************************************************************ */

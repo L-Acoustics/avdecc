@@ -8,7 +8,7 @@ selfFolderPath="`cd "${BASH_SOURCE[0]%/*}"; pwd -P`/" # Command to get the absol
 . "${selfFolderPath}scripts/bashUtils/utils.sh"
 
 # Override default cmake options
-cmake_opt="-DBUILD_AVDECC_EXAMPLES=TRUE -DBUILD_AVDECC_TESTS=TRUE -DBUILD_AVDECC_LIB_SHARED_CXX=TRUE -DBUILD_AVDECC_LIB_STATIC_RT_SHARED=TRUE -DBUILD_AVDECC_DOC=TRUE -DBUILD_AVDECC_CONTROLLER=TRUE -DINSTALL_AVDECC_EXAMPLES=TRUE -DINSTALL_AVDECC_TESTS=TRUE -DINSTALL_AVDECC_LIB_SHARED_CXX=TRUE -DINSTALL_AVDECC_LIB_STATIC=TRUE -DINSTALL_AVDECC_HEADERS=TRUE -DINSTALL_AVDECC_DOC=TRUE -DENABLE_AVDECC_SIGNING=FALSE"
+cmake_opt="-DBUILD_AVDECC_EXAMPLES=TRUE -DBUILD_AVDECC_TESTS=TRUE -DBUILD_AVDECC_LIB_SHARED_CXX=TRUE -DBUILD_AVDECC_LIB_STATIC_RT_SHARED=TRUE -DBUILD_AVDECC_DOC=TRUE -DBUILD_AVDECC_CONTROLLER=TRUE -DINSTALL_AVDECC_EXAMPLES=TRUE -DINSTALL_AVDECC_TESTS=TRUE -DINSTALL_AVDECC_LIB_SHARED_CXX=TRUE -DINSTALL_AVDECC_LIB_STATIC=TRUE -DINSTALL_AVDECC_HEADERS=TRUE -DINSTALL_AVDECC_DOC=TRUE -DENABLE_CODE_SIGNING=FALSE"
 
 if isMac; then
 	cmake_opt="$cmake_opt -DBUILD_AVDECC_INTERFACE_MAC=TRUE -DBUILD_AVDECC_INTERFACE_PCAP_DYNAMIC_LINKING=FALSE -DBUILD_AVDECC_INTERFACE_VIRTUAL=TRUE"
@@ -296,7 +296,7 @@ do
 			doSign=1
 			;;
 		-asan)
-			add_cmake_opt+=("-DLA_ENABLE_ASAN=TRUE")
+			add_cmake_opt+=("-DCU_ENABLE_ASAN=TRUE")
 			;;
 		*)
 			echo "ERROR: Unknown option '$1' (use -h for help)"
@@ -405,16 +405,16 @@ if isMac; then
 		echo "Binary signing is mandatory since macOS Catalina, forcing it using ID '$signingId' (TeamID '$teamId')"
 		doSign=1
 	fi
-	add_cmake_opt+=("-DLA_BINARY_SIGNING_IDENTITY=$signingId")
-	add_cmake_opt+=("-DLA_TEAM_IDENTIFIER=$teamId")
+	add_cmake_opt+=("-DCU_BINARY_SIGNING_IDENTITY=$signingId")
+	add_cmake_opt+=("-DCU_TEAM_IDENTIFIER=$teamId")
 fi
 
 if [ $doSign -eq 1 ]; then
-	add_cmake_opt+=("-DENABLE_AVDECC_SIGNING=TRUE")
+	add_cmake_opt+=("-DENABLE_CODE_SIGNING=TRUE")
 	# Set signtool options if signing enabled on windows
 	if isWindows; then
 		if [ ! -z "$signtoolOptions" ]; then
-			add_cmake_opt+=("-DLA_SIGNTOOL_OPTIONS=$signtoolOptions")
+			add_cmake_opt+=("-DCU_SIGNTOOL_OPTIONS=$signtoolOptions")
 		fi
 	fi
 fi

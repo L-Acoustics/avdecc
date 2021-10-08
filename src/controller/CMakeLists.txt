@@ -1,6 +1,6 @@
 # avdecc controller
 
-setup_project(la_avdecc_controller ${LA_AVDECC_CONTROLLER_VERSION} "Avdecc Controller Library")
+cu_setup_project(la_avdecc_controller ${LA_AVDECC_CONTROLLER_VERSION} "AVDECC Controller Library")
 
 # Configure file based on CMakeLists.txt
 configure_file(
@@ -9,7 +9,7 @@ configure_file(
 )
 if(WIN32)
 	configure_file(
-		"${LA_ROOT_DIR}/resources/win32/controller/resources.rc.in"
+		"${CU_ROOT_DIR}/resources/win32/controller/resources.rc.in"
 		"${CMAKE_CURRENT_BINARY_DIR}/resources.rc"
 	)
 	set(SHARED_LIBRARY_FILES "${CMAKE_CURRENT_BINARY_DIR}/resources.rc")
@@ -26,11 +26,11 @@ if(WIN32)
 endif()
 
 set (PUBLIC_HEADER_FILES
-	${LA_ROOT_DIR}/include/la/avdecc/controller/avdeccController.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntity.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntityModel.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/exports.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/controller/internals/logItems.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/controller/avdeccController.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntity.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/controller/internals/avdeccControlledEntityModel.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/controller/internals/exports.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/controller/internals/logItems.hpp
 )
 
 set (HEADER_FILES_COMMON
@@ -66,7 +66,7 @@ endif()
 # Other options
 if(ENABLE_AVDECC_CUSTOM_ANY)
 	list(APPEND PUBLIC_HEADER_FILES
-		${LA_ROOT_DIR}/include/la/avdecc/internals/any.hpp
+		${CU_ROOT_DIR}/include/la/avdecc/internals/any.hpp
 	)
 	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DENABLE_AVDECC_CUSTOM_ANY")
 endif()
@@ -94,10 +94,10 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 	endif()
 
 	# Enable precompiled headers
-	set_precompiled_headers(la_avdecc_controller_cxx ${PCH_HEADER_NAME})
+	cu_set_precompiled_headers(la_avdecc_controller_cxx ${PCH_HEADER_NAME})
 
 	# Setup common options
-	setup_library_options(la_avdecc_controller_cxx "la_avdecc_controller")
+	cu_setup_library_options(la_avdecc_controller_cxx)
 
 	# Link with avdecc using shared library (publicly because any executable using the controller needs low level library as well)
 	target_link_libraries(la_avdecc_controller_cxx PUBLIC la_avdecc_cxx)
@@ -114,7 +114,7 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 	endif()
 
 	# Setup install (and signing)
-	setup_deploy_library(la_avdecc_controller_cxx ${INSTALL_SHARED_FLAG} ${SIGN_FLAG})
+	cu_setup_deploy_library(la_avdecc_controller_cxx ${INSTALL_SHARED_FLAG} ${SIGN_FLAG})
 endif()
 
 # Runtime-shared static library
@@ -131,10 +131,10 @@ if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 	endif()
 
 	# Enable precompiled headers
-	set_precompiled_headers(la_avdecc_controller_static ${PCH_HEADER_NAME})
+	cu_set_precompiled_headers(la_avdecc_controller_static ${PCH_HEADER_NAME})
 
 	# Setup common options
-	setup_library_options(la_avdecc_controller_static "la_avdecc_controller")
+	cu_setup_library_options(la_avdecc_controller_static)
 
 	# Setup json
 	if(ENABLE_AVDECC_FEATURE_JSON)
@@ -145,10 +145,10 @@ if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 	target_link_libraries(la_avdecc_controller_static PUBLIC la_avdecc_static)
 
 	# Setup install (and signing)
-	setup_deploy_library(la_avdecc_controller_static ${INSTALL_STATIC_FLAG} ${SIGN_FLAG})
+	cu_setup_deploy_library(la_avdecc_controller_static ${INSTALL_STATIC_FLAG} ${SIGN_FLAG})
 endif()
 
 # Set installation rules
 if(INSTALL_AVDECC_HEADERS)
-	setup_headers_install_rules("${PUBLIC_HEADER_FILES}" "${LA_ROOT_DIR}/include")
+	cu_setup_headers_install_rules("${PUBLIC_HEADER_FILES}" "${CU_ROOT_DIR}/include")
 endif()
