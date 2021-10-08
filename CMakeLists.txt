@@ -38,7 +38,7 @@ option(INSTALL_AVDECC_BINDINGS "Install bindings libraries." TRUE)
 option(INSTALL_AVDECC_HEADERS "Install headers." TRUE)
 option(INSTALL_AVDECC_DOC "Install documentation." TRUE)
 # Signing options
-option(ENABLE_AVDECC_SIGNING "Enable binaries signing." FALSE)
+option(ENABLE_CODE_SIGNING "Enable binaries signing." FALSE)
 # Enable features
 option(ENABLE_AVDECC_FEATURE_REDUNDANCY "Enable 'Network Redundancy' feature as defined by AVnu Alliance." TRUE)
 option(ENABLE_AVDECC_FEATURE_JSON "Enable read/write files in JSON format." TRUE)
@@ -61,8 +61,15 @@ project(LA_avdecc)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
-# Set minimum OSX version
-set(CMAKE_OSX_DEPLOYMENT_TARGET 10.9 CACHE INTERNAL "Force the target to be at least a Mac OS X 10.9" FORCE)
+# Define some product/company specific values
+set(CU_PROJECT_FULL_NAME "AVDECC Libraries")
+set(CU_COMPANY_NAME "L-Acoustics")
+set(CU_COMPANY_URL "http://www.l-acoustics.com")
+set(CU_COMPANY_DOMAIN "com")
+set(CU_PROJECT_PRODUCTDESCRIPTION "Set of open source libraries for controlling and monitoring AVB entities using the AVDECC protocol (IEEE 1722.1) compliant to Avnu Milan.")
+set(CU_PROJECT_CONTACT "software@l-acoustics.com")
+set(CU_PROJECT_STARTING_YEAR "2016")
+set(CU_COPYRIGHT_HOLDER "L-Acoustics and its contributors")
 
 # Enable cmake folders
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -72,11 +79,20 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 	set(CMAKE_INSTALL_PREFIX "./Install" CACHE PATH "default install path" FORCE)
 endif()
 
-# Include our internal macros
-include(${CMAKE_CURRENT_LIST_DIR}/cmake/internals.cmake)
+# Define base folder for cmakeUtils scripts
+set(CU_BASE_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake/cmakeUtils")
+
+# Include project macros
+include(${CU_BASE_DIR}/ProjectMacros.cmake)
 
 # Include common properties overrides
-include(${CMAKE_CURRENT_LIST_DIR}/cmake/CommonProjectProperties.cmake)
+include(${CU_BASE_DIR}/ProjectProperties.cmake)
+
+# Immediately setup variables related to the project version
+cu_setup_project_version_variables(${LA_AVDECC_VERSION})
+
+# Set minimum OSX/iOS version
+cu_setup_apple_minimum_versions(MACOS 10.9)
 
 # Include fmtlib
 if(ENABLE_AVDECC_USE_FMTLIB)
@@ -110,7 +126,7 @@ endif()
 if(${INSTALL_AVDECC_TESTS})
 	set(INSTALL_TEST_FLAG "INSTALL")
 endif()
-if(${ENABLE_AVDECC_SIGNING})
+if(${ENABLE_CODE_SIGNING})
 	set(SIGN_FLAG "SIGN")
 endif()
 
@@ -143,11 +159,11 @@ endif()
 if(BUILD_AVDECC_INTERFACE_PCAP)
 	if(WIN32)
 		# Check if winpcap is installed
-		if(NOT EXISTS "${LA_ROOT_DIR}/externals/3rdparty/winpcap/Include" OR NOT EXISTS "${LA_ROOT_DIR}/externals/3rdparty/winpcap/Lib")
-			message(FATAL_ERROR "WinPCap Developer's Pack not properly installed. See ${LA_ROOT_DIR}/externals/3rdparty/winpcap/README.md for installation instructions")
+		if(NOT EXISTS "${CU_ROOT_DIR}/externals/3rdparty/winpcap/Include" OR NOT EXISTS "${CU_ROOT_DIR}/externals/3rdparty/winpcap/Lib")
+			message(FATAL_ERROR "WinPCap Developer's Pack not properly installed. See ${CU_ROOT_DIR}/externals/3rdparty/winpcap/README.md for installation instructions")
 		endif()
 		# Define base folder for winpcap
-		set(LA_WINPCAP_BASE_DIR "${LA_ROOT_DIR}/externals/3rdparty/winpcap")
+		set(LA_WINPCAP_BASE_DIR "${CU_ROOT_DIR}/externals/3rdparty/winpcap")
 		if(${TARGET_ARCH} EQUAL 32)
 			set(LA_WINPCAP_LIB_DIR "${LA_WINPCAP_BASE_DIR}/Lib")
 		else()

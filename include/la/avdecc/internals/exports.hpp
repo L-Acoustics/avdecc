@@ -32,7 +32,7 @@
 #	if defined(la_avdecc_cxx_EXPORTS)
 #		define LA_AVDECC_API __declspec(dllexport)
 #		define LA_AVDECC_TYPE_INFO_EXPORT
-#	elif defined(la_avdecc_cxx_STATICS)
+#	elif defined(la_avdecc_static_STATICS)
 #		define LA_AVDECC_API
 #		define LA_AVDECC_TYPE_INFO_EXPORT
 #	else // !la_avdecc_cxx_EXPORTS
@@ -47,7 +47,7 @@
 #	if defined(la_avdecc_cxx_EXPORTS)
 #		define LA_AVDECC_API __attribute__((visibility("default")))
 #		define LA_AVDECC_TYPE_INFO_EXPORT __attribute__((visibility("default")))
-#	elif defined(la_avdecc_cxx_STATICS)
+#	elif defined(la_avdecc_static_STATICS)
 #		define LA_AVDECC_API
 #		define LA_AVDECC_TYPE_INFO_EXPORT
 #	else // !la_avdecc_cxx_EXPORTS
