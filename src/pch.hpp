@@ -27,7 +27,6 @@
 #include "la/avdecc/avdecc.hpp"
 #include "la/avdecc/logger.hpp"
 #include "la/avdecc/memoryBuffer.hpp"
-#include "la/avdecc/networkInterfaceHelper.hpp"
 #include "la/avdecc/utils.hpp"
 #include "la/avdecc/watchDog.hpp"
 #include "la/avdecc/internals/aggregateEntity.hpp"
@@ -90,6 +89,8 @@
 #include "stateMachine/protocolInterfaceDelegate.hpp"
 #include "stateMachine/stateMachineManager.hpp"
 #include "stateMachine/stateMachineManager.hpp"
+
+#include <la/networkInterfaceHelper/networkInterfaceHelper.hpp>
 
 #if defined(ENABLE_AVDECC_CUSTOM_ANY)
 #	include "la/avdecc/internals/any.hpp"

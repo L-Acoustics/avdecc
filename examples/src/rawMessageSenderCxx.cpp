@@ -28,7 +28,6 @@
 
 #include <la/avdecc/avdecc.hpp>
 #include <la/avdecc/utils.hpp>
-#include <la/avdecc/networkInterfaceHelper.hpp>
 #include <la/avdecc/internals/protocolMvuAecpdu.hpp>
 
 #include "utils.hpp"
@@ -48,7 +47,7 @@ static auto constexpr s_ProgID = std::uint16_t{ 5 };
 static auto const s_TargetEntityID = la::avdecc::UniqueIdentifier{ 0x001b92fffe01b930 };
 static auto const s_ListenerEntityID = la::avdecc::UniqueIdentifier{ 0x001b92fffe01b930 };
 static auto const s_TalkerEntityID = la::avdecc::UniqueIdentifier{ 0x1b92fffe02233b };
-static auto const s_TargetMacAddress = la::avdecc::networkInterface::MacAddress{ 0x00, 0x1b, 0x92, 0x01, 0xb9, 0x30 };
+static auto const s_TargetMacAddress = la::networkInterface::MacAddress{ 0x00, 0x1b, 0x92, 0x01, 0xb9, 0x30 };
 
 inline void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 {
@@ -100,7 +99,7 @@ inline void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 		acmpdu.setListenerEntityID(s_ListenerEntityID);
 		acmpdu.setTalkerUniqueID(0u);
 		acmpdu.setListenerUniqueID(0u);
-		acmpdu.setStreamDestAddress(la::avdecc::networkInterface::MacAddress{});
+		acmpdu.setStreamDestAddress(la::networkInterface::MacAddress{});
 		acmpdu.setConnectionCount(0u);
 		acmpdu.setSequenceID(0u);
 		acmpdu.setFlags(la::avdecc::entity::ConnectionFlags{ la::avdecc::entity::ConnectionFlag::StreamingWait });
@@ -299,7 +298,7 @@ inline void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 		acmpdu->setListenerEntityID(s_ListenerEntityID);
 		acmpdu->setTalkerUniqueID(0u);
 		acmpdu->setListenerUniqueID(0u);
-		acmpdu->setStreamDestAddress(la::avdecc::networkInterface::MacAddress{});
+		acmpdu->setStreamDestAddress(la::networkInterface::MacAddress{});
 		acmpdu->setConnectionCount(0u);
 		acmpdu->setSequenceID(666); // Not necessary, it's set by the ProtocolInterface layer
 		acmpdu->setFlags({});
@@ -478,7 +477,7 @@ inline int doJob()
 	auto const protocolInterfaceType = chooseProtocolInterfaceType(la::avdecc::protocol::ProtocolInterface::SupportedProtocolInterfaceTypes{ la::avdecc::protocol::ProtocolInterface::Type::PCap, la::avdecc::protocol::ProtocolInterface::Type::MacOSNative });
 	auto intfc = chooseNetworkInterface();
 
-	if (intfc.type == la::avdecc::networkInterface::Interface::Type::None || protocolInterfaceType == la::avdecc::protocol::ProtocolInterface::Type::None)
+	if (intfc.type == la::networkInterface::Interface::Type::None || protocolInterfaceType == la::avdecc::protocol::ProtocolInterface::Type::None)
 	{
 		return 1;
 	}

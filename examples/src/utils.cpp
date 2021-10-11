@@ -101,21 +101,55 @@ void outputText(std::string const& str) noexcept
 	}
 }
 
+la::networkInterface::Interface chooseNetworkInterface()
+{
+	// List of available interfaces
+	std::vector<la::networkInterface::Interface> interfaces;
+
+	// Enumerate available interfaces
+	la::networkInterface::NetworkInterfaceHelper::getInstance().enumerateInterfaces(
+		[&interfaces](la::networkInterface::Interface const& intfc)
+		{
+			// Only select connected, non virtual, ethernet interfaces
+			if (intfc.type == la::networkInterface::Interface::Type::Ethernet && intfc.isConnected && !intfc.isVirtual)
+				interfaces.push_back(intfc);
+		});
+
+	if (interfaces.empty())
+	{
+		outputText(std::string("No valid network interface found on this computer\n"));
+		return {};
+	}
+
+	// Let the user choose an interface
+	outputText("Choose an interface:\n");
+	unsigned int intNum = 1;
+	for (auto const& intfc : interfaces)
+	{
+		outputText(std::to_string(intNum) + ": " + intfc.alias + " (" + intfc.description + ")\n");
+		++intNum;
+	}
+	outputText("\n> ");
+
+	// Get user's choice
+	int index = -1;
+	while (index == -1)
+	{
+		auto c = getUserChoice();
+		if (c >= 1 && c <= static_cast<int>(interfaces.size()))
+		{
+			index = c - 1;
+		}
+	}
+
+	return interfaces[index];
+}
+
 #ifdef USE_BINDINGS_C
 template<typename ValueType>
 constexpr size_t countBits(ValueType const value) noexcept
 {
 	return (value == 0u) ? 0u : 1u + countBits(value & (value - 1u));
-}
-
-using smart_network_interface_ptr = std::unique_ptr<avdecc_network_interface_t, std::function<void(avdecc_network_interface_p)>>;
-static inline smart_network_interface_ptr make_smart_network_interface_ptr(avdecc_network_interface_p ptr)
-{
-	return smart_network_interface_ptr{ ptr, [](avdecc_network_interface_p ptr)
-		{
-			if (ptr != nullptr)
-				LA_AVDECC_freeNetworkInterface(ptr);
-		} };
 }
 
 avdecc_protocol_interface_type_t chooseProtocolInterfaceType()
@@ -172,53 +206,6 @@ avdecc_protocol_interface_type_t chooseProtocolInterfaceType()
 	return protocolInterfaceType;
 }
 
-static std::vector<smart_network_interface_ptr> interfaces;
-static void LA_AVDECC_BINDINGS_C_CALL_CONVENTION EnumerateInterfacesCallback(avdecc_network_interface_p intfc)
-{
-	auto i = make_smart_network_interface_ptr(intfc);
-	// Only select interfaces that is not loopback and has at least one IP address
-	if (intfc->type != avdecc_network_interface_type_Loopback && intfc->ip_addresses != nullptr && intfc->is_connected && !intfc->is_virtual)
-		interfaces.emplace_back(std::move(i));
-}
-
-avdecc_network_interface_cp chooseNetworkInterface()
-{
-	// List of available interfaces
-	interfaces.clear();
-
-	// Enumerate available interfaces
-	LA_AVDECC_enumerateInterfaces(&EnumerateInterfacesCallback);
-
-	if (interfaces.empty())
-	{
-		outputText(std::string("No valid network interface found on this computer\n"));
-		return {};
-	}
-
-	// Let the user choose an interface
-	outputText("Choose an interface:\n");
-	unsigned int intNum = 1;
-	for (auto const& intfc : interfaces)
-	{
-		outputText(std::to_string(intNum) + ": " + std::string(intfc->alias) + " (" + std::string(intfc->description) + ")\n");
-		++intNum;
-	}
-	outputText("\n> ");
-
-	// Get user's choice
-	int index = -1;
-	while (index == -1)
-	{
-		int c = getch() - '0';
-		if (c >= 1 && c <= static_cast<int>(interfaces.size()))
-		{
-			index = c - 1;
-		}
-	}
-
-	return interfaces[index].get();
-}
-
 #else // !USE_BINDINGS_C
 
 la::avdecc::protocol::ProtocolInterface::Type chooseProtocolInterfaceType(la::avdecc::protocol::ProtocolInterface::SupportedProtocolInterfaceTypes const& allowedTypes)
@@ -260,50 +247,6 @@ la::avdecc::protocol::ProtocolInterface::Type chooseProtocolInterfaceType(la::av
 	}
 
 	return protocolInterfaceType;
-}
-
-la::avdecc::networkInterface::Interface chooseNetworkInterface()
-{
-	// List of available interfaces
-	std::vector<la::avdecc::networkInterface::Interface> interfaces;
-
-	// Enumerate available interfaces
-	la::avdecc::networkInterface::enumerateInterfaces(
-		[&interfaces](la::avdecc::networkInterface::Interface const& intfc)
-		{
-			// Only select connected, non virtual, ethernet interfaces
-			if (intfc.type == la::avdecc::networkInterface::Interface::Type::Ethernet && intfc.isConnected && !intfc.isVirtual)
-				interfaces.push_back(intfc);
-		});
-
-	if (interfaces.empty())
-	{
-		outputText(std::string("No valid network interface found on this computer\n"));
-		return {};
-	}
-
-	// Let the user choose an interface
-	outputText("Choose an interface:\n");
-	unsigned int intNum = 1;
-	for (auto const& intfc : interfaces)
-	{
-		outputText(std::to_string(intNum) + ": " + intfc.alias + " (" + intfc.description + ")\n");
-		++intNum;
-	}
-	outputText("\n> ");
-
-	// Get user's choice
-	int index = -1;
-	while (index == -1)
-	{
-		auto c = getUserChoice();
-		if (c >= 1 && c <= static_cast<int>(interfaces.size()))
-		{
-			index = c - 1;
-		}
-	}
-
-	return interfaces[index];
 }
 
 #endif // USE_BINDINGS_C

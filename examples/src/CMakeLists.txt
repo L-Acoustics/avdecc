@@ -36,31 +36,11 @@ cu_setup_executable_options(StreamFormatInfo)
 # Deploy and install target and its runtime dependencies (call this AFTER ALL dependencies have been added to the target)
 cu_setup_deploy_runtime(StreamFormatInfo ${INSTALL_EXAMPLE_FLAG} ${SIGN_FLAG})
 
-# Network interfaces enumerator using la_avdecc_cxx
-add_executable(NetworkInterfacesEnumeratorCxx networkInterfacesEnumeratorCxx.cpp)
-set_target_properties(NetworkInterfacesEnumeratorCxx PROPERTIES FOLDER "Examples")
-# Using avdecc library
-target_link_libraries(NetworkInterfacesEnumeratorCxx PRIVATE la_avdecc_cxx)
-# Setup common options
-cu_setup_executable_options(NetworkInterfacesEnumeratorCxx)
-# Deploy and install target and its runtime dependencies (call this AFTER ALL dependencies have been added to the target)
-cu_setup_deploy_runtime(NetworkInterfacesEnumeratorCxx ${INSTALL_EXAMPLE_FLAG} ${SIGN_FLAG})
-
 # C bindings examples
 if(BUILD_AVDECC_BINDINGS_C)
-	# Network interfaces enumerator using la_avdecc_c
-	add_executable(NetworkInterfacesEnumeratorC networkInterfacesEnumerator.c)
-	set_target_properties(NetworkInterfacesEnumeratorC PROPERTIES FOLDER "Examples")
-	# Using avdecc C library
-	target_link_libraries(NetworkInterfacesEnumeratorC PRIVATE la_avdecc_c)
-	# Setup common options
-	cu_setup_executable_options(NetworkInterfacesEnumeratorC)
-	# Deploy and install target and its runtime dependencies (call this AFTER ALL dependencies have been added to the target)
-	cu_setup_deploy_runtime(NetworkInterfacesEnumeratorC ${INSTALL_EXAMPLE_FLAG} ${SIGN_FLAG})
-
 	# C bindings Example (using c++ code)
 	add_executable(RawMessageSendC rawMessageSenderC.cpp utils.cpp utils.hpp)
-	set_target_properties(RawMessageSendC PROPERTIES FOLDER "Examples")
+	set_target_properties(RawMessageSendC PROPERTIES FOLDER "Examples/Bindings/C")
 	# Use C bindings in utils.cpp
 	target_compile_options(RawMessageSendC PRIVATE -DUSE_BINDINGS_C)
 	# Using avdecc library
@@ -68,6 +48,8 @@ if(BUILD_AVDECC_BINDINGS_C)
 	if(NOT WIN32)
 		target_link_libraries(RawMessageSendC PRIVATE ncurses)
 	endif()
+	# Setup NIH
+	target_link_libraries(RawMessageSendC PRIVATE la_networkInterfaceHelper_static)
 	# Setup common options
 	cu_setup_executable_options(RawMessageSendC)
 	# Deploy and install target and its runtime dependencies (call this AFTER ALL dependencies have been added to the target)
@@ -78,7 +60,7 @@ endif()
 if(BUILD_AVDECC_CONTROLLER)
 	# Discovery
 	add_executable(Discovery discovery.cpp utils.cpp utils.hpp)
-	set_target_properties(Discovery PROPERTIES FOLDER "Examples")
+	set_target_properties(Discovery PROPERTIES FOLDER "Examples/Controller")
 	# Using controller library
 	target_link_libraries(Discovery PRIVATE la_avdecc_controller_cxx)
 	if(NOT WIN32)
@@ -91,7 +73,7 @@ if(BUILD_AVDECC_CONTROLLER)
 
 	# EntityDumper
 	add_executable(EntityDumper entityDumper.cpp utils.cpp utils.hpp)
-	set_target_properties(EntityDumper PROPERTIES FOLDER "Examples")
+	set_target_properties(EntityDumper PROPERTIES FOLDER "Examples/Controller")
 	# Using controller library
 	target_link_libraries(EntityDumper PRIVATE la_avdecc_controller_cxx)
 	if(NOT WIN32)

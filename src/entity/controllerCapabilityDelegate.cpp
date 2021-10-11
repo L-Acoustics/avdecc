@@ -1836,7 +1836,7 @@ void CapabilityDelegate::sendAemAecpCommand(UniqueIdentifier const targetEntityI
 	}
 
 	// Return an error if entity is not found in the list
-	if (!networkInterface::isMacAddressValid(targetMacAddress))
+	if (!networkInterface::NetworkInterfaceHelper::isMacAddressValid(targetMacAddress))
 	{
 		utils::invokeProtectedHandler(onErrorCallback, LocalEntity::AemCommandStatus::UnknownEntity);
 		return;
@@ -1876,7 +1876,7 @@ void CapabilityDelegate::sendAaAecpCommand(UniqueIdentifier const targetEntityID
 	}
 
 	// Return an error if entity is not found in the list
-	if (!networkInterface::isMacAddressValid(targetMacAddress))
+	if (!networkInterface::NetworkInterfaceHelper::isMacAddressValid(targetMacAddress))
 	{
 		utils::invokeProtectedHandler(onErrorCallback, LocalEntity::AaCommandStatus::UnknownEntity);
 		return;
@@ -1916,7 +1916,7 @@ void CapabilityDelegate::sendMvuAecpCommand(UniqueIdentifier const targetEntityI
 	}
 
 	// Return an error if entity is not found in the list
-	if (!networkInterface::isMacAddressValid(targetMacAddress))
+	if (!networkInterface::NetworkInterfaceHelper::isMacAddressValid(targetMacAddress))
 	{
 		utils::invokeProtectedHandler(onErrorCallback, LocalEntity::MvuCommandStatus::UnknownEntity);
 		return;

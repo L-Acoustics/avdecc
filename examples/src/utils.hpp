@@ -32,9 +32,10 @@
 #	define USE_CURSES
 #endif // __APPLE__
 
+#include <la/networkInterfaceHelper/networkInterfaceHelper.hpp>
+
 #ifdef USE_BINDINGS_C
 #	include <la/avdecc/avdecc.h>
-#	include <la/avdecc/networkInterfaceHelper.h>
 
 #	include <memory>
 #	include <functional>
@@ -80,7 +81,6 @@ private:
 
 #else // !USE_BINDINGS_C
 #	include <la/avdecc/avdecc.hpp>
-#	include <la/avdecc/networkInterfaceHelper.hpp>
 #endif // USE_BINDINGS_C
 #include <string>
 
@@ -99,10 +99,9 @@ private:
 void initOutput();
 void deinitOutput();
 void outputText(std::string const& str) noexcept;
+la::networkInterface::Interface chooseNetworkInterface();
 #ifdef USE_BINDINGS_C
 avdecc_protocol_interface_type_t chooseProtocolInterfaceType();
-avdecc_network_interface_cp chooseNetworkInterface();
 #else // !USE_BINDINGS_C
 la::avdecc::protocol::ProtocolInterface::Type chooseProtocolInterfaceType(la::avdecc::protocol::ProtocolInterface::SupportedProtocolInterfaceTypes const& allowedTypes);
-la::avdecc::networkInterface::Interface chooseNetworkInterface();
 #endif // USE_BINDINGS_C

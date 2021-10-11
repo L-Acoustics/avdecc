@@ -23,7 +23,6 @@ set(TESTS_SOURCE
 	instrumentationObserver.hpp
 	logger_tests.cpp
 	memoryBuffer_tests.cpp
-	networkInterface_tests.cpp
 	protocolAvtpdu_tests.cpp
 	protocolInterface_pcap_tests.cpp
 	protocolInterface_virtual_tests.cpp
