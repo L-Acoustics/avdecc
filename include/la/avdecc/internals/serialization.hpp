@@ -27,10 +27,11 @@
 
 #include "la/avdecc/memoryBuffer.hpp"
 #include "la/avdecc/utils.hpp"
-#include "la/avdecc/networkInterfaceHelper.hpp"
 
 #include "endian.hpp"
 #include "entityModel.hpp"
+
+#include <la/networkInterfaceHelper/networkInterfaceHelper.hpp>
 
 #include <cstdint>
 #include <type_traits>

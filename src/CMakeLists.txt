@@ -30,36 +30,10 @@ if(WIN32)
 	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DNOMINMAX")
 endif()
 
-# Network interface helper
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-	set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER
-		networkInterfaceHelper/networkInterfaceHelper_win32.cpp
-	)
-elseif(CMAKE_SYSTEM_NAME MATCHES "(Linux)")
-	set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER
-		networkInterfaceHelper/networkInterfaceHelper_unix.cpp
-	)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-	set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER
-		networkInterfaceHelper/networkInterfaceHelper_mac.mm
-	)
-	list(APPEND ADD_LINK_LIBS "-framework Foundation -framework SystemConfiguration -framework IOKit")
-elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
-	set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER
-		networkInterfaceHelper/networkInterfaceHelper_ios.mm
-	)
-	list(APPEND ADD_LINK_LIBS "-framework Foundation -framework SystemConfiguration")
-else()
-	message(FATAL_ERROR "Network helper undefined for system: ${CMAKE_SYSTEM_NAME}")
-endif()
-set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER ${SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER} networkInterfaceHelper/networkInterfaceHelper_common.cpp)
-set (HEADER_FILES_CPP_NETWORK_INTERFACE_HELPER networkInterfaceHelper/networkInterfaceHelper_common.hpp)
-
 set (PUBLIC_HEADER_FILES
 	${CU_ROOT_DIR}/include/la/avdecc/avdecc.hpp
 	${CU_ROOT_DIR}/include/la/avdecc/logger.hpp
 	${CU_ROOT_DIR}/include/la/avdecc/memoryBuffer.hpp
-	${CU_ROOT_DIR}/include/la/avdecc/networkInterfaceHelper.hpp
 	${CU_ROOT_DIR}/include/la/avdecc/utils.hpp
 	${CU_ROOT_DIR}/include/la/avdecc/watchDog.hpp
 	${CU_ROOT_DIR}/include/la/avdecc/internals/aggregateEntity.hpp
@@ -282,15 +256,13 @@ source_group("Header Files\\Protocol" FILES ${HEADER_FILES_PROTOCOL})
 source_group("Header Files\\Protocol Interface" FILES ${HEADER_FILES_PROTOCOL_INTERFACE})
 source_group("Header Files\\State Machines" FILES ${HEADER_FILES_STATE_MACHINES})
 source_group("Header Files\\Entity" FILES ${HEADER_FILES_ENTITY})
-source_group("Header Files\\Network Interface Helper" FILES ${HEADER_FILES_CPP_NETWORK_INTERFACE_HELPER})
 source_group("Source Files\\Protocol" FILES ${SOURCE_FILES_PROTOCOL})
 source_group("Source Files\\Protocol Interface" FILES ${SOURCE_FILES_PROTOCOL_INTERFACE})
 source_group("Source Files\\State Machines" FILES ${SOURCE_FILES_STATE_MACHINES})
 source_group("Source Files\\Entity" FILES ${SOURCE_FILES_ENTITY})
-source_group("Source Files\\Network Interface Helper" FILES ${SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER})
 
-set (LIB_HEADER_FILES ${HEADER_FILES_COMMON} ${HEADER_FILES_PROTOCOL} ${HEADER_FILES_PROTOCOL_INTERFACE} ${HEADER_FILES_STATE_MACHINES} ${HEADER_FILES_ENTITY} ${PUBLIC_HEADER_FILES} ${HEADER_FILES_CPP_NETWORK_INTERFACE_HELPER})
-set (LIB_SOURCE_FILES ${SOURCE_FILES_COMMON} ${SOURCE_FILES_PROTOCOL} ${SOURCE_FILES_PROTOCOL_INTERFACE} ${SOURCE_FILES_STATE_MACHINES} ${SOURCE_FILES_ENTITY} ${SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER})
+set (LIB_HEADER_FILES ${HEADER_FILES_COMMON} ${HEADER_FILES_PROTOCOL} ${HEADER_FILES_PROTOCOL_INTERFACE} ${HEADER_FILES_STATE_MACHINES} ${HEADER_FILES_ENTITY} ${PUBLIC_HEADER_FILES})
+set (LIB_SOURCE_FILES ${SOURCE_FILES_COMMON} ${SOURCE_FILES_PROTOCOL} ${SOURCE_FILES_PROTOCOL_INTERFACE} ${SOURCE_FILES_STATE_MACHINES} ${SOURCE_FILES_ENTITY})
 
 # C++ dynamic library
 if(BUILD_AVDECC_LIB_SHARED_CXX)
@@ -315,6 +287,9 @@ if(BUILD_AVDECC_LIB_SHARED_CXX)
 	# Additional private include directory
 	target_include_directories(la_avdecc_cxx PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}) # Include root source directory for access to private headers
 	
+	# Setup NIH
+	target_link_libraries(la_avdecc_cxx PUBLIC la_networkInterfaceHelper_static)
+
 	# Setup libfmt
 	if(ENABLE_AVDECC_USE_FMTLIB)
 		target_compile_options(la_avdecc_cxx PRIVATE -DHAVE_FMT)
@@ -352,6 +327,9 @@ if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
 	# Additional include directory (only for build interface)
 	target_include_directories(la_avdecc_static PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>) # Include root source directory for access to private headers
 	
+	# Setup NIH
+	target_link_libraries(la_avdecc_static PUBLIC la_networkInterfaceHelper_static)
+
 	# Setup json
 	if(ENABLE_AVDECC_FEATURE_JSON)
 		target_link_libraries(la_avdecc_static PUBLIC nlohmann_json)

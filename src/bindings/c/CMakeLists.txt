@@ -17,7 +17,6 @@ endif()
 
 set (PUBLIC_HEADER_FILES
 	${CU_ROOT_DIR}/include/la/avdecc/avdecc.h
-	${CU_ROOT_DIR}/include/la/avdecc/networkInterfaceHelper.h
 	${CU_ROOT_DIR}/include/la/avdecc/internals/exports.h
 	${CU_ROOT_DIR}/include/la/avdecc/internals/typedefs.h
 )
@@ -35,7 +34,6 @@ set(SOURCE_FILES_COMMON
 	utils.cpp
 	protocolAcmpdu_c.cpp
 	protocolAdpdu_c.cpp
-	networkInterfaceHelper_c.cpp
 	localEntity_c.cpp
 	protocolInterface_c.cpp
 )

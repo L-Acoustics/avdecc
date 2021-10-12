@@ -105,6 +105,9 @@ if(ENABLE_AVDECC_FEATURE_JSON)
 	add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/externals/3rdparty/json EXCLUDE_FROM_ALL)
 endif()
 
+# Include NIH
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/externals/nih)
+
 ############ Define some variables
 
 set(TARGET_ARCH 32)

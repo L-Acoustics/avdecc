@@ -64,7 +64,7 @@ Manager::~Manager() noexcept
 /* ************************************************************ */
 /* Static methods                                               */
 /* ************************************************************ */
-Adpdu Manager::makeDiscoveryMessage(la::avdecc::networkInterface::MacAddress const& sourceMacAddress, UniqueIdentifier const targetEntityID) noexcept
+Adpdu Manager::makeDiscoveryMessage(networkInterface::MacAddress const& sourceMacAddress, UniqueIdentifier const targetEntityID) noexcept
 {
 	Adpdu frame;
 	// Set Ether2 fields
