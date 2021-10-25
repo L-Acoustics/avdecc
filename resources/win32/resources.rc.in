@@ -13,7 +13,7 @@ BEGIN
 			VALUE "FileDescription", "${CU_PROJECT_PRODUCTDESCRIPTION}\0"
 			VALUE "FileVersion", "${CU_PROJECT_VERSION_STRING}\0"
 			VALUE "ProductName", "${PROJECT_NAME}\0"
-			VALUE "ProductVersion", "${CU_PROJECT_VERSION_STRING}\0"
+			VALUE "ProductVersion", "${CU_PROJECT_FRIENDLY_VERSION}\0"
 			VALUE "LegalCopyright", "${CU_PROJECT_LEGALCOPYRIGHT}\0"
     END
   END

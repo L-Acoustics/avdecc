@@ -110,10 +110,6 @@ add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/externals/nih)
 
 ############ Define some variables
 
-set(TARGET_ARCH 32)
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-	set(TARGET_ARCH 64)
-endif()
 if(${INSTALL_AVDECC_LIB_SHARED_CXX})
 	set(INSTALL_SHARED_FLAG "INSTALL")
 endif()
@@ -167,7 +163,7 @@ if(BUILD_AVDECC_INTERFACE_PCAP)
 		endif()
 		# Define base folder for winpcap
 		set(LA_WINPCAP_BASE_DIR "${CU_ROOT_DIR}/externals/3rdparty/winpcap")
-		if(${TARGET_ARCH} EQUAL 32)
+		if(${CU_TARGET_ARCH} EQUAL 32)
 			set(LA_WINPCAP_LIB_DIR "${LA_WINPCAP_BASE_DIR}/Lib")
 		else()
 			set(LA_WINPCAP_LIB_DIR "${LA_WINPCAP_BASE_DIR}/Lib/x64")

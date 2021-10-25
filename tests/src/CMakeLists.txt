@@ -50,7 +50,7 @@ add_executable(Tests ${TESTS_SOURCE})
 cu_setup_executable_options(Tests)
 
 # Additional private include directory
-target_include_directories(Tests PRIVATE "${LA_ROOT_DIR}/src")
+target_include_directories(Tests PRIVATE "${CU_ROOT_DIR}/src")
 
 # Set IDE folder
 set_target_properties(Tests PROPERTIES FOLDER "Tests")

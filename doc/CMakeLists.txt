@@ -1,7 +1,7 @@
 # Documentation CMake file
 
 if(WIN32)
-	set(LA_HHC_SUBSTITUTE_SCRIPT "${LA_ROOT_DIR}/scripts/hhcSubstitute.bat")
+	set(LA_HHC_SUBSTITUTE_SCRIPT "${CU_ROOT_DIR}/scripts/hhcSubstitute.bat")
 endif()
 
 # Configure files based on CMakeLists.txt
