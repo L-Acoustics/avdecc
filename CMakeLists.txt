@@ -105,6 +105,19 @@ if(ENABLE_AVDECC_FEATURE_JSON)
 	add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/externals/3rdparty/json EXCLUDE_FROM_ALL)
 endif()
 
+# Override nih options
+set(BUILD_NIH_EXAMPLES OFF CACHE BOOL "Build examples." FORCE)
+set(BUILD_NIH_TESTS OFF CACHE BOOL "Build unit tests." FORCE)
+set(BUILD_C_BINDINGS OFF CACHE BOOL "Build C Bindings." FORCE)
+set(BUILD_NIH_SWIG OFF CACHE BOOL "Build SWIG Wrapper." FORCE)
+# Install options
+set(INSTALL_NIH_EXAMPLES OFF CACHE BOOL "Install examples." FORCE)
+set(INSTALL_NIH_TESTS OFF CACHE BOOL "Install unit tests." FORCE)
+set(INSTALL_NIH_LIB_STATIC ${INSTALL_AVDECC_LIB_STATIC} CACHE BOOL "Install static library." FORCE)
+set(INSTALL_NIH_LIB_C OFF CACHE BOOL "Install C Bindings libraries." FORCE)
+set(INSTALL_NIH_LIB_SWIG OFF CACHE BOOL "Install swig libraries." FORCE)
+set(INSTALL_NIH_HEADERS ${INSTALL_AVDECC_HEADERS} CACHE BOOL "Install headers." FORCE)
+
 # Include NIH
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/externals/nih)
 
