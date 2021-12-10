@@ -54,7 +54,7 @@ public:
 	/* ************************************************************ */
 	/* Static methods                                               */
 	/* ************************************************************ */
-	static Adpdu makeDiscoveryMessage(la::avdecc::networkInterface::MacAddress const& sourceMacAddress, UniqueIdentifier const targetEntityID) noexcept;
+	static Adpdu makeDiscoveryMessage(networkInterface::MacAddress const& sourceMacAddress, UniqueIdentifier const targetEntityID) noexcept;
 	static Adpdu makeEntityAvailableMessage(entity::LocalEntity& entity, entity::model::AvbInterfaceIndex const interfaceIndex);
 	static Adpdu makeEntityDepartingMessage(entity::LocalEntity const& entity, entity::model::AvbInterfaceIndex const interfaceIndex);
 

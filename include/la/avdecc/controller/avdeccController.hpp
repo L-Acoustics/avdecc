@@ -487,6 +487,10 @@ public:
 	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadVirtualEntitiesFromJsonNetworkState(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError) noexcept = 0;
 	/** Deserializes a JSON file representing an entity, and loads it as a virtual ControlledEntity. */
 	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadVirtualEntityFromJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags) noexcept = 0;
+	/** Deserializes a JSON file representing a full network state, and returns the ControlledEntities without loading them. */
+	static LA_AVDECC_CONTROLLER_API std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vector<SharedControlledEntity>> LA_AVDECC_CONTROLLER_CALL_CONVENTION deserializeControlledEntitiesFromJsonNetworkState(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError) noexcept;
+	/** Deserializes a JSON file representing an entity, and returns the ControlledEntity without loading it. */
+	static LA_AVDECC_CONTROLLER_API std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, SharedControlledEntity> LA_AVDECC_CONTROLLER_CALL_CONVENTION deserializeControlledEntityFromJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags) noexcept;
 
 	// Deleted compiler auto-generated methods
 	Controller(Controller const&) = delete;

@@ -25,9 +25,10 @@
 
 #pragma once
 
-#include "la/avdecc/networkInterfaceHelper.hpp"
-
 #include "entityEnums.hpp"
+#include "exception.hpp"
+
+#include <la/networkInterfaceHelper/networkInterfaceHelper.hpp>
 
 #include <cstdint>
 #include <thread>
@@ -142,7 +143,7 @@ public:
 	}
 
 	/** Gets the mac address associated with the specified AvbInterfaceIndex. Returns an invalid MacAddress if there is no such interface index. */
-	la::avdecc::networkInterface::MacAddress getMacAddress(model::AvbInterfaceIndex const interfaceIndex) const noexcept
+	la::networkInterface::MacAddress getMacAddress(model::AvbInterfaceIndex const interfaceIndex) const noexcept
 	{
 		if (hasInterfaceIndex(interfaceIndex))
 		{
@@ -153,7 +154,7 @@ public:
 	}
 
 	/** Gets any mac address for the entity */
-	la::avdecc::networkInterface::MacAddress getAnyMacAddress() const
+	la::networkInterface::MacAddress getAnyMacAddress() const
 	{
 		// Get the first InterfaceInformation data (ordered, so we always get the same)
 		auto infoIt = _interfaceInformation.begin();
@@ -220,7 +221,7 @@ public:
 	}
 
 	/** Generates an EID from a MacAddress (OUI-36) and a ProgID. This method is provided for backward compatibility, use ProtocolInterface::getDynamicEID instead. */
-	static UniqueIdentifier generateEID(la::avdecc::networkInterface::MacAddress const& macAddress, std::uint16_t const progID)
+	static UniqueIdentifier generateEID(la::networkInterface::MacAddress const& macAddress, std::uint16_t const progID)
 	{
 		UniqueIdentifier::value_type eid{ 0u };
 		if (macAddress.size() != 6)

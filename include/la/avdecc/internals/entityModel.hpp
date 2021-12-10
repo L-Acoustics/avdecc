@@ -26,12 +26,13 @@
 #pragma once
 
 #include "la/avdecc/utils.hpp"
-#include "la/avdecc/networkInterfaceHelper.hpp"
 
 #include "entityEnums.hpp"
 #include "uniqueIdentifier.hpp"
 #include "protocolDefines.hpp"
 #include "entityModelTypes.hpp"
+
+#include <la/networkInterfaceHelper/networkInterfaceHelper.hpp>
 
 #if defined(ENABLE_AVDECC_CUSTOM_ANY)
 #	include "la/avdecc/internals/any.hpp"
@@ -356,7 +357,7 @@ struct StreamInfo
 	StreamFormat streamFormat{};
 	UniqueIdentifier streamID{ 0u };
 	std::uint32_t msrpAccumulatedLatency{ 0u };
-	la::avdecc::networkInterface::MacAddress streamDestMac{};
+	la::networkInterface::MacAddress streamDestMac{};
 	MsrpFailureCode msrpFailureCode{ MsrpFailureCode::NoFailure };
 	BridgeIdentifier msrpFailureBridgeID{ 0u };
 	std::uint16_t streamVlanID{ 0u };

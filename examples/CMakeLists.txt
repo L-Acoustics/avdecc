@@ -1,3 +1,3 @@
-# avdecc tests
+# avdecc examples
 
 add_subdirectory(src)

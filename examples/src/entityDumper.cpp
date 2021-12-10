@@ -27,7 +27,6 @@
 /** ************************************************************************ **/
 
 #include <la/avdecc/controller/avdeccController.hpp>
-#include <la/avdecc/networkInterfaceHelper.hpp>
 #include <la/avdecc/utils.hpp>
 #include <la/avdecc/logger.hpp>
 #include "utils.hpp"
@@ -152,7 +151,7 @@ int doJob()
 	auto const protocolInterfaceType = chooseProtocolInterfaceType(la::avdecc::protocol::ProtocolInterface::SupportedProtocolInterfaceTypes{ la::avdecc::protocol::ProtocolInterface::Type::PCap });
 	auto intfc = chooseNetworkInterface();
 
-	if (intfc.type == la::avdecc::networkInterface::Interface::Type::None || protocolInterfaceType == la::avdecc::protocol::ProtocolInterface::Type::None)
+	if (intfc.type == la::networkInterface::Interface::Type::None || protocolInterfaceType == la::avdecc::protocol::ProtocolInterface::Type::None)
 	{
 		return 1;
 	}

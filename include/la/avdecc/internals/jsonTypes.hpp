@@ -680,7 +680,7 @@ inline void from_json(json const& j, Entity::CommonInformation& commonInfo)
 /* Entity::InterfaceInformation conversion */
 inline void to_json(json& j, Entity::InterfaceInformation const& intfcInfo)
 {
-	j[keyName::Entity_InterfaceInformation_MacAddress] = networkInterface::macAddressToString(intfcInfo.macAddress, true);
+	j[keyName::Entity_InterfaceInformation_MacAddress] = networkInterface::NetworkInterfaceHelper::macAddressToString(intfcInfo.macAddress, true);
 	j[keyName::Entity_InterfaceInformation_ValidTime] = intfcInfo.validTime;
 	j[keyName::Entity_InterfaceInformation_AvailableIndex] = intfcInfo.availableIndex;
 	if (intfcInfo.gptpGrandmasterID)
@@ -694,7 +694,7 @@ inline void to_json(json& j, Entity::InterfaceInformation const& intfcInfo)
 }
 inline void from_json(json const& j, Entity::InterfaceInformation& intfcInfo)
 {
-	intfcInfo.macAddress = networkInterface::stringToMacAddress(j.at(keyName::Entity_InterfaceInformation_MacAddress).get<std::string>());
+	intfcInfo.macAddress = networkInterface::NetworkInterfaceHelper::stringToMacAddress(j.at(keyName::Entity_InterfaceInformation_MacAddress).get<std::string>());
 	j.at(keyName::Entity_InterfaceInformation_ValidTime).get_to(intfcInfo.validTime);
 	get_optional_value(j, keyName::Entity_InterfaceInformation_AvailableIndex, intfcInfo.availableIndex);
 	get_optional_value(j, keyName::Entity_InterfaceInformation_GptpGrandmasterID, intfcInfo.gptpGrandmasterID);
@@ -1199,7 +1199,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(MsrpFailureCode, {
 																								{ MsrpFailureCode::OutOfMSRPResources, "OUT_OF_MSRP_RESOURCES" },
 																								{ MsrpFailureCode::OutOfMMRPResources, "OUT_OF_MMRP_RESOURCES" },
 																								{ MsrpFailureCode::CannotStoreDestinationAddress, "CANNOT_STORE_DESTINATION_ADDRESS" },
-																								{ MsrpFailureCode::PriorityIsNotAnSRCLass, "PRIORITY_IS_NOT_AN_SR_CLASS" },
+																								{ MsrpFailureCode::PriorityIsNotAnSRClass, "PRIORITY_IS_NOT_AN_SR_CLASS" },
 																								{ MsrpFailureCode::MaxFrameSizeTooLarge, "MAX_FRAME_SIZE_TOO_LARGE" },
 																								{ MsrpFailureCode::MaxFanInPortsLimitReached, "MAX_FAN_IN_PORTS_LIMIT_REACHED" },
 																								{ MsrpFailureCode::FirstValueChangedForStreamID, "FIRST_VALUE_CHANGED_FOR_STREAM_ID" },
@@ -1334,7 +1334,7 @@ inline void to_json(json& j, StreamDynamicInfo const& info)
 	j[keyName::StreamDynamicInfo_MsrpAccumulatedLatency] = info.msrpAccumulatedLatency;
 	if (info.streamDestMac)
 	{
-		j[keyName::StreamDynamicInfo_StreamDestMac] = networkInterface::macAddressToString(*info.streamDestMac, true);
+		j[keyName::StreamDynamicInfo_StreamDestMac] = networkInterface::NetworkInterfaceHelper::macAddressToString(*info.streamDestMac, true);
 	}
 	j[keyName::StreamDynamicInfo_MsrpFailureCode] = info.msrpFailureCode;
 	if (info.msrpFailureBridgeID)
@@ -1367,7 +1367,7 @@ inline void from_json(json const& j, StreamDynamicInfo& info)
 		auto const it = j.find(keyName::StreamDynamicInfo_StreamDestMac);
 		if (it != j.end())
 		{
-			info.streamDestMac = networkInterface::stringToMacAddress(it->get<std::string>());
+			info.streamDestMac = networkInterface::NetworkInterfaceHelper::stringToMacAddress(it->get<std::string>());
 		}
 	}
 	{
@@ -1602,7 +1602,7 @@ inline void from_json(json const& j, StreamOutputNodeDynamicModel& d)
 inline void to_json(json& j, AvbInterfaceNodeStaticModel const& s)
 {
 	j[keyName::AvbInterfaceNode_Static_LocalizedDescription] = s.localizedDescription;
-	j[keyName::AvbInterfaceNode_Static_MacAddress] = networkInterface::macAddressToString(s.macAddress, true);
+	j[keyName::AvbInterfaceNode_Static_MacAddress] = networkInterface::NetworkInterfaceHelper::macAddressToString(s.macAddress, true);
 	j[keyName::AvbInterfaceNode_Static_Flags] = s.interfaceFlags;
 	j[keyName::AvbInterfaceNode_Static_ClockIdentity] = s.clockIdentity;
 	j[keyName::AvbInterfaceNode_Static_Priority1] = s.priority1;
@@ -1619,7 +1619,7 @@ inline void to_json(json& j, AvbInterfaceNodeStaticModel const& s)
 inline void from_json(json const& j, AvbInterfaceNodeStaticModel& s)
 {
 	get_optional_value(j, keyName::AvbInterfaceNode_Static_LocalizedDescription, s.localizedDescription);
-	s.macAddress = networkInterface::stringToMacAddress(j.at(keyName::AvbInterfaceNode_Static_MacAddress).get<std::string>());
+	s.macAddress = networkInterface::NetworkInterfaceHelper::stringToMacAddress(j.at(keyName::AvbInterfaceNode_Static_MacAddress).get<std::string>());
 	j.at(keyName::AvbInterfaceNode_Static_Flags).get_to(s.interfaceFlags);
 	j.at(keyName::AvbInterfaceNode_Static_ClockIdentity).get_to(s.clockIdentity);
 	j.at(keyName::AvbInterfaceNode_Static_Priority1).get_to(s.priority1);

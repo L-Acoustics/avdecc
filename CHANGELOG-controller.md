@@ -4,6 +4,12 @@ All notable changes to the Avdecc Controller Library will be documented in this 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [3.2.1] - 2021-12-10
+### Added
+- Possibility to deserialize virtual entities into ControlledEntity without adding them to the controller
+  - `deserializeControlledEntitiesFromJsonNetworkState` for an ANS file
+  - `deserializeControlledEntityFromJson` for an AVE file
+
 ## [3.2.0] - 2021-07-21
 ### Added
 - Support for multiple Virtual Entities loading from FullNetworkState file

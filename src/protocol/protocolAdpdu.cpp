@@ -39,7 +39,7 @@ namespace protocol
 /* Adpdu class definition                                  */
 /***********************************************************/
 
-la::avdecc::networkInterface::MacAddress const Adpdu::Multicast_Mac_Address{ { 0x91, 0xe0, 0xf0, 0x01, 0x00, 0x00 } };
+networkInterface::MacAddress const Adpdu::Multicast_Mac_Address{ { 0x91, 0xe0, 0xf0, 0x01, 0x00, 0x00 } };
 
 Adpdu::Adpdu() noexcept
 {
