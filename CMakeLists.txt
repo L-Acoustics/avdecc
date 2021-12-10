@@ -11,7 +11,7 @@ cmake_minimum_required(VERSION 3.18.3)
 # As soon as an API change occurs in dev or task branch, update the version number by following SemVer rules (so the API breaking changes are not lost/forgotten).
 # Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task) which will be labelled 1.5.0-beta3
 set(LA_AVDECC_VERSION 3.2.1.1)
-set(LA_AVDECC_CONTROLLER_VERSION 3.2.1.1)
+set(LA_AVDECC_CONTROLLER_VERSION 3.2.1.3)
 set(LA_AVDECC_C_VERSION 1.0.6.1)
 
 ############ Override from command line "CMake -D<OPTION>=TRUE/FALSE/0/1/ON/OFF"
@@ -113,7 +113,7 @@ set(BUILD_NIH_SWIG OFF CACHE BOOL "Build SWIG Wrapper." FORCE)
 # Install options
 set(INSTALL_NIH_EXAMPLES OFF CACHE BOOL "Install examples." FORCE)
 set(INSTALL_NIH_TESTS OFF CACHE BOOL "Install unit tests." FORCE)
-set(INSTALL_NIH_LIB_STATIC ${INSTALL_AVDECC_LIB_STATIC} CACHE BOOL "Install static library." FORCE)
+set(INSTALL_NIH_LIB_STATIC (${INSTALL_AVDECC_LIB_SHARED_CXX} OR ${INSTALL_AVDECC_LIB_STATIC}) CACHE BOOL "Install static library." FORCE)
 set(INSTALL_NIH_LIB_C OFF CACHE BOOL "Install C Bindings libraries." FORCE)
 set(INSTALL_NIH_LIB_SWIG OFF CACHE BOOL "Install swig libraries." FORCE)
 set(INSTALL_NIH_HEADERS ${INSTALL_AVDECC_HEADERS} CACHE BOOL "Install headers." FORCE)

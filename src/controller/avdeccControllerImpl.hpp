@@ -62,6 +62,8 @@ public:
 	ControllerImpl(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale);
 
 	void unregisterExclusiveAccessToken(la::avdecc::UniqueIdentifier const entityID, ExclusiveAccessTokenImpl* const token) const noexcept;
+	static std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vector<SharedControlledEntity>> deserializeControlledEntitiesFromJsonNetworkState(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError) noexcept;
+	static std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, SharedControlledEntity> deserializeControlledEntityFromJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags) noexcept;
 
 #ifndef la_avdecc_controller_static_STATICS /* Keep everything public when compiling the static library so unit tests can access all methods */
 private:
@@ -292,7 +294,8 @@ private:
 	/* ************************************************************ */
 	void updateEntity(ControlledEntityImpl& controlledEntity, entity::Entity const& entity) const noexcept;
 	void addCompatibilityFlag(ControlledEntityImpl& controlledEntity, ControlledEntity::CompatibilityFlag const flag) const noexcept;
-	void removeCompatibilityFlag(ControlledEntityImpl& controlledEntity, ControlledEntity::CompatibilityFlag const flag) const noexcept;
+	static std::pair<bool, ControlledEntity::CompatibilityFlags> removeCompatibilityFlag(ControlledEntityImpl& controlledEntity, ControlledEntity::CompatibilityFlag const flag) noexcept;
+	void removeCompatibilityFlagAndNotify(ControlledEntityImpl& controlledEntity, ControlledEntity::CompatibilityFlag const flag) const noexcept;
 	void updateUnsolicitedNotificationsSubscription(ControlledEntityImpl& controlledEntity, bool const isSubscribed) const noexcept;
 	void updateAcquiredState(ControlledEntityImpl& controlledEntity, model::AcquireState const acquireState, UniqueIdentifier const owningEntity) const noexcept;
 	void updateLockedState(ControlledEntityImpl& controlledEntity, model::LockState const lockState, UniqueIdentifier const lockingEntity) const noexcept;
@@ -572,7 +575,7 @@ private:
 	std::tuple<model::AcquireState, UniqueIdentifier> getAcquiredInfoFromStatus(ControlledEntityImpl& entity, UniqueIdentifier const owningEntity, entity::ControllerEntity::AemCommandStatus const status, bool const releaseEntityResult) const noexcept;
 	std::tuple<model::LockState, UniqueIdentifier> getLockedInfoFromStatus(ControlledEntityImpl& entity, UniqueIdentifier const lockingEntity, entity::ControllerEntity::AemCommandStatus const status, bool const unlockEntityResult) const noexcept;
 	void addDelayedQuery(std::chrono::milliseconds const delay, UniqueIdentifier const entityID, DelayedQueryHandler&& queryHandler) noexcept;
-	void chooseLocale(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex) noexcept;
+	static void chooseLocale(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, std::string const& preferedLocale, std::function<void(entity::model::StringsIndex const stringsIndex)> const& missingStringsHandler) noexcept;
 	void queryInformation(ControlledEntityImpl* const entity, ControlledEntityImpl::MilanInfoType const milanInfoType, std::chrono::milliseconds const delayQuery = std::chrono::milliseconds{ 0 }) noexcept;
 	void queryInformation(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::chrono::milliseconds const delayQuery = std::chrono::milliseconds{ 0 }) noexcept;
 	void queryInformation(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex = std::uint16_t{ 0u }, std::chrono::milliseconds const delayQuery = std::chrono::milliseconds{ 0 }) noexcept;
@@ -611,8 +614,9 @@ private:
 		}
 	}
 	entity::model::AudioMappings validateMappings(ControlledEntityImpl& controlledEntity, std::uint16_t const maxStreams, std::uint16_t const maxClusters, entity::model::AudioMappings const& mappings) const noexcept;
-	bool validateIdentifyControl(ControlledEntityImpl& controlledEntity, model::ControlNode const& identifyControlNode) const noexcept;
-	bool validateControlValues(UniqueIdentifier const entityID, entity::model::ControlIndex const controlIndex, entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) const noexcept;
+	static bool validateIdentifyControl(ControlledEntityImpl& controlledEntity, model::ControlNode const& identifyControlNode) noexcept;
+	static bool validateControlValues(UniqueIdentifier const entityID, entity::model::ControlIndex const controlIndex, entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) noexcept;
+	static void validateControlDescriptors(ControlledEntityImpl& controlledEntity) noexcept;
 	void onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept;
 	void onPostAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept;
 	void onPreUnadvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept;
@@ -632,8 +636,11 @@ private:
 	void clearTalkerStreamConnections(ControlledEntityImpl* const talkerEntity, entity::model::StreamIndex const talkerStreamIndex) const noexcept;
 	void addTalkerStreamConnection(ControlledEntityImpl* const talkerEntity, entity::model::StreamIndex const talkerStreamIndex, entity::model::StreamIdentification const& listenerStream) const noexcept;
 #ifdef ENABLE_AVDECC_FEATURE_JSON
-	std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadControlledEntityFromJson(nlohmann::json const& object, entity::model::jsonSerializer::Flags const flags);
-	SharedControlledEntityImpl createControlledEntityFromJson(nlohmann::json const& object, entity::model::jsonSerializer::Flags const flags); // Throws DeserializationException
+	static SharedControlledEntityImpl loadControlledEntityFromJson(nlohmann::json const& object, entity::model::jsonSerializer::Flags const flags, ControlledEntityImpl::LockInformation::SharedPointer const& lockInfo);
+	std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> registerVirtualControlledEntity(SharedControlledEntityImpl&& controlledEntity) noexcept;
+	static SharedControlledEntityImpl createControlledEntityFromJson(nlohmann::json const& object, entity::model::jsonSerializer::Flags const flags, ControlledEntityImpl::LockInformation::SharedPointer const& lockInfo); // Throws DeserializationException
+	static std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vector<SharedControlledEntityImpl>> deserializeJsonNetworkState(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError, ControlledEntityImpl::LockInformation::SharedPointer const& lockInfo) noexcept;
+	static std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, SharedControlledEntityImpl> deserializeJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, ControlledEntityImpl::LockInformation::SharedPointer const& lockInfo) noexcept;
 #endif // ENABLE_AVDECC_FEATURE_JSON
 	entity::addressAccess::Tlv makeNextReadDeviceMemoryTlv(std::uint64_t const baseAddress, std::uint64_t const length, std::uint64_t const currentSize) const noexcept;
 	entity::addressAccess::Tlv makeNextWriteDeviceMemoryTlv(std::uint64_t const baseAddress, DeviceMemoryBuffer const& memoryBuffer, std::uint64_t const currentSize) const noexcept;

@@ -145,13 +145,13 @@ void ControllerImpl::onEntityDescriptorResult(entity::controller::Interface cons
 				if (descriptor.entityID != e.getEntityID())
 				{
 					LOG_CONTROLLER_WARN(entityID, "EntityID is expected to be identical in ADP and ENTITY_DESCRIPTOR");
-					removeCompatibilityFlag(entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					removeCompatibilityFlagAndNotify(entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 					entity.setIgnoreCachedEntityModel();
 				}
 				if (descriptor.entityModelID != e.getEntityModelID())
 				{
 					LOG_CONTROLLER_WARN(entityID, "EntityModelID is expected to be identical in ADP and ENTITY_DESCRIPTOR");
-					removeCompatibilityFlag(entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					removeCompatibilityFlagAndNotify(entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 					entity.setIgnoreCachedEntityModel();
 				}
 
@@ -639,7 +639,13 @@ void ControllerImpl::onLocaleDescriptorResult(entity::controller::Interface cons
 				// We got all locales, now load strings for the desired locale
 				if (allLocalesLoaded)
 				{
-					chooseLocale(controlledEntity.get(), configurationIndex);
+					auto* const entity = controlledEntity.get();
+					chooseLocale(entity, configurationIndex, _preferedLocale,
+						[this, entity, configurationIndex](entity::model::StringsIndex const stringsIndex)
+						{
+							// Strings not in cache, we need to query the device
+							queryInformation(entity, configurationIndex, entity::model::DescriptorType::Strings, stringsIndex);
+						});
 				}
 			}
 			else
@@ -1388,7 +1394,7 @@ void ControllerImpl::onGetAvbInterfaceCountersResult(entity::controller::Interfa
 					if ((validCounters & s_MilanMandatoryAvbInterfaceCounters) != s_MilanMandatoryAvbInterfaceCounters)
 					{
 						LOG_CONTROLLER_WARN(entityID, "Milan mandatory counters missing for AVB_INTERFACE descriptor");
-						removeCompatibilityFlag(entity, ControlledEntity::CompatibilityFlag::Milan);
+						removeCompatibilityFlagAndNotify(entity, ControlledEntity::CompatibilityFlag::Milan);
 					}
 				}
 
@@ -1437,7 +1443,7 @@ void ControllerImpl::onGetClockDomainCountersResult(entity::controller::Interfac
 					if ((validCounters & s_MilanMandatoryClockDomainCounters) != s_MilanMandatoryClockDomainCounters)
 					{
 						LOG_CONTROLLER_WARN(entityID, "Milan mandatory counters missing for CLOCK_DOMAIN descriptor");
-						removeCompatibilityFlag(entity, ControlledEntity::CompatibilityFlag::Milan);
+						removeCompatibilityFlagAndNotify(entity, ControlledEntity::CompatibilityFlag::Milan);
 					}
 				}
 
@@ -1486,7 +1492,7 @@ void ControllerImpl::onGetStreamInputCountersResult(entity::controller::Interfac
 					if ((validCounters & s_MilanMandatoryStreamInputCounters) != s_MilanMandatoryStreamInputCounters)
 					{
 						LOG_CONTROLLER_WARN(entityID, "Milan mandatory counters missing for STREAM_INPUT descriptor");
-						removeCompatibilityFlag(entity, ControlledEntity::CompatibilityFlag::Milan);
+						removeCompatibilityFlagAndNotify(entity, ControlledEntity::CompatibilityFlag::Milan);
 					}
 				}
 
@@ -1535,7 +1541,7 @@ void ControllerImpl::onGetStreamOutputCountersResult(entity::controller::Interfa
 					if ((validCounters & s_MilanMandatoryStreamOutputCounters) != s_MilanMandatoryStreamOutputCounters)
 					{
 						LOG_CONTROLLER_WARN(entityID, "Milan mandatory counters missing for STREAM_OUTPUT descriptor");
-						removeCompatibilityFlag(entity, ControlledEntity::CompatibilityFlag::Milan);
+						removeCompatibilityFlagAndNotify(entity, ControlledEntity::CompatibilityFlag::Milan);
 					}
 				}
 
@@ -2178,7 +2184,7 @@ void ControllerImpl::onGetTalkerStreamStateResult(entity::controller::Interface 
 					if (connectionCount != 0)
 					{
 						LOG_CONTROLLER_WARN(talker.getEntity().getEntityID(), "Milan device must advertise 0 connection_count in GET_TX_STATE_RESPONSE");
-						removeCompatibilityFlag(talker, ControlledEntity::CompatibilityFlag::Milan);
+						removeCompatibilityFlagAndNotify(talker, ControlledEntity::CompatibilityFlag::Milan);
 					}
 				}
 
