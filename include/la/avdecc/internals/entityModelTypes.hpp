@@ -619,6 +619,18 @@ public:
 		return std::make_pair(static_cast<std::uint8_t>(_value >> 29), static_cast<std::uint32_t>(_value & 0x1FFFFFFF));
 	}
 
+	/** Getter to retrieve the pull value from this SamplingRate. */
+	constexpr std::uint8_t getPull() const noexcept
+	{
+		return static_cast<std::uint8_t>(_value >> 29);
+	}
+
+	/** Getter to retrieve the baseFrequency value from this SamplingRate. */
+	constexpr std::uint32_t getBaseFrequency() const noexcept
+	{
+		return static_cast<std::uint32_t>(_value & 0x1FFFFFFF);
+	}
+
 	/** True if the SamplingRate contains a valid underlying value, false otherwise. */
 	constexpr bool isValid() const noexcept
 	{

@@ -48,39 +48,31 @@ inline std::string typeToString(la::avdecc::entity::model::StreamFormatInfo::Typ
 			return "Unhandled";
 	}
 }
-inline std::string samplingRateToString(la::avdecc::entity::model::StreamFormatInfo::SamplingRate const rate) noexcept
+inline std::string samplingRateToString(la::avdecc::entity::model::SamplingRate const rate) noexcept
 {
-	switch (rate)
+	auto const freq = static_cast<std::uint32_t>(rate.getNominalSampleRate());
+	if (freq != 0)
 	{
-		case la::avdecc::entity::model::StreamFormatInfo::SamplingRate::Hz_500:
-			return "500 Hz";
-		case la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_8:
-			return "8k Hz";
-		case la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_16:
-			return "16 kHz";
-		case la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_24:
-			return "24 kHz";
-		case la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_32:
-			return "32 kHz";
-		case la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_44_1:
-			return "44.1 kHz";
-		case la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_48:
-			return "48 kHz";
-		case la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_88_2:
-			return "88.2 kHz";
-		case la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_96:
-			return "96 kHz";
-		case la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_176_4:
-			return "176.4 kHz";
-		case la::avdecc::entity::model::StreamFormatInfo::SamplingRate::kHz_192:
-			return "192 kHz";
-		case la::avdecc::entity::model::StreamFormatInfo::SamplingRate::UserDefined:
-			return "UserDefined";
-		case la::avdecc::entity::model::StreamFormatInfo::SamplingRate::Unknown:
-			return "Unknown";
-		default:
-			return "Unhandled";
+		if (freq < 1000)
+		{
+			return std::to_string(freq) + " Hz";
+		}
+		else
+		{
+			// Round to nearest integer but keep one decimal part
+			auto const freqRounded = freq / 1000;
+			auto const freqDecimal = (freq % 1000) / 100;
+			if (freqDecimal == 0)
+			{
+				return std::to_string(freqRounded) + " kHz";
+			}
+			else
+			{
+				return std::to_string(freqRounded) + "." + std::to_string(freqDecimal) + " kHz";
+			}
+		}
 	}
+	return "Unknown";
 }
 inline std::string sampleFormatToString(la::avdecc::entity::model::StreamFormatInfo::SampleFormat const format) noexcept
 {

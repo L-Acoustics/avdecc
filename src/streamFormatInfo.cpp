@@ -131,7 +131,7 @@ public:
 		return _upToChannelsCount;
 	}
 
-	virtual StreamFormatInfo::SamplingRate getSamplingRate() const noexcept override final
+	virtual SamplingRate getSamplingRate() const noexcept override final
 	{
 		return _samplingRate;
 	}
@@ -187,7 +187,7 @@ protected:
 	StreamFormatInfo::Type _type{ StreamFormatInfo::Type::Unsupported };
 	std::uint16_t _channelsCount{ 0u };
 	bool _upToChannelsCount{ false };
-	StreamFormatInfo::SamplingRate _samplingRate{ StreamFormatInfo::SamplingRate::Unknown };
+	SamplingRate _samplingRate{};
 	StreamFormatInfo::SampleFormat _sampleFormat{ StreamFormatInfo::SampleFormat::Unknown };
 	bool _useSynchronousClock{ false };
 	std::uint16_t _sampleDepth{ 0u };
@@ -239,25 +239,25 @@ public:
 		switch (fdf_sfc)
 		{
 			case 0:
-				_samplingRate = SamplingRate::kHz_32;
+				_samplingRate = SamplingRate{ 0, 32000 };
 				break;
 			case 1:
-				_samplingRate = SamplingRate::kHz_44_1;
+				_samplingRate = SamplingRate{ 0, 44100 };
 				break;
 			case 2:
-				_samplingRate = SamplingRate::kHz_48;
+				_samplingRate = SamplingRate{ 0, 48000 };
 				break;
 			case 3:
-				_samplingRate = SamplingRate::kHz_88_2;
+				_samplingRate = SamplingRate{ 0, 88200 };
 				break;
 			case 4:
-				_samplingRate = SamplingRate::kHz_96;
+				_samplingRate = SamplingRate{ 0, 96000 };
 				break;
 			case 5:
-				_samplingRate = SamplingRate::kHz_176_4;
+				_samplingRate = SamplingRate{ 0, 176400 };
 				break;
 			case 6:
-				_samplingRate = SamplingRate::kHz_192;
+				_samplingRate = SamplingRate{ 0, 192000 };
 				break;
 			default:
 				throw std::invalid_argument("Unsupported IEC 61883-6 fdf_sfc value");
@@ -328,37 +328,37 @@ public:
 		switch (nsr)
 		{
 			case 0:
-				_samplingRate = SamplingRate::UserDefined;
+				_samplingRate = SamplingRate{};
 				break;
 			case 1:
-				_samplingRate = SamplingRate::kHz_8;
+				_samplingRate = SamplingRate{ 0, 8000 };
 				break;
 			case 2:
-				_samplingRate = SamplingRate::kHz_16;
+				_samplingRate = SamplingRate{ 0, 16000 };
 				break;
 			case 3:
-				_samplingRate = SamplingRate::kHz_32;
+				_samplingRate = SamplingRate{ 0, 32000 };
 				break;
 			case 4:
-				_samplingRate = SamplingRate::kHz_44_1;
+				_samplingRate = SamplingRate{ 0, 44100 };
 				break;
 			case 5:
-				_samplingRate = SamplingRate::kHz_48;
+				_samplingRate = SamplingRate{ 0, 48000 };
 				break;
 			case 6:
-				_samplingRate = SamplingRate::kHz_88_2;
+				_samplingRate = SamplingRate{ 0, 88200 };
 				break;
 			case 7:
-				_samplingRate = SamplingRate::kHz_96;
+				_samplingRate = SamplingRate{ 0, 96000 };
 				break;
 			case 8:
-				_samplingRate = SamplingRate::kHz_176_4;
+				_samplingRate = SamplingRate{ 0, 176400 };
 				break;
 			case 9:
-				_samplingRate = SamplingRate::kHz_192;
+				_samplingRate = SamplingRate{ 0, 192000 };
 				break;
 			case 10:
-				_samplingRate = SamplingRate::kHz_24;
+				_samplingRate = SamplingRate{ 0, 24000 };
 				break;
 			default:
 				throw std::invalid_argument("Unsupported AAF nsr value");
@@ -426,39 +426,10 @@ public:
 		: StreamFormatInfoBase(streamFormat, Type::ClockReference)
 		, _timestamp_interval(timestamp_interval)
 		, _timestamps_per_pdu(timestamps_per_pdu)
-		, _pull(pull)
 	{
 		_channelsCount = 0u;
 		_upToChannelsCount = false;
-		switch (base_frequency)
-		{
-			case 500:
-				_samplingRate = SamplingRate::Hz_500;
-				break;
-			case 32000:
-				_samplingRate = SamplingRate::kHz_32;
-				break;
-			case 44100:
-				_samplingRate = SamplingRate::kHz_44_1;
-				break;
-			case 48000:
-				_samplingRate = SamplingRate::kHz_48;
-				break;
-			case 88200:
-				_samplingRate = SamplingRate::kHz_88_2;
-				break;
-			case 96000:
-				_samplingRate = SamplingRate::kHz_96;
-				break;
-			case 176400:
-				_samplingRate = SamplingRate::kHz_176_4;
-				break;
-			case 192000:
-				_samplingRate = SamplingRate::kHz_192;
-				break;
-			default:
-				throw std::invalid_argument("Unsupported CRF base_frequency value");
-		}
+		_samplingRate = SamplingRate{ pull, base_frequency };
 		_sampleFormat = SampleFormat::Int64;
 		_sampleDepth = 64;
 		_useSynchronousClock = true;
@@ -476,9 +447,6 @@ public:
 			default:
 				throw std::invalid_argument("Unsupported CRF crf_type value");
 		}
-
-		// Prevent compilation warning (unused private field)
-		(void)_pull;
 	}
 
 	virtual std::uint16_t getTimestampInterval() const noexcept override final
@@ -500,7 +468,6 @@ private:
 	CRFType _crfType{ CRFType::Unknown }; // 0=CRF_USER, 1=CRF_AUDIO_SAMPLE, 4=CRF_MACHINE_CYCLE
 	std::uint16_t _timestamp_interval{ 0 };
 	std::uint8_t _timestamps_per_pdu{ 0 };
-	std::uint8_t _pull{ 0 }; // 0=*1.0, 1=*1/1.001, 2=*1.001, 3=*24/25, 4=*25/24, 5=*1/8
 };
 
 /** StreamFormat unpacker */
@@ -634,27 +601,32 @@ StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_IEC_61883_6
 	replaceField<16, 20>(fmt, static_cast<std::uint8_t>(fdf_evt)); // fdf_evt = sampleFormat
 
 	std::uint8_t fdf_sfc{ 0u };
-	switch (samplingRate)
+	// We only handle non-pulled frequencies
+	if (samplingRate.getPull() != 0u)
 	{
-		case SamplingRate::kHz_32:
+		return StreamFormat::getNullStreamFormat();
+	}
+	switch (samplingRate.getBaseFrequency())
+	{
+		case 32000:
 			fdf_sfc = 0;
 			break;
-		case SamplingRate::kHz_44_1:
+		case 44100:
 			fdf_sfc = 1;
 			break;
-		case SamplingRate::kHz_48:
+		case 48000:
 			fdf_sfc = 2;
 			break;
-		case SamplingRate::kHz_88_2:
+		case 88200:
 			fdf_sfc = 3;
 			break;
-		case SamplingRate::kHz_96:
+		case 96000:
 			fdf_sfc = 4;
 			break;
-		case SamplingRate::kHz_176_4:
+		case 176400:
 			fdf_sfc = 5;
 			break;
-		case SamplingRate::kHz_192:
+		case 192000:
 			fdf_sfc = 6;
 			break;
 		default:
@@ -680,39 +652,44 @@ StreamFormat LA_AVDECC_CALL_CONVENTION StreamFormatInfo::buildFormat_AAF(std::ui
 	replaceField<11, 11>(fmt, static_cast<std::uint8_t>(isUpToChannelsCount)); // ut = isUpToChannelsCount
 
 	std::uint8_t nsr{ 0u };
-	switch (samplingRate)
+	// We only handle non-pulled frequencies
+	if (samplingRate.getPull() != 0u)
 	{
-		case SamplingRate::UserDefined:
+		return StreamFormat::getNullStreamFormat();
+	}
+	switch (samplingRate.getBaseFrequency())
+	{
+		case 0:
 			nsr = 0;
 			break;
-		case SamplingRate::kHz_8:
+		case 8000:
 			nsr = 1;
 			break;
-		case SamplingRate::kHz_16:
+		case 16000:
 			nsr = 2;
 			break;
-		case SamplingRate::kHz_32:
+		case 32000:
 			nsr = 3;
 			break;
-		case SamplingRate::kHz_44_1:
+		case 44100:
 			nsr = 4;
 			break;
-		case SamplingRate::kHz_48:
+		case 48000:
 			nsr = 5;
 			break;
-		case SamplingRate::kHz_88_2:
+		case 88200:
 			nsr = 6;
 			break;
-		case SamplingRate::kHz_96:
+		case 96000:
 			nsr = 7;
 			break;
-		case SamplingRate::kHz_176_4:
+		case 176400:
 			nsr = 8;
 			break;
-		case SamplingRate::kHz_192:
+		case 192000:
 			nsr = 9;
 			break;
-		case SamplingRate::kHz_24:
+		case 24000:
 			nsr = 10;
 			break;
 		default:
