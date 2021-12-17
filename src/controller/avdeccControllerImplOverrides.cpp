@@ -2741,29 +2741,16 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 
 	for (auto& controlledEntity : controlledEntities)
 	{
-		try
-		{
-			auto const [err, errTxt] = registerVirtualControlledEntity(std::move(controlledEntity));
-			if (!!err)
-			{
-				if (continueOnError)
-				{
-					error = err;
-					errorText = errTxt;
-					continue;
-				}
-				return { err, errTxt };
-			}
-		}
-		catch (avdecc::jsonSerializer::DeserializationException const& e)
+		auto const [err, errTxt] = registerVirtualControlledEntity(std::move(controlledEntity));
+		if (!!err)
 		{
 			if (continueOnError)
 			{
-				error = avdecc::jsonSerializer::DeserializationError::Incomplete;
-				errorText = e.what();
+				error = err;
+				errorText = errTxt;
 				continue;
 			}
-			return { e.getError(), e.what() };
+			return { err, errTxt };
 		}
 	}
 	return { error, errorText };
@@ -2801,6 +2788,9 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vecto
 
 	for (auto& controlledEntity : controlledEntities)
 	{
+		// We need to run some setup on a detached virtual entity
+		setupDetachedVirtualControlledEntity(*controlledEntity);
+
 		entities.push_back(controlledEntity);
 	}
 	return { error, errorText, entities };
@@ -2815,6 +2805,11 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, SharedCont
 #else // ENABLE_AVDECC_FEATURE_JSON
 
 	auto [error, errorText, controlledEntity] = deserializeJson(filePath, flags, std::make_shared<ControlledEntityImpl::LockInformation>());
+	if (!error)
+	{
+		// We need to run some setup on a detached virtual entity
+		setupDetachedVirtualControlledEntity(*controlledEntity);
+	}
 	return { error, errorText, controlledEntity };
 #endif // ENABLE_AVDECC_FEATURE_JSON
 }

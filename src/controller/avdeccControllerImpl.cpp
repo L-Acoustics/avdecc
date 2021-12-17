@@ -2544,6 +2544,8 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const controlle
 
 			// Advertise the entity
 			entity.setAdvertised(true);
+
+			// Notify it is online
 			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityOnline, this, controlledEntity);
 
 			// Do some final controller related steps after advertising entity
@@ -2819,6 +2821,7 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 	auto const& e = controlledEntity.getEntity();
 	auto const entityID = e.getEntityID();
 	auto const isAemSupported = e.getEntityCapabilities().test(entity::EntityCapability::AemSupported);
+	auto const isVirtualEntity = controlledEntity.isVirtual();
 
 	// For a Talker, we want to build an accurate list of connections, based on the known listeners (already advertised only, the other ones will update once ready to advertise themselves)
 	if (e.getTalkerCapabilities().test(entity::TalkerCapability::Implemented) && isAemSupported)
@@ -2838,8 +2841,8 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 				auto const listenerEntityID = entityKV.first;
 				auto const& listenerEntity = *(entityKV.second);
 
-				// Don't process self, nor not yet advertised entities
-				if (listenerEntityID == entityID || !listenerEntity.wasAdvertised())
+				// Don't process self, not yet advertised entities, nor different virtual/physical kind
+				if (listenerEntityID == entityID || !listenerEntity.wasAdvertised() || isVirtualEntity != listenerEntity.isVirtual())
 				{
 					continue;
 				}
@@ -2905,7 +2908,8 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 						// Take a "scoped locked" shared copy of the ControlledEntity
 						auto talkerEntity = getControlledEntityImplGuard(streamInputNode.dynamicModel->connectionInfo.talkerStream.entityID, true);
 
-						if (talkerEntity)
+						// Only process same virtual/physical kind
+						if (talkerEntity && isVirtualEntity == talkerEntity->isVirtual())
 						{
 							auto& talker = *talkerEntity;
 							auto const talkerStreamIndex = streamInputNode.dynamicModel->connectionInfo.talkerStream.streamIndex;
@@ -2925,10 +2929,15 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 
 void ControllerImpl::onPostAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept
 {
+	auto const isVirtualEntity = controlledEntity.isVirtual();
+
 	// If entity is currently identifying itself, notify
 	if (controlledEntity.isIdentifying())
 	{
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onIdentificationStarted, this, &controlledEntity);
+		if (!isVirtualEntity)
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onIdentificationStarted, this, &controlledEntity);
+		}
 	}
 }
 
@@ -2937,6 +2946,7 @@ void ControllerImpl::onPreUnadvertiseEntity(ControlledEntityImpl& controlledEnti
 	auto const& e = controlledEntity.getEntity();
 	auto const entityID = e.getEntityID();
 	auto const isAemSupported = e.getEntityCapabilities().test(entity::EntityCapability::AemSupported);
+	auto const isVirtualEntity = controlledEntity.isVirtual();
 
 	// For a Listener, we want to inform all the talkers we are connected to, that we left
 	if (e.getListenerCapabilities().test(entity::ListenerCapability::Implemented) && isAemSupported)
@@ -2957,7 +2967,8 @@ void ControllerImpl::onPreUnadvertiseEntity(ControlledEntityImpl& controlledEnti
 						// Take a "scoped locked" shared copy of the ControlledEntity
 						auto talkerEntity = getControlledEntityImplGuard(streamInputNode.dynamicModel->connectionInfo.talkerStream.entityID, true);
 
-						if (talkerEntity)
+						// Only process same virtual/physical kind
+						if (talkerEntity && isVirtualEntity == talkerEntity->isVirtual())
 						{
 							auto& talker = *talkerEntity;
 							auto const talkerStreamIndex = streamInputNode.dynamicModel->connectionInfo.talkerStream.streamIndex;
@@ -4208,18 +4219,6 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vecto
 			try
 			{
 				auto controlledEntity = loadControlledEntityFromJson(entityObject, flags, lockInfo);
-				auto& entity = *controlledEntity;
-
-				// Notify the ControlledEntity it has been fully loaded
-				entity.onEntityFullyLoaded();
-
-				// Validate entity control descriptors
-				// This is something to be done by the controller, only it should have the knowledge of what is correct or not
-				validateControlDescriptors(entity);
-
-				// Declare entity as advertised
-				entity.setAdvertised(true);
-
 				controlledEntities.push_back(std::move(controlledEntity));
 			}
 			catch (avdecc::jsonSerializer::DeserializationException const& e)
@@ -4231,6 +4230,17 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vecto
 					continue;
 				}
 				return { e.getError(), e.what(), {} };
+			}
+			// Catch json and std exceptions thrown by loadControlledEntityFromJson
+			catch (std::exception const& e)
+			{
+				if (continueOnError)
+				{
+					error = avdecc::jsonSerializer::DeserializationError::Incomplete;
+					errorText = e.what();
+					continue;
+				}
+				throw; // Rethrow
 			}
 		}
 	}
@@ -4326,24 +4336,25 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, Controller
 	try
 	{
 		auto controlledEntity = loadControlledEntityFromJson(object, flags, lockInfo);
-		auto& entity = *controlledEntity;
-
-		// Notify the ControlledEntity it has been fully loaded
-		entity.onEntityFullyLoaded();
-
-		// Validate entity control descriptors
-		// This is something to be done by the controller, only it should have the knowledge of what is correct or not
-		validateControlDescriptors(entity);
-
-		// Declare entity as advertised
-		entity.setAdvertised(true);
-
 		return { avdecc::jsonSerializer::DeserializationError::NoError, "", controlledEntity };
 	}
 	catch (avdecc::jsonSerializer::DeserializationException const& e)
 	{
 		return { e.getError(), e.what(), nullptr };
 	}
+}
+
+void ControllerImpl::setupDetachedVirtualControlledEntity(ControlledEntityImpl& entity) noexcept
+{
+	// Notify the ControlledEntity it has been fully loaded
+	entity.onEntityFullyLoaded();
+
+	// Validate entity control descriptors
+	// This is something to be done by the controller, only it should have the knowledge of what is correct or not
+	validateControlDescriptors(entity);
+
+	// Declare entity as advertised
+	entity.setAdvertised(true);
 }
 #endif // ENABLE_AVDECC_FEATURE_JSON
 
