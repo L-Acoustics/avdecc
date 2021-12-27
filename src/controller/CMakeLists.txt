@@ -82,70 +82,70 @@ source_group("Header Files\\Public\\Controller" FILES ${PUBLIC_HEADER_FILES})
 # C++ dynamic library
 if(BUILD_AVDECC_LIB_SHARED_CXX)
 	set (LIB_SHARED_CXX_SOURCE_FILES ${LIB_SOURCE_FILES})
-	add_library(la_avdecc_controller_cxx SHARED ${LIB_HEADER_FILES} ${LIB_SHARED_CXX_SOURCE_FILES} ${SHARED_LIBRARY_FILES})
+	add_library(${PROJECT_NAME}_cxx SHARED ${LIB_HEADER_FILES} ${LIB_SHARED_CXX_SOURCE_FILES} ${SHARED_LIBRARY_FILES})
 	if(ADD_PRIVATE_COMPILE_OPTIONS)
-		target_compile_options(la_avdecc_controller_cxx PRIVATE ${ADD_PRIVATE_COMPILE_OPTIONS})
+		target_compile_options(${PROJECT_NAME}_cxx PRIVATE ${ADD_PRIVATE_COMPILE_OPTIONS})
 	endif()
 	if(ADD_PUBLIC_COMPILE_OPTIONS)
-		target_compile_options(la_avdecc_controller_cxx PUBLIC ${ADD_PUBLIC_COMPILE_OPTIONS})
+		target_compile_options(${PROJECT_NAME}_cxx PUBLIC ${ADD_PUBLIC_COMPILE_OPTIONS})
 	endif()
 	if(ADD_LINK_LIBS)
-		target_link_libraries(la_avdecc_controller_cxx PRIVATE ${ADD_LINK_LIBS})
+		target_link_libraries(${PROJECT_NAME}_cxx PRIVATE ${ADD_LINK_LIBS})
 	endif()
 
 	# Enable precompiled headers
-	cu_set_precompiled_headers(la_avdecc_controller_cxx ${PCH_HEADER_NAME})
+	cu_set_precompiled_headers(${PROJECT_NAME}_cxx ${PCH_HEADER_NAME})
 
 	# Setup common options
-	cu_setup_library_options(la_avdecc_controller_cxx)
+	cu_setup_library_options(${PROJECT_NAME}_cxx)
 
 	# Link with avdecc using shared library (publicly because any executable using the controller needs low level library as well)
-	target_link_libraries(la_avdecc_controller_cxx PUBLIC la_avdecc_cxx)
+	target_link_libraries(${PROJECT_NAME}_cxx PUBLIC la_avdecc_cxx)
 
 	# Setup libfmt
 	if(ENABLE_AVDECC_USE_FMTLIB)
-		target_compile_options(la_avdecc_controller_cxx PRIVATE -DHAVE_FMT)
-		target_link_libraries(la_avdecc_controller_cxx PRIVATE fmt-header-only)
+		target_compile_options(${PROJECT_NAME}_cxx PRIVATE -DHAVE_FMT)
+		target_link_libraries(${PROJECT_NAME}_cxx PRIVATE fmt-header-only)
 	endif()
 
 	# Setup json
 	if(ENABLE_AVDECC_FEATURE_JSON)
-		target_link_libraries(la_avdecc_controller_cxx PRIVATE nlohmann_json)
+		target_link_libraries(${PROJECT_NAME}_cxx PRIVATE nlohmann_json)
 	endif()
 
 	# Setup install (and signing)
-	cu_setup_deploy_library(la_avdecc_controller_cxx ${INSTALL_SHARED_FLAG} ${SIGN_FLAG})
+	cu_setup_deploy_library(${PROJECT_NAME}_cxx ${INSTALL_SHARED_FLAG} ${SIGN_FLAG})
 endif()
 
 # Runtime-shared static library
 if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
-	add_library(la_avdecc_controller_static STATIC ${LIB_HEADER_FILES} ${LIB_SOURCE_FILES})
+	add_library(${PROJECT_NAME}_static STATIC ${LIB_HEADER_FILES} ${LIB_SOURCE_FILES})
 	if(ADD_PRIVATE_COMPILE_OPTIONS)
-		target_compile_options(la_avdecc_controller_static PRIVATE ${ADD_PRIVATE_COMPILE_OPTIONS})
+		target_compile_options(${PROJECT_NAME}_static PRIVATE ${ADD_PRIVATE_COMPILE_OPTIONS})
 	endif()
 	if(ADD_PUBLIC_COMPILE_OPTIONS)
-		target_compile_options(la_avdecc_controller_static PUBLIC ${ADD_PUBLIC_COMPILE_OPTIONS})
+		target_compile_options(${PROJECT_NAME}_static PUBLIC ${ADD_PUBLIC_COMPILE_OPTIONS})
 	endif()
 	if(ADD_LINK_LIBS)
-		target_link_libraries(la_avdecc_controller_static PUBLIC ${ADD_LINK_LIBS})
+		target_link_libraries(${PROJECT_NAME}_static PUBLIC ${ADD_LINK_LIBS})
 	endif()
 
 	# Enable precompiled headers
-	cu_set_precompiled_headers(la_avdecc_controller_static ${PCH_HEADER_NAME})
+	cu_set_precompiled_headers(${PROJECT_NAME}_static ${PCH_HEADER_NAME})
 
 	# Setup common options
-	cu_setup_library_options(la_avdecc_controller_static)
+	cu_setup_library_options(${PROJECT_NAME}_static)
 
 	# Setup json
 	if(ENABLE_AVDECC_FEATURE_JSON)
-		target_link_libraries(la_avdecc_controller_static PRIVATE nlohmann_json)
+		target_link_libraries(${PROJECT_NAME}_static PRIVATE nlohmann_json)
 	endif()
 
 	# Link with avdecc using static library
-	target_link_libraries(la_avdecc_controller_static PUBLIC la_avdecc_static)
+	target_link_libraries(${PROJECT_NAME}_static PUBLIC la_avdecc_static)
 
 	# Setup install (and signing)
-	cu_setup_deploy_library(la_avdecc_controller_static ${INSTALL_STATIC_FLAG} ${SIGN_FLAG})
+	cu_setup_deploy_library(${PROJECT_NAME}_static ${INSTALL_STATIC_FLAG} ${SIGN_FLAG})
 endif()
 
 # Set installation rules

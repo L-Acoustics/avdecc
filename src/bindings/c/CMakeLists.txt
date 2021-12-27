@@ -54,20 +54,20 @@ source_group("Source Files" FILES ${SOURCE_FILES_COMMON})
 #source_group("Source Files\\Protocol" FILES ${SOURCE_FILES_PROTOCOL})
 
 # Define target
-add_library(la_avdecc_c SHARED ${PUBLIC_HEADER_FILES} ${HEADER_FILES_COMMON} ${HEADER_FILES_PROTOCOL} ${SOURCE_FILES_COMMON} ${SOURCE_FILES_PROTOCOL} ${SHARED_LIBRARY_FILES})
+add_library(${PROJECT_NAME} SHARED ${PUBLIC_HEADER_FILES} ${HEADER_FILES_COMMON} ${HEADER_FILES_PROTOCOL} ${SOURCE_FILES_COMMON} ${SOURCE_FILES_PROTOCOL} ${SHARED_LIBRARY_FILES})
 
 if(ADD_PRIVATE_COMPILE_OPTIONS)
-	target_compile_options(la_avdecc_c PRIVATE ${ADD_PRIVATE_COMPILE_OPTIONS})
+	target_compile_options(${PROJECT_NAME} PRIVATE ${ADD_PRIVATE_COMPILE_OPTIONS})
 endif()
 
 # Setup common options
-cu_setup_library_options(la_avdecc_c)
+cu_setup_library_options(${PROJECT_NAME})
 
 # Link with avdecc
-target_link_libraries(la_avdecc_c PRIVATE la_avdecc_cxx)
+target_link_libraries(${PROJECT_NAME} PRIVATE la_avdecc_cxx)
 
 # Setup install (and signing)
-cu_setup_deploy_library(la_avdecc_c ${INSTALL_BINDINGS_FLAG} ${SIGN_FLAG})
+cu_setup_deploy_library(${PROJECT_NAME} ${INSTALL_BINDINGS_FLAG} ${SIGN_FLAG})
 
 # Set installation rules
 if(INSTALL_AVDECC_BINDINGS AND INSTALL_AVDECC_HEADERS)

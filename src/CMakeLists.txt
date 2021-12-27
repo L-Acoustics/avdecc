@@ -267,78 +267,78 @@ set (LIB_SOURCE_FILES ${SOURCE_FILES_COMMON} ${SOURCE_FILES_PROTOCOL} ${SOURCE_F
 # C++ dynamic library
 if(BUILD_AVDECC_LIB_SHARED_CXX)
 	set (LIB_SHARED_CXX_SOURCE_FILES ${LIB_SOURCE_FILES})
-	add_library(la_avdecc_cxx SHARED ${LIB_HEADER_FILES} ${LIB_SHARED_CXX_SOURCE_FILES} ${SHARED_LIBRARY_FILES})
+	add_library(${PROJECT_NAME}_cxx SHARED ${LIB_HEADER_FILES} ${LIB_SHARED_CXX_SOURCE_FILES} ${SHARED_LIBRARY_FILES})
 	if(ADD_PRIVATE_COMPILE_OPTIONS)
-		target_compile_options(la_avdecc_cxx PRIVATE ${ADD_PRIVATE_COMPILE_OPTIONS})
+		target_compile_options(${PROJECT_NAME}_cxx PRIVATE ${ADD_PRIVATE_COMPILE_OPTIONS})
 	endif()
 	if(ADD_PUBLIC_COMPILE_OPTIONS)
-		target_compile_options(la_avdecc_cxx PUBLIC ${ADD_PUBLIC_COMPILE_OPTIONS})
+		target_compile_options(${PROJECT_NAME}_cxx PUBLIC ${ADD_PUBLIC_COMPILE_OPTIONS})
 	endif()
 	if(ADD_LINK_LIBS)
-		target_link_libraries(la_avdecc_cxx PRIVATE ${ADD_LINK_LIBS})
+		target_link_libraries(${PROJECT_NAME}_cxx PRIVATE ${ADD_LINK_LIBS})
 	endif()
 
 	# Enable precompiled headers
-	cu_set_precompiled_headers(la_avdecc_cxx ${PCH_HEADER_NAME})
+	cu_set_precompiled_headers(${PROJECT_NAME}_cxx ${PCH_HEADER_NAME})
 
 	# Setup common options
-	cu_setup_library_options(la_avdecc_cxx)
+	cu_setup_library_options(${PROJECT_NAME}_cxx)
 
 	# Additional private include directory
-	target_include_directories(la_avdecc_cxx PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}) # Include root source directory for access to private headers
+	target_include_directories(${PROJECT_NAME}_cxx PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}) # Include root source directory for access to private headers
 	
 	# Setup NIH
-	target_link_libraries(la_avdecc_cxx PUBLIC la_networkInterfaceHelper_static)
+	target_link_libraries(${PROJECT_NAME}_cxx PUBLIC la_networkInterfaceHelper_static)
 
 	# Setup libfmt
 	if(ENABLE_AVDECC_USE_FMTLIB)
-		target_compile_options(la_avdecc_cxx PRIVATE -DHAVE_FMT)
-		target_link_libraries(la_avdecc_cxx PRIVATE fmt-header-only)
+		target_compile_options(${PROJECT_NAME}_cxx PRIVATE -DHAVE_FMT)
+		target_link_libraries(${PROJECT_NAME}_cxx PRIVATE fmt-header-only)
 	endif()
 
 	# Setup json
 	if(ENABLE_AVDECC_FEATURE_JSON)
-		target_link_libraries(la_avdecc_cxx PUBLIC nlohmann_json)
+		target_link_libraries(${PROJECT_NAME}_cxx PUBLIC nlohmann_json)
 	endif()
 
 	# Setup install (and signing)
-	cu_setup_deploy_library(la_avdecc_cxx ${INSTALL_SHARED_FLAG} ${SIGN_FLAG})
+	cu_setup_deploy_library(${PROJECT_NAME}_cxx ${INSTALL_SHARED_FLAG} ${SIGN_FLAG})
 endif()
 
 # Runtime-shared static library
 if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
-	add_library(la_avdecc_static STATIC ${LIB_HEADER_FILES} ${LIB_SOURCE_FILES})
+	add_library(${PROJECT_NAME}_static STATIC ${LIB_HEADER_FILES} ${LIB_SOURCE_FILES})
 	if(ADD_PRIVATE_COMPILE_OPTIONS)
-		target_compile_options(la_avdecc_static PUBLIC ${ADD_PRIVATE_COMPILE_OPTIONS}) # For a static library, no compile option is really private (using private APIs is possible, thus we need to know the options)
+		target_compile_options(${PROJECT_NAME}_static PUBLIC ${ADD_PRIVATE_COMPILE_OPTIONS}) # For a static library, no compile option is really private (using private APIs is possible, thus we need to know the options)
 	endif()
 	if(ADD_PUBLIC_COMPILE_OPTIONS)
-		target_compile_options(la_avdecc_static PUBLIC ${ADD_PUBLIC_COMPILE_OPTIONS})
+		target_compile_options(${PROJECT_NAME}_static PUBLIC ${ADD_PUBLIC_COMPILE_OPTIONS})
 	endif()
 	if(ADD_LINK_LIBS)
-		target_link_libraries(la_avdecc_static PUBLIC ${ADD_LINK_LIBS})
+		target_link_libraries(${PROJECT_NAME}_static PUBLIC ${ADD_LINK_LIBS})
 	endif()
 
 	# Enable precompiled headers
-	cu_set_precompiled_headers(la_avdecc_static ${PCH_HEADER_NAME})
+	cu_set_precompiled_headers(${PROJECT_NAME}_static ${PCH_HEADER_NAME})
 
 	# Setup common library options
-	cu_setup_library_options(la_avdecc_static)
+	cu_setup_library_options(${PROJECT_NAME}_static)
 
 	# Additional include directory (only for build interface)
-	target_include_directories(la_avdecc_static PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>) # Include root source directory for access to private headers
+	target_include_directories(${PROJECT_NAME}_static PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>) # Include root source directory for access to private headers
 	
 	# Setup NIH
-	target_link_libraries(la_avdecc_static PUBLIC la_networkInterfaceHelper_static)
+	target_link_libraries(${PROJECT_NAME}_static PUBLIC la_networkInterfaceHelper_static)
 
 	# Setup json
 	if(ENABLE_AVDECC_FEATURE_JSON)
-		target_link_libraries(la_avdecc_static PUBLIC nlohmann_json)
+		target_link_libraries(${PROJECT_NAME}_static PUBLIC nlohmann_json)
 	endif()
 
 	# Setup install (and signing)
-	cu_setup_deploy_library(la_avdecc_static ${INSTALL_STATIC_FLAG} ${SIGN_FLAG})
+	cu_setup_deploy_library(${PROJECT_NAME}_static ${INSTALL_STATIC_FLAG} ${SIGN_FLAG})
 
-	# We must install wpcap link library for windows, so the target using la_avdecc_static can properly link
+	# We must install wpcap link library for windows, so the target using static library can properly link
 	if(INSTALL_AVDECC_LIB_STATIC AND NOT ${BUILD_AVDECC_INTERFACE_PCAP_DYNAMIC_LINKING} AND WIN32)
 		install(FILES "${LA_WINPCAP_LIB_DIR}/wpcap.lib" DESTINATION lib)
 	endif()
