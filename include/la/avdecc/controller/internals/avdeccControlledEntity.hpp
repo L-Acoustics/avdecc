@@ -39,6 +39,7 @@
 #include <vector>
 #include <chrono>
 #include <optional>
+#include <map>
 
 namespace la
 {
@@ -160,6 +161,8 @@ public:
 	virtual entity::model::AudioMappings const& getStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
 	/** Get the current AudioMappings for the specified Output StreamPortIndex. Only return the primary mappings, not the redundant ones. */
 	virtual entity::model::AudioMappings getStreamPortOutputNonRedundantAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
+	/** Get AudioMappings for the specified Input StreamPortIndex that will become invalid for the specified StreamFormat. Might return redundant mappings as well as primary ones. */
+	virtual std::map<entity::model::StreamPortIndex, entity::model::AudioMappings> getStreamPortInputInvalidAudioMappingsForStreamFormat(entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) const = 0; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 
 	/** Get connections information about a talker's stream */
 	virtual entity::model::StreamConnections const& getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist

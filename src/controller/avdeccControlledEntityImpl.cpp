@@ -26,6 +26,7 @@
 #include "avdeccControllerLogHelper.hpp"
 #include "avdeccEntityModelCache.hpp"
 
+#include <la/avdecc/internals/streamFormatInfo.hpp>
 #include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
 
 #include <algorithm>
@@ -540,6 +541,62 @@ entity::model::AudioMappings ControlledEntityImpl::getStreamPortOutputNonRedunda
 	// Return a copy of the current mappings
 	return getStreamPortOutputAudioMappings(streamPortIndex);
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+}
+
+std::map<entity::model::StreamPortIndex, entity::model::AudioMappings> ControlledEntityImpl::getStreamPortInputInvalidAudioMappingsForStreamFormat(entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) const
+{
+	auto const& configurationNode = getCurrentConfigurationNode();
+	auto const maxStreams = configurationNode.streamInputs.size();
+	auto const maxStreamChannels = entity::model::StreamFormatInfo::create(streamFormat)->getChannelsCount();
+	auto invalidPortMappings = std::map<entity::model::StreamPortIndex, entity::model::AudioMappings>{};
+
+	// Process all StreamPort Input, in all audio units
+	for (auto const& [audioUnitIndex, audioUnitNode] : configurationNode.audioUnits)
+	{
+		for (auto const& [streamPortIndex, streamPortNode] : audioUnitNode.streamPortInputs)
+		{
+			// Check if dynamic mappings is supported by the entity
+			if (streamPortNode.staticModel->hasDynamicAudioMap)
+			{
+				auto const maxClusters = streamPortNode.audioClusters.size();
+				auto invalidMappings = entity::model::AudioMappings{};
+
+				for (auto const& mapping : streamPortNode.dynamicModel->dynamicAudioMap)
+				{
+					// Only check mappings for affected StreamIndex
+					if (mapping.streamIndex == streamIndex)
+					{
+						// Check if the mapping makes sense statically (regarding StreamIndex and ClusterOffset bounds)
+						if (AVDECC_ASSERT_WITH_RET(mapping.streamIndex < maxStreams && mapping.clusterOffset < maxClusters, "Mapping stream/cluster index is out of bounds"))
+						{
+							// Check if the mapping makes sense statically (regarding ClusterOffset value)
+							auto const clusterNodeIt = streamPortNode.audioClusters.find(mapping.clusterOffset);
+							if (AVDECC_ASSERT_WITH_RET(clusterNodeIt != streamPortNode.audioClusters.end(), "Mapping cluster offset invalid for this stream port"))
+							{
+								// Check if the mapping makes sense statically (regarding ClusterChannel)
+								auto const& clusterNode = clusterNodeIt->second;
+								if (AVDECC_ASSERT_WITH_RET(mapping.clusterChannel < clusterNode.staticModel->channelCount, "Mapping cluster channel is out of bounds"))
+								{
+									// Check if the mapping will be out of stream bounds with the new stream format
+									if (mapping.streamChannel >= maxStreamChannels)
+									{
+										invalidMappings.push_back(mapping);
+									}
+								}
+							}
+						}
+					}
+				}
+
+				if (!invalidMappings.empty())
+				{
+					invalidPortMappings.insert_or_assign(streamPortIndex, std::move(invalidMappings));
+				}
+			}
+		}
+	}
+
+	return invalidPortMappings;
 }
 
 entity::model::StreamConnections const& ControlledEntityImpl::getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const
