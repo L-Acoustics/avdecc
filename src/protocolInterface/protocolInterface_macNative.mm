@@ -1721,18 +1721,28 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 
 	[self startAsyncOperation];
 	[self.interface.acmp sendACMPCommandMessage:message
-														completionHandler:^(NSError* error, AVB17221ACMPMessage* message) {
+														completionHandler:^(NSError* error, AVB17221ACMPMessage* response) {
 															if (!resultHandler)
 															{
 																LOG_PROTOCOL_INTERFACE_DEBUG(la::networkInterface::MacAddress{}, la::networkInterface::MacAddress{}, "ACMP completionHandler called again with same result message, ignoring this call.");
 																return;
+															}
+															// This is a special hack to protect from a macOS bug: If the adapter is not correctly plugged in, the completionHandler is immediately called with the message as response and no error code
+															// Bug is at least present in macOS Big Sur 11.6.1
+															{
+																// Check a few fields, just to be sure response IS message (comparing pointer is not secured enough)
+																if (error == nil && message == response && message.messageType == response.messageType && message.sequenceID == response.sequenceID)
+																{
+																	LOG_PROTOCOL_INTERFACE_DEBUG(la::networkInterface::MacAddress{}, la::networkInterface::MacAddress{}, "ACMP completionHandler called with our command message instead of the response (without error code), consider it has timed out.");
+																	error = [NSError errorWithDomain:AVBErrorDomain code:kIOReturnTimeout userInfo:nil];
+																}
 															}
 															{
 																// Lock Self before calling a handler, we come from a network thread
 																auto const lg = std::lock_guard{ _lock };
 																if (kIOReturnSuccess == (IOReturn)error.code)
 																{
-																	auto acmp = [FromNative makeAcmpdu:message];
+																	auto acmp = [FromNative makeAcmpdu:response];
 																	la::avdecc::utils::invokeProtectedHandler(resultHandler, acmp.get(), la::avdecc::protocol::ProtocolInterface::Error::NoError);
 																}
 																else
