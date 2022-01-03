@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - Method to retrieve the mappings that will become invalid (dangling) when a stream input format will change: _getStreamPortInputInvalidAudioMappingsForStreamFormat_
+- Method to choose the best stream format among a list
 
 ### Fixed
 - Broken managed virtual entities since 3.2.1
