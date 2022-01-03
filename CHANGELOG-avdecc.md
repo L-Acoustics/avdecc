@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - la::avdecc::entity::model::StreamFormatInfo now uses la::avdecc::entity::model::SamplingRate instead of its own enum
 
+### Fixed
+- ANS/AVE loading error when msrp_failure_code is defined to null
+
 ## [3.2.1] - 2021-12-10
 
 ## [3.2.0] - 2021-07-21

@@ -1327,10 +1327,7 @@ inline void to_json(json& j, StreamDynamicInfo const& info)
 	j[keyName::StreamDynamicInfo_ArePdusEncrypted] = info.arePdusEncrypted;
 	j[keyName::StreamDynamicInfo_HasTalkerFailed] = info.hasTalkerFailed;
 	j[keyName::StreamDynamicInfo_Flags] = info._streamInfoFlags;
-	if (info.streamID)
-	{
-		j[keyName::StreamDynamicInfo_StreamID] = *info.streamID;
-	}
+	j[keyName::StreamDynamicInfo_StreamID] = info.streamID;
 	j[keyName::StreamDynamicInfo_MsrpAccumulatedLatency] = info.msrpAccumulatedLatency;
 	if (info.streamDestMac)
 	{
@@ -1355,13 +1352,7 @@ inline void from_json(json const& j, StreamDynamicInfo& info)
 	j.at(keyName::StreamDynamicInfo_ArePdusEncrypted).get_to(info.arePdusEncrypted);
 	j.at(keyName::StreamDynamicInfo_HasTalkerFailed).get_to(info.hasTalkerFailed);
 	get_optional_value(j, keyName::StreamDynamicInfo_Flags, info._streamInfoFlags);
-	{
-		auto const it = j.find(keyName::StreamDynamicInfo_StreamID);
-		if (it != j.end())
-		{
-			it->get_to(info.streamID);
-		}
-	}
+	get_optional_value(j, keyName::StreamDynamicInfo_StreamID, info.streamID);
 	get_optional_value(j, keyName::StreamDynamicInfo_MsrpAccumulatedLatency, info.msrpAccumulatedLatency);
 	{
 		auto const it = j.find(keyName::StreamDynamicInfo_StreamDestMac);
@@ -1372,7 +1363,7 @@ inline void from_json(json const& j, StreamDynamicInfo& info)
 	}
 	{
 		auto const it = j.find(keyName::StreamDynamicInfo_MsrpFailureCode);
-		if (it != j.end())
+		if (it != j.end() && !it->is_null())
 		{
 			// Check for new format (string)
 			if (it->is_string())
