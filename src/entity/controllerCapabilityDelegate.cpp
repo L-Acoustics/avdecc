@@ -1437,6 +1437,36 @@ void CapabilityDelegate::getStreamOutputCounters(UniqueIdentifier const targetEn
 	}
 }
 
+void CapabilityDelegate::reboot(UniqueIdentifier const targetEntityID, Interface::RebootHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1);
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeRebootCommand(model::DescriptorType::Entity, model::DescriptorIndex{ 0u });
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::Reboot, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize reboot: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::rebootToFirmware(UniqueIdentifier const targetEntityID, model::MemoryObjectIndex const memoryObjectIndex, Interface::RebootToFirmwareHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, memoryObjectIndex);
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeRebootCommand(model::DescriptorType::MemoryObject, memoryObjectIndex);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::Reboot, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize reboot: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
 void CapabilityDelegate::startOperation(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer, Interface::StartOperationHandler const& handler) const noexcept
 {
 	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, descriptorType, descriptorIndex, model::OperationID{ 0u }, operationType, MemoryBuffer{});
@@ -3097,6 +3127,36 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 					}
 					default:
 						LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled descriptorType in GET_COUNTERS response: DescriptorType={} DescriptorIndex={}", utils::to_integral(descriptorType), descriptorIndex);
+						break;
+				}
+			}
+		},
+		// Reboot
+		{ protocol::AemCommandType::Reboot.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
+			{
+				// Deserialize payload
+				auto const[descriptorType, descriptorIndex] = protocol::aemPayload::deserializeRebootResponse(aem.getPayload());
+				auto const targetID = aem.getTargetEntityID();
+
+				// Notify handlers
+				switch (descriptorType)
+				{
+					case model::DescriptorType::Entity:
+					{
+						answerCallback.invoke<controller::Interface::RebootHandler>(protocolViolationCallback, controllerInterface, targetID, status);
+						if (descriptorIndex != 0)
+						{
+							LOG_CONTROLLER_ENTITY_WARN(targetID, "REBOOT response for ENTITY descriptor uses a non-0 DescriptorIndex: {}", descriptorIndex);
+						}
+						break;
+					}
+					case model::DescriptorType::MemoryObject:
+					{
+						answerCallback.invoke<controller::Interface::RebootToFirmwareHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex);
+						break;
+					}
+					default:
+						LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled descriptorType in REBOOT response: DescriptorType={} DescriptorIndex={}", utils::to_integral(descriptorType), descriptorIndex);
 						break;
 				}
 			}

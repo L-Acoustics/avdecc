@@ -2216,6 +2216,53 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return std::make_tuple(descriptorType, descriptorIndex, validCounters, counters);
 }
 
+/** REBOOT Command - Clause 7.4.43.1 */
+Serializer<AecpAemRebootCommandPayloadSize> serializeRebootCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	Serializer<AecpAemRebootCommandPayloadSize> ser;
+
+	ser << descriptorType << descriptorIndex;
+
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeRebootCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemRebootCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+
+	des >> descriptorType >> descriptorIndex;
+
+	AVDECC_ASSERT(des.usedBytes() == AecpAemRebootCommandPayloadSize, "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(descriptorType, descriptorIndex);
+}
+
+/** REBOOT Response - Clause 7.4.43.1 */
+Serializer<AecpAemRebootResponsePayloadSize> serializeRebootResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	// Same as REBOOT Command
+	static_assert(AecpAemRebootResponsePayloadSize == AecpAemRebootCommandPayloadSize, "REBOOT Response no longer the same as REBOOT Command");
+	return serializeRebootCommand(descriptorType, descriptorIndex);
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeRebootResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as REBOOT Command
+	static_assert(AecpAemRebootResponsePayloadSize == AecpAemRebootCommandPayloadSize, "REBOOT Response no longer the same as REBOOT Command");
+	return deserializeRebootCommand(payload);
+}
+
 /** GET_AUDIO_MAP Command - Clause 7.4.44.1 */
 Serializer<AecpAemGetAudioMapCommandPayloadSize> serializeGetAudioMapCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::MapIndex const mapIndex)
 {

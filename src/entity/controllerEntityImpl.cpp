@@ -542,6 +542,16 @@ void ControllerEntityImpl::getStreamOutputCounters(UniqueIdentifier const target
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getStreamOutputCounters(targetEntityID, streamIndex, handler);
 }
 
+void ControllerEntityImpl::reboot(UniqueIdentifier const targetEntityID, RebootHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).reboot(targetEntityID, handler);
+}
+
+void ControllerEntityImpl::rebootToFirmware(UniqueIdentifier const targetEntityID, model::MemoryObjectIndex const memoryObjectIndex, RebootToFirmwareHandler const& handler) const noexcept
+{
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).rebootToFirmware(targetEntityID, memoryObjectIndex, handler);
+}
+
 void ControllerEntityImpl::startOperation(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer, StartOperationHandler const& handler) const noexcept
 {
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).startOperation(targetEntityID, descriptorType, descriptorIndex, operationType, memoryBuffer, handler);
