@@ -40,6 +40,7 @@
 #include <array>
 #include <vector>
 #include <iostream>
+#include <optional>
 #include <cstring> // std::memcpy
 
 namespace la
@@ -1301,6 +1302,7 @@ public:
 	{
 		static constexpr bool is_value_details = false;
 		static constexpr bool is_dynamic = false;
+		static constexpr std::optional<bool> static_dynamic_counts_identical = std::nullopt;
 		static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::Expansion; // Not the best default value but none is provided by the standard
 	};
 
@@ -1311,10 +1313,12 @@ public:
 		: _isValid{ true }
 		, _type{ Traits::control_value_type }
 		, _areDynamic{ Traits::is_dynamic }
+		, _countMustBeIdentical{ Traits::static_dynamic_counts_identical ? *Traits::static_dynamic_counts_identical : false } // Check for optional presence delayed to body so we have a nicer message than with an enable_if template parameter
 		, _countValues{ values.countValues() }
 		, _values{ values }
 	{
 		static_assert(Traits::is_value_details, "ControlValues::ControlValues, control_value_details_traits::is_value_details trait not defined for requested ValueDetailsType. Did you include entityModelControlValuesTraits.hpp?");
+		static_assert(Traits::static_dynamic_counts_identical.has_value(), "ControlValues::ControlValues, control_value_details_traits::static_dynamic_counts_identical trait not defined for requested ValueDetailsType.");
 	}
 
 	template<class ValueDetailsType, typename Traits = control_value_details_traits<std::decay_t<ValueDetailsType>>>
@@ -1322,10 +1326,12 @@ public:
 		: _isValid{ true }
 		, _type{ Traits::control_value_type }
 		, _areDynamic{ Traits::is_dynamic }
+		, _countMustBeIdentical{ Traits::static_dynamic_counts_identical ? *Traits::static_dynamic_counts_identical : false } // Check for optional presence delayed to body so we have a nicer message than with an enable_if template parameter
 		, _countValues{ values.countValues() } // Careful with order here, we are moving 'values'
 		, _values{ std::move(values) }
 	{
 		static_assert(Traits::is_value_details, "ControlValues::ControlValues, control_value_details_traits::is_value_details trait not defined for requested ValueDetailsType. Did you include entityModelControlValuesTraits.hpp?");
+		static_assert(Traits::static_dynamic_counts_identical.has_value(), "ControlValues::ControlValues, control_value_details_traits::static_dynamic_counts_identical trait not defined for requested ValueDetailsType.");
 	}
 
 	constexpr ControlValueType::Type getType() const noexcept
@@ -1333,9 +1339,16 @@ public:
 		return _type;
 	}
 
+	/** True if the values are Dynamic, false if they are Static */
 	constexpr bool areDynamicValues() const noexcept
 	{
 		return _areDynamic;
+	}
+
+	/** True if the count of Static Values must be identical to the count of Dynamic Values (depends on ControlValueType) */
+	constexpr bool countMustBeIdentical() const noexcept
+	{
+		return _countMustBeIdentical;
 	}
 
 	constexpr std::uint16_t size() const noexcept
@@ -1389,6 +1402,7 @@ private:
 	bool _isValid{ false };
 	ControlValueType::Type _type{};
 	bool _areDynamic{ false };
+	bool _countMustBeIdentical{ false };
 	std::uint16_t _countValues{ 0u };
 	std::any _values{};
 };

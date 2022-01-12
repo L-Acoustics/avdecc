@@ -121,6 +121,38 @@ private:
 	Values _values{};
 };
 
+/** Array Values - Clause 7.3.5.2.3 */
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
+struct LA_AVDECC_TYPE_INFO_EXPORT ArrayValueStatic
+{
+	using control_value_details_traits = ControlValues::control_value_details_traits<ArrayValueStatic<SizeType>>;
+
+	std::uint16_t countValues() const noexcept
+	{
+		return 1; // Dynamic ArrayValue Types share the same Static information
+	}
+
+	SizeType minimum{ 0 };
+	SizeType maximum{ 0 };
+	SizeType step{ 0 };
+	SizeType defaultValue{ 0 };
+	ControlValueUnit unit{ 0 };
+	LocalizedStringReference localizedName{};
+};
+
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
+struct LA_AVDECC_TYPE_INFO_EXPORT ArrayValueDynamic
+{
+	using control_value_details_traits = ControlValues::control_value_details_traits<ArrayValueDynamic<SizeType>>;
+
+	std::uint16_t countValues() const noexcept
+	{
+		return static_cast<std::uint16_t>(currentValues.size());
+	}
+
+	std::vector<SizeType> currentValues{}; // The actual default value should be the one from ArrayValueStatic
+};
+
 /** UTF-8 String Value - Clause 7.3.5.2.4 */
 struct LA_AVDECC_TYPE_INFO_EXPORT UTF8StringValueStatic
 {
@@ -135,12 +167,13 @@ struct LA_AVDECC_TYPE_INFO_EXPORT UTF8StringValueDynamic
 {
 	using value_type = std::uint8_t;
 	using Values = std::array<std::uint8_t, UTF8StringValueStatic::MaxLength>;
-	Values currentValue{};
 
 	std::uint16_t countValues() const noexcept
 	{
 		return 1;
 	}
+
+	Values currentValue{};
 };
 
 LA_AVDECC_API std::optional<ControlValues> LA_AVDECC_CALL_CONVENTION unpackDynamicControlValues(MemoryBuffer const& packedControlValues, ControlValueType::Type const valueType, std::uint16_t const numberOfValues) noexcept;

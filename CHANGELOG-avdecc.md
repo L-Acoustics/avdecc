@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Support for Control Array Values Type (Clause 7.3.5.2.3)
+
 ### Changed
 - la::avdecc::entity::model::StreamFormatInfo now uses la::avdecc::entity::model::SamplingRate instead of its own enum
 
