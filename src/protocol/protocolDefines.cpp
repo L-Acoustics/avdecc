@@ -100,6 +100,11 @@ AecpStatus const AecpStatus::NotImplemented{ 1 };
 /* 2-31 defined by message type */
 
 /** AEM AECP Status - Clause 7.4 */
+LA_AVDECC_API AemAecpStatus::AemAecpStatus(AecpStatus const status) noexcept
+	: AecpStatus{ status }
+{
+}
+
 AemAecpStatus const AemAecpStatus::NoSuchDescriptor{ 2 };
 AemAecpStatus const AemAecpStatus::EntityLocked{ 3 };
 AemAecpStatus const AemAecpStatus::EntityAcquired{ 4 };
