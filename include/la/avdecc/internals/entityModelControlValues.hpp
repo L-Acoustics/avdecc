@@ -33,6 +33,13 @@
 
 #include <optional>
 #include <array>
+#include <version>
+
+#if defined(__cpp_lib_constexpr_vector) && defined(__cpp_lib_array_constexpr)
+#	define CONSTEXPR_COMPARISON constexpr
+#else
+#	define CONSTEXPR_COMPARISON inline
+#endif
 
 namespace la
 {
@@ -47,7 +54,7 @@ template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<Siz
 struct LA_AVDECC_TYPE_INFO_EXPORT LinearValueStatic
 {
 	// Comparison operator
-	constexpr friend bool operator==(LinearValueStatic const& lhs, LinearValueStatic const& rhs) noexcept
+	CONSTEXPR_COMPARISON friend bool operator==(LinearValueStatic const& lhs, LinearValueStatic const& rhs) noexcept
 	{
 		return lhs.minimum == rhs.minimum && lhs.maximum == rhs.maximum && lhs.step == rhs.step && lhs.defaultValue == rhs.defaultValue && lhs.unit == rhs.unit && lhs.localizedName == rhs.localizedName;
 	}
@@ -64,7 +71,7 @@ template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<Siz
 struct LA_AVDECC_TYPE_INFO_EXPORT LinearValueDynamic
 {
 	// Comparison operator
-	constexpr friend bool operator==(LinearValueDynamic const& lhs, LinearValueDynamic const& rhs) noexcept
+	CONSTEXPR_COMPARISON friend bool operator==(LinearValueDynamic const& lhs, LinearValueDynamic const& rhs) noexcept
 	{
 		return lhs.currentValue == rhs.currentValue;
 	}
@@ -124,7 +131,7 @@ public:
 	}
 
 	// Comparison operator
-	constexpr friend bool operator==(LinearValues const& lhs, LinearValues const& rhs) noexcept
+	CONSTEXPR_COMPARISON friend bool operator==(LinearValues const& lhs, LinearValues const& rhs) noexcept
 	{
 		return lhs._values == rhs._values;
 	}
@@ -151,7 +158,7 @@ struct LA_AVDECC_TYPE_INFO_EXPORT ArrayValueStatic
 	}
 
 	// Comparison operator
-	constexpr friend bool operator==(ArrayValueStatic const& lhs, ArrayValueStatic const& rhs) noexcept
+	CONSTEXPR_COMPARISON friend bool operator==(ArrayValueStatic const& lhs, ArrayValueStatic const& rhs) noexcept
 	{
 		return lhs.minimum == rhs.minimum && lhs.maximum == rhs.maximum && lhs.step == rhs.step && lhs.defaultValue == rhs.defaultValue && lhs.unit == rhs.unit && lhs.localizedName == rhs.localizedName;
 	}
@@ -175,7 +182,7 @@ struct LA_AVDECC_TYPE_INFO_EXPORT ArrayValueDynamic
 	}
 
 	// Comparison operator
-	constexpr friend bool operator==(ArrayValueDynamic const& lhs, ArrayValueDynamic const& rhs) noexcept
+	CONSTEXPR_COMPARISON friend bool operator==(ArrayValueDynamic const& lhs, ArrayValueDynamic const& rhs) noexcept
 	{
 		return lhs.currentValues == rhs.currentValues;
 	}
@@ -194,7 +201,7 @@ struct LA_AVDECC_TYPE_INFO_EXPORT UTF8StringValueStatic
 	}
 
 	// Comparison operator
-	constexpr friend bool operator==(UTF8StringValueStatic const& /*lhs*/, UTF8StringValueStatic const& /*rhs*/) noexcept
+	CONSTEXPR_COMPARISON friend bool operator==(UTF8StringValueStatic const& /*lhs*/, UTF8StringValueStatic const& /*rhs*/) noexcept
 	{
 		return true;
 	}
@@ -210,7 +217,7 @@ struct LA_AVDECC_TYPE_INFO_EXPORT UTF8StringValueDynamic
 	}
 
 	// Comparison operator
-	constexpr friend bool operator==(UTF8StringValueDynamic const& lhs, UTF8StringValueDynamic const& rhs) noexcept
+	CONSTEXPR_COMPARISON friend bool operator==(UTF8StringValueDynamic const& lhs, UTF8StringValueDynamic const& rhs) noexcept
 	{
 		return lhs.currentValue == rhs.currentValue;
 	}
@@ -225,3 +232,5 @@ LA_AVDECC_API std::optional<std::string> LA_AVDECC_CALL_CONVENTION validateContr
 } // namespace entity
 } // namespace avdecc
 } // namespace la
+
+#undef CONSTEXPR_COMPARISON
