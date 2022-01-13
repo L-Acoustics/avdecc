@@ -24,7 +24,9 @@
 
 // Public API
 #include <la/avdecc/avdecc.hpp>
+#include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
 #include <la/avdecc/internals/entityModelControlValues.hpp>
+#include <la/avdecc/internals/jsonTypes.hpp>
 
 // Internal API
 #include "protocol/protocolAemPayloads.hpp"
@@ -524,6 +526,35 @@ TEST(AemPayloads, RecvPayloadMaximumSize)
 #	endif // ALLOW_SEND_BIG_AECP_PAYLOADS
 }
 
+static inline std::tuple<la::avdecc::entity::model::ControlNodeStaticModel, la::avdecc::entity::model::ControlNodeDynamicModel> buildControlNodes(la::avdecc::entity::model::ControlDescriptor const& descriptor)
+{
+	// Copy static model
+	auto s = la::avdecc::entity::model::ControlNodeStaticModel{};
+	{
+		s.localizedDescription = descriptor.localizedDescription;
+
+		s.blockLatency = descriptor.blockLatency;
+		s.controlLatency = descriptor.controlLatency;
+		s.controlDomain = descriptor.controlDomain;
+		s.controlType = descriptor.controlType;
+		s.resetTime = descriptor.resetTime;
+		s.signalType = descriptor.signalType;
+		s.signalIndex = descriptor.signalIndex;
+		s.signalOutput = descriptor.signalOutput;
+		s.controlValueType = descriptor.controlValueType;
+		s.values = descriptor.valuesStatic;
+	}
+
+	// Copy dynamic model
+	auto d = la::avdecc::entity::model::ControlNodeDynamicModel{};
+	{
+		d.objectName = descriptor.objectName;
+		d.values = descriptor.valuesDynamic;
+	}
+
+	return { s, d };
+}
+
 TEST(AemPayloads, DeserializeReadControlDescriptorResponse_LinearUInt8)
 {
 	auto ser = la::avdecc::Serializer<la::avdecc::protocol::AemAecpdu::MaximumPayloadBufferLength>{};
@@ -543,7 +574,24 @@ TEST(AemPayloads, DeserializeReadControlDescriptorResponse_LinearUInt8)
 	auto const payload = la::avdecc::protocol::AemAecpdu::Payload{ ser.data(), ser.usedBytes() };
 	auto descriptor = la::avdecc::entity::model::ControlDescriptor{};
 	ASSERT_NO_THROW(descriptor = la::avdecc::protocol::aemPayload::deserializeReadControlDescriptorResponse(payload, 8u, static_cast<la::avdecc::protocol::AemAecpStatus>(la::avdecc::protocol::AemAecpStatus::Success)););
-	EXPECT_FALSE(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic).has_value());
+	ASSERT_FALSE(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic).has_value());
+
+	try
+	{
+		auto const [s, d] = buildControlNodes(descriptor);
+		auto js = nlohmann::json{};
+		js = s;
+		auto const ss = js.get<decltype(s)>();
+		EXPECT_TRUE(s.values.isEqualTo<la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueStatic<std::uint8_t>>>(ss.values));
+		auto jd = nlohmann::json{};
+		jd = d;
+		auto const dd = jd.get<decltype(d)>();
+		EXPECT_TRUE(d.values.isEqualTo<la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>>(dd.values));
+	}
+	catch (...)
+	{
+		ASSERT_TRUE(false) << "Should not throw";
+	}
 }
 
 TEST(AemPayloads, DeserializeReadControlDescriptorResponse_ArrayInt8)
@@ -565,7 +613,24 @@ TEST(AemPayloads, DeserializeReadControlDescriptorResponse_ArrayInt8)
 	auto const payload = la::avdecc::protocol::AemAecpdu::Payload{ ser.data(), ser.usedBytes() };
 	auto descriptor = la::avdecc::entity::model::ControlDescriptor{};
 	ASSERT_NO_THROW(descriptor = la::avdecc::protocol::aemPayload::deserializeReadControlDescriptorResponse(payload, 8u, static_cast<la::avdecc::protocol::AemAecpStatus>(la::avdecc::protocol::AemAecpStatus::Success)););
-	EXPECT_FALSE(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic).has_value());
+	ASSERT_FALSE(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic).has_value());
+
+	try
+	{
+		auto const [s, d] = buildControlNodes(descriptor);
+		auto js = nlohmann::json{};
+		js = s;
+		auto const ss = js.get<decltype(s)>();
+		EXPECT_TRUE(s.values.isEqualTo<la::avdecc::entity::model::ArrayValueStatic<std::int8_t>>(ss.values));
+		auto jd = nlohmann::json{};
+		jd = d;
+		auto const dd = jd.get<decltype(d)>();
+		EXPECT_TRUE(d.values.isEqualTo<la::avdecc::entity::model::ArrayValueDynamic<std::int8_t>>(dd.values));
+	}
+	catch (...)
+	{
+		ASSERT_TRUE(false) << "Should not throw";
+	}
 }
 
 TEST(AemPayloads, DeserializeReadControlDescriptorResponse_ArrayUInt32)
@@ -587,7 +652,24 @@ TEST(AemPayloads, DeserializeReadControlDescriptorResponse_ArrayUInt32)
 	auto const payload = la::avdecc::protocol::AemAecpdu::Payload{ ser.data(), ser.usedBytes() };
 	auto descriptor = la::avdecc::entity::model::ControlDescriptor{};
 	ASSERT_NO_THROW(descriptor = la::avdecc::protocol::aemPayload::deserializeReadControlDescriptorResponse(payload, 8u, static_cast<la::avdecc::protocol::AemAecpStatus>(la::avdecc::protocol::AemAecpStatus::Success)););
-	EXPECT_FALSE(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic).has_value());
+	ASSERT_FALSE(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic).has_value());
+
+	try
+	{
+		auto const [s, d] = buildControlNodes(descriptor);
+		auto js = nlohmann::json{};
+		js = s;
+		auto const ss = js.get<decltype(s)>();
+		EXPECT_TRUE(s.values.isEqualTo<la::avdecc::entity::model::ArrayValueStatic<std::uint32_t>>(ss.values));
+		auto jd = nlohmann::json{};
+		jd = d;
+		auto const dd = jd.get<decltype(d)>();
+		EXPECT_TRUE(d.values.isEqualTo<la::avdecc::entity::model::ArrayValueDynamic<std::uint32_t>>(dd.values));
+	}
+	catch (...)
+	{
+		ASSERT_TRUE(false) << "Should not throw";
+	}
 }
 
 TEST(AemPayloads, DeserializeReadControlDescriptorResponse_Utf8)
@@ -609,7 +691,24 @@ TEST(AemPayloads, DeserializeReadControlDescriptorResponse_Utf8)
 	auto const payload = la::avdecc::protocol::AemAecpdu::Payload{ ser.data(), ser.usedBytes() };
 	auto descriptor = la::avdecc::entity::model::ControlDescriptor{};
 	ASSERT_NO_THROW(descriptor = la::avdecc::protocol::aemPayload::deserializeReadControlDescriptorResponse(payload, 8u, static_cast<la::avdecc::protocol::AemAecpStatus>(la::avdecc::protocol::AemAecpStatus::Success)););
-	EXPECT_FALSE(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic).has_value());
+	ASSERT_FALSE(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic).has_value());
+
+	try
+	{
+		auto const [s, d] = buildControlNodes(descriptor);
+		auto js = nlohmann::json{};
+		js = s;
+		auto const ss = js.get<decltype(s)>();
+		EXPECT_TRUE(s.values.isEqualTo<la::avdecc::entity::model::UTF8StringValueStatic>(ss.values));
+		auto jd = nlohmann::json{};
+		jd = d;
+		auto const dd = jd.get<decltype(d)>();
+		EXPECT_TRUE(d.values.isEqualTo<la::avdecc::entity::model::UTF8StringValueDynamic>(dd.values));
+	}
+	catch (...)
+	{
+		ASSERT_TRUE(false) << "Should not throw";
+	}
 }
 
 #endif // _WIN32 || __APPLE__
