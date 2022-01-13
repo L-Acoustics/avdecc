@@ -395,7 +395,7 @@ struct control_values_payload_traits<entity::model::ControlValueType::Type::Cont
 			}
 		}
 
-		// Validate NULL terminated string
+		// Validate NULL terminated string (we processed the whole std::array without encountering a single NULL character)
 		if (length == maxLength && utf8Values.currentValue[maxLength - 1] != nullCharacter)
 		{
 			LOG_AEM_PAYLOAD_WARN("pack CONTROL value warning: UTF-8 string is not NULL terminated (Clause 7.3.5.2.4)");

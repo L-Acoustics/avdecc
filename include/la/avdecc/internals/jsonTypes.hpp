@@ -1908,11 +1908,44 @@ inline void from_json(json const& /*j*/, UTF8StringValueStatic& /*value*/)
 /* UTF8StringValueDynamic conversion */
 inline void to_json(json& j, UTF8StringValueDynamic const& value)
 {
-	j = value.currentValue;
+	auto constexpr nullCharacter = decltype(value.currentValue)::value_type{ 0u };
+
+	auto arr = json::array();
+
+	// We only want to dump the actual UTF8 string (including the trailing NULL character), not the garbage inside the array after the trailing NULL character
+	for (auto const c : value.currentValue)
+	{
+		arr.push_back(c);
+		if (c == nullCharacter)
+		{
+			break;
+		}
+	}
+
+	j = std::move(arr);
 }
 inline void from_json(json const& j, UTF8StringValueDynamic& value)
 {
-	value.currentValue = j;
+	// We must load the array manually as json will try to read the whole std::array size, which is not what we dumped (we only dump meaningful characters)
+	auto const /*expr*/ maxLength = value.currentValue.size(); // Unsure why clang doesn't accept this as a constexpr
+	auto constexpr nullCharacter = decltype(value.currentValue)::value_type{ 0u };
+
+	// Count the number of bytes to copy (including the trailing NULL)
+	auto length = size_t{ 0 };
+	for (auto const& val : j)
+	{
+		value.currentValue[length++] = val;
+		if (length >= maxLength)
+		{
+			break;
+		}
+	}
+
+	// Enforce NULL terminated string
+	if (length == maxLength || value.currentValue[maxLength - 1] != nullCharacter)
+	{
+		value.currentValue[maxLength - 1] = nullCharacter;
+	}
 }
 
 /* ControlValues Dispatcher Helper Templates */
