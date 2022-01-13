@@ -46,6 +46,12 @@ namespace model
 template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
 struct LA_AVDECC_TYPE_INFO_EXPORT LinearValueStatic
 {
+	// Comparison operator
+	constexpr friend bool operator==(LinearValueStatic const& lhs, LinearValueStatic const& rhs) noexcept
+	{
+		return lhs.minimum == rhs.minimum && lhs.maximum == rhs.maximum && lhs.step == rhs.step && lhs.defaultValue == rhs.defaultValue && lhs.unit == rhs.unit && lhs.localizedName == rhs.localizedName;
+	}
+
 	SizeType minimum{ 0 };
 	SizeType maximum{ 0 };
 	SizeType step{ 0 };
@@ -57,6 +63,12 @@ struct LA_AVDECC_TYPE_INFO_EXPORT LinearValueStatic
 template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
 struct LA_AVDECC_TYPE_INFO_EXPORT LinearValueDynamic
 {
+	// Comparison operator
+	constexpr friend bool operator==(LinearValueDynamic const& lhs, LinearValueDynamic const& rhs) noexcept
+	{
+		return lhs.currentValue == rhs.currentValue;
+	}
+
 	SizeType currentValue{ 0 }; // The actual default value should be the one from LinearValueStatic
 };
 
@@ -111,6 +123,12 @@ public:
 		return _values.empty();
 	}
 
+	// Comparison operator
+	constexpr friend bool operator==(LinearValues const& lhs, LinearValues const& rhs) noexcept
+	{
+		return lhs._values == rhs._values;
+	}
+
 	// Defaulted compiler auto-generated methods
 	LinearValues(LinearValues const&) = default;
 	LinearValues(LinearValues&&) = default;
@@ -132,6 +150,12 @@ struct LA_AVDECC_TYPE_INFO_EXPORT ArrayValueStatic
 		return 1; // Dynamic ArrayValue Types share the same Static information
 	}
 
+	// Comparison operator
+	constexpr friend bool operator==(ArrayValueStatic const& lhs, ArrayValueStatic const& rhs) noexcept
+	{
+		return lhs.minimum == rhs.minimum && lhs.maximum == rhs.maximum && lhs.step == rhs.step && lhs.defaultValue == rhs.defaultValue && lhs.unit == rhs.unit && lhs.localizedName == rhs.localizedName;
+	}
+
 	SizeType minimum{ 0 };
 	SizeType maximum{ 0 };
 	SizeType step{ 0 };
@@ -150,6 +174,12 @@ struct LA_AVDECC_TYPE_INFO_EXPORT ArrayValueDynamic
 		return static_cast<std::uint16_t>(currentValues.size());
 	}
 
+	// Comparison operator
+	constexpr friend bool operator==(ArrayValueDynamic const& lhs, ArrayValueDynamic const& rhs) noexcept
+	{
+		return lhs.currentValues == rhs.currentValues;
+	}
+
 	std::vector<SizeType> currentValues{}; // The actual default value should be the one from ArrayValueStatic
 };
 
@@ -162,6 +192,12 @@ struct LA_AVDECC_TYPE_INFO_EXPORT UTF8StringValueStatic
 	{
 		return 1;
 	}
+
+	// Comparison operator
+	constexpr friend bool operator==(UTF8StringValueStatic const& /*lhs*/, UTF8StringValueStatic const& /*rhs*/) noexcept
+	{
+		return true;
+	}
 };
 struct LA_AVDECC_TYPE_INFO_EXPORT UTF8StringValueDynamic
 {
@@ -171,6 +207,12 @@ struct LA_AVDECC_TYPE_INFO_EXPORT UTF8StringValueDynamic
 	std::uint16_t countValues() const noexcept
 	{
 		return 1;
+	}
+
+	// Comparison operator
+	constexpr friend bool operator==(UTF8StringValueDynamic const& lhs, UTF8StringValueDynamic const& rhs) noexcept
+	{
+		return lhs.currentValue == rhs.currentValue;
 	}
 
 	Values currentValue{};

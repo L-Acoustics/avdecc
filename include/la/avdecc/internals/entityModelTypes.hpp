@@ -1392,6 +1392,30 @@ public:
 		return std::any_cast<std::decay_t<ValueDetailsType>>(_values);
 	}
 
+	// Comparison operators
+	template<class ValueDetailsType, typename Traits = control_value_details_traits<std::decay_t<ValueDetailsType>>>
+	inline bool isEqualTo(ControlValues const& other) const
+	{
+		static_assert(Traits::is_value_details, "ControlValues::isEqualTo, control_value_details_traits::is_value_details trait not defined for requested ValueDetailsType. Did you include entityModelControlValuesTraits.hpp?");
+		// Both must have the same valid state
+		if (_isValid != other._isValid)
+		{
+			return false;
+		}
+		// If both are invalid, they are equal
+		if (!_isValid)
+		{
+			return true;
+		}
+		// If both are valid, they must have all the same parameters
+		if (_type != other._type || _areDynamic != other._areDynamic || _countMustBeIdentical != other._countMustBeIdentical || _countValues != other._countValues)
+		{
+			return false;
+		}
+		// Now compare the actual values
+		return getValues<ValueDetailsType>() == other.getValues<ValueDetailsType>();
+	}
+
 	// Defaulted compiler auto-generated methods
 	ControlValues(ControlValues const&) = default;
 	ControlValues(ControlValues&&) = default;
