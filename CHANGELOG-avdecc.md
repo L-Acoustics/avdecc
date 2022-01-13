@@ -6,13 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Added
-- Support for Control Array Values Type (Clause 7.3.5.2.3)
+- [Support for Control Array Values Type (Clause 7.3.5.2.3)](https://github.com/L-Acoustics/avdecc/issues/100)
 
 ### Changed
 - la::avdecc::entity::model::StreamFormatInfo now uses la::avdecc::entity::model::SamplingRate instead of its own enum
 
 ### Fixed
 - ANS/AVE loading error when msrp_failure_code is defined to null
+- [Control UTF8 Value Type properly saved in json model](https://github.com/L-Acoustics/avdecc/issues/101)
 
 ## [3.2.1] - 2021-12-10
 
