@@ -260,7 +260,7 @@ struct ArrayValuesPayloadTraits : BaseValuesPayloadTraits<StaticValueType, Dynam
 
 		auto pos = decltype(std::declval<decltype(staticValues)>().size()){ 0u };
 
-		auto const& staticArrayValue = staticValues.getValues<StaticValueType>(); // We have to store the copy or it will go out of scope if using it directly in the range-based loop
+		auto const& staticArrayValue = staticValues.getValues<StaticValueType>();
 		auto const dynamicArrayValues = dynamicValues.getValues<DynamicValueType>(); // We have to store the copy or it will go out of scope
 
 		for (auto const& dynamicValue : dynamicArrayValues.currentValues)
