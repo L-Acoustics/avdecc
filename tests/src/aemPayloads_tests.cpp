@@ -24,6 +24,9 @@
 
 // Public API
 #include <la/avdecc/avdecc.hpp>
+#include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
+#include <la/avdecc/internals/entityModelControlValues.hpp>
+#include <la/avdecc/internals/jsonTypes.hpp>
 
 // Internal API
 #include "protocol/protocolAemPayloads.hpp"
@@ -32,8 +35,8 @@
 #include <array>
 #include <cstdint>
 
-// Test disable on clang/gcc because of a compilation error in the checkPayload template caused by the UniqueIdentifier class (was fine when it was a simple type). TODO: Fix this
-#ifdef _WIN32
+// Test disable on gcc because of a compilation error in the checkPayload template caused by the UniqueIdentifier class (was fine when it was a simple type). TODO: Fix this
+#if defined(_WIN32) || defined(__APPLE__)
 
 #	define CHECK_PAYLOAD(MessageName, ...) checkPayload<true, true, la::avdecc::protocol::aemPayload::AecpAem##MessageName##PayloadSize>(la::avdecc::protocol::aemPayload::serialize##MessageName, la::avdecc::protocol::aemPayload::deserialize##MessageName, __VA_ARGS__);
 #	define CHECK_PAYLOAD_SIZED(PayloadSize, checkSerializePastBuffer, checkDeserializePastBuffer, MessageName, ...) checkPayload<checkSerializePastBuffer, checkDeserializePastBuffer, PayloadSize>(la::avdecc::protocol::aemPayload::serialize##MessageName, la::avdecc::protocol::aemPayload::deserialize##MessageName, __VA_ARGS__);
@@ -523,4 +526,189 @@ TEST(AemPayloads, RecvPayloadMaximumSize)
 #	endif // ALLOW_SEND_BIG_AECP_PAYLOADS
 }
 
-#endif // _WIN32
+static inline std::tuple<la::avdecc::entity::model::ControlNodeStaticModel, la::avdecc::entity::model::ControlNodeDynamicModel> buildControlNodes(la::avdecc::entity::model::ControlDescriptor const& descriptor)
+{
+	// Copy static model
+	auto s = la::avdecc::entity::model::ControlNodeStaticModel{};
+	{
+		s.localizedDescription = descriptor.localizedDescription;
+
+		s.blockLatency = descriptor.blockLatency;
+		s.controlLatency = descriptor.controlLatency;
+		s.controlDomain = descriptor.controlDomain;
+		s.controlType = descriptor.controlType;
+		s.resetTime = descriptor.resetTime;
+		s.signalType = descriptor.signalType;
+		s.signalIndex = descriptor.signalIndex;
+		s.signalOutput = descriptor.signalOutput;
+		s.controlValueType = descriptor.controlValueType;
+		s.values = descriptor.valuesStatic;
+	}
+
+	// Copy dynamic model
+	auto d = la::avdecc::entity::model::ControlNodeDynamicModel{};
+	{
+		d.objectName = descriptor.objectName;
+		d.values = descriptor.valuesDynamic;
+	}
+
+	return { s, d };
+}
+
+TEST(AemPayloads, DeserializeReadControlDescriptorResponse_LinearUInt8)
+{
+	auto ser = la::avdecc::Serializer<la::avdecc::protocol::AemAecpdu::MaximumPayloadBufferLength>{};
+	ser << la::avdecc::entity::model::ConfigurationIndex{ 0u } << std::uint16_t{ 0u } << la::avdecc::entity::model::DescriptorType::Control << std::uint16_t{ 0u }; // We must put all the header in the buffer as deserializeReadControlDescriptorResponse will check for it
+	ser << la::avdecc::entity::model::AvdeccFixedString{ "Test" };
+	ser << la::avdecc::entity::model::LocalizedStringReference{};
+	ser << std::uint32_t{ 1u } << std::uint32_t{ 2u } << std::uint16_t{ 3u }; // Dummy value
+	ser << la::avdecc::entity::model::ControlValueType::Type::ControlLinearUInt8;
+	ser << la::avdecc::UniqueIdentifier{ 0x90e0f00000000001 };
+	ser << std::uint32_t{ 4u }; // Dummy value
+	ser << std::uint16_t{ 104u }; // Values offset
+	ser << std::uint16_t{ 1u }; // Number of values
+	ser << la::avdecc::entity::model::DescriptorType::Invalid << la::avdecc::entity::model::DescriptorIndex{ 0u } << std::uint16_t{ 0u };
+	// Actual Control Values
+	ser << la::avdecc::MemoryBuffer{ std::vector<std::uint8_t>{ 0, 255, 255, 0, 0, 0, 0, 255, 255 } };
+
+	auto const payload = la::avdecc::protocol::AemAecpdu::Payload{ ser.data(), ser.usedBytes() };
+	auto descriptor = la::avdecc::entity::model::ControlDescriptor{};
+	ASSERT_NO_THROW(descriptor = la::avdecc::protocol::aemPayload::deserializeReadControlDescriptorResponse(payload, 8u, static_cast<la::avdecc::protocol::AemAecpStatus>(la::avdecc::protocol::AemAecpStatus::Success)););
+	ASSERT_FALSE(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic).has_value());
+
+	try
+	{
+		auto const [s, d] = buildControlNodes(descriptor);
+		auto js = nlohmann::json{};
+		js = s;
+		auto const ss = js.get<decltype(s)>();
+		EXPECT_TRUE(s.values.isEqualTo<la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueStatic<std::uint8_t>>>(ss.values));
+		auto jd = nlohmann::json{};
+		jd = d;
+		auto const dd = jd.get<decltype(d)>();
+		EXPECT_TRUE(d.values.isEqualTo<la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>>(dd.values));
+	}
+	catch (...)
+	{
+		ASSERT_TRUE(false) << "Should not throw";
+	}
+}
+
+TEST(AemPayloads, DeserializeReadControlDescriptorResponse_ArrayInt8)
+{
+	auto ser = la::avdecc::Serializer<la::avdecc::protocol::AemAecpdu::MaximumPayloadBufferLength>{};
+	ser << la::avdecc::entity::model::ConfigurationIndex{ 0u } << std::uint16_t{ 0u } << la::avdecc::entity::model::DescriptorType::Control << std::uint16_t{ 0u }; // We must put all the header in the buffer as deserializeReadControlDescriptorResponse will check for it
+	ser << la::avdecc::entity::model::AvdeccFixedString{ "Test" };
+	ser << la::avdecc::entity::model::LocalizedStringReference{};
+	ser << std::uint32_t{ 1u } << std::uint32_t{ 2u } << std::uint16_t{ 3u }; // Dummy value
+	ser << la::avdecc::entity::model::ControlValueType::Type::ControlArrayInt8;
+	ser << la::avdecc::UniqueIdentifier{ 0x001cab0000100031 };
+	ser << std::uint32_t{ 4u }; // Dummy value
+	ser << std::uint16_t{ 104u }; // Values offset
+	ser << std::uint16_t{ 2u }; // Number of values
+	ser << la::avdecc::entity::model::DescriptorType::Invalid << la::avdecc::entity::model::DescriptorIndex{ 0u } << std::uint16_t{ 0u };
+	// Actual Control Values
+	ser << la::avdecc::MemoryBuffer{ std::vector<std::uint8_t>{ 0x00, 0x7f, 0x01, 0x00, 0x00, 0x00, 0x1f, 0xff, 0x07, 0x08 } };
+
+	auto const payload = la::avdecc::protocol::AemAecpdu::Payload{ ser.data(), ser.usedBytes() };
+	auto descriptor = la::avdecc::entity::model::ControlDescriptor{};
+	ASSERT_NO_THROW(descriptor = la::avdecc::protocol::aemPayload::deserializeReadControlDescriptorResponse(payload, 8u, static_cast<la::avdecc::protocol::AemAecpStatus>(la::avdecc::protocol::AemAecpStatus::Success)););
+	ASSERT_FALSE(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic).has_value());
+
+	try
+	{
+		auto const [s, d] = buildControlNodes(descriptor);
+		auto js = nlohmann::json{};
+		js = s;
+		auto const ss = js.get<decltype(s)>();
+		EXPECT_TRUE(s.values.isEqualTo<la::avdecc::entity::model::ArrayValueStatic<std::int8_t>>(ss.values));
+		auto jd = nlohmann::json{};
+		jd = d;
+		auto const dd = jd.get<decltype(d)>();
+		EXPECT_TRUE(d.values.isEqualTo<la::avdecc::entity::model::ArrayValueDynamic<std::int8_t>>(dd.values));
+	}
+	catch (...)
+	{
+		ASSERT_TRUE(false) << "Should not throw";
+	}
+}
+
+TEST(AemPayloads, DeserializeReadControlDescriptorResponse_ArrayUInt32)
+{
+	auto ser = la::avdecc::Serializer<la::avdecc::protocol::AemAecpdu::MaximumPayloadBufferLength>{};
+	ser << la::avdecc::entity::model::ConfigurationIndex{ 0u } << std::uint16_t{ 0u } << la::avdecc::entity::model::DescriptorType::Control << std::uint16_t{ 0u }; // We must put all the header in the buffer as deserializeReadControlDescriptorResponse will check for it
+	ser << la::avdecc::entity::model::AvdeccFixedString{ "Test" };
+	ser << la::avdecc::entity::model::LocalizedStringReference{};
+	ser << std::uint32_t{ 1u } << std::uint32_t{ 2u } << std::uint16_t{ 3u }; // Dummy value
+	ser << la::avdecc::entity::model::ControlValueType::Type::ControlArrayUInt32;
+	ser << la::avdecc::UniqueIdentifier{ 0x001cab0000100031 };
+	ser << std::uint32_t{ 4u }; // Dummy value
+	ser << std::uint16_t{ 104u }; // Values offset
+	ser << std::uint16_t{ 2u }; // Number of values
+	ser << la::avdecc::entity::model::DescriptorType::Invalid << la::avdecc::entity::model::DescriptorIndex{ 0u } << std::uint16_t{ 0u };
+	// Actual Control Values
+	ser << la::avdecc::MemoryBuffer{ std::vector<std::uint8_t>{ 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1f, 0xff, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00, 0x08 } };
+
+	auto const payload = la::avdecc::protocol::AemAecpdu::Payload{ ser.data(), ser.usedBytes() };
+	auto descriptor = la::avdecc::entity::model::ControlDescriptor{};
+	ASSERT_NO_THROW(descriptor = la::avdecc::protocol::aemPayload::deserializeReadControlDescriptorResponse(payload, 8u, static_cast<la::avdecc::protocol::AemAecpStatus>(la::avdecc::protocol::AemAecpStatus::Success)););
+	ASSERT_FALSE(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic).has_value());
+
+	try
+	{
+		auto const [s, d] = buildControlNodes(descriptor);
+		auto js = nlohmann::json{};
+		js = s;
+		auto const ss = js.get<decltype(s)>();
+		EXPECT_TRUE(s.values.isEqualTo<la::avdecc::entity::model::ArrayValueStatic<std::uint32_t>>(ss.values));
+		auto jd = nlohmann::json{};
+		jd = d;
+		auto const dd = jd.get<decltype(d)>();
+		EXPECT_TRUE(d.values.isEqualTo<la::avdecc::entity::model::ArrayValueDynamic<std::uint32_t>>(dd.values));
+	}
+	catch (...)
+	{
+		ASSERT_TRUE(false) << "Should not throw";
+	}
+}
+
+TEST(AemPayloads, DeserializeReadControlDescriptorResponse_Utf8)
+{
+	auto ser = la::avdecc::Serializer<la::avdecc::protocol::AemAecpdu::MaximumPayloadBufferLength>{};
+	ser << la::avdecc::entity::model::ConfigurationIndex{ 0u } << std::uint16_t{ 0u } << la::avdecc::entity::model::DescriptorType::Control << std::uint16_t{ 0u }; // We must put all the header in the buffer as deserializeReadControlDescriptorResponse will check for it
+	ser << la::avdecc::entity::model::AvdeccFixedString{ "Test" };
+	ser << la::avdecc::entity::model::LocalizedStringReference{};
+	ser << std::uint32_t{ 1u } << std::uint32_t{ 2u } << std::uint16_t{ 3u }; // Dummy value
+	ser << la::avdecc::entity::model::ControlValueType::Type::ControlUtf8;
+	ser << la::avdecc::UniqueIdentifier{ 0x001cab0000100031 };
+	ser << std::uint32_t{ 4u }; // Dummy value
+	ser << std::uint16_t{ 104u }; // Values offset
+	ser << std::uint16_t{ 1u }; // Number of values
+	ser << la::avdecc::entity::model::DescriptorType::Invalid << la::avdecc::entity::model::DescriptorIndex{ 0u } << std::uint16_t{ 0u };
+	// Actual Control Values
+	ser << la::avdecc::MemoryBuffer{ std::vector<std::uint8_t>{ 0x54, 0x65, 0x73, 0x74, 0 } };
+
+	auto const payload = la::avdecc::protocol::AemAecpdu::Payload{ ser.data(), ser.usedBytes() };
+	auto descriptor = la::avdecc::entity::model::ControlDescriptor{};
+	ASSERT_NO_THROW(descriptor = la::avdecc::protocol::aemPayload::deserializeReadControlDescriptorResponse(payload, 8u, static_cast<la::avdecc::protocol::AemAecpStatus>(la::avdecc::protocol::AemAecpStatus::Success)););
+	ASSERT_FALSE(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic).has_value());
+
+	try
+	{
+		auto const [s, d] = buildControlNodes(descriptor);
+		auto js = nlohmann::json{};
+		js = s;
+		auto const ss = js.get<decltype(s)>();
+		EXPECT_TRUE(s.values.isEqualTo<la::avdecc::entity::model::UTF8StringValueStatic>(ss.values));
+		auto jd = nlohmann::json{};
+		jd = d;
+		auto const dd = jd.get<decltype(d)>();
+		EXPECT_TRUE(d.values.isEqualTo<la::avdecc::entity::model::UTF8StringValueDynamic>(dd.values));
+	}
+	catch (...)
+	{
+		ASSERT_TRUE(false) << "Should not throw";
+	}
+}
+
+#endif // _WIN32 || __APPLE__

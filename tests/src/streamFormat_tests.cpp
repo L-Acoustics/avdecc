@@ -46,7 +46,7 @@ TEST(StreamFormatInfo, IIDC_61883_6_Mono_48kHz_24bits_Async)
 	EXPECT_EQ(1, format->getChannelsCount());
 	EXPECT_FALSE(format->isUpToChannelsCount());
 	EXPECT_EQ(0, format->getSamplingRate().getPull());
-	EXPECT_EQ(48000, format->getSamplingRate().getBaseFrequency());
+	EXPECT_EQ(48000u, format->getSamplingRate().getBaseFrequency());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int24, format->getSampleFormat());
 	EXPECT_FALSE(format->useSynchronousClock());
 	EXPECT_EQ(24, format->getSampleSize());
@@ -66,7 +66,7 @@ TEST(StreamFormatInfo, IIDC_61883_6_Mono_48kHz_24bits_Sync)
 	EXPECT_EQ(1, format->getChannelsCount());
 	EXPECT_FALSE(format->isUpToChannelsCount());
 	EXPECT_EQ(0, format->getSamplingRate().getPull());
-	EXPECT_EQ(48000, format->getSamplingRate().getBaseFrequency());
+	EXPECT_EQ(48000u, format->getSamplingRate().getBaseFrequency());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int24, format->getSampleFormat());
 	EXPECT_TRUE(format->useSynchronousClock());
 	EXPECT_EQ(24, format->getSampleSize());
@@ -86,7 +86,7 @@ TEST(StreamFormatInfo, IIDC_61883_6_Octo_48kHz_24bits_Async)
 	EXPECT_EQ(8, format->getChannelsCount());
 	EXPECT_FALSE(format->isUpToChannelsCount());
 	EXPECT_EQ(0, format->getSamplingRate().getPull());
-	EXPECT_EQ(48000, format->getSamplingRate().getBaseFrequency());
+	EXPECT_EQ(48000u, format->getSamplingRate().getBaseFrequency());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int24, format->getSampleFormat());
 	EXPECT_FALSE(format->useSynchronousClock());
 	EXPECT_EQ(24, format->getSampleSize());
@@ -106,7 +106,7 @@ TEST(StreamFormatInfo, IIDC_61883_6_Octo_48kHz_24bits_Sync)
 	EXPECT_EQ(8, format->getChannelsCount());
 	EXPECT_FALSE(format->isUpToChannelsCount());
 	EXPECT_EQ(0, format->getSamplingRate().getPull());
-	EXPECT_EQ(48000, format->getSamplingRate().getBaseFrequency());
+	EXPECT_EQ(48000u, format->getSamplingRate().getBaseFrequency());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int24, format->getSampleFormat());
 	EXPECT_TRUE(format->useSynchronousClock());
 	EXPECT_EQ(24, format->getSampleSize());
@@ -127,7 +127,7 @@ TEST(StreamFormatInfo, IIDC_61883_6_upTo32_48kHz_24bits_Async)
 	EXPECT_EQ(32, format->getChannelsCount());
 	EXPECT_TRUE(format->isUpToChannelsCount());
 	EXPECT_EQ(0, format->getSamplingRate().getPull());
-	EXPECT_EQ(48000, format->getSamplingRate().getBaseFrequency());
+	EXPECT_EQ(48000u, format->getSamplingRate().getBaseFrequency());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int24, format->getSampleFormat());
 	EXPECT_FALSE(format->useSynchronousClock());
 	EXPECT_EQ(24, format->getSampleSize());
@@ -148,7 +148,7 @@ TEST(StreamFormatInfo, IIDC_61883_6_upTo32_48kHz_24bits_Sync)
 	EXPECT_EQ(32, format->getChannelsCount());
 	EXPECT_TRUE(format->isUpToChannelsCount());
 	EXPECT_EQ(0, format->getSamplingRate().getPull());
-	EXPECT_EQ(48000, format->getSamplingRate().getBaseFrequency());
+	EXPECT_EQ(48000u, format->getSamplingRate().getBaseFrequency());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int24, format->getSampleFormat());
 	EXPECT_TRUE(format->useSynchronousClock());
 	EXPECT_EQ(24, format->getSampleSize());
@@ -168,7 +168,7 @@ TEST(StreamFormatInfo, AAF_Stereo_48kHz_6spf_16bits)
 	EXPECT_EQ(2, format->getChannelsCount());
 	EXPECT_FALSE(format->isUpToChannelsCount());
 	EXPECT_EQ(0, format->getSamplingRate().getPull());
-	EXPECT_EQ(48000, format->getSamplingRate().getBaseFrequency());
+	EXPECT_EQ(48000u, format->getSamplingRate().getBaseFrequency());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int16, format->getSampleFormat());
 	EXPECT_TRUE(format->useSynchronousClock());
 	EXPECT_EQ(16, format->getSampleSize());
@@ -188,7 +188,7 @@ TEST(StreamFormatInfo, AAF_Octo_48kHz_64spf_16bits)
 	EXPECT_EQ(8, format->getChannelsCount());
 	EXPECT_FALSE(format->isUpToChannelsCount());
 	EXPECT_EQ(0, format->getSamplingRate().getPull());
-	EXPECT_EQ(48000, format->getSamplingRate().getBaseFrequency());
+	EXPECT_EQ(48000u, format->getSamplingRate().getBaseFrequency());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int16, format->getSampleFormat());
 	EXPECT_TRUE(format->useSynchronousClock());
 	EXPECT_EQ(16, format->getSampleSize());
@@ -208,7 +208,7 @@ TEST(StreamFormatInfo, AAF_Hexa_96kHz_12spf_32bits_24depth)
 	EXPECT_EQ(6, format->getChannelsCount());
 	EXPECT_FALSE(format->isUpToChannelsCount());
 	EXPECT_EQ(0, format->getSamplingRate().getPull());
-	EXPECT_EQ(96000, format->getSamplingRate().getBaseFrequency());
+	EXPECT_EQ(96000u, format->getSamplingRate().getBaseFrequency());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int32, format->getSampleFormat());
 	EXPECT_TRUE(format->useSynchronousClock());
 	EXPECT_EQ(32, format->getSampleSize());
@@ -228,7 +228,7 @@ TEST(StreamFormatInfo, AAF_upTo32_48kHz_64spf_16bits)
 	EXPECT_EQ(32, format->getChannelsCount());
 	EXPECT_TRUE(format->isUpToChannelsCount());
 	EXPECT_EQ(0, format->getSamplingRate().getPull());
-	EXPECT_EQ(48000, format->getSamplingRate().getBaseFrequency());
+	EXPECT_EQ(48000u, format->getSamplingRate().getBaseFrequency());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int16, format->getSampleFormat());
 	EXPECT_TRUE(format->useSynchronousClock());
 	EXPECT_EQ(16, format->getSampleSize());
@@ -245,7 +245,7 @@ TEST(StreamFormatInfo, CR_48_6intvl_1ts)
 	EXPECT_EQ(0, format->getChannelsCount());
 	EXPECT_FALSE(format->isUpToChannelsCount());
 	EXPECT_EQ(0, format->getSamplingRate().getPull());
-	EXPECT_EQ(48000, format->getSamplingRate().getBaseFrequency());
+	EXPECT_EQ(48000u, format->getSamplingRate().getBaseFrequency());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int64, format->getSampleFormat());
 	EXPECT_TRUE(format->useSynchronousClock());
 	EXPECT_EQ(6u, crfFormat->getTimestampInterval());
@@ -265,7 +265,7 @@ TEST(StreamFormatInfo, CR_96_12intvl_1ts)
 	EXPECT_EQ(0, format->getChannelsCount());
 	EXPECT_FALSE(format->isUpToChannelsCount());
 	EXPECT_EQ(0, format->getSamplingRate().getPull());
-	EXPECT_EQ(96000, format->getSamplingRate().getBaseFrequency());
+	EXPECT_EQ(96000u, format->getSamplingRate().getBaseFrequency());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int64, format->getSampleFormat());
 	EXPECT_TRUE(format->useSynchronousClock());
 	EXPECT_EQ(12u, crfFormat->getTimestampInterval());
@@ -285,7 +285,7 @@ TEST(StreamFormatInfo, CR_96_320intvl_6ts)
 	EXPECT_EQ(0, format->getChannelsCount());
 	EXPECT_FALSE(format->isUpToChannelsCount());
 	EXPECT_EQ(0, format->getSamplingRate().getPull());
-	EXPECT_EQ(96000, format->getSamplingRate().getBaseFrequency());
+	EXPECT_EQ(96000u, format->getSamplingRate().getBaseFrequency());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int64, format->getSampleFormat());
 	EXPECT_TRUE(format->useSynchronousClock());
 	EXPECT_EQ(320u, crfFormat->getTimestampInterval());
@@ -305,7 +305,7 @@ TEST(StreamFormatInfo, CR_96_768intvl_5ts)
 	EXPECT_EQ(0, format->getChannelsCount());
 	EXPECT_FALSE(format->isUpToChannelsCount());
 	EXPECT_EQ(0, format->getSamplingRate().getPull());
-	EXPECT_EQ(96000, format->getSamplingRate().getBaseFrequency());
+	EXPECT_EQ(96000u, format->getSamplingRate().getBaseFrequency());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int64, format->getSampleFormat());
 	EXPECT_TRUE(format->useSynchronousClock());
 	EXPECT_EQ(768u, crfFormat->getTimestampInterval());
@@ -325,7 +325,7 @@ TEST(StreamFormatInfo, CR_500Hz)
 	EXPECT_EQ(0, format->getChannelsCount());
 	EXPECT_FALSE(format->isUpToChannelsCount());
 	EXPECT_EQ(0, format->getSamplingRate().getPull());
-	EXPECT_EQ(500, format->getSamplingRate().getBaseFrequency());
+	EXPECT_EQ(500u, format->getSamplingRate().getBaseFrequency());
 	EXPECT_EQ(la::avdecc::entity::model::StreamFormatInfo::SampleFormat::Int64, format->getSampleFormat());
 	EXPECT_TRUE(format->useSynchronousClock());
 	EXPECT_EQ(1u, crfFormat->getTimestampInterval());

@@ -848,6 +848,18 @@ static inline void createUnpackFullControlValuesDispatchTable(std::unordered_map
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt64] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt64>::unpackFullControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearFloat] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearFloat>::unpackFullControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearDouble>::unpackFullControlValues;
+
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt8>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayUInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt8>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt16>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayUInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt16>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt32] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt32>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayUInt32] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt32>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt64] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt64>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayUInt64] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt64>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayFloat] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayFloat>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayDouble>::unpackFullControlValues;
+
 	dispatchTable[entity::model::ControlValueType::Type::ControlUtf8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlUtf8>::unpackFullControlValues;
 }
 
@@ -1734,6 +1746,19 @@ static inline void createPackDynamicControlValuesDispatchTable(std::unordered_ma
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt64] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt64>::packDynamicControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearFloat] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearFloat>::packDynamicControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearDouble>::packDynamicControlValues;
+
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt8>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayUInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt8>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt16>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayUInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt16>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt32] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt32>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayUInt32] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt32>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt64] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt64>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayUInt64] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt64>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayFloat] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayFloat>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayDouble>::packDynamicControlValues;
+
+	dispatchTable[entity::model::ControlValueType::Type::ControlUtf8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlUtf8>::packDynamicControlValues;
 }
 
 Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeSetControlCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::ControlValues const& controlValues)

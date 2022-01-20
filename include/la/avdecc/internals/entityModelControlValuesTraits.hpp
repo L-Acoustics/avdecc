@@ -43,6 +43,7 @@ struct LinearValuesBaseTraits
 	using size_type = SizeType;
 	static constexpr bool is_value_details = true;
 	static constexpr bool is_dynamic = IsDynamic;
+	static constexpr std::optional<bool> static_dynamic_counts_identical = true;
 };
 
 template<>
@@ -147,12 +148,125 @@ struct ControlValues::control_value_details_traits<LinearValues<LinearValueDynam
 	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlLinearDouble;
 };
 
+/** Array Values - Clause 7.3.5.2.2 */
+template<typename SizeType, bool IsDynamic>
+struct ArrayValuesBaseTraits
+{
+	using size_type = SizeType;
+	static constexpr bool is_value_details = true;
+	static constexpr bool is_dynamic = IsDynamic;
+	static constexpr std::optional<bool> static_dynamic_counts_identical = false;
+};
+
+template<>
+struct ControlValues::control_value_details_traits<ArrayValueStatic<std::int8_t>> : ArrayValuesBaseTraits<std::int8_t, false>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlArrayInt8;
+};
+template<>
+struct ControlValues::control_value_details_traits<ArrayValueStatic<std::uint8_t>> : ArrayValuesBaseTraits<std::uint8_t, false>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlArrayUInt8;
+};
+template<>
+struct ControlValues::control_value_details_traits<ArrayValueStatic<std::int16_t>> : ArrayValuesBaseTraits<std::int16_t, false>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlArrayInt16;
+};
+template<>
+struct ControlValues::control_value_details_traits<ArrayValueStatic<std::uint16_t>> : ArrayValuesBaseTraits<std::uint16_t, false>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlArrayUInt16;
+};
+template<>
+struct ControlValues::control_value_details_traits<ArrayValueStatic<std::int32_t>> : ArrayValuesBaseTraits<std::int32_t, false>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlArrayInt32;
+};
+template<>
+struct ControlValues::control_value_details_traits<ArrayValueStatic<std::uint32_t>> : ArrayValuesBaseTraits<std::uint32_t, false>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlArrayUInt32;
+};
+template<>
+struct ControlValues::control_value_details_traits<ArrayValueStatic<std::int64_t>> : ArrayValuesBaseTraits<std::int64_t, false>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlArrayInt64;
+};
+template<>
+struct ControlValues::control_value_details_traits<ArrayValueStatic<std::uint64_t>> : ArrayValuesBaseTraits<std::uint64_t, false>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlArrayUInt64;
+};
+template<>
+struct ControlValues::control_value_details_traits<ArrayValueStatic<float>> : ArrayValuesBaseTraits<float, false>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlArrayFloat;
+};
+template<>
+struct ControlValues::control_value_details_traits<ArrayValueStatic<double>> : ArrayValuesBaseTraits<double, false>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlArrayDouble;
+};
+
+template<>
+struct ControlValues::control_value_details_traits<ArrayValueDynamic<std::int8_t>> : ArrayValuesBaseTraits<std::int8_t, true>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlArrayInt8;
+};
+template<>
+struct ControlValues::control_value_details_traits<ArrayValueDynamic<std::uint8_t>> : ArrayValuesBaseTraits<std::uint8_t, true>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlArrayUInt8;
+};
+template<>
+struct ControlValues::control_value_details_traits<ArrayValueDynamic<std::int16_t>> : ArrayValuesBaseTraits<std::int16_t, true>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlArrayInt16;
+};
+template<>
+struct ControlValues::control_value_details_traits<ArrayValueDynamic<std::uint16_t>> : ArrayValuesBaseTraits<std::uint16_t, true>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlArrayUInt16;
+};
+template<>
+struct ControlValues::control_value_details_traits<ArrayValueDynamic<std::int32_t>> : ArrayValuesBaseTraits<std::int32_t, true>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlArrayInt32;
+};
+template<>
+struct ControlValues::control_value_details_traits<ArrayValueDynamic<std::uint32_t>> : ArrayValuesBaseTraits<std::uint32_t, true>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlArrayUInt32;
+};
+template<>
+struct ControlValues::control_value_details_traits<ArrayValueDynamic<std::int64_t>> : ArrayValuesBaseTraits<std::int64_t, true>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlArrayInt64;
+};
+template<>
+struct ControlValues::control_value_details_traits<ArrayValueDynamic<std::uint64_t>> : ArrayValuesBaseTraits<std::uint64_t, true>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlArrayUInt64;
+};
+template<>
+struct ControlValues::control_value_details_traits<ArrayValueDynamic<float>> : ArrayValuesBaseTraits<float, true>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlArrayFloat;
+};
+template<>
+struct ControlValues::control_value_details_traits<ArrayValueDynamic<double>> : ArrayValuesBaseTraits<double, true>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlArrayDouble;
+};
+
 /** UTF-8 String Value - Clause 7.3.5.2.4 */
 template<>
 struct ControlValues::control_value_details_traits<UTF8StringValueStatic>
 {
 	static constexpr bool is_value_details = true;
 	static constexpr bool is_dynamic = false;
+	static constexpr std::optional<bool> static_dynamic_counts_identical = true;
 	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlUtf8;
 };
 template<>
@@ -160,6 +274,7 @@ struct ControlValues::control_value_details_traits<UTF8StringValueDynamic>
 {
 	static constexpr bool is_value_details = true;
 	static constexpr bool is_dynamic = true;
+	static constexpr std::optional<bool> static_dynamic_counts_identical = true;
 	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlUtf8;
 };
 

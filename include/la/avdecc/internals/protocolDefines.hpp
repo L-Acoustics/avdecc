@@ -102,6 +102,7 @@ class AemAecpStatus : public AecpStatus
 {
 public:
 	using AecpStatus::AecpStatus;
+	LA_AVDECC_API explicit AemAecpStatus(AecpStatus const status) noexcept;
 
 	static LA_AVDECC_API AemAecpStatus const NoSuchDescriptor;
 	static LA_AVDECC_API AemAecpStatus const EntityLocked;
