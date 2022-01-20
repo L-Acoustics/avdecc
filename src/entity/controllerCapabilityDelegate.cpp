@@ -3132,7 +3132,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 			}
 		},
 		// Reboot
-		{ protocol::AemCommandType::Reboot.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
+		{ protocol::AemCommandType::Reboot.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
 				auto const[descriptorType, descriptorIndex] = protocol::aemPayload::deserializeRebootResponse(aem.getPayload());
