@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -1402,6 +1402,48 @@ void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, e
 	}
 }
 
+void ControllerImpl::setAssociationID(UniqueIdentifier const targetEntityID, UniqueIdentifier const associationID, SetAssociationIDHandler const& handler) const noexcept
+{
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setAssociationID (AssociationID={})", associationID);
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
+		_controller->setAssociation(targetEntityID, associationID,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, UniqueIdentifier const associationID)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User setAssociationID (AssociationID={}): {}", associationID, entity::ControllerEntity::statusToString(status));
+
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+
+					// Update association
+					if (!!status) // Only change the Association ID in case of success
+					{
+						updateAssociationID(*entity, associationID);
+					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					utils::invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
+	}
+	else
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
 void ControllerImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntityID, entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate, SetAudioUnitSamplingRateHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
@@ -2240,6 +2282,78 @@ void ControllerImpl::abortOperation(UniqueIdentifier const targetEntityID, entit
 	}
 }
 
+void ControllerImpl::reboot(UniqueIdentifier const targetEntityID, RebootHandler const& handler) const noexcept
+{
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User reboot ()");
+
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
+		_controller->reboot(targetEntityID,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User reboot (): {}", entity::ControllerEntity::statusToString(status));
+
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					utils::invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
+	}
+	else
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::rebootToFirmware(UniqueIdentifier const targetEntityID, entity::model::MemoryObjectIndex const memoryObjectIndex, RebootHandler const& handler) const noexcept
+{
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User rebootToFirmware (MemoryObjectIndex={})", memoryObjectIndex);
+
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
+		_controller->rebootToFirmware(targetEntityID, memoryObjectIndex,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::MemoryObjectIndex const /*memoryObjectIndex*/)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User rebootToFirmware (): {}", entity::ControllerEntity::statusToString(status));
+
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					utils::invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
+	}
+	else
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
 void ControllerImpl::startMemoryObjectOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorIndex const descriptorIndex, entity::model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer, StartMemoryObjectOperationHandler const& handler) const noexcept
 {
 	startOperation(targetEntityID, entity::model::DescriptorType::MemoryObject, descriptorIndex, operationType, memoryBuffer,
@@ -2688,6 +2802,33 @@ std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerIm
 }
 
 /* Model deserialization methods */
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> ControllerImpl::loadVirtualEntitiesFromJsonNetworkState([[maybe_unused]] std::string const& filePath, [[maybe_unused]] entity::model::jsonSerializer::Flags const flags, [[maybe_unused]] bool const continueOnError) noexcept
+{
+#ifndef ENABLE_AVDECC_FEATURE_JSON
+	return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Deserialization feature not supported by the library (was not compiled)" };
+
+#else // ENABLE_AVDECC_FEATURE_JSON
+
+	auto [error, errorText, controlledEntities] = deserializeJsonNetworkState(filePath, flags, continueOnError, _entitiesSharedLockInformation);
+
+	for (auto& controlledEntity : controlledEntities)
+	{
+		auto const [err, errTxt] = registerVirtualControlledEntity(std::move(controlledEntity));
+		if (!!err)
+		{
+			if (continueOnError)
+			{
+				error = err;
+				errorText = errTxt;
+				continue;
+			}
+			return { err, errTxt };
+		}
+	}
+	return { error, errorText };
+#endif // ENABLE_AVDECC_FEATURE_JSON
+}
+
 std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> ControllerImpl::loadVirtualEntityFromJson([[maybe_unused]] std::string const& filePath, [[maybe_unused]] entity::model::jsonSerializer::Flags const flags) noexcept
 {
 #ifndef ENABLE_AVDECC_FEATURE_JSON
@@ -2695,116 +2836,53 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 
 #else // ENABLE_AVDECC_FEATURE_JSON
 
-	// Try to open the input file
-	auto const mode = std::ios::binary | std::ios::in;
-	auto ifs = std::ifstream{ filePath, mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
-
-	// Failed to open file for reading
-	if (!ifs.is_open())
+	auto [error, errorText, controlledEntity] = deserializeJson(filePath, flags, _entitiesSharedLockInformation);
+	if (!error)
 	{
-		return { avdecc::jsonSerializer::DeserializationError::AccessDenied, std::strerror(errno) };
+		return registerVirtualControlledEntity(std::move(controlledEntity));
 	}
-
-	// Load the JSON object from disk
-	auto object = json{};
-	try
+	else
 	{
-		if (flags.test(entity::model::jsonSerializer::Flag::BinaryFormat))
-		{
-			object = json::from_msgpack(ifs);
-		}
-		else
-		{
-			ifs >> object;
-		}
+		return { error, errorText };
 	}
-	catch (json::type_error const& e)
+#endif // ENABLE_AVDECC_FEATURE_JSON
+}
+
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vector<SharedControlledEntity>> ControllerImpl::deserializeControlledEntitiesFromJsonNetworkState([[maybe_unused]] std::string const& filePath, [[maybe_unused]] entity::model::jsonSerializer::Flags const flags, [[maybe_unused]] bool const continueOnError) noexcept
+{
+#ifndef ENABLE_AVDECC_FEATURE_JSON
+	return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Deserialization feature not supported by the library (was not compiled)", {} };
+
+#else // ENABLE_AVDECC_FEATURE_JSON
+
+	auto [error, errorText, controlledEntities] = deserializeJsonNetworkState(filePath, flags, continueOnError, std::make_shared<ControlledEntityImpl::LockInformation>());
+	auto entities = std::vector<SharedControlledEntity>{};
+
+	for (auto& controlledEntity : controlledEntities)
 	{
-		return { avdecc::jsonSerializer::DeserializationError::InvalidValue, e.what() };
+		// We need to run some setup on a detached virtual entity
+		setupDetachedVirtualControlledEntity(*controlledEntity);
+
+		entities.push_back(controlledEntity);
 	}
-	catch (json::parse_error const& e)
+	return { error, errorText, entities };
+#endif // ENABLE_AVDECC_FEATURE_JSON
+}
+
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, SharedControlledEntity> ControllerImpl::deserializeControlledEntityFromJson([[maybe_unused]] std::string const& filePath, [[maybe_unused]] entity::model::jsonSerializer::Flags const flags) noexcept
+{
+#ifndef ENABLE_AVDECC_FEATURE_JSON
+	return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Deserialization feature not supported by the library (was not compiled)", nullptr };
+
+#else // ENABLE_AVDECC_FEATURE_JSON
+
+	auto [error, errorText, controlledEntity] = deserializeJson(filePath, flags, std::make_shared<ControlledEntityImpl::LockInformation>());
+	if (!error)
 	{
-		return { avdecc::jsonSerializer::DeserializationError::ParseError, e.what() };
+		// We need to run some setup on a detached virtual entity
+		setupDetachedVirtualControlledEntity(*controlledEntity);
 	}
-	catch (json::out_of_range const& e)
-	{
-		return { avdecc::jsonSerializer::DeserializationError::MissingKey, e.what() };
-	}
-	catch (json::other_error const& e)
-	{
-		if (e.id == 555)
-		{
-			return { avdecc::jsonSerializer::DeserializationError::InvalidKey, e.what() };
-		}
-		else
-		{
-			return { avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
-		}
-	}
-	catch (json::exception const& e)
-	{
-		return { avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
-	}
-
-	// Try to deserialize
-	try
-	{
-		auto controlledEntity = createControlledEntityFromJson(object, flags);
-
-		auto& entity = *controlledEntity;
-
-		// Set the Entity Model for our virtual entity
-		if (flags.test(entity::model::jsonSerializer::Flag::ProcessStaticModel) || flags.test(entity::model::jsonSerializer::Flag::ProcessDynamicModel))
-		{
-			jsonSerializer::setEntityModel(entity, object.at(jsonSerializer::keyName::ControlledEntity_EntityModel), flags);
-		}
-
-		// Set the Entity State
-		if (flags.test(entity::model::jsonSerializer::Flag::ProcessState))
-		{
-			jsonSerializer::setEntityState(entity, object.at(jsonSerializer::keyName::ControlledEntity_EntityState));
-		}
-
-		// Set the Statistics
-		if (flags.test(entity::model::jsonSerializer::Flag::ProcessStatistics))
-		{
-			auto const it = object.find(jsonSerializer::keyName::ControlledEntity_Statistics);
-			if (it != object.end())
-			{
-				jsonSerializer::setEntityStatistics(entity, *it);
-			}
-		}
-
-		// Choose a locale
-		chooseLocale(&entity, entity.getCurrentConfigurationIndex());
-
-		// Add the entity
-		auto const entityID = entity.getEntity().getEntityID();
-		{
-			// Lock to protect _controlledEntities
-			std::lock_guard<decltype(_lock)> const lg(_lock);
-
-			auto entityIt = _controlledEntities.find(entityID);
-			if (entityIt != _controlledEntities.end())
-			{
-				return { avdecc::jsonSerializer::DeserializationError::DuplicateEntityID, utils::toHexString(entityID, true) };
-			}
-			_controlledEntities.insert(std::make_pair(entityID, controlledEntity));
-		}
-
-		// Ready to advertise
-		{
-			auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), to simulate being called from a Networking Thread. THIS IS A HACK!
-			checkEnumerationSteps(&entity);
-		}
-		LOG_CONTROLLER_INFO(_controller->getEntityID(), "Successfully loaded virtual entity with ID {}", utils::toHexString(entityID, true));
-	}
-	catch (avdecc::jsonSerializer::DeserializationException const& e)
-	{
-		return { e.getError(), e.what() };
-	}
-
-	return { avdecc::jsonSerializer::DeserializationError::NoError, "" };
+	return { error, errorText, controlledEntity };
 #endif // ENABLE_AVDECC_FEATURE_JSON
 }
 

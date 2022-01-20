@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -29,11 +29,11 @@
 #include "logHelper.hpp"
 
 // Only enable instrumentation in static library and in debug (for unit testing mainly)
-#if defined(DEBUG) && defined(la_avdecc_cxx_STATICS)
+#if defined(DEBUG) && defined(la_avdecc_static_STATICS)
 #	define SEND_INSTRUMENTATION_NOTIFICATION(eventName) la::avdecc::InstrumentationNotifier::getInstance().triggerEvent(eventName)
-#else // !DEBUG || !la_avdecc_cxx_STATICS
+#else // !DEBUG || !la_avdecc_static_STATICS
 #	define SEND_INSTRUMENTATION_NOTIFICATION(eventName)
-#endif // DEBUG && la_avdecc_cxx_STATICS
+#endif // DEBUG && la_avdecc_static_STATICS
 
 namespace la
 {
@@ -64,7 +64,7 @@ Manager::~Manager() noexcept
 /* ************************************************************ */
 /* Static methods                                               */
 /* ************************************************************ */
-Adpdu Manager::makeDiscoveryMessage(la::avdecc::networkInterface::MacAddress const& sourceMacAddress, UniqueIdentifier const targetEntityID) noexcept
+Adpdu Manager::makeDiscoveryMessage(networkInterface::MacAddress const& sourceMacAddress, UniqueIdentifier const targetEntityID) noexcept
 {
 	Adpdu frame;
 	// Set Ether2 fields

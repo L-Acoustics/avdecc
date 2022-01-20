@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -40,6 +40,7 @@
 #include <array>
 #include <vector>
 #include <iostream>
+#include <optional>
 #include <cstring> // std::memcpy
 
 namespace la
@@ -617,6 +618,18 @@ public:
 	constexpr std::pair<std::uint8_t, std::uint32_t> getPullBaseFrequency() const noexcept
 	{
 		return std::make_pair(static_cast<std::uint8_t>(_value >> 29), static_cast<std::uint32_t>(_value & 0x1FFFFFFF));
+	}
+
+	/** Getter to retrieve the pull value from this SamplingRate. */
+	constexpr std::uint8_t getPull() const noexcept
+	{
+		return static_cast<std::uint8_t>(_value >> 29);
+	}
+
+	/** Getter to retrieve the baseFrequency value from this SamplingRate. */
+	constexpr std::uint32_t getBaseFrequency() const noexcept
+	{
+		return static_cast<std::uint32_t>(_value & 0x1FFFFFFF);
 	}
 
 	/** True if the SamplingRate contains a valid underlying value, false otherwise. */
@@ -1289,6 +1302,7 @@ public:
 	{
 		static constexpr bool is_value_details = false;
 		static constexpr bool is_dynamic = false;
+		static constexpr std::optional<bool> static_dynamic_counts_identical = std::nullopt;
 		static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::Expansion; // Not the best default value but none is provided by the standard
 	};
 
@@ -1299,10 +1313,12 @@ public:
 		: _isValid{ true }
 		, _type{ Traits::control_value_type }
 		, _areDynamic{ Traits::is_dynamic }
+		, _countMustBeIdentical{ Traits::static_dynamic_counts_identical ? *Traits::static_dynamic_counts_identical : false } // Check for optional presence delayed to body so we have a nicer message than with an enable_if template parameter
 		, _countValues{ values.countValues() }
 		, _values{ values }
 	{
 		static_assert(Traits::is_value_details, "ControlValues::ControlValues, control_value_details_traits::is_value_details trait not defined for requested ValueDetailsType. Did you include entityModelControlValuesTraits.hpp?");
+		static_assert(Traits::static_dynamic_counts_identical.has_value(), "ControlValues::ControlValues, control_value_details_traits::static_dynamic_counts_identical trait not defined for requested ValueDetailsType.");
 	}
 
 	template<class ValueDetailsType, typename Traits = control_value_details_traits<std::decay_t<ValueDetailsType>>>
@@ -1310,10 +1326,12 @@ public:
 		: _isValid{ true }
 		, _type{ Traits::control_value_type }
 		, _areDynamic{ Traits::is_dynamic }
+		, _countMustBeIdentical{ Traits::static_dynamic_counts_identical ? *Traits::static_dynamic_counts_identical : false } // Check for optional presence delayed to body so we have a nicer message than with an enable_if template parameter
 		, _countValues{ values.countValues() } // Careful with order here, we are moving 'values'
 		, _values{ std::move(values) }
 	{
 		static_assert(Traits::is_value_details, "ControlValues::ControlValues, control_value_details_traits::is_value_details trait not defined for requested ValueDetailsType. Did you include entityModelControlValuesTraits.hpp?");
+		static_assert(Traits::static_dynamic_counts_identical.has_value(), "ControlValues::ControlValues, control_value_details_traits::static_dynamic_counts_identical trait not defined for requested ValueDetailsType.");
 	}
 
 	constexpr ControlValueType::Type getType() const noexcept
@@ -1321,9 +1339,16 @@ public:
 		return _type;
 	}
 
+	/** True if the values are Dynamic, false if they are Static */
 	constexpr bool areDynamicValues() const noexcept
 	{
 		return _areDynamic;
+	}
+
+	/** True if the count of Static Values must be identical to the count of Dynamic Values (depends on ControlValueType) */
+	constexpr bool countMustBeIdentical() const noexcept
+	{
+		return _countMustBeIdentical;
 	}
 
 	constexpr std::uint16_t size() const noexcept
@@ -1367,6 +1392,30 @@ public:
 		return std::any_cast<std::decay_t<ValueDetailsType>>(_values);
 	}
 
+	// Comparison operators
+	template<class ValueDetailsType, typename Traits = control_value_details_traits<std::decay_t<ValueDetailsType>>>
+	inline bool isEqualTo(ControlValues const& other) const
+	{
+		static_assert(Traits::is_value_details, "ControlValues::isEqualTo, control_value_details_traits::is_value_details trait not defined for requested ValueDetailsType. Did you include entityModelControlValuesTraits.hpp?");
+		// Both must have the same valid state
+		if (_isValid != other._isValid)
+		{
+			return false;
+		}
+		// If both are invalid, they are equal
+		if (!_isValid)
+		{
+			return true;
+		}
+		// If both are valid, they must have all the same parameters
+		if (_type != other._type || _areDynamic != other._areDynamic || _countMustBeIdentical != other._countMustBeIdentical || _countValues != other._countValues)
+		{
+			return false;
+		}
+		// Now compare the actual values
+		return getValues<ValueDetailsType>() == other.getValues<ValueDetailsType>();
+	}
+
 	// Defaulted compiler auto-generated methods
 	ControlValues(ControlValues const&) = default;
 	ControlValues(ControlValues&&) = default;
@@ -1377,6 +1426,7 @@ private:
 	bool _isValid{ false };
 	ControlValueType::Type _type{};
 	bool _areDynamic{ false };
+	bool _countMustBeIdentical{ false };
 	std::uint16_t _countValues{ 0u };
 	std::any _values{};
 };
@@ -1421,6 +1471,42 @@ constexpr bool operator==(ProbingStatus const lhs, std::underlying_type_t<Probin
 {
 	return static_cast<std::underlying_type_t<ProbingStatus>>(lhs) == rhs;
 }
+
+/** MSRP Failure Code - 802.1Q-2018 Table 35-6 */
+enum class MsrpFailureCode : std::uint8_t
+{
+	NoFailure = 0,
+	InsufficientBandwidth = 1,
+	InsufficientResources = 2,
+	InsufficientTrafficClassBandwidth = 3,
+	StreamIDInUse = 4,
+	StreamDestinationAddressInUse = 5,
+	StreamPreemptedByHigherRank = 6,
+	LatencyHasChanged = 7,
+	EgressPortNotAVBCapable = 8,
+	UseDifferentDestinationAddress = 9,
+	OutOfMSRPResources = 10,
+	OutOfMMRPResources = 11,
+	CannotStoreDestinationAddress = 12,
+	PriorityIsNotAnSRClass = 13,
+	MaxFrameSizeTooLarge = 14,
+	MaxFanInPortsLimitReached = 15,
+	FirstValueChangedForStreamID = 16,
+	VlanBlockedOnEgress = 17,
+	VlanTaggingDisabledOnEgress = 18,
+	SrClassPriorityMismatch = 19,
+};
+constexpr bool operator==(MsrpFailureCode const lhs, MsrpFailureCode const rhs)
+{
+	return static_cast<std::underlying_type_t<MsrpFailureCode>>(lhs) == static_cast<std::underlying_type_t<MsrpFailureCode>>(rhs);
+}
+
+constexpr bool operator==(MsrpFailureCode const lhs, std::underlying_type_t<MsrpFailureCode> const rhs)
+{
+	return static_cast<std::underlying_type_t<MsrpFailureCode>>(lhs) == rhs;
+}
+
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION msrpFailureCodeToString(MsrpFailureCode const msrpFailureCode) noexcept;
 
 } // namespace model
 } // namespace entity

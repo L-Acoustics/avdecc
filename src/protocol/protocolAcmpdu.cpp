@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -39,7 +39,7 @@ namespace protocol
 /* Acmpdu class definition                                 */
 /***********************************************************/
 
-la::avdecc::networkInterface::MacAddress const Acmpdu::Multicast_Mac_Address{ { 0x91, 0xe0, 0xf0, 0x01, 0x00, 0x00 } };
+networkInterface::MacAddress const Acmpdu::Multicast_Mac_Address{ { 0x91, 0xe0, 0xf0, 0x01, 0x00, 0x00 } };
 
 Acmpdu::Acmpdu() noexcept
 {

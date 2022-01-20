@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -27,7 +27,6 @@
 #include "la/avdecc/avdecc.hpp"
 #include "la/avdecc/logger.hpp"
 #include "la/avdecc/memoryBuffer.hpp"
-#include "la/avdecc/networkInterfaceHelper.hpp"
 #include "la/avdecc/utils.hpp"
 #include "la/avdecc/watchDog.hpp"
 #include "la/avdecc/internals/aggregateEntity.hpp"
@@ -91,6 +90,8 @@
 #include "stateMachine/stateMachineManager.hpp"
 #include "stateMachine/stateMachineManager.hpp"
 
+#include <la/networkInterfaceHelper/networkInterfaceHelper.hpp>
+
 #if defined(ENABLE_AVDECC_CUSTOM_ANY)
 #	include "la/avdecc/internals/any.hpp"
 #else // !ENABLE_AVDECC_CUSTOM_ANY
@@ -118,8 +119,9 @@
 #include <string>
 #include <thread>
 #include <tuple>
+#include <typeindex>
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <typeindex>
+#include <version>

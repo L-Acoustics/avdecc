@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -24,6 +24,7 @@
 
 // Public API
 #include <la/avdecc/internals/protocolMvuAecpdu.hpp>
+#include <la/networkInterfaceHelper/networkInterfaceHelper.hpp>
 
 // Internal API
 #include "protocolInterface/protocolInterface_pcap.hpp"
@@ -36,16 +37,16 @@
 #include <iostream>
 #include <string>
 
-static la::avdecc::networkInterface::Interface getFirstInterface()
+static la::networkInterface::Interface getFirstInterface()
 {
-	auto interface = la::avdecc::networkInterface::Interface{};
+	auto interface = la::networkInterface::Interface{};
 
 	// COMMENTED CODE TO FORCE ALL TESTS USING THIS TO BE DISABLED AUTOMATICALLY ;)
 
-	//la::avdecc::networkInterface::enumerateInterfaces(
-	//	[&interface](la::avdecc::networkInterface::Interface const& intfc)
+	//la::networkInterface::enumerateInterfaces(
+	//	[&interface](la::networkInterface::Interface const& intfc)
 	//	{
-	//		if (intfc.type == la::avdecc::networkInterface::Interface::Type::Ethernet && intfc.isEnabled && interface.type == la::avdecc::networkInterface::Interface::Type::None)
+	//		if (intfc.type == la::networkInterface::Interface::Type::Ethernet && intfc.isEnabled && interface.type == la::networkInterface::Interface::Type::None)
 	//		{
 	//			interface = intfc;
 	//		}
@@ -102,7 +103,7 @@ TEST(ProtocolInterfacePCap, TransportError)
 	};
 
 	auto const interface = getFirstInterface();
-	if (interface.type != la::avdecc::networkInterface::Interface::Type::None)
+	if (interface.type != la::networkInterface::Interface::Type::None)
 	{
 		std::cout << "Using interface " << interface.alias << std::endl;
 
@@ -127,14 +128,14 @@ public:
 	{
 		// Search a valid NetworkInterface, the first active one actually
 		auto networkInterfaceName = std::string{};
-		la::avdecc::networkInterface::enumerateInterfaces(
-			[&networkInterfaceName](la::avdecc::networkInterface::Interface const& intfc)
+		la::networkInterface::NetworkInterfaceHelper::getInstance().enumerateInterfaces(
+			[&networkInterfaceName](la::networkInterface::Interface const& intfc)
 			{
 				if (!networkInterfaceName.empty())
 				{
 					return;
 				}
-				if (intfc.type == la::avdecc::networkInterface::Interface::Type::Ethernet && intfc.isConnected && !intfc.isVirtual)
+				if (intfc.type == la::networkInterface::Interface::Type::Ethernet && intfc.isConnected && !intfc.isVirtual)
 				{
 					networkInterfaceName = intfc.id;
 				}

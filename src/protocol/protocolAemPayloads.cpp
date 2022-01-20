@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -848,6 +848,18 @@ static inline void createUnpackFullControlValuesDispatchTable(std::unordered_map
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt64] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt64>::unpackFullControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearFloat] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearFloat>::unpackFullControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearDouble>::unpackFullControlValues;
+
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt8>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayUInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt8>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt16>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayUInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt16>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt32] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt32>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayUInt32] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt32>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt64] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt64>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayUInt64] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt64>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayFloat] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayFloat>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayDouble>::unpackFullControlValues;
+
 	dispatchTable[entity::model::ControlValueType::Type::ControlUtf8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlUtf8>::unpackFullControlValues;
 }
 
@@ -1461,6 +1473,70 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::u
 	return deserializeSetNameCommand(payload);
 }
 
+/** SET_ASSOCIATION_ID Command - Clause 7.4.19.1 */
+Serializer<AecpAemSetAssociationIDCommandPayloadSize> serializeSetAssociationIDCommand(UniqueIdentifier const associationID)
+{
+	Serializer<AecpAemSetAssociationIDCommandPayloadSize> ser;
+
+	ser << associationID;
+
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<UniqueIdentifier> deserializeSetAssociationIDCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemSetAssociationIDCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	UniqueIdentifier associationID{};
+
+	des >> associationID;
+
+	AVDECC_ASSERT(des.usedBytes() == AecpAemSetAssociationIDCommandPayloadSize, "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(associationID);
+}
+
+/** SET_ASSOCIATION_ID Response - Clause 7.4.19.1 */
+Serializer<AecpAemSetAssociationIDResponsePayloadSize> serializeSetAssociationIDResponse(UniqueIdentifier const associationID)
+{
+	// Same as SET_ASSOCIATION_ID Command
+	static_assert(AecpAemSetAssociationIDResponsePayloadSize == AecpAemSetAssociationIDCommandPayloadSize, "SET_ASSOCIATION_ID Response no longer the same as SET_ASSOCIATION_ID Command");
+	return serializeSetAssociationIDCommand(associationID);
+}
+
+std::tuple<UniqueIdentifier> deserializeSetAssociationIDResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as SET_ASSOCIATION_ID Command
+	static_assert(AecpAemSetAssociationIDResponsePayloadSize == AecpAemSetAssociationIDCommandPayloadSize, "SET_ASSOCIATION_ID Response no longer the same as SET_ASSOCIATION_ID Command");
+	return deserializeSetAssociationIDCommand(payload);
+}
+
+/** GET_ASSOCIATION_ID Command - Clause 7.4.20.1 */
+// No payload
+
+/** GET_ASSOCIATION_ID Response - Clause 7.4.20.2 */
+Serializer<AecpAemGetAssociationIDResponsePayloadSize> serializeGetAssociationIDResponse(UniqueIdentifier const associationID)
+{
+	// Same as GET_ASSOCIATION_ID Command
+	static_assert(AecpAemGetAssociationIDResponsePayloadSize == AecpAemSetAssociationIDCommandPayloadSize, "GET_ASSOCIATION_ID Response no longer the same as SET_ASSOCIATION_ID Command");
+	return serializeSetAssociationIDCommand(associationID);
+}
+
+std::tuple<UniqueIdentifier> deserializeGetAssociationIDResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as GET_ASSOCIATION_ID Command
+	static_assert(AecpAemGetAssociationIDResponsePayloadSize == AecpAemSetAssociationIDCommandPayloadSize, "GET_ASSOCIATION_ID Response no longer the same as SET_ASSOCIATION_ID Command");
+	return deserializeSetAssociationIDCommand(payload);
+}
+
 /** SET_SAMPLING_RATE Command - Clause 7.4.21.1 */
 Serializer<AecpAemSetSamplingRateCommandPayloadSize> serializeSetSamplingRateCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::SamplingRate const samplingRate)
 {
@@ -1670,6 +1746,19 @@ static inline void createPackDynamicControlValuesDispatchTable(std::unordered_ma
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt64] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt64>::packDynamicControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearFloat] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearFloat>::packDynamicControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearDouble>::packDynamicControlValues;
+
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt8>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayUInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt8>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt16>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayUInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt16>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt32] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt32>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayUInt32] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt32>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt64] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt64>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayUInt64] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt64>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayFloat] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayFloat>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlArrayDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayDouble>::packDynamicControlValues;
+
+	dispatchTable[entity::model::ControlValueType::Type::ControlUtf8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlUtf8>::packDynamicControlValues;
 }
 
 Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeSetControlCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::ControlValues const& controlValues)
@@ -2125,6 +2214,53 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	AVDECC_ASSERT(des.usedBytes() == AecpAemGetCountersResponsePayloadSize, "Used more bytes than specified in protocol constant");
 
 	return std::make_tuple(descriptorType, descriptorIndex, validCounters, counters);
+}
+
+/** REBOOT Command - Clause 7.4.43.1 */
+Serializer<AecpAemRebootCommandPayloadSize> serializeRebootCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	Serializer<AecpAemRebootCommandPayloadSize> ser;
+
+	ser << descriptorType << descriptorIndex;
+
+	AVDECC_ASSERT(ser.usedBytes() == ser.capacity(), "Used bytes do not match the protocol constant");
+
+	return ser;
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeRebootCommand(AemAecpdu::Payload const& payload)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	if (commandPayload == nullptr || commandPayloadLength < AecpAemRebootCommandPayloadSize) // Malformed packet
+		throw IncorrectPayloadSizeException();
+
+	// Check payload
+	Deserializer des(commandPayload, commandPayloadLength);
+	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
+	entity::model::DescriptorIndex descriptorIndex{ 0u };
+
+	des >> descriptorType >> descriptorIndex;
+
+	AVDECC_ASSERT(des.usedBytes() == AecpAemRebootCommandPayloadSize, "Used more bytes than specified in protocol constant");
+
+	return std::make_tuple(descriptorType, descriptorIndex);
+}
+
+/** REBOOT Response - Clause 7.4.43.1 */
+Serializer<AecpAemRebootResponsePayloadSize> serializeRebootResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	// Same as REBOOT Command
+	static_assert(AecpAemRebootResponsePayloadSize == AecpAemRebootCommandPayloadSize, "REBOOT Response no longer the same as REBOOT Command");
+	return serializeRebootCommand(descriptorType, descriptorIndex);
+}
+
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeRebootResponse(AemAecpdu::Payload const& payload)
+{
+	// Same as REBOOT Command
+	static_assert(AecpAemRebootResponsePayloadSize == AecpAemRebootCommandPayloadSize, "REBOOT Response no longer the same as REBOOT Command");
+	return deserializeRebootCommand(payload);
 }
 
 /** GET_AUDIO_MAP Command - Clause 7.4.44.1 */

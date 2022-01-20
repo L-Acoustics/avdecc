@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -50,23 +50,6 @@ public:
 		AAF,
 		ClockReference,
 		Unsupported,
-	};
-	// SamplingRate
-	enum class SamplingRate
-	{
-		Hz_500,
-		kHz_8,
-		kHz_16,
-		kHz_24,
-		kHz_32,
-		kHz_44_1,
-		kHz_48,
-		kHz_88_2,
-		kHz_96,
-		kHz_176_4,
-		kHz_192,
-		UserDefined,
-		Unknown,
 	};
 	// Sample format (depth and type)
 	enum class SampleFormat

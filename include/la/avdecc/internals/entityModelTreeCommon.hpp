@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -78,8 +78,8 @@ struct StreamDynamicInfo
 	StreamInfoFlags _streamInfoFlags{}; /** LEGACY FIELD - Last received StreamInfoFlags */
 	std::optional<UniqueIdentifier> streamID{ std::nullopt };
 	std::optional<std::uint32_t> msrpAccumulatedLatency{ std::nullopt };
-	std::optional<la::avdecc::networkInterface::MacAddress> streamDestMac{ std::nullopt };
-	std::optional<std::uint8_t> msrpFailureCode{ std::nullopt };
+	std::optional<la::networkInterface::MacAddress> streamDestMac{ std::nullopt };
+	std::optional<MsrpFailureCode> msrpFailureCode{ std::nullopt };
 	std::optional<BridgeIdentifier> msrpFailureBridgeID{ std::nullopt };
 	std::optional<std::uint16_t> streamVlanID{ std::nullopt };
 	// Milan additions

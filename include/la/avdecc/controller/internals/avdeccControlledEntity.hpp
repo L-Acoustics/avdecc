@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -39,6 +39,7 @@
 #include <vector>
 #include <chrono>
 #include <optional>
+#include <map>
 
 namespace la
 {
@@ -124,7 +125,8 @@ public:
 	virtual entity::Entity const& getEntity() const noexcept = 0;
 	virtual std::optional<entity::model::MilanInfo> getMilanInfo() const noexcept = 0; // Retrieve MilanInfo, guaranteed to be present if CompatibilityFlag::Milan is set
 	virtual std::optional<entity::model::ControlIndex> getIdentifyControlIndex() const noexcept = 0; // Retrieve the Identify Control Index, if the entity has a valid one
-	virtual bool isEntityModelValidForCaching() const noexcept = 0; // True is the Entity Model is valid for caching
+	virtual bool isEntityModelValidForCaching() const noexcept = 0; // True if the Entity Model is valid for caching
+	virtual bool isIdentifying() const noexcept = 0; // True if the Entity is currently identifying itself
 
 	virtual model::EntityNode const& getEntityNode() const = 0; // Throws Exception::NotSupported if EM not supported by the Entity
 	virtual model::ConfigurationNode const& getConfigurationNode(entity::model::ConfigurationIndex const configurationIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
@@ -159,6 +161,8 @@ public:
 	virtual entity::model::AudioMappings const& getStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
 	/** Get the current AudioMappings for the specified Output StreamPortIndex. Only return the primary mappings, not the redundant ones. */
 	virtual entity::model::AudioMappings getStreamPortOutputNonRedundantAudioMappings(entity::model::StreamPortIndex const streamPortIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamPortIndex do not exist
+	/** Get AudioMappings for the specified Input StreamPortIndex that will become invalid for the specified StreamFormat. Might return redundant mappings as well as primary ones. */
+	virtual std::map<entity::model::StreamPortIndex, entity::model::AudioMappings> getStreamPortInputInvalidAudioMappingsForStreamFormat(entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) const = 0; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
 
 	/** Get connections information about a talker's stream */
 	virtual entity::model::StreamConnections const& getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const = 0; // Throws Exception::InvalidDescriptorIndex if streamIndex do not exist
@@ -192,6 +196,8 @@ protected:
 	/** Destructor */
 	virtual ~ControlledEntity() noexcept = default;
 };
+
+using SharedControlledEntity = std::shared_ptr<ControlledEntity>;
 
 /* ************************************************************************** */
 /* ControlledEntityGuard                                                      */
@@ -304,7 +310,6 @@ public:
 
 private:
 	friend class ControllerImpl;
-	using SharedControlledEntity = std::shared_ptr<ControlledEntity>;
 	// Ownership (and locked state) is transfered during construction
 	ControlledEntityGuard(SharedControlledEntity&& entity)
 		: _controlledEntity(std::move(entity))

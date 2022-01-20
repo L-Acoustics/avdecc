@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -24,11 +24,11 @@
 
 #pragma once
 
-#include "la/avdecc/networkInterfaceHelper.hpp"
-
 #include "entity.hpp"
 #include "protocolDefines.hpp"
 #include "serialization.hpp"
+
+#include <la/networkInterfaceHelper/networkInterfaceHelper.hpp>
 
 #include <cstdint>
 #include <utility>

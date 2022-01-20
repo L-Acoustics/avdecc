@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -31,7 +31,7 @@
 
 #	if defined(la_avdecc_controller_cxx_EXPORTS)
 #		define LA_AVDECC_CONTROLLER_API __declspec(dllexport)
-#	elif defined(la_avdecc_controller_cxx_STATICS)
+#	elif defined(la_avdecc_controller_static_STATICS)
 #		define LA_AVDECC_CONTROLLER_API
 #	else // !la_avdecc_controller_cxx_EXPORTS
 #		define LA_AVDECC_CONTROLLER_API __declspec(dllimport)
@@ -43,7 +43,7 @@
 
 #	if defined(la_avdecc_controller_cxx_EXPORTS)
 #		define LA_AVDECC_CONTROLLER_API __attribute__((visibility("default")))
-#	elif defined(la_avdecc_controller_cxx_STATICS)
+#	elif defined(la_avdecc_controller_static_STATICS)
 #		define LA_AVDECC_CONTROLLER_API
 #	else // !la_avdecc_controller_cxx_EXPORTS
 #		define LA_AVDECC_CONTROLLER_API __attribute__((visibility("default")))

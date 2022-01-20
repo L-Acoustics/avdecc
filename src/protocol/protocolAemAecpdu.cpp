@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -39,8 +39,8 @@ namespace protocol
 /* AemAecpdu class definition                              */
 /***********************************************************/
 
-la::avdecc::networkInterface::MacAddress const AemAecpdu::Identify_Mac_Address{ { 0x91, 0xe0, 0xf0, 0x01, 0x00, 0x01 } };
-la::avdecc::UniqueIdentifier const AemAecpdu::Identify_ControllerEntityID{ 0x90E0F0FFFE010001 };
+networkInterface::MacAddress const AemAecpdu::Identify_Mac_Address{ { 0x91, 0xe0, 0xf0, 0x01, 0x00, 0x01 } };
+UniqueIdentifier const AemAecpdu::Identify_ControllerEntityID{ 0x90E0F0FFFE010001 };
 
 AemAecpdu::AemAecpdu(bool const isResponse) noexcept
 {

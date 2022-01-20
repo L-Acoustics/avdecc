@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -33,6 +33,13 @@
 
 #include <optional>
 #include <array>
+#include <version>
+
+#if defined(__cpp_lib_constexpr_vector) && defined(__cpp_lib_array_constexpr)
+#	define CONSTEXPR_COMPARISON constexpr
+#else
+#	define CONSTEXPR_COMPARISON inline
+#endif
 
 namespace la
 {
@@ -46,6 +53,12 @@ namespace model
 template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
 struct LA_AVDECC_TYPE_INFO_EXPORT LinearValueStatic
 {
+	// Comparison operator
+	CONSTEXPR_COMPARISON friend bool operator==(LinearValueStatic const& lhs, LinearValueStatic const& rhs) noexcept
+	{
+		return lhs.minimum == rhs.minimum && lhs.maximum == rhs.maximum && lhs.step == rhs.step && lhs.defaultValue == rhs.defaultValue && lhs.unit == rhs.unit && lhs.localizedName == rhs.localizedName;
+	}
+
 	SizeType minimum{ 0 };
 	SizeType maximum{ 0 };
 	SizeType step{ 0 };
@@ -57,6 +70,12 @@ struct LA_AVDECC_TYPE_INFO_EXPORT LinearValueStatic
 template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
 struct LA_AVDECC_TYPE_INFO_EXPORT LinearValueDynamic
 {
+	// Comparison operator
+	CONSTEXPR_COMPARISON friend bool operator==(LinearValueDynamic const& lhs, LinearValueDynamic const& rhs) noexcept
+	{
+		return lhs.currentValue == rhs.currentValue;
+	}
+
 	SizeType currentValue{ 0 }; // The actual default value should be the one from LinearValueStatic
 };
 
@@ -111,6 +130,12 @@ public:
 		return _values.empty();
 	}
 
+	// Comparison operator
+	CONSTEXPR_COMPARISON friend bool operator==(LinearValues const& lhs, LinearValues const& rhs) noexcept
+	{
+		return lhs._values == rhs._values;
+	}
+
 	// Defaulted compiler auto-generated methods
 	LinearValues(LinearValues const&) = default;
 	LinearValues(LinearValues&&) = default;
@@ -119,6 +144,50 @@ public:
 
 private:
 	Values _values{};
+};
+
+/** Array Values - Clause 7.3.5.2.3 */
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
+struct LA_AVDECC_TYPE_INFO_EXPORT ArrayValueStatic
+{
+	using control_value_details_traits = ControlValues::control_value_details_traits<ArrayValueStatic<SizeType>>;
+
+	std::uint16_t countValues() const noexcept
+	{
+		return 1; // Dynamic ArrayValue Types share the same Static information
+	}
+
+	// Comparison operator
+	CONSTEXPR_COMPARISON friend bool operator==(ArrayValueStatic const& lhs, ArrayValueStatic const& rhs) noexcept
+	{
+		return lhs.minimum == rhs.minimum && lhs.maximum == rhs.maximum && lhs.step == rhs.step && lhs.defaultValue == rhs.defaultValue && lhs.unit == rhs.unit && lhs.localizedName == rhs.localizedName;
+	}
+
+	SizeType minimum{ 0 };
+	SizeType maximum{ 0 };
+	SizeType step{ 0 };
+	SizeType defaultValue{ 0 };
+	ControlValueUnit unit{ 0 };
+	LocalizedStringReference localizedName{};
+};
+
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
+struct LA_AVDECC_TYPE_INFO_EXPORT ArrayValueDynamic
+{
+	using control_value_details_traits = ControlValues::control_value_details_traits<ArrayValueDynamic<SizeType>>;
+
+	std::uint16_t countValues() const noexcept
+	{
+		return static_cast<std::uint16_t>(currentValues.size());
+	}
+
+	// Comparison operator
+	CONSTEXPR_COMPARISON friend bool operator==(ArrayValueDynamic const& lhs, ArrayValueDynamic const& rhs) noexcept
+	{
+		return lhs.currentValues == rhs.currentValues;
+	}
+
+	std::vector<SizeType> currentValues{}; // The actual default value should be the one from ArrayValueStatic
 };
 
 /** UTF-8 String Value - Clause 7.3.5.2.4 */
@@ -130,17 +199,30 @@ struct LA_AVDECC_TYPE_INFO_EXPORT UTF8StringValueStatic
 	{
 		return 1;
 	}
+
+	// Comparison operator
+	CONSTEXPR_COMPARISON friend bool operator==(UTF8StringValueStatic const& /*lhs*/, UTF8StringValueStatic const& /*rhs*/) noexcept
+	{
+		return true;
+	}
 };
 struct LA_AVDECC_TYPE_INFO_EXPORT UTF8StringValueDynamic
 {
 	using value_type = std::uint8_t;
 	using Values = std::array<std::uint8_t, UTF8StringValueStatic::MaxLength>;
-	Values currentValue{};
 
 	std::uint16_t countValues() const noexcept
 	{
 		return 1;
 	}
+
+	// Comparison operator
+	CONSTEXPR_COMPARISON friend bool operator==(UTF8StringValueDynamic const& lhs, UTF8StringValueDynamic const& rhs) noexcept
+	{
+		return lhs.currentValue == rhs.currentValue;
+	}
+
+	Values currentValue{};
 };
 
 LA_AVDECC_API std::optional<ControlValues> LA_AVDECC_CALL_CONVENTION unpackDynamicControlValues(MemoryBuffer const& packedControlValues, ControlValueType::Type const valueType, std::uint16_t const numberOfValues) noexcept;
@@ -150,3 +232,5 @@ LA_AVDECC_API std::optional<std::string> LA_AVDECC_CALL_CONVENTION validateContr
 } // namespace entity
 } // namespace avdecc
 } // namespace la
+
+#undef CONSTEXPR_COMPARISON

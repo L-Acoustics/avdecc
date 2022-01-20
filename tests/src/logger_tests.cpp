@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -25,6 +25,7 @@
 // Public API
 #include <la/avdecc/logger.hpp>
 #include <la/avdecc/internals/logItems.hpp>
+#include <la/networkInterfaceHelper/networkInterfaceHelper.hpp>
 
 // Internal API
 #include "logHelper.hpp"
@@ -49,7 +50,7 @@ private:
 		if (item->getLayer() == la::avdecc::logger::Layer::Serialization)
 		{
 			auto const* const i = static_cast<la::avdecc::logger::LogItemSerialization const*>(item);
-			std::cout << "[" << la::avdecc::logger::Logger::getInstance().levelToString(level) << "] [" << la::avdecc::networkInterface::macAddressToString(i->getSource(), true) << "] " << i->getMessage() << std::endl;
+			std::cout << "[" << la::avdecc::logger::Logger::getInstance().levelToString(level) << "] [" << la::networkInterface::NetworkInterfaceHelper::macAddressToString(i->getSource(), true) << "] " << i->getMessage() << std::endl;
 		}
 		else
 		{
@@ -67,12 +68,12 @@ TEST(Logger, Log)
 	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Info);
 	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
 
-	la::avdecc::logger::log<la::avdecc::logger::Level::Info, la::avdecc::logger::LogItemSerialization>(la::avdecc::networkInterface::MacAddress{}, "Info message");
-	la::avdecc::logger::log<la::avdecc::logger::Level::Warn, la::avdecc::logger::LogItemSerialization>(la::avdecc::networkInterface::MacAddress{}, "Warn message");
-	la::avdecc::logger::log<la::avdecc::logger::Level::Error, la::avdecc::logger::LogItemSerialization>(la::avdecc::networkInterface::MacAddress{}, "Error message");
+	la::avdecc::logger::log<la::avdecc::logger::Level::Info, la::avdecc::logger::LogItemSerialization>(la::networkInterface::MacAddress{}, "Info message");
+	la::avdecc::logger::log<la::avdecc::logger::Level::Warn, la::avdecc::logger::LogItemSerialization>(la::networkInterface::MacAddress{}, "Warn message");
+	la::avdecc::logger::log<la::avdecc::logger::Level::Error, la::avdecc::logger::LogItemSerialization>(la::networkInterface::MacAddress{}, "Error message");
 
-	LOG_SERIALIZATION(Info, la::avdecc::networkInterface::MacAddress{}, "Test");
-	LOG_SERIALIZATION_DEBUG(la::avdecc::networkInterface::MacAddress{}, "Test");
+	LOG_SERIALIZATION(Info, la::networkInterface::MacAddress{}, "Test");
+	LOG_SERIALIZATION_DEBUG(la::networkInterface::MacAddress{}, "Test");
 
 	// TODO: Proper unit test, this code was only written as development code
 }

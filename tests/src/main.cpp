@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -23,9 +23,13 @@
 */
 
 #include <gtest/gtest.h>
+#include <la/avdecc/utils.hpp>
 
 int main(int argc, char* argv[])
 {
+	// Disable asserts when running unit tests, so we can test fallback code
+	la::avdecc::utils::disableAssert();
+
 	try
 	{
 		::testing::InitGoogleTest(&argc, argv);

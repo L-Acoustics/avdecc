@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -66,6 +66,8 @@ std::string LA_AVDECC_CALL_CONVENTION LocalEntity::statusToString(AemCommandStat
 		case AemCommandStatus::StreamIsRunning:
 			return "The Stream is currently streaming and the command is one which cannot be executed on an Active Stream.";
 		// Library Error Codes
+		case AemCommandStatus::BaseProtocolViolation:
+			return "The entity sent a message that violates the base protocol.";
 		case AemCommandStatus::PartialImplementation:
 			return "The library does not fully implement this command, please report this.";
 		case AemCommandStatus::Busy:
@@ -108,6 +110,8 @@ std::string LA_AVDECC_CALL_CONVENTION LocalEntity::statusToString(AaCommandStatu
 		case AaCommandStatus::Unsupported:
 			return "A requested action was unsupported. Typically used when an unknown EXECUTE was encountered or if EXECUTE is not supported.";
 		// Library Error Codes
+		case AaCommandStatus::BaseProtocolViolation:
+			return "The entity sent a message that violates the base protocol.";
 		case AaCommandStatus::PartialImplementation:
 			return "The library does not fully implement this command, please report this.";
 		case AaCommandStatus::Busy:
@@ -142,6 +146,8 @@ std::string LA_AVDECC_CALL_CONVENTION LocalEntity::statusToString(MvuCommandStat
 		case MvuCommandStatus::BadArguments:
 			return "One or more of the values in the fields of the frame were deemed to be bad by the AVDECC Entity (unsupported, incorrect combination, etc.).";
 		// Library Error Codes
+		case MvuCommandStatus::BaseProtocolViolation:
+			return "The entity sent a message that violates the base protocol.";
 		case MvuCommandStatus::PartialImplementation:
 			return "The library does not fully implement this command, please report this.";
 		case MvuCommandStatus::Busy:
@@ -205,6 +211,8 @@ std::string LA_AVDECC_CALL_CONVENTION LocalEntity::statusToString(ControlStatus 
 		case ControlStatus::NotSupported:
 			return "The command is not supported";
 		// Library Error Codes
+		case ControlStatus::BaseProtocolViolation:
+			return "The entity sent a message that violates the base protocol.";
 		case ControlStatus::NetworkError:
 			return "Network error";
 		case ControlStatus::ProtocolError:

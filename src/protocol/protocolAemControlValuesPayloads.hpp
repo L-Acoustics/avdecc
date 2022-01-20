@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -206,6 +206,133 @@ struct control_values_payload_traits<entity::model::ControlValueType::Type::Cont
 {
 };
 
+/** Array Values - Clause 7.3.5.2.3 */
+template<typename SizeType, typename StaticValueType = entity::model::ArrayValueStatic<SizeType>, typename DynamicValueType = entity::model::ArrayValueDynamic<SizeType>>
+struct ArrayValuesPayloadTraits : BaseValuesPayloadTraits<StaticValueType, DynamicValueType>
+{
+	static std::tuple<entity::model::ControlValues, entity::model::ControlValues> unpackFullControlValues(Deserializer& des, std::uint16_t const numberOfValues)
+	{
+		auto valueStatic = StaticValueType{};
+		auto valuesDynamic = DynamicValueType{};
+
+		des >> valueStatic.minimum >> valueStatic.maximum >> valueStatic.step >> valueStatic.defaultValue >> valueStatic.unit >> valueStatic.localizedName;
+
+		for (auto i = 0u; i < numberOfValues; ++i)
+		{
+			auto valueDynamic = SizeType{};
+
+			des >> valueDynamic;
+
+			valuesDynamic.currentValues.push_back(std::move(valueDynamic));
+		}
+
+		return std::make_tuple(entity::model::ControlValues{ std::move(valueStatic) }, entity::model::ControlValues{ std::move(valuesDynamic) });
+	}
+
+	static entity::model::ControlValues unpackDynamicControlValues(Deserializer& des, std::uint16_t const numberOfValues)
+	{
+		auto valuesDynamic = DynamicValueType{};
+
+		for (auto i = 0u; i < numberOfValues; ++i)
+		{
+			auto valueDynamic = SizeType{};
+
+			des >> valueDynamic;
+
+			valuesDynamic.currentValues.push_back(std::move(valueDynamic));
+		}
+
+		return entity::model::ControlValues{ std::move(valuesDynamic) };
+	}
+
+	static void packDynamicControlValues(Serializer<AemAecpdu::MaximumSendPayloadBufferLength>& ser, entity::model::ControlValues const& values)
+	{
+		auto const arrayValues = values.getValues<DynamicValueType>(); // We have to store the copy or it will go out of scope if using it directly in the range-based loop
+		for (auto const& val : arrayValues.currentValues)
+		{
+			ser << val;
+		}
+	}
+
+	static std::optional<std::string> validateControlValues(entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) noexcept
+	{
+		using value_size = typename DynamicValueType::control_value_details_traits::size_type;
+
+		auto pos = decltype(std::declval<decltype(staticValues)>().size()){ 0u };
+
+		auto const& staticArrayValue = staticValues.getValues<StaticValueType>();
+		auto const dynamicArrayValues = dynamicValues.getValues<DynamicValueType>(); // We have to store the copy or it will go out of scope
+
+		for (auto const& dynamicValue : dynamicArrayValues.currentValues)
+		{
+			// Check lower bound
+			if (dynamicValue < staticArrayValue.minimum)
+			{
+				return "DynamicValue " + std::to_string(pos) + " is out of bounds (lower than minimum value of " + std::to_string(utils::forceNumeric(staticArrayValue.minimum)) + "): " + std::to_string(utils::forceNumeric(dynamicValue));
+			}
+			// Check upper bound
+			if (dynamicValue > staticArrayValue.maximum)
+			{
+				return "DynamicValue " + std::to_string(pos) + " is out of bounds (greater than maximum value of " + std::to_string(utils::forceNumeric(staticArrayValue.maximum)) + "): " + std::to_string(utils::forceNumeric(dynamicValue));
+			}
+			// Check step
+			if (staticArrayValue.step != value_size{ 0 })
+			{
+				if constexpr (std::is_integral_v<value_size>)
+				{
+					auto const adjustedValue = static_cast<value_size>(dynamicValue - staticArrayValue.minimum);
+					if ((adjustedValue % staticArrayValue.step) != 0)
+					{
+						return "DynamicValue " + std::to_string(pos) + " is not a multiple of step: " + std::to_string(utils::forceNumeric(dynamicValue));
+					}
+				}
+			}
+			++pos;
+		}
+		return std::nullopt;
+	}
+};
+
+template<>
+struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt8> : ArrayValuesPayloadTraits<std::int8_t>
+{
+};
+template<>
+struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt8> : ArrayValuesPayloadTraits<std::uint8_t>
+{
+};
+template<>
+struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt16> : ArrayValuesPayloadTraits<std::int16_t>
+{
+};
+template<>
+struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt16> : ArrayValuesPayloadTraits<std::uint16_t>
+{
+};
+template<>
+struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt32> : ArrayValuesPayloadTraits<std::int32_t>
+{
+};
+template<>
+struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt32> : ArrayValuesPayloadTraits<std::uint32_t>
+{
+};
+template<>
+struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt64> : ArrayValuesPayloadTraits<std::int64_t>
+{
+};
+template<>
+struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt64> : ArrayValuesPayloadTraits<std::uint64_t>
+{
+};
+template<>
+struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayFloat> : ArrayValuesPayloadTraits<float>
+{
+};
+template<>
+struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayDouble> : ArrayValuesPayloadTraits<double>
+{
+};
 
 /** UTF-8 String Value - Clause 7.3.5.2.4 */
 template<>
@@ -253,13 +380,13 @@ struct control_values_payload_traits<entity::model::ControlValueType::Type::Cont
 			throw std::invalid_argument("CONTROL_UTF8 should only have 1 value");
 		}
 
-		auto linearValues = values.getValues<entity::model::UTF8StringValueDynamic>();
-		auto constexpr maxLength = linearValues.currentValue.size();
-		auto constexpr nullCharacter = decltype(linearValues)::value_type{ 0u };
+		auto utf8Values = values.getValues<entity::model::UTF8StringValueDynamic>();
+		auto constexpr maxLength = utf8Values.currentValue.size();
+		auto constexpr nullCharacter = decltype(utf8Values)::value_type{ 0u };
 
 		// Count the number of bytes to copy (including the trailing NULL)
 		auto length = size_t{ 0 };
-		for (auto const c : linearValues.currentValue)
+		for (auto const c : utf8Values.currentValue)
 		{
 			++length;
 			if (c == nullCharacter)
@@ -268,18 +395,37 @@ struct control_values_payload_traits<entity::model::ControlValueType::Type::Cont
 			}
 		}
 
-		// Validate NULL terminated string
-		if (length == maxLength && linearValues.currentValue[maxLength - 1] != nullCharacter)
+		// Validate NULL terminated string (we processed the whole std::array without encountering a single NULL character)
+		if (length == maxLength && utf8Values.currentValue[maxLength - 1] != nullCharacter)
 		{
 			LOG_AEM_PAYLOAD_WARN("pack CONTROL value warning: UTF-8 string is not NULL terminated (Clause 7.3.5.2.4)");
-			linearValues.currentValue[maxLength - 1] = nullCharacter;
+			utf8Values.currentValue[maxLength - 1] = nullCharacter;
 		}
 
-		ser.packBuffer(linearValues.currentValue.data(), length);
+		ser.packBuffer(utf8Values.currentValue.data(), length);
 	}
 
-	static std::optional<std::string> validateControlValues(entity::model::ControlValues const& /*staticValues*/, entity::model::ControlValues const& /*dynamicValues*/) noexcept
+	static std::optional<std::string> validateControlValues(entity::model::ControlValues const& /*staticValues*/, entity::model::ControlValues const& dynamicValues) noexcept
 	{
+		// Check for trailing NULL character
+		auto utf8Values = dynamicValues.getValues<entity::model::UTF8StringValueDynamic>();
+		auto constexpr nullCharacter = decltype(utf8Values)::value_type{ 0u };
+
+		auto foundNullChar = false;
+		for (auto const c : utf8Values.currentValue)
+		{
+			if (c == nullCharacter)
+			{
+				foundNullChar = true;
+				break;
+			}
+		}
+
+		if (!foundNullChar)
+		{
+			return "UTF-8 string is not NULL terminated (Clause 7.3.5.2.4)";
+		}
+
 		return std::nullopt;
 	}
 };

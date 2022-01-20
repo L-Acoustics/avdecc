@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -102,6 +102,7 @@ class AemAecpStatus : public AecpStatus
 {
 public:
 	using AecpStatus::AecpStatus;
+	LA_AVDECC_API explicit AemAecpStatus(AecpStatus const status) noexcept;
 
 	static LA_AVDECC_API AemAecpStatus const NoSuchDescriptor;
 	static LA_AVDECC_API AemAecpStatus const EntityLocked;

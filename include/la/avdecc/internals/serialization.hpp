@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -27,10 +27,11 @@
 
 #include "la/avdecc/memoryBuffer.hpp"
 #include "la/avdecc/utils.hpp"
-#include "la/avdecc/networkInterfaceHelper.hpp"
 
 #include "endian.hpp"
 #include "entityModel.hpp"
+
+#include <la/networkInterfaceHelper/networkInterfaceHelper.hpp>
 
 #include <cstdint>
 #include <type_traits>

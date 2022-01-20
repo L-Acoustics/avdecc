@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -37,6 +37,32 @@ TEST(UniqueIdentifier, OperatorBool)
 	EXPECT_FALSE(nullEid);
 	EXPECT_FALSE(uninitializedEid);
 	EXPECT_TRUE(validEid);
+}
+
+TEST(UniqueIdentifier, IsGroupIdentifier)
+{
+	// Individual
+	EXPECT_FALSE(la::avdecc::UniqueIdentifier{ 0x0000000000000000 }.isGroupIdentifier());
+	EXPECT_FALSE(la::avdecc::UniqueIdentifier{ 0xFFFFFFFFFFFFFFFF }.isGroupIdentifier());
+	EXPECT_FALSE(la::avdecc::UniqueIdentifier{ 0xFEFFFFFFFFFFFFFF }.isGroupIdentifier());
+	EXPECT_FALSE(la::avdecc::UniqueIdentifier{ 0xFCFFFFFFFFFFFFFF }.isGroupIdentifier());
+
+	// Group
+	EXPECT_TRUE(la::avdecc::UniqueIdentifier{ 0x0100000000000000 }.isGroupIdentifier());
+	EXPECT_TRUE(la::avdecc::UniqueIdentifier{ 0x0300000000000000 }.isGroupIdentifier());
+}
+
+TEST(UniqueIdentifier, IsLocalIdentifier)
+{
+	// Individual
+	EXPECT_FALSE(la::avdecc::UniqueIdentifier{ 0x0000000000000000 }.isLocalIdentifier());
+	EXPECT_FALSE(la::avdecc::UniqueIdentifier{ 0xFFFFFFFFFFFFFFFF }.isLocalIdentifier());
+	EXPECT_FALSE(la::avdecc::UniqueIdentifier{ 0xFDFFFFFFFFFFFFFF }.isLocalIdentifier());
+	EXPECT_FALSE(la::avdecc::UniqueIdentifier{ 0xFCFFFFFFFFFFFFFF }.isLocalIdentifier());
+
+	// Group
+	EXPECT_TRUE(la::avdecc::UniqueIdentifier{ 0x0200000000000000 }.isLocalIdentifier());
+	EXPECT_TRUE(la::avdecc::UniqueIdentifier{ 0x0300000000000000 }.isLocalIdentifier());
 }
 
 #pragma message("TODO: Complete UniqueIdentifier unit tests")

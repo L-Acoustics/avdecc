@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -540,7 +540,7 @@ void readStreamPortModels(json const& object, Flags const flags, std::string con
 		{
 			// Get base cluster and map descriptor index
 			modelTree.staticModel.baseCluster = c.nextExpectedAudioClusterIndex;
-			modelTree.staticModel.baseMap = currentIndex;
+			modelTree.staticModel.baseMap = c.nextExpectedAudioMapIndex;
 
 			if constexpr (isStaticModelOptional)
 			{

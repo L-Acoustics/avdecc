@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -37,7 +37,6 @@
 #include <cstdint>
 #include <cstring> // memcpy
 #include <la/avdecc/avdecc.h>
-#include <la/avdecc/networkInterfaceHelper.h>
 #include <la/avdecc/internals/protocolAvtpdu.hpp> // SerializationBuffer
 #include "utils.hpp"
 
@@ -45,7 +44,7 @@ static auto constexpr s_ProgID = std::uint16_t{ 5 };
 static auto const s_TargetEntityID = la::avdecc::UniqueIdentifier{ 0x001b92fffe01b930 };
 static auto const s_ListenerEntityID = la::avdecc::UniqueIdentifier{ 0x001b92fffe01b930 };
 static auto const s_TalkerEntityID = la::avdecc::UniqueIdentifier{ 0x1b92fffe02233b };
-static auto const s_TargetMacAddress = la::avdecc::networkInterface::MacAddress{ 0x00, 0x1b, 0x92, 0x01, 0xb9, 0x30 };
+static auto const s_TargetMacAddress = la::networkInterface::MacAddress{ 0x00, 0x1b, 0x92, 0x01, 0xb9, 0x30 };
 
 inline void protocolInterface_sendRawMessages(LA_AVDECC_PROTOCOL_INTERFACE_HANDLE const handle)
 {
@@ -514,9 +513,9 @@ inline void localEntity_test(LA_AVDECC_PROTOCOL_INTERFACE_HANDLE const handle)
 static int doJob()
 {
 	auto const protocolInterfaceType = chooseProtocolInterfaceType();
-	auto* intfc = chooseNetworkInterface();
+	auto intfc = chooseNetworkInterface();
 
-	if (intfc == nullptr || protocolInterfaceType == avdecc_protocol_interface_type_none)
+	if (intfc.type == la::networkInterface::Interface::Type::None || protocolInterfaceType == avdecc_protocol_interface_type_none)
 	{
 		return 1;
 	}
@@ -526,7 +525,7 @@ static int doJob()
 		// Create a ProtocolInterface
 		auto protocolInterfaceHandle = LA_AVDECC_INVALID_HANDLE;
 		{
-			auto const error = LA_AVDECC_ProtocolInterface_create(protocolInterfaceType, intfc->id, &protocolInterfaceHandle);
+			auto const error = LA_AVDECC_ProtocolInterface_create(protocolInterfaceType, intfc.id.c_str(), &protocolInterfaceHandle);
 			if (error != avdecc_protocol_interface_error_no_error)
 			{
 				outputText("Error creating protocol interface: " + std::to_string(error) + "\n");
@@ -543,7 +542,7 @@ static int doJob()
 		// Create a ProtocolInterface
 		auto protocolInterfaceHandle = LA_AVDECC_INVALID_HANDLE;
 		{
-			auto const error = LA_AVDECC_ProtocolInterface_create(protocolInterfaceType, intfc->id, &protocolInterfaceHandle);
+			auto const error = LA_AVDECC_ProtocolInterface_create(protocolInterfaceType, intfc.id.c_str(), &protocolInterfaceHandle);
 			if (error != avdecc_protocol_interface_error_no_error)
 			{
 				outputText("Error creating protocol interface: " + std::to_string(error) + "\n");
@@ -560,7 +559,7 @@ static int doJob()
 		// Create a ProtocolInterface
 		auto protocolInterfaceHandle = LA_AVDECC_INVALID_HANDLE;
 		{
-			auto const error = LA_AVDECC_ProtocolInterface_create(protocolInterfaceType, intfc->id, &protocolInterfaceHandle);
+			auto const error = LA_AVDECC_ProtocolInterface_create(protocolInterfaceType, intfc.id.c_str(), &protocolInterfaceHandle);
 			if (error != avdecc_protocol_interface_error_no_error)
 			{
 				outputText("Error creating protocol interface: " + std::to_string(error) + "\n");
@@ -577,7 +576,7 @@ static int doJob()
 		// Create a ProtocolInterface
 		auto protocolInterfaceHandle = LA_AVDECC_INVALID_HANDLE;
 		{
-			auto const error = LA_AVDECC_ProtocolInterface_create(protocolInterfaceType, intfc->id, &protocolInterfaceHandle);
+			auto const error = LA_AVDECC_ProtocolInterface_create(protocolInterfaceType, intfc.id.c_str(), &protocolInterfaceHandle);
 			if (error != avdecc_protocol_interface_error_no_error)
 			{
 				outputText("Error creating protocol interface: " + std::to_string(error) + "\n");

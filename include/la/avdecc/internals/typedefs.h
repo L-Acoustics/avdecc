@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -101,6 +101,7 @@ typedef unsigned long long avdecc_entity_model_stream_format_t;
 typedef unsigned int avdecc_entity_model_descriptor_counter_t;
 typedef unsigned short avdecc_entity_model_operation_id_t;
 typedef unsigned char avdecc_entity_model_probing_status_t;
+typedef unsigned char avdecc_entity_model_msrp_failure_code_t;
 typedef unsigned int avdecc_entity_model_descriptor_counter_t;
 typedef avdecc_entity_model_descriptor_counter_t avdecc_entity_model_descriptor_counters_t[32];
 typedef avdecc_entity_model_descriptor_counters_t* avdecc_entity_model_descriptor_counters_p;
@@ -873,4 +874,29 @@ enum avdecc_entity_model_probing_status_e
 	avdecc_entity_model_probing_status_active = 0x02, /** The sink is probing actively. It is querying the stream parameters to the talker. */
 	avdecc_entity_model_probing_status_completed = 0x03, /** The sink is not probing because it is settled. */
 	/* 04 to 07 reserved for future use */
+};
+
+/** Valid values for avdecc_entity_model_msrp_failure_code_t */
+enum avdecc_entity_model_msrp_failure_code_e
+{
+	avdecc_entity_model_msrp_failure_code_no_Failure = 0,
+	avdecc_entity_model_msrp_failure_code_insufficient_bandwidth = 1,
+	avdecc_entity_model_msrp_failure_code_insufficient_resources = 2,
+	avdecc_entity_model_msrp_failure_code_insufficient_traffic_class_bandwidth = 3,
+	avdecc_entity_model_msrp_failure_code_stream_id_in_use = 4,
+	avdecc_entity_model_msrp_failure_code_stream_destination_address_in_use = 5,
+	avdecc_entity_model_msrp_failure_code_stream_preempted_by_higher_rank = 6,
+	avdecc_entity_model_msrp_failure_code_latency_has_changed = 7,
+	avdecc_entity_model_msrp_failure_code_egress_port_not_avb_capable = 8,
+	avdecc_entity_model_msrp_failure_code_use_different_destination_address = 9,
+	avdecc_entity_model_msrp_failure_code_out_of_msrp_resources = 10,
+	avdecc_entity_model_msrp_failure_code_out_of_mmrp_resources = 11,
+	avdecc_entity_model_msrp_failure_code_cannot_store_destination_address = 12,
+	avdecc_entity_model_msrp_failure_code_priority_is_not_an_sr_class = 13,
+	avdecc_entity_model_msrp_failure_code_max_frame_size_too_large = 14,
+	avdecc_entity_model_msrp_failure_code_max_fan_in_ports_limit_reached = 15,
+	avdecc_entity_model_msrp_failure_code_first_value_changed_for_stream_id = 16,
+	avdecc_entity_model_msrp_failure_code_vlan_blocked_on_egress = 17,
+	avdecc_entity_model_msrp_failure_code_vlan_tagging_disabled_on_egress = 18,
+	avdecc_entity_model_msrp_failure_code_sr_class_priority_mismatch = 19,
 };

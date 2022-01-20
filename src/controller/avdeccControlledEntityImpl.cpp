@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -25,6 +25,9 @@
 #include "avdeccControlledEntityImpl.hpp"
 #include "avdeccControllerLogHelper.hpp"
 #include "avdeccEntityModelCache.hpp"
+
+#include <la/avdecc/internals/streamFormatInfo.hpp>
+#include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
 
 #include <algorithm>
 #include <cassert>
@@ -178,6 +181,48 @@ bool ControlledEntityImpl::isEntityModelValidForCaching() const noexcept
 	}
 
 	return isEntityModelComplete(_entityTree, static_cast<std::uint16_t>(_entityTree.configurationTrees.size()));
+}
+
+bool ControlledEntityImpl::isIdentifying() const noexcept
+{
+	// The entity has an Identify ControlIndex
+	auto const identifyControlIndex = getIdentifyControlIndex();
+	if (identifyControlIndex)
+	{
+		try
+		{
+			// Check if identify is currently in progress
+			auto const& configurationNode = getCurrentConfigurationNode();
+			auto const& controlNode = configurationNode.controls.at(*identifyControlIndex);
+
+			// Get and check the control value
+			auto const& values = controlNode.dynamicModel->values;
+			AVDECC_ASSERT(values.areDynamicValues() && values.getType() == entity::model::ControlValueType::Type::ControlLinearUInt8, "Doesn't look like Identify Control Value");
+
+			if (values.size() == 1)
+			{
+				auto const dynamicValues = values.getValues<entity::model::LinearValues<entity::model::LinearValueDynamic<std::uint8_t>>>(); // We have to store the copy or it will go out of scope
+				auto const& value = dynamicValues.getValues()[0];
+				if (value.currentValue == 0)
+				{
+					return false;
+				}
+				else if (value.currentValue == 255)
+				{
+					return true;
+				}
+			}
+		}
+		catch (std::invalid_argument const&)
+		{
+			AVDECC_ASSERT(false, "Identify Control Descriptor values doesn't seem valid");
+		}
+		catch (...)
+		{
+			AVDECC_ASSERT(false, "Identify Control Descriptor was validated, this should not throw");
+		}
+	}
+	return false;
 }
 
 model::EntityNode const& ControlledEntityImpl::getEntityNode() const
@@ -496,6 +541,62 @@ entity::model::AudioMappings ControlledEntityImpl::getStreamPortOutputNonRedunda
 	// Return a copy of the current mappings
 	return getStreamPortOutputAudioMappings(streamPortIndex);
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+}
+
+std::map<entity::model::StreamPortIndex, entity::model::AudioMappings> ControlledEntityImpl::getStreamPortInputInvalidAudioMappingsForStreamFormat(entity::model::StreamIndex const streamIndex, entity::model::StreamFormat const streamFormat) const
+{
+	auto const& configurationNode = getCurrentConfigurationNode();
+	auto const maxStreams = configurationNode.streamInputs.size();
+	auto const maxStreamChannels = entity::model::StreamFormatInfo::create(streamFormat)->getChannelsCount();
+	auto invalidPortMappings = std::map<entity::model::StreamPortIndex, entity::model::AudioMappings>{};
+
+	// Process all StreamPort Input, in all audio units
+	for (auto const& [audioUnitIndex, audioUnitNode] : configurationNode.audioUnits)
+	{
+		for (auto const& [streamPortIndex, streamPortNode] : audioUnitNode.streamPortInputs)
+		{
+			// Check if dynamic mappings is supported by the entity
+			if (streamPortNode.staticModel->hasDynamicAudioMap)
+			{
+				auto const maxClusters = streamPortNode.audioClusters.size();
+				auto invalidMappings = entity::model::AudioMappings{};
+
+				for (auto const& mapping : streamPortNode.dynamicModel->dynamicAudioMap)
+				{
+					// Only check mappings for affected StreamIndex
+					if (mapping.streamIndex == streamIndex)
+					{
+						// Check if the mapping makes sense statically (regarding StreamIndex and ClusterOffset bounds)
+						if (AVDECC_ASSERT_WITH_RET(mapping.streamIndex < maxStreams && mapping.clusterOffset < maxClusters, "Mapping stream/cluster index is out of bounds"))
+						{
+							// Check if the mapping makes sense statically (regarding ClusterOffset value)
+							auto const clusterNodeIt = streamPortNode.audioClusters.find(mapping.clusterOffset);
+							if (AVDECC_ASSERT_WITH_RET(clusterNodeIt != streamPortNode.audioClusters.end(), "Mapping cluster offset invalid for this stream port"))
+							{
+								// Check if the mapping makes sense statically (regarding ClusterChannel)
+								auto const& clusterNode = clusterNodeIt->second;
+								if (AVDECC_ASSERT_WITH_RET(mapping.clusterChannel < clusterNode.staticModel->channelCount, "Mapping cluster channel is out of bounds"))
+								{
+									// Check if the mapping will be out of stream bounds with the new stream format
+									if (mapping.streamChannel >= maxStreamChannels)
+									{
+										invalidMappings.push_back(mapping);
+									}
+								}
+							}
+						}
+					}
+				}
+
+				if (!invalidMappings.empty())
+				{
+					invalidPortMappings.insert_or_assign(streamPortIndex, std::move(invalidMappings));
+				}
+			}
+		}
+	}
+
+	return invalidPortMappings;
 }
 
 entity::model::StreamConnections const& ControlledEntityImpl::getStreamOutputConnections(entity::model::StreamIndex const streamIndex) const
@@ -1882,7 +1983,7 @@ std::pair<bool, std::chrono::milliseconds> ControlledEntityImpl::getQueryDescrip
 }
 
 // Expected dynamic info query methods
-static inline ControlledEntityImpl::DynamicInfoKey makeDynamicInfoKey(ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex descriptorIndex, std::uint16_t const subIndex)
+static inline ControlledEntityImpl::DynamicInfoKey makeDynamicInfoKey(ControlledEntityImpl::DynamicInfoType const dynamicInfoType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const subIndex)
 {
 	return (static_cast<ControlledEntityImpl::DynamicInfoKey>(utils::to_integral(dynamicInfoType)) << ((sizeof(descriptorIndex) + sizeof(subIndex)) * 8)) + (descriptorIndex << (sizeof(subIndex) * 8)) + subIndex;
 }
@@ -1938,7 +2039,7 @@ std::pair<bool, std::chrono::milliseconds> ControlledEntityImpl::getQueryDynamic
 }
 
 // Expected descriptor dynamic info query methods
-static inline ControlledEntityImpl::DescriptorDynamicInfoKey makeDescriptorDynamicInfoKey(ControlledEntityImpl::DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex descriptorIndex)
+static inline ControlledEntityImpl::DescriptorDynamicInfoKey makeDescriptorDynamicInfoKey(ControlledEntityImpl::DescriptorDynamicInfoType const descriptorDynamicInfoType, entity::model::DescriptorIndex const descriptorIndex)
 {
 	return (static_cast<ControlledEntityImpl::DescriptorDynamicInfoKey>(utils::to_integral(descriptorDynamicInfoType)) << (sizeof(descriptorIndex) * 8)) + descriptorIndex;
 }
@@ -2170,6 +2271,157 @@ std::string ControlledEntityImpl::descriptorDynamicInfoTypeToString(DescriptorDy
 	}
 }
 
+// Controller restricted methods
+void ControlledEntityImpl::onEntityFullyLoaded() noexcept
+{
+	auto const& e = getEntity();
+	//auto const entityID = e.getEntityID();
+	auto const isAemSupported = e.getEntityCapabilities().test(entity::EntityCapability::AemSupported);
+
+	// Save the enumeration time
+	setEndEnumerationTime(std::chrono::steady_clock::now());
+
+	// If AEM is supported
+	if (isAemSupported)
+	{
+		// Build entity model graph
+		buildEntityModelGraph();
+	}
+}
+
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+class RedundantHelper : public ControlledEntityImpl
+{
+public:
+	template<typename StreamNodeType>
+	static void buildRedundancyNodesByType(la::avdecc::UniqueIdentifier entityID, std::map<entity::model::StreamIndex, StreamNodeType>& streams, std::map<model::VirtualIndex, model::RedundantStreamNode>& redundantStreams, RedundantStreamCategory& redundantPrimaryStreams, RedundantStreamCategory& redundantSecondaryStreams)
+	{
+		for (auto& streamNodeKV : streams)
+		{
+			auto const streamIndex = streamNodeKV.first;
+			auto& streamNode = streamNodeKV.second;
+			auto const* const staticModel = streamNode.staticModel;
+
+			// Check if this node as redundant stream association
+			if (staticModel->redundantStreams.empty())
+				continue;
+
+#	ifdef ENABLE_AVDECC_STRICT_2018_REDUNDANCY
+			// 2018 Redundancy specification only defines stream pairs
+			if (staticModel->redundantStreams.size() != 1)
+			{
+				LOG_CONTROLLER_WARN(entityID, std::string("More than one StreamIndex in RedundantStreamAssociation"));
+				continue;
+			}
+#	endif // ENABLE_AVDECC_STRICT_2018_REDUNDANCY
+
+			// Check each stream in the association is associated back to this stream and the AVB_INTERFACE index is unique
+			auto isAssociationValid{ true };
+			std::map<entity::model::AvbInterfaceIndex, model::StreamNode*> redundantStreamNodes{};
+			redundantStreamNodes.emplace(std::make_pair(staticModel->avbInterfaceIndex, &streamNode));
+			for (auto const redundantIndex : staticModel->redundantStreams)
+			{
+				auto const redundantStreamIt = streams.find(redundantIndex);
+
+				// Referencing self
+				if (redundantIndex == streamIndex)
+				{
+					isAssociationValid = false;
+					LOG_CONTROLLER_ERROR(entityID, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": Referencing itself in RedundantAssociation set");
+					break;
+				}
+
+				// Stream does not even exist
+				if (redundantStreamIt == streams.end())
+				{
+					isAssociationValid = false;
+					LOG_CONTROLLER_ERROR(entityID, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": StreamIndex " + std::to_string(redundantIndex) + " does not exist");
+					break;
+				}
+
+				auto& redundantStream = redundantStreamIt->second;
+				// Index not associated back
+				if (redundantStream.staticModel->redundantStreams.find(streamIndex) == redundantStream.staticModel->redundantStreams.end())
+				{
+					isAssociationValid = false;
+					LOG_CONTROLLER_ERROR(entityID, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": StreamIndex " + std::to_string(redundantIndex) + " doesn't reference back to the stream");
+					break;
+				}
+
+				auto const redundantInterfaceIndex{ redundantStream.staticModel->avbInterfaceIndex };
+				// AVB_INTERFACE index already used
+				if (redundantStreamNodes.find(redundantInterfaceIndex) != redundantStreamNodes.end())
+				{
+					isAssociationValid = false;
+					LOG_CONTROLLER_ERROR(entityID, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": StreamIndex " + std::to_string(redundantIndex) + " uses the same AVB_INTERFACE than another stream of the association");
+					break;
+				}
+				redundantStreamNodes.emplace(std::make_pair(redundantInterfaceIndex, &redundantStream));
+			}
+
+#	ifdef ENABLE_AVDECC_STRICT_2018_REDUNDANCY
+			// Check AVB_INTERFACE index used are 0 for primary and 1 for secondary
+			if (redundantStreamNodes.find(0u) == redundantStreamNodes.end() || redundantStreamNodes.find(1) == redundantStreamNodes.end())
+			{
+				isAssociationValid = false;
+				LOG_CONTROLLER_ERROR(entityID, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": Redundant streams do not use AVB_INTERFACE 0 and 1");
+			}
+#	endif // ENABLE_AVDECC_STRICT_2018_REDUNDANCY
+
+			if (!isAssociationValid)
+			{
+				continue;
+			}
+
+			// Association is valid, check if the RedundantStreamNode has been created for this stream yet // Also do a sanity check on a single stream being part of multiple associations
+			auto redundantNodeCreated{ false };
+			for (auto const& redundantStreamNodeKV : redundantStreams)
+			{
+				auto const& redundantStreamNode = redundantStreamNodeKV.second;
+				if (redundantStreamNode.redundantStreams.find(streamIndex) != redundantStreamNode.redundantStreams.end())
+				{
+					// Stream found in an association, but check if it's the first time it's found
+					if (redundantNodeCreated)
+					{
+						isAssociationValid = false;
+						LOG_CONTROLLER_ERROR(entityID, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": Stream has been found in multiple RedundantAssociation sets");
+						break;
+					}
+					redundantNodeCreated = true;
+				}
+			}
+
+			if (isAssociationValid)
+			{
+				if (!redundantNodeCreated)
+				{
+					// Create it now
+					auto const virtualIndex = static_cast<model::VirtualIndex>(redundantStreams.size());
+					auto& redundantStreamNode = redundantStreams[virtualIndex];
+					initNode(redundantStreamNode, streamNode.descriptorType, virtualIndex);
+
+					// Add all streams part of this redundant association
+					for (auto& redundantNodeKV : redundantStreamNodes)
+					{
+						auto* const redundantNode = redundantNodeKV.second;
+						redundantStreamNode.redundantStreams.emplace(std::make_pair(redundantNode->descriptorIndex, redundantNode));
+						redundantNode->isRedundant = true; // Set this StreamNode as part of a valid redundant stream association
+					}
+
+					auto redundantStreamIt = redundantStreamNodes.begin();
+					// Defined the primary stream
+					redundantStreamNode.primaryStream = redundantStreamIt->second;
+
+					// Cache Primary and Secondary StreamIndexes
+					redundantPrimaryStreams.insert(redundantStreamIt->second->descriptorIndex);
+					++redundantStreamIt;
+					redundantSecondaryStreams.insert(redundantStreamIt->second->descriptorIndex);
+				}
+			}
+		}
+	}
+};
+
 // Private methods
 void ControlledEntityImpl::buildEntityModelGraph() noexcept
 {
@@ -2380,10 +2632,10 @@ void ControlledEntityImpl::buildEntityModelGraph() noexcept
 					}
 				}
 
-#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+#	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 				// Build redundancy nodes
 				buildRedundancyNodes(configNode);
-#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+#	endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 			}
 		}
 	}
@@ -2393,139 +2645,6 @@ void ControlledEntityImpl::buildEntityModelGraph() noexcept
 		_entityNode = {};
 	}
 }
-
-#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-class RedundantHelper : public ControlledEntityImpl
-{
-public:
-	template<typename StreamNodeType>
-	static void buildRedundancyNodesByType(la::avdecc::UniqueIdentifier entityID, std::map<entity::model::StreamIndex, StreamNodeType>& streams, std::map<model::VirtualIndex, model::RedundantStreamNode>& redundantStreams, RedundantStreamCategory& redundantPrimaryStreams, RedundantStreamCategory& redundantSecondaryStreams)
-	{
-		for (auto& streamNodeKV : streams)
-		{
-			auto const streamIndex = streamNodeKV.first;
-			auto& streamNode = streamNodeKV.second;
-			auto const* const staticModel = streamNode.staticModel;
-
-			// Check if this node as redundant stream association
-			if (staticModel->redundantStreams.empty())
-				continue;
-
-#	ifdef ENABLE_AVDECC_STRICT_2018_REDUNDANCY
-			// 2018 Redundancy specification only defines stream pairs
-			if (staticModel->redundantStreams.size() != 1)
-			{
-				LOG_CONTROLLER_WARN(entityID, std::string("More than one StreamIndex in RedundantStreamAssociation"));
-				continue;
-			}
-#	endif // ENABLE_AVDECC_STRICT_2018_REDUNDANCY
-
-			// Check each stream in the association is associated back to this stream and the AVB_INTERFACE index is unique
-			auto isAssociationValid{ true };
-			std::map<entity::model::AvbInterfaceIndex, model::StreamNode*> redundantStreamNodes{};
-			redundantStreamNodes.emplace(std::make_pair(staticModel->avbInterfaceIndex, &streamNode));
-			for (auto const redundantIndex : staticModel->redundantStreams)
-			{
-				auto const redundantStreamIt = streams.find(redundantIndex);
-
-				// Referencing self
-				if (redundantIndex == streamIndex)
-				{
-					isAssociationValid = false;
-					LOG_CONTROLLER_ERROR(entityID, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": Referencing itself in RedundantAssociation set");
-					break;
-				}
-
-				// Stream does not even exist
-				if (redundantStreamIt == streams.end())
-				{
-					isAssociationValid = false;
-					LOG_CONTROLLER_ERROR(entityID, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": StreamIndex " + std::to_string(redundantIndex) + " does not exist");
-					break;
-				}
-
-				auto& redundantStream = redundantStreamIt->second;
-				// Index not associated back
-				if (redundantStream.staticModel->redundantStreams.find(streamIndex) == redundantStream.staticModel->redundantStreams.end())
-				{
-					isAssociationValid = false;
-					LOG_CONTROLLER_ERROR(entityID, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": StreamIndex " + std::to_string(redundantIndex) + " doesn't reference back to the stream");
-					break;
-				}
-
-				auto const redundantInterfaceIndex{ redundantStream.staticModel->avbInterfaceIndex };
-				// AVB_INTERFACE index already used
-				if (redundantStreamNodes.find(redundantInterfaceIndex) != redundantStreamNodes.end())
-				{
-					isAssociationValid = false;
-					LOG_CONTROLLER_ERROR(entityID, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": StreamIndex " + std::to_string(redundantIndex) + " uses the same AVB_INTERFACE than another stream of the association");
-					break;
-				}
-				redundantStreamNodes.emplace(std::make_pair(redundantInterfaceIndex, &redundantStream));
-			}
-
-#	ifdef ENABLE_AVDECC_STRICT_2018_REDUNDANCY
-			// Check AVB_INTERFACE index used are 0 for primary and 1 for secondary
-			if (redundantStreamNodes.find(0u) == redundantStreamNodes.end() || redundantStreamNodes.find(1) == redundantStreamNodes.end())
-			{
-				isAssociationValid = false;
-				LOG_CONTROLLER_ERROR(entityID, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": Redundant streams do not use AVB_INTERFACE 0 and 1");
-			}
-#	endif // ENABLE_AVDECC_STRICT_2018_REDUNDANCY
-
-			if (!isAssociationValid)
-			{
-				continue;
-			}
-
-			// Association is valid, check if the RedundantStreamNode has been created for this stream yet // Also do a sanity check on a single stream being part of multiple associations
-			auto redundantNodeCreated{ false };
-			for (auto const& redundantStreamNodeKV : redundantStreams)
-			{
-				auto const& redundantStreamNode = redundantStreamNodeKV.second;
-				if (redundantStreamNode.redundantStreams.find(streamIndex) != redundantStreamNode.redundantStreams.end())
-				{
-					// Stream found in an association, but check if it's the first time it's found
-					if (redundantNodeCreated)
-					{
-						isAssociationValid = false;
-						LOG_CONTROLLER_ERROR(entityID, std::string("RedundantStreamAssociation invalid for ") + (streamNode.descriptorType == entity::model::DescriptorType::StreamInput ? "STREAM_INPUT." : "STREAM_OUTPUT.") + std::to_string(streamNode.descriptorIndex) + ": Stream has been found in multiple RedundantAssociation sets");
-						break;
-					}
-					redundantNodeCreated = true;
-				}
-			}
-
-			if (isAssociationValid)
-			{
-				if (!redundantNodeCreated)
-				{
-					// Create it now
-					auto const virtualIndex = static_cast<model::VirtualIndex>(redundantStreams.size());
-					auto& redundantStreamNode = redundantStreams[virtualIndex];
-					initNode(redundantStreamNode, streamNode.descriptorType, virtualIndex);
-
-					// Add all streams part of this redundant association
-					for (auto& redundantNodeKV : redundantStreamNodes)
-					{
-						auto* const redundantNode = redundantNodeKV.second;
-						redundantStreamNode.redundantStreams.emplace(std::make_pair(redundantNode->descriptorIndex, redundantNode));
-						redundantNode->isRedundant = true; // Set this StreamNode as part of a valid redundant stream association
-					}
-
-					auto redundantStreamIt = redundantStreamNodes.begin();
-					// Defined the primary stream
-					redundantStreamNode.primaryStream = redundantStreamIt->second;
-
-					// Cache Primary and Secondary StreamIndexes
-					redundantPrimaryStreams.insert(redundantStreamIt->second->descriptorIndex);
-					++redundantStreamIt;
-					redundantSecondaryStreams.insert(redundantStreamIt->second->descriptorIndex);
-				}
-			}
-		}
-	}
-};
 
 bool ControlledEntityImpl::isEntityModelComplete(entity::model::EntityTree const& entityTree, std::uint16_t const configurationsCount) const noexcept
 {

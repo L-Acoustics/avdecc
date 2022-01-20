@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -26,12 +26,13 @@
 
 #pragma once
 
+#include "jsonSerialization.hpp"
+#include "entityModelControlValues.hpp"
+#include "entityModelControlValuesTraits.hpp"
+#include "logItems.hpp"
+
 #include "la/avdecc/utils.hpp"
 #include "la/avdecc/avdecc.hpp"
-#include "la/avdecc/internals/entityModelControlValues.hpp"
-#include "la/avdecc/internals/entityModelControlValuesTraits.hpp"
-
-#include "logItems.hpp"
 
 #include <nlohmann/json.hpp>
 
@@ -680,7 +681,7 @@ inline void from_json(json const& j, Entity::CommonInformation& commonInfo)
 /* Entity::InterfaceInformation conversion */
 inline void to_json(json& j, Entity::InterfaceInformation const& intfcInfo)
 {
-	j[keyName::Entity_InterfaceInformation_MacAddress] = networkInterface::macAddressToString(intfcInfo.macAddress, true);
+	j[keyName::Entity_InterfaceInformation_MacAddress] = networkInterface::NetworkInterfaceHelper::macAddressToString(intfcInfo.macAddress, true);
 	j[keyName::Entity_InterfaceInformation_ValidTime] = intfcInfo.validTime;
 	j[keyName::Entity_InterfaceInformation_AvailableIndex] = intfcInfo.availableIndex;
 	if (intfcInfo.gptpGrandmasterID)
@@ -694,7 +695,7 @@ inline void to_json(json& j, Entity::InterfaceInformation const& intfcInfo)
 }
 inline void from_json(json const& j, Entity::InterfaceInformation& intfcInfo)
 {
-	intfcInfo.macAddress = networkInterface::stringToMacAddress(j.at(keyName::Entity_InterfaceInformation_MacAddress).get<std::string>());
+	intfcInfo.macAddress = networkInterface::NetworkInterfaceHelper::stringToMacAddress(j.at(keyName::Entity_InterfaceInformation_MacAddress).get<std::string>());
 	j.at(keyName::Entity_InterfaceInformation_ValidTime).get_to(intfcInfo.validTime);
 	get_optional_value(j, keyName::Entity_InterfaceInformation_AvailableIndex, intfcInfo.availableIndex);
 	get_optional_value(j, keyName::Entity_InterfaceInformation_GptpGrandmasterID, intfcInfo.gptpGrandmasterID);
@@ -881,6 +882,14 @@ constexpr auto LinearValue_Step = "step";
 constexpr auto LinearValue_Default = "default";
 constexpr auto LinearValue_Unit = "unit";
 constexpr auto LinearValue_String = "string";
+
+/* ArrayValue */
+constexpr auto ArrayValue_Minimum = "minimum";
+constexpr auto ArrayValue_Maximum = "maximum";
+constexpr auto ArrayValue_Step = "step";
+constexpr auto ArrayValue_Default = "default";
+constexpr auto ArrayValue_Unit = "unit";
+constexpr auto ArrayValue_String = "string";
 
 /* ClockDomainNode */
 constexpr auto ClockDomainNode_Static_LocalizedDescription = "localized_description";
@@ -1184,6 +1193,30 @@ NLOHMANN_JSON_SERIALIZE_ENUM(StreamInputConnectionInfo::State, {
 																																 { StreamInputConnectionInfo::State::Connected, "CONNECTED" },
 																															 });
 
+/* MsrpFailureCode conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(MsrpFailureCode, {
+																								{ MsrpFailureCode::NoFailure, "NO_FAILURE" },
+																								{ MsrpFailureCode::InsufficientBandwidth, "INSUFFICIENT_BANDWIDTH" },
+																								{ MsrpFailureCode::InsufficientResources, "INSUFFICIENT_RESOURCES" },
+																								{ MsrpFailureCode::InsufficientTrafficClassBandwidth, "INSUFFICIENT_TRAFFIC_CLASS_BANDWIDTH" },
+																								{ MsrpFailureCode::StreamIDInUse, "STREAM_ID_IN_USE" },
+																								{ MsrpFailureCode::StreamDestinationAddressInUse, "STREAM_DESTINATION_ADDRESS_IN_USE" },
+																								{ MsrpFailureCode::StreamPreemptedByHigherRank, "STREAM_PREEMPTED_BY_HIGHER_RANK" },
+																								{ MsrpFailureCode::LatencyHasChanged, "LATENCY_HAS_CHANGED" },
+																								{ MsrpFailureCode::EgressPortNotAVBCapable, "EGRESS_PORT_NOT_AVB_CAPABLE" },
+																								{ MsrpFailureCode::UseDifferentDestinationAddress, "USE_DIFFERENT_DESTINATION_ADDRESS" },
+																								{ MsrpFailureCode::OutOfMSRPResources, "OUT_OF_MSRP_RESOURCES" },
+																								{ MsrpFailureCode::OutOfMMRPResources, "OUT_OF_MMRP_RESOURCES" },
+																								{ MsrpFailureCode::CannotStoreDestinationAddress, "CANNOT_STORE_DESTINATION_ADDRESS" },
+																								{ MsrpFailureCode::PriorityIsNotAnSRClass, "PRIORITY_IS_NOT_AN_SR_CLASS" },
+																								{ MsrpFailureCode::MaxFrameSizeTooLarge, "MAX_FRAME_SIZE_TOO_LARGE" },
+																								{ MsrpFailureCode::MaxFanInPortsLimitReached, "MAX_FAN_IN_PORTS_LIMIT_REACHED" },
+																								{ MsrpFailureCode::FirstValueChangedForStreamID, "FIRST_VALUE_CHANGED_FOR_STREAM_ID" },
+																								{ MsrpFailureCode::VlanBlockedOnEgress, "VLAN_BLOCKED_ON_EGRESS" },
+																								{ MsrpFailureCode::VlanTaggingDisabledOnEgress, "VLAN_TAGGING_DISABLED_ON_EGRESS" },
+																								{ MsrpFailureCode::SrClassPriorityMismatch, "SR_CLASS_PRIORITY_MISMATCH" },
+																							});
+
 /* SamplingRate conversion */
 inline void to_json(json& j, SamplingRate const& sr)
 {
@@ -1303,14 +1336,11 @@ inline void to_json(json& j, StreamDynamicInfo const& info)
 	j[keyName::StreamDynamicInfo_ArePdusEncrypted] = info.arePdusEncrypted;
 	j[keyName::StreamDynamicInfo_HasTalkerFailed] = info.hasTalkerFailed;
 	j[keyName::StreamDynamicInfo_Flags] = info._streamInfoFlags;
-	if (info.streamID)
-	{
-		j[keyName::StreamDynamicInfo_StreamID] = *info.streamID;
-	}
+	j[keyName::StreamDynamicInfo_StreamID] = info.streamID;
 	j[keyName::StreamDynamicInfo_MsrpAccumulatedLatency] = info.msrpAccumulatedLatency;
 	if (info.streamDestMac)
 	{
-		j[keyName::StreamDynamicInfo_StreamDestMac] = networkInterface::macAddressToString(*info.streamDestMac, true);
+		j[keyName::StreamDynamicInfo_StreamDestMac] = networkInterface::NetworkInterfaceHelper::macAddressToString(*info.streamDestMac, true);
 	}
 	j[keyName::StreamDynamicInfo_MsrpFailureCode] = info.msrpFailureCode;
 	if (info.msrpFailureBridgeID)
@@ -1331,22 +1361,33 @@ inline void from_json(json const& j, StreamDynamicInfo& info)
 	j.at(keyName::StreamDynamicInfo_ArePdusEncrypted).get_to(info.arePdusEncrypted);
 	j.at(keyName::StreamDynamicInfo_HasTalkerFailed).get_to(info.hasTalkerFailed);
 	get_optional_value(j, keyName::StreamDynamicInfo_Flags, info._streamInfoFlags);
-	{
-		auto const it = j.find(keyName::StreamDynamicInfo_StreamID);
-		if (it != j.end())
-		{
-			it->get_to(info.streamID);
-		}
-	}
+	get_optional_value(j, keyName::StreamDynamicInfo_StreamID, info.streamID);
 	get_optional_value(j, keyName::StreamDynamicInfo_MsrpAccumulatedLatency, info.msrpAccumulatedLatency);
 	{
 		auto const it = j.find(keyName::StreamDynamicInfo_StreamDestMac);
 		if (it != j.end())
 		{
-			info.streamDestMac = networkInterface::stringToMacAddress(it->get<std::string>());
+			info.streamDestMac = networkInterface::NetworkInterfaceHelper::stringToMacAddress(it->get<std::string>());
 		}
 	}
-	get_optional_value(j, keyName::StreamDynamicInfo_MsrpFailureCode, info.msrpFailureCode);
+	{
+		auto const it = j.find(keyName::StreamDynamicInfo_MsrpFailureCode);
+		if (it != j.end() && !it->is_null())
+		{
+			// Check for new format (string)
+			if (it->is_string())
+			{
+				it->get_to(info.msrpFailureCode);
+			}
+			// Convert from old format (number)
+			else
+			{
+				auto failureCode = std::uint8_t{ 0u };
+				it->get_to(failureCode);
+				info.msrpFailureCode = static_cast<decltype(info.msrpFailureCode)::value_type>(failureCode);
+			}
+		}
+	}
 	{
 		auto const it = j.find(keyName::StreamDynamicInfo_MsrpFailureBridgeID);
 		if (it != j.end())
@@ -1561,7 +1602,7 @@ inline void from_json(json const& j, StreamOutputNodeDynamicModel& d)
 inline void to_json(json& j, AvbInterfaceNodeStaticModel const& s)
 {
 	j[keyName::AvbInterfaceNode_Static_LocalizedDescription] = s.localizedDescription;
-	j[keyName::AvbInterfaceNode_Static_MacAddress] = networkInterface::macAddressToString(s.macAddress, true);
+	j[keyName::AvbInterfaceNode_Static_MacAddress] = networkInterface::NetworkInterfaceHelper::macAddressToString(s.macAddress, true);
 	j[keyName::AvbInterfaceNode_Static_Flags] = s.interfaceFlags;
 	j[keyName::AvbInterfaceNode_Static_ClockIdentity] = s.clockIdentity;
 	j[keyName::AvbInterfaceNode_Static_Priority1] = s.priority1;
@@ -1578,7 +1619,7 @@ inline void to_json(json& j, AvbInterfaceNodeStaticModel const& s)
 inline void from_json(json const& j, AvbInterfaceNodeStaticModel& s)
 {
 	get_optional_value(j, keyName::AvbInterfaceNode_Static_LocalizedDescription, s.localizedDescription);
-	s.macAddress = networkInterface::stringToMacAddress(j.at(keyName::AvbInterfaceNode_Static_MacAddress).get<std::string>());
+	s.macAddress = networkInterface::NetworkInterfaceHelper::stringToMacAddress(j.at(keyName::AvbInterfaceNode_Static_MacAddress).get<std::string>());
 	j.at(keyName::AvbInterfaceNode_Static_Flags).get_to(s.interfaceFlags);
 	j.at(keyName::AvbInterfaceNode_Static_ClockIdentity).get_to(s.clockIdentity);
 	j.at(keyName::AvbInterfaceNode_Static_Priority1).get_to(s.priority1);
@@ -1801,24 +1842,109 @@ template<typename ValueType, typename Traits = ControlValues::control_value_deta
 inline void to_json(json& j, LinearValues<ValueType> const& values)
 {
 	static_assert(Traits::is_value_details, "to_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
-	auto arr = json::array();
 
-	for (auto const& val : values.getValues())
-	{
-		arr.push_back(val);
-	}
-
-	j = std::move(arr);
+	j = values.getValues();
 }
 template<typename ValueType, typename Traits = ControlValues::control_value_details_traits<LinearValues<ValueType>>>
 inline void from_json(json const& j, LinearValues<ValueType>& values)
 {
 	static_assert(Traits::is_value_details, "from_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
-	for (auto const& jval : j)
+
+	j.get_to(values.getValues());
+}
+
+/* ArrayValueStatic conversion */
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>, typename Traits = ControlValues::control_value_details_traits<ArrayValueStatic<SizeType>>>
+inline void to_json(json& j, ArrayValueStatic<SizeType> const& value)
+{
+	static_assert(Traits::is_value_details, "from_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
+
+	j[keyName::ArrayValue_Minimum] = value.minimum;
+	j[keyName::ArrayValue_Maximum] = value.maximum;
+	j[keyName::ArrayValue_Step] = value.step;
+	j[keyName::ArrayValue_Default] = value.defaultValue;
+	j[keyName::ArrayValue_Unit] = value.unit;
+	j[keyName::ArrayValue_String] = value.localizedName;
+}
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>, typename Traits = ControlValues::control_value_details_traits<ArrayValueStatic<SizeType>>>
+inline void from_json(json const& j, ArrayValueStatic<SizeType>& value)
+{
+	static_assert(Traits::is_value_details, "from_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
+
+	j.at(keyName::ArrayValue_Minimum).get_to(value.minimum);
+	j.at(keyName::ArrayValue_Maximum).get_to(value.maximum);
+	j.at(keyName::ArrayValue_Step).get_to(value.step);
+	j.at(keyName::ArrayValue_Default).get_to(value.defaultValue);
+	j.at(keyName::ArrayValue_Unit).get_to(value.unit);
+	get_optional_value(j, keyName::ArrayValue_String, value.localizedName);
+}
+
+/* ArrayValueDynamic conversion */
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>, typename Traits = ControlValues::control_value_details_traits<ArrayValueDynamic<SizeType>>>
+inline void to_json(json& j, ArrayValueDynamic<SizeType> const& value)
+{
+	static_assert(Traits::is_value_details, "to_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
+
+	j = value.currentValues;
+}
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>, typename Traits = ControlValues::control_value_details_traits<ArrayValueDynamic<SizeType>>>
+inline void from_json(json const& j, ArrayValueDynamic<SizeType>& value)
+{
+	static_assert(Traits::is_value_details, "from_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
+
+	j.get_to(value.currentValues);
+}
+
+/* UTF8StringValueStatic conversion */
+inline void to_json(json& /*j*/, UTF8StringValueStatic const& /*value*/)
+{
+	// UTF8 Static has no data
+}
+inline void from_json(json const& /*j*/, UTF8StringValueStatic& /*value*/)
+{
+	// UTF8 Static has no data
+}
+
+/* UTF8StringValueDynamic conversion */
+inline void to_json(json& j, UTF8StringValueDynamic const& value)
+{
+	auto constexpr nullCharacter = decltype(value.currentValue)::value_type{ 0u };
+
+	auto arr = json::array();
+
+	// We only want to dump the actual UTF8 string (including the trailing NULL character), not the garbage inside the array after the trailing NULL character
+	for (auto const c : value.currentValue)
 	{
-		auto val = typename std::decay_t<decltype(values)>::value_type{};
-		jval.get_to(val);
-		values.addValue(std::move(val));
+		arr.push_back(c);
+		if (c == nullCharacter)
+		{
+			break;
+		}
+	}
+
+	j = std::move(arr);
+}
+inline void from_json(json const& j, UTF8StringValueDynamic& value)
+{
+	// We must load the array manually as json will try to read the whole std::array size, which is not what we dumped (we only dump meaningful characters)
+	auto const /*expr*/ maxLength = value.currentValue.size(); // Unsure why clang doesn't accept this as a constexpr
+	auto constexpr nullCharacter = decltype(value.currentValue)::value_type{ 0u };
+
+	// Count the number of bytes to copy (including the trailing NULL)
+	auto length = size_t{ 0 };
+	for (auto const& val : j)
+	{
+		value.currentValue[length++] = val;
+		if (length >= maxLength)
+		{
+			break;
+		}
+	}
+
+	// Enforce NULL terminated string
+	if (length == maxLength || value.currentValue[maxLength - 1] != nullCharacter)
+	{
+		value.currentValue[maxLength - 1] = nullCharacter;
 	}
 }
 
@@ -1868,6 +1994,19 @@ inline void createToJsonDispatchTable(std::unordered_map<ControlValueType::Type,
 		dispatchTable[ControlValueType::Type::ControlLinearUInt64] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::uint64_t>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearFloat] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<float>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearDouble] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<double>>>();
+
+		dispatchTable[ControlValueType::Type::ControlArrayInt8] = createToJsonDispatchFunctor<ArrayValueDynamic<std::int8_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayUInt8] = createToJsonDispatchFunctor<ArrayValueDynamic<std::uint8_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayInt16] = createToJsonDispatchFunctor<ArrayValueDynamic<std::int16_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayUInt16] = createToJsonDispatchFunctor<ArrayValueDynamic<std::uint16_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayInt32] = createToJsonDispatchFunctor<ArrayValueDynamic<std::int32_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayUInt32] = createToJsonDispatchFunctor<ArrayValueDynamic<std::uint32_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayInt64] = createToJsonDispatchFunctor<ArrayValueDynamic<std::int64_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayUInt64] = createToJsonDispatchFunctor<ArrayValueDynamic<std::uint64_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayFloat] = createToJsonDispatchFunctor<ArrayValueDynamic<float>>();
+		dispatchTable[ControlValueType::Type::ControlArrayDouble] = createToJsonDispatchFunctor<ArrayValueDynamic<double>>();
+
+		dispatchTable[ControlValueType::Type::ControlUtf8] = createToJsonDispatchFunctor<UTF8StringValueDynamic>();
 	}
 	else
 	{
@@ -1881,6 +2020,19 @@ inline void createToJsonDispatchTable(std::unordered_map<ControlValueType::Type,
 		dispatchTable[ControlValueType::Type::ControlLinearUInt64] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::uint64_t>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearFloat] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<float>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearDouble] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<double>>>();
+
+		dispatchTable[ControlValueType::Type::ControlArrayInt8] = createToJsonDispatchFunctor<ArrayValueStatic<std::int8_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayUInt8] = createToJsonDispatchFunctor<ArrayValueStatic<std::uint8_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayInt16] = createToJsonDispatchFunctor<ArrayValueStatic<std::int16_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayUInt16] = createToJsonDispatchFunctor<ArrayValueStatic<std::uint16_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayInt32] = createToJsonDispatchFunctor<ArrayValueStatic<std::int32_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayUInt32] = createToJsonDispatchFunctor<ArrayValueStatic<std::uint32_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayInt64] = createToJsonDispatchFunctor<ArrayValueStatic<std::int64_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayUInt64] = createToJsonDispatchFunctor<ArrayValueStatic<std::uint64_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayFloat] = createToJsonDispatchFunctor<ArrayValueStatic<float>>();
+		dispatchTable[ControlValueType::Type::ControlArrayDouble] = createToJsonDispatchFunctor<ArrayValueStatic<double>>();
+
+		dispatchTable[ControlValueType::Type::ControlUtf8] = createToJsonDispatchFunctor<UTF8StringValueStatic>();
 	}
 }
 template<bool IsDynamic>
@@ -1898,6 +2050,19 @@ inline void createFromJsonDispatchTable(std::unordered_map<ControlValueType::Typ
 		dispatchTable[ControlValueType::Type::ControlLinearUInt64] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::uint64_t>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearFloat] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<float>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearDouble] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<double>>>();
+
+		dispatchTable[ControlValueType::Type::ControlArrayInt8] = createFromJsonDispatchFunctor<ArrayValueDynamic<std::int8_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayUInt8] = createFromJsonDispatchFunctor<ArrayValueDynamic<std::uint8_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayInt16] = createFromJsonDispatchFunctor<ArrayValueDynamic<std::int16_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayUInt16] = createFromJsonDispatchFunctor<ArrayValueDynamic<std::uint16_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayInt32] = createFromJsonDispatchFunctor<ArrayValueDynamic<std::int32_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayUInt32] = createFromJsonDispatchFunctor<ArrayValueDynamic<std::uint32_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayInt64] = createFromJsonDispatchFunctor<ArrayValueDynamic<std::int64_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayUInt64] = createFromJsonDispatchFunctor<ArrayValueDynamic<std::uint64_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayFloat] = createFromJsonDispatchFunctor<ArrayValueDynamic<float>>();
+		dispatchTable[ControlValueType::Type::ControlArrayDouble] = createFromJsonDispatchFunctor<ArrayValueDynamic<double>>();
+
+		dispatchTable[ControlValueType::Type::ControlUtf8] = createFromJsonDispatchFunctor<UTF8StringValueDynamic>();
 	}
 	else
 	{
@@ -1911,6 +2076,19 @@ inline void createFromJsonDispatchTable(std::unordered_map<ControlValueType::Typ
 		dispatchTable[ControlValueType::Type::ControlLinearUInt64] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<std::uint64_t>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearFloat] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<float>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearDouble] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<double>>>();
+
+		dispatchTable[ControlValueType::Type::ControlArrayInt8] = createFromJsonDispatchFunctor<ArrayValueStatic<std::int8_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayUInt8] = createFromJsonDispatchFunctor<ArrayValueStatic<std::uint8_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayInt16] = createFromJsonDispatchFunctor<ArrayValueStatic<std::int16_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayUInt16] = createFromJsonDispatchFunctor<ArrayValueStatic<std::uint16_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayInt32] = createFromJsonDispatchFunctor<ArrayValueStatic<std::int32_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayUInt32] = createFromJsonDispatchFunctor<ArrayValueStatic<std::uint32_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayInt64] = createFromJsonDispatchFunctor<ArrayValueStatic<std::int64_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayUInt64] = createFromJsonDispatchFunctor<ArrayValueStatic<std::uint64_t>>();
+		dispatchTable[ControlValueType::Type::ControlArrayFloat] = createFromJsonDispatchFunctor<ArrayValueStatic<float>>();
+		dispatchTable[ControlValueType::Type::ControlArrayDouble] = createFromJsonDispatchFunctor<ArrayValueStatic<double>>();
+
+		dispatchTable[ControlValueType::Type::ControlUtf8] = createFromJsonDispatchFunctor<UTF8StringValueStatic>();
 	}
 }
 

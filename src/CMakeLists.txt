@@ -1,6 +1,6 @@
 # Library CMake file
 
-setup_project(la_avdecc ${LA_AVDECC_VERSION} "Avdecc Library")
+cu_setup_project(la_avdecc ${LA_AVDECC_VERSION} "AVDECC Library")
 
 # Configure file based on CMakeLists.txt
 configure_file(
@@ -9,7 +9,7 @@ configure_file(
 )
 if(WIN32)
 	configure_file(
-		"${LA_ROOT_DIR}/resources/win32/resources.rc.in"
+		"${CU_ROOT_DIR}/resources/win32/resources.rc.in"
 		"${CMAKE_CURRENT_BINARY_DIR}/resources.rc"
 	)
 	set(SHARED_LIBRARY_FILES "${CMAKE_CURRENT_BINARY_DIR}/resources.rc")
@@ -30,68 +30,47 @@ if(WIN32)
 	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DNOMINMAX")
 endif()
 
-# Network interface helper
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-	set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER
-		networkInterfaceHelper/networkInterfaceHelper_win32.cpp
-	)
-elseif(CMAKE_SYSTEM_NAME MATCHES "(Linux)")
-	set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER
-		networkInterfaceHelper/networkInterfaceHelper_unix.cpp
-	)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-	set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER
-		networkInterfaceHelper/networkInterfaceHelper_mac.mm
-	)
-	list(APPEND ADD_LINK_LIBS "-framework Foundation -framework SystemConfiguration -framework IOKit")
-else()
-	message(FATAL_ERROR "Network helper undefined for system: ${CMAKE_SYSTEM_NAME}")
-endif()
-set (SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER ${SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER} networkInterfaceHelper/networkInterfaceHelper_common.cpp)
-set (HEADER_FILES_CPP_NETWORK_INTERFACE_HELPER networkInterfaceHelper/networkInterfaceHelper_common.hpp)
-
 set (PUBLIC_HEADER_FILES
-	${LA_ROOT_DIR}/include/la/avdecc/avdecc.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/logger.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/memoryBuffer.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/networkInterfaceHelper.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/utils.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/watchDog.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/aggregateEntity.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/controllerEntity.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/endian.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/endStation.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/entity.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/entityAddressAccessTypes.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/entityEnums.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModel.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelControlValues.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelControlValuesTraits.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTree.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTreeCommon.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTreeDynamic.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTreeStatic.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/entityModelTypes.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/exception.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/exports.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/instrumentationNotifier.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/jsonSerialization.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/logItems.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAaAecpdu.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAcmpdu.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAdpdu.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAecpdu.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAemAecpdu.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAemPayloadSizes.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolAvtpdu.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolDefines.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolMvuAecpdu.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolMvuPayloadSizes.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolVuAecpdu.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/protocolInterface.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/serialization.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/streamFormatInfo.hpp
-	${LA_ROOT_DIR}/include/la/avdecc/internals/uniqueIdentifier.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/avdecc.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/logger.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/memoryBuffer.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/utils.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/watchDog.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/aggregateEntity.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/controllerEntity.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/endian.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/endStation.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/entity.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/entityAddressAccessTypes.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/entityEnums.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/entityModel.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/entityModelControlValues.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/entityModelControlValuesTraits.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/entityModelTree.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/entityModelTreeCommon.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/entityModelTreeDynamic.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/entityModelTreeStatic.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/entityModelTypes.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/exception.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/exports.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/instrumentationNotifier.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/jsonSerialization.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/logItems.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/protocolAaAecpdu.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/protocolAcmpdu.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/protocolAdpdu.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/protocolAecpdu.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/protocolAemAecpdu.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/protocolAemPayloadSizes.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/protocolAvtpdu.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/protocolDefines.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/protocolMvuAecpdu.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/protocolMvuPayloadSizes.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/protocolVuAecpdu.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/protocolInterface.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/serialization.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/streamFormatInfo.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/internals/uniqueIdentifier.hpp
 )
 
 # Low level Protocol
@@ -240,7 +219,7 @@ if(ENABLE_AVDECC_FEATURE_REDUNDANCY)
 endif()
 if(ENABLE_AVDECC_FEATURE_JSON)
 	list(APPEND PUBLIC_HEADER_FILES
-		${LA_ROOT_DIR}/include/la/avdecc/internals/jsonTypes.hpp
+		${CU_ROOT_DIR}/include/la/avdecc/internals/jsonTypes.hpp
 	)
 	list(APPEND SOURCE_FILES_ENTITY
 		entity/entityModelJsonSerializer.cpp
@@ -251,7 +230,7 @@ endif()
 # Other options
 if(ENABLE_AVDECC_CUSTOM_ANY)
 	list(APPEND PUBLIC_HEADER_FILES
-		${LA_ROOT_DIR}/include/la/avdecc/internals/any.hpp
+		${CU_ROOT_DIR}/include/la/avdecc/internals/any.hpp
 	)
 	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DENABLE_AVDECC_CUSTOM_ANY")
 endif()
@@ -277,85 +256,89 @@ source_group("Header Files\\Protocol" FILES ${HEADER_FILES_PROTOCOL})
 source_group("Header Files\\Protocol Interface" FILES ${HEADER_FILES_PROTOCOL_INTERFACE})
 source_group("Header Files\\State Machines" FILES ${HEADER_FILES_STATE_MACHINES})
 source_group("Header Files\\Entity" FILES ${HEADER_FILES_ENTITY})
-source_group("Header Files\\Network Interface Helper" FILES ${HEADER_FILES_CPP_NETWORK_INTERFACE_HELPER})
 source_group("Source Files\\Protocol" FILES ${SOURCE_FILES_PROTOCOL})
 source_group("Source Files\\Protocol Interface" FILES ${SOURCE_FILES_PROTOCOL_INTERFACE})
 source_group("Source Files\\State Machines" FILES ${SOURCE_FILES_STATE_MACHINES})
 source_group("Source Files\\Entity" FILES ${SOURCE_FILES_ENTITY})
-source_group("Source Files\\Network Interface Helper" FILES ${SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER})
 
-set (LIB_HEADER_FILES ${HEADER_FILES_COMMON} ${HEADER_FILES_PROTOCOL} ${HEADER_FILES_PROTOCOL_INTERFACE} ${HEADER_FILES_STATE_MACHINES} ${HEADER_FILES_ENTITY} ${PUBLIC_HEADER_FILES} ${HEADER_FILES_CPP_NETWORK_INTERFACE_HELPER})
-set (LIB_SOURCE_FILES ${SOURCE_FILES_COMMON} ${SOURCE_FILES_PROTOCOL} ${SOURCE_FILES_PROTOCOL_INTERFACE} ${SOURCE_FILES_STATE_MACHINES} ${SOURCE_FILES_ENTITY} ${SOURCE_FILES_CPP_NETWORK_INTERFACE_HELPER})
+set (LIB_HEADER_FILES ${HEADER_FILES_COMMON} ${HEADER_FILES_PROTOCOL} ${HEADER_FILES_PROTOCOL_INTERFACE} ${HEADER_FILES_STATE_MACHINES} ${HEADER_FILES_ENTITY} ${PUBLIC_HEADER_FILES})
+set (LIB_SOURCE_FILES ${SOURCE_FILES_COMMON} ${SOURCE_FILES_PROTOCOL} ${SOURCE_FILES_PROTOCOL_INTERFACE} ${SOURCE_FILES_STATE_MACHINES} ${SOURCE_FILES_ENTITY})
 
 # C++ dynamic library
 if(BUILD_AVDECC_LIB_SHARED_CXX)
 	set (LIB_SHARED_CXX_SOURCE_FILES ${LIB_SOURCE_FILES})
-	add_library(la_avdecc_cxx SHARED ${LIB_HEADER_FILES} ${LIB_SHARED_CXX_SOURCE_FILES} ${SHARED_LIBRARY_FILES})
+	add_library(${PROJECT_NAME}_cxx SHARED ${LIB_HEADER_FILES} ${LIB_SHARED_CXX_SOURCE_FILES} ${SHARED_LIBRARY_FILES})
 	if(ADD_PRIVATE_COMPILE_OPTIONS)
-		target_compile_options(la_avdecc_cxx PRIVATE ${ADD_PRIVATE_COMPILE_OPTIONS})
+		target_compile_options(${PROJECT_NAME}_cxx PRIVATE ${ADD_PRIVATE_COMPILE_OPTIONS})
 	endif()
 	if(ADD_PUBLIC_COMPILE_OPTIONS)
-		target_compile_options(la_avdecc_cxx PUBLIC ${ADD_PUBLIC_COMPILE_OPTIONS})
+		target_compile_options(${PROJECT_NAME}_cxx PUBLIC ${ADD_PUBLIC_COMPILE_OPTIONS})
 	endif()
 	if(ADD_LINK_LIBS)
-		target_link_libraries(la_avdecc_cxx PRIVATE ${ADD_LINK_LIBS})
+		target_link_libraries(${PROJECT_NAME}_cxx PRIVATE ${ADD_LINK_LIBS})
 	endif()
 
 	# Enable precompiled headers
-	set_precompiled_headers(la_avdecc_cxx ${PCH_HEADER_NAME})
+	cu_set_precompiled_headers(${PROJECT_NAME}_cxx ${PCH_HEADER_NAME})
 
 	# Setup common options
-	setup_library_options(la_avdecc_cxx "la_avdecc")
+	cu_setup_library_options(${PROJECT_NAME}_cxx)
 
 	# Additional private include directory
-	target_include_directories(la_avdecc_cxx PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}) # Include root source directory for access to private headers
+	target_include_directories(${PROJECT_NAME}_cxx PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}) # Include root source directory for access to private headers
 	
+	# Setup NIH
+	target_link_libraries(${PROJECT_NAME}_cxx PUBLIC la_networkInterfaceHelper_static)
+
 	# Setup libfmt
 	if(ENABLE_AVDECC_USE_FMTLIB)
-		target_compile_options(la_avdecc_cxx PRIVATE -DHAVE_FMT)
-		target_link_libraries(la_avdecc_cxx PRIVATE fmt-header-only)
+		target_compile_options(${PROJECT_NAME}_cxx PRIVATE -DHAVE_FMT)
+		target_link_libraries(${PROJECT_NAME}_cxx PRIVATE fmt-header-only)
 	endif()
 
 	# Setup json
 	if(ENABLE_AVDECC_FEATURE_JSON)
-		target_link_libraries(la_avdecc_cxx PUBLIC nlohmann_json)
+		target_link_libraries(${PROJECT_NAME}_cxx PUBLIC nlohmann_json)
 	endif()
 
 	# Setup install (and signing)
-	setup_deploy_library(la_avdecc_cxx ${INSTALL_SHARED_FLAG} ${SIGN_FLAG})
+	cu_setup_deploy_library(${PROJECT_NAME}_cxx ${INSTALL_SHARED_FLAG} ${SIGN_FLAG})
 endif()
 
 # Runtime-shared static library
 if(BUILD_AVDECC_LIB_STATIC_RT_SHARED)
-	add_library(la_avdecc_static STATIC ${LIB_HEADER_FILES} ${LIB_SOURCE_FILES})
+	add_library(${PROJECT_NAME}_static STATIC ${LIB_HEADER_FILES} ${LIB_SOURCE_FILES})
 	if(ADD_PRIVATE_COMPILE_OPTIONS)
-		target_compile_options(la_avdecc_static PUBLIC ${ADD_PRIVATE_COMPILE_OPTIONS}) # For a static library, no compile option is really private (using private APIs is possible, thus we need to know the options)
+		target_compile_options(${PROJECT_NAME}_static PUBLIC ${ADD_PRIVATE_COMPILE_OPTIONS}) # For a static library, no compile option is really private (using private APIs is possible, thus we need to know the options)
 	endif()
 	if(ADD_PUBLIC_COMPILE_OPTIONS)
-		target_compile_options(la_avdecc_static PUBLIC ${ADD_PUBLIC_COMPILE_OPTIONS})
+		target_compile_options(${PROJECT_NAME}_static PUBLIC ${ADD_PUBLIC_COMPILE_OPTIONS})
 	endif()
 	if(ADD_LINK_LIBS)
-		target_link_libraries(la_avdecc_static PUBLIC ${ADD_LINK_LIBS})
+		target_link_libraries(${PROJECT_NAME}_static PUBLIC ${ADD_LINK_LIBS})
 	endif()
 
 	# Enable precompiled headers
-	set_precompiled_headers(la_avdecc_static ${PCH_HEADER_NAME})
+	cu_set_precompiled_headers(${PROJECT_NAME}_static ${PCH_HEADER_NAME})
 
 	# Setup common library options
-	setup_library_options(la_avdecc_static "la_avdecc")
+	cu_setup_library_options(${PROJECT_NAME}_static)
 
 	# Additional include directory (only for build interface)
-	target_include_directories(la_avdecc_static PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>) # Include root source directory for access to private headers
+	target_include_directories(${PROJECT_NAME}_static PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>) # Include root source directory for access to private headers
 	
+	# Setup NIH
+	target_link_libraries(${PROJECT_NAME}_static PUBLIC la_networkInterfaceHelper_static)
+
 	# Setup json
 	if(ENABLE_AVDECC_FEATURE_JSON)
-		target_link_libraries(la_avdecc_static PUBLIC nlohmann_json)
+		target_link_libraries(${PROJECT_NAME}_static PUBLIC nlohmann_json)
 	endif()
 
 	# Setup install (and signing)
-	setup_deploy_library(la_avdecc_static ${INSTALL_STATIC_FLAG} ${SIGN_FLAG})
+	cu_setup_deploy_library(${PROJECT_NAME}_static ${INSTALL_STATIC_FLAG} ${SIGN_FLAG})
 
-	# We must install wpcap link library for windows, so the target using la_avdecc_static can properly link
+	# We must install wpcap link library for windows, so the target using static library can properly link
 	if(INSTALL_AVDECC_LIB_STATIC AND NOT ${BUILD_AVDECC_INTERFACE_PCAP_DYNAMIC_LINKING} AND WIN32)
 		install(FILES "${LA_WINPCAP_LIB_DIR}/wpcap.lib" DESTINATION lib)
 	endif()
@@ -363,5 +346,5 @@ endif()
 
 # Set installation rules
 if(INSTALL_AVDECC_HEADERS)
-	setup_headers_install_rules("${PUBLIC_HEADER_FILES}" "${LA_ROOT_DIR}/include")
+	cu_setup_headers_install_rules("${PUBLIC_HEADER_FILES}" "${CU_ROOT_DIR}/include")
 endif()

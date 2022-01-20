@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -157,7 +157,7 @@ typedef struct avdecc_entity_model_stream_info_s
 	avdecc_unique_identifier_t stream_id;
 	unsigned int msrp_accumulated_latency;
 	avdecc_mac_address_t stream_dest_mac;
-	unsigned char msrp_failure_code;
+	avdecc_entity_model_msrp_failure_code_t msrp_failure_code;
 	avdecc_bridge_identifier_t msrp_failure_bridge_id;
 	unsigned short stream_vlan_id;
 	// Milan additions

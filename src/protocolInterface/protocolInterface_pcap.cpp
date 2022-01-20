@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -63,20 +63,34 @@ public:
 	ProtocolInterfacePcapImpl(std::string const& networkInterfaceName)
 		: ProtocolInterfacePcap(networkInterfaceName)
 	{
+		static constexpr int PCAP_BufferSize = 65536;
+		static constexpr int PCAP_PromiscMode = 1;
+		static constexpr int PCAP_TimeoutMsec = 5;
+
 		// Should always be supported. Cannot create a PCap ProtocolInterface if it's not supported.
 		AVDECC_ASSERT(isSupported(), "Should always be supported. Cannot create a PCap ProtocolInterface if it's not supported");
 
 		// Open pcap on specified network interface
 		std::array<char, PCAP_ERRBUF_SIZE> errbuf;
 #ifdef _WIN32
+		// NPF device name
 		auto const pcapInterfaceName = std::string("\\Device\\NPF_") + networkInterfaceName;
 #else // !_WIN32
 		auto const pcapInterfaceName = networkInterfaceName;
 #endif // _WIN32
-		auto pcap = _pcapLibrary.open_live((pcapInterfaceName).c_str(), 65536, 1, 5, errbuf.data());
+		auto pcap = _pcapLibrary.open_live((pcapInterfaceName).c_str(), PCAP_BufferSize, PCAP_PromiscMode, PCAP_TimeoutMsec, errbuf.data());
 		// Failed to open interface (might be disabled)
 		if (pcap == nullptr)
 		{
+#ifdef _WIN32
+			// Try without NPF prefix
+			pcap = _pcapLibrary.open_live((networkInterfaceName).c_str(), PCAP_BufferSize, PCAP_PromiscMode, PCAP_TimeoutMsec, errbuf.data());
+			// Let's assume it's Win10pcap
+			if (pcap != nullptr)
+			{
+				throw Exception(Error::TransportError, "Win10Pcap is not supported. Please uninstall it and either use WinPcap or nPcap which are both compatible.");
+			}
+#endif // _WIN32
 			throw Exception(Error::TransportError, errbuf.data());
 		}
 

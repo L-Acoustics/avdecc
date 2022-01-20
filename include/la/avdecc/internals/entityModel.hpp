@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -26,12 +26,13 @@
 #pragma once
 
 #include "la/avdecc/utils.hpp"
-#include "la/avdecc/networkInterfaceHelper.hpp"
 
 #include "entityEnums.hpp"
 #include "uniqueIdentifier.hpp"
 #include "protocolDefines.hpp"
 #include "entityModelTypes.hpp"
+
+#include <la/networkInterfaceHelper/networkInterfaceHelper.hpp>
 
 #if defined(ENABLE_AVDECC_CUSTOM_ANY)
 #	include "la/avdecc/internals/any.hpp"
@@ -356,8 +357,8 @@ struct StreamInfo
 	StreamFormat streamFormat{};
 	UniqueIdentifier streamID{ 0u };
 	std::uint32_t msrpAccumulatedLatency{ 0u };
-	la::avdecc::networkInterface::MacAddress streamDestMac{};
-	std::uint8_t msrpFailureCode{ 0u };
+	la::networkInterface::MacAddress streamDestMac{};
+	MsrpFailureCode msrpFailureCode{ MsrpFailureCode::NoFailure };
 	BridgeIdentifier msrpFailureBridgeID{ 0u };
 	std::uint16_t streamVlanID{ 0u };
 	// Milan additions

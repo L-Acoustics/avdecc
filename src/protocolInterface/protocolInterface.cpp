@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -51,10 +51,10 @@ ProtocolInterface::ProtocolInterface(std::string const& networkInterfaceName)
 {
 	try
 	{
-		auto const intfc = la::avdecc::networkInterface::getInterfaceByName(networkInterfaceName);
+		auto const intfc = networkInterface::NetworkInterfaceHelper::getInstance().getInterfaceByName(networkInterfaceName);
 
 		// Check we have a valid mac address
-		if (!la::avdecc::networkInterface::isMacAddressValid(intfc.macAddress))
+		if (!networkInterface::NetworkInterfaceHelper::isMacAddressValid(intfc.macAddress))
 			throw Exception(Error::InvalidParameters, "Network interface has an invalid mac address");
 
 		_networkInterfaceMacAddress = intfc.macAddress;
@@ -74,12 +74,12 @@ ProtocolInterface::ProtocolInterface(std::string const& networkInterfaceName, ne
 		throw Exception(Error::InvalidParameters, "Network interface name should not be empty");
 
 	// Check we have a valid mac address
-	if (!la::avdecc::networkInterface::isMacAddressValid(macAddress))
+	if (!networkInterface::NetworkInterfaceHelper::isMacAddressValid(macAddress))
 		throw Exception(Error::InvalidParameters, "Network interface has an invalid mac address");
 }
 
 
-la::avdecc::networkInterface::MacAddress const& LA_AVDECC_CALL_CONVENTION ProtocolInterface::getMacAddress() const noexcept
+networkInterface::MacAddress const& LA_AVDECC_CALL_CONVENTION ProtocolInterface::getMacAddress() const noexcept
 {
 	return _networkInterfaceMacAddress;
 }

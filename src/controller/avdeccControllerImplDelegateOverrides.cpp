@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -652,6 +652,18 @@ void ControllerImpl::onClockDomainNameChanged(entity::controller::Interface cons
 		}
 
 		updateClockDomainName(entity, configurationIndex, clockDomainIndex, clockDomainName);
+	}
+}
+
+void ControllerImpl::onAssociationIDChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, UniqueIdentifier const associationID) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+		updateAssociationID(entity, associationID);
 	}
 }
 

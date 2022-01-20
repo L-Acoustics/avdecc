@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -288,7 +288,7 @@ void CommandStateMachine::handleAecpResponse(Aecpdu const& aecpdu) noexcept
 					// Validate the sender
 					if (info.command->getDestAddress() != aecpdu.getSrcAddress())
 					{
-						LOG_CONTROLLER_STATE_MACHINE_WARN(targetID, "AECP response with sequenceID {} received from a different sender than recipient ({} expected but received from {}), ignoring response", sequenceID, networkInterface::macAddressToString(info.command->getDestAddress(), true), networkInterface::macAddressToString(aecpdu.getSrcAddress(), true));
+						LOG_CONTROLLER_STATE_MACHINE_WARN(targetID, "AECP response with sequenceID {} received from a different sender than recipient ({} expected but received from {}), ignoring response", sequenceID, networkInterface::NetworkInterfaceHelper::macAddressToString(info.command->getDestAddress(), true), networkInterface::NetworkInterfaceHelper::macAddressToString(aecpdu.getSrcAddress(), true));
 						return;
 					}
 

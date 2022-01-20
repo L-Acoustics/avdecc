@@ -13,3 +13,6 @@
 [submodule "cmake/cmakeUtils"]
 	path = cmake/cmakeUtils
 	url = https://github.com/christophe-calmejane/cmakeUtils.git
+[submodule "externals/nih"]
+	path = externals/nih
+	url = https://github.com/L-Acoustics/networkInterfaceHelper.git

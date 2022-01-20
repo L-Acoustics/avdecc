@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -41,6 +41,7 @@
 #endif // ENABLE_AVDECC_FEATURE_JSON
 
 #include <la/avdecc/internals/entityModelTree.hpp>
+#include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
 #include <la/avdecc/internals/entityModelControlValues.hpp>
 #include <la/avdecc/internals/serialization.hpp>
 #ifdef ENABLE_AVDECC_FEATURE_JSON

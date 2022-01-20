@@ -1,7 +1,7 @@
 # LA AVDECC
 [![Coverity Scan Build Status](https://img.shields.io/coverity/scan/14038.svg)](https://scan.coverity.com/projects/l-acoustics-avdecc)
 
-Copyright (C) 2016-2021, L-Acoustics and its contributors
+Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 ## What is LA_avdecc
 LA_avdecc is a set of open source libraries for controlling and monitoring AVB entities using the AVDECC protocol (IEEE 1722.1) compliant to Avnu Milan.
@@ -56,7 +56,7 @@ C language bindings over la_avdecc library.
 ## Minimum requirements for compilation
 
 ### All platforms
-- CMake 3.15
+- CMake 3.18.3
 
 ### Windows
 - Windows 10
@@ -84,7 +84,7 @@ C language bindings over la_avdecc library.
 - [Install WinPcap Developer's Pack](externals/3rdparty/winpcap/README.md)
 - Using the provided bash script (*gen_cmake.sh*):
   * Run the script with whatever optional parameters required (run *gen_cmake.sh -h* to display the help)
-  * Go into the generated output folder (*_build_x86* by default)
+  * Go into the generated output folder
   * Open the generated Visual Studio solution *LA_avdecc.sln*
   * Compile everything from Visual Studio
 - Manually issuing a CMake command:
@@ -95,7 +95,7 @@ C language bindings over la_avdecc library.
 ### macOS
 - Using the provided bash script (*gen_cmake.sh*):
   * Run the script with whatever optional parameters required (run *gen_cmake.sh -h* to display the help)
-  * Go into the generated output folder (*_build_x86_64-apple-darwinX.Y.Z* by default)
+  * Go into the generated output folder
   * Open the generated Xcode solution *LA_avdecc.xcodeproj*
   * Compile everything from Xcode
 - Manually issuing a CMake command:
@@ -106,7 +106,7 @@ C language bindings over la_avdecc library.
 ### Linux
 - Using the provided bash script (*gen_cmake.sh*):
   * Run the script with either *-debug* or *-release* and whatever optional parameters required (run *gen_cmake.sh -h* to display the help)
-  * Go into the generated output folder (*_build_x86_64-linux-gnu* by default)
+  * Go into the generated output folder
   * Run *make* to compile everything
 - Manually issuing a CMake command:
   * Run a proper CMake command to generate Unix Makefiles (or any other CMake generator matching your build toolchain)
@@ -115,7 +115,8 @@ C language bindings over la_avdecc library.
 
 ## Known limitations
 
-- [Windows only] When plugging in a USB ethernet card for the first time, you either have to reboot the computer or restart the WinPCap driver (*net stop npf* then *net start npf*, from an elevated command prompt)
+- [Windows] When plugging in a USB ethernet card for the first time, you either have to reboot the computer or restart the WinPCap driver (*net stop npf* then *net start npf*, from an elevated command prompt)
+- [Linux] Administrative privileges are required to run PCap applications. You can either directly run samples as root with `sudo` or setup capabilities using `sudo setcap cap_net_raw+ep <application path>` then directly run the application
 
 ## Upcoming features
 
@@ -124,7 +125,6 @@ C language bindings over la_avdecc library.
 - Talker and Listener state machines (low level library)
 - Creation of a DiscoveryStateMachine so it can be used by Talker/Listener entities (moving code out of ControllerStateMachine)
 - Bindings libraries:
-  * C Controller (public APIs only)
   * Lua (public and private APIs)
 
 ## Contributing code

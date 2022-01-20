@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -25,9 +25,10 @@
 
 #pragma once
 
-#include "la/avdecc/networkInterfaceHelper.hpp"
-
 #include "entityEnums.hpp"
+#include "exception.hpp"
+
+#include <la/networkInterfaceHelper/networkInterfaceHelper.hpp>
 
 #include <cstdint>
 #include <thread>
@@ -142,7 +143,7 @@ public:
 	}
 
 	/** Gets the mac address associated with the specified AvbInterfaceIndex. Returns an invalid MacAddress if there is no such interface index. */
-	la::avdecc::networkInterface::MacAddress getMacAddress(model::AvbInterfaceIndex const interfaceIndex) const noexcept
+	la::networkInterface::MacAddress getMacAddress(model::AvbInterfaceIndex const interfaceIndex) const noexcept
 	{
 		if (hasInterfaceIndex(interfaceIndex))
 		{
@@ -153,7 +154,7 @@ public:
 	}
 
 	/** Gets any mac address for the entity */
-	la::avdecc::networkInterface::MacAddress getAnyMacAddress() const
+	la::networkInterface::MacAddress getAnyMacAddress() const
 	{
 		// Get the first InterfaceInformation data (ordered, so we always get the same)
 		auto infoIt = _interfaceInformation.begin();
@@ -220,7 +221,7 @@ public:
 	}
 
 	/** Generates an EID from a MacAddress (OUI-36) and a ProgID. This method is provided for backward compatibility, use ProtocolInterface::getDynamicEID instead. */
-	static UniqueIdentifier generateEID(la::avdecc::networkInterface::MacAddress const& macAddress, std::uint16_t const progID)
+	static UniqueIdentifier generateEID(la::networkInterface::MacAddress const& macAddress, std::uint16_t const progID)
 	{
 		UniqueIdentifier::value_type eid{ 0u };
 		if (macAddress.size() != 6)
@@ -260,7 +261,7 @@ public:
 	}
 
 	/** Sets the association unique identifier */
-	virtual void setAssociationID(UniqueIdentifier const associationID) noexcept
+	virtual void setAssociationID(std::optional<UniqueIdentifier> const associationID) noexcept
 	{
 		_commonInformation.associationID = associationID;
 	}
@@ -335,6 +336,7 @@ public:
 		NotSupported = 11, /**< The command is implemented but the target of the command is not supported. For example trying to set the value of a read - only Control. */
 		StreamIsRunning = 12, /**< The Stream is currently streaming and the command is one which cannot be executed on an Active Stream. */
 		// Library Error Codes
+		BaseProtocolViolation = 991, /**< The entity sent a message that violates the base protocol */
 		PartialImplementation = 992, /**< The library does not fully implement this command, please report this */
 		Busy = 993, /**< The library is busy, try again later */
 		NetworkError = 995, /**< Network error */
@@ -357,6 +359,7 @@ public:
 		DataInvalid = 6, /**< The data for writing is invalid .*/
 		Unsupported = 7, /**< A requested action was unsupported. Typically used when an unknown EXECUTE was encountered or if EXECUTE is not supported. */
 		// Library Error Codes
+		BaseProtocolViolation = 991, /**< The entity sent a message that violates the base protocol */
 		PartialImplementation = 992, /**< The library does not fully implement this command, please report this */
 		Busy = 993, /**< The library is busy, try again later */
 		Aborted = 994, /**< Request aborted */
@@ -375,6 +378,7 @@ public:
 		NotImplemented = 1,
 		BadArguments = 2,
 		// Library Error Codes
+		BaseProtocolViolation = 991, /**< The entity sent a message that violates the base protocol */
 		PartialImplementation = 992, /**< The library does not fully implement this command, please report this */
 		Busy = 993, /**< The library is busy, try again later */
 		NetworkError = 995,
@@ -409,6 +413,7 @@ public:
 		// Reserved
 		NotSupported = 31, /**< The command is not supported. */
 		// Library Error Codes
+		BaseProtocolViolation = 991, /**< The entity sent a message that violates the base protocol */
 		NetworkError = 995, /**< A network error occured. */
 		ProtocolError = 996, /**< A protocol error occured. */
 		TimedOut = 997, /**< Command timed out. */

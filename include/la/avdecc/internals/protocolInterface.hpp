@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -25,7 +25,6 @@
 #pragma once
 
 #include "la/avdecc/utils.hpp"
-#include "la/avdecc/networkInterfaceHelper.hpp"
 
 #include "exception.hpp"
 #include "entity.hpp"
@@ -34,6 +33,8 @@
 #include "protocolAemAecpdu.hpp"
 #include "protocolAcmpdu.hpp"
 #include "protocolVuAecpdu.hpp"
+
+#include <la/networkInterfaceHelper/networkInterfaceHelper.hpp>
 
 #include <unordered_map>
 #include <memory>
@@ -205,7 +206,7 @@ public:
 	* @brief Factory method to create a new ProtocolInterface.
 	* @details Creates a new ProtocolInterface as a unique pointer.
 	* @param[in] protocolInterfaceType The protocol interface type to use.
-	* @param[in] networkInterfaceName The name of the network interface to use. Use #la::avdecc::networkInterface::enumerateInterfaces to get a valid interface name.
+	* @param[in] networkInterfaceName The name of the network interface to use. Use #la::networkInterface::NetworkInterfaceHelper::enumerateInterfaces to get a valid interface name.
 	* @return A new ProtocolInterface as a ProtocolInterface::UniquePointer.
 	* @note Might throw an Exception.
 	*/

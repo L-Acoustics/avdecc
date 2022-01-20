@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -44,7 +44,7 @@
 #include <atomic>
 
 // Only enable instrumentation in static library and in debug (for unit testing mainly)
-#if defined(DEBUG) && defined(la_avdecc_cxx_STATICS)
+#if defined(DEBUG) && defined(la_avdecc_static_STATICS)
 #	include <chrono>
 #	define SEND_INSTRUMENTATION_NOTIFICATION(eventName) la::avdecc::InstrumentationNotifier::getInstance().triggerEvent(eventName)
 #	define UNIQUE_LOCK(mutex, sleepDelay, retryCount) \
@@ -66,10 +66,10 @@
 			} \
 		} \
 		la::avdecc::InstrumentationNotifier::getInstance().triggerEvent(std::string("ProtocolInterfaceVirtual::PushMessage::PostLock"))
-#else // !DEBUG || !la_avdecc_cxx_STATICS
+#else // !DEBUG || !la_avdecc_static_STATICS
 #	define SEND_INSTRUMENTATION_NOTIFICATION(eventName)
 #	define UNIQUE_LOCK(mutex, sleepDelay, retryCount) std::unique_lock<decltype(mutex)> lock(mutex)
-#endif // DEBUG && la_avdecc_cxx_STATICS
+#endif // DEBUG && la_avdecc_static_STATICS
 
 namespace la
 {

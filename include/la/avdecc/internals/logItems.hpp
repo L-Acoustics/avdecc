@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2021, L-Acoustics and its contributors
+* Copyright (C) 2016-2022, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -27,9 +27,10 @@
 
 #include "la/avdecc/logger.hpp"
 #include "la/avdecc/utils.hpp"
-#include "la/avdecc/networkInterfaceHelper.hpp"
 
 #include "uniqueIdentifier.hpp"
+
+#include <la/networkInterfaceHelper/networkInterfaceHelper.hpp>
 
 namespace la
 {
@@ -58,7 +59,7 @@ private:
 class LogItemSerialization : public la::avdecc::logger::LogItem
 {
 public:
-	LogItemSerialization(la::avdecc::networkInterface::MacAddress const& source, std::string message) noexcept
+	LogItemSerialization(networkInterface::MacAddress const& source, std::string message) noexcept
 		: LogItem(Layer::Serialization)
 		, _source(source)
 		, _message(message)
@@ -67,23 +68,23 @@ public:
 
 	virtual std::string getMessage() const noexcept override
 	{
-		return std::string("[") + la::avdecc::networkInterface::macAddressToString(_source, true) + "] " + _message;
+		return std::string("[") + networkInterface::NetworkInterfaceHelper::macAddressToString(_source, true) + "] " + _message;
 	}
 
-	la::avdecc::networkInterface::MacAddress const& getSource() const noexcept
+	networkInterface::MacAddress const& getSource() const noexcept
 	{
 		return _source;
 	}
 
 private:
-	la::avdecc::networkInterface::MacAddress const& _source;
+	networkInterface::MacAddress const& _source;
 	std::string _message{};
 };
 
 class LogItemProtocolInterface : public la::avdecc::logger::LogItem
 {
 public:
-	LogItemProtocolInterface(la::avdecc::networkInterface::MacAddress const& source, la::avdecc::networkInterface::MacAddress const& dest, std::string message) noexcept
+	LogItemProtocolInterface(networkInterface::MacAddress const& source, networkInterface::MacAddress const& dest, std::string message) noexcept
 		: LogItem(Layer::ProtocolInterface)
 		, _source(source)
 		, _dest(dest)
@@ -93,22 +94,22 @@ public:
 
 	virtual std::string getMessage() const noexcept override
 	{
-		return std::string("[") + la::avdecc::networkInterface::macAddressToString(_source, true) + " -> " + la::avdecc::networkInterface::macAddressToString(_dest, true) + "] " + _message;
+		return std::string("[") + networkInterface::NetworkInterfaceHelper::macAddressToString(_source, true) + " -> " + networkInterface::NetworkInterfaceHelper::macAddressToString(_dest, true) + "] " + _message;
 	}
 
-	la::avdecc::networkInterface::MacAddress const& getSource() const noexcept
+	networkInterface::MacAddress const& getSource() const noexcept
 	{
 		return _source;
 	}
 
-	la::avdecc::networkInterface::MacAddress const& getDest() const noexcept
+	networkInterface::MacAddress const& getDest() const noexcept
 	{
 		return _dest;
 	}
 
 private:
-	la::avdecc::networkInterface::MacAddress const& _source;
-	la::avdecc::networkInterface::MacAddress const& _dest;
+	networkInterface::MacAddress const& _source;
+	networkInterface::MacAddress const& _dest;
 	std::string _message{};
 };
 
