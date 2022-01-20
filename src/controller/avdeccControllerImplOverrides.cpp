@@ -2282,6 +2282,78 @@ void ControllerImpl::abortOperation(UniqueIdentifier const targetEntityID, entit
 	}
 }
 
+void ControllerImpl::reboot(UniqueIdentifier const targetEntityID, RebootHandler const& handler) const noexcept
+{
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User reboot ()");
+
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
+		_controller->reboot(targetEntityID,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User reboot (): {}", entity::ControllerEntity::statusToString(status));
+
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					utils::invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
+	}
+	else
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::rebootToFirmware(UniqueIdentifier const targetEntityID, entity::model::MemoryObjectIndex const memoryObjectIndex, RebootHandler const& handler) const noexcept
+{
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User rebootToFirmware (MemoryObjectIndex={})", memoryObjectIndex);
+
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
+		_controller->rebootToFirmware(targetEntityID, memoryObjectIndex,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::MemoryObjectIndex const /*memoryObjectIndex*/)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User rebootToFirmware (): {}", entity::ControllerEntity::statusToString(status));
+
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					utils::invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
+	}
+	else
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
 void ControllerImpl::startMemoryObjectOperation(UniqueIdentifier const targetEntityID, entity::model::DescriptorIndex const descriptorIndex, entity::model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer, StartMemoryObjectOperationHandler const& handler) const noexcept
 {
 	startOperation(targetEntityID, entity::model::DescriptorType::MemoryObject, descriptorIndex, operationType, memoryBuffer,

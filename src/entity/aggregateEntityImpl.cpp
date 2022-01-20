@@ -839,6 +839,22 @@ void AggregateEntityImpl::getStreamOutputCounters(UniqueIdentifier const targetE
 	}
 }
 
+void AggregateEntityImpl::reboot(UniqueIdentifier const targetEntityID, RebootHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).reboot(targetEntityID, handler);
+	}
+}
+
+void AggregateEntityImpl::rebootToFirmware(UniqueIdentifier const targetEntityID, model::MemoryObjectIndex const memoryObjectIndex, RebootToFirmwareHandler const& handler) const noexcept
+{
+	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
+	{
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).rebootToFirmware(targetEntityID, memoryObjectIndex, handler);
+	}
+}
+
 void AggregateEntityImpl::startOperation(UniqueIdentifier const targetEntityID, model::DescriptorType const descriptorType, model::DescriptorIndex const descriptorIndex, model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer, StartOperationHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))

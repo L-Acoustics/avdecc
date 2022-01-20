@@ -200,6 +200,12 @@ constexpr size_t AecpAemGetCountersCommandPayloadSize = 4u;
 /** GET_COUNTERS Response - Clause 7.4.42.2 */
 constexpr size_t AecpAemGetCountersResponsePayloadSize = 136u;
 
+/** REBOOT Command - Clause 7.4.43.1 */
+constexpr size_t AecpAemRebootCommandPayloadSize = 4u;
+
+/** REBOOT Response - Clause 7.4.43.2 */
+constexpr size_t AecpAemRebootResponsePayloadSize = 4u;
+
 /** GET_AUDIO_MAP Command - Clause 7.4.44.1 */
 constexpr size_t AecpAemGetAudioMapCommandPayloadSize = 8u;
 

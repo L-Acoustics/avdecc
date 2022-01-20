@@ -297,6 +297,14 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 Serializer<AecpAemGetCountersResponsePayloadSize> serializeGetCountersResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::DescriptorCounterValidFlag const validCounters, entity::model::DescriptorCounters const& counters);
 std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::DescriptorCounterValidFlag, entity::model::DescriptorCounters> deserializeGetCountersResponse(AemAecpdu::Payload const& payload);
 
+/** REBOOT Command - Clause 7.4.43.1 */
+Serializer<AecpAemRebootCommandPayloadSize> serializeRebootCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeRebootCommand(AemAecpdu::Payload const& payload);
+
+/** GET_COUNTERS Response - Clause 7.4.43.1 */
+Serializer<AecpAemRebootResponsePayloadSize> serializeRebootResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex);
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeRebootResponse(AemAecpdu::Payload const& payload);
+
 /** GET_AUDIO_MAP Command - Clause 7.4.44.1 */
 Serializer<AecpAemGetAudioMapCommandPayloadSize> serializeGetAudioMapCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::MapIndex const mapIndex);
 std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::MapIndex> deserializeGetAudioMapCommand(AemAecpdu::Payload const& payload);
