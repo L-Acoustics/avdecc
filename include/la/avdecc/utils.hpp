@@ -29,6 +29,7 @@
 #include "internals/uniqueIdentifier.hpp"
 
 #include <type_traits>
+#include <tuple>
 #include <iterator>
 #include <functional>
 #include <cstdarg>
@@ -293,6 +294,59 @@ struct function_traits<std::function<Ret(Args...)>>
 	using result_type = Ret;
 	using args_as_tuple = std::tuple<Args...>;
 	using function_type = std::function<Ret(Args...)>;
+
+	template<size_t N>
+	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+};
+
+/**
+* @brief Traits to easily handle closure types.
+* @details Available traits for closure types like lambda, std::function, std::bind, etc:
+*  - size_type: The number of closure parameters.
+*  - result_type: The closure result type.
+*  - args_as_tuple: All parameter types packed in a tuple.
+*  - closure_type: The complete closure type (eg. std::function<Ret(Args...)>)
+*  - is_const: Whether the closure is const or not.
+*  - arg_type<0..(size_type-1)>: The individual type for each parameter. Might require to use typename and template to retrieve the type (eg typename closure_traits<Closure>::template arg_type<0>).
+* @tparam Closure The closure type.
+*/
+template<typename Closure>
+struct closure_traits : closure_traits<decltype(&Closure::operator())> {};
+
+template<typename Ret, typename... Args>
+struct closure_traits<std::function<Ret(Args...)>>
+{
+	static size_t const size_type = sizeof...(Args);
+	using result_type = Ret;
+	using args_as_tuple = std::tuple<Args...>;
+	using closure_type = std::function<Ret(Args...)>;
+	using is_const = std::false_type;
+
+	template<size_t N>
+	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+};
+
+template<typename Class, typename Ret, typename... Args>
+struct closure_traits<Ret(Class::*)(Args...) const>
+{
+	static size_t const size_type = sizeof...(Args);
+	using result_type = Ret;
+	using args_as_tuple = std::tuple<Args...>;
+	using closure_type = Ret(Class::*)(Args...) const;
+	using is_const = std::true_type;
+
+	template<size_t N>
+	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+};
+
+template<typename Class, typename Ret, typename... Args>
+struct closure_traits<Ret(Class::*)(Args...)>
+{
+	static size_t const size_type = sizeof...(Args);
+	using result_type = Ret;
+	using args_as_tuple = std::tuple<Args...>;
+	using closure_type = Ret(Class::*)(Args...);
+	using is_const = std::false_type;
 
 	template<size_t N>
 	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
