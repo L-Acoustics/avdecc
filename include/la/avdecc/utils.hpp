@@ -50,7 +50,19 @@ namespace avdecc
 {
 namespace utils
 {
+enum class ThreadPriority
+{
+	Idle = 0,
+	Lowest = 1,
+	BelowNormal = 3,
+	Normal = 5,
+	AboveNormal = 7,
+	Highest = 9,
+	TimeCritical = 10,
+};
+
 LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION setCurrentThreadName(std::string const& name);
+LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION setCurrentThreadPriority(ThreadPriority const prio);
 LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION enableAssert() noexcept;
 LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION disableAssert() noexcept;
 LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION isAssertEnabled() noexcept;

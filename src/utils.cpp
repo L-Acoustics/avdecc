@@ -128,6 +128,62 @@ bool LA_AVDECC_CALL_CONVENTION setCurrentThreadName(std::string const& name)
 #endif // !WIN32 && ! __APPLE__ && ! __unix__
 }
 
+bool LA_AVDECC_CALL_CONVENTION setCurrentThreadPriority(ThreadPriority const prio)
+{
+#if _WIN32
+	int pri = THREAD_PRIORITY_NORMAL;
+
+	switch (prio)
+	{
+		case ThreadPriority::Idle:
+			pri = THREAD_PRIORITY_IDLE;
+			break;
+		case ThreadPriority::Lowest:
+			pri = THREAD_PRIORITY_LOWEST;
+			break;
+		case ThreadPriority::BelowNormal:
+			pri = THREAD_PRIORITY_BELOW_NORMAL;
+			break;
+		case ThreadPriority::Normal:
+			pri = THREAD_PRIORITY_NORMAL;
+			break;
+		case ThreadPriority::AboveNormal:
+			pri = THREAD_PRIORITY_ABOVE_NORMAL;
+			break;
+		case ThreadPriority::Highest:
+			pri = THREAD_PRIORITY_HIGHEST;
+			break;
+		case ThreadPriority::TimeCritical:
+			pri = THREAD_PRIORITY_TIME_CRITICAL;
+			break;
+		default:
+			return false;
+			break;
+	}
+
+	auto handle = GetCurrentThread();
+	return SetThreadPriority(handle, pri) != FALSE;
+
+#else // !_WIN32
+	struct sched_param param;
+	int policy;
+	int pri = static_cast<int>(prio);
+
+	auto handle = pthread_self();
+
+	if (pthread_getschedparam((pthread_t)handle, &policy, &param) != 0)
+		return false;
+
+	policy = pri == 0 ? SCHED_OTHER : SCHED_RR;
+
+	int const minPriority = sched_get_priority_min(policy);
+	int const maxPriority = sched_get_priority_max(policy);
+
+	param.sched_priority = ((maxPriority - minPriority) * pri) / 10 + minPriority;
+	return pthread_setschedparam((pthread_t)handle, policy, &param) == 0;
+#endif // _WIN32
+}
+
 static bool s_enableAssert = true;
 
 void LA_AVDECC_CALL_CONVENTION enableAssert() noexcept
