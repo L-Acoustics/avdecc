@@ -142,6 +142,8 @@ EndStation* LA_AVDECC_CALL_CONVENTION EndStation::createRawEndStation(protocol::
 				throw Exception(Error::InterfaceInvalid, e.what());
 			case protocol::ProtocolInterface::Error::InterfaceNotSupported:
 				throw Exception(Error::InvalidProtocolInterfaceType, e.what());
+			case protocol::ProtocolInterface::Error::InternalError:
+				throw Exception(Error::InternalError, e.what());
 			default:
 				AVDECC_ASSERT(false, "Unhandled exception");
 				throw Exception(Error::InternalError, e.what());
