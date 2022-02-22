@@ -311,7 +311,9 @@ struct function_traits<std::function<Ret(Args...)>>
 * @tparam Closure The closure type.
 */
 template<typename Closure>
-struct closure_traits : closure_traits<decltype(&Closure::operator())> {};
+struct closure_traits : closure_traits<decltype(&Closure::operator())>
+{
+};
 
 template<typename Ret, typename... Args>
 struct closure_traits<std::function<Ret(Args...)>>
@@ -327,12 +329,12 @@ struct closure_traits<std::function<Ret(Args...)>>
 };
 
 template<typename Class, typename Ret, typename... Args>
-struct closure_traits<Ret(Class::*)(Args...) const>
+struct closure_traits<Ret (Class::*)(Args...) const>
 {
 	static size_t const size_type = sizeof...(Args);
 	using result_type = Ret;
 	using args_as_tuple = std::tuple<Args...>;
-	using closure_type = Ret(Class::*)(Args...) const;
+	using closure_type = Ret (Class::*)(Args...) const;
 	using is_const = std::true_type;
 
 	template<size_t N>
@@ -340,12 +342,12 @@ struct closure_traits<Ret(Class::*)(Args...) const>
 };
 
 template<typename Class, typename Ret, typename... Args>
-struct closure_traits<Ret(Class::*)(Args...)>
+struct closure_traits<Ret (Class::*)(Args...)>
 {
 	static size_t const size_type = sizeof...(Args);
 	using result_type = Ret;
 	using args_as_tuple = std::tuple<Args...>;
-	using closure_type = Ret(Class::*)(Args...);
+	using closure_type = Ret (Class::*)(Args...);
 	using is_const = std::false_type;
 
 	template<size_t N>
