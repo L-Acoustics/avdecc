@@ -23,6 +23,7 @@
 */
 
 // Public API
+#include <la/avdecc/executor.hpp>
 #include <la/avdecc/internals/protocolMvuAecpdu.hpp>
 #include <la/networkInterfaceHelper/networkInterfaceHelper.hpp>
 
@@ -56,6 +57,8 @@ static la::networkInterface::Interface getFirstInterface()
 
 TEST(ProtocolInterfacePCap, InvalidName)
 {
+	auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(la::avdecc::protocol::ProtocolInterface::DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(la::avdecc::protocol::ProtocolInterface::DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
+
 	// Not using EXPECT_THROW, we want to check the error code inside our custom exception
 	try
 	{
@@ -142,6 +145,7 @@ public:
 			});
 
 		ASSERT_FALSE(networkInterfaceName.empty()) << "No valid NetworkInterface found";
+		_ew = la::avdecc::ExecutorManager::getInstance().registerExecutor(la::avdecc::protocol::ProtocolInterface::DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(la::avdecc::protocol::ProtocolInterface::DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
 		_pi = std::unique_ptr<la::avdecc::protocol::ProtocolInterfacePcap>(la::avdecc::protocol::ProtocolInterfacePcap::createRawProtocolInterfacePcap(networkInterfaceName));
 	}
 
@@ -156,6 +160,7 @@ public:
 	}
 
 private:
+	la::avdecc::ExecutorManager::ExecutorWrapper::UniquePointer _ew{ nullptr, nullptr };
 	std::unique_ptr<la::avdecc::protocol::ProtocolInterfacePcap> _pi{ nullptr };
 };
 } // namespace

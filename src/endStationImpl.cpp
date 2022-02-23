@@ -34,8 +34,9 @@ namespace la
 {
 namespace avdecc
 {
-EndStationImpl::EndStationImpl(protocol::ProtocolInterface::UniquePointer&& protocolInterface) noexcept
-	: _protocolInterface(std::move(protocolInterface))
+EndStationImpl::EndStationImpl(ExecutorManager::ExecutorWrapper::UniquePointer&& executorWrapper, protocol::ProtocolInterface::UniquePointer&& protocolInterface) noexcept
+	: _executorWrapper{ std::move(executorWrapper) }
+	, _protocolInterface{ std::move(protocolInterface) }
 {
 }
 
@@ -127,7 +128,9 @@ EndStation* LA_AVDECC_CALL_CONVENTION EndStation::createRawEndStation(protocol::
 {
 	try
 	{
-		return new EndStationImpl(protocol::ProtocolInterface::create(protocolInterfaceType, networkInterfaceName));
+		// We must create the executor before creating ProtocolInterface (function parameters sequencing is still undefined in c++20, so we force creation in a preceding expression)
+		auto executorWrapper = ExecutorManager::getInstance().registerExecutor(protocol::ProtocolInterface::DefaultExecutorName, ExecutorWithDispatchQueue::create(protocol::ProtocolInterface::DefaultExecutorName, utils::ThreadPriority::Highest));
+		return new EndStationImpl(std::move(executorWrapper), protocol::ProtocolInterface::create(protocolInterfaceType, networkInterfaceName));
 	}
 	catch (protocol::ProtocolInterface::Exception const& e)
 	{
@@ -142,12 +145,18 @@ EndStation* LA_AVDECC_CALL_CONVENTION EndStation::createRawEndStation(protocol::
 				throw Exception(Error::InterfaceInvalid, e.what());
 			case protocol::ProtocolInterface::Error::InterfaceNotSupported:
 				throw Exception(Error::InvalidProtocolInterfaceType, e.what());
+			case protocol::ProtocolInterface::Error::ExecutorNotInitialized:
+				throw Exception(Error::InternalError, e.what()); // Should never happen, the EndStation registers the executor in the constructor
 			case protocol::ProtocolInterface::Error::InternalError:
 				throw Exception(Error::InternalError, e.what());
 			default:
 				AVDECC_ASSERT(false, "Unhandled exception");
 				throw Exception(Error::InternalError, e.what());
 		}
+	}
+	catch (std::runtime_error const& e)
+	{
+		throw Exception(Error::InterfaceOpenError, e.what());
 	}
 }
 

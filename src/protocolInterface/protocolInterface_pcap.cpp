@@ -27,6 +27,7 @@
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
 #include "la/avdecc/watchDog.hpp"
 #include "la/avdecc/utils.hpp"
+#include "la/avdecc/executor.hpp"
 
 #include "stateMachine/stateMachineManager.hpp"
 #include "protocolInterface_pcap.hpp"
@@ -145,33 +146,44 @@ public:
 
 	static void pcapLoopHandler(u_char* user, const struct pcap_pkthdr* header, const u_char* pkt_data)
 	{
-		auto* self = reinterpret_cast<ProtocolInterfacePcapImpl*>(user);
+		// Make a copy of the pcap message and forward to the executor queue
+		auto pcapMessage = la::avdecc::MemoryBuffer{ pkt_data, header->caplen };
 
-		// Packet received, process it
-		auto des = DeserializationBuffer(pkt_data, header->caplen);
-		EtherLayer2 etherLayer2;
-		deserialize<EtherLayer2>(&etherLayer2, des);
+		la::avdecc::ExecutorManager::getInstance().pushJob(DefaultExecutorName,
+			[user, msg = std::move(pcapMessage)]()
+			{
+				auto* self = reinterpret_cast<ProtocolInterfacePcapImpl*>(user);
 
-		// Don't ignore self mac, another entity might be on the computer
+				// Packet received, process it
+				auto des = DeserializationBuffer(msg);
+				EtherLayer2 etherLayer2;
+				deserialize<EtherLayer2>(&etherLayer2, des);
 
-		// Check ether type (shouldn't be needed, pcap filter is active)
-		std::uint16_t etherType = AVDECC_UNPACK_TYPE(*((std::uint16_t*)(pkt_data + 12)), std::uint16_t);
-		if (etherType != AvtpEtherType)
-			return;
+				// Don't ignore self mac, another entity might be on the computer
 
-		std::uint8_t const* avtpdu = &pkt_data[14]; // Start of AVB Transport Protocol
-		auto avtpdu_size = header->caplen - 14;
-		// Check AVTP control bit (meaning AVDECC packet)
-		std::uint8_t avtp_sub_type_control = avtpdu[0];
-		if ((avtp_sub_type_control & 0xF0) == 0)
-			return;
+				// Check ether type (shouldn't be needed, pcap filter is active)
+				std::uint16_t etherType = AVDECC_UNPACK_TYPE(*((std::uint16_t*)(msg.data() + 12)), std::uint16_t);
+				if (etherType != AvtpEtherType)
+				{
+					return;
+				}
 
-		// Try to detect possible deadlock
-		{
-			self->_watchDog.registerWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + utils::toHexString(reinterpret_cast<size_t>(self)), std::chrono::milliseconds{ 1000u }, true);
-			self->dispatchAvdeccMessage(avtpdu, avtpdu_size, etherLayer2);
-			self->_watchDog.unregisterWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + utils::toHexString(reinterpret_cast<size_t>(self)), true);
-		}
+				std::uint8_t const* avtpdu = msg.data() + 14; // Start of AVB Transport Protocol
+				auto avtpdu_size = msg.size() - 14;
+				// Check AVTP control bit (meaning AVDECC packet)
+				std::uint8_t avtp_sub_type_control = avtpdu[0];
+				if ((avtp_sub_type_control & 0xF0) == 0)
+				{
+					return;
+				}
+
+				// Try to detect possible deadlock
+				{
+					self->_watchDog.registerWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + utils::toHexString(reinterpret_cast<size_t>(self)), std::chrono::milliseconds{ 1000u }, true);
+					self->dispatchAvdeccMessage(avtpdu, avtpdu_size, etherLayer2);
+					self->_watchDog.unregisterWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + utils::toHexString(reinterpret_cast<size_t>(self)), true);
+				}
+			});
 	}
 
 	/** Destructor */

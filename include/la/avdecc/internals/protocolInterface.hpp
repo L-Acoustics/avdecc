@@ -57,6 +57,9 @@ namespace protocol
 class ProtocolInterface : public la::avdecc::utils::Subject<ProtocolInterface, std::recursive_mutex>
 {
 public:
+	/** Name of the default executor used for events */
+	static auto constexpr DefaultExecutorName = "avdecc::protocol::PI";
+
 	/** The existing types of ProtocolInterface */
 	enum class Type
 	{
@@ -81,6 +84,7 @@ public:
 		InvalidParameters = 8, /**< Specified parameters are invalid. */
 		InterfaceNotSupported = 9, /**< This protocol interface is not in the list of supported protocol interfaces. */
 		MessageNotSupported = 10, /**< This type of message is not supported by this protocol interface. */
+		ExecutorNotInitialized = 11, /**< The executor is not initialized. */
 		InternalError = 99, /**< Internal error, please report the issue. */
 	};
 

@@ -375,30 +375,21 @@ TEST(StreamConnectionState, Comparison)
 	{
 		auto const s1{ la::avdecc::entity::model::StreamInputConnectionInfo{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamInputConnectionInfo::State::NotConnected } };
 		auto const s2{ la::avdecc::entity::model::StreamInputConnectionInfo{ la::avdecc::entity::model::StreamIdentification{ la::avdecc::UniqueIdentifier{ 0x1 }, 1 }, la::avdecc::entity::model::StreamInputConnectionInfo::State::NotConnected } };
-		auto const s3{ la::avdecc::entity::model::StreamInputConnectionInfo{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamInputConnectionInfo::State::NotConnected } };
 		EXPECT_EQ(s2, s1) << "Talker StreamIdentification ignored when not connected";
-		EXPECT_NE(s3, s1);
-		EXPECT_NE(s3, s2);
 	}
 
 	// FastConnecting
 	{
 		auto const s1{ la::avdecc::entity::model::StreamInputConnectionInfo{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamInputConnectionInfo::State::FastConnecting } };
 		auto const s2{ la::avdecc::entity::model::StreamInputConnectionInfo{ la::avdecc::entity::model::StreamIdentification{ la::avdecc::UniqueIdentifier{ 0x1 }, 1 }, la::avdecc::entity::model::StreamInputConnectionInfo::State::FastConnecting } };
-		auto const s3{ la::avdecc::entity::model::StreamInputConnectionInfo{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamInputConnectionInfo::State::FastConnecting } };
 		EXPECT_NE(s2, s1) << "Talker StreamIdentification not ignored when fast connecting";
-		EXPECT_NE(s3, s1);
-		EXPECT_NE(s3, s2);
 	}
 
 	// Connected
 	{
 		auto const s1{ la::avdecc::entity::model::StreamInputConnectionInfo{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamInputConnectionInfo::State::Connected } };
 		auto const s2{ la::avdecc::entity::model::StreamInputConnectionInfo{ la::avdecc::entity::model::StreamIdentification{ la::avdecc::UniqueIdentifier{ 0x1 }, 1 }, la::avdecc::entity::model::StreamInputConnectionInfo::State::Connected } };
-		auto const s3{ la::avdecc::entity::model::StreamInputConnectionInfo{ la::avdecc::entity::model::StreamIdentification{}, la::avdecc::entity::model::StreamInputConnectionInfo::State::Connected } };
 		EXPECT_NE(s2, s1) << "Talker StreamIdentification not ignored when connected";
-		EXPECT_NE(s3, s1);
-		EXPECT_NE(s3, s2);
 	}
 }
 
