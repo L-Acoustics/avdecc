@@ -237,3 +237,6 @@ if(WIN32)
 		message(FATAL_ERROR "Microsoft Visual C++ v16.3 required (MSVC_VERSION >= 1923), you have ${MSVC_VERSION}")
 	endif()
 endif()
+
+# Configure a few things that has to be done last
+cu_finalize()
