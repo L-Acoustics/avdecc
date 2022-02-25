@@ -302,12 +302,12 @@ struct function_traits<std::function<Ret(Args...)>>
 /**
 * @brief Traits to easily handle closure types.
 * @details Available traits for closure types like lambda, std::function, std::bind, etc:
-*  - size_type: The number of closure parameters.
+*  - arg_count: The number of closure parameters.
 *  - result_type: The closure result type.
 *  - args_as_tuple: All parameter types packed in a tuple.
 *  - closure_type: The complete closure type (eg. std::function<Ret(Args...)>)
 *  - is_const: Whether the closure is const or not.
-*  - arg_type<0..(size_type-1)>: The individual type for each parameter. Might require to use typename and template to retrieve the type (eg typename closure_traits<Closure>::template arg_type<0>).
+*  - arg_type<0..(arg_count-1)>: The individual type for each parameter. Might require to use typename and template to retrieve the type (eg typename closure_traits<Closure>::template arg_type<0>).
 * @tparam Closure The closure type.
 */
 template<typename Closure>
@@ -315,10 +315,11 @@ struct closure_traits : closure_traits<decltype(&Closure::operator())>
 {
 };
 
+// std::function specialization
 template<typename Ret, typename... Args>
 struct closure_traits<std::function<Ret(Args...)>>
 {
-	static size_t const size_type = sizeof...(Args);
+	static size_t const arg_count = sizeof...(Args);
 	using result_type = Ret;
 	using args_as_tuple = std::tuple<Args...>;
 	using closure_type = std::function<Ret(Args...)>;
@@ -328,10 +329,11 @@ struct closure_traits<std::function<Ret(Args...)>>
 	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
 };
 
+// Class const member specialization
 template<typename Class, typename Ret, typename... Args>
 struct closure_traits<Ret (Class::*)(Args...) const>
 {
-	static size_t const size_type = sizeof...(Args);
+	static size_t const arg_count = sizeof...(Args);
 	using result_type = Ret;
 	using args_as_tuple = std::tuple<Args...>;
 	using closure_type = Ret (Class::*)(Args...) const;
@@ -341,10 +343,11 @@ struct closure_traits<Ret (Class::*)(Args...) const>
 	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
 };
 
+// Class member specialization
 template<typename Class, typename Ret, typename... Args>
 struct closure_traits<Ret (Class::*)(Args...)>
 {
-	static size_t const size_type = sizeof...(Args);
+	static size_t const arg_count = sizeof...(Args);
 	using result_type = Ret;
 	using args_as_tuple = std::tuple<Args...>;
 	using closure_type = Ret (Class::*)(Args...);
@@ -353,6 +356,91 @@ struct closure_traits<Ret (Class::*)(Args...)>
 	template<size_t N>
 	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
 };
+
+// Class const noexcept member specialization
+template<typename Class, typename Ret, typename... Args>
+struct closure_traits<Ret (Class::*)(Args...) const noexcept>
+{
+	static size_t const arg_count = sizeof...(Args);
+	using result_type = Ret;
+	using args_as_tuple = std::tuple<Args...>;
+	using closure_type = Ret (Class::*)(Args...) const noexcept;
+	using is_const = std::true_type;
+
+	template<size_t N>
+	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+};
+
+// Class noexcept member specialization
+template<typename Class, typename Ret, typename... Args>
+struct closure_traits<Ret (Class::*)(Args...) noexcept>
+{
+	static size_t const arg_count = sizeof...(Args);
+	using result_type = Ret;
+	using args_as_tuple = std::tuple<Args...>;
+	using closure_type = Ret (Class::*)(Args...) noexcept;
+	using is_const = std::false_type;
+
+	template<size_t N>
+	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+};
+
+// Function pointer specialization
+template<typename Ret, typename... Args>
+struct closure_traits<Ret (*)(Args...)>
+{
+	static size_t const arg_count = sizeof...(Args);
+	using result_type = Ret;
+	using args_as_tuple = std::tuple<Args...>;
+	using closure_type = Ret (*)(Args...);
+	using is_const = std::true_type;
+
+	template<size_t N>
+	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+};
+
+// Function const pointer specialization
+template<typename Ret, typename... Args>
+struct closure_traits<Ret (*const)(Args...)>
+{
+	static size_t const arg_count = sizeof...(Args);
+	using result_type = Ret;
+	using args_as_tuple = std::tuple<Args...>;
+	using closure_type = Ret (*const)(Args...);
+	using is_const = std::true_type;
+
+	template<size_t N>
+	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+};
+
+#ifdef _WIN32
+// __stdcall function pointer specialization
+template<typename Ret, typename... Args>
+struct closure_traits<Ret(__stdcall*)(Args...)>
+{
+	static size_t const arg_count = sizeof...(Args);
+	using result_type = Ret;
+	using args_as_tuple = std::tuple<Args...>;
+	using closure_type = Ret(__stdcall*)(Args...);
+	using is_const = std::true_type;
+
+	template<size_t N>
+	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+};
+// __stdcall function const pointer specialization
+template<typename Ret, typename... Args>
+struct closure_traits<Ret(__stdcall* const)(Args...)>
+{
+	static size_t const arg_count = sizeof...(Args);
+	using result_type = Ret;
+	using args_as_tuple = std::tuple<Args...>;
+	using closure_type = Ret(__stdcall* const)(Args...);
+	using is_const = std::true_type;
+
+	template<size_t N>
+	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+};
+#endif // _WIN32
 
 /** Class to easily manipulate an enum that represents a bitfield (strongly typed alternative to traits). */
 template<typename EnumType, typename = std::enable_if_t<std::is_enum<EnumType>::value>>
@@ -780,7 +868,7 @@ constexpr std::enable_if_t<la::avdecc::utils::enum_traits<EnumType>::is_bitfield
 
 /** Return type of a closure. */
 template<typename CallableType>
-using CallableReturnType = typename closure_traits<std::remove_cv_t<std::remove_reference_t<CallableType>>>::result_type;
+using CallableReturnType = typename closure_traits<std::remove_reference_t<CallableType>>::result_type;
 
 /**
 * @brief Function to safely call a handler (in the form of a std::function), forwarding all parameters to it.
