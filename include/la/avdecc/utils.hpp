@@ -776,20 +776,32 @@ constexpr std::enable_if_t<la::avdecc::utils::enum_traits<EnumType>::is_bitfield
 	return value;
 }
 
+/** Return type of a closure. */
+template<typename CallableType>
+using CallableReturnType = typename closure_traits<std::remove_cv_t<std::remove_reference_t<CallableType>>>::result_type;
+
 /**
 * @brief Function to safely call a handler (in the form of a std::function), forwarding all parameters to it.
 * @param[in] handler The callable object to be invoked.
 * @param[in] params The parameters to pass to the handler.
+* @return The result of the handler, if any.
 * @details Calls the specified handler in the current thread, protecting the caller from any thrown exception in the handler itself.
 */
 template<typename CallableType, typename... Ts>
-void invokeProtectedHandler(CallableType&& handler, Ts&&... params) noexcept
+CallableReturnType<CallableType> invokeProtectedHandler(CallableType&& handler, Ts&&... params) noexcept
 {
 	if (handler)
 	{
 		try
 		{
-			handler(std::forward<Ts>(params)...);
+			if constexpr (std::is_same_v<CallableReturnType<CallableType>, void>)
+			{
+				handler(std::forward<Ts>(params)...);
+			}
+			else
+			{
+				return handler(std::forward<Ts>(params)...);
+			}
 		}
 		catch (std::exception const& e)
 		{
@@ -801,20 +813,33 @@ void invokeProtectedHandler(CallableType&& handler, Ts&&... params) noexcept
 		{
 		}
 	}
+
+	if constexpr (!std::is_same_v<CallableReturnType<CallableType>, void>)
+	{
+		return CallableReturnType<CallableType>{};
+	}
 }
 
 /**
 * @brief Function to safely call a class method, forwarding all parameters to it.
+* @return The result of the method, if any.
 * @details Calls the specified class method, protecting the caller from any thrown exception in the handler itself.
 */
 template<typename Method, class Object, typename... Parameters>
-void invokeProtectedMethod(Method&& method, Object* const object, Parameters&&... params) noexcept
+CallableReturnType<Method> invokeProtectedMethod(Method&& method, Object* const object, Parameters&&... params) noexcept
 {
 	if (method != nullptr && object != nullptr)
 	{
 		try
 		{
-			(object->*method)(std::forward<Parameters>(params)...);
+			if constexpr (std::is_same_v<CallableReturnType<Method>, void>)
+			{
+				(object->*method)(std::forward<Parameters>(params)...);
+			}
+			else
+			{
+				return (object->*method)(std::forward<Parameters>(params)...);
+			}
 		}
 		catch (std::exception const& e)
 		{
@@ -826,32 +851,11 @@ void invokeProtectedMethod(Method&& method, Object* const object, Parameters&&..
 		{
 		}
 	}
-}
 
-/**
-* @brief Function to safely call a class method, forwarding all parameters to it and returning specified ReturnType (should be default-constructible).
-* @details Calls the specified class method, protecting the caller from any thrown exception in the handler itself.
-*/
-template<class ReturnType, typename Method, class Object, typename... Parameters>
-ReturnType invokeProtectedMethodWithReturn(Method&& method, Object* const object, Parameters&&... params) noexcept
-{
-	if (method != nullptr && object != nullptr)
+	if constexpr (!std::is_same_v<CallableReturnType<Method>, void>)
 	{
-		try
-		{
-			return (object->*method)(std::forward<Parameters>(params)...);
-		}
-		catch (std::exception const& e)
-		{
-			/* Forcing the assert to fail, but with code so we don't get a warning on gcc */
-			AVDECC_ASSERT(method == nullptr, (std::string("invokeProtectedMethodWithReturn caught an exception in method: ") + e.what()).c_str());
-			(void)e;
-		}
-		catch (...)
-		{
-		}
+		return CallableReturnType<Method>{};
 	}
-	return ReturnType{};
 }
 
 /** Useful template to create strongly typed defines that can be extended using inheritance */
