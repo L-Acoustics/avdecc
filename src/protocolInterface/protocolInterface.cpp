@@ -114,7 +114,7 @@ ProtocolInterface::Error LA_AVDECC_CALL_CONVENTION ProtocolInterface::unregister
 	return Error::NoError;
 }
 
-bool ProtocolInterface::isAecpResponseMessageType(AecpMessageType const messageType) const noexcept
+bool ProtocolInterface::isAecpResponseMessageType(AecpMessageType const messageType) noexcept
 {
 	if (messageType == protocol::AecpMessageType::AemResponse || messageType == protocol::AecpMessageType::AddressAccessResponse || messageType == protocol::AecpMessageType::AvcResponse || messageType == protocol::AecpMessageType::VendorUniqueResponse || messageType == protocol::AecpMessageType::HdcpAemResponse || messageType == protocol::AecpMessageType::ExtendedResponse)
 		return true;

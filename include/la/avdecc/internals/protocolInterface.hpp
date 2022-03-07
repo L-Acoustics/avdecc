@@ -324,7 +324,7 @@ protected:
 	virtual ~ProtocolInterface() noexcept = default;
 
 	/** Returns true is the specified AecpMessageType is a Response kind, false if it's a Command kind. */
-	bool isAecpResponseMessageType(AecpMessageType const messageType) const noexcept;
+	static bool isAecpResponseMessageType(AecpMessageType const messageType) noexcept;
 
 	/** Returns the Command Timeout (in msec) for the specified VendorUnique ProtocolIdentifier and VuAecpdu. */
 	std::uint32_t getVuAecpCommandTimeout(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VuAecpdu const& aecpdu) const noexcept;
