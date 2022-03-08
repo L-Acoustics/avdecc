@@ -253,6 +253,8 @@ avdecc_protocol_interface_error_t convertProtocolInterfaceErrorCode(protocol::Pr
 			return avdecc_protocol_interface_error_interface_not_supported;
 		case protocol::ProtocolInterface::Error::MessageNotSupported:
 			return avdecc_protocol_interface_error_message_not_supported;
+		case protocol::ProtocolInterface::Error::ExecutorNotInitialized:
+			return avdecc_protocol_interface_error_executor_not_initialized;
 		case protocol::ProtocolInterface::Error::InternalError:
 			return avdecc_protocol_interface_error_internal_error;
 		default:

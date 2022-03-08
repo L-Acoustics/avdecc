@@ -28,6 +28,7 @@
 #define LA_AVDECC_HANDLE void*
 #define LA_AVDECC_INVALID_HANDLE (LA_AVDECC_HANDLE) NULL
 
+#define LA_AVDECC_EXECUTOR_WRAPPER_HANDLE LA_AVDECC_HANDLE
 #define LA_AVDECC_PROTOCOL_INTERFACE_HANDLE LA_AVDECC_HANDLE
 #define LA_AVDECC_LOCAL_ENTITY_HANDLE LA_AVDECC_HANDLE
 
@@ -45,6 +46,7 @@ typedef unsigned long long avdecc_bridge_identifier_t;
 typedef unsigned char avdecc_bool_t;
 typedef unsigned char avdecc_protocol_interface_type_t;
 typedef avdecc_protocol_interface_type_t avdecc_protocol_interface_types_t;
+typedef unsigned char avdecc_executor_error_t;
 typedef unsigned char avdecc_protocol_interface_error_t;
 typedef unsigned int avdecc_entity_entity_capabilities_t;
 typedef unsigned short avdecc_entity_talker_capabilities_t;
@@ -114,6 +116,16 @@ enum avdecc_bool_e
 	avdecc_bool_true = 1,
 };
 
+/** Valid values for avdecc_executor_error_t */
+enum avdecc_executor_error_e
+{
+	avdecc_executor_error_no_error = 0,
+	avdecc_executor_error_already_exists = 1, /**< An Executor with specified name already exists. */
+	avdecc_executor_error_not_found = 2, /**< No such Executor with specified name exists. */
+	avdecc_executor_error_invalid_protocol_interface_handle = 98, /**< Passed LA_AVDECC_EXECUTOR_WRAPPER_HANDLE is invalid. */
+	avdecc_executor_error_internal_error = 99, /**< Internal error, please report the issue. */
+};
+
 /** Valid values for avdecc_protocol_interface_type_t */
 enum avdecc_protocol_interface_type_e
 {
@@ -138,6 +150,7 @@ enum avdecc_protocol_interface_error_e
 	avdecc_protocol_interface_error_invalid_parameters = 8, /**< Specified parameters are invalid (either interfaceName and/or macAddress). */
 	avdecc_protocol_interface_error_interface_not_supported = 9, /**< This protocol interface is not in the list of supported protocol interfaces. */
 	avdecc_protocol_interface_error_message_not_supported = 10, /**< This type of message is not supported by this protocol interface. */
+	avdecc_protocol_interface_error_executor_not_initialized = 11, /**< The executor is not initialized. */
 	avdecc_protocol_interface_error_invalid_protocol_interface_handle = 98, /**< Passed LA_AVDECC_PROTOCOL_INTERFACE_HANDLE is invalid. */
 	avdecc_protocol_interface_error_internal_error = 99, /**< Internal error, please report the issue. */
 };

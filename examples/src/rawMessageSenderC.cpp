@@ -520,6 +520,18 @@ static int doJob()
 		return 1;
 	}
 
+	// Create an Executor
+	auto executorHandle = LA_AVDECC_INVALID_HANDLE;
+	{
+		auto const error = LA_AVDECC_Executor_createQueueExecutor(LA_AVDECC_ProtocolInterface_getDefaultExecutorName(), &executorHandle);
+		if (error != avdecc_executor_error_no_error)
+		{
+			outputText("Error creating executor: " + std::to_string(error) + "\n");
+			return 1;
+		}
+	}
+	auto executorHandleGuard = Guard<LA_AVDECC_EXECUTOR_WRAPPER_HANDLE, avdecc_executor_error_t, &LA_AVDECC_Executor_destroy>{ executorHandle };
+
 	// We need to create/destroy the protocol interface for each test, as the protocol interface will not trigger events for already discovered entities
 	{
 		// Create a ProtocolInterface
