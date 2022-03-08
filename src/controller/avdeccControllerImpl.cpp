@@ -3219,6 +3219,7 @@ bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity:
 			[[fallthrough]];
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
+			LOG_CONTROLLER_WARN(entityID, "Error registering for unsolicited notifications: {}", entity::LocalEntity::statusToString(status));
 			removeCompatibilityFlagAndNotify(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			return true;
 		case FailureAction::NotAuthenticated:
@@ -3376,6 +3377,7 @@ bool ControllerImpl::processGetStaticModelFailureStatus(entity::ControllerEntity
 			return true;
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
+			LOG_CONTROLLER_WARN(entityID, "Error getting IEEE1722.1 mandatory descriptor ({}): {}", entity::model::descriptorTypeToString(descriptorType), entity::LocalEntity::statusToString(status));
 			removeCompatibilityFlagAndNotify(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			return true;
 		case FailureAction::NotAuthenticated:
@@ -3458,6 +3460,7 @@ bool ControllerImpl::processGetAecpDynamicInfoFailureStatus(entity::ControllerEn
 			return true;
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
+			LOG_CONTROLLER_WARN(entityID, "Error getting IEEE1722.1 mandatory dynamic info ({}): {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType), entity::LocalEntity::statusToString(status));
 			removeCompatibilityFlagAndNotify(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			return true;
 		case FailureAction::NotAuthenticated:
@@ -3546,6 +3549,7 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 			return true;
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
+			LOG_CONTROLLER_WARN(entityID, "Error getting IEEE1722.1 mandatory ACMP info ({}): {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType), entity::LocalEntity::statusToString(status));
 			removeCompatibilityFlagAndNotify(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			return true;
 		case FailureAction::NotAuthenticated:
@@ -3630,6 +3634,7 @@ bool ControllerImpl::processGetAcmpDynamicInfoFailureStatus(entity::ControllerEn
 			return true;
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
+			LOG_CONTROLLER_WARN(entityID, "Error getting IEEE1722.1 mandatory ACMP info ({}): {}", ControlledEntityImpl::dynamicInfoTypeToString(dynamicInfoType), entity::LocalEntity::statusToString(status));
 			removeCompatibilityFlagAndNotify(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			return true;
 		case FailureAction::NotAuthenticated:
@@ -3718,6 +3723,7 @@ bool ControllerImpl::processGetDescriptorDynamicInfoFailureStatus(entity::Contro
 			break;
 		case FailureAction::ErrorContinue:
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
+			LOG_CONTROLLER_WARN(entityID, "Error getting IEEE1722.1 mandatory descriptor dynamic info ({}): {}", ControlledEntityImpl::descriptorDynamicInfoTypeToString(descriptorDynamicInfoType), entity::LocalEntity::statusToString(status));
 			removeCompatibilityFlagAndNotify(*entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			fallbackStaticModelEnumeration = true;
 			break;
