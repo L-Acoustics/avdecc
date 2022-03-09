@@ -30,6 +30,7 @@
 #include "la/avdecc/executor.hpp"
 
 #include "stateMachine/stateMachineManager.hpp"
+#include "ethernetPacketDispatch.hpp"
 #include "protocolInterface_pcap.hpp"
 #include "pcapInterface.hpp"
 #include "logHelper.hpp"
@@ -142,48 +143,6 @@ public:
 
 		// Start the state machines
 		_stateMachineManager.startStateMachines();
-	}
-
-	static void pcapLoopHandler(u_char* user, const struct pcap_pkthdr* header, const u_char* pkt_data)
-	{
-		// Make a copy of the pcap message and forward to the executor queue
-		auto pcapMessage = la::avdecc::MemoryBuffer{ pkt_data, header->caplen };
-
-		la::avdecc::ExecutorManager::getInstance().pushJob(DefaultExecutorName,
-			[user, msg = std::move(pcapMessage)]()
-			{
-				auto* self = reinterpret_cast<ProtocolInterfacePcapImpl*>(user);
-
-				// Packet received, process it
-				auto des = DeserializationBuffer(msg);
-				EtherLayer2 etherLayer2;
-				deserialize<EtherLayer2>(&etherLayer2, des);
-
-				// Don't ignore self mac, another entity might be on the computer
-
-				// Check ether type (shouldn't be needed, pcap filter is active)
-				std::uint16_t etherType = AVDECC_UNPACK_TYPE(*((std::uint16_t*)(msg.data() + 12)), std::uint16_t);
-				if (etherType != AvtpEtherType)
-				{
-					return;
-				}
-
-				std::uint8_t const* avtpdu = msg.data() + 14; // Start of AVB Transport Protocol
-				auto avtpdu_size = msg.size() - 14;
-				// Check AVTP control bit (meaning AVDECC packet)
-				std::uint8_t avtp_sub_type_control = avtpdu[0];
-				if ((avtp_sub_type_control & 0xF0) == 0)
-				{
-					return;
-				}
-
-				// Try to detect possible deadlock
-				{
-					self->_watchDog.registerWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + utils::toHexString(reinterpret_cast<size_t>(self)), std::chrono::milliseconds{ 1000u }, true);
-					self->dispatchAvdeccMessage(avtpdu, avtpdu_size, etherLayer2);
-					self->_watchDog.unregisterWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + utils::toHexString(reinterpret_cast<size_t>(self)), true);
-				}
-			});
 	}
 
 	/** Destructor */
@@ -639,6 +598,52 @@ private:
 	/* ************************************************************ */
 	/* Private methods                                              */
 	/* ************************************************************ */
+	void processRawPacket(la::avdecc::MemoryBuffer&& packet) const noexcept
+	{
+		la::avdecc::ExecutorManager::getInstance().pushJob(DefaultExecutorName,
+			[this, msg = std::move(packet)]()
+			{
+				// Packet received, process it
+				auto des = DeserializationBuffer(msg);
+				EtherLayer2 etherLayer2;
+				deserialize<EtherLayer2>(&etherLayer2, des);
+
+				// Don't ignore self mac, another entity might be on the computer
+
+				// Check ether type (shouldn't be needed, pcap filter is active)
+				std::uint16_t etherType = AVDECC_UNPACK_TYPE(*((std::uint16_t*)(msg.data() + 12)), std::uint16_t);
+				if (etherType != AvtpEtherType)
+				{
+					return;
+				}
+
+				std::uint8_t const* avtpdu = msg.data() + 14; // Start of AVB Transport Protocol
+				auto avtpdu_size = msg.size() - 14;
+				// Check AVTP control bit (meaning AVDECC packet)
+				std::uint8_t avtp_sub_type_control = avtpdu[0];
+				if ((avtp_sub_type_control & 0xF0) == 0)
+				{
+					return;
+				}
+
+				// Try to detect possible deadlock
+				{
+					_watchDog.registerWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + utils::toHexString(reinterpret_cast<size_t>(this)), std::chrono::milliseconds{ 1000u }, true);
+					_ethernetPacketDispatcher.dispatchAvdeccMessage(avtpdu, avtpdu_size, etherLayer2);
+					_watchDog.unregisterWatch("avdecc::PCapInterface::dispatchAvdeccMessage::" + utils::toHexString(reinterpret_cast<size_t>(this)), true);
+				}
+			});
+	}
+
+	static void pcapLoopHandler(u_char* user, const struct pcap_pkthdr* header, const u_char* pkt_data)
+	{
+		auto* self = reinterpret_cast<ProtocolInterfacePcapImpl*>(user);
+
+		// Make a copy of the pcap message and forward to the processing queue
+		auto pcapMessage = la::avdecc::MemoryBuffer{ pkt_data, header->caplen };
+		self->processRawPacket(std::move(pcapMessage));
+	}
+
 	Error sendPacket(SerializationBuffer const& buffer) const noexcept
 	{
 		auto length = buffer.size();
@@ -664,234 +669,6 @@ private:
 		return Error::TransportError;
 	}
 
-	void deserializeAecpMessage(EtherLayer2 const& etherLayer2, Deserializer& des, Aecpdu& aecp) const
-	{
-		// Fill EtherLayer2
-		aecp.setSrcAddress(etherLayer2.getSrcAddress());
-		aecp.setDestAddress(etherLayer2.getDestAddress());
-		// Then deserialize Avtp control
-		deserialize<AvtpduControl>(&aecp, des);
-		// Then deserialize Aecp
-		deserialize<Aecpdu>(&aecp, des);
-	}
-
-	void dispatchAvdeccMessage(std::uint8_t const* const pkt_data, size_t const pkt_len, EtherLayer2 const& etherLayer2) noexcept
-	{
-		try
-		{
-			// Read Avtpdu SubType and ControlData (which is remapped to MessageType for all 1722.1 messages)
-			std::uint8_t const subType = pkt_data[0] & 0x7f;
-			std::uint8_t const controlData = pkt_data[1] & 0x7f;
-
-			// Create a deserialization buffer
-			auto des = DeserializationBuffer(pkt_data, pkt_len);
-
-			switch (subType)
-			{
-				/* ADP Message */
-				case AvtpSubType_Adp:
-				{
-					auto adpdu = Adpdu::create();
-					auto& adp = static_cast<Adpdu&>(*adpdu);
-
-					// Fill EtherLayer2
-					adp.setSrcAddress(etherLayer2.getSrcAddress());
-					adp.setDestAddress(etherLayer2.getDestAddress());
-					// Then deserialize Avtp control
-					deserialize<AvtpduControl>(&adp, des);
-					// Then deserialize Adp
-					deserialize<Adpdu>(&adp, des);
-
-					// Low level notification
-					notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAdpduReceived, this, adp);
-
-					// Forward to our state machine
-					_stateMachineManager.processAdpdu(adp);
-					break;
-				}
-
-				/* AECP Message */
-				case AvtpSubType_Aecp:
-				{
-					auto const messageType = static_cast<AecpMessageType>(controlData);
-
-					static std::unordered_map<AecpMessageType, std::function<Aecpdu::UniquePointer(ProtocolInterfacePcapImpl* const pi, EtherLayer2 const& etherLayer2, Deserializer& des, std::uint8_t const* const pkt_data, size_t const pkt_len)>, AecpMessageType::Hash> s_Dispatch{
-						{ AecpMessageType::AemCommand,
-							[](ProtocolInterfacePcapImpl* const /*pi*/, EtherLayer2 const& /*etherLayer2*/, Deserializer& /*des*/, std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
-							{
-								return AemAecpdu::create(false);
-							} },
-						{ AecpMessageType::AemResponse,
-							[](ProtocolInterfacePcapImpl* const /*pi*/, EtherLayer2 const& /*etherLayer2*/, Deserializer& /*des*/, std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
-							{
-								return AemAecpdu::create(true);
-							} },
-						{ AecpMessageType::AddressAccessCommand,
-							[](ProtocolInterfacePcapImpl* const /*pi*/, EtherLayer2 const& /*etherLayer2*/, Deserializer& /*des*/, std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
-							{
-								return AaAecpdu::create(false);
-							} },
-						{ AecpMessageType::AddressAccessResponse,
-							[](ProtocolInterfacePcapImpl* const /*pi*/, EtherLayer2 const& /*etherLayer2*/, Deserializer& /*des*/, std::uint8_t const* const /*pkt_data*/, size_t const /*pkt_len*/)
-							{
-								return AaAecpdu::create(true);
-							} },
-						{ AecpMessageType::VendorUniqueCommand,
-							[](ProtocolInterfacePcapImpl* const pi, EtherLayer2 const& etherLayer2, Deserializer& des, std::uint8_t const* const pkt_data, size_t const pkt_len)
-							{
-								// We have to retrieve the ProtocolID to dispatch
-								auto const protocolIdentifierOffset = AvtpduControl::HeaderLength + Aecpdu::HeaderLength;
-								if (pkt_len >= (protocolIdentifierOffset + VuAecpdu::ProtocolIdentifier::Size))
-								{
-									auto protocolIdentifier = VuAecpdu::ProtocolIdentifier::ArrayType{};
-									std::memcpy(protocolIdentifier.data(), pkt_data + protocolIdentifierOffset, VuAecpdu::ProtocolIdentifier::Size);
-
-									auto const vuProtocolID = VuAecpdu::ProtocolIdentifier{ protocolIdentifier };
-									auto* vuDelegate = pi->getVendorUniqueDelegate(vuProtocolID);
-									if (vuDelegate)
-									{
-										// VendorUnique Commands are always handled by the VendorUniqueDelegate
-										auto aecpdu = vuDelegate->createAecpdu(vuProtocolID, false);
-										auto& vuAecp = static_cast<VuAecpdu&>(*aecpdu);
-
-										// Deserialize the aecp message
-										pi->deserializeAecpMessage(etherLayer2, des, vuAecp);
-
-										// Low level notification
-										pi->notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpduReceived, pi, vuAecp);
-
-										// Forward to the delegate
-										vuDelegate->onVuAecpCommand(pi, vuProtocolID, vuAecp);
-
-										// Return empty Aecpdu so that it's not processed by the StateMachineManager
-									}
-									else
-									{
-										LOG_PROTOCOL_INTERFACE_DEBUG(networkInterface::MacAddress{}, networkInterface::MacAddress{}, "Unhandled VendorUnique Command for ProtocolIdentifier {}", utils::toHexString(static_cast<VuAecpdu::ProtocolIdentifier::IntegralType>(vuProtocolID), true));
-									}
-								}
-								else
-								{
-									LOG_PROTOCOL_INTERFACE_WARN(networkInterface::MacAddress{}, networkInterface::MacAddress{}, "Invalid VendorUnique Command received. Not enough bytes in the message to hold ProtocolIdentifier");
-								}
-
-								return Aecpdu::UniquePointer{ nullptr, nullptr };
-							} },
-						{ AecpMessageType::VendorUniqueResponse,
-							[](ProtocolInterfacePcapImpl* const pi, EtherLayer2 const& etherLayer2, Deserializer& des, std::uint8_t const* const pkt_data, size_t const pkt_len)
-							{
-								// We have to retrieve the ProtocolID to dispatch
-								auto const protocolIdentifierOffset = AvtpduControl::HeaderLength + Aecpdu::HeaderLength;
-								if (pkt_len >= (protocolIdentifierOffset + VuAecpdu::ProtocolIdentifier::Size))
-								{
-									auto protocolIdentifier = VuAecpdu::ProtocolIdentifier::ArrayType{};
-									std::memcpy(protocolIdentifier.data(), pkt_data + protocolIdentifierOffset, VuAecpdu::ProtocolIdentifier::Size);
-
-									auto const vuProtocolID = VuAecpdu::ProtocolIdentifier{ protocolIdentifier };
-									auto* vuDelegate = pi->getVendorUniqueDelegate(vuProtocolID);
-									if (vuDelegate)
-									{
-										auto aecpdu = vuDelegate->createAecpdu(vuProtocolID, true);
-
-										// Are the messages handled by the VendorUniqueDelegate itself
-										if (!vuDelegate->areHandledByControllerStateMachine(vuProtocolID))
-										{
-											auto& vuAecp = static_cast<VuAecpdu&>(*aecpdu);
-
-											// Deserialize the aecp message
-											pi->deserializeAecpMessage(etherLayer2, des, vuAecp);
-
-											// Low level notification
-											pi->notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpduReceived, pi, vuAecp);
-
-											// Forward to the delegate
-											vuDelegate->onVuAecpResponse(pi, vuProtocolID, vuAecp);
-
-											// Return empty Aecpdu so that it's not processed by the StateMachineManager
-											aecpdu.reset(nullptr);
-										}
-
-										return aecpdu;
-									}
-									else
-									{
-										LOG_PROTOCOL_INTERFACE_DEBUG(networkInterface::MacAddress{}, networkInterface::MacAddress{}, "Unhandled VendorUnique Response for ProtocolIdentifier {}", utils::toHexString(static_cast<VuAecpdu::ProtocolIdentifier::IntegralType>(vuProtocolID), true));
-									}
-								}
-								else
-								{
-									LOG_PROTOCOL_INTERFACE_WARN(networkInterface::MacAddress{}, networkInterface::MacAddress{}, "Invalid VendorUnique Command received. Not enough bytes in the message to hold ProtocolIdentifier");
-								}
-
-								return Aecpdu::UniquePointer{ nullptr, nullptr };
-							} },
-					};
-
-					auto const& it = s_Dispatch.find(messageType);
-					if (it == s_Dispatch.end())
-						return; // Unsupported AECP message type
-
-					// Create aecpdu frame based on message type
-					auto aecpdu = it->second(this, etherLayer2, des, pkt_data, pkt_len);
-
-					if (aecpdu != nullptr)
-					{
-						auto& aecp = static_cast<Aecpdu&>(*aecpdu);
-
-						// Deserialize the aecp message
-						deserializeAecpMessage(etherLayer2, des, aecp);
-
-						// Low level notification
-						notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAecpduReceived, this, aecp);
-
-						// Forward to our state machine
-						_stateMachineManager.processAecpdu(aecp);
-					}
-					break;
-				}
-
-				/* ACMP Message */
-				case AvtpSubType_Acmp:
-				{
-					auto acmpdu = Acmpdu::create();
-					auto& acmp = static_cast<Acmpdu&>(*acmpdu);
-
-					// Fill EtherLayer2
-					acmp.setSrcAddress(etherLayer2.getSrcAddress());
-					static_cast<EtherLayer2&>(*acmpdu).setDestAddress(etherLayer2.getDestAddress()); // Fill dest address, even if we know it's always the MultiCast address
-					// Then deserialize Avtp control
-					deserialize<AvtpduControl>(&acmp, des);
-					// Then deserialize Acmp
-					deserialize<Acmpdu>(&acmp, des);
-
-					// Low level notification
-					notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onAcmpduReceived, this, acmp);
-
-					// Forward to our state machine
-					_stateMachineManager.processAcmpdu(acmp);
-					break;
-				}
-
-				/* MAAP Message */
-				case AvtpSubType_Maap:
-				{
-					break;
-				}
-				default:
-					return;
-			}
-		}
-		catch ([[maybe_unused]] std::invalid_argument const& e)
-		{
-			LOG_PROTOCOL_INTERFACE_WARN(networkInterface::MacAddress{}, networkInterface::MacAddress{}, std::string("ProtocolInterfacePCap: Packet dropped: ") + e.what());
-		}
-		catch (...)
-		{
-			AVDECC_ASSERT(false, "Unknown exception");
-			LOG_PROTOCOL_INTERFACE_WARN(networkInterface::MacAddress{}, networkInterface::MacAddress{}, "ProtocolInterfacePCap: Packet dropped due to unknown exception");
-		}
-	}
-
 	// Private variables
 	watchDog::WatchDog::SharedPointer _watchDogSharedPointer{ watchDog::WatchDog::getInstance() };
 	watchDog::WatchDog& _watchDog{ *_watchDogSharedPointer };
@@ -901,6 +678,8 @@ private:
 	bool _shouldTerminate{ false };
 	mutable stateMachine::Manager _stateMachineManager{ this, this, this, this, this };
 	std::thread _captureThread{};
+	friend class EthernetPacketDispatcher<ProtocolInterfacePcapImpl>;
+	EthernetPacketDispatcher<ProtocolInterfacePcapImpl> _ethernetPacketDispatcher{ this, _stateMachineManager };
 };
 
 ProtocolInterfacePcap::ProtocolInterfacePcap(std::string const& networkInterfaceName)

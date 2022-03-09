@@ -97,6 +97,7 @@ set (SOURCE_FILES_PROTOCOL
 
 # Protocol Interface
 set (HEADER_FILES_PROTOCOL_INTERFACE
+	protocolInterface/ethernetPacketDispatch.hpp
 )
 
 set (SOURCE_FILES_PROTOCOL_INTERFACE
