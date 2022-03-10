@@ -300,6 +300,7 @@ private:
 	virtual void releaseDynamicEID(UniqueIdentifier const entityID) const noexcept override;
 	virtual Error registerLocalEntity(entity::LocalEntity& entity) noexcept override;
 	virtual Error unregisterLocalEntity(entity::LocalEntity& entity) noexcept override;
+	virtual Error injectRawPacket(la::avdecc::MemoryBuffer&& packet) const noexcept override;
 	virtual Error setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const flags) noexcept override;
 	virtual Error enableEntityAdvertising(entity::LocalEntity& entity) noexcept override;
 	virtual Error disableEntityAdvertising(entity::LocalEntity const& entity) noexcept override;
@@ -467,6 +468,12 @@ ProtocolInterface::Error ProtocolInterfaceVirtualImpl::registerLocalEntity(entit
 ProtocolInterface::Error ProtocolInterfaceVirtualImpl::unregisterLocalEntity(entity::LocalEntity& entity) noexcept
 {
 	return _stateMachineManager.unregisterLocalEntity(entity);
+}
+
+ProtocolInterface::Error ProtocolInterfaceVirtualImpl::injectRawPacket(la::avdecc::MemoryBuffer&& packet) const noexcept
+{
+	processRawPacket(std::move(packet));
+	return Error::NoError;
 }
 
 ProtocolInterface::Error ProtocolInterfaceVirtualImpl::setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const /*flags*/) noexcept

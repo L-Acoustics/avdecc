@@ -240,6 +240,12 @@ private:
 		return _stateMachineManager.unregisterLocalEntity(entity);
 	}
 
+	virtual Error injectRawPacket(la::avdecc::MemoryBuffer&& packet) const noexcept override
+	{
+		processRawPacket(std::move(packet));
+		return Error::NoError;
+	}
+
 	virtual Error setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const /*flags*/) noexcept override
 	{
 		return _stateMachineManager.setEntityNeedsAdvertise(entity);
