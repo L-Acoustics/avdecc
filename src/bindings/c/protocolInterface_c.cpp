@@ -185,6 +185,11 @@ private:
 static la::avdecc::bindings::HandleManager<la::avdecc::protocol::ProtocolInterface::UniquePointer> s_ProtocolInterfaceManager{};
 static la::avdecc::bindings::HandleManager<Observer*> s_ProtocolInterfaceObserverManager{};
 
+LA_AVDECC_BINDINGS_C_API avdecc_const_string_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_ProtocolInterface_getDefaultExecutorName()
+{
+	return la::avdecc::protocol::ProtocolInterface::DefaultExecutorName;
+}
+
 LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_ProtocolInterface_create(avdecc_protocol_interface_type_t const protocolInterfaceType, avdecc_const_string_t interfaceName, LA_AVDECC_PROTOCOL_INTERFACE_HANDLE* const createdProtocolInterfaceHandle)
 {
 	try

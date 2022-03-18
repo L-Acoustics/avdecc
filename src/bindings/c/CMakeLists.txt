@@ -31,6 +31,7 @@ set(HEADER_FILES_COMMON
 
 set(SOURCE_FILES_COMMON
 	avdecc_c.cpp
+	executor_c.cpp
 	utils.cpp
 	protocolAcmpdu_c.cpp
 	protocolAdpdu_c.cpp

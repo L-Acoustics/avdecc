@@ -28,6 +28,7 @@
 
 #include <la/avdecc/avdecc.hpp>
 #include <la/avdecc/utils.hpp>
+#include <la/avdecc/executor.hpp>
 #include <la/avdecc/internals/protocolMvuAecpdu.hpp>
 
 #include "utils.hpp"
@@ -484,6 +485,9 @@ inline int doJob()
 
 	try
 	{
+		// Create an executor for ProtocolInterface
+		auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(la::avdecc::protocol::ProtocolInterface::DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(la::avdecc::protocol::ProtocolInterface::DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
+
 		outputText("Selected interface '" + intfc.alias + "' and protocol interface '" + la::avdecc::protocol::ProtocolInterface::typeToString(protocolInterfaceType) + "':\n");
 
 		// We need to create/destroy the protocol interface for each test, as the protocol interface will not trigger events for already discovered entities

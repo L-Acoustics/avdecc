@@ -66,6 +66,13 @@ public:
 		_objects.emplace(std::make_pair(handle, std::move(obj)));
 		return handle;
 	}
+	template<typename Sfinae = Object>
+	std::enable_if_t<!std::is_pointer_v<Sfinae>, Handle> setObject(StoredObject&& obj)
+	{
+		auto const handle = static_cast<Handle>(obj.get());
+		_objects.emplace(std::make_pair(handle, std::move(obj)));
+		return handle;
+	}
 
 	typename StoredObject::element_type& getObject(Handle const handle)
 	{

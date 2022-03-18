@@ -32,6 +32,7 @@ endif()
 
 set (PUBLIC_HEADER_FILES
 	${CU_ROOT_DIR}/include/la/avdecc/avdecc.hpp
+	${CU_ROOT_DIR}/include/la/avdecc/executor.hpp
 	${CU_ROOT_DIR}/include/la/avdecc/logger.hpp
 	${CU_ROOT_DIR}/include/la/avdecc/memoryBuffer.hpp
 	${CU_ROOT_DIR}/include/la/avdecc/utils.hpp
@@ -96,6 +97,7 @@ set (SOURCE_FILES_PROTOCOL
 
 # Protocol Interface
 set (HEADER_FILES_PROTOCOL_INTERFACE
+	protocolInterface/ethernetPacketDispatch.hpp
 )
 
 set (SOURCE_FILES_PROTOCOL_INTERFACE
@@ -146,6 +148,7 @@ set (HEADER_FILES_COMMON
 set (SOURCE_FILES_COMMON
 	avdecc.cpp
 	endStationImpl.cpp
+	executor.cpp
 	logger.cpp
 	streamFormatInfo.cpp
 	utils.cpp

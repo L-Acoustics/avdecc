@@ -25,6 +25,7 @@
 #pragma once
 
 #include "la/avdecc/utils.hpp"
+#include "la/avdecc/memoryBuffer.hpp"
 
 #include "exception.hpp"
 #include "entity.hpp"
@@ -57,6 +58,9 @@ namespace protocol
 class ProtocolInterface : public la::avdecc::utils::Subject<ProtocolInterface, std::recursive_mutex>
 {
 public:
+	/** Name of the default executor used for events */
+	static auto constexpr DefaultExecutorName = "avdecc::protocol::PI";
+
 	/** The existing types of ProtocolInterface */
 	enum class Type
 	{
@@ -81,6 +85,7 @@ public:
 		InvalidParameters = 8, /**< Specified parameters are invalid. */
 		InterfaceNotSupported = 9, /**< This protocol interface is not in the list of supported protocol interfaces. */
 		MessageNotSupported = 10, /**< This type of message is not supported by this protocol interface. */
+		ExecutorNotInitialized = 11, /**< The executor is not initialized. */
 		InternalError = 99, /**< Internal error, please report the issue. */
 	};
 
@@ -234,6 +239,8 @@ public:
 	virtual Error registerLocalEntity(entity::LocalEntity& entity) noexcept = 0;
 	/** Unregisters a local entity from the interface. It won't be able to send or receive messages anymore. */
 	virtual Error unregisterLocalEntity(entity::LocalEntity& entity) noexcept = 0;
+	/** Injects a raw packet into the receiving message loop */
+	virtual Error injectRawPacket(la::avdecc::MemoryBuffer&& packet) const noexcept = 0;
 	/** Registers a VendorUniqueDelegate for the specified protocolIdentifier. */
 	LA_AVDECC_API Error LA_AVDECC_CALL_CONVENTION registerVendorUniqueDelegate(VuAecpdu::ProtocolIdentifier const& protocolIdentifier, VendorUniqueDelegate* const delegate) noexcept;
 	/** Unregisters the VendorUniqueDelegate previously associated to the specified protocolIdentifier. */
