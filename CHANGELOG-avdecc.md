@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - injectRawPacket method to ProtocolInterface
 
+### Changed
+- Generated EntityID now follows the new recommendation of IEEE (full MacAddress on MSB)
+
 ## [3.2.2] - 2022-01-20
 ### Added
 - [Support for Control Array Values Type (Clause 7.3.5.2.3)](https://github.com/L-Acoustics/avdecc/issues/100)

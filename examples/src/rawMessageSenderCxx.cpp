@@ -52,7 +52,7 @@ static auto const s_TargetMacAddress = la::networkInterface::MacAddress{ 0x00, 0
 
 inline void sendRawMessages(la::avdecc::protocol::ProtocolInterface& pi)
 {
-	auto const controllerID = la::avdecc::entity::Entity::generateEID(pi.getMacAddress(), s_ProgID);
+	auto const controllerID = la::avdecc::entity::Entity::generateEID(pi.getMacAddress(), s_ProgID, true);
 
 	// Send raw ADP message (Entity Available message)
 	{
@@ -193,7 +193,7 @@ inline void receiveAecpdu(la::avdecc::protocol::ProtocolInterface& pi)
 		DECLARE_AVDECC_OBSERVER_GUARD(Observer);
 	};
 
-	auto const controllerID = la::avdecc::entity::Entity::generateEID(pi.getMacAddress(), s_ProgID);
+	auto const controllerID = la::avdecc::entity::Entity::generateEID(pi.getMacAddress(), s_ProgID, true);
 	auto obs = Observer{};
 	pi.registerObserver(&obs);
 
@@ -273,7 +273,7 @@ inline void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 	}
 
 	// Generate an EID
-	auto const controllerID = la::avdecc::entity::Entity::generateEID(pi.getMacAddress(), s_ProgID);
+	auto const controllerID = la::avdecc::entity::Entity::generateEID(pi.getMacAddress(), s_ProgID, true);
 
 	// In order to be allowed to send Commands, we have to declare ourself as a LocalEntity
 	auto const commonInformation = la::avdecc::entity::Entity::CommonInformation{ controllerID, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), la::avdecc::entity::EntityCapabilities{}, 0u, la::avdecc::entity::TalkerCapabilities{}, 0u, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented }, std::nullopt, std::nullopt };
@@ -436,7 +436,7 @@ inline void sendControllerHighLevelCommands(la::avdecc::protocol::ProtocolInterf
 	auto delegate = Delegate{};
 
 	// Generate an EID
-	auto const controllerID = la::avdecc::entity::Entity::generateEID(pi.getMacAddress(), s_ProgID);
+	auto const controllerID = la::avdecc::entity::Entity::generateEID(pi.getMacAddress(), s_ProgID, true);
 
 	// In order to be allowed to send Commands, we have to declare ourself as a LocalEntity
 	auto const commonInformation = la::avdecc::entity::Entity::CommonInformation{ controllerID, la::avdecc::UniqueIdentifier::getNullUniqueIdentifier(), la::avdecc::entity::EntityCapabilities{}, 0u, la::avdecc::entity::TalkerCapabilities{}, 0u, la::avdecc::entity::ListenerCapabilities{}, la::avdecc::entity::ControllerCapabilities{ la::avdecc::entity::ControllerCapability::Implemented }, std::nullopt, std::nullopt };

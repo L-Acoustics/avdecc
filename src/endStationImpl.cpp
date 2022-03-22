@@ -54,7 +54,7 @@ entity::ControllerEntity* EndStationImpl::addControllerEntity(std::uint16_t cons
 	std::unique_ptr<entity::LocalEntityGuard<entity::ControllerEntityImpl>> controller{ nullptr };
 	try
 	{
-		auto const eid = entity::Entity::generateEID(_protocolInterface->getMacAddress(), progID);
+		auto const eid = entity::Entity::generateEID(_protocolInterface->getMacAddress(), progID, false);
 
 		try
 		{
@@ -88,7 +88,7 @@ entity::AggregateEntity* EndStationImpl::addAggregateEntity(std::uint16_t const 
 	std::unique_ptr<entity::LocalEntityGuard<entity::AggregateEntityImpl>> aggregate{ nullptr };
 	try
 	{
-		auto const eid = entity::Entity::generateEID(_protocolInterface->getMacAddress(), progID);
+		auto const eid = entity::Entity::generateEID(_protocolInterface->getMacAddress(), progID, false);
 
 		try
 		{
