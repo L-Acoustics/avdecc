@@ -137,6 +137,7 @@ enum class Flag : std::uint16_t
 	ProcessState = 1u << 4, /**< READ/WRITE Global Entity State */
 	ProcessStatistics = 1u << 5, /**< READ/WRITE Global Entity Statistics */
 	ProcessCompatibility = 1u << 6, /**< READ/WRITE Entity Compatibility */
+	ProcessDiagnostics = 1u << 7, /**< READ/WRITE Global Entity Diagnostics */
 
 	BinaryFormat = 1u << 14, /**< READ/WRITE in binary format (MessagePack) */
 	IgnoreAEMSanityChecks = 1u << 15, /**< Ignore AEM Sanity Checks when READING or WRITING */

@@ -104,6 +104,12 @@ public:
 		Up = 2, /** Interface is Up */
 	};
 
+	/* Entity Diagnostics */
+	struct Diagnostics
+	{
+		std::unordered_map<entity::model::StreamIndex, bool> streamInputOverLatency{};
+	};
+
 	// Getters
 	virtual bool isVirtual() const noexcept = 0; // True if the entity is a virtual one (la::avdecc::controller::Controller methods won't succeed due to the entity not actually been discovered)
 	virtual CompatibilityFlags getCompatibilityFlags() const noexcept = 0;
@@ -174,6 +180,9 @@ public:
 	virtual std::chrono::milliseconds const& getAecpResponseAverageTime() const noexcept = 0;
 	virtual std::uint64_t getAemAecpUnsolicitedCounter() const noexcept = 0;
 	virtual std::chrono::milliseconds const& getEnumerationTime() const noexcept = 0;
+
+	// Diagnostics
+	virtual la::avdecc::controller::ControlledEntity::Diagnostics const& getDiagnostics() const noexcept = 0;
 
 	// Visitor method
 	virtual void accept(model::EntityModelVisitor* const visitor, bool const visitAllConfigurations = false) const noexcept = 0;
