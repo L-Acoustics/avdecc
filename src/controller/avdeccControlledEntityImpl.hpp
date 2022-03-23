@@ -252,6 +252,9 @@ public:
 	virtual std::uint64_t getAemAecpUnsolicitedCounter() const noexcept override;
 	virtual std::chrono::milliseconds const& getEnumerationTime() const noexcept override;
 
+	// Diagnostics
+	virtual Diagnostics const& getDiagnostics() const noexcept override;
+
 	// Const Tree getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist
 	entity::model::EntityTree const& getEntityTree() const;
 	entity::model::ConfigurationTree const& getConfigurationTree(entity::model::ConfigurationIndex const configurationIndex) const;
@@ -401,6 +404,9 @@ public:
 	void setAemAecpUnsolicitedCounter(std::uint64_t const value) noexcept;
 	void setEnumerationTime(std::chrono::milliseconds const& value) noexcept;
 
+	// Setters of the Diagnostics
+	void setDiagnostics(Diagnostics const& diags) noexcept;
+
 	// Setters of the Model from AEM Descriptors (including DescriptorDynamic info)
 	void setEntityTree(entity::model::EntityTree const& entityTree) noexcept;
 	bool setCachedEntityTree(entity::model::EntityTree const& cachedTree, entity::model::EntityDescriptor const& descriptor, bool const forAllConfiguration) noexcept; // Returns true if the cached EntityTree is accepted (and set) for this entity
@@ -480,6 +486,7 @@ public:
 	bool isRedundantPrimaryStreamOutput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Primary Stream (false for Secondary and non-redundant streams)
 	bool isRedundantSecondaryStreamInput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
 	bool isRedundantSecondaryStreamOutput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
+	Diagnostics& getDiagnostics() noexcept;
 
 	// Static methods
 	static std::string dynamicInfoTypeToString(DynamicInfoType const dynamicInfoType) noexcept;
@@ -583,6 +590,8 @@ private:
 	std::uint64_t _aemAecpUnsolicitedCounter{ 0ull };
 	std::chrono::time_point<std::chrono::steady_clock> _enumerationStartTime{}; // Intermediate variable used by _enumerationTime
 	std::chrono::milliseconds _enumerationTime{};
+	// Diagnostics
+	Diagnostics _diagnostics{};
 };
 
 } // namespace controller

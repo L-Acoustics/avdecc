@@ -49,6 +49,7 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 void setEntityModel(ControlledEntityImpl& entity, json const& object, entity::model::jsonSerializer::Flags flags); // Throws DeserializationException
 void setEntityState(ControlledEntityImpl& entity, json const& object); // Throws DeserializationException
 void setEntityStatistics(ControlledEntityImpl& entity, json const& object); // Throws DeserializationException
+void setEntityDiagnostics(ControlledEntityImpl& entity, json const& object); // Throws DeserializationException
 
 } // namespace jsonSerializer
 } // namespace controller

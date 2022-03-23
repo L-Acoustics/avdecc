@@ -637,6 +637,12 @@ std::chrono::milliseconds const& ControlledEntityImpl::getEnumerationTime() cons
 	return _enumerationTime;
 }
 
+// Diagnostics
+ControlledEntity::Diagnostics const& ControlledEntityImpl::getDiagnostics() const noexcept
+{
+	return _diagnostics;
+}
+
 // Visitor method
 void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor, bool const visitAllConfigurations) const noexcept
 {
@@ -1331,6 +1337,12 @@ void ControlledEntityImpl::setAemAecpUnsolicitedCounter(std::uint64_t const valu
 void ControlledEntityImpl::setEnumerationTime(std::chrono::milliseconds const& value) noexcept
 {
 	_enumerationTime = value;
+}
+
+// Setters of the Diagnostics
+void ControlledEntityImpl::setDiagnostics(Diagnostics const& diags) noexcept
+{
+	_diagnostics = diags;
 }
 
 // Setters of the Model from AEM Descriptors (including DescriptorDynamic info)
@@ -2186,6 +2198,11 @@ bool ControlledEntityImpl::isRedundantSecondaryStreamInput(entity::model::Stream
 bool ControlledEntityImpl::isRedundantSecondaryStreamOutput(entity::model::StreamIndex const streamIndex) const noexcept
 {
 	return _redundantSecondaryStreamOutputs.count(streamIndex) != 0;
+}
+
+ControlledEntity::Diagnostics& ControlledEntityImpl::getDiagnostics() noexcept
+{
+	return _diagnostics;
 }
 
 // Static methods
