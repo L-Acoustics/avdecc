@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Method to choose the best stream format among a list
 - [Support for REBOOT command](https://github.com/L-Acoustics/avdecc/issues/99)
 - [Entity diagnostics (only msrp latency error for now)](https://github.com/L-Acoustics/avdecc/issues/103)
+- New Compatibility flag (MilanWarning) for when a device is Milan Compatible but has some non critical warnings
 
 ### Fixed
 - Broken managed virtual entities since 3.2.1

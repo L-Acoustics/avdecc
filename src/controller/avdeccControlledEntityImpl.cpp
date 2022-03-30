@@ -69,6 +69,11 @@ ControlledEntity::CompatibilityFlags ControlledEntityImpl::getCompatibilityFlags
 	return _compatibilityFlags;
 }
 
+bool ControlledEntityImpl::isMilanRedundant() const noexcept
+{
+	return _isMilanRedundant;
+}
+
 bool ControlledEntityImpl::gotFatalEnumerationError() const noexcept
 {
 	return _gotFatalEnumerateError;
@@ -2157,6 +2162,11 @@ void ControlledEntityImpl::clearEnumerationStep(EnumerationStep const step) noex
 void ControlledEntityImpl::setCompatibilityFlags(CompatibilityFlags const compatibilityFlags) noexcept
 {
 	_compatibilityFlags = compatibilityFlags;
+}
+
+void ControlledEntityImpl::setMilanRedundant(bool const isMilanRedundant) noexcept
+{
+	_isMilanRedundant = isMilanRedundant;
 }
 
 void ControlledEntityImpl::setGetFatalEnumerationError() noexcept
