@@ -4078,6 +4078,12 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 						handleTalkerStreamStateNotification(info.talkerStream, listenerStream, true, entity::ConnectionFlags{}, changedByOther); // Do not pass any flags (especially not FastConnect)
 					}
 				}
+
+				// Check for Diagnostics - Latency Error - Reset Error if stream is not connected
+				if (!isConnected)
+				{
+					updateStreamInputLatency(*listenerEntity, listenerStream.streamIndex, false);
+				}
 			}
 		}
 	}
