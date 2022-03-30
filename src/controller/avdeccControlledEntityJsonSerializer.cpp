@@ -137,6 +137,7 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 		{
 			auto& diagnostics = object[keyName::ControlledEntity_Diagnostics];
 			auto const& diags = entity.getDiagnostics();
+			diagnostics[controller::keyName::ControlledEntityDiagnostics_RedundancyWarning] = diags.redundancyWarning;
 			diagnostics[controller::keyName::ControlledEntityDiagnostics_StreamInputLatencyErrors] = diags.streamInputOverLatency;
 		}
 
@@ -361,6 +362,13 @@ void setEntityDiagnostics(ControlledEntityImpl& entity, json const& object)
 	try
 	{
 		// Everything is optional
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityDiagnostics_RedundancyWarning);
+			if (it != object.end())
+			{
+				diags.redundancyWarning = it->get<decltype(diags.redundancyWarning)>();
+			}
+		}
 		{
 			auto const it = object.find(controller::keyName::ControlledEntityDiagnostics_StreamInputLatencyErrors);
 			if (it != object.end())

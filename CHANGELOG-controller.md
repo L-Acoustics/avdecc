@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Method to retrieve the mappings that will become invalid (dangling) when a stream input format will change: _getStreamPortInputInvalidAudioMappingsForStreamFormat_
 - Method to choose the best stream format among a list
 - [Support for REBOOT command](https://github.com/L-Acoustics/avdecc/issues/99)
-- [Entity diagnostics (only msrp latency error for now)](https://github.com/L-Acoustics/avdecc/issues/103)
+- [Entity diagnostics: msrp latency error](https://github.com/L-Acoustics/avdecc/issues/103)
+- Entity diagnostics: Milan redundancy connection error
 - New Compatibility flag (MilanWarning) for when a device is Milan Compatible but has some non critical warnings
 
 ### Fixed

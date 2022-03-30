@@ -1138,6 +1138,9 @@ void ControllerImpl::updateGptpInformation(ControlledEntityImpl& controlledEntit
 		}
 	}
 
+	// Check for Diagnostics - Redundancy Warning
+	checkRedundancyWarningDiagnostics(this, controlledEntity);
+
 	// Only do checks if entity was advertised to the user (we already changed the values anyway)
 	if (controlledEntity.wasAdvertised())
 	{
@@ -1476,6 +1479,21 @@ void ControllerImpl::updateOperationStatus(ControlledEntityImpl& controlledEntit
 	}
 }
 
+void ControllerImpl::updateRedundancyWarning(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, bool const isWarning) noexcept
+{
+	auto& diags = controlledEntity.getDiagnostics();
+	auto const notify = diags.redundancyWarning != isWarning;
+
+	diags.redundancyWarning = isWarning;
+
+	// Entity was advertised to the user, notify observers
+	if (controller && notify && controlledEntity.wasAdvertised())
+	{
+		AVDECC_ASSERT(controller->_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+		controller->notifyObserversMethod<Controller::Observer>(&Controller::Observer::onDiagnosticsChanged, controller, &controlledEntity, diags);
+	}
+}
+
 void ControllerImpl::updateStreamInputLatency(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, bool const isOverLatency) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
@@ -1537,6 +1555,34 @@ std::optional<bool> ControllerImpl::getIdentifyControlValue(entity::model::Contr
 	{
 	}
 	return std::nullopt;
+}
+
+void ControllerImpl::checkRedundancyWarningDiagnostics(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity) noexcept
+{
+	auto& entity = controlledEntity.getEntity();
+	auto const currentConfigurationIndex = controlledEntity.getCurrentConfigurationIndex();
+	auto isWarning = false;
+
+	// Only for a Milan redundant device
+	if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan) && controlledEntity.isMilanRedundant())
+	{
+		// Check if AVB_INTERFACE_0 and AVB_INTERFACE_1 have the same gPTP
+		try
+		{
+			auto const avbInterfaceNode0 = controlledEntity.getAvbInterfaceNode(currentConfigurationIndex, entity::model::AvbInterfaceIndex{ 0u });
+			auto const avbInterfaceNode1 = controlledEntity.getAvbInterfaceNode(currentConfigurationIndex, entity::model::AvbInterfaceIndex{ 1u });
+			if (avbInterfaceNode0.dynamicModel && avbInterfaceNode1.dynamicModel)
+			{
+				isWarning = avbInterfaceNode0.dynamicModel->gptpGrandmasterID == avbInterfaceNode1.dynamicModel->gptpGrandmasterID;
+			}
+		}
+		catch (ControlledEntity::Exception const&)
+		{
+			LOG_CONTROLLER_WARN(entity.getEntityID(), "Entity is declared Milan Redundant but does not have AVB_INTERFACE_0 and AVB_INTERFACE_1");
+		}
+	}
+
+	updateRedundancyWarning(controller, controlledEntity, isWarning);
 }
 
 void ControllerImpl::removeExclusiveAccessTokens(UniqueIdentifier const entityID, ExclusiveAccessToken::AccessType const type) const noexcept
@@ -2936,6 +2982,9 @@ void ControllerImpl::validateEntity(ControlledEntityImpl& controlledEntity) noex
 
 	// Validate entity is correctly declared (or not) as a Milan Redundant device
 	validateRedundancy(controlledEntity);
+
+	// Check for Diagnostics - Redundancy Warning
+	checkRedundancyWarningDiagnostics(nullptr, controlledEntity);
 }
 
 /** Actions to be done on the entity, just before advertising, which require looking at other already advertised entities (only for attached entities) */

@@ -84,6 +84,7 @@ constexpr auto ControlledEntityStatistics_AemAecpUnsolicitedCounter = "aem_aecp_
 constexpr auto ControlledEntityStatistics_EnumerationTime = "enumeration_time";
 
 /* ControlledEntityDiagnostics */
+constexpr auto ControlledEntityDiagnostics_RedundancyWarning = "redundancy_warning";
 constexpr auto ControlledEntityDiagnostics_StreamInputLatencyErrors = "stream_input_latency_errors";
 
 } // namespace keyName
