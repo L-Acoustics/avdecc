@@ -48,7 +48,7 @@ if(ALLOW_RECV_BIG_AECP_PAYLOADS)
 endif()
 
 # Group sources
-source_group("Header Files\\Public" FILES ${PUBLIC_HEADER_FILES})
+source_group(TREE "${CU_ROOT_DIR}/include/la/avdecc/" PREFIX "Header Files\\Public" FILES ${PUBLIC_HEADER_FILES})
 source_group("Header Files" FILES ${HEADER_FILES_COMMON})
 #source_group("Header Files\\Protocol" FILES ${HEADER_FILES_PROTOCOL})
 source_group("Source Files" FILES ${SOURCE_FILES_COMMON})

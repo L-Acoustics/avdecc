@@ -77,7 +77,7 @@ endif()
 set (LIB_HEADER_FILES ${HEADER_FILES_COMMON} ${PUBLIC_HEADER_FILES})
 set (LIB_SOURCE_FILES ${SOURCE_FILES_COMMON})
 
-source_group("Header Files\\Public\\Controller" FILES ${PUBLIC_HEADER_FILES})
+source_group(TREE "${CU_ROOT_DIR}/include/la/avdecc/" PREFIX "Header Files\\Public" FILES ${PUBLIC_HEADER_FILES})
 
 # C++ dynamic library
 if(BUILD_AVDECC_LIB_SHARED_CXX)
