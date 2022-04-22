@@ -221,7 +221,7 @@ public:
 	}
 
 	/** Generates an EID from a MacAddress (OUI-36) and a ProgID. This method is provided for backward compatibility, use ProtocolInterface::getDynamicEID instead. */
-	static UniqueIdentifier generateEID(la::networkInterface::MacAddress const& macAddress, std::uint16_t const progID)
+	static UniqueIdentifier generateEID(la::networkInterface::MacAddress const& macAddress, std::uint16_t const progID, bool const useDeprecatedAlgorithm)
 	{
 		UniqueIdentifier::value_type eid{ 0u };
 		if (macAddress.size() != 6)
@@ -231,14 +231,22 @@ public:
 		eid += macAddress[1];
 		eid <<= 8;
 		eid += macAddress[2];
-		eid <<= 16;
-		eid += progID;
+		if (useDeprecatedAlgorithm)
+		{
+			eid <<= 16;
+			eid += progID;
+		}
 		eid <<= 8;
 		eid += macAddress[3];
 		eid <<= 8;
 		eid += macAddress[4];
 		eid <<= 8;
 		eid += macAddress[5];
+		if (!useDeprecatedAlgorithm)
+		{
+			eid <<= 16;
+			eid += progID;
+		}
 
 		return UniqueIdentifier{ eid };
 	}

@@ -58,7 +58,7 @@ void ControllerImpl::onGetMilanInfoResult(entity::controller::Interface const* c
 				switch (info.protocolVersion)
 				{
 					case 1:
-						addCompatibilityFlag(*controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+						addCompatibilityFlag(this, *controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
 						break;
 					default:
 						LOG_CONTROLLER_WARN(entityID, "Unsupported Milan protocol_version: {}", info.protocolVersion);
@@ -145,13 +145,13 @@ void ControllerImpl::onEntityDescriptorResult(entity::controller::Interface cons
 				if (descriptor.entityID != e.getEntityID())
 				{
 					LOG_CONTROLLER_WARN(entityID, "EntityID is expected to be identical in ADP and ENTITY_DESCRIPTOR");
-					removeCompatibilityFlagAndNotify(entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 					entity.setIgnoreCachedEntityModel();
 				}
 				if (descriptor.entityModelID != e.getEntityModelID())
 				{
 					LOG_CONTROLLER_WARN(entityID, "EntityModelID is expected to be identical in ADP and ENTITY_DESCRIPTOR");
-					removeCompatibilityFlagAndNotify(entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::IEEE17221);
 					entity.setIgnoreCachedEntityModel();
 				}
 
@@ -1394,7 +1394,7 @@ void ControllerImpl::onGetAvbInterfaceCountersResult(entity::controller::Interfa
 					if ((validCounters & s_MilanMandatoryAvbInterfaceCounters) != s_MilanMandatoryAvbInterfaceCounters)
 					{
 						LOG_CONTROLLER_WARN(entityID, "Milan mandatory counters missing for AVB_INTERFACE descriptor");
-						removeCompatibilityFlagAndNotify(entity, ControlledEntity::CompatibilityFlag::Milan);
+						removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan);
 					}
 				}
 
@@ -1443,7 +1443,7 @@ void ControllerImpl::onGetClockDomainCountersResult(entity::controller::Interfac
 					if ((validCounters & s_MilanMandatoryClockDomainCounters) != s_MilanMandatoryClockDomainCounters)
 					{
 						LOG_CONTROLLER_WARN(entityID, "Milan mandatory counters missing for CLOCK_DOMAIN descriptor");
-						removeCompatibilityFlagAndNotify(entity, ControlledEntity::CompatibilityFlag::Milan);
+						removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan);
 					}
 				}
 
@@ -1492,7 +1492,7 @@ void ControllerImpl::onGetStreamInputCountersResult(entity::controller::Interfac
 					if ((validCounters & s_MilanMandatoryStreamInputCounters) != s_MilanMandatoryStreamInputCounters)
 					{
 						LOG_CONTROLLER_WARN(entityID, "Milan mandatory counters missing for STREAM_INPUT descriptor");
-						removeCompatibilityFlagAndNotify(entity, ControlledEntity::CompatibilityFlag::Milan);
+						removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan);
 					}
 				}
 
@@ -1541,7 +1541,7 @@ void ControllerImpl::onGetStreamOutputCountersResult(entity::controller::Interfa
 					if ((validCounters & s_MilanMandatoryStreamOutputCounters) != s_MilanMandatoryStreamOutputCounters)
 					{
 						LOG_CONTROLLER_WARN(entityID, "Milan mandatory counters missing for STREAM_OUTPUT descriptor");
-						removeCompatibilityFlagAndNotify(entity, ControlledEntity::CompatibilityFlag::Milan);
+						removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::Milan);
 					}
 				}
 
@@ -2184,7 +2184,7 @@ void ControllerImpl::onGetTalkerStreamStateResult(entity::controller::Interface 
 					if (connectionCount != 0)
 					{
 						LOG_CONTROLLER_WARN(talker.getEntity().getEntityID(), "Milan device must advertise 0 connection_count in GET_TX_STATE_RESPONSE");
-						removeCompatibilityFlagAndNotify(talker, ControlledEntity::CompatibilityFlag::Milan);
+						removeCompatibilityFlag(this, talker, ControlledEntity::CompatibilityFlag::Milan);
 					}
 				}
 

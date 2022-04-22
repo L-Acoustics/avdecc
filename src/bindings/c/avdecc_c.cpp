@@ -73,7 +73,7 @@ LA_AVDECC_BINDINGS_C_API avdecc_unique_identifier_t LA_AVDECC_BINDINGS_C_CALL_CO
 {
 	try
 	{
-		return la::avdecc::entity::Entity::generateEID(la::avdecc::bindings::fromCToCpp::make_macAddress(address), progID);
+		return la::avdecc::entity::Entity::generateEID(la::avdecc::bindings::fromCToCpp::make_macAddress(address), progID, false);
 	}
 	catch (...)
 	{

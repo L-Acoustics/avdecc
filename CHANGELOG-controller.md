@@ -4,11 +4,19 @@ All notable changes to the Avdecc Controller Library will be documented in this 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [3.2.3] - 2022-04-22
+### Added
+- Network diagnostics: msrp overdelay, redundancy warning
+- New Compatibility value: MilanWithWarning
+
 ## [3.2.2] - 2022-01-20
 ### Added
 - Method to retrieve the mappings that will become invalid (dangling) when a stream input format will change: _getStreamPortInputInvalidAudioMappingsForStreamFormat_
 - Method to choose the best stream format among a list
 - [Support for REBOOT command](https://github.com/L-Acoustics/avdecc/issues/99)
+- [Entity diagnostics: msrp latency error](https://github.com/L-Acoustics/avdecc/issues/103)
+- Entity diagnostics: Milan redundancy connection error
+- New Compatibility flag (MilanWarning) for when a device is Milan Compatible but has some non critical warnings
 
 ### Fixed
 - Broken managed virtual entities since 3.2.1

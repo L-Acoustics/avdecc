@@ -69,6 +69,11 @@ ControlledEntity::CompatibilityFlags ControlledEntityImpl::getCompatibilityFlags
 	return _compatibilityFlags;
 }
 
+bool ControlledEntityImpl::isMilanRedundant() const noexcept
+{
+	return _isMilanRedundant;
+}
+
 bool ControlledEntityImpl::gotFatalEnumerationError() const noexcept
 {
 	return _gotFatalEnumerateError;
@@ -635,6 +640,12 @@ std::uint64_t ControlledEntityImpl::getAemAecpUnsolicitedCounter() const noexcep
 std::chrono::milliseconds const& ControlledEntityImpl::getEnumerationTime() const noexcept
 {
 	return _enumerationTime;
+}
+
+// Diagnostics
+ControlledEntity::Diagnostics const& ControlledEntityImpl::getDiagnostics() const noexcept
+{
+	return _diagnostics;
 }
 
 // Visitor method
@@ -1331,6 +1342,12 @@ void ControlledEntityImpl::setAemAecpUnsolicitedCounter(std::uint64_t const valu
 void ControlledEntityImpl::setEnumerationTime(std::chrono::milliseconds const& value) noexcept
 {
 	_enumerationTime = value;
+}
+
+// Setters of the Diagnostics
+void ControlledEntityImpl::setDiagnostics(Diagnostics const& diags) noexcept
+{
+	_diagnostics = diags;
 }
 
 // Setters of the Model from AEM Descriptors (including DescriptorDynamic info)
@@ -2147,6 +2164,11 @@ void ControlledEntityImpl::setCompatibilityFlags(CompatibilityFlags const compat
 	_compatibilityFlags = compatibilityFlags;
 }
 
+void ControlledEntityImpl::setMilanRedundant(bool const isMilanRedundant) noexcept
+{
+	_isMilanRedundant = isMilanRedundant;
+}
+
 void ControlledEntityImpl::setGetFatalEnumerationError() noexcept
 {
 	LOG_CONTROLLER_ERROR(_entity.getEntityID(), "Got Fatal Enumeration Error");
@@ -2186,6 +2208,11 @@ bool ControlledEntityImpl::isRedundantSecondaryStreamInput(entity::model::Stream
 bool ControlledEntityImpl::isRedundantSecondaryStreamOutput(entity::model::StreamIndex const streamIndex) const noexcept
 {
 	return _redundantSecondaryStreamOutputs.count(streamIndex) != 0;
+}
+
+ControlledEntity::Diagnostics& ControlledEntityImpl::getDiagnostics() noexcept
+{
+	return _diagnostics;
 }
 
 // Static methods

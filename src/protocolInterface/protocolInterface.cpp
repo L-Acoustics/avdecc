@@ -23,6 +23,7 @@
 */
 
 #include "la/avdecc/internals/protocolInterface.hpp"
+#include "la/avdecc/executor.hpp"
 
 // Protocol Interface
 #ifdef HAVE_PROTOCOL_INTERFACE_PCAP
@@ -49,6 +50,12 @@ namespace protocol
 ProtocolInterface::ProtocolInterface(std::string const& networkInterfaceName)
 	: _networkInterfaceName(networkInterfaceName)
 {
+	// First check if the executor exists
+	if (!ExecutorManager::getInstance().isExecutorRegistered(DefaultExecutorName))
+	{
+		throw Exception(Error::ExecutorNotInitialized, "The receive executor '" + std::string{ DefaultExecutorName } + "' is not registered");
+	}
+
 	try
 	{
 		auto const intfc = networkInterface::NetworkInterfaceHelper::getInstance().getInterfaceByName(networkInterfaceName);
@@ -114,7 +121,7 @@ ProtocolInterface::Error LA_AVDECC_CALL_CONVENTION ProtocolInterface::unregister
 	return Error::NoError;
 }
 
-bool ProtocolInterface::isAecpResponseMessageType(AecpMessageType const messageType) const noexcept
+bool ProtocolInterface::isAecpResponseMessageType(AecpMessageType const messageType) noexcept
 {
 	if (messageType == protocol::AecpMessageType::AemResponse || messageType == protocol::AecpMessageType::AddressAccessResponse || messageType == protocol::AecpMessageType::AvcResponse || messageType == protocol::AecpMessageType::VendorUniqueResponse || messageType == protocol::AecpMessageType::HdcpAemResponse || messageType == protocol::AecpMessageType::ExtendedResponse)
 		return true;

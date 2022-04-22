@@ -29,6 +29,7 @@
 #include "internals/uniqueIdentifier.hpp"
 
 #include <type_traits>
+#include <tuple>
 #include <iterator>
 #include <functional>
 #include <cstdarg>
@@ -49,7 +50,19 @@ namespace avdecc
 {
 namespace utils
 {
+enum class ThreadPriority
+{
+	Idle = 0,
+	Lowest = 1,
+	BelowNormal = 3,
+	Normal = 5,
+	AboveNormal = 7,
+	Highest = 9,
+	TimeCritical = 10,
+};
+
 LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION setCurrentThreadName(std::string const& name);
+LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION setCurrentThreadPriority(ThreadPriority const prio);
 LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION enableAssert() noexcept;
 LA_AVDECC_API void LA_AVDECC_CALL_CONVENTION disableAssert() noexcept;
 LA_AVDECC_API bool LA_AVDECC_CALL_CONVENTION isAssertEnabled() noexcept;
@@ -297,6 +310,149 @@ struct function_traits<std::function<Ret(Args...)>>
 	template<size_t N>
 	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
 };
+
+/**
+* @brief Traits to easily handle closure types.
+* @details Available traits for closure types like lambda, std::function, std::bind, etc:
+*  - arg_count: The number of closure parameters.
+*  - result_type: The closure result type.
+*  - args_as_tuple: All parameter types packed in a tuple.
+*  - closure_type: The complete closure type (eg. std::function<Ret(Args...)>)
+*  - is_const: Whether the closure is const or not.
+*  - arg_type<0..(arg_count-1)>: The individual type for each parameter. Might require to use typename and template to retrieve the type (eg typename closure_traits<Closure>::template arg_type<0>).
+* @tparam Closure The closure type.
+*/
+template<typename Closure>
+struct closure_traits : closure_traits<decltype(&Closure::operator())>
+{
+};
+
+// std::function specialization
+template<typename Ret, typename... Args>
+struct closure_traits<std::function<Ret(Args...)>>
+{
+	static size_t const arg_count = sizeof...(Args);
+	using result_type = Ret;
+	using args_as_tuple = std::tuple<Args...>;
+	using closure_type = std::function<Ret(Args...)>;
+	using is_const = std::false_type;
+
+	template<size_t N>
+	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+};
+
+// Class const member specialization
+template<typename Class, typename Ret, typename... Args>
+struct closure_traits<Ret (Class::*)(Args...) const>
+{
+	static size_t const arg_count = sizeof...(Args);
+	using result_type = Ret;
+	using args_as_tuple = std::tuple<Args...>;
+	using closure_type = Ret (Class::*)(Args...) const;
+	using is_const = std::true_type;
+
+	template<size_t N>
+	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+};
+
+// Class member specialization
+template<typename Class, typename Ret, typename... Args>
+struct closure_traits<Ret (Class::*)(Args...)>
+{
+	static size_t const arg_count = sizeof...(Args);
+	using result_type = Ret;
+	using args_as_tuple = std::tuple<Args...>;
+	using closure_type = Ret (Class::*)(Args...);
+	using is_const = std::false_type;
+
+	template<size_t N>
+	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+};
+
+// Class const noexcept member specialization
+template<typename Class, typename Ret, typename... Args>
+struct closure_traits<Ret (Class::*)(Args...) const noexcept>
+{
+	static size_t const arg_count = sizeof...(Args);
+	using result_type = Ret;
+	using args_as_tuple = std::tuple<Args...>;
+	using closure_type = Ret (Class::*)(Args...) const noexcept;
+	using is_const = std::true_type;
+
+	template<size_t N>
+	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+};
+
+// Class noexcept member specialization
+template<typename Class, typename Ret, typename... Args>
+struct closure_traits<Ret (Class::*)(Args...) noexcept>
+{
+	static size_t const arg_count = sizeof...(Args);
+	using result_type = Ret;
+	using args_as_tuple = std::tuple<Args...>;
+	using closure_type = Ret (Class::*)(Args...) noexcept;
+	using is_const = std::false_type;
+
+	template<size_t N>
+	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+};
+
+// Function pointer specialization
+template<typename Ret, typename... Args>
+struct closure_traits<Ret (*)(Args...)>
+{
+	static size_t const arg_count = sizeof...(Args);
+	using result_type = Ret;
+	using args_as_tuple = std::tuple<Args...>;
+	using closure_type = Ret (*)(Args...);
+	using is_const = std::true_type;
+
+	template<size_t N>
+	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+};
+
+// Function const pointer specialization
+template<typename Ret, typename... Args>
+struct closure_traits<Ret (*const)(Args...)>
+{
+	static size_t const arg_count = sizeof...(Args);
+	using result_type = Ret;
+	using args_as_tuple = std::tuple<Args...>;
+	using closure_type = Ret (*const)(Args...);
+	using is_const = std::true_type;
+
+	template<size_t N>
+	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+};
+
+#ifdef _WIN32
+// __stdcall function pointer specialization
+template<typename Ret, typename... Args>
+struct closure_traits<Ret(__stdcall*)(Args...)>
+{
+	static size_t const arg_count = sizeof...(Args);
+	using result_type = Ret;
+	using args_as_tuple = std::tuple<Args...>;
+	using closure_type = Ret(__stdcall*)(Args...);
+	using is_const = std::true_type;
+
+	template<size_t N>
+	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+};
+// __stdcall function const pointer specialization
+template<typename Ret, typename... Args>
+struct closure_traits<Ret(__stdcall* const)(Args...)>
+{
+	static size_t const arg_count = sizeof...(Args);
+	using result_type = Ret;
+	using args_as_tuple = std::tuple<Args...>;
+	using closure_type = Ret(__stdcall* const)(Args...);
+	using is_const = std::true_type;
+
+	template<size_t N>
+	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+};
+#endif // _WIN32
 
 /** Class to easily manipulate an enum that represents a bitfield (strongly typed alternative to traits). */
 template<typename EnumType, typename = std::enable_if_t<std::is_enum<EnumType>::value>>
@@ -722,20 +878,32 @@ constexpr std::enable_if_t<la::avdecc::utils::enum_traits<EnumType>::is_bitfield
 	return value;
 }
 
+/** Return type of a closure. */
+template<typename CallableType>
+using CallableReturnType = typename closure_traits<std::remove_reference_t<CallableType>>::result_type;
+
 /**
 * @brief Function to safely call a handler (in the form of a std::function), forwarding all parameters to it.
 * @param[in] handler The callable object to be invoked.
 * @param[in] params The parameters to pass to the handler.
+* @return The result of the handler, if any.
 * @details Calls the specified handler in the current thread, protecting the caller from any thrown exception in the handler itself.
 */
 template<typename CallableType, typename... Ts>
-void invokeProtectedHandler(CallableType&& handler, Ts&&... params) noexcept
+CallableReturnType<CallableType> invokeProtectedHandler(CallableType&& handler, Ts&&... params) noexcept
 {
 	if (handler)
 	{
 		try
 		{
-			handler(std::forward<Ts>(params)...);
+			if constexpr (std::is_same_v<CallableReturnType<CallableType>, void>)
+			{
+				handler(std::forward<Ts>(params)...);
+			}
+			else
+			{
+				return handler(std::forward<Ts>(params)...);
+			}
 		}
 		catch (std::exception const& e)
 		{
@@ -747,20 +915,33 @@ void invokeProtectedHandler(CallableType&& handler, Ts&&... params) noexcept
 		{
 		}
 	}
+
+	if constexpr (!std::is_same_v<CallableReturnType<CallableType>, void>)
+	{
+		return CallableReturnType<CallableType>{};
+	}
 }
 
 /**
 * @brief Function to safely call a class method, forwarding all parameters to it.
+* @return The result of the method, if any.
 * @details Calls the specified class method, protecting the caller from any thrown exception in the handler itself.
 */
 template<typename Method, class Object, typename... Parameters>
-void invokeProtectedMethod(Method&& method, Object* const object, Parameters&&... params) noexcept
+CallableReturnType<Method> invokeProtectedMethod(Method&& method, Object* const object, Parameters&&... params) noexcept
 {
 	if (method != nullptr && object != nullptr)
 	{
 		try
 		{
-			(object->*method)(std::forward<Parameters>(params)...);
+			if constexpr (std::is_same_v<CallableReturnType<Method>, void>)
+			{
+				(object->*method)(std::forward<Parameters>(params)...);
+			}
+			else
+			{
+				return (object->*method)(std::forward<Parameters>(params)...);
+			}
 		}
 		catch (std::exception const& e)
 		{
@@ -772,32 +953,11 @@ void invokeProtectedMethod(Method&& method, Object* const object, Parameters&&..
 		{
 		}
 	}
-}
 
-/**
-* @brief Function to safely call a class method, forwarding all parameters to it and returning specified ReturnType (should be default-constructible).
-* @details Calls the specified class method, protecting the caller from any thrown exception in the handler itself.
-*/
-template<class ReturnType, typename Method, class Object, typename... Parameters>
-ReturnType invokeProtectedMethodWithReturn(Method&& method, Object* const object, Parameters&&... params) noexcept
-{
-	if (method != nullptr && object != nullptr)
+	if constexpr (!std::is_same_v<CallableReturnType<Method>, void>)
 	{
-		try
-		{
-			return (object->*method)(std::forward<Parameters>(params)...);
-		}
-		catch (std::exception const& e)
-		{
-			/* Forcing the assert to fail, but with code so we don't get a warning on gcc */
-			AVDECC_ASSERT(method == nullptr, (std::string("invokeProtectedMethodWithReturn caught an exception in method: ") + e.what()).c_str());
-			(void)e;
-		}
-		catch (...)
-		{
-		}
+		return CallableReturnType<Method>{};
 	}
-	return ReturnType{};
 }
 
 /** Useful template to create strongly typed defines that can be extended using inheritance */

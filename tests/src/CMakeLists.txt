@@ -20,6 +20,7 @@ set(TESTS_SOURCE
 	commandStateMachine_tests.cpp
 	controllerCapabilityDelegate_tests.cpp
 	enum_tests.cpp
+	entity_tests.cpp
 	instrumentationObserver.hpp
 	logger_tests.cpp
 	memoryBuffer_tests.cpp

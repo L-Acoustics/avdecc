@@ -83,6 +83,10 @@ constexpr auto ControlledEntityStatistics_AecpResponseAverageTime = "aecp_respon
 constexpr auto ControlledEntityStatistics_AemAecpUnsolicitedCounter = "aem_aecp_unsolicited_counter";
 constexpr auto ControlledEntityStatistics_EnumerationTime = "enumeration_time";
 
+/* ControlledEntityDiagnostics */
+constexpr auto ControlledEntityDiagnostics_RedundancyWarning = "redundancy_warning";
+constexpr auto ControlledEntityDiagnostics_StreamInputLatencyErrors = "stream_input_latency_errors";
+
 } // namespace keyName
 
 /* ControlledEntity::CompatibilityFlag conversion */
@@ -111,6 +115,7 @@ constexpr auto ControlledEntity_EntityModelID = "entity_model_id";
 constexpr auto ControlledEntity_MilanInformation = "milan_information";
 constexpr auto ControlledEntity_EntityState = "state";
 constexpr auto ControlledEntity_Statistics = "statistics";
+constexpr auto ControlledEntity_Diagnostics = "diagnostics";
 
 } // namespace keyName
 

@@ -92,6 +92,7 @@ public:
 		IEEE17221 = 1u << 0, /** Classic IEEE1722.1 entity */
 		Milan = 1u << 1, /** MILAN compatible entity */
 
+		MilanWarning = 1u << 6, /** MILAN compatible entity but with minor warnings in the model/behavior that do not retrograde a Milan entity (this flag it additive with Milan flag) */
 		Misbehaving = 1u << 7, /** Entity is sending correctly formed messages but with incoherent values that can cause undefined behavior. */
 	};
 	using CompatibilityFlags = utils::EnumBitfield<CompatibilityFlag>;
@@ -104,9 +105,17 @@ public:
 		Up = 2, /** Interface is Up */
 	};
 
+	/* Entity Diagnostics */
+	struct Diagnostics
+	{
+		bool redundancyWarning{ false }; /** Flag indicating a Milan redundant device has both interfaces connected to the same network */
+		std::unordered_map<entity::model::StreamIndex, bool> streamInputOverLatency{}; /** Flag indicating a StreamInput MSRP Latency is greater than Talker's Presentation Time */
+	};
+
 	// Getters
 	virtual bool isVirtual() const noexcept = 0; // True if the entity is a virtual one (la::avdecc::controller::Controller methods won't succeed due to the entity not actually been discovered)
 	virtual CompatibilityFlags getCompatibilityFlags() const noexcept = 0;
+	virtual bool isMilanRedundant() const noexcept = 0; // True if the entity is currently in Milan Redundancy mode (ie. current configuration has at least one redundant stream)
 	virtual bool gotFatalEnumerationError() const noexcept = 0; // True if the controller had a fatal error during entity information retrieval (leading to Exception::Type::EnumerationError if any throwing method is called).
 	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept = 0;
 	virtual bool isAcquired() const noexcept = 0; // Is entity acquired by the controller it's attached to
@@ -174,6 +183,9 @@ public:
 	virtual std::chrono::milliseconds const& getAecpResponseAverageTime() const noexcept = 0;
 	virtual std::uint64_t getAemAecpUnsolicitedCounter() const noexcept = 0;
 	virtual std::chrono::milliseconds const& getEnumerationTime() const noexcept = 0;
+
+	// Diagnostics
+	virtual la::avdecc::controller::ControlledEntity::Diagnostics const& getDiagnostics() const noexcept = 0;
 
 	// Visitor method
 	virtual void accept(model::EntityModelVisitor* const visitor, bool const visitAllConfigurations = false) const noexcept = 0;

@@ -132,6 +132,15 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 			statistics[controller::keyName::ControlledEntityStatistics_EnumerationTime] = entity.getEnumerationTime();
 		}
 
+		// Dump Entity Diagnostics
+		if (flags.test(entity::model::jsonSerializer::Flag::ProcessDiagnostics))
+		{
+			auto& diagnostics = object[keyName::ControlledEntity_Diagnostics];
+			auto const& diags = entity.getDiagnostics();
+			diagnostics[controller::keyName::ControlledEntityDiagnostics_RedundancyWarning] = diags.redundancyWarning;
+			diagnostics[controller::keyName::ControlledEntityDiagnostics_StreamInputLatencyErrors] = diags.streamInputOverLatency;
+		}
+
 		return object;
 	}
 	catch (json::exception const& e)
@@ -344,6 +353,68 @@ void setEntityStatistics(ControlledEntityImpl& entity, json const& object)
 		AVDECC_ASSERT(false, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here");
 		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InternalError, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here." };
 	}
+}
+
+void setEntityDiagnostics(ControlledEntityImpl& entity, json const& object)
+{
+	auto diags = ControlledEntity::Diagnostics{};
+
+	try
+	{
+		// Everything is optional
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityDiagnostics_RedundancyWarning);
+			if (it != object.end())
+			{
+				diags.redundancyWarning = it->get<decltype(diags.redundancyWarning)>();
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityDiagnostics_StreamInputLatencyErrors);
+			if (it != object.end())
+			{
+				diags.streamInputOverLatency = it->get<decltype(diags.streamInputOverLatency)>();
+			}
+		}
+	}
+	catch (json::type_error const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InvalidValue, e.what() };
+	}
+	catch (json::parse_error const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::ParseError, e.what() };
+	}
+	catch (json::out_of_range const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::MissingKey, e.what() };
+	}
+	catch (json::other_error const& e)
+	{
+		if (e.id == 555)
+		{
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InvalidKey, e.what() };
+		}
+		else
+		{
+			throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
+		}
+	}
+	catch (json::exception const& e)
+	{
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::OtherError, e.what() };
+	}
+	catch (avdecc::jsonSerializer::DeserializationException const&)
+	{
+		throw; // Rethrow, this is already the correct exception type
+	}
+	catch (...)
+	{
+		AVDECC_ASSERT(false, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here");
+		throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::InternalError, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here." };
+	}
+
+	entity.setDiagnostics(diags);
 }
 
 } // namespace jsonSerializer

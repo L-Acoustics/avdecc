@@ -922,6 +922,17 @@ LA_AVDECC_BINDINGS_C_API avdecc_mac_address_t const* LA_AVDECC_BINDINGS_C_CALL_C
 
 
 /* ************************************************************************** */
+/* Executor                                                                   */
+/* ************************************************************************** */
+
+// Executor APIs
+/** Creates a new Queue Executor. avdecc_executor_error_no_error is returned in case of success and createdExecutorHandle is initialized with the newly created ExecutorHandle. LA_AVDECC_ProtocolInterface_destroy must be called when the ProtocolInterface is no longer in use. */
+LA_AVDECC_BINDINGS_C_API avdecc_executor_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_Executor_createQueueExecutor(avdecc_const_string_t executorName, LA_AVDECC_EXECUTOR_WRAPPER_HANDLE* const createdExecutorHandle);
+/** Destroys a previously created Executor. */
+LA_AVDECC_BINDINGS_C_API avdecc_executor_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_Executor_destroy(LA_AVDECC_EXECUTOR_WRAPPER_HANDLE const handle);
+
+
+/* ************************************************************************** */
 /* ProtocolInterface                                                          */
 /* ************************************************************************** */
 
@@ -977,6 +988,7 @@ LA_AVDECC_BINDINGS_C_API avdecc_string_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA
 LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_types_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_ProtocolInterface_getSupportedProtocolInterfaceTypes();
 
 // ProtocolInterface APIs
+LA_AVDECC_BINDINGS_C_API avdecc_const_string_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_ProtocolInterface_getDefaultExecutorName();
 /** Creates a new ProtocolInterface. avdecc_protocol_interface_error_no_error is returned in case of success and createdProtocolInterfaceHandle is initialized with the newly created ProtocolInterfaceHandle. LA_AVDECC_ProtocolInterface_destroy must be called when the ProtocolInterface is no longer in use. */
 LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_ProtocolInterface_create(avdecc_protocol_interface_type_t const protocolInterfaceType, avdecc_const_string_t interfaceName, LA_AVDECC_PROTOCOL_INTERFACE_HANDLE* const createdProtocolInterfaceHandle);
 /** Destroys a previously created ProtocolInterface. */

@@ -152,6 +152,7 @@ struct LockInformation
 - (void)removeLocalProcessEntityHandlers:(la::avdecc::entity::LocalEntity const&)entity;
 // Unregistration of a local process entity
 - (la::avdecc::protocol::ProtocolInterface::Error)unregisterLocalEntity:(la::avdecc::entity::LocalEntity const&)entity;
+- (la::avdecc::protocol::ProtocolInterface::Error)injectRawPacket:(la::avdecc::MemoryBuffer&&)packet;
 - (la::avdecc::protocol::ProtocolInterface::Error)setEntityNeedsAdvertise:(la::avdecc::entity::LocalEntity const&)entity flags:(la::avdecc::entity::LocalEntity::AdvertiseFlags)flags;
 - (la::avdecc::protocol::ProtocolInterface::Error)enableEntityAdvertising:(la::avdecc::entity::LocalEntity const&)entity;
 - (la::avdecc::protocol::ProtocolInterface::Error)disableEntityAdvertising:(la::avdecc::entity::LocalEntity const&)entity;
@@ -446,6 +447,11 @@ private:
 	virtual Error unregisterLocalEntity(entity::LocalEntity& entity) noexcept override
 	{
 		return [_bridge unregisterLocalEntity:entity];
+	}
+
+	virtual Error injectRawPacket(la::avdecc::MemoryBuffer&& packet) const noexcept override
+	{
+		return [_bridge injectRawPacket:std::move(packet)];
 	}
 
 	virtual Error setEntityNeedsAdvertise(entity::LocalEntity const& entity, entity::LocalEntity::AdvertiseFlags const flags) noexcept override
@@ -1478,6 +1484,11 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOffline, _protocolInterface, entityID);
 
 	return la::avdecc::protocol::ProtocolInterface::Error::NoError;
+}
+
+- (la::avdecc::protocol::ProtocolInterface::Error)injectRawPacket:(la::avdecc::MemoryBuffer&&)packet {
+#pragma message("TODO: Implement injectRawPacket")
+	return la::avdecc::protocol::ProtocolInterface::Error::InternalError;
 }
 
 - (la::avdecc::protocol::ProtocolInterface::Error)setEntityNeedsAdvertise:(const la::avdecc::entity::LocalEntity&)entity flags:(la::avdecc::entity::LocalEntity::AdvertiseFlags)flags {

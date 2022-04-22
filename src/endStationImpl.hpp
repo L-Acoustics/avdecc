@@ -24,8 +24,8 @@
 
 #pragma once
 
-// End Station
 #include "la/avdecc/internals/endStation.hpp"
+#include "la/avdecc/executor.hpp"
 
 #include <memory>
 #include <vector>
@@ -37,7 +37,7 @@ namespace avdecc
 class EndStationImpl final : public EndStation
 {
 public:
-	EndStationImpl(protocol::ProtocolInterface::UniquePointer&& protocolInterface) noexcept;
+	EndStationImpl(ExecutorManager::ExecutorWrapper::UniquePointer&& executorWrapper, protocol::ProtocolInterface::UniquePointer&& protocolInterface) noexcept;
 	~EndStationImpl() noexcept;
 
 	// EndStation overrides
@@ -48,6 +48,7 @@ public:
 	virtual void destroy() noexcept override;
 
 private:
+	ExecutorManager::ExecutorWrapper::UniquePointer const _executorWrapper{ nullptr, nullptr };
 	protocol::ProtocolInterface::UniquePointer const _protocolInterface{ nullptr, nullptr };
 	std::vector<entity::Entity::UniquePointer> _entities{};
 };

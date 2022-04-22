@@ -25,6 +25,7 @@
 #pragma once
 
 #include "la/avdecc/avdecc.hpp"
+#include "la/avdecc/executor.hpp"
 #include "la/avdecc/logger.hpp"
 #include "la/avdecc/memoryBuffer.hpp"
 #include "la/avdecc/utils.hpp"
