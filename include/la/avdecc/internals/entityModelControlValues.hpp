@@ -33,7 +33,9 @@
 
 #include <optional>
 #include <array>
-#include <version>
+#if !defined(__GNUC__) || __GNUC__ >= 10 /* <version> is not present in earier versions of gcc (not sure which version exactly, using 10 here) */
+#	include <version>
+#endif
 
 #if defined(__cpp_lib_constexpr_vector) && defined(__cpp_lib_array_constexpr)
 #	define CONSTEXPR_COMPARISON constexpr

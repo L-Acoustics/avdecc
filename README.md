@@ -78,7 +78,7 @@ C language bindings over la_avdecc library.
 
 ### All platforms
 - Clone this repository
-- Update submodules: *git submodule update --init*
+- Update submodules: *git submodule update --init --recursive*
 
 ### Windows
 - [Install WinPcap Developer's Pack](externals/3rdparty/winpcap/README.md)
