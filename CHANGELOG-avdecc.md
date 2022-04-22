@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 - Generated EntityID now follows the new recommendation of IEEE (full MacAddress on MSB)
+- Full network message scheduler refactoring
 
 ## [3.2.2] - 2022-01-20
 ### Added
