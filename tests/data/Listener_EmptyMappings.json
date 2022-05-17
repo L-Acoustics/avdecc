@@ -142,6 +142,39 @@
                                             "SYNC_SAMPLE_RATE_CONV"
                                         ]
                                     }
+                                },
+                                {
+                                    "_index (informative)": 1,
+                                    "audio_cluster_descriptors": [
+                                        {
+                                            "_index (informative)": 4,
+                                            "dynamic": {
+                                                "object_name": "In 5"
+                                            },
+                                            "static": {
+                                                "block_latency": 0,
+                                                "channel_count": 1,
+                                                "format": "MBLA",
+                                                "localized_description": null,
+                                                "path_latency": 0,
+                                                "signal_index": 0,
+                                                "signal_output": 0,
+                                                "signal_type": "INVALID"
+                                            }
+                                        }
+                                    ],
+                                    "audio_map_descriptors": null,
+                                    "dynamic": {
+                                        "dynamic_mappings": [
+                                        ]
+                                    },
+                                    "static": {
+                                        "clock_domain_index": 0,
+                                        "flags": [
+                                            "CLOCK_SYNC_SOURCE",
+                                            "SYNC_SAMPLE_RATE_CONV"
+                                        ]
+                                    }
                                 }
                             ],
                             "stream_port_output_descriptors": null
