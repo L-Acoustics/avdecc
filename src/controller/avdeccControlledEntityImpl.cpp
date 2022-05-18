@@ -575,7 +575,8 @@ std::map<entity::model::StreamPortIndex, entity::model::AudioMappings> Controlle
 						if (AVDECC_ASSERT_WITH_RET(mapping.streamIndex < maxStreams && mapping.clusterOffset < maxClusters, "Mapping stream/cluster index is out of bounds"))
 						{
 							// Check if the mapping makes sense statically (regarding ClusterOffset value)
-							auto const clusterNodeIt = streamPortNode.audioClusters.find(mapping.clusterOffset);
+							auto const clusterIndex = streamPortNode.staticModel->baseCluster + mapping.clusterOffset;
+							auto const clusterNodeIt = streamPortNode.audioClusters.find(clusterIndex);
 							if (AVDECC_ASSERT_WITH_RET(clusterNodeIt != streamPortNode.audioClusters.end(), "Mapping cluster offset invalid for this stream port"))
 							{
 								// Check if the mapping makes sense statically (regarding ClusterChannel)

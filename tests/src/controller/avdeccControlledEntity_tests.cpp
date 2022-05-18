@@ -113,6 +113,30 @@ TEST(ControlledEntity, AddChannelMappings)
 	EXPECT_TRUE(Mapping == e.getStreamPortInputAudioMappings(StreamPort).at(0));
 }
 
+TEST(ControlledEntity, GetInvalidMappings)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en");
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/Listener_EmptyMappings.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 })));
+	constexpr auto StreamPort = la::avdecc::entity::model::StreamPortIndex{ 1u };
+
+	// Add mapping to 2nd stream channel
+	auto const Mapping = la::avdecc::entity::model::AudioMapping{ 0, 1, 0, 0 };
+	e.addStreamPortInputAudioMappings(StreamPort, la::avdecc::entity::model::AudioMappings{ Mapping });
+
+	// Calculate invalid mappings for a stream format with a single channel (AAF 48kHz 1ch)
+	auto const StreamFormat = la::avdecc::entity::model::StreamFormat(0x0205022000406000);
+	auto const invalid = e.getStreamPortInputInvalidAudioMappingsForStreamFormat(0, StreamFormat);
+	EXPECT_EQ(1, invalid.size()) << "Exactly one stream port should have invalid mappings";
+	ASSERT_EQ(1, invalid.count(StreamPort)) << "Stream port with invalid mappings not in result";
+	ASSERT_EQ(1, invalid.at(StreamPort).size()) << "There should be exactly one invalid mapping";
+	EXPECT_EQ(Mapping, invalid.at(StreamPort)[0]);
+}
+
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 TEST(ControlledEntity, AddRedundantChannelMappings)
 {
