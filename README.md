@@ -56,7 +56,7 @@ C language bindings over la_avdecc library.
 ## Minimum requirements for compilation
 
 ### All platforms
-- CMake 3.18.3
+- CMake 3.22
 
 ### Windows
 - Windows 10

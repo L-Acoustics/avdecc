@@ -1,7 +1,7 @@
 # Avdecc Library
 
 # Minimum CMake version
-cmake_minimum_required(VERSION 3.18.3)
+cmake_minimum_required(VERSION 3.22)
 
 ############ Versioning
 
