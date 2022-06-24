@@ -131,9 +131,9 @@ TEST(ControlledEntity, GetInvalidMappings)
 	// Calculate invalid mappings for a stream format with a single channel (AAF 48kHz 1ch)
 	auto const StreamFormat = la::avdecc::entity::model::StreamFormat(0x0205022000406000);
 	auto const invalid = e.getStreamPortInputInvalidAudioMappingsForStreamFormat(0, StreamFormat);
-	EXPECT_EQ(1, invalid.size()) << "Exactly one stream port should have invalid mappings";
-	ASSERT_EQ(1, invalid.count(StreamPort)) << "Stream port with invalid mappings not in result";
-	ASSERT_EQ(1, invalid.at(StreamPort).size()) << "There should be exactly one invalid mapping";
+	EXPECT_EQ(1u, invalid.size()) << "Exactly one stream port should have invalid mappings";
+	ASSERT_EQ(1u, invalid.count(StreamPort)) << "Stream port with invalid mappings not in result";
+	ASSERT_EQ(1u, invalid.at(StreamPort).size()) << "There should be exactly one invalid mapping";
 	EXPECT_EQ(Mapping, invalid.at(StreamPort)[0]);
 }
 
