@@ -30,12 +30,9 @@
 #include <la/avdecc/internals/exception.hpp>
 #include <la/avdecc/internals/entityModelTree.hpp>
 
-#if defined(ENABLE_AVDECC_CUSTOM_ANY)
-#	include <la/avdecc/internals/any.hpp>
-#else // !ENABLE_AVDECC_CUSTOM_ANY
-#	include <any>
-#endif // ENABLE_AVDECC_CUSTOM_ANY
 #include "exports.hpp"
+
+#include <any>
 #include <string>
 #include <vector>
 #include <map>

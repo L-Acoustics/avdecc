@@ -65,8 +65,8 @@ C language bindings over la_avdecc library.
 - GitBash or cygwin
 
 ### macOS
-- macOS 10.12
-- Xcode 10
+- macOS 10.13
+- Xcode 12
 
 ### Linux
 - C++17 compliant compiler (minimum recommended g++ 8.2.1)

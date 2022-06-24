@@ -14,7 +14,6 @@ set(TESTS_SOURCE
 	main.cpp
 	aatlv_tests.cpp
 	aemPayloads_tests.cpp
-	any_tests.cpp
 	avdeccFixedString_tests.cpp
 	controllerEntity_tests.cpp
 	commandStateMachine_tests.cpp

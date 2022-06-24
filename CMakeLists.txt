@@ -44,7 +44,6 @@ option(ENABLE_AVDECC_FEATURE_REDUNDANCY "Enable 'Network Redundancy' feature as 
 option(ENABLE_AVDECC_FEATURE_JSON "Enable read/write files in JSON format." TRUE)
 # Compatibility options
 option(ENABLE_AVDECC_USE_FMTLIB "Use fmtlib" TRUE)
-option(ENABLE_AVDECC_CUSTOM_ANY "Use custom std::any instead of c++17 one (for compilers not supporting std::any yet)" TRUE)
 option(ENABLE_AVDECC_STRICT_2018_REDUNDANCY "Be strict about 'Network Redundancy' feature, using AVnu 2018 specifications." TRUE)
 option(IGNORE_INVALID_CONTROL_DATA_LENGTH "Allow messages with an invalid advertised 'Control Data Length' field (not matching data in buffer)." TRUE) # Required for Motu devices sending invalid response messages
 option(IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES "Allow invalid AEM non-success responses messages." TRUE) # Required for Motu/Tesira devices sending invalid error response messages
@@ -92,7 +91,7 @@ include(${CU_BASE_DIR}/ProjectProperties.cmake)
 cu_setup_project_version_variables(${LA_AVDECC_VERSION})
 
 # Set minimum OSX/iOS version
-cu_setup_apple_minimum_versions(MACOS 10.9)
+cu_setup_apple_minimum_versions(MACOS 10.13)
 
 # Include fmtlib
 if(ENABLE_AVDECC_USE_FMTLIB)
