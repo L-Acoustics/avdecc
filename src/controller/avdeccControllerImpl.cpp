@@ -4614,7 +4614,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, SharedCont
 
 entity::model::StreamFormat LA_AVDECC_CONTROLLER_CALL_CONVENTION Controller::chooseBestStreamFormat(entity::model::StreamFormats const& availableFormats, entity::model::StreamFormat const desiredStreamFormat, std::function<bool(bool const isDesiredClockSync, bool const isAvailableClockSync)> const& clockValidator) noexcept
 {
-	auto desiredStreamFormatInfo = entity::model::StreamFormatInfo::create(desiredStreamFormat);
+	auto const desiredStreamFormatInfo = entity::model::StreamFormatInfo::create(desiredStreamFormat);
 	auto const desiredFormatType = desiredStreamFormatInfo->getType();
 	auto const desiredSamplingRate = desiredStreamFormatInfo->getSamplingRate();
 	auto const desiredSampleFormat = desiredStreamFormatInfo->getSampleFormat();
@@ -4624,7 +4624,7 @@ entity::model::StreamFormat LA_AVDECC_CONTROLLER_CALL_CONVENTION Controller::cho
 	// Loop over available formats, and search for a matching one
 	for (auto const streamFormat : availableFormats)
 	{
-		auto streamFormatInfo = entity::model::StreamFormatInfo::create(streamFormat);
+		auto const streamFormatInfo = entity::model::StreamFormatInfo::create(streamFormat);
 		auto const formatType = streamFormatInfo->getType();
 		auto const samplingRate = streamFormatInfo->getSamplingRate();
 		auto const sampleFormat = streamFormatInfo->getSampleFormat();
@@ -4644,6 +4644,22 @@ entity::model::StreamFormat LA_AVDECC_CONTROLLER_CALL_CONVENTION Controller::cho
 
 	return {};
 }
+
+bool LA_AVDECC_CONTROLLER_CALL_CONVENTION Controller::isMediaClockStreamFormat(entity::model::StreamFormat const streamFormat) noexcept
+{
+	auto const streamFormatInfo = entity::model::StreamFormatInfo::create(streamFormat);
+	auto const type = streamFormatInfo->getType();
+
+	// CRF is always a media clock stream format
+	if (type == entity::model::StreamFormatInfo::Type::ClockReference)
+	{
+		return true;
+	}
+
+	// TODO: Maybe check for 1 channel stream
+	return false;
+}
+
 
 } // namespace controller
 } // namespace avdecc
