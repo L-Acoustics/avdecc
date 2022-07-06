@@ -499,6 +499,28 @@ public:
 		return _buffer[0] == '\0';
 	}
 
+	/** Direct access operator */
+	value_type& operator[](size_t const pos)
+	{
+		if (pos >= MaxLength)
+		{
+			throw std::out_of_range("AvdeccFixedString::operator[]");
+		}
+
+		return _buffer[pos];
+	}
+
+	/** Direct access const operator */
+	value_type const& operator[](size_t const pos) const
+	{
+		if (pos >= MaxLength)
+		{
+			throw std::out_of_range("AvdeccFixedString::operator[]");
+		}
+
+		return _buffer[pos];
+	}
+
 	/** operator== */
 	bool operator==(AvdeccFixedString const& afs) const noexcept
 	{
