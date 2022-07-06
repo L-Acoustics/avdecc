@@ -28,11 +28,13 @@
 
 #include <la/avdecc/internals/streamFormatInfo.hpp>
 #include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
+#include <la/avdecc/utils.hpp>
 
 #include <algorithm>
 #include <cassert>
 #include <typeindex>
 #include <unordered_map>
+#include <string>
 
 namespace la
 {
@@ -46,6 +48,34 @@ static constexpr std::uint16_t MaxQueryDescriptorRetryCount = 2;
 static constexpr std::uint16_t MaxQueryDynamicInfoRetryCount = 2;
 static constexpr std::uint16_t MaxQueryDescriptorDynamicInfoRetryCount = 2;
 static constexpr std::uint16_t QueryRetryMillisecondDelay = 500;
+
+/** Returns the common part of the two strings, with excess spaces removed. */
+static std::string getCommonString(std::string const& lhs, std::string const& rhs) noexcept
+{
+	auto const tokensL = avdecc::utils::tokenizeString(lhs, ' ', false);
+	auto const tokensR = avdecc::utils::tokenizeString(rhs, ' ', false);
+
+	if (tokensL.size() == tokensR.size())
+	{
+		auto result = std::string{};
+		for (auto tokPos = 0u; tokPos < tokensL.size(); ++tokPos)
+		{
+			auto const tokL = tokensL[tokPos];
+			auto const tokR = tokensR[tokPos];
+			if (tokL == tokR)
+			{
+				if (!result.empty())
+				{
+					result += ' ';
+				}
+				result += tokL;
+			}
+		}
+		return result;
+	}
+
+	return {};
+}
 
 /* ************************************************************************** */
 /* ControlledEntityImpl                                                       */
@@ -2322,7 +2352,7 @@ class RedundantHelper : public ControlledEntityImpl
 {
 public:
 	template<typename StreamNodeType>
-	static void buildRedundancyNodesByType(la::avdecc::UniqueIdentifier entityID, std::map<entity::model::StreamIndex, StreamNodeType>& streams, std::map<model::VirtualIndex, model::RedundantStreamNode>& redundantStreams, RedundantStreamCategory& redundantPrimaryStreams, RedundantStreamCategory& redundantSecondaryStreams)
+	static void buildRedundancyNodesByType(ControlledEntityImpl const* const entity, la::avdecc::UniqueIdentifier entityID, std::map<entity::model::StreamIndex, StreamNodeType>& streams, std::map<model::VirtualIndex, model::RedundantStreamNode>& redundantStreams, RedundantStreamCategory& redundantPrimaryStreams, RedundantStreamCategory& redundantSecondaryStreams)
 	{
 		for (auto& streamNodeKV : streams)
 		{
@@ -2440,6 +2470,19 @@ public:
 					// Defined the primary stream
 					redundantStreamNode.primaryStream = redundantStreamIt->second;
 
+					// Try to create a virtual name
+					if (redundantStreamNodes.size() == 2)
+					{
+						auto const primaryName = getStreamName<StreamNodeType>(entity, redundantStreamNodes[0]);
+						auto const secondaryName = getStreamName<StreamNodeType>(entity, redundantStreamNodes[1]);
+
+						auto const virtualName = getCommonString(primaryName.str(), secondaryName.str());
+						if (!virtualName.empty())
+						{
+							redundantStreamNode.virtualName = virtualName;
+						}
+					}
+
 					// Cache Primary and Secondary StreamIndexes
 					redundantPrimaryStreams.insert(redundantStreamIt->second->descriptorIndex);
 					++redundantStreamIt;
@@ -2447,6 +2490,18 @@ public:
 				}
 			}
 		}
+	}
+
+private:
+	template<typename StreamNodeType>
+	static avdecc::entity::model::AvdeccFixedString getStreamName(ControlledEntityImpl const* const entity, model::StreamNode const* const stream) noexcept
+	{
+		auto const* const streamNode = static_cast<StreamNodeType const* const>(stream);
+		if (!streamNode->dynamicModel->objectName.empty())
+		{
+			return streamNode->dynamicModel->objectName;
+		}
+		return entity->getLocalizedString(streamNode->staticModel->localizedDescription);
 	}
 };
 
@@ -2694,8 +2749,8 @@ bool ControlledEntityImpl::isEntityModelComplete(entity::model::EntityTree const
 
 void ControlledEntityImpl::buildRedundancyNodes(model::ConfigurationNode& configNode) noexcept
 {
-	RedundantHelper::buildRedundancyNodesByType(_entity.getEntityID(), configNode.streamInputs, configNode.redundantStreamInputs, _redundantPrimaryStreamInputs, _redundantSecondaryStreamInputs);
-	RedundantHelper::buildRedundancyNodesByType(_entity.getEntityID(), configNode.streamOutputs, configNode.redundantStreamOutputs, _redundantPrimaryStreamOutputs, _redundantSecondaryStreamOutputs);
+	RedundantHelper::buildRedundancyNodesByType(this, _entity.getEntityID(), configNode.streamInputs, configNode.redundantStreamInputs, _redundantPrimaryStreamInputs, _redundantSecondaryStreamInputs);
+	RedundantHelper::buildRedundancyNodesByType(this, _entity.getEntityID(), configNode.streamOutputs, configNode.redundantStreamOutputs, _redundantPrimaryStreamOutputs, _redundantSecondaryStreamOutputs);
 }
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 

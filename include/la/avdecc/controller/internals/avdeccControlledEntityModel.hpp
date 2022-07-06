@@ -159,6 +159,9 @@ struct StreamOutputNode : public StreamNode
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 struct RedundantStreamNode : public VirtualNode
 {
+	// Virtual name of the redundant stream, if one could be constructed (empty otherwise)
+	entity::model::AvdeccFixedString virtualName{};
+
 	// Children
 	std::map<entity::model::StreamIndex, StreamNode const*> redundantStreams{}; // Either StreamInputNode or StreamOutputNode, based on Node::descriptorType
 

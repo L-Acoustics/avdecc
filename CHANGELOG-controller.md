@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - Controller::isMediaClockStreamFormat API
+- virtualName to RedundantStreamNode (generated from underlying stream names)
 
 ### Fixed
 - [Controller initiated Identify may deadlock](https://github.com/L-Acoustics/avdecc/issues/107)
