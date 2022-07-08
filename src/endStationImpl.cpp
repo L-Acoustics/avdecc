@@ -46,6 +46,8 @@ EndStationImpl::~EndStationImpl() noexcept
 	_entities.clear();
 	// Shutdown protocolInterface now
 	_protocolInterface->shutdown();
+	// Destroy the executor right now (flushing all events), before the PI is destroyed (and possibly accessed from the executor)
+	_executorWrapper = nullptr;
 }
 
 // EndStation overrides

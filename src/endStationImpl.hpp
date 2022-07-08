@@ -48,7 +48,7 @@ public:
 	virtual void destroy() noexcept override;
 
 private:
-	ExecutorManager::ExecutorWrapper::UniquePointer const _executorWrapper{ nullptr, nullptr };
+	ExecutorManager::ExecutorWrapper::UniquePointer _executorWrapper{ nullptr, nullptr };
 	protocol::ProtocolInterface::UniquePointer const _protocolInterface{ nullptr, nullptr };
 	std::vector<entity::Entity::UniquePointer> _entities{};
 };
