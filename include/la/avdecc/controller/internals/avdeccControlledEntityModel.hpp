@@ -30,12 +30,9 @@
 #include <la/avdecc/internals/exception.hpp>
 #include <la/avdecc/internals/entityModelTree.hpp>
 
-#if defined(ENABLE_AVDECC_CUSTOM_ANY)
-#	include <la/avdecc/internals/any.hpp>
-#else // !ENABLE_AVDECC_CUSTOM_ANY
-#	include <any>
-#endif // ENABLE_AVDECC_CUSTOM_ANY
 #include "exports.hpp"
+
+#include <any>
 #include <string>
 #include <vector>
 #include <map>
@@ -162,6 +159,9 @@ struct StreamOutputNode : public StreamNode
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 struct RedundantStreamNode : public VirtualNode
 {
+	// Virtual name of the redundant stream, if one could be constructed (empty otherwise)
+	entity::model::AvdeccFixedString virtualName{};
+
 	// Children
 	std::map<entity::model::StreamIndex, StreamNode const*> redundantStreams{}; // Either StreamInputNode or StreamOutputNode, based on Node::descriptorType
 

@@ -1,7 +1,7 @@
 # Avdecc Library
 
 # Minimum CMake version
-cmake_minimum_required(VERSION 3.18.3)
+cmake_minimum_required(VERSION 3.22)
 
 ############ Versioning
 
@@ -10,9 +10,9 @@ cmake_minimum_required(VERSION 3.18.3)
 # It should have 3 digits (x.y.z) on main branch, and 4 digits (x.y.z.w) on dev and task branches. The last digit being used as beta label.
 # As soon as an API change occurs in dev or task branch, update the version number by following SemVer rules (so the API breaking changes are not lost/forgotten).
 # Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task) which will be labelled 1.5.0-beta3
-set(LA_AVDECC_VERSION 3.2.3)
-set(LA_AVDECC_CONTROLLER_VERSION 3.2.3)
-set(LA_AVDECC_C_VERSION 1.0.8)
+set(LA_AVDECC_VERSION 3.2.4)
+set(LA_AVDECC_CONTROLLER_VERSION 3.2.4)
+set(LA_AVDECC_C_VERSION 1.0.9)
 
 ############ Override from command line "CMake -D<OPTION>=TRUE/FALSE/0/1/ON/OFF"
 
@@ -44,7 +44,6 @@ option(ENABLE_AVDECC_FEATURE_REDUNDANCY "Enable 'Network Redundancy' feature as 
 option(ENABLE_AVDECC_FEATURE_JSON "Enable read/write files in JSON format." TRUE)
 # Compatibility options
 option(ENABLE_AVDECC_USE_FMTLIB "Use fmtlib" TRUE)
-option(ENABLE_AVDECC_CUSTOM_ANY "Use custom std::any instead of c++17 one (for compilers not supporting std::any yet)" TRUE)
 option(ENABLE_AVDECC_STRICT_2018_REDUNDANCY "Be strict about 'Network Redundancy' feature, using AVnu 2018 specifications." TRUE)
 option(IGNORE_INVALID_CONTROL_DATA_LENGTH "Allow messages with an invalid advertised 'Control Data Length' field (not matching data in buffer)." TRUE) # Required for Motu devices sending invalid response messages
 option(IGNORE_INVALID_NON_SUCCESS_AEM_RESPONSES "Allow invalid AEM non-success responses messages." TRUE) # Required for Motu/Tesira devices sending invalid error response messages
@@ -92,7 +91,7 @@ include(${CU_BASE_DIR}/ProjectProperties.cmake)
 cu_setup_project_version_variables(${LA_AVDECC_VERSION})
 
 # Set minimum OSX/iOS version
-cu_setup_apple_minimum_versions(MACOS 10.9)
+cu_setup_apple_minimum_versions(MACOS 10.13)
 
 # Include fmtlib
 if(ENABLE_AVDECC_USE_FMTLIB)

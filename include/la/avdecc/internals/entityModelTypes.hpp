@@ -30,11 +30,7 @@
 #include "uniqueIdentifier.hpp"
 #include "exports.hpp"
 
-#if defined(ENABLE_AVDECC_CUSTOM_ANY)
-#	include "any.hpp"
-#else // !ENABLE_AVDECC_CUSTOM_ANY
-#	include <any>
-#endif // ENABLE_AVDECC_CUSTOM_ANY
+#include <any>
 #include <cstdint>
 #include <string>
 #include <array>
@@ -501,6 +497,28 @@ public:
 	bool empty() const noexcept
 	{
 		return _buffer[0] == '\0';
+	}
+
+	/** Direct access operator */
+	value_type& operator[](size_t const pos)
+	{
+		if (pos >= MaxLength)
+		{
+			throw std::out_of_range("AvdeccFixedString::operator[]");
+		}
+
+		return _buffer[pos];
+	}
+
+	/** Direct access const operator */
+	value_type const& operator[](size_t const pos) const
+	{
+		if (pos >= MaxLength)
+		{
+			throw std::out_of_range("AvdeccFixedString::operator[]");
+		}
+
+		return _buffer[pos];
 	}
 
 	/** operator== */

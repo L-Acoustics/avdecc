@@ -175,29 +175,23 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 							break;
 						}
 
-						// Take a "scoped locked" shared copy of the ControlledEntity
-						auto controlledEntity = getControlledEntityImplGuard(entityID, true);
+						// Never lock the ControlledEntities before calling the controller
+						// Disable Identification
+						_controller->setControlValues(entityID, state.controlIndex, makeIdentifyControlValues(false),
+							[this](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ControlIndex const controlIndex, MemoryBuffer const& packedControlValues)
+							{
+								// Take a "scoped locked" shared copy of the ControlledEntity
+								auto controlledEntity = getControlledEntityImplGuard(entityID);
 
-						// Entity still online
-						if (controlledEntity)
-						{
-							// Disable Identification
-							_controller->setControlValues(entityID, state.controlIndex, makeIdentifyControlValues(false),
-								[this](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ControlIndex const controlIndex, MemoryBuffer const& packedControlValues)
+								if (controlledEntity)
 								{
-									// Take a "scoped locked" shared copy of the ControlledEntity
-									auto controlledEntity = getControlledEntityImplGuard(entityID);
-
-									if (controlledEntity)
+									// Update source
+									if (!!status) // Only change the control values in case of success
 									{
-										// Update source
-										if (!!status) // Only change the control values in case of success
-										{
-											updateControlValues(*controlledEntity, controlIndex, packedControlValues);
-										}
+										updateControlValues(*controlledEntity, controlIndex, packedControlValues);
 									}
-								});
-						}
+								}
+							});
 					}
 
 					// Clear the lists

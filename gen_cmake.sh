@@ -20,6 +20,11 @@ fi
 
 ############################ DO NOT MODIFY AFTER THAT LINE #############
 
+# Include default values
+if [ -f "${selfFolderPath}.defaults.sh" ]; then
+	. "${selfFolderPath}.defaults.sh"
+fi
+
 gen_doc=1
 
 function extend_gc_fnc_help()

@@ -425,7 +425,7 @@ struct closure_traits<Ret (*const)(Args...)>
 	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
 };
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(_WIN64)
 // __stdcall function pointer specialization
 template<typename Ret, typename... Args>
 struct closure_traits<Ret(__stdcall*)(Args...)>
@@ -452,7 +452,7 @@ struct closure_traits<Ret(__stdcall* const)(Args...)>
 	template<size_t N>
 	using arg_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
 };
-#endif // _WIN32
+#endif // _WIN32 && !_WIN64
 
 /** Class to easily manipulate an enum that represents a bitfield (strongly typed alternative to traits). */
 template<typename EnumType, typename = std::enable_if_t<std::is_enum<EnumType>::value>>

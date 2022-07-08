@@ -93,12 +93,7 @@
 
 #include <la/networkInterfaceHelper/networkInterfaceHelper.hpp>
 
-#if defined(ENABLE_AVDECC_CUSTOM_ANY)
-#	include "la/avdecc/internals/any.hpp"
-#else // !ENABLE_AVDECC_CUSTOM_ANY
-#	include <any>
-#endif // ENABLE_AVDECC_CUSTOM_ANY
-
+#include <any>
 #include <algorithm>
 #include <array>
 #include <atomic>

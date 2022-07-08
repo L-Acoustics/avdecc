@@ -11,3 +11,6 @@
 /externals/3rdparty/winpcap/Include
 /externals/3rdparty/winpcap/Lib
 
+
+# Ignore .defaults.sh file
+/.defaults.sh

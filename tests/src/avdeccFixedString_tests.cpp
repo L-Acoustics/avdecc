@@ -196,3 +196,16 @@ TEST(AvdeccFixedString, EqualOperator)
 	afs2 = afs;
 	EXPECT_TRUE(afs == afs2);
 }
+
+TEST(AvdeccFixedString, DirectAccessOperator)
+{
+	std::string const str{ "Hi" };
+	la::avdecc::entity::model::AvdeccFixedString const afs{ str };
+
+	EXPECT_NO_THROW(EXPECT_EQ('H', afs[0]); EXPECT_EQ('i', afs[1]););
+	for (auto pos = str.size(); pos < afs.size(); ++pos)
+	{
+		EXPECT_NO_THROW(EXPECT_EQ(0, afs[pos]));
+	}
+	EXPECT_THROW(afs[afs.size()], std::out_of_range);
+}

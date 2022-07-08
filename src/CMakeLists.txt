@@ -228,15 +228,13 @@ if(ENABLE_AVDECC_FEATURE_JSON)
 		entity/entityModelJsonSerializer.cpp
 	)
 	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DENABLE_AVDECC_FEATURE_JSON")
+	# 64 bits visual studio requires /bigobj to be used for this file (apperently there are too many symbols in the file), but let's set the flag for 32 bits as well
+	if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+		set_source_files_properties(entity/entityModelJsonSerializer.cpp PROPERTIES COMPILE_FLAGS "/bigobj")
+	endif()
 endif()
 
 # Other options
-if(ENABLE_AVDECC_CUSTOM_ANY)
-	list(APPEND PUBLIC_HEADER_FILES
-		${CU_ROOT_DIR}/include/la/avdecc/internals/any.hpp
-	)
-	list(APPEND ADD_PUBLIC_COMPILE_OPTIONS "-DENABLE_AVDECC_CUSTOM_ANY")
-endif()
 if(IGNORE_INVALID_CONTROL_DATA_LENGTH)
 	list(APPEND ADD_PRIVATE_COMPILE_OPTIONS "-DIGNORE_INVALID_CONTROL_DATA_LENGTH")
 endif()

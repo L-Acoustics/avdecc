@@ -4,6 +4,14 @@ All notable changes to the Avdecc Controller Library will be documented in this 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [3.2.4] - 2022-07-08
+### Added
+- Controller::isMediaClockStreamFormat API
+- virtualName to RedundantStreamNode (generated from underlying stream names)
+
+### Fixed
+- [Controller initiated Identify may deadlock](https://github.com/L-Acoustics/avdecc/issues/107)
+
 ## [3.2.3] - 2022-04-22
 ### Added
 - Network diagnostics: msrp overdelay, redundancy warning
