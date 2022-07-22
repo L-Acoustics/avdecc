@@ -159,6 +159,8 @@ private:
 	/* Model deserialization methods */
 	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadVirtualEntitiesFromJsonNetworkState(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError) noexcept override;
 	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadVirtualEntityFromJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags) noexcept override;
+	virtual bool unloadVirtualEntity(UniqueIdentifier const entityID) noexcept override;
+
 
 	/* ************************************************************ */
 	/* Result handlers                                              */

@@ -500,6 +500,7 @@ public:
 	static LA_AVDECC_CONTROLLER_API std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, SharedControlledEntity> LA_AVDECC_CONTROLLER_CALL_CONVENTION deserializeControlledEntityFromJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags) noexcept;
 
 	/* Other helpful methods */
+	virtual bool unloadVirtualEntity(UniqueIdentifier const entityID) noexcept = 0;
 	/** Returns the StreamFormat among the provided availableFormats, that best matches desiredStreamFormat, using clockValidator delegate callback. Returns invalid StreamFormat if none is available. */
 	static LA_AVDECC_CONTROLLER_API entity::model::StreamFormat LA_AVDECC_CONTROLLER_CALL_CONVENTION chooseBestStreamFormat(entity::model::StreamFormats const& availableFormats, entity::model::StreamFormat const desiredStreamFormat, std::function<bool(bool const isDesiredClockSync, bool const isAvailableClockSync)> const& clockValidator) noexcept;
 	static LA_AVDECC_CONTROLLER_API bool LA_AVDECC_CONTROLLER_CALL_CONVENTION isMediaClockStreamFormat(entity::model::StreamFormat const streamFormat) noexcept;

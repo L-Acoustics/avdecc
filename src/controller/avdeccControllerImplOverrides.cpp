@@ -2882,6 +2882,30 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, SharedCont
 #endif // ENABLE_AVDECC_FEATURE_JSON
 }
 
+bool ControllerImpl::unloadVirtualEntity(UniqueIdentifier const entityID) noexcept
+{
+	// Check if entity is virtual
+	{
+		// Lock to protect _controlledEntities
+		std::lock_guard<decltype(_lock)> const lg(_lock);
+
+		auto entityIt = _controlledEntities.find(entityID);
+		// Entity not found
+		if (entityIt == _controlledEntities.end())
+		{
+			return false;
+		}
+		// Entity is not virtual
+		if (!entityIt->second->isVirtual())
+		{
+			return false;
+		}
+	}
+
+	onEntityOffline(nullptr, entityID);
+	return true;
+}
+
 } // namespace controller
 } // namespace avdecc
 } // namespace la
