@@ -206,6 +206,7 @@ public:
 	virtual bool isEntityModelValidForCaching() const noexcept override;
 	virtual bool isIdentifying() const noexcept override;
 
+	// Const Node getters
 	virtual model::EntityNode const& getEntityNode() const override;
 	virtual model::ConfigurationNode const& getConfigurationNode(entity::model::ConfigurationIndex const configurationIndex) const override;
 	virtual model::ConfigurationNode const& getCurrentConfigurationNode() const override;
@@ -310,6 +311,9 @@ public:
 
 		return false;
 	}
+
+	// Non-const Node getters
+	model::ConfigurationNode& getCurrentConfigurationNode();
 
 	// Non-const Tree getters
 	entity::model::EntityTree& getEntityTree() noexcept;

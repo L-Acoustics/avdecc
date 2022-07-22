@@ -54,11 +54,6 @@ namespace entity
 {
 namespace model
 {
-constexpr DescriptorIndex getInvalidDescriptorIndex() noexcept
-{
-	return DescriptorIndex(0xFFFF);
-}
-
 /** ENTITY Descriptor - Clause 7.2.1 */
 struct EntityDescriptor
 {

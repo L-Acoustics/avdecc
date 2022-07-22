@@ -137,6 +137,7 @@ public:
 	virtual bool isEntityModelValidForCaching() const noexcept = 0; // True if the Entity Model is valid for caching
 	virtual bool isIdentifying() const noexcept = 0; // True if the Entity is currently identifying itself
 
+	// Const Node getters
 	virtual model::EntityNode const& getEntityNode() const = 0; // Throws Exception::NotSupported if EM not supported by the Entity
 	virtual model::ConfigurationNode const& getConfigurationNode(entity::model::ConfigurationIndex const configurationIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
 	virtual model::ConfigurationNode const& getCurrentConfigurationNode() const = 0; // Throws Exception::NotSupported if EM not supported by the Entity

@@ -39,6 +39,7 @@
 #include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
 
 #include <fstream>
+#include <unordered_set>
 
 // According to clarification (from IEEE1722.1 call) a device should always send the complete, up-to-date, status in a GET/SET_STREAM_INFO response (either unsolicited or not)
 // This means that we should always replace the previously stored StreamInfo data with the last one received
@@ -973,6 +974,9 @@ void ControllerImpl::updateAudioUnitSamplingRate(ControlledEntityImpl& controlle
 
 void ControllerImpl::updateClockSource(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex) const noexcept
 {
+	auto const& e = controlledEntity.getEntity();
+	auto const entityID = e.getEntityID();
+
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	controlledEntity.setClockSource(clockDomainIndex, clockSourceIndex);
@@ -981,6 +985,48 @@ void ControllerImpl::updateClockSource(ControlledEntityImpl& controlledEntity, e
 	if (controlledEntity.wasAdvertised())
 	{
 		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onClockSourceChanged, this, &controlledEntity, clockDomainIndex, clockSourceIndex);
+	}
+
+	// Process all entities and update media clock if needed
+	{
+		// Lock to protect _controlledEntities
+		auto const lg = std::lock_guard{ _lock };
+
+		for (auto& [eid, entity] : _controlledEntities)
+		{
+			if (entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+			{
+				try
+				{
+					auto& configNode = entity->getCurrentConfigurationNode();
+					for (auto& clockDomainKV : configNode.clockDomains)
+					{
+						auto& clockDomainNode = clockDomainKV.second;
+						// Check if the chain has a node on that clock source changed entity
+						for (auto nodeIt = clockDomainNode.mediaClockChain.begin(); nodeIt != clockDomainNode.mediaClockChain.end(); ++nodeIt)
+						{
+							if (nodeIt->entityID == entityID)
+							{
+								// Save the domain/stream indexes, we'll continue from it
+								auto const continueDomainIndex = nodeIt->clockDomainIndex;
+								auto const continueStreamOutputIndex = nodeIt->streamOutputIndex;
+
+								// Remove this node and all following nodes
+								clockDomainNode.mediaClockChain.erase(nodeIt, clockDomainNode.mediaClockChain.end());
+
+								// Update the chain starting from this entity
+								computeAndUpdateMediaClockChain(*entity, clockDomainNode, entityID, continueDomainIndex, continueStreamOutputIndex, {});
+								break;
+							}
+						}
+					}
+				}
+				catch (...)
+				{
+					AVDECC_ASSERT(false, "Unexpected exception");
+				}
+			}
+		}
 	}
 }
 
@@ -2987,6 +3033,164 @@ void ControllerImpl::validateEntity(ControlledEntityImpl& controlledEntity) noex
 	checkRedundancyWarningDiagnostics(nullptr, controlledEntity);
 }
 
+// _lock should be taken when calling this method
+void ControllerImpl::computeAndUpdateMediaClockChain(ControlledEntityImpl& controlledEntity, model::ClockDomainNode& clockDomainNode, UniqueIdentifier const continueFromEntityID, entity::model::ClockDomainIndex const continueFromEntityDomainIndex, std::optional<entity::model::StreamIndex> const continueFromStreamOutputIndex, UniqueIdentifier const beingAdvertisedEntity) const noexcept
+{
+	auto encounteredEntities = std::unordered_set<UniqueIdentifier, UniqueIdentifier::hash>{}; // Used to detect recursivity
+
+	// If we don't start from the begining, add previously encountered entities in the set so we can properly detect recursivity
+	for (auto const& node : clockDomainNode.mediaClockChain)
+	{
+		encounteredEntities.insert(node.entityID);
+	}
+
+	// Get the starting point ClockDomainIndex
+	auto const continueFromEntityClockDomainIndex = continueFromEntityDomainIndex;
+
+	auto currentEntityID = continueFromEntityID;
+	auto currentStreamOutput = continueFromStreamOutputIndex; // StreamOutput for chain continuation
+	auto keepSearching = true;
+	while (keepSearching)
+	{
+		auto node = model::MediaClockChainNode{};
+		node.entityID = currentEntityID;
+		node.streamOutputIndex = currentStreamOutput;
+
+		// Firstly check for recursivity
+		if (encounteredEntities.count(currentEntityID) > 0u)
+		{
+			node.status = model::MediaClockChainNode::Status::Recursive;
+			keepSearching = false;
+		}
+		else
+		{
+			// Add entity to the list of processed entity
+			encounteredEntities.insert(currentEntityID);
+
+			// Get matching ControlledEntityImpl, if online (or being advertised when this method is called)
+			if (auto const entityIt = _controlledEntities.find(currentEntityID); entityIt != _controlledEntities.end() && (beingAdvertisedEntity == currentEntityID || entityIt->second->wasAdvertised()))
+			{
+				auto const& currentEntity = *entityIt->second;
+
+				try
+				{
+					auto const currentConfigIndex = currentEntity.getCurrentConfigurationIndex();
+
+					// Get current clock domain for this node (default with the provided one for the first run of the loop)
+					auto currentClockDomainIndex = continueFromEntityClockDomainIndex;
+
+					// And override it if this is a continuation of the chain
+					AVDECC_ASSERT(currentClockDomainIndex != entity::model::getInvalidDescriptorIndex() || currentStreamOutput, "currentClockDomainIndex and currentStreamOutput cannot both be invalid");
+#if 0
+					if (currentStreamOutput)
+#else // Better optimized version preventing retrieval of the StreamOutputNode during the first ieration of the loop if both continueFromEntityDomainIndex and continueFromStreamOutputIndex are defined
+					if (currentClockDomainIndex == entity::model::getInvalidDescriptorIndex() || (currentStreamOutput && currentClockDomainIndex != entity::model::getInvalidDescriptorIndex() && currentEntityID != continueFromEntityID))
+#endif
+					{
+						// Find stream output
+						auto const& soNode = currentEntity.getStreamOutputNode(currentConfigIndex, *currentStreamOutput);
+						if (soNode.staticModel == nullptr)
+						{
+							throw ControlledEntity::Exception(ControlledEntity::Exception::Type::NotSupported, "Invalid StreamOutput index");
+						}
+						currentClockDomainIndex = soNode.staticModel->clockDomainIndex;
+					}
+					node.clockDomainIndex = currentClockDomainIndex;
+
+					// Get the clock domain node
+					auto const& cdNode = currentEntity.getClockDomainNode(currentConfigIndex, currentClockDomainIndex);
+					if (cdNode.dynamicModel == nullptr)
+					{
+						throw ControlledEntity::Exception(ControlledEntity::Exception::Type::NotSupported, "ClockDomain DynamicModel not available");
+					}
+					auto const currentCSIndex = cdNode.dynamicModel->clockSourceIndex;
+
+					// Get the active clock source node for this clock domain
+					auto const& csNode = currentEntity.getClockSourceNode(currentConfigIndex, currentCSIndex);
+					if (csNode.staticModel == nullptr)
+					{
+						throw ControlledEntity::Exception(ControlledEntity::Exception::Type::NotSupported, "ClockSource StaticModel not available");
+					}
+
+					// Follow the clock source used by this domain
+					switch (csNode.staticModel->clockSourceType)
+					{
+						case entity::model::ClockSourceType::Internal:
+							node.type = model::MediaClockChainNode::Type::Internal;
+							keepSearching = false;
+							break;
+						case entity::model::ClockSourceType::External:
+							node.type = model::MediaClockChainNode::Type::External;
+							keepSearching = false;
+							break;
+						case entity::model::ClockSourceType::InputStream:
+						{
+							node.type = model::MediaClockChainNode::Type::StreamInput;
+
+							// Validate location type
+							if (csNode.staticModel->clockSourceLocationType != entity::model::DescriptorType::StreamInput)
+							{
+								throw ControlledEntity::Exception(ControlledEntity::Exception::Type::NotSupported, "Invalid ClockSource location");
+							}
+
+							// Find stream input
+							auto const& siNode = currentEntity.getStreamInputNode(currentConfigIndex, csNode.staticModel->clockSourceLocationIndex);
+							if (siNode.dynamicModel == nullptr)
+							{
+								throw ControlledEntity::Exception(ControlledEntity::Exception::Type::NotSupported, "StreamInput DynamicModel not available");
+							}
+							node.streamInputIndex = csNode.staticModel->clockSourceLocationIndex;
+
+							// Get connection info
+							auto const& connInfo = siNode.dynamicModel->connectionInfo;
+
+							// Stop searching if stream is not connected
+							if (connInfo.state != entity::model::StreamInputConnectionInfo::State::Connected)
+							{
+								node.status = model::MediaClockChainNode::Status::StreamNotConnected;
+								keepSearching = false;
+							}
+							else
+							{
+								// Go to next entity in the chain
+								currentEntityID = connInfo.talkerStream.entityID;
+
+								// And update the stream output index to continue from this one
+								currentStreamOutput = connInfo.talkerStream.streamIndex;
+							}
+							break;
+						}
+						default:
+							node.status = model::MediaClockChainNode::Status::UnsupportedClockSource;
+							keepSearching = false;
+							break;
+					}
+				}
+				catch (ControlledEntity::Exception const&)
+				{
+					node.status = model::MediaClockChainNode::Status::AemError;
+					keepSearching = false;
+				}
+			}
+			else
+			{
+				// Entity is offline
+				node.status = model::MediaClockChainNode::Status::EntityOffline;
+				keepSearching = false;
+			}
+		}
+
+		// Add to the chain
+		clockDomainNode.mediaClockChain.emplace_back(std::move(node));
+	}
+
+	// Entity was advertised to the user, notify observers
+	if (controlledEntity.wasAdvertised())
+	{
+		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onMediaClockChainChanged, this, &controlledEntity, clockDomainNode.descriptorIndex, clockDomainNode.mediaClockChain);
+	}
+}
+
 /** Actions to be done on the entity, just before advertising, which require looking at other already advertised entities (only for attached entities) */
 void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept
 {
@@ -2994,6 +3198,9 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 	auto const entityID = e.getEntityID();
 	auto const isAemSupported = e.getEntityCapabilities().test(entity::EntityCapability::AemSupported);
 	auto const isVirtualEntity = controlledEntity.isVirtual();
+
+	// Lock to protect _controlledEntities
+	auto const lg = std::lock_guard{ _lock };
 
 	// Now that this entity is ready to be advertised, update states that are linked to the connection with another entity, in case it was not advertised during processing
 	// States related to Talker capabilities
@@ -3004,9 +3211,6 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 		try
 		{
 			auto const& talkerConfigurationNode = controlledEntity.getCurrentConfigurationNode();
-
-			// Lock to protect _controlledEntities
-			auto const lg = std::lock_guard{ _lock };
 
 			// Process all entities that are connected to any of our output streams
 			for (auto const& entityKV : _controlledEntities)
@@ -3086,9 +3290,6 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 		{
 			auto const& listenerConfigurationNode = controlledEntity.getCurrentConfigurationNode();
 
-			// Lock to protect _controlledEntities
-			auto const lg = std::lock_guard{ _lock };
-
 			// Process all our input streams that are connected to another talker
 			for (auto const& [streamIndex, streamInputNode] : listenerConfigurationNode.streamInputs)
 			{
@@ -3148,6 +3349,66 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 			AVDECC_ASSERT(false, "Unexpected exception");
 		}
 	}
+
+	// Compute Media Clock Chain and update all entities for which the chain ends on this newly added entity
+	if (isAemSupported)
+	{
+		try
+		{
+			auto& configNode = controlledEntity.getCurrentConfigurationNode();
+			for (auto& [clockDomainIndex, clockDomainNode] : configNode.clockDomains)
+			{
+				computeAndUpdateMediaClockChain(controlledEntity, clockDomainNode, entityID, clockDomainIndex, std::nullopt, entityID);
+			}
+		}
+		catch (...)
+		{
+			AVDECC_ASSERT(false, "Unexpected exception");
+		}
+
+		// Process all other entities and update media clock if needed
+		for (auto& [eid, entity] : _controlledEntities)
+		{
+			if (eid != entityID && entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+			{
+				try
+				{
+					auto& configNode = entity->getCurrentConfigurationNode();
+					for (auto& clockDomainKV : configNode.clockDomains)
+					{
+						auto& clockDomainNode = clockDomainKV.second;
+
+						// Get the domain index matching the StreamOutput of this entity
+						if (AVDECC_ASSERT_WITH_RET(!clockDomainNode.mediaClockChain.empty(), "At least one node should be in the chain"))
+						{
+							// Check if the chain is incomplete due to this entity being Offline
+							auto const& lastNode = clockDomainNode.mediaClockChain.back();
+							if (lastNode.entityID == entityID && AVDECC_ASSERT_WITH_RET(lastNode.status == model::MediaClockChainNode::Status::EntityOffline, "Newly discovered entity should be offline"))
+							{
+								// Save the domain/stream indexes, we'll continue from it
+								auto const continueDomainIndex = lastNode.clockDomainIndex;
+								auto const continueStreamOutputIndex = lastNode.streamOutputIndex;
+
+								// Remove that entity from the chain, it will be recomputed
+								clockDomainNode.mediaClockChain.pop_back();
+
+								// Get the domain index matching the StreamOutput of this entity
+								if (AVDECC_ASSERT_WITH_RET(!clockDomainNode.mediaClockChain.empty(), "At least one node should still be in the chain"))
+								{
+									// Update the chain starting from this entity
+									computeAndUpdateMediaClockChain(*entity, clockDomainNode, entityID, continueDomainIndex, continueStreamOutputIndex, entityID);
+								}
+							}
+						}
+					}
+				}
+				catch (...)
+				{
+					AVDECC_ASSERT(false, "Unexpected exception");
+				}
+			}
+		}
+	}
 }
 
 void ControllerImpl::onPostAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept
@@ -3205,6 +3466,48 @@ void ControllerImpl::onPreUnadvertiseEntity(ControlledEntityImpl& controlledEnti
 		catch (...)
 		{
 			AVDECC_ASSERT(false, "Unexpected exception");
+		}
+	}
+
+	// Update all entities for which the chain has a node for that departing entity
+	{
+		// Lock to protect _controlledEntities
+		auto const lg = std::lock_guard{ _lock };
+
+		for (auto& [eid, entity] : _controlledEntities)
+		{
+			if (entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+			{
+				try
+				{
+					auto& configNode = entity->getCurrentConfigurationNode();
+					for (auto& clockDomainKV : configNode.clockDomains)
+					{
+						auto& clockDomainNode = clockDomainKV.second;
+						// Check if the chain has a node on that departing entity
+						for (auto nodeIt = clockDomainNode.mediaClockChain.begin(); nodeIt != clockDomainNode.mediaClockChain.end(); ++nodeIt)
+						{
+							if (nodeIt->entityID == entityID)
+							{
+								// Save the domain/stream indexes, we'll continue from it
+								auto const continueDomainIndex = nodeIt->clockDomainIndex;
+								auto const continueStreamOutputIndex = nodeIt->streamOutputIndex;
+
+								// Remove this node and all following nodes
+								clockDomainNode.mediaClockChain.erase(nodeIt, clockDomainNode.mediaClockChain.end());
+
+								// Update the chain starting from this entity
+								computeAndUpdateMediaClockChain(*entity, clockDomainNode, entityID, continueDomainIndex, continueStreamOutputIndex, {});
+								break;
+							}
+						}
+					}
+				}
+				catch (...)
+				{
+					AVDECC_ASSERT(false, "Unexpected exception");
+				}
+			}
 		}
 	}
 }
@@ -4176,6 +4479,75 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 					{
 						// Update the cached connection on the talker (connect)
 						handleTalkerStreamStateNotification(info.talkerStream, listenerStream, true, entity::ConnectionFlags{}, changedByOther); // Do not pass any flags (especially not FastConnect)
+					}
+				}
+
+				// Process all other entities and update media clock if needed
+				{
+					// Lock to protect _controlledEntities
+					auto const lg = std::lock_guard{ _lock };
+
+					// Update all entities for which the chain has a node with a connection to that stream
+					for (auto& [eid, entity] : _controlledEntities)
+					{
+						if (entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+						{
+							try
+							{
+								auto& configNode = entity->getCurrentConfigurationNode();
+								for (auto& clockDomainKV : configNode.clockDomains)
+								{
+									auto& clockDomainNode = clockDomainKV.second;
+
+									// We are now connected, check if the last node had a status of StreamNotConnected for that listener
+									if (conState == entity::model::StreamInputConnectionInfo::State::Connected)
+									{
+										if (AVDECC_ASSERT_WITH_RET(!clockDomainNode.mediaClockChain.empty(), "Chain should not be empty"))
+										{
+											auto& lastNode = clockDomainNode.mediaClockChain.back();
+											if (lastNode.status == model::MediaClockChainNode::Status::StreamNotConnected && lastNode.entityID == listenerStream.entityID)
+											{
+												// Save the domain/stream indexes, we'll continue from it
+												auto const continueDomainIndex = lastNode.clockDomainIndex;
+												auto const continueStreamOutputIndex = lastNode.streamOutputIndex;
+
+												// Remove the node
+												clockDomainNode.mediaClockChain.pop_back();
+
+												// Update the chain starting from this entity
+												computeAndUpdateMediaClockChain(*entity, clockDomainNode, listenerStream.entityID, continueDomainIndex, continueStreamOutputIndex, {});
+											}
+										}
+									}
+									// We are now disconnected, check for any node in the chain that had an Active status with that listener
+									else
+									{
+										// Check if the chain has a node on that disconnected listener entity
+										for (auto nodeIt = clockDomainNode.mediaClockChain.begin(); nodeIt != clockDomainNode.mediaClockChain.end(); ++nodeIt)
+										{
+											auto const& node = *nodeIt;
+											if (node.status == model::MediaClockChainNode::Status::Active && node.type == model::MediaClockChainNode::Type::StreamInput && node.entityID == listenerStream.entityID && node.streamInputIndex && *node.streamInputIndex == listenerStream.streamIndex)
+											{
+												// Save the domain/stream indexes, we'll continue from it
+												auto const continueDomainIndex = nodeIt->clockDomainIndex;
+												auto const continueStreamOutputIndex = nodeIt->streamOutputIndex;
+
+												// Remove this node and all following nodes
+												clockDomainNode.mediaClockChain.erase(nodeIt, clockDomainNode.mediaClockChain.end());
+
+												// Update the chain starting from this entity
+												computeAndUpdateMediaClockChain(*entity, clockDomainNode, listenerStream.entityID, continueDomainIndex, continueStreamOutputIndex, {});
+												break;
+											}
+										}
+									}
+								}
+							}
+							catch (...)
+							{
+								AVDECC_ASSERT(false, "Unexpected exception");
+							}
+						}
 					}
 				}
 

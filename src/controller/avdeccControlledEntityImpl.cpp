@@ -947,6 +947,13 @@ bool ControlledEntityImpl::hasConfigurationTree(entity::model::ConfigurationInde
 	return _entityTree.configurationTrees.find(configurationIndex) != _entityTree.configurationTrees.end();
 }
 
+// Non-const Node getters
+model::ConfigurationNode& ControlledEntityImpl::getCurrentConfigurationNode()
+{
+	// Implemented over getCurrentConfigurationNode() const overload
+	return const_cast<model::ConfigurationNode&>(static_cast<ControlledEntityImpl const*>(this)->getCurrentConfigurationNode());
+}
+
 // Non-const Tree getters
 entity::model::EntityTree& ControlledEntityImpl::getEntityTree() noexcept
 {
