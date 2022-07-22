@@ -10,8 +10,8 @@ cmake_minimum_required(VERSION 3.22)
 # It should have 3 digits (x.y.z) on main branch, and 4 digits (x.y.z.w) on dev and task branches. The last digit being used as beta label.
 # As soon as an API change occurs in dev or task branch, update the version number by following SemVer rules (so the API breaking changes are not lost/forgotten).
 # Example: 1.5.0 is the upcoming release version (main branch) of current 1.5.0.3 devel version (dev/task) which will be labelled 1.5.0-beta3
-set(LA_AVDECC_VERSION 3.2.5.1)
-set(LA_AVDECC_CONTROLLER_VERSION 3.2.5.1)
+set(LA_AVDECC_VERSION 3.3.0.1)
+set(LA_AVDECC_CONTROLLER_VERSION 3.3.0.1)
 set(LA_AVDECC_C_VERSION 1.0.10.1)
 
 ############ Override from command line "CMake -D<OPTION>=TRUE/FALSE/0/1/ON/OFF"
@@ -221,7 +221,7 @@ if(BUILD_AVDECC_TESTS AND NOT VS_USE_CLANG)
 	message(STATUS "Building unit tests")
 	# Setup gtest options
 	set(gtest_force_shared_crt ON CACHE BOOL "For shared crt for gtest" FORCE)
-	set(BUILD_GMOCK OFF CACHE BOOL "Don't build the googlemock subproject" FORCE)
+	set(BUILD_GMOCK ON CACHE BOOL "Build the googlemock subproject" FORCE)
 	set(INSTALL_GTEST OFF CACHE BOOL "Disable installation of googletest. (Projects embedding googletest may want to turn this OFF.)" FORCE)
 	# Include gtest framework
 	add_subdirectory(externals/3rdparty/gtest)
@@ -234,6 +234,10 @@ endif()
 if(WIN32)
 	if(${MSVC_VERSION} STRLESS 1923)
 		message(FATAL_ERROR "Microsoft Visual C++ v16.3 required (MSVC_VERSION >= 1923), you have ${MSVC_VERSION}")
+	endif()
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+	if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 11.0)
+		message(FATAL_ERROR "gcc v11.0 or greater required, you have ${CMAKE_CXX_COMPILER_VERSION}")
 	endif()
 endif()
 

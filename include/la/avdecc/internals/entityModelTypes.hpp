@@ -78,6 +78,11 @@ using DescriptorCounter = std::uint32_t; /** Counter - Clause 7.4.42 */
 using OperationID = std::uint16_t; /** OperationID for OPERATIONS returned by an entity to a controller - Clause 7.4.53 */
 using BridgeIdentifier = std::uint64_t;
 
+constexpr DescriptorIndex getInvalidDescriptorIndex() noexcept
+{
+	return DescriptorIndex(0xFFFF);
+}
+
 /** Descriptor Type - Clause 7.2 */
 enum class DescriptorType : std::uint16_t
 {
@@ -1453,7 +1458,7 @@ private:
 struct StreamIdentification
 {
 	UniqueIdentifier entityID{};
-	entity::model::StreamIndex streamIndex{ entity::model::StreamIndex(0u) };
+	entity::model::StreamIndex streamIndex{ entity::model::getInvalidDescriptorIndex() };
 };
 
 constexpr bool operator==(StreamIdentification const& lhs, StreamIdentification const& rhs) noexcept

@@ -7,7 +7,7 @@ include_directories(${gtest_SOURCE_DIR}/include)
 link_directories(${gtest_BINARY_DIR}/src)
 
 # Set gtest library
-set(ADD_LINK_LIBRARIES gtest)
+set(ADD_LINK_LIBRARIES gtest gmock)
 
 ### Unit Tests
 set(TESTS_SOURCE
