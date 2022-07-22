@@ -69,7 +69,7 @@ C language bindings over la_avdecc library.
 - Xcode 12
 
 ### Linux
-- C++17 compliant compiler (minimum recommended g++ 11.2.0)
+- C++17 compliant compiler (for g++, v11.0 or greater)
 - Make
 - pcap developer package
 - ncurses developer package (optional, for examples)

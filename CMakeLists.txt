@@ -235,6 +235,10 @@ if(WIN32)
 	if(${MSVC_VERSION} STRLESS 1923)
 		message(FATAL_ERROR "Microsoft Visual C++ v16.3 required (MSVC_VERSION >= 1923), you have ${MSVC_VERSION}")
 	endif()
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+	if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 11.0)
+		message(FATAL_ERROR "gcc v11.0 or greater required, you have ${CMAKE_CXX_COMPILER_VERSION}")
+	endif()
 endif()
 
 # Configure a few things that has to be done last
