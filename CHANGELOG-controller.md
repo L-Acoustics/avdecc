@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - [Computation of the Media Clock Chain for each controlled entity](https://github.com/L-Acoustics/avdecc/issues/111)
 - Possibility to unload a virtual entity using `Controller::unloadVirtualEntity`
 
+### Fixed
+- [Virtual entities are loaded from the networking thread (executor)](https://github.com/L-Acoustics/avdecc/issues/110)
+
 ## [3.2.4] - 2022-07-08
 ### Added
 - Controller::isMediaClockStreamFormat API

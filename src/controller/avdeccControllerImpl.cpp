@@ -37,6 +37,8 @@
 #endif // ENABLE_AVDECC_FEATURE_JSON
 #include <la/avdecc/internals/streamFormatInfo.hpp>
 #include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
+#include <la/avdecc/internals/protocolInterface.hpp>
+#include <la/avdecc/executor.hpp>
 
 #include <fstream>
 #include <unordered_set>
@@ -4684,12 +4686,23 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 		_controlledEntities.insert(std::make_pair(entityID, controlledEntity));
 	}
 
-	// Ready to advertise
-	{
-		auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), to simulate being called from a Networking Thread. THIS IS A HACK!
-#	pragma message("TODO: When the global event scheduler will be used instead of multiple event threads (networking/timeout), call checkEnumerationSteps from the scheduler queue")
-		checkEnumerationSteps(&entity);
-	}
+	// Ready to advertise using the network executor
+	ExecutorManager::getInstance().pushJob(protocol::ProtocolInterface::DefaultExecutorName,
+		[this, entityID]()
+		{
+			auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
+
+			auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+			if (AVDECC_ASSERT_WITH_RET(!!controlledEntity, "Entity should be in the list"))
+			{
+				checkEnumerationSteps(controlledEntity.get());
+			}
+		});
+
+	// Flush executor to be sure everything is loaded before returning
+	ExecutorManager::getInstance().flush(protocol::ProtocolInterface::DefaultExecutorName);
+
 	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Successfully registered virtual entity with ID {}", utils::toHexString(entityID, true));
 
 	return { avdecc::jsonSerializer::DeserializationError::NoError, "" };
