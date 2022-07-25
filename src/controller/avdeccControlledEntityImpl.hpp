@@ -205,6 +205,7 @@ public:
 	virtual std::optional<entity::model::ControlIndex> getIdentifyControlIndex() const noexcept override;
 	virtual bool isEntityModelValidForCaching() const noexcept override;
 	virtual bool isIdentifying() const noexcept override;
+	virtual entity::model::ConfigurationIndex getCurrentConfigurationIndex() const override;
 
 	// Const Node getters
 	virtual model::EntityNode const& getEntityNode() const override;
@@ -260,7 +261,6 @@ public:
 	// Const Tree getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist
 	entity::model::EntityTree const& getEntityTree() const;
 	entity::model::ConfigurationTree const& getConfigurationTree(entity::model::ConfigurationIndex const configurationIndex) const;
-	entity::model::ConfigurationIndex getCurrentConfigurationIndex() const noexcept;
 
 	// Const NodeModel getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist, Exception::InvalidDescriptorIndex if descriptorIndex is invalid
 	entity::model::EntityNodeStaticModel const& getEntityNodeStaticModel() const;
@@ -318,6 +318,7 @@ public:
 	// Non-const Tree getters
 	entity::model::EntityTree& getEntityTree() noexcept;
 	entity::model::ConfigurationTree& getConfigurationTree(entity::model::ConfigurationIndex const configurationIndex) noexcept;
+	entity::model::ConfigurationIndex getCurrentConfigurationIndex() noexcept;
 
 	// Non-const NodeModel getters
 	entity::model::EntityNodeStaticModel& getEntityNodeStaticModel() noexcept;

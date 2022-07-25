@@ -260,6 +260,18 @@ bool ControlledEntityImpl::isIdentifying() const noexcept
 	return false;
 }
 
+entity::model::ConfigurationIndex ControlledEntityImpl::getCurrentConfigurationIndex() const
+{
+	auto const& entityNode = getEntityNode();
+
+	if (!entityNode.dynamicModel)
+	{
+		throw Exception(Exception::Type::Internal, "EntityNodeDynamicModel not set");
+	}
+
+	return entityNode.dynamicModel->currentConfiguration;
+}
+
 model::EntityNode const& ControlledEntityImpl::getEntityNode() const
 {
 	if (gotFatalEnumerationError())
@@ -905,11 +917,6 @@ entity::model::ConfigurationTree const& ControlledEntityImpl::getConfigurationTr
 	return it->second;
 }
 
-entity::model::ConfigurationIndex ControlledEntityImpl::getCurrentConfigurationIndex() const noexcept
-{
-	return _entityTree.dynamicModel.currentConfiguration;
-}
-
 // Const NodeModel getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist, Exception::InvalidDescriptorIndex if descriptorIndex is invalid
 entity::model::EntityNodeStaticModel const& ControlledEntityImpl::getEntityNodeStaticModel() const
 {
@@ -964,6 +971,11 @@ entity::model::ConfigurationTree& ControlledEntityImpl::getConfigurationTree(ent
 {
 	auto& entityTree = getEntityTree();
 	return entityTree.configurationTrees[configurationIndex];
+}
+
+entity::model::ConfigurationIndex ControlledEntityImpl::getCurrentConfigurationIndex() noexcept
+{
+	return _entityTree.dynamicModel.currentConfiguration;
 }
 
 // Non-const NodeModel getters
