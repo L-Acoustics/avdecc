@@ -3106,6 +3106,7 @@ void ControllerImpl::computeAndUpdateMediaClockChain(ControlledEntityImpl& contr
 						throw ControlledEntity::Exception(ControlledEntity::Exception::Type::NotSupported, "ClockDomain DynamicModel not available");
 					}
 					auto const currentCSIndex = cdNode.dynamicModel->clockSourceIndex;
+					node.clockSourceIndex = currentCSIndex;
 
 					// Get the active clock source node for this clock domain
 					auto const& csNode = currentEntity.getClockSourceNode(currentConfigIndex, currentCSIndex);

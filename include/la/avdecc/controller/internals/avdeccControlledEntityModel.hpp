@@ -104,6 +104,7 @@ struct MediaClockChainNode
 	Status status{ Status::Active }; // Status of this media clock chain node
 	UniqueIdentifier entityID{}; // EID of the entity of this media clock chain node
 	entity::model::ClockDomainIndex clockDomainIndex{ entity::model::getInvalidDescriptorIndex() }; // ClockDomain index used by this node (may not be defined on error Status)
+	entity::model::ClockSourceIndex clockSourceIndex{ entity::model::getInvalidDescriptorIndex() }; // ClockSource index used by this node (may not be defined on error Status)
 	std::optional<entity::model::StreamIndex> streamInputIndex{}; // StreamInput index this entity is getting it's clock from (Type::StreamInput only). This is a copy of the ClockSource node's clockSourceLocationIndex
 	std::optional<entity::model::StreamIndex> streamOutputIndex{}; // StreamOutput index this entity is sourcing it's clock to (Only if this node has a parent of Type::StreamInput)
 };

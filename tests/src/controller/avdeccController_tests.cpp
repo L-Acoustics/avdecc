@@ -924,6 +924,7 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Offline)
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(01, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
@@ -933,6 +934,7 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Offline)
 				auto const& n = node.mediaClockChain[1];
 				EXPECT_EQ(Entity11, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::getInvalidDescriptorIndex(), n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::getInvalidDescriptorIndex(), n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Undefined, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::EntityOffline, n.status);
 				EXPECT_EQ(std::nullopt, n.streamInputIndex);
@@ -956,6 +958,7 @@ static void check_StreamInput_Connected_Online(la::avdecc::controller::Controlle
 			auto const& n = node.mediaClockChain[0];
 			EXPECT_EQ(Entity01, n.entityID);
 			EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+			EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 			EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
@@ -965,6 +968,7 @@ static void check_StreamInput_Connected_Online(la::avdecc::controller::Controlle
 			auto const& n = node.mediaClockChain[1];
 			EXPECT_EQ(Entity11, n.entityID);
 			EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+			EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 			EXPECT_EQ(std::nullopt, n.streamInputIndex);
@@ -1020,6 +1024,7 @@ TEST_F(MediaClockModel_F, StreamInput_NotConnected)
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(Entity02, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::StreamNotConnected, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
@@ -1043,6 +1048,7 @@ static void check_External_Connected(la::avdecc::controller::Controller& c)
 			auto const& n = node.mediaClockChain[0];
 			EXPECT_EQ(Entity03, n.entityID);
 			EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+			EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 			EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
@@ -1052,6 +1058,7 @@ static void check_External_Connected(la::avdecc::controller::Controller& c)
 			auto const& n = node.mediaClockChain[1];
 			EXPECT_EQ(Entity12, n.entityID);
 			EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+			EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::External, n.type);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 			EXPECT_EQ(std::nullopt, n.streamInputIndex);
@@ -1102,6 +1109,7 @@ static void check_DoubleStreamInput_Connected_CrossDomain_Online(la::avdecc::con
 			auto const& n = node.mediaClockChain[0];
 			EXPECT_EQ(Entity04, n.entityID);
 			EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+			EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 			EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
@@ -1111,6 +1119,7 @@ static void check_DoubleStreamInput_Connected_CrossDomain_Online(la::avdecc::con
 			auto const& n = node.mediaClockChain[1];
 			EXPECT_EQ(Entity11, n.entityID);
 			EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 1u }, n.clockDomainIndex);
+			EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 			EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1120,6 +1129,7 @@ static void check_DoubleStreamInput_Connected_CrossDomain_Online(la::avdecc::con
 			auto const& n = node.mediaClockChain[2];
 			EXPECT_EQ(Entity12, n.entityID);
 			EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+			EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::External, n.type);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 			EXPECT_EQ(std::nullopt, n.streamInputIndex);
@@ -1135,6 +1145,7 @@ static void check_DoubleStreamInput_Connected_CrossDomain_Online(la::avdecc::con
 			auto const& n = node.mediaClockChain[0];
 			EXPECT_EQ(Entity11, n.entityID);
 			EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+			EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 			EXPECT_EQ(std::nullopt, n.streamInputIndex);
@@ -1150,6 +1161,7 @@ static void check_DoubleStreamInput_Connected_CrossDomain_Online(la::avdecc::con
 			auto const& n = node.mediaClockChain[0];
 			EXPECT_EQ(Entity11, n.entityID);
 			EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 1u }, n.clockDomainIndex);
+			EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 			EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1159,6 +1171,7 @@ static void check_DoubleStreamInput_Connected_CrossDomain_Online(la::avdecc::con
 			auto const& n = node.mediaClockChain[1];
 			EXPECT_EQ(Entity12, n.entityID);
 			EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+			EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::External, n.type);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 			EXPECT_EQ(std::nullopt, n.streamInputIndex);
@@ -1279,6 +1292,7 @@ static void check_Recursive(la::avdecc::controller::Controller& c)
 			auto const& n = node.mediaClockChain[0];
 			EXPECT_EQ(Entity13, n.entityID);
 			EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+			EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 			EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1288,6 +1302,7 @@ static void check_Recursive(la::avdecc::controller::Controller& c)
 			auto const& n = node.mediaClockChain[1];
 			EXPECT_EQ(Entity14, n.entityID);
 			EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 1u }, n.clockDomainIndex);
+			EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 			EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1297,6 +1312,7 @@ static void check_Recursive(la::avdecc::controller::Controller& c)
 			auto const& n = node.mediaClockChain[2];
 			EXPECT_EQ(Entity13, n.entityID);
 			EXPECT_EQ(la::avdecc::entity::model::getInvalidDescriptorIndex(), n.clockDomainIndex);
+			EXPECT_EQ(la::avdecc::entity::model::getInvalidDescriptorIndex(), n.clockSourceIndex);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Undefined, n.type);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Recursive, n.status);
 			EXPECT_EQ(std::nullopt, n.streamInputIndex);
@@ -1312,6 +1328,7 @@ static void check_Recursive(la::avdecc::controller::Controller& c)
 			auto const& n = node.mediaClockChain[0];
 			EXPECT_EQ(Entity14, n.entityID);
 			EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 1u }, n.clockDomainIndex);
+			EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 			EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1321,6 +1338,7 @@ static void check_Recursive(la::avdecc::controller::Controller& c)
 			auto const& n = node.mediaClockChain[1];
 			EXPECT_EQ(Entity13, n.entityID);
 			EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+			EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 			EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1330,6 +1348,7 @@ static void check_Recursive(la::avdecc::controller::Controller& c)
 			auto const& n = node.mediaClockChain[2];
 			EXPECT_EQ(Entity14, n.entityID);
 			EXPECT_EQ(la::avdecc::entity::model::getInvalidDescriptorIndex(), n.clockDomainIndex);
+			EXPECT_EQ(la::avdecc::entity::model::getInvalidDescriptorIndex(), n.clockSourceIndex);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Undefined, n.type);
 			EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Recursive, n.status);
 			EXPECT_EQ(std::nullopt, n.streamInputIndex);
@@ -1389,6 +1408,7 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Online_SwitchOffline)
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(Entity01, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
@@ -1398,6 +1418,7 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Online_SwitchOffline)
 				auto const& n = node.mediaClockChain[1];
 				EXPECT_EQ(Entity11, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(std::nullopt, n.streamInputIndex);
@@ -1421,6 +1442,7 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Online_SwitchOffline)
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(01, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
@@ -1430,6 +1452,7 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Online_SwitchOffline)
 				auto const& n = node.mediaClockChain[1];
 				EXPECT_EQ(Entity11, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::getInvalidDescriptorIndex(), n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::getInvalidDescriptorIndex(), n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Undefined, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::EntityOffline, n.status);
 				EXPECT_EQ(std::nullopt, n.streamInputIndex);
@@ -1458,6 +1481,7 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Offline_SwitchOnline)
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(01, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
@@ -1467,6 +1491,7 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Offline_SwitchOnline)
 				auto const& n = node.mediaClockChain[1];
 				EXPECT_EQ(Entity11, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::getInvalidDescriptorIndex(), n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::getInvalidDescriptorIndex(), n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Undefined, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::EntityOffline, n.status);
 				EXPECT_EQ(std::nullopt, n.streamInputIndex);
@@ -1490,6 +1515,7 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Offline_SwitchOnline)
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(Entity01, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
@@ -1499,6 +1525,7 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Offline_SwitchOnline)
 				auto const& n = node.mediaClockChain[1];
 				EXPECT_EQ(Entity11, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(std::nullopt, n.streamInputIndex);
@@ -1528,6 +1555,7 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Online_SwitchDisconnect)
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(Entity01, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
@@ -1537,6 +1565,7 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Online_SwitchDisconnect)
 				auto const& n = node.mediaClockChain[1];
 				EXPECT_EQ(Entity11, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(std::nullopt, n.streamInputIndex);
@@ -1560,6 +1589,7 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Online_SwitchDisconnect)
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(01, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::StreamNotConnected, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
@@ -1590,6 +1620,7 @@ TEST_F(MediaClockModel_F, DoubleStreamInput_Connected_CrossDomain_Online_SwitchD
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(Entity04, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
@@ -1599,6 +1630,7 @@ TEST_F(MediaClockModel_F, DoubleStreamInput_Connected_CrossDomain_Online_SwitchD
 				auto const& n = node.mediaClockChain[1];
 				EXPECT_EQ(Entity11, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 1u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1608,6 +1640,7 @@ TEST_F(MediaClockModel_F, DoubleStreamInput_Connected_CrossDomain_Online_SwitchD
 				auto const& n = node.mediaClockChain[2];
 				EXPECT_EQ(Entity12, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::External, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(std::nullopt, n.streamInputIndex);
@@ -1623,6 +1656,7 @@ TEST_F(MediaClockModel_F, DoubleStreamInput_Connected_CrossDomain_Online_SwitchD
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(Entity11, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(std::nullopt, n.streamInputIndex);
@@ -1638,6 +1672,7 @@ TEST_F(MediaClockModel_F, DoubleStreamInput_Connected_CrossDomain_Online_SwitchD
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(Entity11, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 1u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1647,6 +1682,7 @@ TEST_F(MediaClockModel_F, DoubleStreamInput_Connected_CrossDomain_Online_SwitchD
 				auto const& n = node.mediaClockChain[1];
 				EXPECT_EQ(Entity12, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::External, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(std::nullopt, n.streamInputIndex);
@@ -1671,6 +1707,7 @@ TEST_F(MediaClockModel_F, DoubleStreamInput_Connected_CrossDomain_Online_SwitchD
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(Entity04, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
@@ -1680,6 +1717,7 @@ TEST_F(MediaClockModel_F, DoubleStreamInput_Connected_CrossDomain_Online_SwitchD
 				auto const& n = node.mediaClockChain[1];
 				EXPECT_EQ(Entity11, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 1u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::StreamNotConnected, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1695,6 +1733,7 @@ TEST_F(MediaClockModel_F, DoubleStreamInput_Connected_CrossDomain_Online_SwitchD
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(Entity11, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(std::nullopt, n.streamInputIndex);
@@ -1710,6 +1749,7 @@ TEST_F(MediaClockModel_F, DoubleStreamInput_Connected_CrossDomain_Online_SwitchD
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(Entity11, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 1u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::StreamNotConnected, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1739,6 +1779,7 @@ TEST_F(MediaClockModel_F, StreamInput_Recursive_SwitchDisconnect)
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(Entity13, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1748,6 +1789,7 @@ TEST_F(MediaClockModel_F, StreamInput_Recursive_SwitchDisconnect)
 				auto const& n = node.mediaClockChain[1];
 				EXPECT_EQ(Entity14, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 1u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1757,6 +1799,7 @@ TEST_F(MediaClockModel_F, StreamInput_Recursive_SwitchDisconnect)
 				auto const& n = node.mediaClockChain[2];
 				EXPECT_EQ(Entity13, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::getInvalidDescriptorIndex(), n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::getInvalidDescriptorIndex(), n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Undefined, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Recursive, n.status);
 				EXPECT_EQ(std::nullopt, n.streamInputIndex);
@@ -1772,6 +1815,7 @@ TEST_F(MediaClockModel_F, StreamInput_Recursive_SwitchDisconnect)
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(Entity14, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 1u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1781,6 +1825,7 @@ TEST_F(MediaClockModel_F, StreamInput_Recursive_SwitchDisconnect)
 				auto const& n = node.mediaClockChain[1];
 				EXPECT_EQ(Entity13, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1790,6 +1835,7 @@ TEST_F(MediaClockModel_F, StreamInput_Recursive_SwitchDisconnect)
 				auto const& n = node.mediaClockChain[2];
 				EXPECT_EQ(Entity14, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::getInvalidDescriptorIndex(), n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::getInvalidDescriptorIndex(), n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Undefined, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Recursive, n.status);
 				EXPECT_EQ(std::nullopt, n.streamInputIndex);
@@ -1814,6 +1860,7 @@ TEST_F(MediaClockModel_F, StreamInput_Recursive_SwitchDisconnect)
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(Entity13, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::StreamNotConnected, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1829,6 +1876,7 @@ TEST_F(MediaClockModel_F, StreamInput_Recursive_SwitchDisconnect)
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(Entity14, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 1u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1838,6 +1886,7 @@ TEST_F(MediaClockModel_F, StreamInput_Recursive_SwitchDisconnect)
 				auto const& n = node.mediaClockChain[1];
 				EXPECT_EQ(Entity13, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::StreamNotConnected, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1871,6 +1920,7 @@ TEST_F(MediaClockModel_F, StreamInput_Recursive_SwitchConnect)
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(Entity13, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::StreamNotConnected, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1886,6 +1936,7 @@ TEST_F(MediaClockModel_F, StreamInput_Recursive_SwitchConnect)
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(Entity14, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 1u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1895,6 +1946,7 @@ TEST_F(MediaClockModel_F, StreamInput_Recursive_SwitchConnect)
 				auto const& n = node.mediaClockChain[1];
 				EXPECT_EQ(Entity13, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::StreamNotConnected, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1919,6 +1971,7 @@ TEST_F(MediaClockModel_F, StreamInput_Recursive_SwitchConnect)
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(Entity13, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1928,6 +1981,7 @@ TEST_F(MediaClockModel_F, StreamInput_Recursive_SwitchConnect)
 				auto const& n = node.mediaClockChain[1];
 				EXPECT_EQ(Entity14, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 1u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1937,6 +1991,7 @@ TEST_F(MediaClockModel_F, StreamInput_Recursive_SwitchConnect)
 				auto const& n = node.mediaClockChain[2];
 				EXPECT_EQ(Entity13, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::getInvalidDescriptorIndex(), n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::getInvalidDescriptorIndex(), n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Undefined, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Recursive, n.status);
 				EXPECT_EQ(std::nullopt, n.streamInputIndex);
@@ -1952,6 +2007,7 @@ TEST_F(MediaClockModel_F, StreamInput_Recursive_SwitchConnect)
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(Entity14, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 1u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1961,6 +2017,7 @@ TEST_F(MediaClockModel_F, StreamInput_Recursive_SwitchConnect)
 				auto const& n = node.mediaClockChain[1];
 				EXPECT_EQ(Entity13, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 3u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 2u }, n.streamInputIndex);
@@ -1970,6 +2027,7 @@ TEST_F(MediaClockModel_F, StreamInput_Recursive_SwitchConnect)
 				auto const& n = node.mediaClockChain[2];
 				EXPECT_EQ(Entity14, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::getInvalidDescriptorIndex(), n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::getInvalidDescriptorIndex(), n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Undefined, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Recursive, n.status);
 				EXPECT_EQ(std::nullopt, n.streamInputIndex);
@@ -1999,6 +2057,7 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Online_SwitchClockSource)
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(Entity01, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
@@ -2008,6 +2067,7 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Online_SwitchClockSource)
 				auto const& n = node.mediaClockChain[1];
 				EXPECT_EQ(Entity11, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(std::nullopt, n.streamInputIndex);
@@ -2031,6 +2091,7 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Online_SwitchClockSource)
 				auto const& n = node.mediaClockChain[0];
 				EXPECT_EQ(01, n.entityID);
 				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 1u }, n.clockSourceIndex);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Internal, n.type);
 				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
 				EXPECT_EQ(std::nullopt, n.streamInputIndex);
