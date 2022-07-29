@@ -28,6 +28,7 @@
 #include <la/avdecc/avdecc.hpp>
 #include <la/avdecc/utils.hpp>
 #include <la/avdecc/internals/exception.hpp>
+#include <la/avdecc/internals/entityModelTree.hpp>
 #include <la/avdecc/internals/jsonSerialization.hpp>
 #include <la/avdecc/memoryBuffer.hpp>
 
@@ -379,16 +380,17 @@ public:
 	* @param[in] entityModelID EntityModelID to publish for this controller. You can use entity::model::makeEntityModelID to create this value.
 	* @param[in] preferedLocale ISO 639-1 locale code of the prefered locale to use when querying entity information.
 	*                           If the specified locale is not found on the entity, then english is used.
+	* @param[in] entityModelTree The entity model tree to use for this controller entity, or null to not expose a model.
 	* @return A new Controller as a Controller::UniquePointer.
 	* @note Throws Exception if interfaceName is invalid or inaccessible, or if progID is already used on the local computer.
 	*/
-	static UniquePointer create(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale)
+	static UniquePointer create(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree)
 	{
 		auto deleter = [](Controller* controller)
 		{
 			controller->destroy();
 		};
-		return UniquePointer(createRawController(protocolInterfaceType, interfaceName, progID, entityModelID, preferedLocale), deleter);
+		return UniquePointer(createRawController(protocolInterfaceType, interfaceName, progID, entityModelID, preferedLocale, entityModelTree), deleter);
 	}
 
 	/** Returns the UniqueIdentifier this instance of the controller is using to identify itself on the network */
@@ -520,7 +522,7 @@ protected:
 
 private:
 	/** Create method for COM-like interface */
-	static LA_AVDECC_CONTROLLER_API Controller* LA_AVDECC_CONTROLLER_CALL_CONVENTION createRawController(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale);
+	static LA_AVDECC_CONTROLLER_API Controller* LA_AVDECC_CONTROLLER_CALL_CONVENTION createRawController(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree);
 
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept = 0;

@@ -87,7 +87,9 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 		}
 
 		// Dump AEM if supported
-		if (e.getEntityCapabilities().test(entity::EntityCapability::AemSupported) && (flags.test(entity::model::jsonSerializer::Flag::ProcessStaticModel) || flags.test(entity::model::jsonSerializer::Flag::ProcessDynamicModel)))
+		auto const isAemSupported = e.getEntityCapabilities().test(entity::EntityCapability::AemSupported);
+		auto const hasAnyConfiguration = entity.hasAnyConfiguration();
+		if (isAemSupported && (flags.test(entity::model::jsonSerializer::Flag::ProcessStaticModel) || flags.test(entity::model::jsonSerializer::Flag::ProcessDynamicModel)))
 		{
 			// Dump model(s)
 			object[keyName::ControlledEntity_EntityModel] = entity::model::jsonSerializer::createJsonObject(entity.getEntityTree(), flags);
@@ -117,7 +119,7 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 			state[controller::keyName::ControlledEntityState_LockState] = entity.getLockState();
 			state[controller::keyName::ControlledEntityState_LockingControllerID] = entity.getLockingControllerID();
 			state[controller::keyName::ControlledEntityState_SubscribedUnsol] = entity.isSubscribedToUnsolicitedNotifications();
-			state[controller::keyName::ControlledEntityState_ActiveConfiguration] = entity.getCurrentConfigurationIndex();
+			state[controller::keyName::ControlledEntityState_ActiveConfiguration] = hasAnyConfiguration ? entity.getCurrentConfigurationIndex() : entity::model::ConfigurationIndex{ 0u };
 		}
 
 		// Dump Entity Statistics

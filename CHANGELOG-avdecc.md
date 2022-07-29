@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- A la::avdecc::entity::model::EntityTree can be fed into a LocalEntity so it responds to AEM query commands (currently limited to ENTITY descriptor)
+- EndStation::deserializeEntityModelFromJson to unpack a la::avdecc::entity::model::EntityTree from a file
+
+### Changed
+- Reflecting an unhandled AECP command uses NOT_IMPLEMENTED instead of NOT_SUPPORTED
+
+### Fixed
+- Crash when loading ANS/AVE file without any configuration descriptor
 
 ## [3.2.4] - 2022-07-08
 ### Fixed

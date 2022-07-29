@@ -361,7 +361,7 @@ LA_AVDECC_BINDINGS_C_API avdecc_local_entity_error_t LA_AVDECC_BINDINGS_C_CALL_C
 			}
 		}
 		auto& protocolInterface = getProtocolInterface(handle);
-		*createdLocalEntityHandle = s_AggregateEntityManager.createObject(&protocolInterface, commonInfo, interfacesInfo, nullptr);
+		*createdLocalEntityHandle = s_AggregateEntityManager.createObject(&protocolInterface, commonInfo, interfacesInfo, nullptr, nullptr);
 
 		// Set delegate
 		if (delegate)

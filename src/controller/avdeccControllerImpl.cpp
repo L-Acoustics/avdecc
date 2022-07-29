@@ -996,7 +996,7 @@ void ControllerImpl::updateClockSource(ControlledEntityImpl& controlledEntity, e
 
 		for (auto& [eid, entity] : _controlledEntities)
 		{
-			if (entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+			if (entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
 			{
 				try
 				{
@@ -2386,8 +2386,8 @@ void ControllerImpl::getStaticModel(ControlledEntityImpl* const entity) noexcept
 void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 {
 	auto const caps = entity->getEntity().getEntityCapabilities();
-	// Check if AEM is supported by this entity
-	if (caps.test(entity::EntityCapability::AemSupported))
+	// Check if AEM is supported by this entity and it has at least one configuration
+	if (caps.test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
 	{
 		auto const configurationIndex = entity->getCurrentConfigurationIndex();
 		auto const& configTree = entity->getConfigurationTree(configurationIndex);
@@ -2883,7 +2883,7 @@ void ControllerImpl::validateControlDescriptors(ControlledEntityImpl& controlled
 	auto const isAemSupported = e.getEntityCapabilities().test(entity::EntityCapability::AemSupported);
 
 	// If AEM is supported
-	if (isAemSupported)
+	if (isAemSupported && controlledEntity.hasAnyConfiguration())
 	{
 		// Validate Identify Control Descriptor
 		auto identifyControlIndex = std::optional<entity::model::ControlIndex>{ std::nullopt };
@@ -3354,7 +3354,7 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 	}
 
 	// Compute Media Clock Chain and update all entities for which the chain ends on this newly added entity
-	if (isAemSupported)
+	if (isAemSupported && controlledEntity.hasAnyConfiguration())
 	{
 		try
 		{
@@ -3372,7 +3372,7 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 		// Process all other entities and update media clock if needed
 		for (auto& [eid, entity] : _controlledEntities)
 		{
-			if (eid != entityID && entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+			if (eid != entityID && entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
 			{
 				try
 				{
@@ -3479,7 +3479,7 @@ void ControllerImpl::onPreUnadvertiseEntity(ControlledEntityImpl& controlledEnti
 
 		for (auto& [eid, entity] : _controlledEntities)
 		{
-			if (entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+			if (entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
 			{
 				try
 				{
@@ -4493,7 +4493,7 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 					// Update all entities for which the chain has a node with a connection to that stream
 					for (auto& [eid, entity] : _controlledEntities)
 					{
-						if (entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+						if (entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
 						{
 							try
 							{
@@ -4934,6 +4934,17 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, Controller
 		{
 			ifs >> object;
 		}
+
+		// Try to deserialize
+		try
+		{
+			auto controlledEntity = loadControlledEntityFromJson(object, flags, lockInfo);
+			return { avdecc::jsonSerializer::DeserializationError::NoError, "", controlledEntity };
+		}
+		catch (avdecc::jsonSerializer::DeserializationException const& e)
+		{
+			return { e.getError(), e.what(), nullptr };
+		}
 	}
 	catch (json::type_error const& e)
 	{
@@ -4961,17 +4972,6 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, Controller
 	catch (json::exception const& e)
 	{
 		return { avdecc::jsonSerializer::DeserializationError::OtherError, e.what(), nullptr };
-	}
-
-	// Try to deserialize
-	try
-	{
-		auto controlledEntity = loadControlledEntityFromJson(object, flags, lockInfo);
-		return { avdecc::jsonSerializer::DeserializationError::NoError, "", controlledEntity };
-	}
-	catch (avdecc::jsonSerializer::DeserializationException const& e)
-	{
-		return { e.getError(), e.what(), nullptr };
 	}
 }
 

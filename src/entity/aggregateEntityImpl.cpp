@@ -43,16 +43,13 @@ namespace entity
 /* ************************************************************************** */
 /* AggregateEntityImpl life cycle                                             */
 /* ************************************************************************** */
-AggregateEntityImpl::AggregateEntityImpl(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, controller::Delegate* const controllerDelegate)
+AggregateEntityImpl::AggregateEntityImpl(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, model::EntityTree const* const entityModelTree, controller::Delegate* const controllerDelegate)
 	: LocalEntityImpl(protocolInterface, commonInformation, interfacesInformation)
 {
-	// Create all capabilities based on passed flags
-	auto const entityID = getEntityID();
-
 	// Entity is controller capable
 	if (commonInformation.controllerCapabilities.test(ControllerCapability::Implemented))
 	{
-		_controllerCapabilityDelegate = std::make_unique<controller::CapabilityDelegate>(getProtocolInterface(), controllerDelegate, *this, entityID);
+		_controllerCapabilityDelegate = std::make_unique<controller::CapabilityDelegate>(getProtocolInterface(), controllerDelegate, *this, *this, entityModelTree);
 	}
 
 	// Entity is listener capable
@@ -1247,9 +1244,9 @@ bool AggregateEntityImpl::onUnhandledAecpVuCommand(protocol::ProtocolInterface* 
 /* AggregateEntity methods                                                    */
 /* ************************************************************************** */
 /** Entry point */
-AggregateEntity* LA_AVDECC_CALL_CONVENTION AggregateEntity::createRawAggregateEntity(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, controller::Delegate* const controllerDelegate)
+AggregateEntity* LA_AVDECC_CALL_CONVENTION AggregateEntity::createRawAggregateEntity(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, model::EntityTree const* const entityModelTree, controller::Delegate* const controllerDelegate)
 {
-	return new LocalEntityGuard<AggregateEntityImpl>(protocolInterface, commonInformation, interfacesInformation, controllerDelegate);
+	return new LocalEntityGuard<AggregateEntityImpl>(protocolInterface, commonInformation, interfacesInformation, entityModelTree, controllerDelegate);
 }
 
 /** Constructor */

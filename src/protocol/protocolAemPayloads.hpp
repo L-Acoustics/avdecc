@@ -95,7 +95,8 @@ Serializer<AecpAemReadDescriptorCommandPayloadSize> serializeReadDescriptorComma
 std::tuple<entity::model::ConfigurationIndex, entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeReadDescriptorCommand(AemAecpdu::Payload const& payload);
 
 /** READ_DESCRIPTOR Response - Clause 7.4.5.2 */
-//Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeReadDescriptorResponse(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex);
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeReadDescriptorCommonResponse(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex);
+void serializeReadEntityDescriptorResponse(Serializer<AemAecpdu::MaximumSendPayloadBufferLength>& ser, entity::model::EntityDescriptor const& entityDescriptor);
 std::tuple<size_t, entity::model::ConfigurationIndex, entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeReadDescriptorCommonResponse(AemAecpdu::Payload const& payload);
 entity::model::EntityDescriptor deserializeReadEntityDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status);
 entity::model::ConfigurationDescriptor deserializeReadConfigurationDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status);

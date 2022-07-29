@@ -70,11 +70,12 @@ public:
 /* ************************************************************************** */
 /* CapabilityDelegate life cycle                                              */
 /* ************************************************************************** */
-CapabilityDelegate::CapabilityDelegate(protocol::ProtocolInterface* const protocolInterface, controller::Delegate* controllerDelegate, Interface& controllerInterface, UniqueIdentifier const controllerID) noexcept
-	: _protocolInterface(protocolInterface)
-	, _controllerDelegate(controllerDelegate)
-	, _controllerInterface(controllerInterface)
-	, _controllerID(controllerID)
+CapabilityDelegate::CapabilityDelegate(protocol::ProtocolInterface* const protocolInterface, controller::Delegate* controllerDelegate, Interface& controllerInterface, Entity const& entity, model::EntityTree const* const entityModelTree) noexcept
+	: _protocolInterface{ protocolInterface }
+	, _controllerDelegate{ controllerDelegate }
+	, _controllerInterface{ controllerInterface }
+	, _controllerID{ entity.getEntityID() }
+	, _aemHandler{ entity, entityModelTree }
 {
 }
 
@@ -1751,6 +1752,8 @@ bool CapabilityDelegate::onUnhandledAecpCommand(protocol::ProtocolInterface* con
 			LocalEntityImpl<>::sendAemAecpResponse(pi, aem, protocol::AemAecpStatus::Success, nullptr, 0u);
 			return true;
 		}
+
+		return _aemHandler.onUnhandledAecpAemCommand(pi, aem);
 	}
 	return false;
 }

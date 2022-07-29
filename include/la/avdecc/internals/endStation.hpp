@@ -29,8 +29,10 @@
 #include "controllerEntity.hpp"
 #include "aggregateEntity.hpp"
 #include "protocolInterface.hpp"
+#include "entityModelTree.hpp"
 #include "exports.hpp"
 #include "exception.hpp"
+#include "jsonSerialization.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -97,14 +99,18 @@ public:
 	* @details Creates and attaches a controller type entity to the EndStation.
 	* @param[in] progID ID that will be used to generate the #UniqueIdentifier for the controller.
 	* @param[in] entityModelID The EntityModelID value for the controller. You can use entity::model::makeEntityModelID to create this value.
+	* @param[in] entityModelTree The entity model tree to use for this controller entity, or null to not expose a model.
 	* @param[in] delegate The Delegate to be called whenever a controller related notification occurs.
 	* @return A weak pointer to the newly created ControllerEntity.
 	* @note Might throw an Exception.
 	*/
-	virtual entity::ControllerEntity* addControllerEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::controller::Delegate* const delegate) = 0;
+	virtual entity::ControllerEntity* addControllerEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::model::EntityTree const* const entityModelTree, entity::controller::Delegate* const delegate) = 0;
 
 	// TODO: Add all other AggregateEntity parameters
-	virtual entity::AggregateEntity* addAggregateEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::controller::Delegate* const controllerDelegate) = 0;
+	virtual entity::AggregateEntity* addAggregateEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::model::EntityTree const* const entityModelTree, entity::controller::Delegate* const controllerDelegate) = 0;
+
+	/** Deserializes a JSON file representing an entity model, and returns the model without loading it. */
+	static LA_AVDECC_API std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, entity::model::EntityTree> LA_AVDECC_CALL_CONVENTION deserializeEntityModelFromJson(std::string const& filePath, bool const processDynamicModel, bool const isBinaryFormat) noexcept;
 
 	// Deleted compiler auto-generated methods
 	EndStation(EndStation&&) = delete;

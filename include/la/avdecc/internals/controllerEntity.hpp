@@ -30,6 +30,7 @@
 #include "protocolInterface.hpp"
 #include "entity.hpp"
 #include "entityModel.hpp"
+#include "entityModelTree.hpp"
 #include "entityAddressAccessTypes.hpp"
 #include "exports.hpp"
 
@@ -451,17 +452,18 @@ public:
 	* @param[in] protocolInterface The protocol interface to bind the entity to.
 	* @param[in] commonInformation Common information for this controller entity.
 	* @param[in] interfacesInformation All interfaces information for this controller entity.
+	* @param[in] entityModelTree The entity model tree to use for this controller entity, or null to not expose a model.
 	* @param[in] delegate The Delegate to be called whenever a controller related notification occurs.
 	* @return A new ControllerEntity as a Entity::UniquePointer.
 	* @note Might throw an Exception.
 	*/
-	static UniquePointer create(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, controller::Delegate* const delegate)
+	static UniquePointer create(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, model::EntityTree const* const entityModelTree, controller::Delegate* const delegate)
 	{
 		auto deleter = [](ControllerEntity* self)
 		{
 			self->destroy();
 		};
-		return UniquePointer(createRawControllerEntity(protocolInterface, commonInformation, interfacesInformation, delegate), deleter);
+		return UniquePointer(createRawControllerEntity(protocolInterface, commonInformation, interfacesInformation, entityModelTree, delegate), deleter);
 	}
 
 	/* Discovery Protocol (ADP) */
@@ -494,7 +496,7 @@ protected:
 
 private:
 	/** Entry point */
-	static LA_AVDECC_API ControllerEntity* LA_AVDECC_CALL_CONVENTION createRawControllerEntity(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, controller::Delegate* const delegate);
+	static LA_AVDECC_API ControllerEntity* LA_AVDECC_CALL_CONVENTION createRawControllerEntity(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, model::EntityTree const* const entityModelTree, controller::Delegate* const delegate);
 
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept = 0;
