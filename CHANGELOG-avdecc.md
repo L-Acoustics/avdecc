@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Added
-- A la::avdecc::entity::model::EntityTree can be fed into a LocalEntity so it responds to AEM query commands
+- A la::avdecc::entity::model::EntityTree can be fed into a LocalEntity so it responds to AEM query commands (currently limited to ENTITY descriptor)
 - EndStation::deserializeEntityModelFromJson to unpack a la::avdecc::entity::model::EntityTree from a file
 
 ### Changed
