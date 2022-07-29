@@ -23,7 +23,8 @@
 */
 
 #include "aemHandler.hpp"
-//#include "la/avdecc/internals/controllerEntity.hpp"
+#include "entityImpl.hpp"
+#include "protocol/protocolAemPayloads.hpp"
 
 
 namespace la

@@ -46,9 +46,6 @@ namespace entity
 AggregateEntityImpl::AggregateEntityImpl(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, model::EntityTree const* const entityModelTree, controller::Delegate* const controllerDelegate)
 	: LocalEntityImpl(protocolInterface, commonInformation, interfacesInformation)
 {
-	// Create all capabilities based on passed flags
-	auto const entityID = getEntityID();
-
 	// Entity is controller capable
 	if (commonInformation.controllerCapabilities.test(ControllerCapability::Implemented))
 	{

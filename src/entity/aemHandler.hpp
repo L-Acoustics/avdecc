@@ -24,9 +24,10 @@
 
 #pragma once
 
-//#include "la/avdecc/internals/controllerEntity.hpp"
-
-//#include "entityImpl.hpp"
+#include "la/avdecc/internals/entity.hpp"
+#include "la/avdecc/internals/entityModelTree.hpp"
+#include "la/avdecc/internals/protocolInterface.hpp"
+#include "la/avdecc/internals/protocolAemAecpdu.hpp"
 
 namespace la
 {

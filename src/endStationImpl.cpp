@@ -22,13 +22,14 @@
 * @author Christophe Calmejane
 */
 
-#include "la/avdecc/internals/protocolInterface.hpp"
-
 #include "endStationImpl.hpp"
-
-// Entities
 #include "entity/controllerEntityImpl.hpp"
 #include "entity/aggregateEntityImpl.hpp"
+
+#include "la/avdecc/internals/protocolInterface.hpp"
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+#	include "la/avdecc/internals/jsonTypes.hpp"
+#endif // ENABLE_AVDECC_FEATURE_JSON
 
 #include <fstream>
 
@@ -141,6 +142,11 @@ void EndStationImpl::destroy() noexcept
 
 std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, entity::model::EntityTree> LA_AVDECC_CALL_CONVENTION EndStation::deserializeEntityModelFromJson(std::string const& filePath, bool const processDynamicModel, bool const isBinaryFormat) noexcept
 {
+#ifndef ENABLE_AVDECC_FEATURE_JSON
+	return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Deserialization feature not supported by the library (was not compiled)", entity::model::EntityTree{} };
+
+#else // ENABLE_AVDECC_FEATURE_JSON
+
 	auto flags = entity::model::jsonSerializer::Flags{ entity::model::jsonSerializer::Flag::ProcessStaticModel };
 	if (processDynamicModel)
 	{
@@ -222,6 +228,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, entity::mo
 		AVDECC_ASSERT(false, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here");
 		return { avdecc::jsonSerializer::DeserializationError::InternalError, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here.", entity::model::EntityTree{} };
 	}
+#endif // ENABLE_AVDECC_FEATURE_JSON
 }
 
 /** EndStation Entry point */
