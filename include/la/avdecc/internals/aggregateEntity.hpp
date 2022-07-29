@@ -29,6 +29,7 @@
 
 #include "entity.hpp"
 #include "entityModel.hpp"
+#include "entityModelTree.hpp"
 #include "entityAddressAccessTypes.hpp"
 #include "controllerEntity.hpp"
 #include "exports.hpp"
@@ -56,17 +57,18 @@ public:
 	* @param[in] protocolInterface The protocol interface to bind the entity to.
 	* @param[in] commonInformation Common information for this aggregate entity.
 	* @param[in] interfacesInformation All interfaces information for this aggregate entity.
-	* @param[in] delegate The Delegate to be called whenever a controller related notification occurs.
+	* @param[in] entityModelTree The entity model tree to use for this controller entity, or null to not expose a model.
+	* @param[in] controllerDelegate The Delegate to be called whenever a controller related notification occurs.
 	* @return A new AggregateEntity as a Entity::UniquePointer.
 	* @note Might throw an Exception.
 	*/
-	static UniquePointer create(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, controller::Delegate* const controllerDelegate)
+	static UniquePointer create(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, model::EntityTree const* const entityModelTree, controller::Delegate* const controllerDelegate)
 	{
 		auto deleter = [](AggregateEntity* self)
 		{
 			self->destroy();
 		};
-		return UniquePointer(createRawAggregateEntity(protocolInterface, commonInformation, interfacesInformation, controllerDelegate), deleter);
+		return UniquePointer(createRawAggregateEntity(protocolInterface, commonInformation, interfacesInformation, entityModelTree, controllerDelegate), deleter);
 	}
 
 	/* Discovery Protocol (ADP) */
@@ -100,7 +102,7 @@ protected:
 
 private:
 	/** Entry point */
-	static LA_AVDECC_API AggregateEntity* LA_AVDECC_CALL_CONVENTION createRawAggregateEntity(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, controller::Delegate* const controllerDelegate);
+	static LA_AVDECC_API AggregateEntity* LA_AVDECC_CALL_CONVENTION createRawAggregateEntity(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, model::EntityTree const* const entityModelTree, controller::Delegate* const controllerDelegate);
 
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept = 0;

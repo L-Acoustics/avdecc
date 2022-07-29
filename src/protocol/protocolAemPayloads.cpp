@@ -180,10 +180,32 @@ std::tuple<entity::model::ConfigurationIndex, entity::model::DescriptorType, ent
 }
 
 /** READ_DESCRIPTOR Response - Clause 7.4.5.2 */
-//Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeReadDescriptorResponse(entity::model::ConfigurationIndex const /*configurationIndex*/, entity::model::DescriptorType const /*descriptorType*/, entity::model::DescriptorIndex const /*descriptorIndex*/)
-//{
-//	return {};
-//}
+Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeReadDescriptorCommonResponse(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
+{
+	Serializer<AemAecpdu::MaximumSendPayloadBufferLength> ser;
+	std::uint16_t const reserved{ 0u };
+
+	ser << configurationIndex << reserved;
+	ser << descriptorType << descriptorIndex;
+
+	return ser;
+}
+
+void serializeReadEntityDescriptorResponse(Serializer<AemAecpdu::MaximumSendPayloadBufferLength>& ser, entity::model::EntityDescriptor const& entityDescriptor)
+{
+	ser << entityDescriptor.entityID << entityDescriptor.entityModelID << entityDescriptor.entityCapabilities;
+	ser << entityDescriptor.talkerStreamSources << entityDescriptor.talkerCapabilities;
+	ser << entityDescriptor.listenerStreamSinks << entityDescriptor.listenerCapabilities;
+	ser << entityDescriptor.controllerCapabilities;
+	ser << entityDescriptor.availableIndex;
+	ser << entityDescriptor.associationID;
+	ser << entityDescriptor.entityName;
+	ser << entityDescriptor.vendorNameString << entityDescriptor.modelNameString;
+	ser << entityDescriptor.firmwareVersion;
+	ser << entityDescriptor.groupName;
+	ser << entityDescriptor.serialNumber;
+	ser << entityDescriptor.configurationsCount << entityDescriptor.currentConfiguration;
+}
 
 std::tuple<size_t, entity::model::ConfigurationIndex, entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeReadDescriptorCommonResponse(AemAecpdu::Payload const& payload)
 {

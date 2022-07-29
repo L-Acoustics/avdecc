@@ -43,11 +43,11 @@ namespace entity
 /* ************************************************************************** */
 /* ControllerEntityImpl life cycle                                            */
 /* ************************************************************************** */
-ControllerEntityImpl::ControllerEntityImpl(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, controller::Delegate* const controllerDelegate)
+ControllerEntityImpl::ControllerEntityImpl(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, model::EntityTree const* const entityModelTree, controller::Delegate* const controllerDelegate)
 	: LocalEntityImpl(protocolInterface, commonInformation, interfacesInformation)
 {
 	// Entity is controller capable
-	_controllerCapabilityDelegate = std::make_unique<controller::CapabilityDelegate>(getProtocolInterface(), controllerDelegate, *this, getEntityID());
+	_controllerCapabilityDelegate = std::make_unique<controller::CapabilityDelegate>(getProtocolInterface(), controllerDelegate, *this, *this, entityModelTree);
 
 	// Register observer
 	auto* const pi = getProtocolInterface();
@@ -723,9 +723,9 @@ bool ControllerEntityImpl::onUnhandledAecpVuCommand(protocol::ProtocolInterface*
 /* ControllerEntity methods                                                   */
 /* ************************************************************************** */
 /** Entry point */
-ControllerEntity* LA_AVDECC_CALL_CONVENTION ControllerEntity::createRawControllerEntity(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, controller::Delegate* const delegate)
+ControllerEntity* LA_AVDECC_CALL_CONVENTION ControllerEntity::createRawControllerEntity(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, model::EntityTree const* const entityModelTree, controller::Delegate* const delegate)
 {
-	return new LocalEntityGuard<ControllerEntityImpl>(protocolInterface, commonInformation, interfacesInformation, delegate);
+	return new LocalEntityGuard<ControllerEntityImpl>(protocolInterface, commonInformation, interfacesInformation, entityModelTree, delegate);
 }
 
 /** Constructor */

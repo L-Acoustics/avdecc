@@ -124,6 +124,7 @@ set (SOURCE_FILES_STATE_MACHINES
 set (HEADER_FILES_ENTITY
 	entity/entityImpl.hpp
 	entity/localEntityImpl.ipp
+	entity/aemHandler.hpp
 	entity/aggregateEntityImpl.hpp
 	entity/controllerCapabilityDelegate.hpp
 	entity/controllerEntityImpl.hpp
@@ -132,6 +133,7 @@ set (HEADER_FILES_ENTITY
 set (SOURCE_FILES_ENTITY
 	entity/entityModelTypes.cpp
 	entity/localEntityImpl.cpp
+	entity/aemHandler.cpp
 	entity/aggregateEntityImpl.cpp
 	entity/controllerCapabilityDelegate.cpp
 	entity/controllerEntityImpl.cpp
