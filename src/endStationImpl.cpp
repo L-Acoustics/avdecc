@@ -30,6 +30,8 @@
 #include "entity/controllerEntityImpl.hpp"
 #include "entity/aggregateEntityImpl.hpp"
 
+#include <fstream>
+
 namespace la
 {
 namespace avdecc
@@ -135,6 +137,91 @@ entity::AggregateEntity* EndStationImpl::addAggregateEntity(std::uint16_t const 
 void EndStationImpl::destroy() noexcept
 {
 	delete this;
+}
+
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, entity::model::EntityTree> LA_AVDECC_CALL_CONVENTION EndStation::deserializeEntityModelFromJson(std::string const& filePath, bool const processDynamicModel, bool const isBinaryFormat) noexcept
+{
+	auto flags = entity::model::jsonSerializer::Flags{ entity::model::jsonSerializer::Flag::ProcessStaticModel };
+	if (processDynamicModel)
+	{
+		flags.set(entity::model::jsonSerializer::Flag::ProcessDynamicModel);
+	}
+	if (isBinaryFormat)
+	{
+		flags.set(entity::model::jsonSerializer::Flag::BinaryFormat);
+	}
+
+	// Try to open the input file
+	auto const mode = std::ios::binary | std::ios::in;
+	auto ifs = std::ifstream{ filePath, mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
+
+	// Failed to open file for reading
+	if (!ifs.is_open())
+	{
+		return { avdecc::jsonSerializer::DeserializationError::AccessDenied, std::strerror(errno), entity::model::EntityTree{} };
+	}
+
+	// Load the JSON object from disk
+	auto object = json{};
+	try
+	{
+		if (flags.test(entity::model::jsonSerializer::Flag::BinaryFormat))
+		{
+			object = json::from_msgpack(ifs);
+		}
+		else
+		{
+			ifs >> object;
+		}
+	}
+	catch (json::type_error const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::InvalidValue, e.what(), entity::model::EntityTree{} };
+	}
+	catch (json::parse_error const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::ParseError, e.what(), entity::model::EntityTree{} };
+	}
+	catch (json::out_of_range const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::MissingKey, e.what(), entity::model::EntityTree{} };
+	}
+	catch (json::other_error const& e)
+	{
+		if (e.id == 555)
+		{
+			return { avdecc::jsonSerializer::DeserializationError::InvalidKey, e.what(), entity::model::EntityTree{} };
+		}
+		else
+		{
+			return { avdecc::jsonSerializer::DeserializationError::OtherError, e.what(), entity::model::EntityTree{} };
+		}
+	}
+	catch (json::exception const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::OtherError, e.what(), entity::model::EntityTree{} };
+	}
+
+	// Try to deserialize
+	try
+	{
+		auto entityTree = entity::model::jsonSerializer::createEntityTree(object, flags);
+		return { avdecc::jsonSerializer::DeserializationError::NoError, "", entityTree };
+	}
+	catch (json::exception const& e)
+	{
+		AVDECC_ASSERT(false, "json::exception is not expected to be thrown here");
+		return { avdecc::jsonSerializer::DeserializationError::InternalError, e.what(), entity::model::EntityTree{} };
+	}
+	catch (avdecc::jsonSerializer::DeserializationException const& e)
+	{
+		return { e.getError(), e.what(), entity::model::EntityTree{} };
+	}
+	catch (...)
+	{
+		AVDECC_ASSERT(false, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here");
+		return { avdecc::jsonSerializer::DeserializationError::InternalError, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here.", entity::model::EntityTree{} };
+	}
 }
 
 /** EndStation Entry point */

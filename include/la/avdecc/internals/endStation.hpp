@@ -32,6 +32,7 @@
 #include "entityModelTree.hpp"
 #include "exports.hpp"
 #include "exception.hpp"
+#include "jsonSerialization.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -107,6 +108,9 @@ public:
 
 	// TODO: Add all other AggregateEntity parameters
 	virtual entity::AggregateEntity* addAggregateEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::model::EntityTree const* const entityModelTree, entity::controller::Delegate* const controllerDelegate) = 0;
+
+	/** Deserializes a JSON file representing an entity model, and returns the model without loading it. */
+	static LA_AVDECC_API std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, entity::model::EntityTree> LA_AVDECC_CALL_CONVENTION deserializeEntityModelFromJson(std::string const& filePath, bool const processDynamicModel, bool const isBinaryFormat) noexcept;
 
 	// Deleted compiler auto-generated methods
 	EndStation(EndStation&&) = delete;
