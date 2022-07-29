@@ -159,7 +159,7 @@ bool ControlledEntityImpl::isStreamOutputRunning(entity::model::ConfigurationInd
 ControlledEntity::InterfaceLinkStatus ControlledEntityImpl::getAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex) const noexcept
 {
 	// AEM not supported, unknown status
-	if (!_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+	if (!_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported) || !hasAnyConfiguration())
 	{
 		return InterfaceLinkStatus::Unknown;
 	}
@@ -258,6 +258,11 @@ bool ControlledEntityImpl::isIdentifying() const noexcept
 		}
 	}
 	return false;
+}
+
+bool ControlledEntityImpl::hasAnyConfiguration() const noexcept
+{
+	return !_entityTree.configurationTrees.empty();
 }
 
 entity::model::ConfigurationIndex ControlledEntityImpl::getCurrentConfigurationIndex() const
@@ -939,11 +944,6 @@ entity::model::ConfigurationNodeDynamicModel const& ControlledEntityImpl::getCon
 }
 
 // Tree validators, to check if a specific part exists yet without throwing
-bool ControlledEntityImpl::hasAnyConfigurationTree() const noexcept
-{
-	return !_entityTree.configurationTrees.empty();
-}
-
 bool ControlledEntityImpl::hasConfigurationTree(entity::model::ConfigurationIndex const configurationIndex) const noexcept
 {
 	if (gotFatalEnumerationError() || !_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))

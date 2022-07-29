@@ -136,6 +136,7 @@ public:
 	virtual std::optional<entity::model::ControlIndex> getIdentifyControlIndex() const noexcept = 0; // Retrieve the Identify Control Index, if the entity has a valid one
 	virtual bool isEntityModelValidForCaching() const noexcept = 0; // True if the Entity Model is valid for caching
 	virtual bool isIdentifying() const noexcept = 0; // True if the Entity is currently identifying itself
+	virtual bool hasAnyConfiguration() const noexcept = 0; // True if the Entity has at least one Configuration
 	virtual entity::model::ConfigurationIndex getCurrentConfigurationIndex() const = 0; // Throws Exception::NotSupported if EM not supported by the Entity
 
 	// Const Node getters

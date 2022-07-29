@@ -205,6 +205,7 @@ public:
 	virtual std::optional<entity::model::ControlIndex> getIdentifyControlIndex() const noexcept override;
 	virtual bool isEntityModelValidForCaching() const noexcept override;
 	virtual bool isIdentifying() const noexcept override;
+	virtual bool hasAnyConfiguration() const noexcept override;
 	virtual entity::model::ConfigurationIndex getCurrentConfigurationIndex() const override;
 
 	// Const Node getters
@@ -291,7 +292,6 @@ public:
 	}
 
 	// Tree validators, to check if a specific part exists yet without throwing
-	bool hasAnyConfigurationTree() const noexcept;
 	bool hasConfigurationTree(entity::model::ConfigurationIndex const configurationIndex) const noexcept;
 	template<typename FieldPointer, typename DescriptorIndexType>
 	bool hasTreeModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer entity::model::ConfigurationTree::*Field) const noexcept
