@@ -2507,7 +2507,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 {
 	auto const caps = entity->getEntity().getEntityCapabilities();
 	// Check if AEM is supported by this entity
-	if (caps.test(entity::EntityCapability::AemSupported))
+	if (caps.test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
 	{
 		auto const& entityTree = entity->getEntityTree();
 		auto const currentConfigurationIndex = entity->getCurrentConfigurationIndex();
@@ -3200,6 +3200,7 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 	auto const& e = controlledEntity.getEntity();
 	auto const entityID = e.getEntityID();
 	auto const isAemSupported = e.getEntityCapabilities().test(entity::EntityCapability::AemSupported);
+	auto const hasAnyConfiguration = controlledEntity.hasAnyConfiguration();
 	auto const isVirtualEntity = controlledEntity.isVirtual();
 
 	// Lock to protect _controlledEntities
@@ -3207,7 +3208,7 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 
 	// Now that this entity is ready to be advertised, update states that are linked to the connection with another entity, in case it was not advertised during processing
 	// States related to Talker capabilities
-	if (e.getTalkerCapabilities().test(entity::TalkerCapability::Implemented) && isAemSupported)
+	if (e.getTalkerCapabilities().test(entity::TalkerCapability::Implemented) && isAemSupported && hasAnyConfiguration)
 	{
 		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
@@ -3228,7 +3229,7 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 				}
 
 				// We need the AEM to check for Listener connections
-				if (listenerEntity.getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+				if (listenerEntity.getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) && listenerEntity.hasAnyConfiguration())
 				{
 					try
 					{
@@ -3354,7 +3355,7 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 	}
 
 	// Compute Media Clock Chain and update all entities for which the chain ends on this newly added entity
-	if (isAemSupported && controlledEntity.hasAnyConfiguration())
+	if (isAemSupported && hasAnyConfiguration)
 	{
 		try
 		{
@@ -3433,10 +3434,11 @@ void ControllerImpl::onPreUnadvertiseEntity(ControlledEntityImpl& controlledEnti
 	auto const& e = controlledEntity.getEntity();
 	auto const entityID = e.getEntityID();
 	auto const isAemSupported = e.getEntityCapabilities().test(entity::EntityCapability::AemSupported);
+	auto const hasAnyConfiguration = controlledEntity.hasAnyConfiguration();
 	auto const isVirtualEntity = controlledEntity.isVirtual();
 
 	// For a Listener, we want to inform all the talkers we are connected to, that we left
-	if (e.getListenerCapabilities().test(entity::ListenerCapability::Implemented) && isAemSupported)
+	if (e.getListenerCapabilities().test(entity::ListenerCapability::Implemented) && isAemSupported && hasAnyConfiguration)
 	{
 		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
