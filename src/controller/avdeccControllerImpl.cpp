@@ -1547,24 +1547,27 @@ void ControllerImpl::updateStreamInputLatency(ControlledEntityImpl& controlledEn
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
 	auto& diags = controlledEntity.getDiagnostics();
-	auto notify = true;
+	auto const previouslyInError = diags.streamInputOverLatency.count(streamIndex) > 0;
 
-	// If the element was already in the map, we need to compare with previous value to see if we need to notify
-	if (auto const streamDiagIt = diags.streamInputOverLatency.find(streamIndex); streamDiagIt != diags.streamInputOverLatency.end())
+	// State changed
+	if (isOverLatency != previouslyInError)
 	{
-		notify = streamDiagIt->second != isOverLatency;
-		streamDiagIt->second = isOverLatency;
-	}
-	// If the element was not already in the list, add it and notify
-	else
-	{
-		diags.streamInputOverLatency[streamIndex] = isOverLatency;
-	}
+		// Was not in the list and now needs to be
+		if (isOverLatency)
+		{
+			diags.streamInputOverLatency.insert(streamIndex);
+		}
+		// Was in the list and now needs to be removed
+		else
+		{
+			diags.streamInputOverLatency.erase(streamIndex);
+		}
 
-	// Entity was advertised to the user, notify observers
-	if (notify && controlledEntity.wasAdvertised())
-	{
-		notifyObserversMethod<Controller::Observer>(&Controller::Observer::onDiagnosticsChanged, this, &controlledEntity, diags);
+		// Entity was advertised to the user, notify observers
+		if (controlledEntity.wasAdvertised())
+		{
+			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onDiagnosticsChanged, this, &controlledEntity, diags);
+		}
 	}
 }
 

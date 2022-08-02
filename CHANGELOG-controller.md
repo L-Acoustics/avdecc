@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Possibility to unload a virtual entity using `Controller::unloadVirtualEntity`
 - A la::avdecc::entity::model::EntityTree can be fed into the controller so it responds to AEM query commands
 
+### Changed
+- Diagnostics::streamInputOverLatency is now a std::set and not a std::unordered_map with a bool as value
+
 ### Fixed
 - [Virtual entities are loaded from the networking thread (executor)](https://github.com/L-Acoustics/avdecc/issues/110)
 

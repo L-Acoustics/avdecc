@@ -40,6 +40,7 @@
 #include <chrono>
 #include <optional>
 #include <map>
+#include <set>
 
 namespace la
 {
@@ -109,7 +110,7 @@ public:
 	struct Diagnostics
 	{
 		bool redundancyWarning{ false }; /** Flag indicating a Milan redundant device has both interfaces connected to the same network */
-		std::unordered_map<entity::model::StreamIndex, bool> streamInputOverLatency{}; /** Flag indicating a StreamInput MSRP Latency is greater than Talker's Presentation Time */
+		std::set<entity::model::StreamIndex> streamInputOverLatency{}; /** List of StreamInput whose MSRP Latency is greater than Talker's Presentation Time */
 	};
 
 	// Getters
