@@ -30,6 +30,7 @@
 #include <string>
 
 #ifdef _WIN32
+#	include <la/networkInterfaceHelper/windowsHelper.hpp>
 #	include <windows.h>
 #	define PCAP_LIBRARY "wpcap.dll"
 #	define DL_HANDLE HMODULE
@@ -53,37 +54,24 @@
 #endif
 
 #ifdef _WIN32
-static std::string wideCharToUTF8(PWCHAR const wide) noexcept
-{
-	// All APIs calling this method have to provide a NULL-terminated PWCHAR
-	auto const wideLength = wcsnlen_s(wide, 1024); // Compute the size, in characters, of the wide string
-
-	if (wideLength != 0)
-	{
-		auto const sizeNeeded = WideCharToMultiByte(CP_UTF8, 0, wide, static_cast<int>(wideLength), nullptr, 0, nullptr, nullptr);
-		auto result = std::string(static_cast<std::string::size_type>(sizeNeeded), std::string::value_type{ 0 }); // Brace-initialization constructor prevents the use of {}
-
-		if (WideCharToMultiByte(CP_UTF8, 0, wide, static_cast<int>(wideLength), result.data(), sizeNeeded, nullptr, nullptr) > 0)
-		{
-			return result;
-		}
-	}
-
-	return {};
-}
-
 static std::string la_dlerror()
 {
 	constexpr auto ErrorMessageMaxLength = 512;
 	WCHAR errMessage[ErrorMessageMaxLength];
 
 	auto const errorCode = GetLastError();
-	if (FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, errorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), errMessage, ErrorMessageMaxLength, NULL) == 0)
+	if (FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, errorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), errMessage, ErrorMessageMaxLength, NULL) != 0)
 	{
-		return std::to_string(errorCode);
+		try
+		{
+			return la::networkInterface::windows::wideCharToUtf8(errMessage);
+		}
+		catch (std::invalid_argument const&)
+		{
+		}
 	}
 
-	return wideCharToUTF8(errMessage);
+	return std::to_string(errorCode);
 }
 #endif // _WIN32
 
