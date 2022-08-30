@@ -34,7 +34,7 @@
 #	include <windows.h>
 #	define PCAP_LIBRARY "wpcap.dll"
 #	define DL_HANDLE HMODULE
-#	define DL_OPEN(x) LoadLibrary(x)
+#	define DL_OPEN(x) la_dlopen(x)
 #	define DL_CLOSE(x) FreeLibrary(x)
 #	define DL_SYM(x, y) GetProcAddress((x), (y))
 #	define DL_ERROR() la_dlerror()
@@ -54,7 +54,58 @@
 #endif
 
 #ifdef _WIN32
-static std::string la_dlerror()
+#	include <filesystem>
+
+inline void la_force_npcap_dll_path()
+{
+	static auto already_done = false;
+
+	if (already_done)
+	{
+		return;
+	}
+
+	// Compute NPCap path
+	constexpr auto MaxSystemDirectoryPath = 512;
+	char systemDirectoryPath[MaxSystemDirectoryPath];
+	auto const len = GetSystemDirectoryA(systemDirectoryPath, MaxSystemDirectoryPath);
+	if (len == 0)
+	{
+		return;
+	}
+	auto const NPCapPath = std::filesystem::path{ systemDirectoryPath } / "Npcap";
+
+	// Check for AddDllDirectory (requires win7 or later), which is better than using SetDllDirectory
+	{
+		auto const Kernel32Module = GetModuleHandle("kernel32.dll");
+		if (Kernel32Module != nullptr)
+		{
+			auto const AddDllDirectory_p = reinterpret_cast<DLL_DIRECTORY_COOKIE(WINAPI*)(PCWSTR)>(GetProcAddress(Kernel32Module, "AddDllDirectory"));
+			if (AddDllDirectory_p != nullptr)
+			{
+				if (AddDllDirectory_p(NPCapPath.native().c_str()) != nullptr)
+				{
+					// No need to do this more than once
+					already_done = true;
+					return;
+				}
+			}
+		}
+	}
+
+	// Try SetDllDirectory as fallback
+	{
+		SetDllDirectoryA(NPCapPath.string().c_str());
+		// We want to call SetDllDirectory every time this function is called, as someone might have altered the paths (this is not an issue when using AddDllDirectory)
+		// So we don't set already_done to true
+	}
+}
+inline DL_HANDLE la_dlopen(LPCSTR lpLibFileName)
+{
+	la_force_npcap_dll_path();
+	return LoadLibraryExA(lpLibFileName, nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32 | LOAD_LIBRARY_SEARCH_USER_DIRS);
+}
+inline std::string la_dlerror()
 {
 	constexpr auto ErrorMessageMaxLength = 512;
 	WCHAR errMessage[ErrorMessageMaxLength];
