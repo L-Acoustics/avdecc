@@ -427,20 +427,43 @@ model::StreamPortNode const& ControlledEntityImpl::getStreamPortOutputNode(entit
 	// Not found
 	throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid stream port output index");
 }
-#if 0
+
 model::AudioClusterNode const& ControlledEntityImpl::getAudioClusterNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex) const
 {
-#	if 1
-	static model::AudioClusterNode s{};
-	(void)configurationIndex;
-	(void)audioUnitIndex;
-	(void)streamPortIndex;
-	(void)clusterIndex;
-	return s;
-#	else
-#	endif
-}
+	auto const& configNode = getConfigurationNode(configurationIndex);
 
+	// Search a matching ClusterIndex in all AudioUnits/StreamPorts
+	for (auto const& audioUnitNodeKV : configNode.audioUnits)
+	{
+		auto const& audioUnitNode = audioUnitNodeKV.second;
+
+		// Search StreamPortInputs
+		for (auto const& streamPortNodeKV : audioUnitNode.streamPortInputs)
+		{
+			auto const& streamPortNode = streamPortNodeKV.second;
+
+			if (auto const audioClustersIt = streamPortNode.audioClusters.find(clusterIndex); audioClustersIt != streamPortNode.audioClusters.end())
+			{
+				return audioClustersIt->second;
+			}
+		}
+
+		// Search StreamPortOutputs
+		for (auto const& streamPortNodeKV : audioUnitNode.streamPortOutputs)
+		{
+			auto const& streamPortNode = streamPortNodeKV.second;
+
+			if (auto const audioClustersIt = streamPortNode.audioClusters.find(clusterIndex); audioClustersIt != streamPortNode.audioClusters.end())
+			{
+				return audioClustersIt->second;
+			}
+		}
+	}
+
+	// Not found
+	throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid audio cluster index");
+}
+#if 0
 model::AudioMapNode const& ControlledEntityImpl::getAudioMapNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex) const
 {
 #	if 1
