@@ -2691,6 +2691,12 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const controlle
 			// Validate the entity, now that it's fully enumerated
 			validateEntity(entity);
 
+			// Validation didn't go that well, cancel entity advertising
+			if (entity.gotFatalEnumerationError())
+			{
+				return;
+			}
+
 			// Do some final controller related steps before advertising entity
 			onPreAdvertiseEntity(entity);
 
@@ -2994,32 +3000,40 @@ void ControllerImpl::validateRedundancy(ControlledEntityImpl& controlledEntity) 
 	// Only for Milan devices
 	if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 	{
-		// Check if the current configuration has at least one Redundant Stream
-		auto const& configurationNode = controlledEntity.getCurrentConfigurationNode();
-		auto const hasRedundantStream = !configurationNode.redundantStreamInputs.empty() || !configurationNode.redundantStreamOutputs.empty();
-
-		// Check the entity correctly declares the Milan Redundancy Flag
-		auto const milanInfo = controlledEntity.getMilanInfo();
-		if (hasRedundantStream != milanInfo->featuresFlags.test(la::avdecc::entity::MilanInfoFeaturesFlag::Redundancy))
+		try
 		{
-			auto const& e = controlledEntity.getEntity();
-			auto const entityID = e.getEntityID();
+			// Check if the current configuration has at least one Redundant Stream
+			auto const& configurationNode = controlledEntity.getCurrentConfigurationNode();
+			auto const hasRedundantStream = !configurationNode.redundantStreamInputs.empty() || !configurationNode.redundantStreamOutputs.empty();
 
-			if (hasRedundantStream)
+			// Check the entity correctly declares the Milan Redundancy Flag
+			auto const milanInfo = controlledEntity.getMilanInfo();
+			if (hasRedundantStream != milanInfo->featuresFlags.test(la::avdecc::entity::MilanInfoFeaturesFlag::Redundancy))
 			{
-				LOG_CONTROLLER_WARN(entityID, "Redundant Streams detected, but MilanInfo features_flags does not contain REDUNDANCY bit");
+				auto const& e = controlledEntity.getEntity();
+				auto const entityID = e.getEntityID();
+
+				if (hasRedundantStream)
+				{
+					LOG_CONTROLLER_WARN(entityID, "Redundant Streams detected, but MilanInfo features_flags does not contain REDUNDANCY bit");
+				}
+				else
+				{
+					LOG_CONTROLLER_WARN(entityID, "MilanInfo features_flags contains REDUNDANCY bit, but active Configuration does not have a single valid Redundant Stream");
+				}
+				addCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::MilanWarning);
 			}
-			else
-			{
-				LOG_CONTROLLER_WARN(entityID, "MilanInfo features_flags contains REDUNDANCY bit, but active Configuration does not have a single valid Redundant Stream");
-			}
-			addCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::MilanWarning);
+
+			// No need to check for AVB Interface association, the buildRedundancyNodesByType method already did the check when creating redundantStreamInputs and redundantStreamOutputs
+
+			// Set the entity as Milan Redundant for the active configuration
+			controlledEntity.setMilanRedundant(hasRedundantStream);
 		}
-
-		// No need to check for AVB Interface association, the buildRedundancyNodesByType method already did the check when creating redundantStreamInputs and redundantStreamOutputs
-
-		// Set the entity as Milan Redundant for the active configuration
-		controlledEntity.setMilanRedundant(hasRedundantStream);
+		catch (ControlledEntity::Exception const&)
+		{
+			// Something went wrong during enumeration, set critical error
+			controlledEntity.setGetFatalEnumerationError();
+		}
 	}
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 }

@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - [Virtual entities are loaded from the networking thread (executor)](https://github.com/L-Acoustics/avdecc/issues/110)
+- Rare crash when an entity goes offline and online immediately again, when its ENTITY descriptor is being enumerated
 
 ## [3.2.4] - 2022-07-08
 ### Added
