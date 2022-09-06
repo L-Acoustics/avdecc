@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - Crash when loading ANS/AVE file without any configuration descriptor
+- Discarding inflight and queued messages when an entity goes offline
 
 ## [3.2.4] - 2022-07-08
 ### Fixed

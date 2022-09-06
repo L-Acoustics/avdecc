@@ -519,6 +519,9 @@ private:
 	{
 		// Notify observers
 		notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityOffline, this, entityID);
+
+		// Notify the StateMachineManager
+		_stateMachineManager.onRemoteEntityOffline(entityID);
 	}
 
 	virtual void onRemoteEntityUpdated(entity::Entity const& entity) noexcept override

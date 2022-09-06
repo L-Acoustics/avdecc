@@ -756,6 +756,9 @@ void ProtocolInterfaceVirtualImpl::onRemoteEntityOffline(UniqueIdentifier const 
 	SEND_INSTRUMENTATION_NOTIFICATION("ProtocolInterfaceVirtual::onRemoteEntityOffline::PreNotify");
 	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityOffline, this, entityID);
 	SEND_INSTRUMENTATION_NOTIFICATION("ProtocolInterfaceVirtual::onRemoteEntityOffline::PostNotify");
+
+	// Notify the StateMachineManager
+	_stateMachineManager.onRemoteEntityOffline(entityID);
 }
 
 void ProtocolInterfaceVirtualImpl::onRemoteEntityUpdated(entity::Entity const& entity) noexcept

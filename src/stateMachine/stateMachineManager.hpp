@@ -83,6 +83,11 @@ public:
 	void notifyDiscoveredEntities(DiscoveryStateMachine::Delegate& delegate) noexcept;
 
 	/* ************************************************************ */
+	/* Notifications                                                */
+	/* ************************************************************ */
+	void onRemoteEntityOffline(UniqueIdentifier const entityID) noexcept;
+
+	/* ************************************************************ */
 	/* Advertising entry points                                     */
 	/* ************************************************************ */
 	ProtocolInterface::Error setEntityNeedsAdvertise(entity::LocalEntity const& entity) noexcept;

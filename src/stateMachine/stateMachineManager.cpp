@@ -500,6 +500,16 @@ void Manager::notifyDiscoveredEntities(DiscoveryStateMachine::Delegate& delegate
 
 
 /* ************************************************************ */
+/* Notifications                                                */
+/* ************************************************************ */
+void Manager::onRemoteEntityOffline(UniqueIdentifier const entityID) noexcept
+{
+	// Discard messages related to this entity
+	_commandStateMachine.discardEntityMessages(entityID);
+}
+
+
+/* ************************************************************ */
 /* Advertising entry points                                     */
 /* ************************************************************ */
 ProtocolInterface::Error Manager::setEntityNeedsAdvertise(entity::LocalEntity const& entity) noexcept
