@@ -262,6 +262,7 @@ bool ControlledEntityImpl::isIdentifying() const noexcept
 
 bool ControlledEntityImpl::hasAnyConfiguration() const noexcept
 {
+	AVDECC_ASSERT(!_advertised || _entityNode.configurations.empty() == _entityTree.configurationTrees.empty(), "Configuration count should be identical, once advertised");
 	return !_entityTree.configurationTrees.empty();
 }
 
