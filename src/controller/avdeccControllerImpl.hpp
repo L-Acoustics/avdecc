@@ -328,7 +328,7 @@ private:
 	void updateGptpInformation(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, networkInterface::MacAddress const& macAddress, UniqueIdentifier const& gptpGrandmasterID, std::uint8_t const gptpDomainNumber) const noexcept;
 	void updateAvbInfo(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInfo const& info) const noexcept;
 	void updateAsPath(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath) const noexcept;
-	void updateAvbInterfaceLinkStatus(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, ControlledEntity::InterfaceLinkStatus const linkStatus) const noexcept;
+	static void updateAvbInterfaceLinkStatus(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, ControlledEntity::InterfaceLinkStatus const linkStatus) noexcept;
 	void updateEntityCounters(ControlledEntityImpl& controlledEntity, entity::EntityCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) const noexcept;
 	void updateAvbInterfaceCounters(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::AvbInterfaceCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) const noexcept;
 	void updateClockDomainCounters(ControlledEntityImpl& controlledEntity, entity::model::ClockDomainIndex const clockDomainIndex, entity::ClockDomainCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) const noexcept;
@@ -575,6 +575,7 @@ private:
 	/* ************************************************************ */
 	static entity::model::ControlValues makeIdentifyControlValues(bool const isEnabled) noexcept;
 	static std::optional<bool> getIdentifyControlValue(entity::model::ControlValues const& values) noexcept;
+	static void checkAvbInterfaceLinkStatus(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInterfaceCounters const& avbInterfaceCounters) noexcept;
 	static void checkRedundancyWarningDiagnostics(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity) noexcept;
 	void removeExclusiveAccessTokens(UniqueIdentifier const entityID, ExclusiveAccessToken::AccessType const type) const noexcept;
 	bool areControlledEntitiesSelfLocked() const noexcept;

@@ -1242,10 +1242,8 @@ void ControllerImpl::updateAsPath(ControlledEntityImpl& controlledEntity, entity
 	}
 }
 
-void ControllerImpl::updateAvbInterfaceLinkStatus(ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, ControlledEntity::InterfaceLinkStatus const linkStatus) const noexcept
+void ControllerImpl::updateAvbInterfaceLinkStatus(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, ControlledEntity::InterfaceLinkStatus const linkStatus) noexcept
 {
-	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
-
 	auto const previousLinkStatus = controlledEntity.setAvbInterfaceLinkStatus(avbInterfaceIndex, linkStatus);
 
 	// Entity was advertised to the user, notify observers
@@ -1254,7 +1252,7 @@ void ControllerImpl::updateAvbInterfaceLinkStatus(ControlledEntityImpl& controll
 		// Changed
 		if (previousLinkStatus != linkStatus)
 		{
-			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAvbInterfaceLinkStatusChanged, this, &controlledEntity, avbInterfaceIndex, linkStatus);
+			controller->notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAvbInterfaceLinkStatusChanged, controller, &controlledEntity, avbInterfaceIndex, linkStatus);
 		}
 	}
 }
@@ -1293,16 +1291,7 @@ void ControllerImpl::updateAvbInterfaceCounters(ControlledEntityImpl& controlled
 	}
 
 	// Check for link status update
-	// We must not access avbInterfaceCounters through operator[] or it will create a value if it does not exist. We want the LinkStatus update to be available even for non Milan devices
-	auto const upIt = avbInterfaceCounters.find(entity::AvbInterfaceCounterValidFlag::LinkUp);
-	auto const downIt = avbInterfaceCounters.find(entity::AvbInterfaceCounterValidFlag::LinkDown);
-	if (upIt != avbInterfaceCounters.end() && downIt != avbInterfaceCounters.end())
-	{
-		auto const upValue = upIt->second;
-		auto const downValue = downIt->second;
-		auto const isUp = upValue == (downValue + 1);
-		updateAvbInterfaceLinkStatus(controlledEntity, avbInterfaceIndex, isUp ? ControlledEntity::InterfaceLinkStatus::Up : ControlledEntity::InterfaceLinkStatus::Down);
-	}
+	checkAvbInterfaceLinkStatus(this, controlledEntity, avbInterfaceIndex, avbInterfaceCounters);
 
 	// If Milan device, validate counters values
 	if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
@@ -1606,6 +1595,20 @@ std::optional<bool> ControllerImpl::getIdentifyControlValue(entity::model::Contr
 	{
 	}
 	return std::nullopt;
+}
+
+void ControllerImpl::checkAvbInterfaceLinkStatus(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInterfaceCounters const& avbInterfaceCounters) noexcept
+{
+	// We must not access avbInterfaceCounters through operator[] or it will create a value if it does not exist. We want the LinkStatus update to be available even for non Milan devices
+	auto const upIt = avbInterfaceCounters.find(entity::AvbInterfaceCounterValidFlag::LinkUp);
+	auto const downIt = avbInterfaceCounters.find(entity::AvbInterfaceCounterValidFlag::LinkDown);
+	if (upIt != avbInterfaceCounters.end() && downIt != avbInterfaceCounters.end())
+	{
+		auto const upValue = upIt->second;
+		auto const downValue = downIt->second;
+		auto const isUp = upValue == (downValue + 1);
+		updateAvbInterfaceLinkStatus(controller, controlledEntity, avbInterfaceIndex, isUp ? ControlledEntity::InterfaceLinkStatus::Up : ControlledEntity::InterfaceLinkStatus::Down);
+	}
 }
 
 void ControllerImpl::checkRedundancyWarningDiagnostics(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity) noexcept
@@ -3047,6 +3050,15 @@ void ControllerImpl::validateEntity(ControlledEntityImpl& controlledEntity) noex
 
 	// Validate entity is correctly declared (or not) as a Milan Redundant device
 	validateRedundancy(controlledEntity);
+
+	// Check for AvbInterfaceCounters - Link Status
+	for (auto const& [avbInterfaceIndex, avbInterfaceNode] : controlledEntity.getCurrentConfigurationNode().avbInterfaces)
+	{
+		if (avbInterfaceNode.dynamicModel && avbInterfaceNode.dynamicModel->counters)
+		{
+			checkAvbInterfaceLinkStatus(nullptr, controlledEntity, avbInterfaceIndex, *avbInterfaceNode.dynamicModel->counters);
+		}
+	}
 
 	// Check for Diagnostics - Redundancy Warning
 	checkRedundancyWarningDiagnostics(nullptr, controlledEntity);
