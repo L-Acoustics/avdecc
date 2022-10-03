@@ -3052,11 +3052,18 @@ void ControllerImpl::validateEntity(ControlledEntityImpl& controlledEntity) noex
 	validateRedundancy(controlledEntity);
 
 	// Check for AvbInterfaceCounters - Link Status
-	for (auto const& [avbInterfaceIndex, avbInterfaceNode] : controlledEntity.getCurrentConfigurationNode().avbInterfaces)
+	auto const& e = controlledEntity.getEntity();
+	auto const isAemSupported = e.getEntityCapabilities().test(entity::EntityCapability::AemSupported);
+
+	// If AEM is supported
+	if (isAemSupported && controlledEntity.hasAnyConfiguration())
 	{
-		if (avbInterfaceNode.dynamicModel && avbInterfaceNode.dynamicModel->counters)
+		for (auto const& [avbInterfaceIndex, avbInterfaceNode] : controlledEntity.getCurrentConfigurationNode().avbInterfaces)
 		{
-			checkAvbInterfaceLinkStatus(nullptr, controlledEntity, avbInterfaceIndex, *avbInterfaceNode.dynamicModel->counters);
+			if (avbInterfaceNode.dynamicModel && avbInterfaceNode.dynamicModel->counters)
+			{
+				checkAvbInterfaceLinkStatus(nullptr, controlledEntity, avbInterfaceIndex, *avbInterfaceNode.dynamicModel->counters);
+			}
 		}
 	}
 
