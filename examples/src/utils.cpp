@@ -92,7 +92,7 @@ void outputText(std::string const& str) noexcept
 		std::cout << str;
 		std::flush(std::cout);
 #else // !_WIN32
-		wprintw(s_Window, str.c_str());
+		wprintw(s_Window, "%s", str.c_str());
 		wrefresh(s_Window);
 #endif // _WIN32
 	}
