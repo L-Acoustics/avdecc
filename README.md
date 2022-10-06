@@ -113,9 +113,19 @@ C language bindings over la_avdecc library.
   * Go into the folder where the Unix Makefiles have been generated
   * Run *make* to compile everything (or compile using your toolchain)
 
+## Cross-compilation using Docker
+
+- Requires `docker` and `docker-compose` to be installed
+- Go to the `Docker` folder
+- Build the docker builder image: _docker-compose build_
+- Generate the build solution: _docker-compose run --rm gen_cmake -debug -c Ninja_
+  - You may change parameters to your convenience
+- Build the solution: _docker-compose run --rm build --target install_
+- You can then run any of the compiled examples or unit tests from the docker container: _APP=Tests-d docker-compose run --rm run_
+
 ## Known limitations
 
-- [Windows] When plugging in a USB ethernet card for the first time, you either have to reboot the computer or restart the WinPCap driver (*net stop npf* then *net start npf*, from an elevated command prompt)
+- [Windows] When plugging in a USB ethernet card for the first time, you either have to reboot the computer or restart the WinPCap driver (*net stop npf* then *net start npf*, from an elevated command prompt). Doesn't apply when using npcap.
 - [Linux] Administrative privileges are required to run PCap applications. You can either directly run samples as root with `sudo` or setup capabilities using `sudo setcap cap_net_raw+ep <application path>` then directly run the application
 
 ## Upcoming features
