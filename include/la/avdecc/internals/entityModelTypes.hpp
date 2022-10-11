@@ -1351,7 +1351,7 @@ public:
 		, _areDynamic{ Traits::is_dynamic }
 		, _countMustBeIdentical{ Traits::static_dynamic_counts_identical ? *Traits::static_dynamic_counts_identical : false } // Check for optional presence delayed to body so we have a nicer message than with an enable_if template parameter
 		, _countValues{ values.countValues() } // Careful with order here, we are moving 'values'
-		, _values{ std::move(values) }
+		, _values{ std::forward<ValueDetailsType>(values) }
 	{
 		static_assert(Traits::is_value_details, "ControlValues::ControlValues, control_value_details_traits::is_value_details trait not defined for requested ValueDetailsType. Did you include entityModelControlValuesTraits.hpp?");
 		static_assert(Traits::static_dynamic_counts_identical.has_value(), "ControlValues::ControlValues, control_value_details_traits::static_dynamic_counts_identical trait not defined for requested ValueDetailsType.");
