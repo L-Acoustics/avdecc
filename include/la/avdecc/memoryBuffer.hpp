@@ -137,7 +137,7 @@ public:
 	~MemoryBuffer() noexcept
 	{
 		clear();
-		shrink_to_fit(); // We know it can't throw
+		deallocate_buffer();
 	}
 
 	/* ************************************************************************** */
@@ -289,9 +289,7 @@ public:
 		{
 			if (_size == 0)
 			{
-				std::free(_data);
-				_data = nullptr;
-				_capacity = 0;
+				deallocate_buffer();
 			}
 			else
 			{
@@ -357,6 +355,17 @@ public:
 	}
 
 private:
+	/** Deallocates the buffer, if allocated and _size has been set to 0 */
+	void deallocate_buffer() noexcept
+	{
+		if (_data != nullptr && _size == 0)
+		{
+			std::free(_data);
+			_data = nullptr;
+			_capacity = 0;
+		}
+	}
+
 	value_type* _data{ nullptr };
 	size_t _capacity{ 0u };
 	size_t _size{ 0u };
