@@ -43,3 +43,19 @@ services:
       - builds:/home/builder/builds
     entrypoint: ./${APP}
     working_dir: /home/builder/builds/${BUILD_FOLDER}/Install/bin
+
+  # SonarQube image
+  sonarqube:
+    image: sonarqube:${TAG}
+    build:
+      context: .
+      dockerfile: dockerHelper/SonarQube/${TAG}/Dockerfile
+
+  # SonarQube service
+  sonar:
+    image: sonarqube:${TAG}
+    volumes:
+      - ../:/home/builder/sources:ro
+      - builds:/home/builder/builds
+    entrypoint: /home/builder/sonar-scanner-4.7.0.2747-linux/bin/sonar-scanner -Dproject.settings=/home/builder/sources/Docker/sonar.properties -Dsonar.cfamily.compile-commands=/home/builder/builds/${BUILD_FOLDER}/compile_commands.json
+    working_dir: /home/builder/sources
