@@ -4669,7 +4669,8 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::loadControlledEntityF
 	auto& entity = *controlledEntity;
 
 	// Set the Entity Model for our virtual entity
-	if (flags.test(entity::model::jsonSerializer::Flag::ProcessStaticModel) || flags.test(entity::model::jsonSerializer::Flag::ProcessDynamicModel))
+	auto const isAemSupported = entity.getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported);
+	if (isAemSupported && (flags.test(entity::model::jsonSerializer::Flag::ProcessStaticModel) || flags.test(entity::model::jsonSerializer::Flag::ProcessDynamicModel)))
 	{
 		jsonSerializer::setEntityModel(entity, object.at(jsonSerializer::keyName::ControlledEntity_EntityModel), flags);
 	}
