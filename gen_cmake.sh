@@ -25,11 +25,14 @@ if [ -f "${selfFolderPath}.defaults.sh" ]; then
 	. "${selfFolderPath}.defaults.sh"
 fi
 
+# Parse variables
 gen_doc=1
+gen_c=0
 
 function extend_gc_fnc_help()
 {
 	echo " -no-doc -> Do not generate (nor install) documentation."
+	echo " -build-c -> Build the C bindings library."
 }
 
 function extend_gc_fnc_unhandled_arg()
@@ -37,6 +40,10 @@ function extend_gc_fnc_unhandled_arg()
 	case "$1" in
 		-no-doc)
 			gen_doc=0
+			return 1
+			;;
+		-build-c)
+			gen_c=1
 			return 1
 			;;
 	esac
@@ -53,6 +60,25 @@ function extend_gc_fnc_precmake()
 		add_cmake_opt+=("-DBUILD_AVDECC_DOC=FALSE")
 		add_cmake_opt+=("-DINSTALL_AVDECC_DOC=FALSE")
 	fi
+	if [ $gen_c -eq 1 ]; then
+		add_cmake_opt+=("-DBUILD_AVDECC_BINDINGS_C=TRUE")
+		add_cmake_opt+=("-DINSTALL_AVDECC_BINDINGS=TRUE")
+	fi
+}
+
+function boolToString()
+{
+	if [ $1 -eq 1 ]; then
+		echo "true"
+	else
+		echo "false"
+	fi
+}
+
+function extend_gc_fnc_props_summary()
+{
+	echo "| - Doc: $(boolToString $gen_doc)"
+	echo "| - C Bindings: $(boolToString $gen_c)"
 }
 
 # execute gen_cmake script from bashUtils
