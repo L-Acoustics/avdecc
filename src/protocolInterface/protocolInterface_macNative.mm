@@ -595,6 +595,20 @@ private:
 	/* **** Sending methods **** */
 	virtual ProtocolInterface::Error sendMessage(la::avdecc::protocol::Adpdu const& adpdu) const noexcept override
 	{
+		// NOTE: stateMachine::Manager is only used for automatic discovery
+		// only expect discovery messages
+		if (adpdu.getMessageType() == AdpMessageType::EntityDiscover)
+		{
+			if (adpdu.getEntityID() == UniqueIdentifier::getNullUniqueIdentifier())
+			{
+				return discoverRemoteEntities();
+			}
+			else
+			{
+				return discoverRemoteEntity(adpdu.getEntityID());
+			}
+		}
+				
 		AVDECC_ASSERT(false, "Should never be called (if needed someday, just forward to _bridge");
 		return ProtocolInterface::Error::InternalError;
 	}
