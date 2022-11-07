@@ -133,11 +133,12 @@ void DiscoveryStateMachine::checkDiscovery() noexcept
 
 	if (now >= (_lastDiscovery + _discoveryDelay))
 	{
-		// Update time now so we don't enter the loop again, in case the message is delayed a bit by the manager (which will trigger a discoverMessageSent when the message is actually sent)
+		// Update time now so we don't enter the loop again (in case the message is delayed a bit by the ProtocolInterface for any reason)
+		// It's up to the ProtocolInterface to call discoverMessageSent() on the manager when the message is actually sent
 		_lastDiscovery = now;
 
-		// Time to send a discovery request
-		_manager->discoverRemoteEntities();
+		// Ask the ProtocolInterface to process the discover request
+		_manager->getProtocolInterface()->discoverRemoteEntities();
 	}
 }
 
