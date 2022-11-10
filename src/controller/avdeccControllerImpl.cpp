@@ -1829,33 +1829,41 @@ void ControllerImpl::addDelayedQuery(std::chrono::milliseconds const delay, Uniq
 void ControllerImpl::chooseLocale(ControlledEntityImpl* const entity, entity::model::ConfigurationIndex const configurationIndex, std::string const& preferedLocale, std::function<void(entity::model::StringsIndex const stringsIndex)> const& missingStringsHandler) noexcept
 {
 	entity::model::LocaleNodeStaticModel const* localeNode{ nullptr };
-	localeNode = entity->findLocaleNode(configurationIndex, preferedLocale);
-	if (localeNode == nullptr)
+	try
 	{
-#pragma message("TODO: Split _preferedLocale into language/country, then if findLocaleDescriptor fails and language is not 'en', try to find a locale for 'en'")
-		localeNode = entity->findLocaleNode(configurationIndex, "en");
-	}
-	if (localeNode != nullptr)
-	{
-		auto const& configTree = entity->getConfigurationTree(configurationIndex);
-
-		entity->setSelectedLocaleStringsIndexesRange(configurationIndex, localeNode->baseStringDescriptorIndex, localeNode->numberOfStringDescriptors);
-		for (auto index = entity::model::StringsIndex(0); index < localeNode->numberOfStringDescriptors; ++index)
+		localeNode = entity->findLocaleNode(configurationIndex, preferedLocale);
+		if (localeNode == nullptr)
 		{
-			// Check if we already have the Strings descriptor
-			auto const stringsIndex = static_cast<decltype(index)>(localeNode->baseStringDescriptorIndex + index);
-			auto const stringsModelIt = configTree.stringsModels.find(stringsIndex);
-			if (stringsModelIt != configTree.stringsModels.end())
+#pragma message("TODO: Split _preferedLocale into language/country, then if findLocaleDescriptor fails and language is not 'en', try to find a locale for 'en'")
+			localeNode = entity->findLocaleNode(configurationIndex, "en");
+		}
+		if (localeNode != nullptr)
+		{
+			auto const& configTree = entity->getConfigurationTree(configurationIndex);
+
+			entity->setSelectedLocaleStringsIndexesRange(configurationIndex, localeNode->baseStringDescriptorIndex, localeNode->numberOfStringDescriptors);
+			for (auto index = entity::model::StringsIndex(0); index < localeNode->numberOfStringDescriptors; ++index)
 			{
-				// Already in cache, no need to query (just have to copy strings to Configuration for quick access)
-				auto const& stringsStaticModel = stringsModelIt->second.staticModel;
-				entity->setLocalizedStrings(configurationIndex, index, stringsStaticModel.strings);
-			}
-			else
-			{
-				utils::invokeProtectedHandler(missingStringsHandler, stringsIndex);
+				// Check if we already have the Strings descriptor
+				auto const stringsIndex = static_cast<decltype(index)>(localeNode->baseStringDescriptorIndex + index);
+				auto const stringsModelIt = configTree.stringsModels.find(stringsIndex);
+				if (stringsModelIt != configTree.stringsModels.end())
+				{
+					// Already in cache, no need to query (just have to copy strings to Configuration for quick access)
+					auto const& stringsStaticModel = stringsModelIt->second.staticModel;
+					entity->setLocalizedStrings(configurationIndex, index, stringsStaticModel.strings);
+				}
+				else
+				{
+					utils::invokeProtectedHandler(missingStringsHandler, stringsIndex);
+				}
 			}
 		}
+	}
+	catch ([[maybe_unused]] ControlledEntity::Exception const& e)
+	{
+		// Ignore exception
+		LOG_CONTROLLER_DEBUG(entity->getEntity().getEntityID(), "chooseLocale cannot find requested locale: {}", e.what());
 	}
 }
 

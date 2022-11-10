@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Rare crash when an entity goes offline and online immediately again, when its ENTITY descriptor is being enumerated
 - AvbInterface Link status properly initialized when loading a virtual entity
 - No longer trying to load the AEM of a virtual entity that doesn't support it
+- Crash when loading an incomplete ANS file
 
 ## [3.2.4] - 2022-07-08
 ### Added
