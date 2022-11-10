@@ -59,7 +59,7 @@ namespace controller
 void ControllerImpl::updateEntity(ControlledEntityImpl& controlledEntity, entity::Entity const& entity) const noexcept
 {
 	// Get previous entity info, so we can check what changed
-	auto oldEntity = controlledEntity.getEntity();
+	auto const oldEntity = static_cast<entity::Entity>(controlledEntity.getEntity()); // Make a copy of the Entity object since it might be altered in this function before checking for difference (use static_cast to prevent warning with 'auto' not being a reference)
 
 	auto const& oldInterfacesInfo = oldEntity.getInterfacesInformation();
 	auto const& newInterfacesInfo = entity.getInterfacesInformation();
@@ -327,7 +327,7 @@ void ControllerImpl::updateConfiguration(entity::controller::Interface const* co
 	controlledEntity.setCurrentConfiguration(configurationIndex);
 
 	// Right now, simulate the entity going offline then online again - TODO: Handle multiple configurations, see https://github.com/L-Acoustics/avdecc/issues/3
-	auto const e = controlledEntity.getEntity(); // Make a copy of the Entity object since it will be destroyed during onEntityOffline
+	auto const e = static_cast<entity::Entity>(controlledEntity.getEntity()); // Make a copy of the Entity object since it will be destroyed during onEntityOffline (use static_cast to prevent warning with 'auto' not being a reference)
 	auto const entityID = e.getEntityID();
 	auto* self = const_cast<ControllerImpl*>(this);
 	self->onEntityOffline(controller, entityID);
@@ -1623,8 +1623,8 @@ void ControllerImpl::checkRedundancyWarningDiagnostics(ControllerImpl const* con
 		// Check if AVB_INTERFACE_0 and AVB_INTERFACE_1 have the same gPTP
 		try
 		{
-			auto const avbInterfaceNode0 = controlledEntity.getAvbInterfaceNode(currentConfigurationIndex, entity::model::AvbInterfaceIndex{ 0u });
-			auto const avbInterfaceNode1 = controlledEntity.getAvbInterfaceNode(currentConfigurationIndex, entity::model::AvbInterfaceIndex{ 1u });
+			auto const& avbInterfaceNode0 = controlledEntity.getAvbInterfaceNode(currentConfigurationIndex, entity::model::AvbInterfaceIndex{ 0u });
+			auto const& avbInterfaceNode1 = controlledEntity.getAvbInterfaceNode(currentConfigurationIndex, entity::model::AvbInterfaceIndex{ 1u });
 			if (avbInterfaceNode0.dynamicModel && avbInterfaceNode1.dynamicModel)
 			{
 				isWarning = avbInterfaceNode0.dynamicModel->gptpGrandmasterID == avbInterfaceNode1.dynamicModel->gptpGrandmasterID;
@@ -4786,7 +4786,7 @@ ControllerImpl::SharedControlledEntityImpl ControllerImpl::createControlledEntit
 			// Read interfaces information
 			for (auto const& j : adp.at(entity::keyName::Entity_InterfaceInformation_Node))
 			{
-				auto const jIndex = j.at(entity::keyName::Entity_InterfaceInformation_AvbInterfaceIndex);
+				auto const& jIndex = j.at(entity::keyName::Entity_InterfaceInformation_AvbInterfaceIndex);
 				auto const avbInterfaceIndex = jIndex.is_null() ? entity::Entity::GlobalAvbInterfaceIndex : jIndex.get<entity::model::AvbInterfaceIndex>();
 				intfcsInfo.insert(std::make_pair(avbInterfaceIndex, j.get<entity::Entity::InterfaceInformation>()));
 			}
@@ -5060,7 +5060,7 @@ entity::model::StreamFormat LA_AVDECC_CONTROLLER_CALL_CONVENTION Controller::cho
 	auto const desiredUseSyncClock = desiredStreamFormatInfo->useSynchronousClock();
 
 	// Loop over available formats, and search for a matching one
-	for (auto const streamFormat : availableFormats)
+	for (auto const& streamFormat : availableFormats)
 	{
 		auto const streamFormatInfo = entity::model::StreamFormatInfo::create(streamFormat);
 		auto const formatType = streamFormatInfo->getType();
