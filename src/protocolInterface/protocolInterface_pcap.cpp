@@ -263,12 +263,18 @@ private:
 
 	virtual Error discoverRemoteEntities() const noexcept override
 	{
-		return _stateMachineManager.discoverRemoteEntities();
+		return discoverRemoteEntity(UniqueIdentifier::getNullUniqueIdentifier());
 	}
 
 	virtual Error discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept override
 	{
-		return _stateMachineManager.discoverRemoteEntity(entityID);
+		auto const frame = stateMachine::Manager::makeDiscoveryMessage(getMacAddress(), entityID);
+		auto const err = sendMessage(frame);
+		if (!err)
+		{
+			_stateMachineManager.discoverMessageSent(); // Notify we are sending a discover message
+		}
+		return err;
 	}
 
 	virtual Error setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) const noexcept override

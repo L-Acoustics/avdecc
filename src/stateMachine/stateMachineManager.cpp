@@ -533,22 +533,15 @@ ProtocolInterface::Error Manager::disableEntityAdvertising(entity::LocalEntity c
 /* ************************************************************ */
 /* Discovery entry points                                       */
 /* ************************************************************ */
-ProtocolInterface::Error Manager::discoverRemoteEntities() noexcept
-{
-	return discoverRemoteEntity(UniqueIdentifier::getNullUniqueIdentifier());
-}
-
-ProtocolInterface::Error Manager::discoverRemoteEntity(UniqueIdentifier const entityID) noexcept
-{
-	auto const frame = Manager::makeDiscoveryMessage(_protocolInterface->getMacAddress(), entityID);
-	_discoveryStateMachine.discoverMessageSent(); // Notify we are sending a discover message
-	return _protocolInterfaceDelegate->sendMessage(frame);
-}
-
 ProtocolInterface::Error Manager::setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) noexcept
 {
 	_discoveryStateMachine.setDiscoveryDelay(delay);
 	return ProtocolInterface::Error::NoError;
+}
+
+void Manager::discoverMessageSent() noexcept
+{
+	_discoveryStateMachine.discoverMessageSent();
 }
 
 /* ************************************************************ */
