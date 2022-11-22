@@ -40,6 +40,7 @@
 #include <chrono>
 #include <optional>
 #include <map>
+#include <set>
 
 namespace la
 {
@@ -109,7 +110,7 @@ public:
 	struct Diagnostics
 	{
 		bool redundancyWarning{ false }; /** Flag indicating a Milan redundant device has both interfaces connected to the same network */
-		std::unordered_map<entity::model::StreamIndex, bool> streamInputOverLatency{}; /** Flag indicating a StreamInput MSRP Latency is greater than Talker's Presentation Time */
+		std::set<entity::model::StreamIndex> streamInputOverLatency{}; /** List of StreamInput whose MSRP Latency is greater than Talker's Presentation Time */
 	};
 
 	// Getters
@@ -136,7 +137,10 @@ public:
 	virtual std::optional<entity::model::ControlIndex> getIdentifyControlIndex() const noexcept = 0; // Retrieve the Identify Control Index, if the entity has a valid one
 	virtual bool isEntityModelValidForCaching() const noexcept = 0; // True if the Entity Model is valid for caching
 	virtual bool isIdentifying() const noexcept = 0; // True if the Entity is currently identifying itself
+	virtual bool hasAnyConfiguration() const noexcept = 0; // True if the Entity has at least one Configuration
+	virtual entity::model::ConfigurationIndex getCurrentConfigurationIndex() const = 0; // Throws Exception::NotSupported if EM not supported by the Entity
 
+	// Const Node getters
 	virtual model::EntityNode const& getEntityNode() const = 0; // Throws Exception::NotSupported if EM not supported by the Entity
 	virtual model::ConfigurationNode const& getConfigurationNode(entity::model::ConfigurationIndex const configurationIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
 	virtual model::ConfigurationNode const& getCurrentConfigurationNode() const = 0; // Throws Exception::NotSupported if EM not supported by the Entity
@@ -151,7 +155,7 @@ public:
 	virtual model::ClockSourceNode const& getClockSourceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if clockSourceIndex do not exist
 	virtual model::StreamPortNode const& getStreamPortInputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if audioUnitIndex or streamPortIndex do not exist
 	virtual model::StreamPortNode const& getStreamPortOutputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if audioUnitIndex or streamPortIndex do not exist
-	//virtual model::AudioClusterNode const& getAudioClusterNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if audioUnitIndex, streamPortIndex or ClusterIndex do not exist
+	virtual model::AudioClusterNode const& getAudioClusterNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if ClusterIndex do not exist
 	//virtual model::AudioMapNode const& getAudioMapNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if audioUnitIndex, streamPortIndex or MapIndex do not exist
 	virtual model::ControlNode const& getControlNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const controlIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if controlIndex do not exist
 	virtual model::ClockDomainNode const& getClockDomainNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) const = 0; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist // Throws Exception::InvalidDescriptorIndex if clockDomainIndex do not exist

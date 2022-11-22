@@ -377,6 +377,15 @@ int doJob()
 		return 1;
 	}
 
+	// Try to load an entity model file
+	auto [errorCode, errorMessage, entityModelTree] = la::avdecc::EndStation::deserializeEntityModelFromJson("SimpleControllerModel.json", true, false);
+	auto const* const entityModel = !errorCode ? &entityModelTree : nullptr;
+	// Override some values
+	if (entityModel != nullptr)
+	{
+		entityModelTree.dynamicModel.firmwareVersion = la::avdecc::getVersion();
+	}
+
 	try
 	{
 		outputText("Selected interface '" + intfc.alias + "' and protocol interface '" + la::avdecc::protocol::ProtocolInterface::typeToString(protocolInterfaceType) + "':\n");
@@ -388,8 +397,8 @@ int doJob()
 		// Set default log level
 		la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Trace);
 
-		//auto* controller = endPoint->addControllerEntity(0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), &controllerDelegate);
-		auto* controller = endPoint->addAggregateEntity(0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), &controllerDelegate);
+		//auto* controller = endPoint->addControllerEntity(0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), nullptr, &controllerDelegate);
+		auto* controller = endPoint->addAggregateEntity(0x0001, la::avdecc::entity::model::makeEntityModelID(VENDOR_ID, DEVICE_ID, MODEL_ID), entityModel, &controllerDelegate);
 
 		// Try to start entity advertisement
 		if (!controller->enableEntityAdvertising(10))

@@ -159,7 +159,7 @@ bool ControlledEntityImpl::isStreamOutputRunning(entity::model::ConfigurationInd
 ControlledEntity::InterfaceLinkStatus ControlledEntityImpl::getAvbInterfaceLinkStatus(entity::model::AvbInterfaceIndex const avbInterfaceIndex) const noexcept
 {
 	// AEM not supported, unknown status
-	if (!_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
+	if (!_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported) || !hasAnyConfiguration())
 	{
 		return InterfaceLinkStatus::Unknown;
 	}
@@ -258,6 +258,24 @@ bool ControlledEntityImpl::isIdentifying() const noexcept
 		}
 	}
 	return false;
+}
+
+bool ControlledEntityImpl::hasAnyConfiguration() const noexcept
+{
+	AVDECC_ASSERT(!_advertised || _entityNode.configurations.empty() == _entityTree.configurationTrees.empty(), "Configuration count should be identical, once advertised");
+	return !_entityTree.configurationTrees.empty();
+}
+
+entity::model::ConfigurationIndex ControlledEntityImpl::getCurrentConfigurationIndex() const
+{
+	auto const& entityNode = getEntityNode();
+
+	if (!entityNode.dynamicModel)
+	{
+		throw Exception(Exception::Type::Internal, "EntityNodeDynamicModel not set");
+	}
+
+	return entityNode.dynamicModel->currentConfiguration;
 }
 
 model::EntityNode const& ControlledEntityImpl::getEntityNode() const
@@ -410,20 +428,43 @@ model::StreamPortNode const& ControlledEntityImpl::getStreamPortOutputNode(entit
 	// Not found
 	throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid stream port output index");
 }
-#if 0
+
 model::AudioClusterNode const& ControlledEntityImpl::getAudioClusterNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex) const
 {
-#	if 1
-	static model::AudioClusterNode s{};
-	(void)configurationIndex;
-	(void)audioUnitIndex;
-	(void)streamPortIndex;
-	(void)clusterIndex;
-	return s;
-#	else
-#	endif
-}
+	auto const& configNode = getConfigurationNode(configurationIndex);
 
+	// Search a matching ClusterIndex in all AudioUnits/StreamPorts
+	for (auto const& audioUnitNodeKV : configNode.audioUnits)
+	{
+		auto const& audioUnitNode = audioUnitNodeKV.second;
+
+		// Search StreamPortInputs
+		for (auto const& streamPortNodeKV : audioUnitNode.streamPortInputs)
+		{
+			auto const& streamPortNode = streamPortNodeKV.second;
+
+			if (auto const audioClustersIt = streamPortNode.audioClusters.find(clusterIndex); audioClustersIt != streamPortNode.audioClusters.end())
+			{
+				return audioClustersIt->second;
+			}
+		}
+
+		// Search StreamPortOutputs
+		for (auto const& streamPortNodeKV : audioUnitNode.streamPortOutputs)
+		{
+			auto const& streamPortNode = streamPortNodeKV.second;
+
+			if (auto const audioClustersIt = streamPortNode.audioClusters.find(clusterIndex); audioClustersIt != streamPortNode.audioClusters.end())
+			{
+				return audioClustersIt->second;
+			}
+		}
+	}
+
+	// Not found
+	throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid audio cluster index");
+}
+#if 0
 model::AudioMapNode const& ControlledEntityImpl::getAudioMapNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex) const
 {
 #	if 1
@@ -905,11 +946,6 @@ entity::model::ConfigurationTree const& ControlledEntityImpl::getConfigurationTr
 	return it->second;
 }
 
-entity::model::ConfigurationIndex ControlledEntityImpl::getCurrentConfigurationIndex() const noexcept
-{
-	return _entityTree.dynamicModel.currentConfiguration;
-}
-
 // Const NodeModel getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist, Exception::InvalidDescriptorIndex if descriptorIndex is invalid
 entity::model::EntityNodeStaticModel const& ControlledEntityImpl::getEntityNodeStaticModel() const
 {
@@ -932,11 +968,6 @@ entity::model::ConfigurationNodeDynamicModel const& ControlledEntityImpl::getCon
 }
 
 // Tree validators, to check if a specific part exists yet without throwing
-bool ControlledEntityImpl::hasAnyConfigurationTree() const noexcept
-{
-	return !_entityTree.configurationTrees.empty();
-}
-
 bool ControlledEntityImpl::hasConfigurationTree(entity::model::ConfigurationIndex const configurationIndex) const noexcept
 {
 	if (gotFatalEnumerationError() || !_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
@@ -945,6 +976,13 @@ bool ControlledEntityImpl::hasConfigurationTree(entity::model::ConfigurationInde
 	}
 
 	return _entityTree.configurationTrees.find(configurationIndex) != _entityTree.configurationTrees.end();
+}
+
+// Non-const Node getters
+model::ConfigurationNode& ControlledEntityImpl::getCurrentConfigurationNode()
+{
+	// Implemented over getCurrentConfigurationNode() const overload
+	return const_cast<model::ConfigurationNode&>(static_cast<ControlledEntityImpl const*>(this)->getCurrentConfigurationNode());
 }
 
 // Non-const Tree getters
@@ -957,6 +995,11 @@ entity::model::ConfigurationTree& ControlledEntityImpl::getConfigurationTree(ent
 {
 	auto& entityTree = getEntityTree();
 	return entityTree.configurationTrees[configurationIndex];
+}
+
+entity::model::ConfigurationIndex ControlledEntityImpl::getCurrentConfigurationIndex() noexcept
+{
+	return _entityTree.dynamicModel.currentConfiguration;
 }
 
 // Non-const NodeModel getters

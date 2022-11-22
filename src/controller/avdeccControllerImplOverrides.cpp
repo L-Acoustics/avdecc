@@ -54,13 +54,13 @@ namespace controller
 /* ************************************************************ */
 /* Controller overrides                                         */
 /* ************************************************************ */
-ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale)
+ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree)
 	: _preferedLocale(preferedLocale)
 {
 	try
 	{
 		_endStation = EndStation::create(protocolInterfaceType, interfaceName);
-		_controller = _endStation->addControllerEntity(progID, entityModelID, this);
+		_controller = _endStation->addControllerEntity(progID, entityModelID, entityModelTree, this);
 	}
 	catch (EndStation::Exception const& e)
 	{
@@ -443,8 +443,8 @@ void ControllerImpl::disableFullStaticEntityModelEnumeration() noexcept
 std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> ControllerImpl::loadEntityModelFile(std::string const& /*filePath*/) noexcept
 {
 	// TODO:
-	//  - Load file similar to loadVirtualEntityFromReadableJson, but merely calling something similar to jsonSerializer::setEntityModel instead of everything else
-	//  - Feed the cache for each configuration found in the file
+	//  - Call EndStation::deserializeEntityModelFromJson
+	//  - Feed the cache with the loaded model
 	return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Not supported yet" };
 }
 
@@ -2880,6 +2880,30 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, SharedCont
 	}
 	return { error, errorText, controlledEntity };
 #endif // ENABLE_AVDECC_FEATURE_JSON
+}
+
+bool ControllerImpl::unloadVirtualEntity(UniqueIdentifier const entityID) noexcept
+{
+	// Check if entity is virtual
+	{
+		// Lock to protect _controlledEntities
+		std::lock_guard<decltype(_lock)> const lg(_lock);
+
+		auto entityIt = _controlledEntities.find(entityID);
+		// Entity not found
+		if (entityIt == _controlledEntities.end())
+		{
+			return false;
+		}
+		// Entity is not virtual
+		if (!entityIt->second->isVirtual())
+		{
+			return false;
+		}
+	}
+
+	onEntityOffline(nullptr, entityID);
+	return true;
 }
 
 } // namespace controller

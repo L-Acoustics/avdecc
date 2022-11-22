@@ -205,7 +205,10 @@ public:
 	virtual std::optional<entity::model::ControlIndex> getIdentifyControlIndex() const noexcept override;
 	virtual bool isEntityModelValidForCaching() const noexcept override;
 	virtual bool isIdentifying() const noexcept override;
+	virtual bool hasAnyConfiguration() const noexcept override;
+	virtual entity::model::ConfigurationIndex getCurrentConfigurationIndex() const override;
 
+	// Const Node getters
 	virtual model::EntityNode const& getEntityNode() const override;
 	virtual model::ConfigurationNode const& getConfigurationNode(entity::model::ConfigurationIndex const configurationIndex) const override;
 	virtual model::ConfigurationNode const& getCurrentConfigurationNode() const override;
@@ -220,7 +223,7 @@ public:
 	virtual model::ClockSourceNode const& getClockSourceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex) const override;
 	virtual model::StreamPortNode const& getStreamPortInputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) const override;
 	virtual model::StreamPortNode const& getStreamPortOutputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) const override;
-	//virtual model::AudioClusterNode const& getAudioClusterNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex) const override;
+	virtual model::AudioClusterNode const& getAudioClusterNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex) const override;
 	//virtual model::AudioMapNode const& getAudioMapNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex) const override;
 	virtual model::ControlNode const& getControlNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const controlIndex) const override;
 	virtual model::ClockDomainNode const& getClockDomainNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) const override;
@@ -259,7 +262,6 @@ public:
 	// Const Tree getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist
 	entity::model::EntityTree const& getEntityTree() const;
 	entity::model::ConfigurationTree const& getConfigurationTree(entity::model::ConfigurationIndex const configurationIndex) const;
-	entity::model::ConfigurationIndex getCurrentConfigurationIndex() const noexcept;
 
 	// Const NodeModel getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist, Exception::InvalidDescriptorIndex if descriptorIndex is invalid
 	entity::model::EntityNodeStaticModel const& getEntityNodeStaticModel() const;
@@ -290,7 +292,6 @@ public:
 	}
 
 	// Tree validators, to check if a specific part exists yet without throwing
-	bool hasAnyConfigurationTree() const noexcept;
 	bool hasConfigurationTree(entity::model::ConfigurationIndex const configurationIndex) const noexcept;
 	template<typename FieldPointer, typename DescriptorIndexType>
 	bool hasTreeModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer entity::model::ConfigurationTree::*Field) const noexcept
@@ -311,9 +312,13 @@ public:
 		return false;
 	}
 
+	// Non-const Node getters
+	model::ConfigurationNode& getCurrentConfigurationNode();
+
 	// Non-const Tree getters
 	entity::model::EntityTree& getEntityTree() noexcept;
 	entity::model::ConfigurationTree& getConfigurationTree(entity::model::ConfigurationIndex const configurationIndex) noexcept;
+	entity::model::ConfigurationIndex getCurrentConfigurationIndex() noexcept;
 
 	// Non-const NodeModel getters
 	entity::model::EntityNodeStaticModel& getEntityNodeStaticModel() noexcept;

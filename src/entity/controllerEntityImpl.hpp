@@ -54,7 +54,7 @@ private:
 	/* ************************************************************************** */
 	/* ControllerEntityImpl life cycle                                            */
 	/* ************************************************************************** */
-	ControllerEntityImpl(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, controller::Delegate* const controllerDelegate);
+	ControllerEntityImpl(protocol::ProtocolInterface* const protocolInterface, CommonInformation const& commonInformation, InterfacesInformation const& interfacesInformation, model::EntityTree const* const entityModelTree, controller::Delegate* const controllerDelegate);
 	virtual ~ControllerEntityImpl() noexcept;
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept override;

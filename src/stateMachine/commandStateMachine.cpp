@@ -101,6 +101,22 @@ void CommandStateMachine::unregisterLocalEntity(entity::LocalEntity& entity) noe
 	}
 }
 
+void CommandStateMachine::discardEntityMessages(la::avdecc::UniqueIdentifier const& entityID) noexcept
+{
+	// Lock
+	auto const lg = std::lock_guard{ *_manager };
+
+	// Iterate over all locally registered command entities
+	for (auto& localEntityInfoKV : _commandEntities)
+	{
+		auto& localEntityInfo = localEntityInfoKV.second;
+
+		// Discard inflight and queued AECP commands
+		localEntityInfo.inflightAecpCommands.erase(entityID);
+		localEntityInfo.aecpCommandsQueue.erase(entityID);
+	}
+}
+
 void CommandStateMachine::checkInflightCommandsTimeoutExpiracy() noexcept
 {
 	// Lock

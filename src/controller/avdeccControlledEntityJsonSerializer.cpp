@@ -87,7 +87,9 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 		}
 
 		// Dump AEM if supported
-		if (e.getEntityCapabilities().test(entity::EntityCapability::AemSupported) && (flags.test(entity::model::jsonSerializer::Flag::ProcessStaticModel) || flags.test(entity::model::jsonSerializer::Flag::ProcessDynamicModel)))
+		auto const isAemSupported = e.getEntityCapabilities().test(entity::EntityCapability::AemSupported);
+		auto const hasAnyConfiguration = entity.hasAnyConfiguration();
+		if (isAemSupported && (flags.test(entity::model::jsonSerializer::Flag::ProcessStaticModel) || flags.test(entity::model::jsonSerializer::Flag::ProcessDynamicModel)))
 		{
 			// Dump model(s)
 			object[keyName::ControlledEntity_EntityModel] = entity::model::jsonSerializer::createJsonObject(entity.getEntityTree(), flags);
@@ -117,7 +119,7 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 			state[controller::keyName::ControlledEntityState_LockState] = entity.getLockState();
 			state[controller::keyName::ControlledEntityState_LockingControllerID] = entity.getLockingControllerID();
 			state[controller::keyName::ControlledEntityState_SubscribedUnsol] = entity.isSubscribedToUnsolicitedNotifications();
-			state[controller::keyName::ControlledEntityState_ActiveConfiguration] = entity.getCurrentConfigurationIndex();
+			state[controller::keyName::ControlledEntityState_ActiveConfiguration] = hasAnyConfiguration ? entity.getCurrentConfigurationIndex() : entity::model::ConfigurationIndex{ 0u };
 		}
 
 		// Dump Entity Statistics
@@ -373,7 +375,31 @@ void setEntityDiagnostics(ControlledEntityImpl& entity, json const& object)
 			auto const it = object.find(controller::keyName::ControlledEntityDiagnostics_StreamInputLatencyErrors);
 			if (it != object.end())
 			{
-				diags.streamInputOverLatency = it->get<decltype(diags.streamInputOverLatency)>();
+				// Check for backward compatibility (when it was a map and not a set)
+				auto converted = false;
+				{
+					// Get the first item and check for array type of size 2 (a map is stored as a map of 2 elements)
+					auto const begin = it->begin();
+					if (begin != it->end() && begin->is_array() && begin->size() == 2)
+					{
+						// This is a map, convert it to a set
+						auto const& map = *it;
+						diags.streamInputOverLatency.clear();
+						for (auto const& item : map)
+						{
+							// If 'value' is true, we have an error for this 'key' (ie. index)
+							if (AVDECC_ASSERT_WITH_RET(item.size() == 2, "Not all elements of the map are of length of 2") && item[1] == true)
+							{
+								diags.streamInputOverLatency.insert(item[0].get<decltype(diags.streamInputOverLatency)::value_type>());
+							}
+						}
+						converted = true;
+					}
+				}
+				if (!converted)
+				{
+					diags.streamInputOverLatency = it->get<decltype(diags.streamInputOverLatency)>();
+				}
 			}
 		}
 	}

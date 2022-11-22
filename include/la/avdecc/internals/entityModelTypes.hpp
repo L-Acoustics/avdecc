@@ -78,6 +78,11 @@ using DescriptorCounter = std::uint32_t; /** Counter - Clause 7.4.42 */
 using OperationID = std::uint16_t; /** OperationID for OPERATIONS returned by an entity to a controller - Clause 7.4.53 */
 using BridgeIdentifier = std::uint64_t;
 
+constexpr DescriptorIndex getInvalidDescriptorIndex() noexcept
+{
+	return DescriptorIndex(0xFFFF);
+}
+
 /** Descriptor Type - Clause 7.2 */
 enum class DescriptorType : std::uint16_t
 {
@@ -1346,7 +1351,7 @@ public:
 		, _areDynamic{ Traits::is_dynamic }
 		, _countMustBeIdentical{ Traits::static_dynamic_counts_identical ? *Traits::static_dynamic_counts_identical : false } // Check for optional presence delayed to body so we have a nicer message than with an enable_if template parameter
 		, _countValues{ values.countValues() } // Careful with order here, we are moving 'values'
-		, _values{ std::move(values) }
+		, _values{ std::forward<ValueDetailsType>(values) }
 	{
 		static_assert(Traits::is_value_details, "ControlValues::ControlValues, control_value_details_traits::is_value_details trait not defined for requested ValueDetailsType. Did you include entityModelControlValuesTraits.hpp?");
 		static_assert(Traits::static_dynamic_counts_identical.has_value(), "ControlValues::ControlValues, control_value_details_traits::static_dynamic_counts_identical trait not defined for requested ValueDetailsType.");
@@ -1453,7 +1458,7 @@ private:
 struct StreamIdentification
 {
 	UniqueIdentifier entityID{};
-	entity::model::StreamIndex streamIndex{ entity::model::StreamIndex(0u) };
+	entity::model::StreamIndex streamIndex{ entity::model::getInvalidDescriptorIndex() };
 };
 
 constexpr bool operator==(StreamIdentification const& lhs, StreamIdentification const& rhs) noexcept

@@ -493,12 +493,18 @@ ProtocolInterface::Error ProtocolInterfaceVirtualImpl::disableEntityAdvertising(
 
 ProtocolInterface::Error ProtocolInterfaceVirtualImpl::discoverRemoteEntities() const noexcept
 {
-	return _stateMachineManager.discoverRemoteEntities();
+	return discoverRemoteEntity(UniqueIdentifier::getNullUniqueIdentifier());
 }
 
 ProtocolInterface::Error ProtocolInterfaceVirtualImpl::discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept
 {
-	return _stateMachineManager.discoverRemoteEntity(entityID);
+	auto const frame = stateMachine::Manager::makeDiscoveryMessage(getMacAddress(), entityID);
+	auto const err = sendMessage(frame);
+	if (!err)
+	{
+		_stateMachineManager.discoverMessageSent(); // Notify we are sending a discover message
+	}
+	return err;
 }
 
 ProtocolInterface::Error ProtocolInterfaceVirtualImpl::setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) const noexcept
@@ -756,6 +762,9 @@ void ProtocolInterfaceVirtualImpl::onRemoteEntityOffline(UniqueIdentifier const 
 	SEND_INSTRUMENTATION_NOTIFICATION("ProtocolInterfaceVirtual::onRemoteEntityOffline::PreNotify");
 	notifyObserversMethod<ProtocolInterface::Observer>(&ProtocolInterface::Observer::onRemoteEntityOffline, this, entityID);
 	SEND_INSTRUMENTATION_NOTIFICATION("ProtocolInterfaceVirtual::onRemoteEntityOffline::PostNotify");
+
+	// Notify the StateMachineManager
+	_stateMachineManager.onRemoteEntityOffline(entityID);
 }
 
 void ProtocolInterfaceVirtualImpl::onRemoteEntityUpdated(entity::Entity const& entity) noexcept

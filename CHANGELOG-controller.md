@@ -4,6 +4,23 @@ All notable changes to the Avdecc Controller Library will be documented in this 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [3.3.0] - 2022-11-22
+### Added
+- [Computation of the Media Clock Chain for each controlled entity](https://github.com/L-Acoustics/avdecc/issues/111)
+- Possibility to unload a virtual entity using `Controller::unloadVirtualEntity`
+- A la::avdecc::entity::model::EntityTree can be fed into the controller so it responds to AEM query commands
+- getAudioClusterNode method to ControlledEntity
+
+### Changed
+- Diagnostics::streamInputOverLatency is now a std::set and not a std::unordered_map with a bool as value
+
+### Fixed
+- [Virtual entities are loaded from the networking thread (executor)](https://github.com/L-Acoustics/avdecc/issues/110)
+- Rare crash when an entity goes offline and online immediately again, when its ENTITY descriptor is being enumerated
+- AvbInterface Link status properly initialized when loading a virtual entity
+- No longer trying to load the AEM of a virtual entity that doesn't support it
+- Crash when loading an incomplete ANS file
+
 ## [3.2.4] - 2022-07-08
 ### Added
 - Controller::isMediaClockStreamFormat API

@@ -224,8 +224,8 @@ public:
 
 				while (!_shouldTerminate)
 				{
-					// Check for inflight commands expiracy
-					checkInflightCommandsTimeoutExpiracy();
+					// Check for VendorUnique inflight commands expiracy
+					checkVendorUniqueInflightCommandsTimeoutExpiracy();
 
 					// Wait a little bit so we don't burn the CPU
 					std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -472,14 +472,20 @@ private:
 	virtual Error discoverRemoteEntities() const noexcept override
 	{
 		if ([_bridge discoverRemoteEntities])
+		{
+			_stateMachineManager.discoverMessageSent();
 			return ProtocolInterface::Error::NoError;
+		}
 		return ProtocolInterface::Error::TransportError;
 	}
 
 	virtual Error discoverRemoteEntity(UniqueIdentifier const entityID) const noexcept override
 	{
 		if ([_bridge discoverRemoteEntity:entityID])
+		{
+			_stateMachineManager.discoverMessageSent();
 			return ProtocolInterface::Error::NoError;
+		}
 		return ProtocolInterface::Error::TransportError;
 	}
 
@@ -659,7 +665,11 @@ private:
 	using CommandEntities = std::unordered_map<UniqueIdentifier, CommandEntityInfo, UniqueIdentifier::hash>;
 
 #pragma mark Private methods
-	void checkInflightCommandsTimeoutExpiracy() noexcept
+	/*
+	 * When using MacOS Native, it's up to the implementation to keep track of the message, the response, the timeout, the retry.
+	 * This method will check for VendorUnique commands timeout expiracy and should be call regulary
+	 */
+	void checkVendorUniqueInflightCommandsTimeoutExpiracy() noexcept
 	{
 		// Lock
 		auto const lg = std::lock_guard{ *this };

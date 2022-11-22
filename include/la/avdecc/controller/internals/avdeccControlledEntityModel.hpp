@@ -35,8 +35,10 @@
 #include <any>
 #include <string>
 #include <vector>
+#include <optional>
 #include <map>
 #include <set>
+#include <deque>
 
 namespace la
 {
@@ -71,6 +73,42 @@ enum class LockState
 	LockedByOther, /**< Entity is locked by another controller */
 	UnlockInProgress, /**< Currently trying to unlock the entity (still *possibly locked by us) */
 };
+
+struct MediaClockChainNode
+{
+	enum class Type
+	{
+		Undefined = 0, /**< Undefined media clock origin (Entity offline) */
+
+		// Type of an active media clock origin
+		Internal = 1, /**< Internal media clock */
+		External = 2, /**< External media clock */
+		StreamInput = 3, /**< Stream media clock */
+	};
+
+	enum class Status
+	{
+		Active = 0, /**< Media clock is active */
+
+		Recursive = 1, /**< Recursive media clock (Type::StreamInput only) */
+		StreamNotConnected = 2, /**< Stream not connected (Type::StreamInput only) */
+		EntityOffline = 3, /**< Entity offline */
+
+		// Unexpected errors
+		UnsupportedClockSource = 97, /**< Unsupported clock source */
+		AemError = 98, /**< AEM error */
+		InternalError = 99, /**< Internal error */
+	};
+
+	Type type{ Type::Undefined }; // Type of this media clock chain node
+	Status status{ Status::Active }; // Status of this media clock chain node
+	UniqueIdentifier entityID{}; // EID of the entity of this media clock chain node
+	entity::model::ClockDomainIndex clockDomainIndex{ entity::model::getInvalidDescriptorIndex() }; // ClockDomain index used by this node (may not be defined on error Status)
+	entity::model::ClockSourceIndex clockSourceIndex{ entity::model::getInvalidDescriptorIndex() }; // ClockSource index used by this node (may not be defined on error Status)
+	std::optional<entity::model::StreamIndex> streamInputIndex{}; // StreamInput index this entity is getting it's clock from (Type::StreamInput only). This is a copy of the ClockSource node's clockSourceLocationIndex
+	std::optional<entity::model::StreamIndex> streamOutputIndex{}; // StreamOutput index this entity is sourcing it's clock to (Only if this node has a parent of Type::StreamInput)
+};
+using MediaClockChain = std::deque<MediaClockChainNode>;
 
 struct Node
 {
@@ -237,6 +275,8 @@ struct ClockDomainNode : public EntityModelNode
 
 	// AEM Dynamic info
 	entity::model::ClockDomainNodeDynamicModel* dynamicModel{ nullptr };
+
+	MediaClockChain mediaClockChain{}; // Complete chain of MediaClock for this domain
 };
 
 struct ConfigurationNode : public EntityModelNode

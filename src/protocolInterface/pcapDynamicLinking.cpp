@@ -30,10 +30,11 @@
 #include <string>
 
 #ifdef _WIN32
+#	include <la/networkInterfaceHelper/windowsHelper.hpp>
 #	include <windows.h>
 #	define PCAP_LIBRARY "wpcap.dll"
 #	define DL_HANDLE HMODULE
-#	define DL_OPEN(x) LoadLibrary(x)
+#	define DL_OPEN(x) la_dlopen(x)
 #	define DL_CLOSE(x) FreeLibrary(x)
 #	define DL_SYM(x, y) GetProcAddress((x), (y))
 #	define DL_ERROR() la_dlerror()
@@ -53,37 +54,75 @@
 #endif
 
 #ifdef _WIN32
-static std::string wideCharToUTF8(PWCHAR const wide) noexcept
+#	include <filesystem>
+
+inline void la_force_npcap_dll_path()
 {
-	// All APIs calling this method have to provide a NULL-terminated PWCHAR
-	auto const wideLength = wcsnlen_s(wide, 1024); // Compute the size, in characters, of the wide string
+	static auto already_done = false;
 
-	if (wideLength != 0)
+	if (already_done)
 	{
-		auto const sizeNeeded = WideCharToMultiByte(CP_UTF8, 0, wide, static_cast<int>(wideLength), nullptr, 0, nullptr, nullptr);
-		auto result = std::string(static_cast<std::string::size_type>(sizeNeeded), std::string::value_type{ 0 }); // Brace-initialization constructor prevents the use of {}
+		return;
+	}
 
-		if (WideCharToMultiByte(CP_UTF8, 0, wide, static_cast<int>(wideLength), result.data(), sizeNeeded, nullptr, nullptr) > 0)
+	// Compute NPCap path
+	constexpr auto MaxSystemDirectoryPath = 512;
+	char systemDirectoryPath[MaxSystemDirectoryPath];
+	auto const len = GetSystemDirectoryA(systemDirectoryPath, MaxSystemDirectoryPath);
+	if (len == 0)
+	{
+		return;
+	}
+	auto const NPCapPath = std::filesystem::path{ systemDirectoryPath } / "Npcap";
+
+	// Check for AddDllDirectory (requires win7 or later), which is better than using SetDllDirectory
+	{
+		auto const Kernel32Module = GetModuleHandle("kernel32.dll");
+		if (Kernel32Module != nullptr)
 		{
-			return result;
+			auto const AddDllDirectory_p = reinterpret_cast<DLL_DIRECTORY_COOKIE(WINAPI*)(PCWSTR)>(GetProcAddress(Kernel32Module, "AddDllDirectory"));
+			if (AddDllDirectory_p != nullptr)
+			{
+				if (AddDllDirectory_p(NPCapPath.native().c_str()) != nullptr)
+				{
+					// No need to do this more than once
+					already_done = true;
+					return;
+				}
+			}
 		}
 	}
 
-	return {};
+	// Try SetDllDirectory as fallback
+	{
+		SetDllDirectoryA(NPCapPath.string().c_str());
+		// We want to call SetDllDirectory every time this function is called, as someone might have altered the paths (this is not an issue when using AddDllDirectory)
+		// So we don't set already_done to true
+	}
 }
-
-static std::string la_dlerror()
+inline DL_HANDLE la_dlopen(LPCSTR lpLibFileName)
+{
+	la_force_npcap_dll_path();
+	return LoadLibraryExA(lpLibFileName, nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32 | LOAD_LIBRARY_SEARCH_USER_DIRS);
+}
+inline std::string la_dlerror()
 {
 	constexpr auto ErrorMessageMaxLength = 512;
 	WCHAR errMessage[ErrorMessageMaxLength];
 
 	auto const errorCode = GetLastError();
-	if (FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, errorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), errMessage, ErrorMessageMaxLength, NULL) == 0)
+	if (FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, errorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), errMessage, ErrorMessageMaxLength, NULL) != 0)
 	{
-		return std::to_string(errorCode);
+		try
+		{
+			return la::networkInterface::windows::wideCharToUtf8(errMessage);
+		}
+		catch (std::invalid_argument const&)
+		{
+		}
 	}
 
-	return wideCharToUTF8(errMessage);
+	return std::to_string(errorCode);
 }
 #endif // _WIN32
 

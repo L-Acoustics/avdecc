@@ -1,0 +1,16 @@
+{
+	"entity_descriptor": {
+		"static": {
+			"model_name_string": null,
+			"vendor_name_string": null
+		},
+		"dynamic": {
+			"counters": {},
+			"current_configuration": 0,
+			"entity_name": "Simple Controller",
+			"firmware_version": "",
+			"group_name": "",
+			"serial_number": ""
+		}
+	}
+}

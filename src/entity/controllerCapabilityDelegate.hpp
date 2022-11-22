@@ -27,6 +27,7 @@
 #include "la/avdecc/internals/controllerEntity.hpp"
 
 #include "entityImpl.hpp"
+#include "aemHandler.hpp"
 
 #include <chrono>
 
@@ -44,7 +45,7 @@ public:
 	/* ************************************************************************** */
 	/* CapabilityDelegate life cycle                                              */
 	/* ************************************************************************** */
-	CapabilityDelegate(protocol::ProtocolInterface* const protocolInterface, controller::Delegate* controllerDelegate, Interface& controllerInterface, UniqueIdentifier const controllerID) noexcept;
+	CapabilityDelegate(protocol::ProtocolInterface* const protocolInterface, controller::Delegate* controllerDelegate, Interface& controllerInterface, Entity const& entity, model::EntityTree const* const entityModelTree) noexcept;
 	virtual ~CapabilityDelegate() noexcept;
 
 	/* ************************************************************************** */
@@ -233,6 +234,7 @@ private:
 	controller::Delegate* _controllerDelegate{ nullptr };
 	Interface& _controllerInterface;
 	UniqueIdentifier const _controllerID{ UniqueIdentifier::getNullUniqueIdentifier() };
+	model::AemHandler const _aemHandler;
 	DiscoveredEntities _discoveredEntities{};
 };
 

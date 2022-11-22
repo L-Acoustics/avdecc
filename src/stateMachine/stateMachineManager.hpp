@@ -83,6 +83,11 @@ public:
 	void notifyDiscoveredEntities(DiscoveryStateMachine::Delegate& delegate) noexcept;
 
 	/* ************************************************************ */
+	/* Notifications                                                */
+	/* ************************************************************ */
+	void onRemoteEntityOffline(UniqueIdentifier const entityID) noexcept;
+
+	/* ************************************************************ */
 	/* Advertising entry points                                     */
 	/* ************************************************************ */
 	ProtocolInterface::Error setEntityNeedsAdvertise(entity::LocalEntity const& entity) noexcept;
@@ -92,9 +97,8 @@ public:
 	/* ************************************************************ */
 	/* Discovery entry points                                       */
 	/* ************************************************************ */
-	ProtocolInterface::Error discoverRemoteEntities() noexcept;
-	ProtocolInterface::Error discoverRemoteEntity(UniqueIdentifier const entityID) noexcept;
 	ProtocolInterface::Error setAutomaticDiscoveryDelay(std::chrono::milliseconds const delay) noexcept;
+	void discoverMessageSent() noexcept;
 
 	/* ************************************************************ */
 	/* Sending entry points                                         */

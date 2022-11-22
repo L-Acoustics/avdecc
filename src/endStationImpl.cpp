@@ -22,13 +22,16 @@
 * @author Christophe Calmejane
 */
 
-#include "la/avdecc/internals/protocolInterface.hpp"
-
 #include "endStationImpl.hpp"
-
-// Entities
 #include "entity/controllerEntityImpl.hpp"
 #include "entity/aggregateEntityImpl.hpp"
+
+#include "la/avdecc/internals/protocolInterface.hpp"
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+#	include "la/avdecc/internals/jsonTypes.hpp"
+#endif // ENABLE_AVDECC_FEATURE_JSON
+
+#include <fstream>
 
 namespace la
 {
@@ -51,7 +54,7 @@ EndStationImpl::~EndStationImpl() noexcept
 }
 
 // EndStation overrides
-entity::ControllerEntity* EndStationImpl::addControllerEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::controller::Delegate* const delegate)
+entity::ControllerEntity* EndStationImpl::addControllerEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::model::EntityTree const* const entityModelTree, entity::controller::Delegate* const delegate)
 {
 	std::unique_ptr<entity::LocalEntityGuard<entity::ControllerEntityImpl>> controller{ nullptr };
 	try
@@ -60,10 +63,16 @@ entity::ControllerEntity* EndStationImpl::addControllerEntity(std::uint16_t cons
 
 		try
 		{
-			auto const commonInformation{ entity::Entity::CommonInformation{ eid, entityModelID, entity::EntityCapabilities{}, 0u, entity::TalkerCapabilities{}, 0u, entity::ListenerCapabilities{}, entity::ControllerCapabilities{ entity::ControllerCapability::Implemented }, std::nullopt, std::nullopt } };
+			auto entityCapabilities = entity::EntityCapabilities{};
+			if (entityModelTree != nullptr)
+			{
+				entityCapabilities.set(entity::EntityCapability::AemSupported);
+			}
+
+			auto const commonInformation{ entity::Entity::CommonInformation{ eid, entityModelID, entityCapabilities, 0u, entity::TalkerCapabilities{}, 0u, entity::ListenerCapabilities{}, entity::ControllerCapabilities{ entity::ControllerCapability::Implemented }, std::nullopt, std::nullopt } };
 			auto const interfaceInfo{ entity::Entity::InterfaceInformation{ _protocolInterface->getMacAddress(), 31u, 0u, std::nullopt, std::nullopt } };
 
-			controller = std::make_unique<entity::LocalEntityGuard<entity::ControllerEntityImpl>>(_protocolInterface.get(), commonInformation, entity::Entity::InterfacesInformation{ { entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } }, delegate);
+			controller = std::make_unique<entity::LocalEntityGuard<entity::ControllerEntityImpl>>(_protocolInterface.get(), commonInformation, entity::Entity::InterfacesInformation{ { entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } }, entityModelTree, delegate);
 		}
 		catch (la::avdecc::Exception const& e) // Because entity::ControllerEntityImpl::ControllerEntityImpl might throw if an entityID cannot be generated
 		{
@@ -85,7 +94,7 @@ entity::ControllerEntity* EndStationImpl::addControllerEntity(std::uint16_t cons
 	return controllerPtr;
 }
 
-entity::AggregateEntity* EndStationImpl::addAggregateEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::controller::Delegate* const controllerDelegate)
+entity::AggregateEntity* EndStationImpl::addAggregateEntity(std::uint16_t const progID, UniqueIdentifier const entityModelID, entity::model::EntityTree const* const entityModelTree, entity::controller::Delegate* const controllerDelegate)
 {
 	std::unique_ptr<entity::LocalEntityGuard<entity::AggregateEntityImpl>> aggregate{ nullptr };
 	try
@@ -94,10 +103,16 @@ entity::AggregateEntity* EndStationImpl::addAggregateEntity(std::uint16_t const 
 
 		try
 		{
-			auto const commonInformation{ entity::Entity::CommonInformation{ eid, entityModelID, entity::EntityCapabilities{}, 0u, entity::TalkerCapabilities{}, 0u, entity::ListenerCapabilities{}, controllerDelegate ? entity::ControllerCapabilities{ entity::ControllerCapability::Implemented } : entity::ControllerCapabilities{}, std::nullopt, std::nullopt } };
+			auto entityCapabilities = entity::EntityCapabilities{};
+			if (entityModelTree != nullptr)
+			{
+				entityCapabilities.set(entity::EntityCapability::AemSupported);
+			}
+
+			auto const commonInformation{ entity::Entity::CommonInformation{ eid, entityModelID, entityCapabilities, 0u, entity::TalkerCapabilities{}, 0u, entity::ListenerCapabilities{}, controllerDelegate ? entity::ControllerCapabilities{ entity::ControllerCapability::Implemented } : entity::ControllerCapabilities{}, std::nullopt, std::nullopt } };
 			auto const interfaceInfo{ entity::Entity::InterfaceInformation{ _protocolInterface->getMacAddress(), 31u, 0u, std::nullopt, std::nullopt } };
 
-			aggregate = std::make_unique<entity::LocalEntityGuard<entity::AggregateEntityImpl>>(_protocolInterface.get(), commonInformation, entity::Entity::InterfacesInformation{ { entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } }, controllerDelegate);
+			aggregate = std::make_unique<entity::LocalEntityGuard<entity::AggregateEntityImpl>>(_protocolInterface.get(), commonInformation, entity::Entity::InterfacesInformation{ { entity::Entity::GlobalAvbInterfaceIndex, interfaceInfo } }, entityModelTree, controllerDelegate);
 		}
 		catch (la::avdecc::Exception const& e) // Because entity::AggregateEntityImpl::AggregateEntityImpl might throw if entityID is already locally registered
 		{
@@ -123,6 +138,97 @@ entity::AggregateEntity* EndStationImpl::addAggregateEntity(std::uint16_t const 
 void EndStationImpl::destroy() noexcept
 {
 	delete this;
+}
+
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, entity::model::EntityTree> LA_AVDECC_CALL_CONVENTION EndStation::deserializeEntityModelFromJson(std::string const& filePath, bool const processDynamicModel, bool const isBinaryFormat) noexcept
+{
+#ifndef ENABLE_AVDECC_FEATURE_JSON
+	return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Deserialization feature not supported by the library (was not compiled)", entity::model::EntityTree{} };
+
+#else // ENABLE_AVDECC_FEATURE_JSON
+
+	auto flags = entity::model::jsonSerializer::Flags{ entity::model::jsonSerializer::Flag::ProcessStaticModel };
+	if (processDynamicModel)
+	{
+		flags.set(entity::model::jsonSerializer::Flag::ProcessDynamicModel);
+	}
+	if (isBinaryFormat)
+	{
+		flags.set(entity::model::jsonSerializer::Flag::BinaryFormat);
+	}
+
+	// Try to open the input file
+	auto const mode = std::ios::binary | std::ios::in;
+	auto ifs = std::ifstream{ filePath, mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
+
+	// Failed to open file for reading
+	if (!ifs.is_open())
+	{
+		return { avdecc::jsonSerializer::DeserializationError::AccessDenied, std::strerror(errno), entity::model::EntityTree{} };
+	}
+
+	// Load the JSON object from disk
+	auto object = json{};
+	try
+	{
+		if (flags.test(entity::model::jsonSerializer::Flag::BinaryFormat))
+		{
+			object = json::from_msgpack(ifs);
+		}
+		else
+		{
+			ifs >> object;
+		}
+	}
+	catch (json::type_error const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::InvalidValue, e.what(), entity::model::EntityTree{} };
+	}
+	catch (json::parse_error const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::ParseError, e.what(), entity::model::EntityTree{} };
+	}
+	catch (json::out_of_range const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::MissingKey, e.what(), entity::model::EntityTree{} };
+	}
+	catch (json::other_error const& e)
+	{
+		if (e.id == 555)
+		{
+			return { avdecc::jsonSerializer::DeserializationError::InvalidKey, e.what(), entity::model::EntityTree{} };
+		}
+		else
+		{
+			return { avdecc::jsonSerializer::DeserializationError::OtherError, e.what(), entity::model::EntityTree{} };
+		}
+	}
+	catch (json::exception const& e)
+	{
+		return { avdecc::jsonSerializer::DeserializationError::OtherError, e.what(), entity::model::EntityTree{} };
+	}
+
+	// Try to deserialize
+	try
+	{
+		auto entityTree = entity::model::jsonSerializer::createEntityTree(object, flags);
+		return { avdecc::jsonSerializer::DeserializationError::NoError, "", entityTree };
+	}
+	catch (json::exception const& e)
+	{
+		AVDECC_ASSERT(false, "json::exception is not expected to be thrown here");
+		return { avdecc::jsonSerializer::DeserializationError::InternalError, e.what(), entity::model::EntityTree{} };
+	}
+	catch (avdecc::jsonSerializer::DeserializationException const& e)
+	{
+		return { e.getError(), e.what(), entity::model::EntityTree{} };
+	}
+	catch (...)
+	{
+		AVDECC_ASSERT(false, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here");
+		return { avdecc::jsonSerializer::DeserializationError::InternalError, "Exception type other than avdecc::jsonSerializer::DeserializationException are not expected to be thrown here.", entity::model::EntityTree{} };
+	}
+#endif // ENABLE_AVDECC_FEATURE_JSON
 }
 
 /** EndStation Entry point */

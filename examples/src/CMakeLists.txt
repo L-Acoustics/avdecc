@@ -25,6 +25,14 @@ endif()
 cu_setup_executable_options(SimpleController)
 # Deploy and install target and its runtime dependencies (call this AFTER ALL dependencies have been added to the target)
 cu_setup_deploy_runtime(SimpleController ${INSTALL_EXAMPLE_FLAG} ${SIGN_FLAG})
+# Copy data
+add_custom_command(
+	TARGET SimpleController
+	POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/../data/SimpleControllerModel.json ${CMAKE_BINARY_DIR}/examples/src/SimpleControllerModel.json
+	COMMENT "Copying Examples data to output folder"
+	VERBATIM
+)
 
 # StreamFormatInfo
 add_executable(StreamFormatInfo streamFormatInfo.cpp)

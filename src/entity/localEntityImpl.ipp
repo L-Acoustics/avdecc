@@ -153,20 +153,20 @@ void LocalEntityImpl<SuperClass>::onAecpCommand(protocol::ProtocolInterface* con
 	{
 		auto const& aem = static_cast<protocol::AemAecpdu const&>(aecpdu);
 
-		static std::unordered_map<protocol::AemCommandType::value_type, std::function<void(protocol::ProtocolInterface* const pi, LocalEntityImpl const* const entity, protocol::AemAecpdu const& aem)>> s_Dispatch{
+		static std::unordered_map<protocol::AemCommandType::value_type, std::function<void(protocol::ProtocolInterface* const pi, protocol::AemAecpdu const& aem)>> s_Dispatch{
 			// Entity Available
 			{ protocol::AemCommandType::EntityAvailable.getValue(),
-				[](protocol::ProtocolInterface* const pi, auto const* const entity, protocol::AemAecpdu const& aem)
+				[](protocol::ProtocolInterface* const pi, protocol::AemAecpdu const& aem)
 				{
 					// We are being asked if we are available, and we are! Reply that
-					entity->sendAemAecpResponse(pi, aem, protocol::AemAecpStatus::Success, nullptr, 0u);
+					sendAemAecpResponse(pi, aem, protocol::AemAecpStatus::Success, nullptr, 0u);
 				} },
 		};
 
 		auto const& it = s_Dispatch.find(aem.getCommandType().getValue());
 		if (it != s_Dispatch.end())
 		{
-			invokeProtectedHandler(it->second, pi, this, aem);
+			invokeProtectedHandler(it->second, pi, aem);
 			return;
 		}
 	}
@@ -174,8 +174,8 @@ void LocalEntityImpl<SuperClass>::onAecpCommand(protocol::ProtocolInterface* con
 	// Forward to subclass
 	if (!onUnhandledAecpCommand(pi, aecpdu))
 	{
-		// Reflect back the command, and return a NotSupported error code
-		reflectAecpCommand(pi, aecpdu, protocol::AemAecpStatus::NotSupported);
+		// Reflect back the command, and return a NotImplemented error code
+		reflectAecpCommand(pi, aecpdu, protocol::AemAecpStatus::NotImplemented);
 	}
 }
 

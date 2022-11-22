@@ -728,7 +728,11 @@ EntityTree readEntityTree(json const& object, Flags const flags)
 	}
 
 	// Read Configurations
-	entityTree.configurationTrees = readConfigurationTrees(object.at(keyName::NodeName_ConfigurationDescriptors), flags, currentConfiguration);
+	auto const configs = object.find(keyName::NodeName_ConfigurationDescriptors);
+	if (configs != object.end())
+	{
+		entityTree.configurationTrees = readConfigurationTrees(*configs, flags, currentConfiguration);
+	}
 
 	return entityTree;
 }
