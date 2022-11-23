@@ -1246,6 +1246,8 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 #pragma mark - BridgeInterface Implementation
 @implementation BridgeInterface
 
+static constexpr auto AVB17221EntityPropertyImmutableMask = AVB17221EntityPropertyChangedModelID | AVB17221EntityPropertyChangedTalkerCapabilities | AVB17221EntityPropertyChangedTalkerStreamSources | AVB17221EntityPropertyChangedListenerCapabilities | AVB17221EntityPropertyChangedListenerStreamSinks | AVB17221EntityPropertyChangedControllerCapabilities | AVB17221EntityPropertyChangedIdentifyControlIndex;
+
 - (EntityQueues const&)createQueuesForRemoteEntity:(la::avdecc::UniqueIdentifier)entityID {
 	EntityQueues eq;
 	eq.aecpQueue = dispatch_queue_create([[NSString stringWithFormat:@"%@.0x%016llx.aecp", [self className], entityID.getValue()] UTF8String], 0);
@@ -1913,7 +1915,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	_localMachineEntities.insert_or_assign(e.getEntityID(), e);
 
 	// If a change occured in a forbidden flag, simulate offline/online for this entity
-	if ((changedProperties & kAVB17221EntityPropertyChangedShouldntChangeMask) != 0)
+	if ((changedProperties & AVB17221EntityPropertyImmutableMask) != 0)
 	{
 		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOffline, _protocolInterface, e.getEntityID());
 		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onLocalEntityOnline, _protocolInterface, e);
@@ -2019,7 +2021,7 @@ ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfa
 	_remoteEntities.insert_or_assign(e.getEntityID(), e);
 
 	// If a change occured in a forbidden flag, simulate offline/online for this entity
-	if ((changedProperties & kAVB17221EntityPropertyChangedShouldntChangeMask) != 0)
+	if ((changedProperties & AVB17221EntityPropertyImmutableMask) != 0)
 	{
 		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOffline, _protocolInterface, e.getEntityID());
 		_protocolInterface->notifyObserversMethod<la::avdecc::protocol::ProtocolInterface::Observer>(&la::avdecc::protocol::ProtocolInterface::Observer::onRemoteEntityOnline, _protocolInterface, e);
