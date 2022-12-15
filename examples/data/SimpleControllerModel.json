@@ -11,6 +11,16 @@
 			"firmware_version": "",
 			"group_name": "",
 			"serial_number": ""
-		}
+		},
+		"configuration_descriptors": [
+			{
+				"dynamic": {
+					"object_name": ""
+				},
+				"static": {
+					"localized_description": null
+				}
+			}
+		]
 	}
 }

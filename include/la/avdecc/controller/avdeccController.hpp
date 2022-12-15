@@ -133,6 +133,7 @@ public:
 		InterfaceNotFound = 3, /**< Specified interface not found. */
 		InterfaceInvalid = 4, /**< Specified interface is invalid. */
 		DuplicateProgID = 5, /**< Specified ProgID is already in use on the local computer. */
+		InvalidEntityModel = 6, /**< Provided EntityModel is invalid. */
 		InternalError = 99, /**< Internal error, please report the issue. */
 	};
 

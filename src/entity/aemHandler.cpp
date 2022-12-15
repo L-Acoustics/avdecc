@@ -35,10 +35,32 @@ namespace entity
 {
 namespace model
 {
-AemHandler::AemHandler(entity::Entity const& entity, entity::model::EntityTree const* const entityModelTree) noexcept
+AemHandler::AemHandler(entity::Entity const& entity, entity::model::EntityTree const* const entityModelTree)
 	: _entity{ entity }
 	, _entityModelTree{ entityModelTree }
 {
+	// Valide the entity model
+	validateEntityModel(_entityModelTree);
+}
+
+void AemHandler::validateEntityModel(entity::model::EntityTree const* const entityModelTree)
+{
+	// Briefly validate entity model
+	if (entityModelTree != nullptr)
+	{
+		// Check there is at least one configuration descriptor
+		auto const countConfigs = static_cast<DescriptorIndex>(entityModelTree->configurationTrees.size());
+		if (countConfigs == 0)
+		{
+			throw Exception("Invalid Entity Model: At least one ConfigurationDescriptor is required");
+		}
+
+		// Check the current configuration index is in the correct range
+		if (entityModelTree->dynamicModel.currentConfiguration >= countConfigs)
+		{
+			throw Exception("Invalid Entity Model: Current Configuration Index is out of range");
+		}
+	}
 }
 
 bool AemHandler::onUnhandledAecpAemCommand(protocol::ProtocolInterface* const pi, protocol::AemAecpdu const& aem) const noexcept

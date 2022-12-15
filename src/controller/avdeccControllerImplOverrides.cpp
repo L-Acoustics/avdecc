@@ -77,6 +77,8 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 				throw Exception(Error::InterfaceInvalid, e.what());
 			case EndStation::Error::DuplicateEntityID:
 				throw Exception(Error::DuplicateProgID, e.what());
+			case EndStation::Error::InvalidEntityModel:
+				throw Exception(Error::InvalidEntityModel, e.what());
 			case EndStation::Error::InternalError:
 				throw Exception(Error::InternalError, e.what());
 			default:

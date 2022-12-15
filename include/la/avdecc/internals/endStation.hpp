@@ -53,6 +53,7 @@ public:
 		InterfaceNotFound = 3, /**< Specified interface not found. */
 		InterfaceInvalid = 4, /**< Specified interface is invalid. */
 		DuplicateEntityID = 5, /**< EntityID not available (either duplicate, or no EntityID left on the local computer). */
+		InvalidEntityModel = 6, /**< Provided EntityModel is invalid. */
 		InternalError = 99, /**< Internal error, please report the issue. */
 	};
 

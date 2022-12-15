@@ -58,6 +58,15 @@ static model::MilanInfo const s_emptyMilanInfo{}; // Empty MilanInfo used by tim
 /* ************************************************************************** */
 /* Exceptions                                                                 */
 /* ************************************************************************** */
+class InvalidEntityModelException final : public Exception
+{
+public:
+	InvalidEntityModelException()
+		: Exception("Invalid Entity Model")
+	{
+	}
+};
+
 class InvalidDescriptorTypeException final : public Exception
 {
 public:
@@ -70,7 +79,10 @@ public:
 /* ************************************************************************** */
 /* CapabilityDelegate life cycle                                              */
 /* ************************************************************************** */
-CapabilityDelegate::CapabilityDelegate(protocol::ProtocolInterface* const protocolInterface, controller::Delegate* controllerDelegate, Interface& controllerInterface, Entity const& entity, model::EntityTree const* const entityModelTree) noexcept
+// clang-format off
+// Disabling formatting for this constructor as try-catching initializer is not properly supported
+CapabilityDelegate::CapabilityDelegate(protocol::ProtocolInterface* const protocolInterface, controller::Delegate* controllerDelegate, Interface& controllerInterface, Entity const& entity, model::EntityTree const* const entityModelTree)
+try
 	: _protocolInterface{ protocolInterface }
 	, _controllerDelegate{ controllerDelegate }
 	, _controllerInterface{ controllerInterface }
@@ -78,6 +90,11 @@ CapabilityDelegate::CapabilityDelegate(protocol::ProtocolInterface* const protoc
 	, _aemHandler{ entity, entityModelTree }
 {
 }
+catch (Exception const&)
+{
+	throw InvalidEntityModelException();
+}
+// clang-format on
 
 CapabilityDelegate::~CapabilityDelegate() noexcept {}
 

@@ -40,7 +40,9 @@ namespace model
 class AemHandler final
 {
 public:
-	AemHandler(entity::Entity const& entity, entity::model::EntityTree const* const entityModelTree) noexcept;
+	AemHandler(entity::Entity const& entity, entity::model::EntityTree const* const entityModelTree);
+
+	static void validateEntityModel(entity::model::EntityTree const* const entityModelTree);
 
 	bool onUnhandledAecpAemCommand(protocol::ProtocolInterface* const pi, protocol::AemAecpdu const& aem) const noexcept;
 

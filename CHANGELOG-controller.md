@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Possibility to unload a virtual entity using `Controller::unloadVirtualEntity`
 - A la::avdecc::entity::model::EntityTree can be fed into the controller so it responds to AEM query commands
 - getAudioClusterNode method to ControlledEntity
+- Checking validity of passed EntityModel
 
 ### Changed
 - Diagnostics::streamInputOverLatency is now a std::set and not a std::unordered_map with a bool as value

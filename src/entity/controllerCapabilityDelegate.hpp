@@ -45,7 +45,7 @@ public:
 	/* ************************************************************************** */
 	/* CapabilityDelegate life cycle                                              */
 	/* ************************************************************************** */
-	CapabilityDelegate(protocol::ProtocolInterface* const protocolInterface, controller::Delegate* controllerDelegate, Interface& controllerInterface, Entity const& entity, model::EntityTree const* const entityModelTree) noexcept;
+	CapabilityDelegate(protocol::ProtocolInterface* const protocolInterface, controller::Delegate* controllerDelegate, Interface& controllerInterface, Entity const& entity, model::EntityTree const* const entityModelTree);
 	virtual ~CapabilityDelegate() noexcept;
 
 	/* ************************************************************************** */
