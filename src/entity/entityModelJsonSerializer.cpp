@@ -672,6 +672,11 @@ EntityTree::ConfigurationTrees readConfigurationTrees(json const& object, Flags 
 		if (flags.test(Flag::ProcessDynamicModel))
 		{
 			get_optional_value(j, keyName::Node_DynamicInformation, config.dynamicModel);
+			// Set active configuration
+			if (currentConfiguration && (*currentConfiguration == configurationIndex))
+			{
+				config.dynamicModel.isActiveConfiguration = true;
+			}
 		}
 
 		auto const ignoreDynamicModel = currentConfiguration ? (*currentConfiguration != configurationIndex) : false;
