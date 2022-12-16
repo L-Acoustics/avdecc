@@ -25,6 +25,7 @@
 #include "endStationImpl.hpp"
 #include "entity/controllerEntityImpl.hpp"
 #include "entity/aggregateEntityImpl.hpp"
+#include "entity/aemHandler.hpp"
 
 #include "la/avdecc/internals/protocolInterface.hpp"
 #ifdef ENABLE_AVDECC_FEATURE_JSON
