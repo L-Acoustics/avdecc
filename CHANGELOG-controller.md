@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - Checking validity of EntityModel given when creating a controller
+- [Checking validity of EntityModel when discovering a device](https://github.com/L-Acoustics/avdecc/issues/80)
 
 ## [3.3.0] - 2022-11-22
 ### Added

@@ -625,6 +625,7 @@ private:
 	static bool validateControlValues(UniqueIdentifier const entityID, entity::model::ControlIndex const controlIndex, entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) noexcept;
 	static void validateControlDescriptors(ControlledEntityImpl& controlledEntity) noexcept;
 	static void validateRedundancy(ControlledEntityImpl& controlledEntity) noexcept;
+	static void validateEntityModel(ControlledEntityImpl& controlledEntity) noexcept;
 	static void validateEntity(ControlledEntityImpl& controlledEntity) noexcept;
 	void computeAndUpdateMediaClockChain(ControlledEntityImpl& controlledEntity, model::ClockDomainNode& clockDomainNode, UniqueIdentifier const continueFromEntityID, entity::model::ClockDomainIndex const continueFromEntityDomainIndex, std::optional<entity::model::StreamIndex> const continueFromStreamOutputIndex, UniqueIdentifier const beingAdvertisedEntity) const noexcept;
 	void onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity) noexcept;
