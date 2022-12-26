@@ -5,13 +5,17 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Checking validity of EntityModel given to a ControllerEntity or AggregateEntity
+
+### Fixed
+- EntityModel loader correctly set current active configuration
 
 ## [3.3.0] - 2022-11-22
 ### Added
 - A la::avdecc::entity::model::EntityTree can be fed into a LocalEntity so it responds to AEM query commands (currently limited to ENTITY descriptor)
 - EndStation::deserializeEntityModelFromJson to unpack a la::avdecc::entity::model::EntityTree from a file
 - [Full support for npcap (prefered over winpcap if both installed)](https://github.com/L-Acoustics/avdecc/issues/114)
-- Checking validity of passed EntityModel (to a ControllerEntity or AggregateEntity)
 
 ### Changed
 - Reflecting an unhandled AECP command uses NOT_IMPLEMENTED instead of NOT_SUPPORTED
@@ -19,7 +23,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 - Crash when loading ANS/AVE file without any configuration descriptor
 - Discarding inflight and queued messages when an entity goes offline
-- EntityModel loader correctly set current active configuration
 
 ## [3.2.4] - 2022-07-08
 ### Fixed

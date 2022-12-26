@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Checking validity of EntityModel given when creating a controller
 
 ## [3.3.0] - 2022-11-22
 ### Added
@@ -12,7 +14,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Possibility to unload a virtual entity using `Controller::unloadVirtualEntity`
 - A la::avdecc::entity::model::EntityTree can be fed into the controller so it responds to AEM query commands
 - getAudioClusterNode method to ControlledEntity
-- Checking validity of passed EntityModel
 
 ### Changed
 - Diagnostics::streamInputOverLatency is now a std::set and not a std::unordered_map with a bool as value
