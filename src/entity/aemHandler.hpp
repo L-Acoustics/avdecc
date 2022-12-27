@@ -54,6 +54,7 @@ public:
 
 private:
 	EntityDescriptor buildEntityDescriptor() const noexcept;
+	ConfigurationDescriptor buildConfigurationDescriptor(entity::model::ConfigurationIndex const configIndex) const;
 
 	entity::Entity const& _entity;
 	entity::model::EntityTree const* _entityModelTree{ nullptr };

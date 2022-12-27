@@ -36,6 +36,9 @@ namespace protocol
 {
 namespace aemPayload
 {
+/** Offset to be added/removed from Deserialization/Serialization buffer when computing 'offset' fields in various payload (required because the spec starts counting offset at 'descriptor_type' field, whilst our buffers start at 'configuration_index') */
+static constexpr auto PayloadBufferOffset = sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
+
 /** ACQUIRE_ENTITY Command - Clause 7.4.1.1 */
 Serializer<AecpAemAcquireEntityCommandPayloadSize> serializeAcquireEntityCommand(AemAcquireEntityFlags const flags, UniqueIdentifier const ownerID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
@@ -207,6 +210,23 @@ void serializeReadEntityDescriptorResponse(Serializer<AemAecpdu::MaximumSendPayl
 	ser << entityDescriptor.configurationsCount << entityDescriptor.currentConfiguration;
 }
 
+void serializeReadConfigurationDescriptorResponse(Serializer<AemAecpdu::MaximumSendPayloadBufferLength>& ser, entity::model::ConfigurationDescriptor const& configurationDescriptor)
+{
+	ser << configurationDescriptor.objectName;
+	ser << configurationDescriptor.localizedDescription;
+	auto const descriptorCountsCount = static_cast<std::uint16_t>(configurationDescriptor.descriptorCounts.size());
+	ser << descriptorCountsCount;
+	// Compute serializer offset for descriptor counts (Clause 7.2.2 says the descriptor_counts_offset field is from the base of the descriptor, which is not where our serializer buffer starts). Also have to add the size of this very field since offset starts after it...
+	auto const descriptorCountsOffset = static_cast<std::uint16_t>(ser.usedBytes() - PayloadBufferOffset + sizeof(std::uint16_t));
+	AVDECC_ASSERT(descriptorCountsOffset == 74, "Descriptor Counts offset should be 74 for IEEE1722.1-2021");
+	ser << descriptorCountsOffset;
+
+	for (auto const& [descriptorType, descriptorCount] : configurationDescriptor.descriptorCounts)
+	{
+		ser << descriptorType << descriptorCount;
+	}
+}
+
 std::tuple<size_t, entity::model::ConfigurationIndex, entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeReadDescriptorCommonResponse(AemAecpdu::Payload const& payload)
 {
 	auto* const commandPayload = payload.first;
@@ -362,7 +382,7 @@ entity::model::AudioUnitDescriptor deserializeReadAudioUnitDescriptorResponse(Ae
 			throw IncorrectPayloadSizeException();
 
 		// Compute deserializer offset for sampling rates (Clause 7.2.3 says the sampling_rates_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
-		samplingRatesOffset += sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
+		samplingRatesOffset += PayloadBufferOffset;
 
 		// Set deserializer position
 		if (samplingRatesOffset < des.usedBytes())
@@ -415,7 +435,7 @@ entity::model::StreamDescriptor deserializeReadStreamDescriptorResponse(AemAecpd
 		des >> streamDescriptor.avbInterfaceIndex >> streamDescriptor.bufferLength;
 
 		// Compute deserializer offset for formats (Clause 7.2.6 says the formats_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
-		formatsOffset += sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
+		formatsOffset += PayloadBufferOffset;
 
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 		// Check if we have redundant fields (AVnu Alliance 'Network Redundancy' extension)
@@ -426,7 +446,7 @@ entity::model::StreamDescriptor deserializeReadStreamDescriptorResponse(AemAecpd
 		{
 			des >> redundantOffset >> numberOfRedundantStreams;
 			// Compute deserializer offset for redundant streams association (Clause 7.2.6 says the redundant_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
-			redundantOffset += sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
+			redundantOffset += PayloadBufferOffset;
 			endDescriptorOffset = redundantOffset;
 		}
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
@@ -834,7 +854,7 @@ entity::model::AudioMapDescriptor deserializeReadAudioMapDescriptorResponse(AemA
 			throw IncorrectPayloadSizeException();
 
 		// Compute deserializer offset for sampling rates (Clause 7.2.19 says the mappings_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
-		mappingsOffset += sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
+		mappingsOffset += PayloadBufferOffset;
 
 		// Set deserializer position
 		if (mappingsOffset < des.usedBytes())
@@ -921,7 +941,7 @@ entity::model::ControlDescriptor deserializeReadControlDescriptorResponse(AemAec
 		// No need to check descriptor variable size, we'll let the ControlValueType specific unpacker throw if needed
 
 		// Compute deserializer offset for values (Clause 7.2.22 says the values_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
-		valuesOffset += sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
+		valuesOffset += PayloadBufferOffset;
 
 		// Set deserializer position
 		if (valuesOffset < des.usedBytes())
@@ -980,7 +1000,7 @@ entity::model::ClockDomainDescriptor deserializeReadClockDomainDescriptorRespons
 			throw IncorrectPayloadSizeException();
 
 		// Compute deserializer offset for sampling rates (Clause 7.2.32 says the clock_sources_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
-		clockSourcesOffset += sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
+		clockSourcesOffset += PayloadBufferOffset;
 
 		// Set deserializer position
 		if (clockSourcesOffset < des.usedBytes())
