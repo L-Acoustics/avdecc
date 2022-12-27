@@ -179,7 +179,7 @@ void setDescriptorsCount(ConfigurationDescriptor& configDescriptor, Tree const& 
 {
 	if (!tree.empty())
 	{
-		configDescriptor.descriptorCounts[DescriptorT] = static_cast<decltype(configDescriptor.descriptorCounts)::mapped_type>(tree.size());
+		configDescriptor.descriptorCounts[DescriptorT] = static_cast<typename decltype(configDescriptor.descriptorCounts)::mapped_type>(tree.size());
 	}
 }
 
