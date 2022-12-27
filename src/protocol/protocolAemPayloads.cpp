@@ -39,6 +39,29 @@ namespace aemPayload
 /** Offset to be added/removed from Deserialization/Serialization buffer when computing 'offset' fields in various payload (required because the spec starts counting offset at 'descriptor_type' field, whilst our buffers start at 'configuration_index') */
 static constexpr auto PayloadBufferOffset = sizeof(entity::model::ConfigurationIndex) + sizeof(std::uint16_t);
 
+static inline void checkResponsePayload(AemAecpdu::Payload const& payload, entity::LocalEntity::AemCommandStatus const status, size_t const expectedPayloadCommandLength, size_t const expectedPayloadResponseLength)
+{
+	auto* const commandPayload = payload.first;
+	auto const commandPayloadLength = payload.second;
+
+	// If status is NotImplemented, we expect a reflected message (using Command length)
+	if (status == entity::LocalEntity::AemCommandStatus::NotImplemented)
+	{
+		if (commandPayloadLength != expectedPayloadCommandLength || (expectedPayloadCommandLength > 0 && commandPayload == nullptr)) // Malformed packet
+		{
+			throw IncorrectPayloadSizeException();
+		}
+	}
+	else
+	{
+		// Otherwise we expect a valid response with all fields
+		if (commandPayloadLength < expectedPayloadResponseLength || (expectedPayloadResponseLength > 0 && commandPayload == nullptr)) // Malformed packet
+		{
+			throw IncorrectPayloadSizeException();
+		}
+	}
+}
+
 /** ACQUIRE_ENTITY Command - Clause 7.4.1.1 */
 Serializer<AecpAemAcquireEntityCommandPayloadSize> serializeAcquireEntityCommand(AemAcquireEntityFlags const flags, UniqueIdentifier const ownerID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
@@ -85,10 +108,11 @@ Serializer<AecpAemAcquireEntityResponsePayloadSize> serializeAcquireEntityRespon
 	return serializeAcquireEntityCommand(flags, ownerID, descriptorType, descriptorIndex);
 }
 
-std::tuple<AemAcquireEntityFlags, UniqueIdentifier, entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeAcquireEntityResponse(AemAecpdu::Payload const& payload)
+std::tuple<AemAcquireEntityFlags, UniqueIdentifier, entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeAcquireEntityResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as ACQUIRE_ENTITY Command
 	static_assert(AecpAemAcquireEntityResponsePayloadSize == AecpAemAcquireEntityCommandPayloadSize, "ACQUIRE_ENTITY Response no longer the same as ACQUIRE_ENTITY Command");
+	checkResponsePayload(payload, status, AecpAemAcquireEntityCommandPayloadSize, AecpAemAcquireEntityResponsePayloadSize);
 	return deserializeAcquireEntityCommand(payload);
 }
 
@@ -138,10 +162,11 @@ Serializer<AecpAemLockEntityResponsePayloadSize> serializeLockEntityResponse(Aem
 	return serializeLockEntityCommand(flags, lockedID, descriptorType, descriptorIndex);
 }
 
-std::tuple<AemLockEntityFlags, UniqueIdentifier, entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeLockEntityResponse(AemAecpdu::Payload const& payload)
+std::tuple<AemLockEntityFlags, UniqueIdentifier, entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeLockEntityResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as LOCK_ENTITY Command
 	static_assert(AecpAemLockEntityResponsePayloadSize == AecpAemLockEntityCommandPayloadSize, "LOCK_ENTITY Response no longer the same as LOCK_ENTITY Command");
+	checkResponsePayload(payload, status, AecpAemLockEntityCommandPayloadSize, AecpAemLockEntityResponsePayloadSize);
 	return deserializeLockEntityCommand(payload);
 }
 
@@ -227,13 +252,12 @@ void serializeReadConfigurationDescriptorResponse(Serializer<AemAecpdu::MaximumS
 	}
 }
 
-std::tuple<size_t, entity::model::ConfigurationIndex, entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeReadDescriptorCommonResponse(AemAecpdu::Payload const& payload)
+std::tuple<size_t, entity::model::ConfigurationIndex, entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeReadDescriptorCommonResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	auto* const commandPayload = payload.first;
 	auto const commandPayloadLength = payload.second;
 
-	if (commandPayload == nullptr || commandPayloadLength < AecpAemReadCommonDescriptorResponsePayloadSize) // Malformed packet
-		throw IncorrectPayloadSizeException();
+	checkResponsePayload(payload, status, AecpAemReadDescriptorCommandPayloadSize, AecpAemReadCommonDescriptorResponsePayloadSize);
 
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
@@ -318,6 +342,16 @@ entity::model::ConfigurationDescriptor deserializeReadConfigurationDescriptorRes
 		auto const descriptorCountsSize = descriptorInfoSize * descriptorCountsCount;
 		if (des.remaining() < descriptorCountsSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
+
+		// Compute deserializer offset for descriptor counts (Clause 7.2.2 says the descriptor_counts_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+		descriptorCountsOffset += PayloadBufferOffset;
+
+		// Set deserializer position
+		if (descriptorCountsOffset < des.usedBytes())
+		{
+			throw IncorrectPayloadSizeException();
+		}
+		des.setPosition(descriptorCountsOffset);
 
 		// Unpack descriptor remaining data
 		for (auto index = 0u; index < descriptorCountsCount; ++index)
@@ -1081,10 +1115,11 @@ Serializer<AecpAemSetConfigurationResponsePayloadSize> serializeSetConfiguration
 	return serializeSetConfigurationCommand(configurationIndex);
 }
 
-std::tuple<entity::model::ConfigurationIndex> deserializeSetConfigurationResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::ConfigurationIndex> deserializeSetConfigurationResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as SET_CONFIGURATION Command
 	static_assert(AecpAemSetConfigurationResponsePayloadSize == AecpAemSetConfigurationCommandPayloadSize, "SET_CONFIGURATION Response no longer the same as SET_CONFIGURATION Command");
+	checkResponsePayload(payload, status, AecpAemSetConfigurationCommandPayloadSize, AecpAemSetConfigurationResponsePayloadSize);
 	return deserializeSetConfigurationCommand(payload);
 }
 
@@ -1099,10 +1134,11 @@ Serializer<AecpAemGetConfigurationResponsePayloadSize> serializeGetConfiguration
 	return serializeSetConfigurationCommand(configurationIndex);
 }
 
-std::tuple<entity::model::ConfigurationIndex> deserializeGetConfigurationResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::ConfigurationIndex> deserializeGetConfigurationResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as SET_CONFIGURATION Command
 	static_assert(AecpAemGetConfigurationResponsePayloadSize == AecpAemSetConfigurationCommandPayloadSize, "GET_CONFIGURATION Response no longer the same as SET_CONFIGURATION Command");
+	checkResponsePayload(payload, status, AecpAemSetConfigurationCommandPayloadSize, AecpAemGetConfigurationResponsePayloadSize);
 	return deserializeSetConfigurationCommand(payload);
 }
 
@@ -1149,10 +1185,11 @@ Serializer<AecpAemSetStreamFormatResponsePayloadSize> serializeSetStreamFormatRe
 	return serializeSetStreamFormatCommand(descriptorType, descriptorIndex, streamFormat);
 }
 
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::StreamFormat> deserializeSetStreamFormatResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::StreamFormat> deserializeSetStreamFormatResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as SET_STREAM_FORMAT Command
 	static_assert(AecpAemSetStreamFormatResponsePayloadSize == AecpAemSetStreamFormatCommandPayloadSize, "SET_STREAM_FORMAT Response no longer the same as SET_STREAM_FORMAT Command");
+	checkResponsePayload(payload, status, AecpAemSetStreamFormatCommandPayloadSize, AecpAemSetStreamFormatResponsePayloadSize);
 	return deserializeSetStreamFormatCommand(payload);
 }
 
@@ -1196,10 +1233,11 @@ Serializer<AecpAemGetStreamFormatResponsePayloadSize> serializeGetStreamFormatRe
 	return serializeSetStreamFormatCommand(descriptorType, descriptorIndex, streamFormat);
 }
 
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::StreamFormat> deserializeGetStreamFormatResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::StreamFormat> deserializeGetStreamFormatResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as SET_STREAM_FORMAT Command
 	static_assert(AecpAemGetStreamFormatResponsePayloadSize == AecpAemSetStreamFormatCommandPayloadSize, "GET_STREAM_FORMAT Response no longer the same as SET_STREAM_FORMAT Command");
+	checkResponsePayload(payload, status, AecpAemSetStreamFormatCommandPayloadSize, AecpAemGetStreamFormatResponsePayloadSize);
 	return deserializeSetStreamFormatCommand(payload);
 }
 
@@ -1268,10 +1306,11 @@ Serializer<AecpAemSetStreamInfoResponsePayloadSize> serializeSetStreamInfoRespon
 	return serializeSetStreamInfoCommand(descriptorType, descriptorIndex, streamInfo);
 }
 
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::StreamInfo> deserializeSetStreamInfoResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::StreamInfo> deserializeSetStreamInfoResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as SET_STREAM_INFO Command
 	static_assert(AecpAemSetStreamInfoResponsePayloadSize == AecpAemSetStreamInfoCommandPayloadSize, "SET_STREAM_INFO Response no longer the same as SET_STREAM_INFO Command");
+	checkResponsePayload(payload, status, AecpAemSetStreamInfoCommandPayloadSize, AecpAemSetStreamInfoResponsePayloadSize);
 	return deserializeSetStreamInfoCommand(payload);
 }
 
@@ -1344,52 +1383,62 @@ Serializer<AecpAemMilanGetStreamInfoResponsePayloadSize> serializeGetStreamInfoR
 	return ser;
 }
 
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::StreamInfo> deserializeGetStreamInfoResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::StreamInfo> deserializeGetStreamInfoResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	auto* const commandPayload = payload.first;
 	auto const commandPayloadLength = payload.second;
 
-	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetStreamInfoResponsePayloadSize) // Malformed packet
-		throw IncorrectPayloadSizeException();
+	checkResponsePayload(payload, status, AecpAemGetStreamInfoCommandPayloadSize, AecpAemGetStreamInfoResponsePayloadSize);
 
 	// Check payload
-	Deserializer des(commandPayload, commandPayloadLength);
-	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
-	entity::model::DescriptorIndex descriptorIndex{ 0u };
-	entity::model::StreamInfo streamInfo{};
-	std::uint8_t reserved{ 0u };
-	std::uint16_t reserved2{ 0u };
+	auto des = Deserializer{ commandPayload, commandPayloadLength };
+	auto descriptorType = entity::model::DescriptorType{ entity::model::DescriptorType::Invalid };
+	auto descriptorIndex = entity::model::DescriptorIndex{ 0u };
+	auto streamInfo = entity::model::StreamInfo{};
+	auto reserved = std::uint8_t{ 0u };
+	auto reserved2 = std::uint16_t{ 0u };
 
-	des >> descriptorType >> descriptorIndex;
-	des >> streamInfo.streamInfoFlags;
-	des >> streamInfo.streamFormat;
-	des >> streamInfo.streamID;
-	des >> streamInfo.msrpAccumulatedLatency;
-	des.unpackBuffer(streamInfo.streamDestMac.data(), streamInfo.streamDestMac.size());
-	des >> streamInfo.msrpFailureCode;
-	des >> reserved;
-	des >> streamInfo.msrpFailureBridgeID;
-	des >> streamInfo.streamVlanID;
-	des >> reserved2;
-
-	if (commandPayloadLength >= AecpAemMilanGetStreamInfoResponsePayloadSize)
+	try
 	{
-		auto streamInfoFlagsEx = entity::StreamInfoFlagsEx{};
-		auto probing_acmp_status = std::uint8_t{ 0u };
-		auto reserved3 = std::uint8_t{ 0u };
-		auto reserved4 = std::uint16_t{ 0u };
+		des >> descriptorType >> descriptorIndex;
+		des >> streamInfo.streamInfoFlags;
+		des >> streamInfo.streamFormat;
+		des >> streamInfo.streamID;
+		des >> streamInfo.msrpAccumulatedLatency;
+		des.unpackBuffer(streamInfo.streamDestMac.data(), streamInfo.streamDestMac.size());
+		des >> streamInfo.msrpFailureCode;
+		des >> reserved;
+		des >> streamInfo.msrpFailureBridgeID;
+		des >> streamInfo.streamVlanID;
+		des >> reserved2;
 
-		des >> streamInfoFlagsEx >> probing_acmp_status >> reserved3 >> reserved4;
+		if (commandPayloadLength >= AecpAemMilanGetStreamInfoResponsePayloadSize)
+		{
+			auto streamInfoFlagsEx = entity::StreamInfoFlagsEx{};
+			auto probing_acmp_status = std::uint8_t{ 0u };
+			auto reserved3 = std::uint8_t{ 0u };
+			auto reserved4 = std::uint16_t{ 0u };
 
-		streamInfo.streamInfoFlagsEx = streamInfoFlagsEx;
-		streamInfo.probingStatus = static_cast<entity::model::ProbingStatus>((probing_acmp_status & 0xe0) >> 5);
-		streamInfo.acmpStatus = static_cast<AcmpStatus>(probing_acmp_status & 0x1f);
+			des >> streamInfoFlagsEx >> probing_acmp_status >> reserved3 >> reserved4;
 
-		AVDECC_ASSERT(des.usedBytes() == AecpAemMilanGetStreamInfoResponsePayloadSize, "Used more bytes than specified in protocol constant");
+			streamInfo.streamInfoFlagsEx = streamInfoFlagsEx;
+			streamInfo.probingStatus = static_cast<entity::model::ProbingStatus>((probing_acmp_status & 0xe0) >> 5);
+			streamInfo.acmpStatus = static_cast<AcmpStatus>(probing_acmp_status & 0x1f);
+
+			AVDECC_ASSERT(des.usedBytes() == AecpAemMilanGetStreamInfoResponsePayloadSize, "Used more bytes than specified in protocol constant");
+		}
+		else
+		{
+			AVDECC_ASSERT(des.usedBytes() == AecpAemGetStreamInfoResponsePayloadSize, "Used more bytes than specified in protocol constant");
+		}
 	}
-	else
+	catch (std::invalid_argument const&)
 	{
-		AVDECC_ASSERT(des.usedBytes() == AecpAemGetStreamInfoResponsePayloadSize, "Used more bytes than specified in protocol constant");
+		// Only NotImplemented status is allowed as we expect a reflected message (using Command length, so we cannot unpack everything)
+		if (status != entity::LocalEntity::AemCommandStatus::NotImplemented)
+		{
+			throw; // Rethrow if we really have another status
+		}
 	}
 
 	return std::make_tuple(descriptorType, descriptorIndex, streamInfo);
@@ -1457,10 +1506,11 @@ Serializer<AecpAemSetNameResponsePayloadSize> serializeSetNameResponse(entity::m
 	return serializeSetNameCommand(descriptorType, descriptorIndex, nameIndex, configurationIndex, name);
 }
 
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t, entity::model::ConfigurationIndex, entity::model::AvdeccFixedString> deserializeSetNameResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t, entity::model::ConfigurationIndex, entity::model::AvdeccFixedString> deserializeSetNameResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as SET_NAME Command
 	static_assert(AecpAemSetNameResponsePayloadSize == AecpAemSetNameCommandPayloadSize, "SET_NAME Response no longer the same as SET_NAME Command");
+	checkResponsePayload(payload, status, AecpAemSetNameCommandPayloadSize, AecpAemSetNameResponsePayloadSize);
 	return deserializeSetNameCommand(payload);
 }
 
@@ -1508,10 +1558,11 @@ Serializer<AecpAemGetNameResponsePayloadSize> serializeGetNameResponse(entity::m
 	return serializeSetNameCommand(descriptorType, descriptorIndex, nameIndex, configurationIndex, name);
 }
 
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t, entity::model::ConfigurationIndex, entity::model::AvdeccFixedString> deserializeGetNameResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::uint16_t, entity::model::ConfigurationIndex, entity::model::AvdeccFixedString> deserializeGetNameResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as SET_NAME Command
 	static_assert(AecpAemGetNameResponsePayloadSize == AecpAemSetNameCommandPayloadSize, "GET_NAME Response no longer the same as SET_NAME Command");
+	checkResponsePayload(payload, status, AecpAemSetNameCommandPayloadSize, AecpAemGetNameResponsePayloadSize);
 	return deserializeSetNameCommand(payload);
 }
 
@@ -1554,10 +1605,11 @@ Serializer<AecpAemSetAssociationIDResponsePayloadSize> serializeSetAssociationID
 	return serializeSetAssociationIDCommand(associationID);
 }
 
-std::tuple<UniqueIdentifier> deserializeSetAssociationIDResponse(AemAecpdu::Payload const& payload)
+std::tuple<UniqueIdentifier> deserializeSetAssociationIDResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as SET_ASSOCIATION_ID Command
 	static_assert(AecpAemSetAssociationIDResponsePayloadSize == AecpAemSetAssociationIDCommandPayloadSize, "SET_ASSOCIATION_ID Response no longer the same as SET_ASSOCIATION_ID Command");
+	checkResponsePayload(payload, status, AecpAemSetAssociationIDCommandPayloadSize, AecpAemSetAssociationIDResponsePayloadSize);
 	return deserializeSetAssociationIDCommand(payload);
 }
 
@@ -1572,10 +1624,11 @@ Serializer<AecpAemGetAssociationIDResponsePayloadSize> serializeGetAssociationID
 	return serializeSetAssociationIDCommand(associationID);
 }
 
-std::tuple<UniqueIdentifier> deserializeGetAssociationIDResponse(AemAecpdu::Payload const& payload)
+std::tuple<UniqueIdentifier> deserializeGetAssociationIDResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as GET_ASSOCIATION_ID Command
 	static_assert(AecpAemGetAssociationIDResponsePayloadSize == AecpAemSetAssociationIDCommandPayloadSize, "GET_ASSOCIATION_ID Response no longer the same as SET_ASSOCIATION_ID Command");
+	checkResponsePayload(payload, status, AecpAemSetAssociationIDCommandPayloadSize, AecpAemGetAssociationIDResponsePayloadSize);
 	return deserializeSetAssociationIDCommand(payload);
 }
 
@@ -1622,10 +1675,11 @@ Serializer<AecpAemSetSamplingRateResponsePayloadSize> serializeSetSamplingRateRe
 	return serializeSetSamplingRateCommand(descriptorType, descriptorIndex, samplingRate);
 }
 
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::SamplingRate> deserializeSetSamplingRateResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::SamplingRate> deserializeSetSamplingRateResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as SET_SAMPLING_RATE Command
 	static_assert(AecpAemSetSamplingRateResponsePayloadSize == AecpAemSetSamplingRateCommandPayloadSize, "SET_SAMPLING_RATE Response no longer the same as SET_SAMPLING_RATE Command");
+	checkResponsePayload(payload, status, AecpAemSetSamplingRateCommandPayloadSize, AecpAemSetSamplingRateResponsePayloadSize);
 	return deserializeSetSamplingRateCommand(payload);
 }
 
@@ -1669,10 +1723,11 @@ Serializer<AecpAemGetSamplingRateResponsePayloadSize> serializeGetSamplingRateRe
 	return serializeSetSamplingRateCommand(descriptorType, descriptorIndex, samplingRate);
 }
 
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::SamplingRate> deserializeGetSamplingRateResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::SamplingRate> deserializeGetSamplingRateResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as SET_SAMPLING_RATE Command
 	static_assert(AecpAemGetSamplingRateResponsePayloadSize == AecpAemSetSamplingRateCommandPayloadSize, "GET_SAMPLING_RATE Response no longer the same as SET_SAMPLING_RATE Command");
+	checkResponsePayload(payload, status, AecpAemSetSamplingRateCommandPayloadSize, AecpAemGetSamplingRateResponsePayloadSize);
 	return deserializeSetSamplingRateCommand(payload);
 }
 
@@ -1721,10 +1776,11 @@ Serializer<AecpAemSetClockSourceResponsePayloadSize> serializeSetClockSourceResp
 	return serializeSetClockSourceCommand(descriptorType, descriptorIndex, clockSourceIndex);
 }
 
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::ClockSourceIndex> deserializeSetClockSourceResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::ClockSourceIndex> deserializeSetClockSourceResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as SET_CLOCK_SOURCE Command
 	static_assert(AecpAemSetClockSourceResponsePayloadSize == AecpAemSetClockSourceCommandPayloadSize, "SET_CLOCK_SOURCE Response no longer the same as SET_CLOCK_SOURCE Command");
+	checkResponsePayload(payload, status, AecpAemSetClockSourceCommandPayloadSize, AecpAemSetClockSourceResponsePayloadSize);
 	return deserializeSetClockSourceCommand(payload);
 }
 
@@ -1768,10 +1824,11 @@ Serializer<AecpAemGetClockSourceResponsePayloadSize> serializeGetClockSourceResp
 	return serializeSetClockSourceCommand(descriptorType, descriptorIndex, clockSourceIndex);
 }
 
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::ClockSourceIndex> deserializeGetClockSourceResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::ClockSourceIndex> deserializeGetClockSourceResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as SET_CLOCK_SOURCE Command
 	static_assert(AecpAemGetClockSourceResponsePayloadSize == AecpAemSetClockSourceCommandPayloadSize, "GET_CLOCK_SOURCE Response no longer the same as SET_CLOCK_SOURCE Command");
+	checkResponsePayload(payload, status, AecpAemSetClockSourceCommandPayloadSize, AecpAemGetClockSourceResponsePayloadSize);
 	return deserializeSetClockSourceCommand(payload);
 }
 
@@ -1869,10 +1926,11 @@ Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeSetControlRespons
 	return serializeSetControlCommand(descriptorType, descriptorIndex, controlValues);
 }
 
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, MemoryBuffer> deserializeSetControlResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, MemoryBuffer> deserializeSetControlResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as SET_CONTROL Command
 	static_assert(AecpAemSetControlResponsePayloadMinSize == AecpAemSetControlCommandPayloadMinSize, "SET_CONTROL Response no longer the same as SET_CONTROL Command");
+	checkResponsePayload(payload, status, AecpAemSetControlCommandPayloadMinSize, AecpAemSetControlResponsePayloadMinSize);
 	return deserializeSetControlCommand(payload);
 }
 
@@ -1916,10 +1974,11 @@ Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeGetControlRespons
 	return serializeSetControlCommand(descriptorType, descriptorIndex, controlValues);
 }
 
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, MemoryBuffer> deserializeGetControlResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, MemoryBuffer> deserializeGetControlResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as SET_CONTROL Command
 	static_assert(AecpAemGetControlResponsePayloadMinSize == AecpAemSetControlCommandPayloadMinSize, "GET_CONTROL Response no longer the same as SET_CONTROL Command");
+	checkResponsePayload(payload, status, AecpAemSetControlCommandPayloadMinSize, AecpAemGetControlResponsePayloadMinSize);
 	return deserializeSetControlCommand(payload);
 }
 
@@ -1963,10 +2022,11 @@ Serializer<AecpAemStartStreamingResponsePayloadSize> serializeStartStreamingResp
 	return serializeStartStreamingCommand(descriptorType, descriptorIndex);
 }
 
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeStartStreamingResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeStartStreamingResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as START_STREAMING Command
 	static_assert(AecpAemStartStreamingResponsePayloadSize == AecpAemStartStreamingCommandPayloadSize, "START_STREAMING Response no longer the same as START_STREAMING Command");
+	checkResponsePayload(payload, status, AecpAemStartStreamingCommandPayloadSize, AecpAemStartStreamingResponsePayloadSize);
 	return deserializeStartStreamingCommand(payload);
 }
 
@@ -1993,10 +2053,11 @@ Serializer<AecpAemStopStreamingResponsePayloadSize> serializeStopStreamingRespon
 	return serializeStartStreamingCommand(descriptorType, descriptorIndex);
 }
 
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeStopStreamingResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeStopStreamingResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as START_STREAMING Command
 	static_assert(AecpAemStopStreamingResponsePayloadSize == AecpAemStartStreamingCommandPayloadSize, "STOP_STREAMING Response no longer the same as START_STREAMING Command");
+	checkResponsePayload(payload, status, AecpAemStartStreamingCommandPayloadSize, AecpAemStopStreamingResponsePayloadSize);
 	return deserializeStartStreamingCommand(payload);
 }
 
@@ -2049,43 +2110,53 @@ Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeGetAvbInfoRespons
 	return ser;
 }
 
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::AvbInfo> deserializeGetAvbInfoResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::AvbInfo> deserializeGetAvbInfoResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	auto* const commandPayload = payload.first;
 	auto const commandPayloadLength = payload.second;
 
-	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetAvbInfoResponsePayloadMinSize) // Malformed packet
-		throw IncorrectPayloadSizeException();
+	checkResponsePayload(payload, status, AecpAemGetAvbInfoCommandPayloadSize, AecpAemGetAvbInfoResponsePayloadMinSize);
 
 	// Check payload
-	Deserializer des(commandPayload, commandPayloadLength);
-	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
-	entity::model::DescriptorIndex descriptorIndex{ 0u };
-	entity::model::AvbInfo avbInfo{};
-	std::uint16_t numberOfMappings{ 0u };
+	auto des = Deserializer{ commandPayload, commandPayloadLength };
+	auto descriptorType = entity::model::DescriptorType{ entity::model::DescriptorType::Invalid };
+	auto descriptorIndex = entity::model::DescriptorIndex{ 0u };
+	auto avbInfo = entity::model::AvbInfo{};
+	auto numberOfMappings = std::uint16_t{ 0u };
 
-	des >> descriptorType >> descriptorIndex;
-	des >> avbInfo.gptpGrandmasterID >> avbInfo.propagationDelay >> avbInfo.gptpDomainNumber >> avbInfo.flags >> numberOfMappings;
-
-	// Check variable size
-	auto const mappingsSize = entity::model::MsrpMapping::size() * numberOfMappings;
-	if (des.remaining() < mappingsSize) // Malformed packet
-		throw IncorrectPayloadSizeException();
-
-	// Unpack remaining data
-	entity::model::MsrpMappings mappings;
-	for (auto index = 0u; index < numberOfMappings; ++index)
+	try
 	{
-		entity::model::MsrpMapping mapping;
-		des >> mapping.trafficClass >> mapping.priority >> mapping.vlanID;
-		mappings.push_back(mapping);
+		des >> descriptorType >> descriptorIndex;
+		des >> avbInfo.gptpGrandmasterID >> avbInfo.propagationDelay >> avbInfo.gptpDomainNumber >> avbInfo.flags >> numberOfMappings;
+
+		// Check variable size
+		auto const mappingsSize = entity::model::MsrpMapping::size() * numberOfMappings;
+		if (des.remaining() < mappingsSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Unpack remaining data
+		entity::model::MsrpMappings mappings;
+		for (auto index = 0u; index < numberOfMappings; ++index)
+		{
+			entity::model::MsrpMapping mapping;
+			des >> mapping.trafficClass >> mapping.priority >> mapping.vlanID;
+			mappings.push_back(mapping);
+		}
+		AVDECC_ASSERT(des.usedBytes() == (protocol::aemPayload::AecpAemGetAvbInfoResponsePayloadMinSize + mappingsSize), "Used more bytes than specified in protocol constant");
+		avbInfo.mappings = std::move(mappings);
+
+		if (des.remaining() != 0)
+		{
+			LOG_AEM_PAYLOAD_TRACE("GetAvbInfo Response deserialize warning: Remaining bytes in buffer");
+		}
 	}
-	AVDECC_ASSERT(des.usedBytes() == (protocol::aemPayload::AecpAemGetAvbInfoResponsePayloadMinSize + mappingsSize), "Used more bytes than specified in protocol constant");
-	avbInfo.mappings = std::move(mappings);
-
-	if (des.remaining() != 0)
+	catch (std::invalid_argument const&)
 	{
-		LOG_AEM_PAYLOAD_TRACE("GetAvbInfo Response deserialize warning: Remaining bytes in buffer");
+		// Only NotImplemented status is allowed as we expect a reflected message (using Command length, so we cannot unpack everything)
+		if (status != entity::LocalEntity::AemCommandStatus::NotImplemented)
+		{
+			throw; // Rethrow if we really have another status
+		}
 	}
 
 	return std::make_tuple(descriptorType, descriptorIndex, avbInfo);
@@ -2140,39 +2211,49 @@ Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeGetAsPathResponse
 	return ser;
 }
 
-std::tuple<entity::model::DescriptorIndex, entity::model::AsPath> deserializeGetAsPathResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorIndex, entity::model::AsPath> deserializeGetAsPathResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	auto* const commandPayload = payload.first;
 	auto const commandPayloadLength = payload.second;
 
-	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetAsPathResponsePayloadMinSize) // Malformed packet
-		throw IncorrectPayloadSizeException();
+	checkResponsePayload(payload, status, AecpAemGetAsPathCommandPayloadSize, AecpAemGetAsPathResponsePayloadMinSize);
 
 	// Check payload
-	Deserializer des(commandPayload, commandPayloadLength);
-	entity::model::DescriptorIndex descriptorIndex{ 0u };
-	entity::model::AsPath asPath{};
-	std::uint16_t count{ 0u };
+	auto des = Deserializer{ commandPayload, commandPayloadLength };
+	auto descriptorIndex = entity::model::DescriptorIndex{ 0u };
+	auto asPath = entity::model::AsPath{};
+	auto count = std::uint16_t{ 0u };
 
-	des >> descriptorIndex >> count;
-
-	// Check variable size
-	auto const sequenceSize = sizeof(UniqueIdentifier::value_type) * count;
-	if (des.remaining() < sequenceSize) // Malformed packet
-		throw IncorrectPayloadSizeException();
-
-	// Unpack remaining data
-	for (auto index = 0u; index < count; ++index)
+	try
 	{
-		auto clockIdentity = decltype(asPath.sequence)::value_type{};
-		des >> clockIdentity;
-		asPath.sequence.push_back(clockIdentity);
+		des >> descriptorIndex >> count;
+
+		// Check variable size
+		auto const sequenceSize = sizeof(UniqueIdentifier::value_type) * count;
+		if (des.remaining() < sequenceSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Unpack remaining data
+		for (auto index = 0u; index < count; ++index)
+		{
+			auto clockIdentity = decltype(asPath.sequence)::value_type{};
+			des >> clockIdentity;
+			asPath.sequence.push_back(clockIdentity);
+		}
+		AVDECC_ASSERT(des.usedBytes() == (protocol::aemPayload::AecpAemGetAsPathResponsePayloadMinSize + sequenceSize), "Used more bytes than specified in protocol constant");
+
+		if (des.remaining() != 0)
+		{
+			LOG_AEM_PAYLOAD_TRACE("GetAsPath Response deserialize warning: Remaining bytes in buffer");
+		}
 	}
-	AVDECC_ASSERT(des.usedBytes() == (protocol::aemPayload::AecpAemGetAsPathResponsePayloadMinSize + sequenceSize), "Used more bytes than specified in protocol constant");
-
-	if (des.remaining() != 0)
+	catch (std::invalid_argument const&)
 	{
-		LOG_AEM_PAYLOAD_TRACE("GetAsPath Response deserialize warning: Remaining bytes in buffer");
+		// Only NotImplemented status is allowed as we expect a reflected message (using Command length, so we cannot unpack everything)
+		if (status != entity::LocalEntity::AemCommandStatus::NotImplemented)
+		{
+			throw; // Rethrow if we really have another status
+		}
 	}
 
 	return std::make_tuple(descriptorIndex, asPath);
@@ -2229,31 +2310,40 @@ Serializer<AecpAemGetCountersResponsePayloadSize> serializeGetCountersResponse(e
 	return ser;
 }
 
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::DescriptorCounterValidFlag, entity::model::DescriptorCounters> deserializeGetCountersResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::DescriptorCounterValidFlag, entity::model::DescriptorCounters> deserializeGetCountersResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	auto* const commandPayload = payload.first;
 	auto const commandPayloadLength = payload.second;
 
-	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetCountersResponsePayloadSize) // Malformed packet
-		throw IncorrectPayloadSizeException();
+	checkResponsePayload(payload, status, AecpAemGetCountersCommandPayloadSize, AecpAemGetCountersResponsePayloadSize);
 
 	// Check payload
-	Deserializer des(commandPayload, commandPayloadLength);
-	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
-	entity::model::DescriptorIndex descriptorIndex{ 0u };
-	entity::model::DescriptorCounterValidFlag validCounters{ 0u };
-	entity::model::DescriptorCounters counters{};
-
-	des >> descriptorType >> descriptorIndex;
-	des >> validCounters;
-
-	// Deserialize the counters
-	for (auto& counter : counters)
+	auto des = Deserializer{ commandPayload, commandPayloadLength };
+	auto descriptorType = entity::model::DescriptorType{ entity::model::DescriptorType::Invalid };
+	auto descriptorIndex = entity::model::DescriptorIndex{ 0u };
+	auto validCounters = entity::model::DescriptorCounterValidFlag{ 0u };
+	auto counters = entity::model::DescriptorCounters{};
+	try
 	{
-		des >> counter;
-	}
+		des >> descriptorType >> descriptorIndex;
+		des >> validCounters;
 
-	AVDECC_ASSERT(des.usedBytes() == AecpAemGetCountersResponsePayloadSize, "Used more bytes than specified in protocol constant");
+		// Deserialize the counters
+		for (auto& counter : counters)
+		{
+			des >> counter;
+		}
+
+		AVDECC_ASSERT(des.usedBytes() == AecpAemGetCountersResponsePayloadSize, "Used more bytes than specified in protocol constant");
+	}
+	catch (std::invalid_argument const&)
+	{
+		// Only NotImplemented status is allowed as we expect a reflected message (using Command length, so we cannot unpack everything)
+		if (status != entity::LocalEntity::AemCommandStatus::NotImplemented)
+		{
+			throw; // Rethrow if we really have another status
+		}
+	}
 
 	return std::make_tuple(descriptorType, descriptorIndex, validCounters, counters);
 }
@@ -2298,10 +2388,11 @@ Serializer<AecpAemRebootResponsePayloadSize> serializeRebootResponse(entity::mod
 	return serializeRebootCommand(descriptorType, descriptorIndex);
 }
 
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeRebootResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deserializeRebootResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as REBOOT Command
 	static_assert(AecpAemRebootResponsePayloadSize == AecpAemRebootCommandPayloadSize, "REBOOT Response no longer the same as REBOOT Command");
+	checkResponsePayload(payload, status, AecpAemRebootCommandPayloadSize, AecpAemRebootResponsePayloadSize);
 	return deserializeRebootCommand(payload);
 }
 
@@ -2360,44 +2451,54 @@ Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeGetAudioMapRespon
 	return ser;
 }
 
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::MapIndex, entity::model::MapIndex, entity::model::AudioMappings> deserializeGetAudioMapResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::MapIndex, entity::model::MapIndex, entity::model::AudioMappings> deserializeGetAudioMapResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	auto* const commandPayload = payload.first;
 	auto const commandPayloadLength = payload.second;
 
-	if (commandPayload == nullptr || commandPayloadLength < AecpAemGetAudioMapResponsePayloadMinSize) // Malformed packet
-		throw IncorrectPayloadSizeException();
+	checkResponsePayload(payload, status, AecpAemGetAudioMapCommandPayloadSize, AecpAemGetAudioMapResponsePayloadMinSize);
 
 	// Check payload
-	Deserializer des(commandPayload, commandPayloadLength);
-	entity::model::DescriptorType descriptorType{ entity::model::DescriptorType::Invalid };
-	entity::model::DescriptorIndex descriptorIndex{ 0u };
-	entity::model::MapIndex mapIndex{ 0u };
-	entity::model::MapIndex numberOfMaps{ 0u };
-	std::uint16_t numberOfMappings{ 0u };
-	std::uint16_t reserved{ 0u };
+	auto des = Deserializer{ commandPayload, commandPayloadLength };
+	auto descriptorType = entity::model::DescriptorType{ entity::model::DescriptorType::Invalid };
+	auto descriptorIndex = entity::model::DescriptorIndex{ 0u };
+	auto mapIndex = entity::model::MapIndex{ 0u };
+	auto numberOfMaps = entity::model::MapIndex{ 0u };
+	auto numberOfMappings = std::uint16_t{ 0u };
+	auto reserved = std::uint16_t{ 0u };
+	auto mappings = entity::model::AudioMappings{};
 
-	des >> descriptorType >> descriptorIndex;
-	des >> mapIndex >> numberOfMaps >> numberOfMappings >> reserved;
-
-	// Check variable size
-	auto const mappingsSize = entity::model::AudioMapping::size() * numberOfMappings;
-	if (des.remaining() < mappingsSize) // Malformed packet
-		throw IncorrectPayloadSizeException();
-
-	// Unpack remaining data
-	entity::model::AudioMappings mappings;
-	for (auto index = 0u; index < numberOfMappings; ++index)
+	try
 	{
-		entity::model::AudioMapping mapping;
-		des >> mapping.streamIndex >> mapping.streamChannel >> mapping.clusterOffset >> mapping.clusterChannel;
-		mappings.push_back(mapping);
+		des >> descriptorType >> descriptorIndex;
+		des >> mapIndex >> numberOfMaps >> numberOfMappings >> reserved;
+
+		// Check variable size
+		auto const mappingsSize = entity::model::AudioMapping::size() * numberOfMappings;
+		if (des.remaining() < mappingsSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Unpack remaining data
+		for (auto index = 0u; index < numberOfMappings; ++index)
+		{
+			entity::model::AudioMapping mapping;
+			des >> mapping.streamIndex >> mapping.streamChannel >> mapping.clusterOffset >> mapping.clusterChannel;
+			mappings.push_back(mapping);
+		}
+		AVDECC_ASSERT(des.usedBytes() == (protocol::aemPayload::AecpAemGetAudioMapResponsePayloadMinSize + mappingsSize), "Used more bytes than specified in protocol constant");
+
+		if (des.remaining() != 0)
+		{
+			LOG_AEM_PAYLOAD_TRACE("GetAudioMap Response deserialize warning: Remaining bytes in buffer");
+		}
 	}
-	AVDECC_ASSERT(des.usedBytes() == (protocol::aemPayload::AecpAemGetAudioMapResponsePayloadMinSize + mappingsSize), "Used more bytes than specified in protocol constant");
-
-	if (des.remaining() != 0)
+	catch (std::invalid_argument const&)
 	{
-		LOG_AEM_PAYLOAD_TRACE("GetAudioMap Response deserialize warning: Remaining bytes in buffer");
+		// Only NotImplemented status is allowed as we expect a reflected message (using Command length, so we cannot unpack everything)
+		if (status != entity::LocalEntity::AemCommandStatus::NotImplemented)
+		{
+			throw; // Rethrow if we really have another status
+		}
 	}
 
 	return std::make_tuple(descriptorType, descriptorIndex, mapIndex, numberOfMaps, mappings);
@@ -2471,10 +2572,11 @@ Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeAddAudioMappingsR
 	return serializeAddAudioMappingsCommand(descriptorType, descriptorIndex, mappings);
 }
 
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::AudioMappings> deserializeAddAudioMappingsResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::AudioMappings> deserializeAddAudioMappingsResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as ADD_AUDIO_MAPPINGS Command
 	static_assert(AecpAemAddAudioMappingsResponsePayloadMinSize == AecpAemAddAudioMappingsCommandPayloadMinSize, "ADD_AUDIO_MAPPINGS Response no longer the same as ADD_AUDIO_MAPPINGS Command");
+	checkResponsePayload(payload, status, AecpAemAddAudioMappingsCommandPayloadMinSize, AecpAemAddAudioMappingsResponsePayloadMinSize);
 	return deserializeAddAudioMappingsCommand(payload);
 }
 
@@ -2501,10 +2603,11 @@ Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeRemoveAudioMappin
 	return serializeAddAudioMappingsCommand(descriptorType, descriptorIndex, mappings);
 }
 
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::AudioMappings> deserializeRemoveAudioMappingsResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::AudioMappings> deserializeRemoveAudioMappingsResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as ADD_AUDIO_MAPPINGS Command
 	static_assert(AecpAemRemoveAudioMappingsResponsePayloadMinSize == AecpAemAddAudioMappingsCommandPayloadMinSize, "REMOVE_AUDIO_MAPPINGS Response no longer the same as ADD_AUDIO_MAPPINGS Command");
+	checkResponsePayload(payload, status, AecpAemAddAudioMappingsCommandPayloadMinSize, AecpAemRemoveAudioMappingsResponsePayloadMinSize);
 	return deserializeAddAudioMappingsCommand(payload);
 }
 
@@ -2565,10 +2668,11 @@ Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeStartOperationRes
 	return serializeStartOperationCommand(descriptorType, descriptorIndex, operationID, operationType, memoryBuffer);
 }
 
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::OperationID, entity::model::MemoryObjectOperationType, MemoryBuffer> deserializeStartOperationResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::OperationID, entity::model::MemoryObjectOperationType, MemoryBuffer> deserializeStartOperationResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as START_OPERATION Command
 	static_assert(AecpAemStartOperationResponsePayloadMinSize == AecpAemStartOperationCommandPayloadMinSize, "START_OPERATION Response no longer the same as START_OPERATION Command");
+	checkResponsePayload(payload, status, AecpAemStartOperationCommandPayloadMinSize, AecpAemStartOperationResponsePayloadMinSize);
 	return deserializeStartOperationCommand(payload);
 }
 
@@ -2617,10 +2721,11 @@ Serializer<AecpAemAbortOperationResponsePayloadSize> serializeAbortOperationResp
 	return serializeAbortOperationCommand(descriptorType, descriptorIndex, operationID);
 }
 
-std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::OperationID> deserializeAbortOperationResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity::model::OperationID> deserializeAbortOperationResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as ABORT_OPERATION Command
 	static_assert(AecpAemAbortOperationResponsePayloadSize == AecpAemAbortOperationCommandPayloadSize, "ABORT_OPERATION Response no longer the same as ABORT_OPERATION Command");
+	checkResponsePayload(payload, status, AecpAemAbortOperationCommandPayloadSize, AecpAemAbortOperationResponsePayloadSize);
 	return deserializeAbortOperationCommand(payload);
 }
 
@@ -2643,7 +2748,9 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	auto const commandPayloadLength = payload.second;
 
 	if (commandPayload == nullptr || commandPayloadLength < AecpAemOperationStatusResponsePayloadSize) // Malformed packet
+	{
 		throw IncorrectPayloadSizeException();
+	}
 
 	// Check payload
 	Deserializer des(commandPayload, commandPayloadLength);
@@ -2703,10 +2810,11 @@ Serializer<AecpAemSetMemoryObjectLengthResponsePayloadSize> serializeSetMemoryOb
 	return serializeSetMemoryObjectLengthCommand(configurationIndex, memoryObjectIndex, length);
 }
 
-std::tuple<entity::model::ConfigurationIndex, entity::model::MemoryObjectIndex, std::uint64_t> deserializeSetMemoryObjectLengthResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::ConfigurationIndex, entity::model::MemoryObjectIndex, std::uint64_t> deserializeSetMemoryObjectLengthResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as SET_MEMORY_OBJECT_LENGTH Command
 	static_assert(AecpAemSetMemoryObjectLengthResponsePayloadSize == AecpAemSetMemoryObjectLengthCommandPayloadSize, "SET_MEMORY_OBJECT_LENGTH Response no longer the same as SET_MEMORY_OBJECT_LENGTH Command");
+	checkResponsePayload(payload, status, AecpAemSetMemoryObjectLengthCommandPayloadSize, AecpAemSetMemoryObjectLengthResponsePayloadSize);
 	return deserializeSetMemoryObjectLengthCommand(payload);
 }
 
@@ -2750,10 +2858,11 @@ Serializer<AecpAemGetMemoryObjectLengthResponsePayloadSize> serializeGetMemoryOb
 	return serializeSetMemoryObjectLengthCommand(configurationIndex, memoryObjectIndex, length);
 }
 
-std::tuple<entity::model::ConfigurationIndex, entity::model::MemoryObjectIndex, std::uint64_t> deserializeGetMemoryObjectLengthResponse(AemAecpdu::Payload const& payload)
+std::tuple<entity::model::ConfigurationIndex, entity::model::MemoryObjectIndex, std::uint64_t> deserializeGetMemoryObjectLengthResponse(entity::LocalEntity::AemCommandStatus const status, AemAecpdu::Payload const& payload)
 {
 	// Same as SET_MEMORY_OBJECT_LENGTH Command
 	static_assert(AecpAemGetMemoryObjectLengthResponsePayloadSize == AecpAemSetMemoryObjectLengthCommandPayloadSize, "GET_MEMORY_OBJECT_LENGTH Response no longer the same as SET_MEMORY_OBJECT_LENGTH Command");
+	checkResponsePayload(payload, status, AecpAemSetMemoryObjectLengthCommandPayloadSize, AecpAemGetMemoryObjectLengthResponsePayloadSize);
 	return deserializeSetMemoryObjectLengthCommand(payload);
 }
 
