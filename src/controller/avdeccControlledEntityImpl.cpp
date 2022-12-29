@@ -2252,6 +2252,15 @@ void ControlledEntityImpl::setGetFatalEnumerationError() noexcept
 void ControlledEntityImpl::setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept
 {
 	_isSubscribedToUnsolicitedNotifications = isSubscribed;
+
+	if (isSubscribed && _milanInfo && _milanInfo->protocolVersion == 1)
+	{
+		_expectedSequenceID = protocol::AecpSequenceID{ 0u };
+	}
+	else
+	{
+		_expectedSequenceID = std::nullopt;
+	}
 }
 
 bool ControlledEntityImpl::wasAdvertised() const noexcept
@@ -2287,6 +2296,18 @@ bool ControlledEntityImpl::isRedundantSecondaryStreamOutput(entity::model::Strea
 ControlledEntity::Diagnostics& ControlledEntityImpl::getDiagnostics() noexcept
 {
 	return _diagnostics;
+}
+
+bool ControlledEntityImpl::hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept
+{
+	auto unmatched = false;
+	if (_expectedSequenceID.has_value())
+	{
+		// Compare received sequenceID and expected one
+		unmatched = *_expectedSequenceID != sequenceID;
+		_expectedSequenceID = static_cast<protocol::AecpSequenceID>(sequenceID + 1u);
+	}
+	return unmatched;
 }
 
 // Static methods
