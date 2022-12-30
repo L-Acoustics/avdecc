@@ -1791,7 +1791,7 @@ void CapabilityDelegate::onAecpAemUnsolicitedResponse(protocol::ProtocolInterfac
 			// Process AEM message without any error or answer callbacks, it's not an expected response
 			processAemAecpResponse(aem.getCommandType(), &aecpdu, nullptr, {});
 			// Statistics
-			utils::invokeProtectedMethod(&controller::Delegate::onAemAecpUnsolicitedReceived, _controllerDelegate, &_controllerInterface, aecpdu.getTargetEntityID());
+			utils::invokeProtectedMethod(&controller::Delegate::onAemAecpUnsolicitedReceived, _controllerDelegate, &_controllerInterface, aecpdu.getTargetEntityID(), aecpdu.getSequenceID());
 		}
 	}
 }

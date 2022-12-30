@@ -2393,6 +2393,15 @@ void ControllerImpl::registerUnsol(ControlledEntityImpl* const entity) noexcept
 	_controller->registerUnsolicitedNotifications(entityID, std::bind(&ControllerImpl::onRegisterUnsolicitedNotificationsResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
+void ControllerImpl::unregisterUnsol(ControlledEntityImpl* const entity) noexcept
+{
+	auto const entityID = entity->getEntity().getEntityID();
+
+	// Unregister from unsolicited notifications
+	LOG_CONTROLLER_TRACE(entityID, "unregisterUnsolicitedNotifications ()");
+	_controller->unregisterUnsolicitedNotifications(entityID, std::bind(&ControllerImpl::onUnregisterUnsolicitedNotificationsResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+}
+
 void ControllerImpl::getStaticModel(ControlledEntityImpl* const entity) noexcept
 {
 	// Always start with Entity Descriptor, the response from it will schedule subsequent descriptors queries

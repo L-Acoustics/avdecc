@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - Checking validity of EntityModel given to a ControllerEntity or AggregateEntity
+- Added `sequenceID` parameter to `la::avdecc::entity::controller::Delegate::onAemAecpUnsolicitedReceived`
 
 ### Fixed
 - EntityModel loader correctly set current active configuration

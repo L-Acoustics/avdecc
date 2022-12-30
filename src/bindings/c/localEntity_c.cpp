@@ -330,9 +330,9 @@ private:
 	{
 		la::avdecc::utils::invokeProtectedHandler(_delegate->onAecpResponseTime, _handle, entityID, responseTime.count());
 	}
-	virtual void onAemAecpUnsolicitedReceived(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const& entityID) noexcept override
+	virtual void onAemAecpUnsolicitedReceived(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID) noexcept override
 	{
-		la::avdecc::utils::invokeProtectedHandler(_delegate->onAemAecpUnsolicitedReceived, _handle, entityID);
+		la::avdecc::utils::invokeProtectedHandler(_delegate->onAemAecpUnsolicitedReceived, _handle, entityID, sequenceID);
 	}
 
 	// Private members

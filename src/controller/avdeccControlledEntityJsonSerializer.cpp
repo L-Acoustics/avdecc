@@ -131,6 +131,7 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 			statistics[controller::keyName::ControlledEntityStatistics_AecpUnexpectedResponseCounter] = entity.getAecpUnexpectedResponseCounter();
 			statistics[controller::keyName::ControlledEntityStatistics_AecpResponseAverageTime] = entity.getAecpResponseAverageTime();
 			statistics[controller::keyName::ControlledEntityStatistics_AemAecpUnsolicitedCounter] = entity.getAemAecpUnsolicitedCounter();
+			statistics[controller::keyName::ControlledEntityStatistics_AemAecpUnsolicitedLossCounter] = entity.getAemAecpUnsolicitedLossCounter();
 			statistics[controller::keyName::ControlledEntityStatistics_EnumerationTime] = entity.getEnumerationTime();
 		}
 
@@ -309,6 +310,13 @@ void setEntityStatistics(ControlledEntityImpl& entity, json const& object)
 			if (it != object.end())
 			{
 				entity.setAemAecpUnsolicitedCounter(it->get<std::uint64_t>());
+			}
+		}
+		{
+			auto const it = object.find(controller::keyName::ControlledEntityStatistics_AemAecpUnsolicitedLossCounter);
+			if (it != object.end())
+			{
+				entity.setAemAecpUnsolicitedLossCounter(it->get<std::uint64_t>());
 			}
 		}
 		{

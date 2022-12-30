@@ -123,7 +123,7 @@ int doJob()
 		{
 			outputText(std::string{ "[" } + la::avdecc::utils::toHexString(entityID, true) + "] AECP response time: " + std::to_string(responseTime.count()) + " msec\n");
 		}
-		virtual void onAemAecpUnsolicitedReceived(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const& entityID) noexcept override
+		virtual void onAemAecpUnsolicitedReceived(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const /*sequenceID*/) noexcept override
 		{
 			outputText(std::string{ "[" } + la::avdecc::utils::toHexString(entityID, true) + "] AEM unsolicited message\n");
 		}
