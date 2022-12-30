@@ -709,6 +709,11 @@ std::uint64_t ControlledEntityImpl::getAemAecpUnsolicitedCounter() const noexcep
 	return _aemAecpUnsolicitedCounter;
 }
 
+std::uint64_t ControlledEntityImpl::getAemAecpUnsolicitedLossCounter() const noexcept
+{
+	return _aemAecpUnsolicitedLossCounter;
+}
+
 std::chrono::milliseconds const& ControlledEntityImpl::getEnumerationTime() const noexcept
 {
 	return _enumerationTime;
@@ -1413,6 +1418,11 @@ void ControlledEntityImpl::setAemAecpUnsolicitedCounter(std::uint64_t const valu
 	_aemAecpUnsolicitedCounter = value;
 }
 
+void ControlledEntityImpl::setAemAecpUnsolicitedLossCounter(std::uint64_t const value) noexcept
+{
+	_aemAecpUnsolicitedLossCounter = value;
+}
+
 void ControlledEntityImpl::setEnumerationTime(std::chrono::milliseconds const& value) noexcept
 {
 	_enumerationTime = value;
@@ -1923,6 +1933,12 @@ std::uint64_t ControlledEntityImpl::incrementAemAecpUnsolicitedCounter() noexcep
 {
 	++_aemAecpUnsolicitedCounter;
 	return _aemAecpUnsolicitedCounter;
+}
+
+std::uint64_t ControlledEntityImpl::incrementAemAecpUnsolicitedLossCounter() noexcept
+{
+	++_aemAecpUnsolicitedLossCounter;
+	return _aemAecpUnsolicitedLossCounter;
 }
 
 void ControlledEntityImpl::setStartEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& startTime) noexcept

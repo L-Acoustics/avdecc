@@ -1181,11 +1181,23 @@ void ControllerImpl::onAemAecpUnsolicitedReceived(entity::controller::Interface 
 		{
 			LOG_CONTROLLER_WARN(entityID, "Unsolicited notification lost detected");
 
-			// Immediately set as unsubscribed, we are already loosing packets we don't want to miss the response to our unsubscribe
-			updateUnsolicitedNotificationsSubscription(entity, false);
+			// Update statistics
+			auto const value = entity.incrementAemAecpUnsolicitedLossCounter();
 
-			// Properly (try to) unregister from unsol
-			unregisterUnsol(&entity);
+			// Entity was advertised to the user, notify observers
+			if (entity.wasAdvertised())
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAemAecpUnsolicitedLossCounterChanged, this, &entity, value);
+			}
+
+			// As part of #50 (for now), just unsubscribe from unsolicited notifications
+			{
+				// Immediately set as unsubscribed, we are already loosing packets we don't want to miss the response to our unsubscribe
+				updateUnsolicitedNotificationsSubscription(entity, false);
+
+				// Properly (try to) unregister from unsol
+				unregisterUnsol(&entity);
+			}
 		}
 
 		// Update statistics

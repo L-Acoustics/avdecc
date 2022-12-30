@@ -81,6 +81,7 @@ constexpr auto ControlledEntityStatistics_AecpTimeoutCounter = "aecp_timeout_cou
 constexpr auto ControlledEntityStatistics_AecpUnexpectedResponseCounter = "aecp_unexpected_response_counter";
 constexpr auto ControlledEntityStatistics_AecpResponseAverageTime = "aecp_response_average_time";
 constexpr auto ControlledEntityStatistics_AemAecpUnsolicitedCounter = "aem_aecp_unsolicited_counter";
+constexpr auto ControlledEntityStatistics_AemAecpUnsolicitedLossCounter = "aem_aecp_unsolicited_loss_counter";
 constexpr auto ControlledEntityStatistics_EnumerationTime = "enumeration_time";
 
 /* ControlledEntityDiagnostics */

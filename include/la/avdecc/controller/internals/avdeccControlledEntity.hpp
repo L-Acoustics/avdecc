@@ -186,6 +186,7 @@ public:
 	virtual std::uint64_t getAecpUnexpectedResponseCounter() const noexcept = 0;
 	virtual std::chrono::milliseconds const& getAecpResponseAverageTime() const noexcept = 0;
 	virtual std::uint64_t getAemAecpUnsolicitedCounter() const noexcept = 0;
+	virtual std::uint64_t getAemAecpUnsolicitedLossCounter() const noexcept = 0;
 	virtual std::chrono::milliseconds const& getEnumerationTime() const noexcept = 0;
 
 	// Diagnostics

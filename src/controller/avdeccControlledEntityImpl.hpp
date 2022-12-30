@@ -254,6 +254,7 @@ public:
 	virtual std::uint64_t getAecpUnexpectedResponseCounter() const noexcept override;
 	virtual std::chrono::milliseconds const& getAecpResponseAverageTime() const noexcept override;
 	virtual std::uint64_t getAemAecpUnsolicitedCounter() const noexcept override;
+	virtual std::uint64_t getAemAecpUnsolicitedLossCounter() const noexcept override;
 	virtual std::chrono::milliseconds const& getEnumerationTime() const noexcept override;
 
 	// Diagnostics
@@ -408,6 +409,7 @@ public:
 	void setAecpUnexpectedResponseCounter(std::uint64_t const value) noexcept;
 	void setAecpResponseAverageTime(std::chrono::milliseconds const& value) noexcept;
 	void setAemAecpUnsolicitedCounter(std::uint64_t const value) noexcept;
+	void setAemAecpUnsolicitedLossCounter(std::uint64_t const value) noexcept;
 	void setEnumerationTime(std::chrono::milliseconds const& value) noexcept;
 
 	// Setters of the Diagnostics
@@ -440,6 +442,7 @@ public:
 	std::uint64_t incrementAecpUnexpectedResponseCounter() noexcept;
 	std::chrono::milliseconds const& updateAecpResponseTimeAverage(std::chrono::milliseconds const& responseTime) noexcept;
 	std::uint64_t incrementAemAecpUnsolicitedCounter() noexcept;
+	std::uint64_t incrementAemAecpUnsolicitedLossCounter() noexcept;
 	void setStartEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& startTime) noexcept;
 	void setEndEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& endTime) noexcept;
 
@@ -598,6 +601,7 @@ private:
 	std::chrono::milliseconds _aecpResponseTimeSum{}; // Intermediate variable used by _aecpResponseAverageTime
 	std::chrono::milliseconds _aecpResponseAverageTime{};
 	std::uint64_t _aemAecpUnsolicitedCounter{ 0ull };
+	std::uint64_t _aemAecpUnsolicitedLossCounter{ 0ull };
 	std::chrono::time_point<std::chrono::steady_clock> _enumerationStartTime{}; // Intermediate variable used by _enumerationTime
 	std::chrono::milliseconds _enumerationTime{};
 	// Diagnostics
