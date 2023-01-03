@@ -29,6 +29,7 @@
 #include "avdeccControllerImpl.hpp"
 #include "avdeccControllerLogHelper.hpp"
 #include "avdeccEntityModelCache.hpp"
+#include "entityModelChecksum.hpp"
 
 #ifdef ENABLE_AVDECC_FEATURE_JSON
 #	include "avdeccControllerJsonTypes.hpp"
@@ -5318,6 +5319,13 @@ bool LA_AVDECC_CONTROLLER_CALL_CONVENTION Controller::isMediaClockStreamFormat(e
 
 	// TODO: Maybe check for 1 channel stream
 	return false;
+}
+
+std::string LA_AVDECC_CONTROLLER_CALL_CONVENTION Controller::computeEntityModelChecksum(ControlledEntity const& controlledEntity, std::uint32_t const checksumVersion) noexcept
+{
+	auto visitor = ChecksumEntityModelVisitor{ checksumVersion };
+	controlledEntity.accept(&visitor);
+	return visitor.getHash();
 }
 
 
