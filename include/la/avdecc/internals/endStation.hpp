@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2022, L-Acoustics and its contributors
+* Copyright (C) 2016-2023, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -53,6 +53,7 @@ public:
 		InterfaceNotFound = 3, /**< Specified interface not found. */
 		InterfaceInvalid = 4, /**< Specified interface is invalid. */
 		DuplicateEntityID = 5, /**< EntityID not available (either duplicate, or no EntityID left on the local computer). */
+		InvalidEntityModel = 6, /**< Provided EntityModel is invalid. */
 		InternalError = 99, /**< Internal error, please report the issue. */
 	};
 

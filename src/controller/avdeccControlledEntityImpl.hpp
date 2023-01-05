@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2022, L-Acoustics and its contributors
+* Copyright (C) 2016-2023, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -254,6 +254,7 @@ public:
 	virtual std::uint64_t getAecpUnexpectedResponseCounter() const noexcept override;
 	virtual std::chrono::milliseconds const& getAecpResponseAverageTime() const noexcept override;
 	virtual std::uint64_t getAemAecpUnsolicitedCounter() const noexcept override;
+	virtual std::uint64_t getAemAecpUnsolicitedLossCounter() const noexcept override;
 	virtual std::chrono::milliseconds const& getEnumerationTime() const noexcept override;
 
 	// Diagnostics
@@ -408,6 +409,7 @@ public:
 	void setAecpUnexpectedResponseCounter(std::uint64_t const value) noexcept;
 	void setAecpResponseAverageTime(std::chrono::milliseconds const& value) noexcept;
 	void setAemAecpUnsolicitedCounter(std::uint64_t const value) noexcept;
+	void setAemAecpUnsolicitedLossCounter(std::uint64_t const value) noexcept;
 	void setEnumerationTime(std::chrono::milliseconds const& value) noexcept;
 
 	// Setters of the Diagnostics
@@ -440,6 +442,7 @@ public:
 	std::uint64_t incrementAecpUnexpectedResponseCounter() noexcept;
 	std::chrono::milliseconds const& updateAecpResponseTimeAverage(std::chrono::milliseconds const& responseTime) noexcept;
 	std::uint64_t incrementAemAecpUnsolicitedCounter() noexcept;
+	std::uint64_t incrementAemAecpUnsolicitedLossCounter() noexcept;
 	void setStartEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& startTime) noexcept;
 	void setEndEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& endTime) noexcept;
 
@@ -494,6 +497,7 @@ public:
 	bool isRedundantSecondaryStreamInput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
 	bool isRedundantSecondaryStreamOutput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Secondary Stream (false for Primary and non-redundant streams)
 	Diagnostics& getDiagnostics() noexcept;
+	bool hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept;
 
 	// Static methods
 	static std::string dynamicInfoTypeToString(DynamicInfoType const dynamicInfoType) noexcept;
@@ -576,6 +580,7 @@ private:
 	UniqueIdentifier _owningControllerID{}; // EID of the controller currently owning (who acquired) this entity
 	model::LockState _lockState{ model::LockState::Undefined };
 	UniqueIdentifier _lockingControllerID{}; // EID of the controller currently locking (who locked) this entity
+	std::optional<protocol::AecpSequenceID> _expectedSequenceID{ std::nullopt };
 	// Milan specific information
 	std::optional<entity::model::MilanInfo> _milanInfo{ std::nullopt };
 	// Entity variables
@@ -596,6 +601,7 @@ private:
 	std::chrono::milliseconds _aecpResponseTimeSum{}; // Intermediate variable used by _aecpResponseAverageTime
 	std::chrono::milliseconds _aecpResponseAverageTime{};
 	std::uint64_t _aemAecpUnsolicitedCounter{ 0ull };
+	std::uint64_t _aemAecpUnsolicitedLossCounter{ 0ull };
 	std::chrono::time_point<std::chrono::steady_clock> _enumerationStartTime{}; // Intermediate variable used by _enumerationTime
 	std::chrono::milliseconds _enumerationTime{};
 	// Diagnostics

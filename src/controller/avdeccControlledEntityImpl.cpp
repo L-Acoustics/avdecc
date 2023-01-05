@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2022, L-Acoustics and its contributors
+* Copyright (C) 2016-2023, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -709,6 +709,11 @@ std::uint64_t ControlledEntityImpl::getAemAecpUnsolicitedCounter() const noexcep
 	return _aemAecpUnsolicitedCounter;
 }
 
+std::uint64_t ControlledEntityImpl::getAemAecpUnsolicitedLossCounter() const noexcept
+{
+	return _aemAecpUnsolicitedLossCounter;
+}
+
 std::chrono::milliseconds const& ControlledEntityImpl::getEnumerationTime() const noexcept
 {
 	return _enumerationTime;
@@ -1413,6 +1418,11 @@ void ControlledEntityImpl::setAemAecpUnsolicitedCounter(std::uint64_t const valu
 	_aemAecpUnsolicitedCounter = value;
 }
 
+void ControlledEntityImpl::setAemAecpUnsolicitedLossCounter(std::uint64_t const value) noexcept
+{
+	_aemAecpUnsolicitedLossCounter = value;
+}
+
 void ControlledEntityImpl::setEnumerationTime(std::chrono::milliseconds const& value) noexcept
 {
 	_enumerationTime = value;
@@ -1925,6 +1935,12 @@ std::uint64_t ControlledEntityImpl::incrementAemAecpUnsolicitedCounter() noexcep
 	return _aemAecpUnsolicitedCounter;
 }
 
+std::uint64_t ControlledEntityImpl::incrementAemAecpUnsolicitedLossCounter() noexcept
+{
+	++_aemAecpUnsolicitedLossCounter;
+	return _aemAecpUnsolicitedLossCounter;
+}
+
 void ControlledEntityImpl::setStartEnumerationTime(std::chrono::time_point<std::chrono::steady_clock>&& startTime) noexcept
 {
 	_enumerationStartTime = std::move(startTime);
@@ -2252,6 +2268,15 @@ void ControlledEntityImpl::setGetFatalEnumerationError() noexcept
 void ControlledEntityImpl::setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept
 {
 	_isSubscribedToUnsolicitedNotifications = isSubscribed;
+
+	if (isSubscribed && _milanInfo && _milanInfo->protocolVersion == 1)
+	{
+		_expectedSequenceID = protocol::AecpSequenceID{ 0u };
+	}
+	else
+	{
+		_expectedSequenceID = std::nullopt;
+	}
 }
 
 bool ControlledEntityImpl::wasAdvertised() const noexcept
@@ -2287,6 +2312,18 @@ bool ControlledEntityImpl::isRedundantSecondaryStreamOutput(entity::model::Strea
 ControlledEntity::Diagnostics& ControlledEntityImpl::getDiagnostics() noexcept
 {
 	return _diagnostics;
+}
+
+bool ControlledEntityImpl::hasLostUnsolicitedNotification(protocol::AecpSequenceID const sequenceID) noexcept
+{
+	auto unmatched = false;
+	if (_expectedSequenceID.has_value())
+	{
+		// Compare received sequenceID and expected one
+		unmatched = *_expectedSequenceID != sequenceID;
+		_expectedSequenceID = static_cast<protocol::AecpSequenceID>(sequenceID + 1u);
+	}
+	return unmatched;
 }
 
 // Static methods

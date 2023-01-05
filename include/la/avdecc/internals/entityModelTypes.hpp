@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2022, L-Acoustics and its contributors
+* Copyright (C) 2016-2023, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -1331,7 +1331,7 @@ public:
 
 	constexpr ControlValues() noexcept {}
 
-	template<class ValueDetailsType, typename Traits = control_value_details_traits<std::decay_t<ValueDetailsType>>>
+	template<class ValueDetailsType, typename Traits = control_value_details_traits<std::decay_t<ValueDetailsType>>, typename = std::enable_if_t<!std::is_same_v<std::decay_t<ValueDetailsType>, ControlValues>>>
 	explicit ControlValues(ValueDetailsType const& values) noexcept
 		: _isValid{ true }
 		, _type{ Traits::control_value_type }
@@ -1344,7 +1344,7 @@ public:
 		static_assert(Traits::static_dynamic_counts_identical.has_value(), "ControlValues::ControlValues, control_value_details_traits::static_dynamic_counts_identical trait not defined for requested ValueDetailsType.");
 	}
 
-	template<class ValueDetailsType, typename Traits = control_value_details_traits<std::decay_t<ValueDetailsType>>>
+	template<class ValueDetailsType, typename Traits = control_value_details_traits<std::decay_t<ValueDetailsType>>, typename = std::enable_if_t<!std::is_same_v<std::decay_t<ValueDetailsType>, ControlValues>>>
 	explicit ControlValues(ValueDetailsType&& values) noexcept
 		: _isValid{ true }
 		, _type{ Traits::control_value_type }

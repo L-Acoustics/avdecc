@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2022, L-Acoustics and its contributors
+* Copyright (C) 2016-2023, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -672,12 +672,20 @@ EntityTree::ConfigurationTrees readConfigurationTrees(json const& object, Flags 
 		if (flags.test(Flag::ProcessDynamicModel))
 		{
 			get_optional_value(j, keyName::Node_DynamicInformation, config.dynamicModel);
+			// Set active configuration
+			if (currentConfiguration && (*currentConfiguration == configurationIndex))
+			{
+				config.dynamicModel.isActiveConfiguration = true;
+			}
 		}
 
 		auto const ignoreDynamicModel = currentConfiguration ? (*currentConfiguration != configurationIndex) : false;
 
 		// Read AudioUnits
-		readAudioUnitModels(j.at(keyName::NodeName_AudioUnitDescriptors), flags, c, config, ignoreDynamicModel);
+		if (auto const jtree = j.find(keyName::NodeName_AudioUnitDescriptors); jtree != j.end())
+		{
+			readAudioUnitModels(*jtree, flags, c, config, ignoreDynamicModel);
+		}
 
 		// Read StreamInputs
 		readLeafModels(j, flags, keyName::NodeName_StreamInputDescriptors, c.nextExpectedStreamInputIndex, config.streamInputModels, ignoreDynamicModel);
@@ -695,7 +703,10 @@ EntityTree::ConfigurationTrees readConfigurationTrees(json const& object, Flags 
 		readLeafModels(j, flags, keyName::NodeName_MemoryObjectDescriptors, c.nextExpectedMemoryObjectIndex, config.memoryObjectModels, ignoreDynamicModel);
 
 		// Read Locales
-		readLocaleModels(j.at(keyName::NodeName_LocaleDescriptors), flags, c, config, ignoreDynamicModel);
+		if (auto const jtree = j.find(keyName::NodeName_LocaleDescriptors); jtree != j.end())
+		{
+			readLocaleModels(*jtree, flags, c, config, ignoreDynamicModel);
+		}
 
 		// Read Controls
 		readLeafModels(j, flags, keyName::NodeName_ControlDescriptors, c.nextExpectedControlIndex, config.controlModels, ignoreDynamicModel);

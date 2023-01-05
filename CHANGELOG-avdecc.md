@@ -4,6 +4,15 @@ All notable changes to the Avdecc Library will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [3.4.0] - 2023-01-05
+### Added
+- Checking validity of EntityModel given to a ControllerEntity or AggregateEntity
+- Added `sequenceID` parameter to `la::avdecc::entity::controller::Delegate::onAemAecpUnsolicitedReceived`
+
+### Fixed
+- EntityModel loader correctly set current active configuration
+- Better handling of NOT_SUPPORTED AEM-AECP responses
+
 ## [3.3.0] - 2022-11-22
 ### Added
 - A la::avdecc::entity::model::EntityTree can be fed into a LocalEntity so it responds to AEM query commands (currently limited to ENTITY descriptor)

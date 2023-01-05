@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2022, L-Acoustics and its contributors
+* Copyright (C) 2016-2023, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -40,7 +40,9 @@ namespace model
 class AemHandler final
 {
 public:
-	AemHandler(entity::Entity const& entity, entity::model::EntityTree const* const entityModelTree) noexcept;
+	AemHandler(entity::Entity const& entity, entity::model::EntityTree const* const entityModelTree);
+
+	static void validateEntityModel(entity::model::EntityTree const* const entityModelTree);
 
 	bool onUnhandledAecpAemCommand(protocol::ProtocolInterface* const pi, protocol::AemAecpdu const& aem) const noexcept;
 
@@ -52,6 +54,7 @@ public:
 
 private:
 	EntityDescriptor buildEntityDescriptor() const noexcept;
+	ConfigurationDescriptor buildConfigurationDescriptor(entity::model::ConfigurationIndex const configIndex) const;
 
 	entity::Entity const& _entity;
 	entity::model::EntityTree const* _entityModelTree{ nullptr };

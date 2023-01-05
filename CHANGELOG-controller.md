@@ -4,6 +4,14 @@ All notable changes to the Avdecc Controller Library will be documented in this 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [3.4.0] - 2023-01-05
+### Added
+- Checking validity of EntityModel given when creating a controller
+- [Checking validity of EntityModel when discovering a device](https://github.com/L-Acoustics/avdecc/issues/80)
+- [Detection for loss of unsolicited notifications for Milan devices](https://github.com/L-Acoustics/avdecc/issues/50)
+- Diagnostics counter for when loss of unsolicited notifications is detected
+- [API to compute the checksum of the AEM of a ControlledEntity](https://github.com/L-Acoustics/avdecc/issues/124)
+
 ## [3.3.0] - 2022-11-22
 ### Added
 - [Computation of the Media Clock Chain for each controlled entity](https://github.com/L-Acoustics/avdecc/issues/111)

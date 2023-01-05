@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2022, L-Acoustics and its contributors
+* Copyright (C) 2016-2023, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -58,6 +58,15 @@ static model::MilanInfo const s_emptyMilanInfo{}; // Empty MilanInfo used by tim
 /* ************************************************************************** */
 /* Exceptions                                                                 */
 /* ************************************************************************** */
+class InvalidEntityModelException final : public Exception
+{
+public:
+	InvalidEntityModelException()
+		: Exception("Invalid Entity Model")
+	{
+	}
+};
+
 class InvalidDescriptorTypeException final : public Exception
 {
 public:
@@ -70,7 +79,10 @@ public:
 /* ************************************************************************** */
 /* CapabilityDelegate life cycle                                              */
 /* ************************************************************************** */
-CapabilityDelegate::CapabilityDelegate(protocol::ProtocolInterface* const protocolInterface, controller::Delegate* controllerDelegate, Interface& controllerInterface, Entity const& entity, model::EntityTree const* const entityModelTree) noexcept
+// clang-format off
+// Disabling formatting for this constructor as try-catching initializer is not properly supported
+CapabilityDelegate::CapabilityDelegate(protocol::ProtocolInterface* const protocolInterface, controller::Delegate* controllerDelegate, Interface& controllerInterface, Entity const& entity, model::EntityTree const* const entityModelTree)
+try
 	: _protocolInterface{ protocolInterface }
 	, _controllerDelegate{ controllerDelegate }
 	, _controllerInterface{ controllerInterface }
@@ -78,6 +90,11 @@ CapabilityDelegate::CapabilityDelegate(protocol::ProtocolInterface* const protoc
 	, _aemHandler{ entity, entityModelTree }
 {
 }
+catch (Exception const&)
+{
+	throw InvalidEntityModelException();
+}
+// clang-format on
 
 CapabilityDelegate::~CapabilityDelegate() noexcept {}
 
@@ -1774,7 +1791,7 @@ void CapabilityDelegate::onAecpAemUnsolicitedResponse(protocol::ProtocolInterfac
 			// Process AEM message without any error or answer callbacks, it's not an expected response
 			processAemAecpResponse(aem.getCommandType(), &aecpdu, nullptr, {});
 			// Statistics
-			utils::invokeProtectedMethod(&controller::Delegate::onAemAecpUnsolicitedReceived, _controllerDelegate, &_controllerInterface, aecpdu.getTargetEntityID());
+			utils::invokeProtectedMethod(&controller::Delegate::onAemAecpUnsolicitedReceived, _controllerDelegate, &_controllerInterface, aecpdu.getTargetEntityID(), aecpdu.getSequenceID());
 		}
 	}
 }
@@ -2007,7 +2024,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::AcquireEntity.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[flags, ownerID, descriptorType, descriptorIndex] = protocol::aemPayload::deserializeAcquireEntityResponse(aem.getPayload());
+				auto const[flags, ownerID, descriptorType, descriptorIndex] = protocol::aemPayload::deserializeAcquireEntityResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				if ((flags & protocol::AemAcquireEntityFlags::Release) == protocol::AemAcquireEntityFlags::Release)
@@ -2032,7 +2049,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::LockEntity.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[flags, lockedID, descriptorType, descriptorIndex] = protocol::aemPayload::deserializeLockEntityResponse(aem.getPayload());
+				auto const[flags, lockedID, descriptorType, descriptorIndex] = protocol::aemPayload::deserializeLockEntityResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				if ((flags & protocol::AemLockEntityFlags::Unlock) == protocol::AemLockEntityFlags::Unlock)
@@ -2072,7 +2089,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 			{
 				auto const payload = aem.getPayload();
 				// Deserialize payload
-				auto const[commonSize, configurationIndex, descriptorType, descriptorIndex] = protocol::aemPayload::deserializeReadDescriptorCommonResponse(payload);
+				auto const[commonSize, configurationIndex, descriptorType, descriptorIndex] = protocol::aemPayload::deserializeReadDescriptorCommonResponse(status, payload);
 				auto const targetID = aem.getTargetEntityID();
 				auto const aemStatus = protocol::AemAecpStatus(static_cast<protocol::AemAecpStatus::value_type>(status));
 
@@ -2287,7 +2304,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::SetConfiguration.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[configurationIndex] = protocol::aemPayload::deserializeSetConfigurationResponse(aem.getPayload());
+				auto const[configurationIndex] = protocol::aemPayload::deserializeSetConfigurationResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2302,7 +2319,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::GetConfiguration.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[configurationIndex] = protocol::aemPayload::deserializeGetConfigurationResponse(aem.getPayload());
+				auto const[configurationIndex] = protocol::aemPayload::deserializeGetConfigurationResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2313,7 +2330,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::SetStreamFormat.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[descriptorType, descriptorIndex, streamFormat] = protocol::aemPayload::deserializeSetStreamFormatResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex, streamFormat] = protocol::aemPayload::deserializeSetStreamFormatResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2341,7 +2358,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::GetStreamFormat.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[descriptorType, descriptorIndex, streamFormat] = protocol::aemPayload::deserializeGetStreamFormatResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex, streamFormat] = protocol::aemPayload::deserializeGetStreamFormatResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2361,7 +2378,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::SetStreamInfo.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[descriptorType, descriptorIndex, streamInfo] = protocol::aemPayload::deserializeSetStreamInfoResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex, streamInfo] = protocol::aemPayload::deserializeSetStreamInfoResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2389,7 +2406,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::GetStreamInfo.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[descriptorType, descriptorIndex, streamInfo] = protocol::aemPayload::deserializeGetStreamInfoResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex, streamInfo] = protocol::aemPayload::deserializeGetStreamInfoResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2417,7 +2434,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::SetName.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[descriptorType, descriptorIndex, nameIndex, configurationIndex, name] = protocol::aemPayload::deserializeSetNameResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex, nameIndex, configurationIndex, name] = protocol::aemPayload::deserializeSetNameResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2639,7 +2656,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::GetName.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[descriptorType, descriptorIndex, nameIndex, configurationIndex, name] = protocol::aemPayload::deserializeGetNameResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex, nameIndex, configurationIndex, name] = protocol::aemPayload::deserializeGetNameResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2813,7 +2830,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::SetAssociationID.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[associationID] = protocol::aemPayload::deserializeSetAssociationIDResponse(aem.getPayload());
+				auto const[associationID] = protocol::aemPayload::deserializeSetAssociationIDResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2828,7 +2845,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::GetAssociationID.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[associationID] = protocol::aemPayload::deserializeGetAssociationIDResponse(aem.getPayload());
+				auto const[associationID] = protocol::aemPayload::deserializeGetAssociationIDResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2839,7 +2856,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::SetSamplingRate.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[descriptorType, descriptorIndex, samplingRate] = protocol::aemPayload::deserializeSetSamplingRateResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex, samplingRate] = protocol::aemPayload::deserializeSetSamplingRateResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2875,7 +2892,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::GetSamplingRate.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[descriptorType, descriptorIndex, samplingRate] = protocol::aemPayload::deserializeGetSamplingRateResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex, samplingRate] = protocol::aemPayload::deserializeGetSamplingRateResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2899,7 +2916,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::SetClockSource.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[descriptorType, descriptorIndex, clockSourceIndex] = protocol::aemPayload::deserializeSetClockSourceResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex, clockSourceIndex] = protocol::aemPayload::deserializeSetClockSourceResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2914,7 +2931,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::GetClockSource.getValue(),[](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[descriptorType, descriptorIndex, clockSourceIndex] = protocol::aemPayload::deserializeGetClockSourceResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex, clockSourceIndex] = protocol::aemPayload::deserializeGetClockSourceResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2925,7 +2942,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::SetControl.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const [descriptorType, descriptorIndex, packedControlValues] = protocol::aemPayload::deserializeSetControlResponse(aem.getPayload());
+				auto const [descriptorType, descriptorIndex, packedControlValues] = protocol::aemPayload::deserializeSetControlResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2940,7 +2957,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::GetControl.getValue(),[](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const [descriptorType, descriptorIndex, controlValues] = protocol::aemPayload::deserializeGetControlResponse(aem.getPayload());
+				auto const [descriptorType, descriptorIndex, controlValues] = protocol::aemPayload::deserializeGetControlResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2951,7 +2968,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::StartStreaming.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[descriptorType, descriptorIndex] = protocol::aemPayload::deserializeStartStreamingResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex] = protocol::aemPayload::deserializeStartStreamingResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -2979,7 +2996,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::StopStreaming.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[descriptorType, descriptorIndex] = protocol::aemPayload::deserializeStopStreamingResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex] = protocol::aemPayload::deserializeStopStreamingResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -3028,7 +3045,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::GetAvbInfo.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[descriptorType, descriptorIndex, avbInfo] = protocol::aemPayload::deserializeGetAvbInfoResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex, avbInfo] = protocol::aemPayload::deserializeGetAvbInfoResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -3048,7 +3065,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::GetAsPath.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[descriptorIndex, asPath] = protocol::aemPayload::deserializeGetAsPathResponse(aem.getPayload());
+				auto const[descriptorIndex, asPath] = protocol::aemPayload::deserializeGetAsPathResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -3063,7 +3080,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::GetCounters.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[descriptorType, descriptorIndex, validFlags, counters] = protocol::aemPayload::deserializeGetCountersResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex, validFlags, counters] = protocol::aemPayload::deserializeGetCountersResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -3138,7 +3155,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::Reboot.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[descriptorType, descriptorIndex] = protocol::aemPayload::deserializeRebootResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex] = protocol::aemPayload::deserializeRebootResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -3168,7 +3185,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::GetAudioMap.getValue(), []([[maybe_unused]] controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[descriptorType, descriptorIndex, mapIndex, numberOfMaps, mappings] = protocol::aemPayload::deserializeGetAudioMapResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex, mapIndex, numberOfMaps, mappings] = protocol::aemPayload::deserializeGetAudioMapResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -3200,7 +3217,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::AddAudioMappings.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[descriptorType, descriptorIndex, mappings] = protocol::aemPayload::deserializeAddAudioMappingsResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex, mappings] = protocol::aemPayload::deserializeAddAudioMappingsResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -3228,7 +3245,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::RemoveAudioMappings.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[descriptorType, descriptorIndex, mappings] = protocol::aemPayload::deserializeRemoveAudioMappingsResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex, mappings] = protocol::aemPayload::deserializeRemoveAudioMappingsResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -3256,7 +3273,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::StartOperation.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[descriptorType, descriptorIndex, operationID, operationType, memoryBuffer] = protocol::aemPayload::deserializeStartOperationResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex, operationID, operationType, memoryBuffer] = protocol::aemPayload::deserializeStartOperationResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -3267,7 +3284,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::AbortOperation.getValue(), [](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[descriptorType, descriptorIndex, operationID] = protocol::aemPayload::deserializeAbortOperationResponse(aem.getPayload());
+				auto const[descriptorType, descriptorIndex, operationID] = protocol::aemPayload::deserializeAbortOperationResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -3290,7 +3307,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::SetMemoryObjectLength.getValue(), [](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[configurationIndex, memoryObjectIndex, length] = protocol::aemPayload::deserializeSetMemoryObjectLengthResponse(aem.getPayload());
+				auto const[configurationIndex, memoryObjectIndex, length] = protocol::aemPayload::deserializeSetMemoryObjectLengthResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
@@ -3305,7 +3322,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 		{ protocol::AemCommandType::GetMemoryObjectLength.getValue(),[](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const[configurationIndex, memoryObjectIndex, length] = protocol::aemPayload::deserializeGetMemoryObjectLengthResponse(aem.getPayload());
+				auto const[configurationIndex, memoryObjectIndex, length] = protocol::aemPayload::deserializeGetMemoryObjectLengthResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers

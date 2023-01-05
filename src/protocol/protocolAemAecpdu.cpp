@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2022, L-Acoustics and its contributors
+* Copyright (C) 2016-2023, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -69,9 +69,8 @@ void LA_AVDECC_CALL_CONVENTION AemAecpdu::setCommandSpecificData(void const* con
 	}
 
 	_commandSpecificDataLength = commandSpecificDataLength;
-	if (_commandSpecificDataLength > 0)
+	if (_commandSpecificDataLength > 0 && AVDECC_ASSERT_WITH_RET(commandSpecificData != nullptr, "commandSpecificData must not be nullptr"))
 	{
-		AVDECC_ASSERT(commandSpecificData != nullptr, "commandSpecificData is nullptr");
 		std::memcpy(_commandSpecificData.data(), commandSpecificData, _commandSpecificDataLength);
 	}
 	// Don't forget to update parent's specific data length field
