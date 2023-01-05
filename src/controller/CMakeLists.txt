@@ -39,6 +39,7 @@ set (HEADER_FILES_COMMON
 	avdeccControlledEntityImpl.hpp
 	avdeccControllerLogHelper.hpp
 	avdeccEntityModelCache.hpp
+	entityModelChecksum.hpp
 )
 
 set (SOURCE_FILES_COMMON
@@ -48,6 +49,7 @@ set (SOURCE_FILES_COMMON
 	avdeccControllerImplHandlers.cpp
 	avdeccControllerImplOverrides.cpp
 	avdeccControlledEntityImpl.cpp
+	entityModelChecksum.cpp
 )
 
 # Features
