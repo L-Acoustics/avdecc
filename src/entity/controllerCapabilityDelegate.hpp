@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2022, L-Acoustics and its contributors
+* Copyright (C) 2016-2023, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -45,7 +45,7 @@ public:
 	/* ************************************************************************** */
 	/* CapabilityDelegate life cycle                                              */
 	/* ************************************************************************** */
-	CapabilityDelegate(protocol::ProtocolInterface* const protocolInterface, controller::Delegate* controllerDelegate, Interface& controllerInterface, Entity const& entity, model::EntityTree const* const entityModelTree) noexcept;
+	CapabilityDelegate(protocol::ProtocolInterface* const protocolInterface, controller::Delegate* controllerDelegate, Interface& controllerInterface, Entity const& entity, model::EntityTree const* const entityModelTree);
 	virtual ~CapabilityDelegate() noexcept;
 
 	/* ************************************************************************** */

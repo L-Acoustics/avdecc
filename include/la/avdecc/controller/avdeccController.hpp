@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2022, L-Acoustics and its contributors
+* Copyright (C) 2016-2023, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -124,6 +124,7 @@ class Controller : public la::avdecc::utils::Subject<Controller, std::recursive_
 public:
 	using UniquePointer = std::unique_ptr<Controller, void (*)(Controller*)>;
 	using DeviceMemoryBuffer = MemoryBuffer;
+	static std::uint32_t constexpr ChecksumVersion = 1u;
 
 	enum class Error
 	{
@@ -133,6 +134,7 @@ public:
 		InterfaceNotFound = 3, /**< Specified interface not found. */
 		InterfaceInvalid = 4, /**< Specified interface is invalid. */
 		DuplicateProgID = 5, /**< Specified ProgID is already in use on the local computer. */
+		InvalidEntityModel = 6, /**< Provided EntityModel is invalid. */
 		InternalError = 99, /**< Internal error, please report the issue. */
 	};
 
@@ -283,11 +285,18 @@ public:
 		virtual void onMediaClockChainChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::entity::model::ClockDomainIndex const /*clockDomainIndex*/, la::avdecc::controller::model::MediaClockChain const& /*mcChain*/) noexcept {}
 
 		// Statistics
+		/** When the count of AECP retry changed */
 		virtual void onAecpRetryCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept {}
+		/** When the count of AECP timeout changed */
 		virtual void onAecpTimeoutCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept {}
+		/** When the count of AECP unexpected response changed */
 		virtual void onAecpUnexpectedResponseCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept {}
+		/** When the AECP average response time changed */
 		virtual void onAecpResponseAverageTimeChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::chrono::milliseconds const& /*value*/) noexcept {}
+		/** When the count of AEM-AECP unsolicited notifications changed */
 		virtual void onAemAecpUnsolicitedCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept {}
+		/** When the count of lost AEM-AECP unsolicited notifications changed */
+		virtual void onAemAecpUnsolicitedLossCounterChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, std::uint64_t const /*value*/) noexcept {}
 
 		// Diagnostics
 		virtual void onDiagnosticsChanged(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::ControlledEntity::Diagnostics const& /*diags*/) noexcept {}
@@ -506,6 +515,8 @@ public:
 	/** Returns the StreamFormat among the provided availableFormats, that best matches desiredStreamFormat, using clockValidator delegate callback. Returns invalid StreamFormat if none is available. */
 	static LA_AVDECC_CONTROLLER_API entity::model::StreamFormat LA_AVDECC_CONTROLLER_CALL_CONVENTION chooseBestStreamFormat(entity::model::StreamFormats const& availableFormats, entity::model::StreamFormat const desiredStreamFormat, std::function<bool(bool const isDesiredClockSync, bool const isAvailableClockSync)> const& clockValidator) noexcept;
 	static LA_AVDECC_CONTROLLER_API bool LA_AVDECC_CONTROLLER_CALL_CONVENTION isMediaClockStreamFormat(entity::model::StreamFormat const streamFormat) noexcept;
+	/** Returns a checksum of the static entity model of the given ControlledEntity for the given checksumVersion (defaults to the maximum checksum version supported by the library) */
+	static LA_AVDECC_CONTROLLER_API std::string LA_AVDECC_CONTROLLER_CALL_CONVENTION computeEntityModelChecksum(ControlledEntity const& controlledEntity, std::uint32_t const checksumVersion = ChecksumVersion) noexcept;
 
 	// Deleted compiler auto-generated methods
 	Controller(Controller const&) = delete;

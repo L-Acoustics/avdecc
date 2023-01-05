@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2022, L-Acoustics and its contributors
+* Copyright (C) 2016-2023, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -121,6 +121,24 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 				entity.clearEnumerationStep(ControlledEntityImpl::EnumerationStep::RegisterUnsol);
 				checkEnumerationSteps(&entity);
 			}
+		}
+	}
+}
+
+void ControllerImpl::onUnregisterUnsolicitedNotificationsResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onDeregisterUnsolicitedNotificationsResult: {}", entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+
+		if (!!status)
+		{
+			entity.setSubscribedToUnsolicitedNotifications(false);
 		}
 	}
 }

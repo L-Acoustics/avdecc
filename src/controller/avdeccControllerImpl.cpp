@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2022, L-Acoustics and its contributors
+* Copyright (C) 2016-2023, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -29,6 +29,7 @@
 #include "avdeccControllerImpl.hpp"
 #include "avdeccControllerLogHelper.hpp"
 #include "avdeccEntityModelCache.hpp"
+#include "entityModelChecksum.hpp"
 
 #ifdef ENABLE_AVDECC_FEATURE_JSON
 #	include "avdeccControllerJsonTypes.hpp"
@@ -42,6 +43,8 @@
 
 #include <fstream>
 #include <unordered_set>
+#include <map>
+#include <utility>
 
 // According to clarification (from IEEE1722.1 call) a device should always send the complete, up-to-date, status in a GET/SET_STREAM_INFO response (either unsolicited or not)
 // This means that we should always replace the previously stored StreamInfo data with the last one received
@@ -2391,6 +2394,15 @@ void ControllerImpl::registerUnsol(ControlledEntityImpl* const entity) noexcept
 	_controller->registerUnsolicitedNotifications(entityID, std::bind(&ControllerImpl::onRegisterUnsolicitedNotificationsResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
+void ControllerImpl::unregisterUnsol(ControlledEntityImpl* const entity) noexcept
+{
+	auto const entityID = entity->getEntity().getEntityID();
+
+	// Unregister from unsolicited notifications
+	LOG_CONTROLLER_TRACE(entityID, "unregisterUnsolicitedNotifications ()");
+	_controller->unregisterUnsolicitedNotifications(entityID, std::bind(&ControllerImpl::onUnregisterUnsolicitedNotificationsResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+}
+
 void ControllerImpl::getStaticModel(ControlledEntityImpl* const entity) noexcept
 {
 	// Always start with Entity Descriptor, the response from it will schedule subsequent descriptors queries
@@ -3049,6 +3061,214 @@ void ControllerImpl::validateRedundancy(ControlledEntityImpl& controlledEntity) 
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 }
 
+void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity) noexcept
+{
+	auto const& e = controlledEntity.getEntity();
+	auto const entityID = e.getEntityID();
+	auto const isAemSupported = e.getEntityCapabilities().test(entity::EntityCapability::AemSupported);
+
+	// If AEM is supported
+	if (isAemSupported)
+	{
+		// [IEEE1722.1 Clause 7.2.1] A device is required to have at least one Configuration Descriptor
+		if (!controlledEntity.hasAnyConfiguration())
+		{
+			LOG_CONTROLLER_WARN(entityID, "[IEEE1722.1 Clause 7.2.1] A device is required to have at least one Configuration Descriptor");
+			// Flag the entity as "Not fully IEEE1722.1 compliant"
+			removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			return;
+		}
+
+		// Check IEEE1722.1 aemxml/json requirements
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+		try
+		{
+			// Try to serialize the entity model and check for errors
+			entity::model::jsonSerializer::createJsonObject(controlledEntity.getEntityTree(), entity::model::jsonSerializer::Flags{ entity::model::jsonSerializer::Flag::ProcessStaticModel, entity::model::jsonSerializer::Flag::ProcessDynamicModel });
+		}
+		catch (json::exception const&)
+		{
+			AVDECC_ASSERT(false, "json::exception is not expected to be thrown here");
+		}
+		catch (avdecc::jsonSerializer::SerializationException const& e)
+		{
+			if (e.getError() == avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex)
+			{
+				LOG_CONTROLLER_WARN(entityID, "[IEEE1722.1 Clause 7.2] Invalid Descriptor Numbering: {}", e.what());
+				// Flag the entity as "Not fully IEEE1722.1 compliant"
+				removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			}
+		}
+		catch (...)
+		{
+			AVDECC_ASSERT(false, "Exception type other than avdecc::jsonSerializer::SerializationException are not expected to be thrown here");
+		}
+#endif // ENABLE_AVDECC_FEATURE_JSON
+
+		// Check Milan requirements
+		try
+		{
+			using CapableStreams = std::map<entity::model::StreamIndex, bool>;
+			auto const validateStreamFormats = [](auto const& entityID, auto& controlledEntity, auto const& streams)
+			{
+				auto aafCapableStreams = CapableStreams{};
+				auto crfCapableStreams = CapableStreams{};
+
+				for (auto const& [streamIndex, streamNode] : streams)
+				{
+					auto streamHasAaf = false;
+					auto streamHasCrf = false;
+					for (auto const& format : streamNode.staticModel->formats)
+					{
+						auto const f = entity::model::StreamFormatInfo::create(format);
+						switch (f->getType())
+						{
+							case entity::model::StreamFormatInfo::Type::AAF:
+								streamHasAaf = true;
+								aafCapableStreams[streamIndex] = true;
+								break;
+							case entity::model::StreamFormatInfo::Type::ClockReference:
+								streamHasCrf = true;
+								crfCapableStreams[streamIndex] = true;
+								break;
+							default:
+								break;
+						}
+					}
+					// [Milan Clause 6.3.4] If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa
+					if (streamHasAaf && streamHasCrf)
+					{
+						LOG_CONTROLLER_WARN(entityID, "[Milan Clause 6.3.4] If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa");
+						// Remove "Milan compatibility"
+						removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+					}
+				}
+				return std::make_pair(aafCapableStreams, crfCapableStreams);
+			};
+
+			auto const countCapableStreamsForDomain = [](auto const& streams, auto const& redundantStreams, auto const& capableStreams, auto const domainIndex)
+			{
+				auto countStreams = 0u;
+				// Process non-redundant streams
+				for (auto const& [streamIndex, streamNode] : streams)
+				{
+					if (!streamNode.isRedundant)
+					{
+						if (streamNode.staticModel->clockDomainIndex == domainIndex)
+						{
+							if (capableStreams.count(streamIndex) > 0)
+							{
+								++countStreams;
+							}
+						}
+					}
+				}
+				// Process redundant streams
+				for (auto const& [virtualIndex, redundantStreamNode] : redundantStreams)
+				{
+					// Take the first (not necessarily the primary) stream
+					auto const& [streamIndex, streamNode] = *redundantStreamNode.redundantStreams.begin();
+					if (streamNode->staticModel->clockDomainIndex == domainIndex)
+					{
+						if (capableStreams.count(streamIndex) > 0)
+						{
+							++countStreams;
+						}
+					}
+				}
+				return countStreams;
+			};
+
+			// Milan devices AEM validation
+			if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
+			{
+				auto const& configurationNode = controlledEntity.getCurrentConfigurationNode();
+
+				auto aafInputStreams = CapableStreams{};
+				auto crfInputStreams = CapableStreams{};
+				auto aafOutputStreams = CapableStreams{};
+				auto crfOutputStreams = CapableStreams{};
+				auto isAafMediaListener = false;
+				auto isAafMediaTalker = false;
+				// Validate stream formats
+				if (!configurationNode.streamInputs.empty())
+				{
+					auto caps = validateStreamFormats(entityID, controlledEntity, configurationNode.streamInputs);
+					aafInputStreams = std::move(caps.first);
+					crfInputStreams = std::move(caps.second);
+					isAafMediaListener = !aafInputStreams.empty();
+				}
+				if (!configurationNode.streamOutputs.empty())
+				{
+					auto caps = validateStreamFormats(entityID, controlledEntity, configurationNode.streamOutputs);
+					aafOutputStreams = std::move(caps.first);
+					crfOutputStreams = std::move(caps.second);
+					isAafMediaTalker = !aafOutputStreams.empty();
+				}
+
+				// Validate AAF requirements
+				// [Milan Formats] A PAAD-AE shall have at least one Configuration that contains at least one Stream which advertises support for a Base format is its list of supported formats
+				if (!isAafMediaListener && !isAafMediaTalker)
+				{
+					LOG_CONTROLLER_WARN(entityID, "[Milan Formats] A PAAD-AE shall have at least one Configuration that contains at least one Stream which advertises support for a Base format is its list of //supported formats");
+					// Remove "Milan compatibility"
+					removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+				}
+
+				// Validate CRF requirements for domains
+				for (auto const& [domainIndex, domainNode] : configurationNode.clockDomains)
+				{
+					auto const aafInputStreamsForDomain = countCapableStreamsForDomain(configurationNode.streamInputs, configurationNode.redundantStreamInputs, aafInputStreams, domainIndex);
+					auto const crfInputStreamsForDomain = countCapableStreamsForDomain(configurationNode.streamInputs, configurationNode.redundantStreamInputs, crfInputStreams, domainIndex);
+					auto const crfOutputStreamsForDomain = countCapableStreamsForDomain(configurationNode.streamOutputs, configurationNode.redundantStreamOutputs, crfOutputStreams, domainIndex);
+					if (isAafMediaListener)
+					{
+						if (aafInputStreamsForDomain >= 2)
+						{
+							// [Milan Clause 7.2.2] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Input
+							if (crfInputStreamsForDomain == 0u)
+							{
+								LOG_CONTROLLER_WARN(entityID, "[Milan Clause 7.2.2] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Input");
+								// Remove "Milan compatibility"
+								removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+							}
+							// [Milan Clause 7.2.3] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Output
+							if (crfOutputStreamsForDomain == 0u)
+							{
+								LOG_CONTROLLER_WARN(entityID, "[Milan Clause 7.2.3] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Output");
+								// Remove "Milan compatibility"
+								removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+							}
+						}
+					}
+					if (isAafMediaTalker)
+					{
+						// [Milan Clause 7.2.2] For each supported clock domain, an AAF Media Talker shall implement a CRF Media Clock Input
+						if (crfInputStreamsForDomain == 0u)
+						{
+							LOG_CONTROLLER_WARN(entityID, "[Milan Clause 7.2.2] For each supported clock domain, an AAF Media Talker shall implement a CRF Media Clock Input");
+							// Remove "Milan compatibility"
+							removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
+						}
+						// [Milan Clause 7.2.3] For each supported clock domain, an AAF Media Talker capable of synchronizing to an external clock source (not an AVB stream) shall implement a CRF Media Clock Output
+						// TODO
+					}
+				}
+			}
+		}
+		catch (ControlledEntity::Exception const&)
+		{
+			LOG_CONTROLLER_WARN(entityID, "Invalid current CONFIGURATION descriptor");
+			// Flag the entity as "Not fully IEEE1722.1 compliant"
+			removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+		}
+		catch (...)
+		{
+			AVDECC_ASSERT(false, "Unhandled exception");
+		}
+	}
+}
+
 /** Final validations to be run on the entity, now that it's fully enumerated (both attached and detached entities) */
 void ControllerImpl::validateEntity(ControlledEntityImpl& controlledEntity) noexcept
 {
@@ -3058,6 +3278,9 @@ void ControllerImpl::validateEntity(ControlledEntityImpl& controlledEntity) noex
 
 	// Validate entity is correctly declared (or not) as a Milan Redundant device
 	validateRedundancy(controlledEntity);
+
+	// Validate entity model, if existing
+	validateEntityModel(controlledEntity);
 
 	// Check for AvbInterfaceCounters - Link Status
 	auto const& e = controlledEntity.getEntity();
@@ -5096,6 +5319,13 @@ bool LA_AVDECC_CONTROLLER_CALL_CONVENTION Controller::isMediaClockStreamFormat(e
 
 	// TODO: Maybe check for 1 channel stream
 	return false;
+}
+
+std::string LA_AVDECC_CONTROLLER_CALL_CONVENTION Controller::computeEntityModelChecksum(ControlledEntity const& controlledEntity, std::uint32_t const checksumVersion) noexcept
+{
+	auto visitor = ChecksumEntityModelVisitor{ checksumVersion };
+	controlledEntity.accept(&visitor);
+	return visitor.getHash();
 }
 
 

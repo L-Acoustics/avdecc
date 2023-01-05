@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2022, L-Acoustics and its contributors
+* Copyright (C) 2016-2023, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -429,7 +429,7 @@ public:
 	/** Notification for when an AECP Response is received (not an Unsolicited one) along with the time elapsed between the send and the receive. */
 	virtual void onAecpResponseTime(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const& /*entityID*/, std::chrono::milliseconds const& /*responseTime*/) noexcept {}
 	/** Notification for when an AEM-AECP Unsolicited Response was received. */
-	virtual void onAemAecpUnsolicitedReceived(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const& /*entityID*/) noexcept {}
+	virtual void onAemAecpUnsolicitedReceived(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const& /*entityID*/, la::avdecc::protocol::AecpSequenceID const /*sequenceID*/) noexcept {}
 
 	// Defaulted compiler auto-generated methods
 	Delegate() noexcept = default;

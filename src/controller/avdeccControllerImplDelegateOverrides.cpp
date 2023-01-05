@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2022, L-Acoustics and its contributors
+* Copyright (C) 2016-2023, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -1165,7 +1165,7 @@ void ControllerImpl::onAecpResponseTime(entity::controller::Interface const* con
 	}
 }
 
-void ControllerImpl::onAemAecpUnsolicitedReceived(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const& entityID) noexcept
+void ControllerImpl::onAemAecpUnsolicitedReceived(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const& entityID, la::avdecc::protocol::AecpSequenceID const sequenceID) noexcept
 {
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);
@@ -1176,6 +1176,31 @@ void ControllerImpl::onAemAecpUnsolicitedReceived(entity::controller::Interface 
 
 		AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
+		// Check for loss of unsolicited notification
+		if (entity.hasLostUnsolicitedNotification(sequenceID))
+		{
+			LOG_CONTROLLER_WARN(entityID, "Unsolicited notification lost detected");
+
+			// Update statistics
+			auto const value = entity.incrementAemAecpUnsolicitedLossCounter();
+
+			// Entity was advertised to the user, notify observers
+			if (entity.wasAdvertised())
+			{
+				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onAemAecpUnsolicitedLossCounterChanged, this, &entity, value);
+			}
+
+			// As part of #50 (for now), just unsubscribe from unsolicited notifications
+			{
+				// Immediately set as unsubscribed, we are already loosing packets we don't want to miss the response to our unsubscribe
+				updateUnsolicitedNotificationsSubscription(entity, false);
+
+				// Properly (try to) unregister from unsol
+				unregisterUnsol(&entity);
+			}
+		}
+
+		// Update statistics
 		auto const value = entity.incrementAemAecpUnsolicitedCounter();
 
 		// Entity was advertised to the user, notify observers

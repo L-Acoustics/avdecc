@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2022, L-Acoustics and its contributors
+* Copyright (C) 2016-2023, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -25,6 +25,7 @@
 #include "endStationImpl.hpp"
 #include "entity/controllerEntityImpl.hpp"
 #include "entity/aggregateEntityImpl.hpp"
+#include "entity/aemHandler.hpp"
 
 #include "la/avdecc/internals/protocolInterface.hpp"
 #ifdef ENABLE_AVDECC_FEATURE_JSON
@@ -61,6 +62,16 @@ entity::ControllerEntity* EndStationImpl::addControllerEntity(std::uint16_t cons
 	{
 		auto const eid = entity::Entity::generateEID(_protocolInterface->getMacAddress(), progID, false);
 
+		// Validate EntityModel
+		try
+		{
+			entity::model::AemHandler::validateEntityModel(entityModelTree);
+		}
+		catch (la::avdecc::Exception const& e)
+		{
+			throw Exception(Error::InvalidEntityModel, e.what());
+		}
+
 		try
 		{
 			auto entityCapabilities = entity::EntityCapabilities{};
@@ -78,6 +89,10 @@ entity::ControllerEntity* EndStationImpl::addControllerEntity(std::uint16_t cons
 		{
 			throw Exception(Error::DuplicateEntityID, e.what());
 		}
+	}
+	catch (Exception const&)
+	{
+		throw; // Forward exceptions thrown by the inner bloc
 	}
 	catch (la::avdecc::Exception const& e) // entity::Entity::generateEID might throw if ProtocolInterface is not valid (doesn't have a valid MacAddress)
 	{
@@ -101,6 +116,16 @@ entity::AggregateEntity* EndStationImpl::addAggregateEntity(std::uint16_t const 
 	{
 		auto const eid = entity::Entity::generateEID(_protocolInterface->getMacAddress(), progID, false);
 
+		// Validate EntityModel
+		try
+		{
+			entity::model::AemHandler::validateEntityModel(entityModelTree);
+		}
+		catch (la::avdecc::Exception const& e)
+		{
+			throw Exception(Error::InvalidEntityModel, e.what());
+		}
+
 		try
 		{
 			auto entityCapabilities = entity::EntityCapabilities{};
@@ -118,6 +143,10 @@ entity::AggregateEntity* EndStationImpl::addAggregateEntity(std::uint16_t const 
 		{
 			throw Exception(Error::DuplicateEntityID, e.what());
 		}
+	}
+	catch (Exception const&)
+	{
+		throw; // Forward exceptions thrown by the inner bloc
 	}
 	catch (la::avdecc::Exception const& e) // entity::Entity::generateEID might throw if ProtocolInterface is not valid (doesn't have a valid MacAddress)
 	{

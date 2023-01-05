@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2016-2022, L-Acoustics and its contributors
+* Copyright (C) 2016-2023, L-Acoustics and its contributors
 
 * This file is part of LA_avdecc.
 
@@ -35,10 +35,41 @@ namespace entity
 {
 namespace model
 {
-AemHandler::AemHandler(entity::Entity const& entity, entity::model::EntityTree const* const entityModelTree) noexcept
+class NoSuchDescriptorException final : public Exception
+{
+public:
+	NoSuchDescriptorException()
+		: Exception("No such descriptor")
+	{
+	}
+};
+
+AemHandler::AemHandler(entity::Entity const& entity, entity::model::EntityTree const* const entityModelTree)
 	: _entity{ entity }
 	, _entityModelTree{ entityModelTree }
 {
+	// Valide the entity model
+	validateEntityModel(_entityModelTree);
+}
+
+void AemHandler::validateEntityModel(entity::model::EntityTree const* const entityModelTree)
+{
+	// Briefly validate entity model
+	if (entityModelTree != nullptr)
+	{
+		// Check there is at least one configuration descriptor
+		auto const countConfigs = static_cast<DescriptorIndex>(entityModelTree->configurationTrees.size());
+		if (countConfigs == 0)
+		{
+			throw Exception("Invalid Entity Model: At least one ConfigurationDescriptor is required");
+		}
+
+		// Check the current configuration index is in the correct range
+		if (entityModelTree->dynamicModel.currentConfiguration >= countConfigs)
+		{
+			throw Exception("Invalid Entity Model: Current Configuration Index is out of range");
+		}
+	}
 }
 
 bool AemHandler::onUnhandledAecpAemCommand(protocol::ProtocolInterface* const pi, protocol::AemAecpdu const& aem) const noexcept
@@ -65,6 +96,18 @@ bool AemHandler::onUnhandledAecpAemCommand(protocol::ProtocolInterface* const pi
 							LocalEntityImpl<>::sendAemAecpResponse(pi, aem, protocol::AemAecpStatus::Success, ser.data(), ser.size());
 							return true;
 						}
+						case DescriptorType::Configuration:
+						{
+							if (configIndex != DescriptorIndex{ 0u })
+							{
+								LocalEntityImpl<>::reflectAecpCommand(pi, aem, protocol::AemAecpStatus::BadArguments);
+								return true;
+							}
+							auto ser = protocol::aemPayload::serializeReadDescriptorCommonResponse(configIndex, descriptorType, descriptorIndex);
+							protocol::aemPayload::serializeReadConfigurationDescriptorResponse(ser, aemHandler.buildConfigurationDescriptor(descriptorIndex));
+							LocalEntityImpl<>::sendAemAecpResponse(pi, aem, protocol::AemAecpStatus::Success, ser.data(), ser.size());
+							return true;
+						}
 						default:
 							break;
 					}
@@ -78,10 +121,21 @@ bool AemHandler::onUnhandledAecpAemCommand(protocol::ProtocolInterface* const pi
 	{
 		try
 		{
-			return invokeProtectedHandler(it->second, pi, *this, aem);
+			return it->second(pi, *this, aem);
+		}
+		catch (NoSuchDescriptorException const&)
+		{
+			LocalEntityImpl<>::reflectAecpCommand(pi, aem, protocol::AemAecpStatus::NoSuchDescriptor);
+			return true;
 		}
 		catch (la::avdecc::Exception const&)
 		{
+			LocalEntityImpl<>::reflectAecpCommand(pi, aem, protocol::AemAecpStatus::EntityMisbehaving);
+			return true;
+		}
+		catch (...)
+		{
+			AVDECC_ASSERT(false, "Unexpected exception");
 			LocalEntityImpl<>::reflectAecpCommand(pi, aem, protocol::AemAecpStatus::EntityMisbehaving);
 			return true;
 		}
@@ -118,6 +172,56 @@ EntityDescriptor AemHandler::buildEntityDescriptor() const noexcept
 	entityDescriptor.currentConfiguration = _entityModelTree->dynamicModel.currentConfiguration;
 
 	return entityDescriptor;
+}
+
+template<DescriptorType DescriptorT, class Tree>
+void setDescriptorsCount(ConfigurationDescriptor& configDescriptor, Tree const& tree)
+{
+	if (!tree.empty())
+	{
+		configDescriptor.descriptorCounts[DescriptorT] = static_cast<typename decltype(configDescriptor.descriptorCounts)::mapped_type>(tree.size());
+	}
+}
+
+ConfigurationDescriptor AemHandler::buildConfigurationDescriptor(entity::model::ConfigurationIndex const configIndex) const
+{
+	auto configDescriptor = ConfigurationDescriptor{};
+
+	auto const configIt = _entityModelTree->configurationTrees.find(configIndex);
+	if (configIt == _entityModelTree->configurationTrees.end())
+	{
+		throw NoSuchDescriptorException{};
+	}
+
+	auto const& configTree = configIt->second;
+
+	configDescriptor.objectName = configTree.dynamicModel.objectName;
+	configDescriptor.localizedDescription = configTree.staticModel.localizedDescription;
+
+	setDescriptorsCount<DescriptorType::AudioUnit>(configDescriptor, configTree.audioUnitModels);
+	setDescriptorsCount<DescriptorType::StreamInput>(configDescriptor, configTree.streamInputModels);
+	setDescriptorsCount<DescriptorType::StreamOutput>(configDescriptor, configTree.streamOutputModels);
+	//setDescriptorsCount<DescriptorType::JackInput>(configDescriptor, configTree.jackInputModels);
+	//setDescriptorsCount<DescriptorType::JackOutput>(configDescriptor, configTree.jackOutputModels);
+	setDescriptorsCount<DescriptorType::AvbInterface>(configDescriptor, configTree.avbInterfaceModels);
+	setDescriptorsCount<DescriptorType::ClockSource>(configDescriptor, configTree.clockSourceModels);
+	setDescriptorsCount<DescriptorType::MemoryObject>(configDescriptor, configTree.memoryObjectModels);
+	setDescriptorsCount<DescriptorType::Locale>(configDescriptor, configTree.localeModels);
+	setDescriptorsCount<DescriptorType::Strings>(configDescriptor, configTree.stringsModels);
+	setDescriptorsCount<DescriptorType::StreamPortInput>(configDescriptor, configTree.streamPortInputModels);
+	setDescriptorsCount<DescriptorType::StreamPortOutput>(configDescriptor, configTree.streamPortOutputModels);
+	//setDescriptorsCount<DescriptorType::ExternalPortInput>(configDescriptor, configTree.externalPortInputModels);
+	//setDescriptorsCount<DescriptorType::ExternalPortOutput>(configDescriptor, configTree.externalPortOutputModels);
+	//setDescriptorsCount<DescriptorType::InternalPortInput>(configDescriptor, configTree.internalPortInputModels);
+	//setDescriptorsCount<DescriptorType::InternalPortOutput>(configDescriptor, configTree.internalPortOutputModels);
+	setDescriptorsCount<DescriptorType::AudioCluster>(configDescriptor, configTree.audioClusterModels);
+	setDescriptorsCount<DescriptorType::AudioMap>(configDescriptor, configTree.audioMapModels);
+	setDescriptorsCount<DescriptorType::Control>(configDescriptor, configTree.controlModels);
+	setDescriptorsCount<DescriptorType::ClockDomain>(configDescriptor, configTree.clockDomainModels);
+
+	std::unordered_map<DescriptorType, std::uint16_t, la::avdecc::utils::EnumClassHash> descriptorCounts{};
+
+	return configDescriptor;
 }
 
 } // namespace model
