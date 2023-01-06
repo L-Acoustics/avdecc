@@ -709,7 +709,7 @@ private:
 	/* ************************************************************ */
 	/* Private members                                              */
 	/* ************************************************************ */
-	mutable std::mutex _lock{}; // A mutex to protect all sensitive data members
+	mutable std::recursive_mutex _lock{}; // A mutex to protect all sensitive data members
 	ControlledEntityImpl::LockInformation::SharedPointer _entitiesSharedLockInformation{ std::make_shared<ControlledEntityImpl::LockInformation>() }; // The SharedLockInformation to be used by all managed ControlledEntities
 	std::unordered_map<UniqueIdentifier, SharedControlledEntityImpl, UniqueIdentifier::hash> _controlledEntities;
 	EndStation::UniquePointer _endStation{ nullptr, nullptr };

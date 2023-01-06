@@ -2104,3 +2104,59 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Online_SwitchClockSource)
 		ASSERT_FALSE(true) << "Should not throw";
 	}
 }
+// Test for #125
+TEST_F(MediaClockModel_F, NotCrashing_Issue125)
+{
+	loadEntityFile("data/MediaClockModel/Entity_0x01.json");
+
+	try
+	{
+		auto& c = getController();
+		{
+			auto const& e = *c.getControlledEntityGuard(Entity01);
+			auto const& node = e.getClockDomainNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, la::avdecc::entity::model::ClockDomainIndex{ 0u });
+			ASSERT_EQ(2u, node.mediaClockChain.size());
+			{
+				auto const& n = node.mediaClockChain[0];
+				EXPECT_EQ(01, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::ClockDomainIndex{ 0u }, n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::ClockSourceIndex{ 0u }, n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::StreamInput, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::Active, n.status);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamInputIndex);
+				EXPECT_EQ(std::nullopt, n.streamOutputIndex);
+			}
+			{
+				auto const& n = node.mediaClockChain[1];
+				EXPECT_EQ(Entity11, n.entityID);
+				EXPECT_EQ(la::avdecc::entity::model::getInvalidDescriptorIndex(), n.clockDomainIndex);
+				EXPECT_EQ(la::avdecc::entity::model::getInvalidDescriptorIndex(), n.clockSourceIndex);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Type::Undefined, n.type);
+				EXPECT_EQ(la::avdecc::controller::model::MediaClockChainNode::Status::EntityOffline, n.status);
+				EXPECT_EQ(std::nullopt, n.streamInputIndex);
+				EXPECT_EQ(la::avdecc::entity::model::StreamIndex{ 0u }, n.streamOutputIndex);
+			}
+		}
+
+		// Expect Controller::Observer::onMediaClockChainChanged() to be called
+		registerMockObserver();
+		EXPECT_CALL(*this, onMediaClockChainChanged(::testing::_, c.getControlledEntityGuard(Entity01).get(), la::avdecc::entity::model::ClockDomainIndex{ 0u }, ::testing::_))
+			.WillOnce(testing::Invoke(
+				[](la::avdecc::controller::Controller const* const controller, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::model::ClockDomainIndex const /*clockDomainIndex*/, la::avdecc::controller::model::MediaClockChain const& /*mcChain*/)
+				{
+					// Try to get a ControlledEntity inside the handler should not crash
+					auto const entityID = entity->getEntity().getEntityID();
+					auto const c = controller->getControlledEntityGuard(entityID);
+					// Dummy code to force variables
+					EXPECT_EQ(entityID, c->getEntity().getEntityID());
+				}));
+
+		// Entity coming online
+		loadEntityFile("data/MediaClockModel/Entity_0x11.json");
+	}
+	catch (...)
+	{
+		ASSERT_FALSE(true) << "Should not throw";
+	}
+}
+
