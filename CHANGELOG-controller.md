@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Fixed
 - [Crash when trying to get a ControlledEntity during OnPreAdvertise events](https://github.com/L-Acoustics/avdecc/issues/125)
+- [Sometimes incorrectly detecting loss of unsol for Milan devices](https://github.com/L-Acoustics/avdecc/issues/126)
 
 ## [3.4.0] - 2023-01-05
 ### Added
