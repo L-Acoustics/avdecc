@@ -4,6 +4,8 @@ All notable changes to the Avdecc Controller Library will be documented in this 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
 ## [3.4.1] - 2023-01-11
 ### Fixed
 - [Crash when trying to get a ControlledEntity during OnPreAdvertise events](https://github.com/L-Acoustics/avdecc/issues/125)
