@@ -194,6 +194,18 @@ struct StreamOutputNode : public StreamNode
 	entity::model::StreamOutputNodeDynamicModel* dynamicModel{ nullptr };
 };
 
+struct JackNode : public EntityModelNode
+{
+	// Children
+	//std::map<entity::model::ControlIndex, ControlNode> controls{};
+
+	// AEM Static info
+	entity::model::JackNodeStaticModel const* staticModel{ nullptr };
+
+	// AEM Dynamic info
+	entity::model::JackNodeDynamicModel* dynamicModel{ nullptr };
+};
+
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 struct RedundantStreamNode : public VirtualNode
 {
@@ -285,8 +297,8 @@ struct ConfigurationNode : public EntityModelNode
 	std::map<entity::model::AudioUnitIndex, AudioUnitNode> audioUnits{};
 	std::map<entity::model::StreamIndex, StreamInputNode> streamInputs{};
 	std::map<entity::model::StreamIndex, StreamOutputNode> streamOutputs{};
-	// JackInput
-	// JackOutput
+	std::map<entity::model::JackIndex, JackNode> jackInputs{};
+	std::map<entity::model::JackIndex, JackNode> jackOutputs{};
 	std::map<entity::model::AvbInterfaceIndex, AvbInterfaceNode> avbInterfaces{};
 	std::map<entity::model::ClockSourceIndex, ClockSourceNode> clockSources{};
 	std::map<entity::model::MemoryObjectIndex, MemoryObjectNode> memoryObjects{};

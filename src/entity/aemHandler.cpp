@@ -201,8 +201,8 @@ ConfigurationDescriptor AemHandler::buildConfigurationDescriptor(entity::model::
 	setDescriptorsCount<DescriptorType::AudioUnit>(configDescriptor, configTree.audioUnitModels);
 	setDescriptorsCount<DescriptorType::StreamInput>(configDescriptor, configTree.streamInputModels);
 	setDescriptorsCount<DescriptorType::StreamOutput>(configDescriptor, configTree.streamOutputModels);
-	//setDescriptorsCount<DescriptorType::JackInput>(configDescriptor, configTree.jackInputModels);
-	//setDescriptorsCount<DescriptorType::JackOutput>(configDescriptor, configTree.jackOutputModels);
+	setDescriptorsCount<DescriptorType::JackInput>(configDescriptor, configTree.jackInputModels);
+	setDescriptorsCount<DescriptorType::JackOutput>(configDescriptor, configTree.jackOutputModels);
 	setDescriptorsCount<DescriptorType::AvbInterface>(configDescriptor, configTree.avbInterfaceModels);
 	setDescriptorsCount<DescriptorType::ClockSource>(configDescriptor, configTree.clockSourceModels);
 	setDescriptorsCount<DescriptorType::MemoryObject>(configDescriptor, configTree.memoryObjectModels);

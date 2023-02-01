@@ -712,6 +712,8 @@ constexpr auto NodeName_ConfigurationDescriptors = "configuration_descriptors";
 constexpr auto NodeName_AudioUnitDescriptors = "audio_unit_descriptors";
 constexpr auto NodeName_StreamInputDescriptors = "stream_input_descriptors";
 constexpr auto NodeName_StreamOutputDescriptors = "stream_output_descriptors";
+constexpr auto NodeName_JackInputDescriptors = "jack_input_descriptors";
+constexpr auto NodeName_JackOutputDescriptors = "jack_output_descriptors";
 constexpr auto NodeName_AvbInterfaceDescriptors = "avb_interface_descriptors";
 constexpr auto NodeName_ClockSourceDescriptors = "clock_source_descriptors";
 constexpr auto NodeName_MemoryObjectDescriptors = "memory_object_descriptors";
@@ -783,6 +785,12 @@ constexpr auto StreamOutputNode_Dynamic_StreamFormat = "stream_format";
 constexpr auto StreamOutputNode_Dynamic_StreamRunning = "stream_running";
 constexpr auto StreamOutputNode_Dynamic_StreamDynamicInfo = "stream_dynamic_info";
 constexpr auto StreamOutputNode_Dynamic_Counters = "counters";
+
+/* JackNode */
+constexpr auto JackNode_Static_LocalizedDescription = "localized_description";
+constexpr auto JackNode_Static_Flags = "flags";
+constexpr auto JackNode_Static_Type = "type";
+constexpr auto JackNode_Dynamic_ObjectName = "object_name";
 
 /* AvbInterfaceNode */
 constexpr auto AvbInterfaceNode_Static_LocalizedDescription = "localized_description";
@@ -1596,6 +1604,30 @@ inline void from_json(json const& j, StreamOutputNodeDynamicModel& d)
 	get_optional_value(j, keyName::StreamOutputNode_Dynamic_StreamRunning, d.isStreamRunning);
 	get_optional_value(j, keyName::StreamOutputNode_Dynamic_StreamDynamicInfo, d.streamDynamicInfo);
 	get_optional_value(j, keyName::StreamOutputNode_Dynamic_Counters, d.counters);
+}
+
+/* JackNodeStaticModel conversion */
+inline void to_json(json& j, JackNodeStaticModel const& s)
+{
+	j[keyName::JackNode_Static_LocalizedDescription] = s.localizedDescription;
+	j[keyName::JackNode_Static_Flags] = s.jackFlags;
+	j[keyName::JackNode_Static_Type] = s.jackType;
+}
+inline void from_json(json const& j, JackNodeStaticModel& s)
+{
+	get_optional_value(j, keyName::JackNode_Static_LocalizedDescription, s.localizedDescription);
+	j.at(keyName::JackNode_Static_Flags).get_to(s.jackFlags);
+	j.at(keyName::JackNode_Static_Type).get_to(s.jackType);
+}
+
+/* JackNodeDynamicModel conversion */
+inline void to_json(json& j, JackNodeDynamicModel const& d)
+{
+	j[keyName::JackNode_Dynamic_ObjectName] = d.objectName;
+}
+inline void from_json(json const& j, JackNodeDynamicModel& d)
+{
+	get_optional_value(j, keyName::JackNode_Dynamic_ObjectName, d.objectName);
 }
 
 /* AvbInterfaceNodeStaticModel conversion */

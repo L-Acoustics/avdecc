@@ -45,6 +45,8 @@ struct Context
 	AudioUnitIndex nextExpectedAudioUnitIndex{ 0u };
 	StreamIndex nextExpectedStreamInputIndex{ 0u };
 	StreamIndex nextExpectedStreamOutputIndex{ 0u };
+	JackIndex nextExpectedJackInputIndex{ 0u };
+	JackIndex nextExpectedJackOutputIndex{ 0u };
 	AvbInterfaceIndex nextExpectedAvbInterfaceIndex{ 0u };
 	ClockSourceIndex nextExpectedClockSourceIndex{ 0u };
 	MemoryObjectIndex nextExpectedMemoryObjectIndex{ 0u };
@@ -362,6 +364,12 @@ json dumpConfigurationTrees(std::map<ConfigurationIndex, ConfigurationTree> cons
 
 		// Dump StreamOutputs
 		config[keyName::NodeName_StreamOutputDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::streamOutputModels, c.nextExpectedStreamOutputIndex, "StreamOutput", 0, configTree.streamOutputModels.size());
+
+		// Dump JackInputs
+		config[keyName::NodeName_JackInputDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::jackInputModels, c.nextExpectedJackInputIndex, "JackInput", 0, configTree.jackInputModels.size());
+
+		// Dump JackOutputs
+		config[keyName::NodeName_JackOutputDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::jackOutputModels, c.nextExpectedJackOutputIndex, "JackOutput", 0, configTree.jackOutputModels.size());
 
 		// Dump AvbInterfaces
 		config[keyName::NodeName_AvbInterfaceDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::avbInterfaceModels, c.nextExpectedAvbInterfaceIndex, "AvbInterface", 0, configTree.avbInterfaceModels.size());
@@ -692,6 +700,12 @@ EntityTree::ConfigurationTrees readConfigurationTrees(json const& object, Flags 
 
 		// Read StreamOutputs
 		readLeafModels(j, flags, keyName::NodeName_StreamOutputDescriptors, c.nextExpectedStreamOutputIndex, config.streamOutputModels, ignoreDynamicModel);
+
+		// Read JackInputs
+		readLeafModels(j, flags, keyName::NodeName_JackInputDescriptors, c.nextExpectedJackInputIndex, config.jackInputModels, ignoreDynamicModel);
+
+		// Read JackOutputs
+		readLeafModels(j, flags, keyName::NodeName_JackOutputDescriptors, c.nextExpectedJackOutputIndex, config.jackOutputModels, ignoreDynamicModel);
 
 		// Read AvbInterfaces
 		readLeafModels<false, false, true>(j, flags, keyName::NodeName_AvbInterfaceDescriptors, c.nextExpectedAvbInterfaceIndex, config.avbInterfaceModels, ignoreDynamicModel);

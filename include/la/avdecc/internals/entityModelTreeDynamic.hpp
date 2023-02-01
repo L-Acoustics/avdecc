@@ -73,6 +73,11 @@ struct StreamOutputNodeDynamicModel : public StreamNodeDynamicModel
 	std::optional<StreamOutputCounters> counters{ std::nullopt };
 };
 
+struct JackNodeDynamicModel
+{
+	AvdeccFixedString objectName{};
+};
+
 struct AvbInterfaceNodeDynamicModel
 {
 	AvdeccFixedString objectName{};

@@ -57,6 +57,12 @@ struct StreamOutputNodeModels
 	StreamOutputNodeDynamicModel dynamicModel{};
 };
 
+struct JackNodeModels
+{
+	JackNodeStaticModel staticModel{};
+	JackNodeDynamicModel dynamicModel{};
+};
+
 struct AvbInterfaceNodeModels
 {
 	AvbInterfaceNodeStaticModel staticModel{};
@@ -120,8 +126,8 @@ struct ConfigurationTree
 	std::map<AudioUnitIndex, AudioUnitNodeModels> audioUnitModels{};
 	std::map<StreamIndex, StreamInputNodeModels> streamInputModels{};
 	std::map<StreamIndex, StreamOutputNodeModels> streamOutputModels{};
-	//std::map<JackIndex, JackNodeModels> jackInputModels{};
-	//std::map<JackIndex, JackNodeStaticModel> jackOutputModels{};
+	std::map<JackIndex, JackNodeModels> jackInputModels{};
+	std::map<JackIndex, JackNodeModels> jackOutputModels{};
 	std::map<AvbInterfaceIndex, AvbInterfaceNodeModels> avbInterfaceModels{};
 	std::map<ClockSourceIndex, ClockSourceNodeModels> clockSourceModels{};
 	std::map<MemoryObjectIndex, MemoryObjectNodeModels> memoryObjectModels{};
