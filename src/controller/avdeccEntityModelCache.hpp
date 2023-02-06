@@ -183,8 +183,14 @@ public:
 		{
 			return false;
 		}
-		// JACK_INPUT
-		// JACK_OUTPUT
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::JackInput, configTree.jackInputModels))
+		{
+			return false;
+		}
+		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::JackOutput, configTree.jackOutputModels))
+		{
+			return false;
+		}
 		if (!validateDescriptorCount(descriptorCounts, entity::model::DescriptorType::AvbInterface, configTree.avbInterfaceModels))
 		{
 			return false;

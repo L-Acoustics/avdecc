@@ -371,6 +371,28 @@ model::AudioUnitNode const& ControlledEntityImpl::getAudioUnitNode(entity::model
 	return it->second;
 }
 
+model::JackInputNode const& ControlledEntityImpl::getJackInputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex) const
+{
+	auto const& configNode = getConfigurationNode(configurationIndex);
+
+	auto const it = configNode.jackInputs.find(jackIndex);
+	if (it == configNode.jackInputs.end())
+		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid jack index");
+
+	return it->second;
+}
+
+model::JackOutputNode const& ControlledEntityImpl::getJackOutputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex) const
+{
+	auto const& configNode = getConfigurationNode(configurationIndex);
+
+	auto const it = configNode.jackOutputs.find(jackIndex);
+	if (it == configNode.jackOutputs.end())
+		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid jack index");
+
+	return it->second;
+}
+
 model::AvbInterfaceNode const& ControlledEntityImpl::getAvbInterfaceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex) const
 {
 	auto const& configNode = getConfigurationNode(configurationIndex);
@@ -845,6 +867,22 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor, bool
 					}
 				}
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+
+				// Loop over JackInputNode for inputs
+				for (auto const& jackKV : configuration.jackInputs)
+				{
+					auto const& jack = jackKV.second;
+					// Visit JackInputNode (ConfigurationNode is parent)
+					visitor->visit(this, &configuration, jack);
+				}
+
+				// Loop over JackOutputNode for outputs
+				for (auto const& jackKV : configuration.jackOutputs)
+				{
+					auto const& jack = jackKV.second;
+					// Visit JackOutputNode (ConfigurationNode is parent)
+					visitor->visit(this, &configuration, jack);
+				}
 
 				// Loop over AvbInterfaceNode
 				for (auto const& interfaceKV : configuration.avbInterfaces)
@@ -1657,6 +1695,46 @@ void ControlledEntityImpl::setStreamOutputDescriptor(entity::model::StreamDescri
 	}
 }
 
+void ControlledEntityImpl::setJackInputDescriptor(entity::model::JackDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex) noexcept
+{
+	// Copy static model
+	{
+		// Get or create a new model::JackNodeStaticModel
+		auto& m = getNodeStaticModel(configurationIndex, jackIndex, &entity::model::ConfigurationTree::jackInputModels);
+		m.localizedDescription = descriptor.localizedDescription;
+		m.jackFlags = descriptor.jackFlags;
+		m.jackType = descriptor.jackType;
+	}
+
+	// Copy dynamic model
+	{
+		// Get or create a new model::JackNodeDynamicModel
+		auto& m = getNodeDynamicModel(configurationIndex, jackIndex, &entity::model::ConfigurationTree::jackInputModels);
+		// Changeable fields through commands
+		m.objectName = descriptor.objectName;
+	}
+}
+
+void ControlledEntityImpl::setJackOutputDescriptor(entity::model::JackDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex) noexcept
+{
+	// Copy static model
+	{
+		// Get or create a new model::JackNodeStaticModel
+		auto& m = getNodeStaticModel(configurationIndex, jackIndex, &entity::model::ConfigurationTree::jackOutputModels);
+		m.localizedDescription = descriptor.localizedDescription;
+		m.jackFlags = descriptor.jackFlags;
+		m.jackType = descriptor.jackType;
+	}
+
+	// Copy dynamic model
+	{
+		// Get or create a new model::JackNodeDynamicModel
+		auto& m = getNodeDynamicModel(configurationIndex, jackIndex, &entity::model::ConfigurationTree::jackOutputModels);
+		// Changeable fields through commands
+		m.objectName = descriptor.objectName;
+	}
+}
+
 void ControlledEntityImpl::setAvbInterfaceDescriptor(entity::model::AvbInterfaceDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const interfaceIndex) noexcept
 {
 	// Copy static model
@@ -2389,6 +2467,10 @@ std::string ControlledEntityImpl::descriptorDynamicInfoTypeToString(DescriptorDy
 			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (STREAM_OUTPUT)";
 		case DescriptorDynamicInfoType::OutputStreamFormat:
 			return static_cast<std::string>(protocol::AemCommandType::GetStreamFormat) + " (STREAM_OUTPUT)";
+		case DescriptorDynamicInfoType::InputJackName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (JACK_INPUT)";
+		case DescriptorDynamicInfoType::OutputJackName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (JACK_OUTPUT)";
 		case DescriptorDynamicInfoType::AvbInterfaceName:
 			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (AVB_INTERFACE)";
 		case DescriptorDynamicInfoType::ClockSourceName:
@@ -2700,6 +2782,30 @@ void ControlledEntityImpl::buildEntityModelGraph() noexcept
 					initNode(streamNode, entity::model::DescriptorType::StreamOutput, streamIndex);
 					streamNode.staticModel = &streamStaticModel;
 					streamNode.dynamicModel = &streamDynamicModel;
+				}
+
+				// Build jack inputs (JackNode)
+				for (auto& [jackIndex, jackModels] : configTree.jackInputModels)
+				{
+					auto const& jackStaticModel = jackModels.staticModel;
+					auto& jackDynamicModel = jackModels.dynamicModel;
+
+					auto& jackNode = configNode.jackInputs[jackIndex];
+					initNode(jackNode, entity::model::DescriptorType::JackInput, jackIndex);
+					jackNode.staticModel = &jackStaticModel;
+					jackNode.dynamicModel = &jackDynamicModel;
+				}
+
+				// Build jack outputs (JackNode)
+				for (auto& [jackIndex, jackModels] : configTree.jackOutputModels)
+				{
+					auto const& jackStaticModel = jackModels.staticModel;
+					auto& jackDynamicModel = jackModels.dynamicModel;
+
+					auto& jackNode = configNode.jackOutputs[jackIndex];
+					initNode(jackNode, entity::model::DescriptorType::JackOutput, jackIndex);
+					jackNode.staticModel = &jackStaticModel;
+					jackNode.dynamicModel = &jackDynamicModel;
 				}
 
 				// Build avb interfaces (AvbInterfaceNode)

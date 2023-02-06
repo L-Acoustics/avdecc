@@ -293,6 +293,32 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::controller::Interfa
 							}
 						}
 					}
+					// Get input jacks
+					{
+						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::JackInput);
+						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+						{
+							auto count = countIt->second;
+							for (auto index = entity::model::JackIndex(0); index < count; ++index)
+							{
+								// Get Jack Descriptor
+								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::JackInput, index);
+							}
+						}
+					}
+					// Get output jacks
+					{
+						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::JackOutput);
+						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+						{
+							auto count = countIt->second;
+							for (auto index = entity::model::JackIndex(0); index < count; ++index)
+							{
+								// Get Jack Descriptor
+								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::JackOutput, index);
+							}
+						}
+					}
 					// Get avb interfaces
 					{
 						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::AvbInterface);
@@ -508,6 +534,78 @@ void ControllerImpl::onStreamOutputDescriptorResult(entity::controller::Interfac
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::StreamOutputDescriptor);
+					return;
+				}
+			}
+
+			// Got all expected descriptors
+			if (controlledEntity->gotAllExpectedDescriptors())
+			{
+				// Clear this enumeration step and check for next one
+				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
+				checkEnumerationSteps(controlledEntity.get());
+			}
+		}
+	}
+}
+
+void ControllerImpl::onJackInputDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex, entity::model::JackDescriptor const& descriptor) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onJackInputDescriptorResult (ConfigurationIndex={} JackIndex={}): {}", configurationIndex, jackIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDescriptor(configurationIndex, entity::model::DescriptorType::JackInput, jackIndex))
+		{
+			if (!!status)
+			{
+				controlledEntity->setJackInputDescriptor(descriptor, configurationIndex, jackIndex);
+			}
+			else
+			{
+				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::JackInput, jackIndex))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::JackInputDescriptor);
+					return;
+				}
+			}
+
+			// Got all expected descriptors
+			if (controlledEntity->gotAllExpectedDescriptors())
+			{
+				// Clear this enumeration step and check for next one
+				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetStaticModel);
+				checkEnumerationSteps(controlledEntity.get());
+			}
+		}
+	}
+}
+
+void ControllerImpl::onJackOutputDescriptorResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex, entity::model::JackDescriptor const& descriptor) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onJackOutputDescriptorResult (ConfigurationIndex={} JackIndex={}): {}", configurationIndex, jackIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDescriptor(configurationIndex, entity::model::DescriptorType::JackOutput, jackIndex))
+		{
+			if (!!status)
+			{
+				controlledEntity->setJackOutputDescriptor(descriptor, configurationIndex, jackIndex);
+			}
+			else
+			{
+				if (!processGetStaticModelFailureStatus(status, controlledEntity.get(), configurationIndex, entity::model::DescriptorType::JackOutput, jackIndex))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::JackOutputDescriptor);
 					return;
 				}
 			}
@@ -1825,6 +1923,78 @@ void ControllerImpl::onOutputStreamFormatResult(entity::controller::Interface co
 				{
 					controlledEntity->setGetFatalEnumerationError();
 					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::OutputStreamFormat);
+					return;
+				}
+			}
+
+			// Got all expected descriptor dynamic information
+			if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			{
+				// Clear this enumeration step and check for next one
+				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
+				checkEnumerationSteps(controlledEntity.get());
+			}
+		}
+	}
+}
+
+void ControllerImpl::onInputJackNameResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex, entity::model::AvdeccFixedString const& jackInputName) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onInputJackNameResult (ConfigurationIndex={} JackIndex={}): {}", configurationIndex, jackIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputJackName, jackIndex))
+		{
+			if (!!status)
+			{
+				controlledEntity->setObjectName(configurationIndex, jackIndex, &entity::model::ConfigurationTree::jackInputModels, jackInputName);
+			}
+			else
+			{
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputJackName, jackIndex, false))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::InputJackName);
+					return;
+				}
+			}
+
+			// Got all expected descriptor dynamic information
+			if (controlledEntity->gotAllExpectedDescriptorDynamicInfo())
+			{
+				// Clear this enumeration step and check for next one
+				controlledEntity->clearEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
+				checkEnumerationSteps(controlledEntity.get());
+			}
+		}
+	}
+}
+
+void ControllerImpl::onOutputJackNameResult(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex, entity::model::AvdeccFixedString const& jackOutputName) noexcept
+{
+	LOG_CONTROLLER_TRACE(entityID, "onOutputJackNameResult (ConfigurationIndex={} JackIndex={}): {}", configurationIndex, jackIndex, entity::ControllerEntity::statusToString(status));
+
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		if (controlledEntity->checkAndClearExpectedDescriptorDynamicInfo(configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputJackName, jackIndex))
+		{
+			if (!!status)
+			{
+				controlledEntity->setObjectName(configurationIndex, jackIndex, &entity::model::ConfigurationTree::jackOutputModels, jackOutputName);
+			}
+			else
+			{
+				if (!processGetDescriptorDynamicInfoFailureStatus(status, controlledEntity.get(), configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputJackName, jackIndex, false))
+				{
+					controlledEntity->setGetFatalEnumerationError();
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onEntityQueryError, this, controlledEntity.get(), QueryCommandError::OutputJackName);
 					return;
 				}
 			}

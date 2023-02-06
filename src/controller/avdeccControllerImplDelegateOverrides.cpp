@@ -535,6 +535,46 @@ void ControllerImpl::onStreamOutputNameChanged(entity::controller::Interface con
 	}
 }
 
+void ControllerImpl::onJackInputNameChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex, entity::model::AvdeccFixedString const& jackName) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+
+		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
+		if (!entity.hasConfigurationTree(configurationIndex) || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), jackIndex, &entity::model::ConfigurationTree::jackInputModels))
+		{
+			LOG_CONTROLLER_DEBUG(entityID, "Ignoring JackInputName update from unsolicited notification because JACK {} not enumerated yet", jackIndex);
+			return;
+		}
+
+		updateJackInputName(entity, configurationIndex, jackIndex, jackName);
+	}
+}
+
+void ControllerImpl::onJackOutputNameChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex, entity::model::AvdeccFixedString const& jackName) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+
+		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
+		if (!entity.hasConfigurationTree(configurationIndex) || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), jackIndex, &entity::model::ConfigurationTree::jackOutputModels))
+		{
+			LOG_CONTROLLER_DEBUG(entityID, "Ignoring JackOutputName update from unsolicited notification because JACK {} not enumerated yet", jackIndex);
+			return;
+		}
+
+		updateJackOutputName(entity, configurationIndex, jackIndex, jackName);
+	}
+}
+
 void ControllerImpl::onAvbInterfaceNameChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvdeccFixedString const& avbInterfaceName) noexcept
 {
 	// Take a "scoped locked" shared copy of the ControlledEntity
