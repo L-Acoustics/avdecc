@@ -70,7 +70,7 @@ namespace avdecc
 * (either added, removed or signature modification).
 * Any other change (including templates, inline methods, defines, typedefs, ...) are considered a modification of the interface.
 */
-constexpr std::uint32_t InterfaceVersion = 304;
+constexpr std::uint32_t InterfaceVersion = 305;
 
 /**
 * @brief Checks if the library is compatible with specified interface version.

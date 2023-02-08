@@ -261,6 +261,8 @@ json dumpAudioUnitModels(Context& c, ConfigurationTree const& configTree, Flags 
 		// Dump StreamPortOutputs
 		audioUnit[keyName::NodeName_StreamPortOutputDescriptors] = dumpStreamPortModels(c, configTree, flags, &ConfigurationTree::streamPortOutputModels, c.nextExpectedStreamPortOutputIndex, staticModel.baseStreamOutputPort, staticModel.numberOfStreamOutputPorts);
 
+#pragma message("TODO: Dump other AUDIO_UNIT children")
+
 		// Dump informative DescriptorIndex
 		audioUnit[model::keyName::Node_Informative_Index] = audioUnitIndex;
 
@@ -342,6 +344,22 @@ json dumpConfigurationTrees(std::map<ConfigurationIndex, ConfigurationTree> cons
 		{
 			// Dump Configuration Descriptor Model
 			config[keyName::Node_StaticInformation] = configTree.staticModel;
+
+#if 1
+			// Until we are able to load VIDEO/SENSOR/CONTROL_BLOCK, we need to flag the device as incomplete because of possible CONTROLS at other levels of the model, breaking the numering
+#	pragma message("TODO: Load VIDEO/SENSOR/CONTROL_BLOCK")
+			if (configTree.staticModel.descriptorCounts.count(avdecc::entity::model::DescriptorType::VideoUnit) > 0 || configTree.staticModel.descriptorCounts.count(avdecc::entity::model::DescriptorType::SensorUnit) > 0 || configTree.staticModel.descriptorCounts.count(avdecc::entity::model::DescriptorType::ControlBlock) > 0)
+			{
+				if (!flags.test(Flag::IgnoreAEMSanityChecks))
+				{
+					throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::NotSupported, "Unsupported descriptor type: Video and/or Sensor and/or ControlBlock" };
+				}
+				else
+				{
+					c.getSanityCheckError = true;
+				}
+			}
+#endif
 		}
 
 		// Dump Dynamic model
@@ -772,7 +790,7 @@ EntityTree LA_AVDECC_CALL_CONVENTION createEntityTree(json const& object, Flags 
 			get_optional_value(object, keyName::Node_NotCompliant, notCompliant);
 			if (notCompliant && !flags.test(Flag::IgnoreAEMSanityChecks))
 			{
-				throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::NotCompliant, "Model is not full compliant with IEEE1722.1." };
+				throw avdecc::jsonSerializer::DeserializationException{ avdecc::jsonSerializer::DeserializationError::NotCompliant, "Model is not fully compliant with IEEE1722.1, or is incomplete." };
 			}
 		}
 
