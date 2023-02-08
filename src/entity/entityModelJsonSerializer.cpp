@@ -640,6 +640,8 @@ void readAudioUnitModels(json const& object, Flags const flags, Context& c, Conf
 		// Read StreamPortOutputs
 		readStreamPortModels<false, false, true>(j, flags, keyName::NodeName_StreamPortOutputDescriptors, c.nextExpectedStreamPortOutputIndex, config.streamPortOutputModels, c, config, ignoreDynamicModel);
 
+#pragma message("TODO: Read other AUDIO_UNIT children")
+
 		if (flags.test(Flag::ProcessStaticModel))
 		{
 			// Get number of stream port descriptors that were read

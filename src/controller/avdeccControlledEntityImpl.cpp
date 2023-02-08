@@ -2758,6 +2758,7 @@ void ControlledEntityImpl::buildEntityModelGraph() noexcept
 					};
 					processStreamPorts(entity::model::DescriptorType::StreamPortInput, audioUnitStaticModel.numberOfStreamInputPorts, audioUnitStaticModel.baseStreamInputPort);
 					processStreamPorts(entity::model::DescriptorType::StreamPortOutput, audioUnitStaticModel.numberOfStreamOutputPorts, audioUnitStaticModel.baseStreamOutputPort);
+#	pragma message("TODO: Add other children")
 				}
 
 				// Build stream inputs (StreamNode)

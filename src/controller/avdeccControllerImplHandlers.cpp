@@ -439,9 +439,10 @@ void ControllerImpl::onAudioUnitDescriptorResult(entity::controller::Interface c
 				{
 					if (descriptor.numberOfStreamInputPorts != 0)
 					{
+						AVDECC_ASSERT(descriptor.baseStreamInputPort == 0, "descriptor.baseStreamInputPort should probably be 0");
 						for (auto index = entity::model::StreamPortIndex(0); index < descriptor.numberOfStreamInputPorts; ++index)
 						{
-							queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamPortInput, index);
+							queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamPortInput, descriptor.baseStreamInputPort + index);
 						}
 					}
 				}
@@ -449,9 +450,10 @@ void ControllerImpl::onAudioUnitDescriptorResult(entity::controller::Interface c
 				{
 					if (descriptor.numberOfStreamOutputPorts != 0)
 					{
+						AVDECC_ASSERT(descriptor.baseStreamOutputPort == 0, "descriptor.baseStreamOutputPort should probably be 0");
 						for (auto index = entity::model::StreamPortIndex(0); index < descriptor.numberOfStreamOutputPorts; ++index)
 						{
-							queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamPortOutput, index);
+							queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamPortOutput, descriptor.baseStreamOutputPort + index);
 						}
 					}
 				}
