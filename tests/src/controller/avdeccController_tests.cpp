@@ -150,7 +150,13 @@ private:
 		serializeNode(parent);
 		serializeNode(node);
 	}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::AudioUnitNode const* const parent, la::avdecc::controller::model::StreamPortNode const& node) noexcept override
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::AudioUnitNode const* const parent, la::avdecc::controller::model::StreamPortInputNode const& node) noexcept override
+	{
+		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::AudioUnitNode const* const parent, la::avdecc::controller::model::StreamPortOutputNode const& node) noexcept override
 	{
 		serializeNode(grandParent);
 		serializeNode(parent);
@@ -187,11 +193,23 @@ private:
 		serializeNode(node);
 	}
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::RedundantStreamNode const& node) noexcept override
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::RedundantStreamInputNode const& node) noexcept override
 	{
 		serializeNode(parent);
 		serializeNode(node);
 		_serializedModel += "rsi";
+		for (auto const& streamKV : node.redundantStreams)
+		{
+			auto const streamIndex = streamKV.first;
+			_serializedModel += std::to_string(streamIndex) + "+";
+		}
+		serializeNode(*node.primaryStream);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::RedundantStreamOutputNode const& node) noexcept override
+	{
+		serializeNode(parent);
+		serializeNode(node);
+		_serializedModel += "rso";
 		for (auto const& streamKV : node.redundantStreams)
 		{
 			auto const streamIndex = streamKV.first;
@@ -770,7 +788,7 @@ TEST(Controller, ValidControlValues)
 	{
 		// Get ControlNode
 		auto const& controlNode = e.getControlNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, ControlIndex);
-		auto const& staticValues = controlNode.staticModel->values;
+		auto const& staticValues = controlNode.staticModel.values;
 
 		ASSERT_EQ(1u, staticValues.size()) << "VirtualEntity should have 1 value in its ControlNode";
 		ASSERT_EQ(la::avdecc::entity::model::ControlValueType::Type::ControlLinearUInt8, staticValues.getType()) << "VirtualEntity should have ControlLinearUInt8 type in its ControlNode";
@@ -814,7 +832,7 @@ TEST(Controller, InvalidControlValues)
 	{
 		// Get ControlNode
 		auto const& controlNode = e.getControlNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, ControlIndex);
-		auto const& staticValues = controlNode.staticModel->values;
+		auto const& staticValues = controlNode.staticModel.values;
 
 		ASSERT_EQ(1u, staticValues.size()) << "VirtualEntity should have 1 value in its ControlNode";
 		ASSERT_EQ(la::avdecc::entity::model::ControlValueType::Type::ControlLinearUInt8, staticValues.getType()) << "VirtualEntity should have ControlLinearUInt8 type in its ControlNode";
@@ -2080,7 +2098,7 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Online_SwitchClockSource)
 		EXPECT_CALL(*this, onMediaClockChainChanged(::testing::_, c.getControlledEntityGuard(Entity01).get(), la::avdecc::entity::model::ClockDomainIndex{ 0u }, ::testing::_));
 
 		// Change the clock source
-		c.updateClockSource(*c.getControlledEntityImplGuard(Entity01, true, false), la::avdecc::entity::model::ClockDomainIndex{ 0u }, la::avdecc::entity::model::ClockSourceIndex{ 1u });
+		c.updateClockSource(*c.getControlledEntityImplGuard(Entity01, true, false), la::avdecc::entity::model::ClockDomainIndex{ 0u }, la::avdecc::entity::model::ClockSourceIndex{ 1u }, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::Throw);
 
 		// Validate chain has been updated
 		{

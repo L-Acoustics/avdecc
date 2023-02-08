@@ -92,7 +92,7 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 		if (isAemSupported && (flags.test(entity::model::jsonSerializer::Flag::ProcessStaticModel) || flags.test(entity::model::jsonSerializer::Flag::ProcessDynamicModel)))
 		{
 			// Dump model(s)
-			object[keyName::ControlledEntity_EntityModel] = entity::model::jsonSerializer::createJsonObject(entity.getEntityTree(), flags);
+			object[keyName::ControlledEntity_EntityModel] = entity::model::jsonSerializer::createJsonObject(entity.getEntityModelTree(), flags);
 			// Dump EntityModelID
 			if (flags.test(entity::model::jsonSerializer::Flag::ProcessStaticModel))
 			{
@@ -172,8 +172,8 @@ void setEntityModel(ControlledEntityImpl& entity, json const& object, entity::mo
 			// Read Entity Tree
 			auto entityTree = entity::model::jsonSerializer::createEntityTree(object, flags);
 
-			// Set tree on entity
-			entity.setEntityTree(entityTree);
+			// Build EntityNode from EntityTree
+			entity.buildEntityModelGraph(entityTree);
 		}
 	}
 	catch (json::exception const& e)
@@ -232,7 +232,7 @@ void setEntityState(ControlledEntityImpl& entity, json const& object)
 				entity.setSubscribedToUnsolicitedNotifications(it->get<bool>());
 			}
 		}
-		entity.setCurrentConfiguration(object.at(controller::keyName::ControlledEntityState_ActiveConfiguration).get<entity::model::DescriptorIndex>());
+		entity.setCurrentConfiguration(object.at(controller::keyName::ControlledEntityState_ActiveConfiguration).get<entity::model::DescriptorIndex>(), TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 	}
 	catch (json::type_error const& e)
 	{

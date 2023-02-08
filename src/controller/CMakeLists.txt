@@ -40,6 +40,9 @@ set (HEADER_FILES_COMMON
 	avdeccControllerLogHelper.hpp
 	avdeccEntityModelCache.hpp
 	entityModelChecksum.hpp
+	treeModelAccessStrategy.hpp
+	treeModelAccessTraverseStrategy.hpp
+	treeModelAccessCacheStrategy.hpp
 )
 
 set (SOURCE_FILES_COMMON

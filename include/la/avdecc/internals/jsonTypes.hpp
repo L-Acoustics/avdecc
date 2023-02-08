@@ -751,6 +751,7 @@ constexpr auto ConfigurationNode_Dynamic_ObjectName = "object_name";
 constexpr auto AudioUnitNode_Static_LocalizedDescription = "localized_description";
 constexpr auto AudioUnitNode_Static_ClockDomainIndex = "clock_domain_index";
 constexpr auto AudioUnitNode_Static_SamplingRates = "sampling_rates";
+constexpr auto AudioUnitNode_Static_ControlCounts = "control_counts";
 constexpr auto AudioUnitNode_Dynamic_ObjectName = "object_name";
 constexpr auto AudioUnitNode_Dynamic_CurrentSamplingRate = "current_sampling_rate";
 
@@ -791,6 +792,7 @@ constexpr auto StreamOutputNode_Dynamic_Counters = "counters";
 constexpr auto JackNode_Static_LocalizedDescription = "localized_description";
 constexpr auto JackNode_Static_Flags = "flags";
 constexpr auto JackNode_Static_Type = "type";
+constexpr auto JackNode_Static_ControlCounts = "control_counts";
 constexpr auto JackNode_Dynamic_ObjectName = "object_name";
 
 /* AvbInterfaceNode */
@@ -844,6 +846,7 @@ constexpr auto StringsNode_Static_Strings = "strings";
 /* StreamPortNode */
 constexpr auto StreamPortNode_Static_ClockDomainIndex = "clock_domain_index";
 constexpr auto StreamPortNode_Static_Flags = "flags";
+constexpr auto StreamPortNode_Static_ControlCounts = "control_counts";
 constexpr auto StreamPortNode_Dynamic_DynamicMappings = "dynamic_mappings";
 
 /* AudioClusterNode */
@@ -1495,12 +1498,14 @@ inline void to_json(json& j, AudioUnitNodeStaticModel const& s)
 	j[keyName::AudioUnitNode_Static_LocalizedDescription] = s.localizedDescription;
 	j[keyName::AudioUnitNode_Static_ClockDomainIndex] = s.clockDomainIndex;
 	j[keyName::AudioUnitNode_Static_SamplingRates] = s.samplingRates;
+	j[keyName::AudioUnitNode_Static_ControlCounts] = s.numberOfControls;
 }
 inline void from_json(json const& j, AudioUnitNodeStaticModel& s)
 {
 	get_optional_value(j, keyName::AudioUnitNode_Static_LocalizedDescription, s.localizedDescription);
 	j.at(keyName::AudioUnitNode_Static_ClockDomainIndex).get_to(s.clockDomainIndex);
 	j.at(keyName::AudioUnitNode_Static_SamplingRates).get_to(s.samplingRates);
+	get_optional_value(j, keyName::AudioUnitNode_Static_ControlCounts, s.numberOfControls);
 }
 
 /* AudioUnitNodeDynamicModel conversion */
@@ -1615,12 +1620,14 @@ inline void to_json(json& j, JackNodeStaticModel const& s)
 	j[keyName::JackNode_Static_LocalizedDescription] = s.localizedDescription;
 	j[keyName::JackNode_Static_Flags] = s.jackFlags;
 	j[keyName::JackNode_Static_Type] = s.jackType;
+	j[keyName::JackNode_Static_ControlCounts] = s.numberOfControls;
 }
 inline void from_json(json const& j, JackNodeStaticModel& s)
 {
 	get_optional_value(j, keyName::JackNode_Static_LocalizedDescription, s.localizedDescription);
 	j.at(keyName::JackNode_Static_Flags).get_to(s.jackFlags);
 	j.at(keyName::JackNode_Static_Type).get_to(s.jackType);
+	get_optional_value(j, keyName::JackNode_Static_ControlCounts, s.numberOfControls);
 }
 
 /* JackNodeDynamicModel conversion */
@@ -1777,11 +1784,13 @@ inline void to_json(json& j, StreamPortNodeStaticModel const& s)
 {
 	j[keyName::StreamPortNode_Static_ClockDomainIndex] = s.clockDomainIndex;
 	j[keyName::StreamPortNode_Static_Flags] = s.portFlags;
+	j[keyName::StreamPortNode_Static_ControlCounts] = s.numberOfControls;
 }
 inline void from_json(json const& j, StreamPortNodeStaticModel& s)
 {
 	j.at(keyName::StreamPortNode_Static_ClockDomainIndex).get_to(s.clockDomainIndex);
 	j.at(keyName::StreamPortNode_Static_Flags).get_to(s.portFlags);
+	get_optional_value(j, keyName::StreamPortNode_Static_ControlCounts, s.numberOfControls);
 }
 
 /* StreamPortNodeDynamicModel conversion */

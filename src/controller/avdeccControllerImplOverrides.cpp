@@ -190,7 +190,7 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 									// Update source
 									if (!!status) // Only change the control values in case of success
 									{
-										updateControlValues(*controlledEntity, controlIndex, packedControlValues);
+										updateControlValues(*controlledEntity, controlIndex, packedControlValues, TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 									}
 								}
 							});
@@ -710,7 +710,7 @@ void ControllerImpl::setConfiguration(UniqueIdentifier const targetEntityID, ent
 					// Update configuration
 					if (!!status)
 					{
-						updateConfiguration(controller, *entity, configurationIndex);
+						updateConfiguration(controller, *entity, configurationIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -752,7 +752,7 @@ void ControllerImpl::setStreamInputFormat(UniqueIdentifier const targetEntityID,
 					// Update format
 					if (!!status)
 					{
-						updateStreamInputFormat(*entity, streamIndex, streamFormat);
+						updateStreamInputFormat(*entity, streamIndex, streamFormat, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -794,7 +794,7 @@ void ControllerImpl::setStreamOutputFormat(UniqueIdentifier const targetEntityID
 					// Update format
 					if (!!status)
 					{
-						updateStreamOutputFormat(*entity, streamIndex, streamFormat);
+						updateStreamOutputFormat(*entity, streamIndex, streamFormat, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -836,7 +836,7 @@ void ControllerImpl::setStreamInputInfo(UniqueIdentifier const targetEntityID, e
 					// Update info
 					if (!!status)
 					{
-						updateStreamInputInfo(*entity, streamIndex, info, false, false); // StreamFormat not required to be set in SetStreamInfo / Milan Extended Information not set in SetStreamInfo
+						updateStreamInputInfo(*entity, streamIndex, info, false, false, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull); // StreamFormat not required to be set in SetStreamInfo / Milan Extended Information not set in SetStreamInfo
 					}
 
 					// Invoke result handler
@@ -878,7 +878,7 @@ void ControllerImpl::setStreamOutputInfo(UniqueIdentifier const targetEntityID, 
 					// Update info
 					if (!!status)
 					{
-						updateStreamOutputInfo(*entity, streamIndex, info, false, false); // StreamFormat not required to be set in SetStreamInfo / Milan Extended Information not set in SetStreamInfo
+						updateStreamOutputInfo(*entity, streamIndex, info, false, false, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull); // StreamFormat not required to be set in SetStreamInfo / Milan Extended Information not set in SetStreamInfo
 					}
 
 					// Invoke result handler
@@ -920,7 +920,7 @@ void ControllerImpl::setEntityName(UniqueIdentifier const targetEntityID, entity
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateEntityName(*entity, entityName);
+						updateEntityName(*entity, entityName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -962,7 +962,7 @@ void ControllerImpl::setEntityGroupName(UniqueIdentifier const targetEntityID, e
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateEntityGroupName(*entity, entityGroupName);
+						updateEntityGroupName(*entity, entityGroupName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1004,7 +1004,7 @@ void ControllerImpl::setConfigurationName(UniqueIdentifier const targetEntityID,
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateConfigurationName(*entity, configurationIndex, configurationName);
+						updateConfigurationName(*entity, configurationIndex, configurationName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1046,7 +1046,7 @@ void ControllerImpl::setAudioUnitName(UniqueIdentifier const targetEntityID, ent
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateAudioUnitName(*entity, configurationIndex, audioUnitIndex, audioUnitName);
+						updateAudioUnitName(*entity, configurationIndex, audioUnitIndex, audioUnitName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1088,7 +1088,7 @@ void ControllerImpl::setStreamInputName(UniqueIdentifier const targetEntityID, e
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateStreamInputName(*entity, configurationIndex, streamIndex, streamInputName);
+						updateStreamInputName(*entity, configurationIndex, streamIndex, streamInputName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1130,7 +1130,7 @@ void ControllerImpl::setStreamOutputName(UniqueIdentifier const targetEntityID, 
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateStreamOutputName(*entity, configurationIndex, streamIndex, streamOutputName);
+						updateStreamOutputName(*entity, configurationIndex, streamIndex, streamOutputName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1172,7 +1172,7 @@ void ControllerImpl::setJackInputName(UniqueIdentifier const targetEntityID, ent
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateJackInputName(*entity, configurationIndex, jackIndex, jackInputName);
+						updateJackInputName(*entity, configurationIndex, jackIndex, jackInputName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1214,7 +1214,7 @@ void ControllerImpl::setJackOutputName(UniqueIdentifier const targetEntityID, en
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateJackOutputName(*entity, configurationIndex, jackIndex, jackOutputName);
+						updateJackOutputName(*entity, configurationIndex, jackIndex, jackOutputName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1256,7 +1256,7 @@ void ControllerImpl::setAvbInterfaceName(UniqueIdentifier const targetEntityID, 
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateAvbInterfaceName(*entity, configurationIndex, avbInterfaceIndex, avbInterfaceName);
+						updateAvbInterfaceName(*entity, configurationIndex, avbInterfaceIndex, avbInterfaceName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1298,7 +1298,7 @@ void ControllerImpl::setClockSourceName(UniqueIdentifier const targetEntityID, e
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateClockSourceName(*entity, configurationIndex, clockSourceIndex, clockSourceName);
+						updateClockSourceName(*entity, configurationIndex, clockSourceIndex, clockSourceName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1340,7 +1340,7 @@ void ControllerImpl::setMemoryObjectName(UniqueIdentifier const targetEntityID, 
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateMemoryObjectName(*entity, configurationIndex, memoryObjectIndex, memoryObjectName);
+						updateMemoryObjectName(*entity, configurationIndex, memoryObjectIndex, memoryObjectName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1382,7 +1382,7 @@ void ControllerImpl::setAudioClusterName(UniqueIdentifier const targetEntityID, 
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateAudioClusterName(*entity, configurationIndex, audioClusterIndex, audioClusterName);
+						updateAudioClusterName(*entity, configurationIndex, audioClusterIndex, audioClusterName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1424,7 +1424,7 @@ void ControllerImpl::setControlName(UniqueIdentifier const targetEntityID, entit
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateControlName(*entity, configurationIndex, controlIndex, controlName);
+						updateControlName(*entity, configurationIndex, controlIndex, controlName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1466,7 +1466,7 @@ void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, e
 					// Update name
 					if (!!status) // Only change the name in case of success
 					{
-						updateClockDomainName(*entity, configurationIndex, clockDomainIndex, clockDomainName);
+						updateClockDomainName(*entity, configurationIndex, clockDomainIndex, clockDomainName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1508,7 +1508,7 @@ void ControllerImpl::setAssociationID(UniqueIdentifier const targetEntityID, Uni
 					// Update association
 					if (!!status) // Only change the Association ID in case of success
 					{
-						updateAssociationID(*entity, associationID);
+						updateAssociationID(*entity, associationID, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1550,7 +1550,7 @@ void ControllerImpl::setAudioUnitSamplingRate(UniqueIdentifier const targetEntit
 					// Update rate
 					if (!!status) // Only change the sampling rate in case of success
 					{
-						updateAudioUnitSamplingRate(*entity, audioUnitIndex, samplingRate);
+						updateAudioUnitSamplingRate(*entity, audioUnitIndex, samplingRate, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1592,7 +1592,7 @@ void ControllerImpl::setClockSource(UniqueIdentifier const targetEntityID, entit
 					// Update source
 					if (!!status) // Only change the clock source in case of success
 					{
-						updateClockSource(*entity, clockDomainIndex, clockSourceIndex);
+						updateClockSource(*entity, clockDomainIndex, clockSourceIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1635,7 +1635,7 @@ void ControllerImpl::setControlValues(UniqueIdentifier const targetEntityID, ent
 					auto st = status;
 					if (!!st) // Only change the control values in case of success
 					{
-						if (!updateControlValues(*entity, controlIndex, packedControlValues))
+						if (!updateControlValues(*entity, controlIndex, packedControlValues, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull))
 						{
 							st = entity::ControllerEntity::AemCommandStatus::ProtocolError;
 						}
@@ -1680,7 +1680,7 @@ void ControllerImpl::startStreamInput(UniqueIdentifier const targetEntityID, ent
 					// Update status
 					if (!!status) // Only change the running status in case of success
 					{
-						updateStreamInputRunningStatus(*entity, streamIndex, true);
+						updateStreamInputRunningStatus(*entity, streamIndex, true, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1722,7 +1722,7 @@ void ControllerImpl::stopStreamInput(UniqueIdentifier const targetEntityID, enti
 					// Update status
 					if (!!status) // Only change the running status in case of success
 					{
-						updateStreamInputRunningStatus(*entity, streamIndex, false);
+						updateStreamInputRunningStatus(*entity, streamIndex, false, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1764,7 +1764,7 @@ void ControllerImpl::startStreamOutput(UniqueIdentifier const targetEntityID, en
 					// Update status
 					if (!!status) // Only change the running status in case of success
 					{
-						updateStreamOutputRunningStatus(*entity, streamIndex, true);
+						updateStreamOutputRunningStatus(*entity, streamIndex, true, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1806,7 +1806,7 @@ void ControllerImpl::stopStreamOutput(UniqueIdentifier const targetEntityID, ent
 					// Update status
 					if (!!status) // Only change the running status in case of success
 					{
-						updateStreamOutputRunningStatus(*entity, streamIndex, false);
+						updateStreamOutputRunningStatus(*entity, streamIndex, false, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1855,7 +1855,7 @@ void ControllerImpl::addStreamPortInputAudioMappings(UniqueIdentifier const targ
 					// Update mappings
 					if (!!status)
 					{
-						updateStreamPortInputAudioMappingsAdded(*entity, streamPortIndex, mappings);
+						updateStreamPortInputAudioMappingsAdded(*entity, streamPortIndex, mappings, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1904,7 +1904,7 @@ void ControllerImpl::addStreamPortOutputAudioMappings(UniqueIdentifier const tar
 					// Update mappings
 					if (!!status)
 					{
-						updateStreamPortOutputAudioMappingsAdded(*entity, streamPortIndex, mappings);
+						updateStreamPortOutputAudioMappingsAdded(*entity, streamPortIndex, mappings, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -1953,7 +1953,7 @@ void ControllerImpl::removeStreamPortInputAudioMappings(UniqueIdentifier const t
 					// Update mappings
 					if (!!status)
 					{
-						updateStreamPortInputAudioMappingsRemoved(*entity, streamPortIndex, mappings);
+						updateStreamPortInputAudioMappingsRemoved(*entity, streamPortIndex, mappings, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -2002,7 +2002,7 @@ void ControllerImpl::removeStreamPortOutputAudioMappings(UniqueIdentifier const 
 					// Update mappings
 					if (!!status)
 					{
-						updateStreamPortOutputAudioMappingsRemoved(*entity, streamPortIndex, mappings);
+						updateStreamPortOutputAudioMappingsRemoved(*entity, streamPortIndex, mappings, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -2044,7 +2044,7 @@ void ControllerImpl::setMemoryObjectLength(UniqueIdentifier const targetEntityID
 					// Update length
 					if (!!status)
 					{
-						updateMemoryObjectLength(*entity, configurationIndex, memoryObjectIndex, length);
+						updateMemoryObjectLength(*entity, configurationIndex, memoryObjectIndex, length, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 					}
 
 					// Invoke result handler
@@ -2095,7 +2095,7 @@ void ControllerImpl::identifyEntity(UniqueIdentifier const targetEntityID, std::
 					// Update source
 					if (!!status) // Only change the control values in case of success
 					{
-						updateControlValues(*entity, controlIndex, packedControlValues);
+						updateControlValues(*entity, controlIndex, packedControlValues, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 
 						// Register to the State Machine, if duration is not 0
 						if (duration != std::chrono::milliseconds{ 0 })

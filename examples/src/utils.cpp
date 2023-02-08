@@ -111,7 +111,7 @@ la::networkInterface::Interface chooseNetworkInterface()
 		[&interfaces](la::networkInterface::Interface const& intfc)
 		{
 			// Only select connected, non virtual, ethernet interfaces
-			if (intfc.type == la::networkInterface::Interface::Type::Ethernet && intfc.isConnected && !intfc.isVirtual)
+			if (/*intfc.type == la::networkInterface::Interface::Type::Ethernet && */ intfc.isConnected && !intfc.isVirtual)
 				interfaces.push_back(intfc);
 		});
 

@@ -175,14 +175,14 @@ void ControllerImpl::onEntityDescriptorResult(entity::controller::Interface cons
 
 				// Search in the AEM cache for the AEM of the active configuration (if not ignored)
 				auto const entityModelID = descriptor.entityModelID;
-				auto cachedModel = std::optional<entity::model::EntityTree>{ std::nullopt };
+				auto cachedModel = std::optional<model::EntityNode>{ std::nullopt };
 				auto const& entityModelCache = EntityModelCache::getInstance();
 				// If AEM Cache is Enabled and the entity has an EntityModelID defined
 				if (!entity.shouldIgnoreCachedEntityModel() && entityModelCache.isCacheEnabled() && entityModelID)
 				{
 					if (EntityModelCache::isValidEntityModelID(entityModelID))
 					{
-						cachedModel = entityModelCache.getCachedEntityTree(entityModelID);
+						cachedModel = entityModelCache.getCachedEntityModel(entityModelID);
 					}
 					else
 					{
@@ -191,7 +191,7 @@ void ControllerImpl::onEntityDescriptorResult(entity::controller::Interface cons
 				}
 
 				// Already cached, no need to get the remaining of EnumerationSteps::GetStaticModel, proceed with EnumerationSteps::GetDescriptorDynamicInfo
-				if (cachedModel && entity.setCachedEntityTree(*cachedModel, descriptor, _fullStaticModelEnumeration))
+				if (cachedModel && entity.setCachedEntityNode(std::move(*cachedModel), descriptor, _fullStaticModelEnumeration))
 				{
 					LOG_CONTROLLER_INFO(entityID, "AEM-CACHE: Loaded model for EntityModelID {}", utils::toHexString(entityModelID, true, false));
 					entity.addEnumerationStep(ControlledEntityImpl::EnumerationStep::GetDescriptorDynamicInfo);
@@ -454,6 +454,20 @@ void ControllerImpl::onAudioUnitDescriptorResult(entity::controller::Interface c
 						for (auto index = entity::model::StreamPortIndex(0); index < descriptor.numberOfStreamOutputPorts; ++index)
 						{
 							queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamPortOutput, descriptor.baseStreamOutputPort + index);
+						}
+					}
+				}
+				// Get external port input
+				// Get external port output
+				// Get internal port input
+				// Get internal port output
+				// Get controls
+				{
+					if (descriptor.numberOfControls != 0)
+					{
+						for (auto index = entity::model::ControlIndex(0); index < descriptor.numberOfControls; ++index)
+						{
+							queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Control, descriptor.baseControl + index);
 						}
 					}
 				}
@@ -745,24 +759,30 @@ void ControllerImpl::onLocaleDescriptorResult(entity::controller::Interface cons
 			if (!!status)
 			{
 				controlledEntity->setLocaleDescriptor(descriptor, configurationIndex, localeIndex);
-				auto const& configTree = controlledEntity->getConfigurationTree(configurationIndex);
-				std::uint16_t countLocales{ 0u };
+				auto const* const configNode = controlledEntity->getModelAccessStrategy().getConfigurationNode(configurationIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+				if (configNode)
 				{
-					auto const localeIt = configTree.staticModel.descriptorCounts.find(entity::model::DescriptorType::Locale);
-					if (localeIt != configTree.staticModel.descriptorCounts.end())
-						countLocales = localeIt->second;
-				}
-				auto const allLocalesLoaded = configTree.localeModels.size() == countLocales;
-				// We got all locales, now load strings for the desired locale
-				if (allLocalesLoaded)
-				{
-					auto* const entity = controlledEntity.get();
-					chooseLocale(entity, configurationIndex, _preferedLocale,
-						[this, entity, configurationIndex](entity::model::StringsIndex const stringsIndex)
+					//auto const& configTree = controlledEntity->getConfigurationTree(configurationIndex);
+					auto countLocales = std::uint16_t{ 0u };
+					{
+						auto const localeIt = configNode->staticModel.descriptorCounts.find(entity::model::DescriptorType::Locale);
+						if (localeIt != configNode->staticModel.descriptorCounts.end())
 						{
-							// Strings not in cache, we need to query the device
-							queryInformation(entity, configurationIndex, entity::model::DescriptorType::Strings, stringsIndex);
-						});
+							countLocales = localeIt->second;
+						}
+					}
+					auto const allLocalesLoaded = configNode->locales.size() == countLocales;
+					// We got all locales, now load strings for the desired locale
+					if (allLocalesLoaded)
+					{
+						auto* const entity = controlledEntity.get();
+						chooseLocale(entity, configurationIndex, _preferedLocale,
+							[this, entity, configurationIndex](entity::model::StringsIndex const stringsIndex)
+							{
+								// Strings not in cache, we need to query the device
+								queryInformation(entity, configurationIndex, entity::model::DescriptorType::Strings, stringsIndex);
+							});
+					}
 				}
 			}
 			else
@@ -1090,7 +1110,7 @@ void ControllerImpl::onGetStreamInputInfoResult(entity::controller::Interface co
 			if (!!status)
 			{
 				// Use the "update**" method, there are many things to do
-				updateStreamInputInfo(*controlledEntity, streamIndex, info, true, true);
+				updateStreamInputInfo(*controlledEntity, streamIndex, info, true, true, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1127,7 +1147,7 @@ void ControllerImpl::onGetStreamOutputInfoResult(entity::controller::Interface c
 			if (!!status)
 			{
 				// Use the "update**" method, there are many things to do
-				updateStreamOutputInfo(*controlledEntity, streamIndex, info, true, true);
+				updateStreamOutputInfo(*controlledEntity, streamIndex, info, true, true, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1243,7 +1263,7 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::controller::Inte
 			{
 				if (mapIndex == 0)
 				{
-					controlledEntity->clearStreamPortInputAudioMappings(streamPortIndex);
+					controlledEntity->clearStreamPortInputAudioMappings(streamPortIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 				}
 				bool isComplete{ true };
 				if (numberOfMaps != 0)
@@ -1254,7 +1274,7 @@ void ControllerImpl::onGetStreamPortInputAudioMapResult(entity::controller::Inte
 				{
 					LOG_CONTROLLER_WARN(entityID, "onGetStreamPortInputAudioMapResult returned 0 as numberOfMaps but mappings array is not empty");
 				}
-				controlledEntity->addStreamPortInputAudioMappings(streamPortIndex, mappings);
+				controlledEntity->addStreamPortInputAudioMappings(streamPortIndex, mappings, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 				if (!isComplete)
 				{
 					queryInformation(controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, streamPortIndex, mapIndex + 1);
@@ -1306,7 +1326,7 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::controller::Int
 			{
 				if (mapIndex == 0)
 				{
-					controlledEntity->clearStreamPortOutputAudioMappings(streamPortIndex);
+					controlledEntity->clearStreamPortOutputAudioMappings(streamPortIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 				}
 				bool isComplete{ true };
 				if (numberOfMaps != 0)
@@ -1317,7 +1337,7 @@ void ControllerImpl::onGetStreamPortOutputAudioMapResult(entity::controller::Int
 				{
 					LOG_CONTROLLER_WARN(entityID, "onGetStreamPortOutputAudioMapResult returned 0 as numberOfMaps but mappings array is not empty");
 				}
-				controlledEntity->addStreamPortOutputAudioMappings(streamPortIndex, mappings);
+				controlledEntity->addStreamPortOutputAudioMappings(streamPortIndex, mappings, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 				if (!isComplete)
 				{
 					queryInformation(controlledEntity.get(), configurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, streamPortIndex, mapIndex + 1);
@@ -1369,7 +1389,7 @@ void ControllerImpl::onGetAvbInfoResult(entity::controller::Interface const* con
 			if (!!status)
 			{
 				// Use the "update**" method, there are many things to do
-				updateAvbInfo(entity, avbInterfaceIndex, info);
+				updateAvbInfo(entity, avbInterfaceIndex, info, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1382,22 +1402,26 @@ void ControllerImpl::onGetAvbInfoResult(entity::controller::Interface const* con
 
 				// Special case for gPTP info, we always want to have valid gPTP information in the AvbInterfaceDescriptor model (updated when an ADP is received, or GET_AVB_INFO unsolicited)
 				// So we have to retrieve the matching ADP information to force an update of the cached model
-				auto const& macAddress = entity.getNodeStaticModel(configurationIndex, avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels).macAddress;
-				auto& e = controlledEntity->getEntity();
-				auto const caps = e.getEntityCapabilities();
-				if (caps.test(entity::EntityCapability::GptpSupported))
+				auto const* const avbInterfaceStaticModel = entity.getModelAccessStrategy().getAvbInterfaceNodeStaticModel(configurationIndex, avbInterfaceIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+				if (avbInterfaceStaticModel)
 				{
-					// Search which InterfaceInformation matches this AvbInterfaceIndex (searching by Index, or by MacAddress in case the Index was not specified in ADP)
-					for (auto& [interfaceIndex, interfaceInfo] : e.getInterfacesInformation())
+					auto const& macAddress = avbInterfaceStaticModel->macAddress;
+					auto& e = controlledEntity->getEntity();
+					auto const caps = e.getEntityCapabilities();
+					if (caps.test(entity::EntityCapability::GptpSupported))
 					{
-						// Do we even have gPTP info on this InterfaceInfo
-						if (interfaceInfo.gptpGrandmasterID)
+						// Search which InterfaceInformation matches this AvbInterfaceIndex (searching by Index, or by MacAddress in case the Index was not specified in ADP)
+						for (auto& [interfaceIndex, interfaceInfo] : e.getInterfacesInformation())
 						{
-							// Match with the passed AvbInterfaceIndex, or with macAddress if this ADP is the GlobalAvbInterfaceIndex
-							if (interfaceIndex == avbInterfaceIndex || (interfaceIndex == entity::Entity::GlobalAvbInterfaceIndex && macAddress == interfaceInfo.macAddress))
+							// Do we even have gPTP info on this InterfaceInfo
+							if (interfaceInfo.gptpGrandmasterID)
 							{
-								// Force InterfaceInfo with these gPTP info
-								updateGptpInformation(entity, avbInterfaceIndex, macAddress, *interfaceInfo.gptpGrandmasterID, *interfaceInfo.gptpDomainNumber);
+								// Match with the passed AvbInterfaceIndex, or with macAddress if this ADP is the GlobalAvbInterfaceIndex
+								if (interfaceIndex == avbInterfaceIndex || (interfaceIndex == entity::Entity::GlobalAvbInterfaceIndex && macAddress == interfaceInfo.macAddress))
+								{
+									// Force InterfaceInfo with these gPTP info
+									updateGptpInformation(entity, avbInterfaceIndex, macAddress, *interfaceInfo.gptpGrandmasterID, *interfaceInfo.gptpDomainNumber, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+								}
 							}
 						}
 					}
@@ -1428,7 +1452,7 @@ void ControllerImpl::onGetAsPathResult(entity::controller::Interface const* cons
 		{
 			if (!!status)
 			{
-				controlledEntity->setAsPath(avbInterfaceIndex, asPath);
+				updateAsPath(*controlledEntity, avbInterfaceIndex, asPath, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1467,7 +1491,7 @@ void ControllerImpl::onGetEntityCountersResult(entity::controller::Interface con
 				auto& entity = *controlledEntity;
 
 				// Use the "update**" method, there are many things to do
-				updateEntityCounters(entity, validCounters, counters);
+				updateEntityCounters(entity, validCounters, counters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1516,7 +1540,7 @@ void ControllerImpl::onGetAvbInterfaceCountersResult(entity::controller::Interfa
 				}
 
 				// Use the "update**" method, there are many things to do
-				updateAvbInterfaceCounters(entity, avbInterfaceIndex, validCounters, counters);
+				updateAvbInterfaceCounters(entity, avbInterfaceIndex, validCounters, counters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1565,7 +1589,7 @@ void ControllerImpl::onGetClockDomainCountersResult(entity::controller::Interfac
 				}
 
 				// Use the "update**" method, there are many things to do
-				updateClockDomainCounters(entity, clockDomainIndex, validCounters, counters);
+				updateClockDomainCounters(entity, clockDomainIndex, validCounters, counters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1614,7 +1638,7 @@ void ControllerImpl::onGetStreamInputCountersResult(entity::controller::Interfac
 				}
 
 				// Use the "update**" method, there are many things to do
-				updateStreamInputCounters(entity, streamIndex, validCounters, counters);
+				updateStreamInputCounters(entity, streamIndex, validCounters, counters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1663,7 +1687,7 @@ void ControllerImpl::onGetStreamOutputCountersResult(entity::controller::Interfa
 				}
 
 				// Use the "update**" method, there are many things to do
-				updateStreamOutputCounters(entity, streamIndex, validCounters, counters);
+				updateStreamOutputCounters(entity, streamIndex, validCounters, counters, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1699,7 +1723,7 @@ void ControllerImpl::onConfigurationNameResult(entity::controller::Interface con
 		{
 			if (!!status)
 			{
-				controlledEntity->setConfigurationName(configurationIndex, configurationName);
+				updateConfigurationName(*controlledEntity, configurationIndex, configurationName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1735,7 +1759,7 @@ void ControllerImpl::onAudioUnitNameResult(entity::controller::Interface const* 
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, audioUnitIndex, &entity::model::ConfigurationTree::audioUnitModels, audioUnitName);
+				updateAudioUnitName(*controlledEntity, configurationIndex, audioUnitIndex, audioUnitName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1771,7 +1795,7 @@ void ControllerImpl::onAudioUnitSamplingRateResult(entity::controller::Interface
 		{
 			if (!!status)
 			{
-				controlledEntity->setSamplingRate(audioUnitIndex, samplingRate);
+				updateAudioUnitSamplingRate(*controlledEntity, audioUnitIndex, samplingRate, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1807,7 +1831,7 @@ void ControllerImpl::onInputStreamNameResult(entity::controller::Interface const
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, streamIndex, &entity::model::ConfigurationTree::streamInputModels, streamInputName);
+				updateStreamInputName(*controlledEntity, configurationIndex, streamIndex, streamInputName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1844,7 +1868,7 @@ void ControllerImpl::onInputStreamFormatResult(entity::controller::Interface con
 			if (!!status)
 			{
 				// Use the "update**" method, there are many things to do
-				updateStreamInputFormat(*controlledEntity, streamIndex, streamFormat);
+				updateStreamInputFormat(*controlledEntity, streamIndex, streamFormat, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1880,7 +1904,7 @@ void ControllerImpl::onOutputStreamNameResult(entity::controller::Interface cons
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, streamIndex, &entity::model::ConfigurationTree::streamOutputModels, streamOutputName);
+				updateStreamOutputName(*controlledEntity, configurationIndex, streamIndex, streamOutputName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1917,7 +1941,7 @@ void ControllerImpl::onOutputStreamFormatResult(entity::controller::Interface co
 			if (!!status)
 			{
 				// Use the "update**" method, there are many things to do
-				updateStreamOutputFormat(*controlledEntity, streamIndex, streamFormat);
+				updateStreamOutputFormat(*controlledEntity, streamIndex, streamFormat, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1953,7 +1977,7 @@ void ControllerImpl::onInputJackNameResult(entity::controller::Interface const* 
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, jackIndex, &entity::model::ConfigurationTree::jackInputModels, jackInputName);
+				updateJackInputName(*controlledEntity, configurationIndex, jackIndex, jackInputName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -1989,7 +2013,7 @@ void ControllerImpl::onOutputJackNameResult(entity::controller::Interface const*
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, jackIndex, &entity::model::ConfigurationTree::jackOutputModels, jackOutputName);
+				updateJackOutputName(*controlledEntity, configurationIndex, jackIndex, jackOutputName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -2025,7 +2049,7 @@ void ControllerImpl::onAvbInterfaceNameResult(entity::controller::Interface cons
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels, avbInterfaceName);
+				updateAvbInterfaceName(*controlledEntity, configurationIndex, avbInterfaceIndex, avbInterfaceName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -2061,7 +2085,7 @@ void ControllerImpl::onClockSourceNameResult(entity::controller::Interface const
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, clockSourceIndex, &entity::model::ConfigurationTree::clockSourceModels, clockSourceName);
+				updateClockSourceName(*controlledEntity, configurationIndex, clockSourceIndex, clockSourceName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -2097,7 +2121,7 @@ void ControllerImpl::onMemoryObjectNameResult(entity::controller::Interface cons
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, memoryObjectIndex, &entity::model::ConfigurationTree::memoryObjectModels, memoryObjectName);
+				updateMemoryObjectName(*controlledEntity, configurationIndex, memoryObjectIndex, memoryObjectName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -2133,7 +2157,7 @@ void ControllerImpl::onMemoryObjectLengthResult(entity::controller::Interface co
 		{
 			if (!!status)
 			{
-				controlledEntity->setMemoryObjectLength(configurationIndex, memoryObjectIndex, length);
+				updateMemoryObjectLength(*controlledEntity, configurationIndex, memoryObjectIndex, length, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -2169,7 +2193,7 @@ void ControllerImpl::onAudioClusterNameResult(entity::controller::Interface cons
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, audioClusterIndex, &entity::model::ConfigurationTree::audioClusterModels, audioClusterName);
+				updateAudioClusterName(*controlledEntity, configurationIndex, audioClusterIndex, audioClusterName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -2205,7 +2229,7 @@ void ControllerImpl::onControlNameResult(entity::controller::Interface const* co
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, controlIndex, &entity::model::ConfigurationTree::controlModels, controlName);
+				updateControlName(*controlledEntity, configurationIndex, controlIndex, controlName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -2244,7 +2268,7 @@ void ControllerImpl::onControlValuesResult(entity::controller::Interface const* 
 			if (!!st)
 			{
 				// Use the "update**" method, there are many things to do
-				if (!updateControlValues(*controlledEntity, controlIndex, packedControlValues))
+				if (!updateControlValues(*controlledEntity, controlIndex, packedControlValues, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull))
 				{
 					st = entity::ControllerEntity::AemCommandStatus::ProtocolError;
 				}
@@ -2281,7 +2305,7 @@ void ControllerImpl::onClockDomainNameResult(entity::controller::Interface const
 		{
 			if (!!status)
 			{
-				controlledEntity->setObjectName(configurationIndex, clockDomainIndex, &entity::model::ConfigurationTree::clockDomainModels, clockDomainName);
+				updateClockDomainName(*controlledEntity, configurationIndex, clockDomainIndex, clockDomainName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -2317,7 +2341,7 @@ void ControllerImpl::onClockDomainSourceIndexResult(entity::controller::Interfac
 		{
 			if (!!status)
 			{
-				controlledEntity->setClockSource(clockDomainIndex, clockSourceIndex);
+				updateClockSource(*controlledEntity, clockDomainIndex, clockSourceIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{
@@ -2365,7 +2389,7 @@ void ControllerImpl::onGetTalkerStreamStateResult(entity::controller::Interface 
 		{
 			if (!!status)
 			{
-				clearTalkerStreamConnections(&talker, talkerStream.streamIndex);
+				clearTalkerStreamConnections(&talker, talkerStream.streamIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 
 				// Milan device should return 0 as connectionCount
 				if (talker.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
@@ -2458,7 +2482,7 @@ void ControllerImpl::onGetTalkerStreamConnectionResult(entity::controller::Inter
 		{
 			if (!!status)
 			{
-				addTalkerStreamConnection(talker.get(), talkerStream.streamIndex, listenerStream);
+				addTalkerStreamConnection(talker.get(), talkerStream.streamIndex, listenerStream, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 			}
 			else
 			{

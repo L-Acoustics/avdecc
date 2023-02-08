@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - Support for JACK_INPUT/JACK_OUTPUT descriptors
+- Support for CONTROL descriptors at AUDIO_UNIT, JACK, STREAM_PORT levels
 
 ## [3.4.1] - 2023-01-11
 
