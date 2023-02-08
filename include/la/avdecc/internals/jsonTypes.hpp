@@ -744,6 +744,7 @@ constexpr auto EntityNode_Dynamic_Counters = "counters";
 
 /* ConfigurationNode */
 constexpr auto ConfigurationNode_Static_LocalizedDescription = "localized_description";
+constexpr auto ConfigurationNode_Static_DescriptorCounts = "descriptor_counts";
 constexpr auto ConfigurationNode_Dynamic_ObjectName = "object_name";
 
 /* AudioUnitNode */
@@ -1470,10 +1471,12 @@ inline void from_json(json const& j, EntityNodeDynamicModel& d)
 inline void to_json(json& j, ConfigurationNodeStaticModel const& s)
 {
 	j[keyName::ConfigurationNode_Static_LocalizedDescription] = s.localizedDescription;
+	j[keyName::ConfigurationNode_Static_DescriptorCounts] = s.descriptorCounts;
 }
 inline void from_json(json const& j, ConfigurationNodeStaticModel& s)
 {
 	get_optional_value(j, keyName::ConfigurationNode_Static_LocalizedDescription, s.localizedDescription);
+	get_optional_value(j, keyName::ConfigurationNode_Static_DescriptorCounts, s.descriptorCounts);
 }
 
 /* ConfigurationNodeDynamicModel conversion */
