@@ -925,11 +925,11 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor, bool
 				}
 
 				// Loop over ControlNode
-				for (auto const& domainKV : configuration.controls)
+				for (auto const& controlKV : configuration.controls)
 				{
-					auto const& domain = domainKV.second;
+					auto const& control = controlKV.second;
 					// Visit ControlNode (ConfigurationNode is parent)
-					visitor->visit(this, &configuration, domain);
+					visitor->visit(this, &configuration, control);
 				}
 
 				// Loop over ClockDomainNode
