@@ -224,7 +224,7 @@ private:
 		return nullptr;
 	}
 
-	virtual model::AvbInterfaceNode* getAvbInterfaceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior)
+	virtual model::AvbInterfaceNode* getAvbInterfaceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior) override
 	{
 		auto* const configurationNode = getConfigurationNode(configurationIndex, notFoundBehavior);
 		if (configurationNode)
@@ -244,7 +244,7 @@ private:
 		return nullptr;
 	}
 
-	virtual model::ClockSourceNode* getClockSourceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior)
+	virtual model::ClockSourceNode* getClockSourceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior) override
 	{
 		auto* const configurationNode = getConfigurationNode(configurationIndex, notFoundBehavior);
 		if (configurationNode)
@@ -264,7 +264,7 @@ private:
 		return nullptr;
 	}
 
-	virtual model::MemoryObjectNode* getMemoryObjectNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior)
+	virtual model::MemoryObjectNode* getMemoryObjectNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior) override
 	{
 		auto* const configurationNode = getConfigurationNode(configurationIndex, notFoundBehavior);
 		if (configurationNode)
@@ -284,7 +284,7 @@ private:
 		return nullptr;
 	}
 
-	virtual model::LocaleNode* getLocaleNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocaleIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior)
+	virtual model::LocaleNode* getLocaleNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocaleIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior) override
 	{
 		auto* const configurationNode = getConfigurationNode(configurationIndex, notFoundBehavior);
 		if (configurationNode)

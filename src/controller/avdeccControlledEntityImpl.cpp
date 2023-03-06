@@ -3498,7 +3498,7 @@ entity::model::EntityTree const& ControlledEntityImpl::getEntityModelTree() cons
 		DynamicModelVisitor& operator=(DynamicModelVisitor&&) = delete;
 
 	private:
-		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::EntityNode const& node) noexcept
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::EntityNode const& node) noexcept override
 		{
 			// Get tree
 			auto& entityTree = *_entity._entityTree;
