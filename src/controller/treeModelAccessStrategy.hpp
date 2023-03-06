@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include "la/avdecc/controller/internals/avdeccControlledEntityModel.hpp"
+#include "la/avdecc/controller/internals/avdeccControlledEntity.hpp"
 
 #include <la/avdecc/internals/entityModelTree.hpp>
 #include <la/avdecc/utils.hpp>
@@ -57,6 +57,63 @@ public:
 		Throw, /**< Will throw an Exception */
 	};
 
+protected:
+	TreeModelAccessStrategy(ControlledEntityImpl* const entity) noexcept
+		: _entity{ entity }
+	{
+	}
+
+	bool handleDescriptorNotFound(NotFoundBehavior const notFoundBehavior, ControlledEntity::Exception::Type const exceptionType, std::string const& message)
+	{
+		switch (notFoundBehavior)
+		{
+			case NotFoundBehavior::IgnoreAndReturnNull:
+				break;
+			case NotFoundBehavior::LogAndReturnNull:
+				// TODO: Properly log the message using the logger
+				AVDECC_ASSERT(false, message);
+				break;
+			case NotFoundBehavior::DefaultConstruct:
+				return true;
+			case NotFoundBehavior::Throw:
+				throw ControlledEntity::Exception(exceptionType, message.c_str());
+			default:
+				break;
+		}
+		return false;
+	}
+
+	template<typename TreeModelAccessPointer, typename DescriptorIndexType>
+	auto* getNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const descriptorIndex, TreeModelAccessPointer TreeModelAccessStrategy::*Pointer, NotFoundBehavior const notFoundBehavior)
+	{
+		auto* const node = (this->*Pointer)(configurationIndex, descriptorIndex, notFoundBehavior);
+		if (node)
+		{
+			return &(node->staticModel);
+		}
+		return decltype(&node->staticModel){ nullptr };
+	}
+
+	template<typename TreeModelAccessPointer, typename DescriptorIndexType>
+	auto* getNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const descriptorIndex, TreeModelAccessPointer TreeModelAccessStrategy::*Pointer, NotFoundBehavior const notFoundBehavior)
+	{
+		auto* const node = (this->*Pointer)(configurationIndex, descriptorIndex, notFoundBehavior);
+		if (node)
+		{
+			return &(node->dynamicModel);
+		}
+		return decltype(&node->dynamicModel){ nullptr };
+	}
+
+	template<typename DescriptorIndexType>
+	bool isDescriptorIndexInRange(DescriptorIndexType const descriptorIndex, DescriptorIndexType const baseIndex, std::uint16_t const countDescriptors)
+	{
+		return descriptorIndex >= baseIndex && descriptorIndex < static_cast<DescriptorIndexType>(baseIndex + countDescriptors);
+	}
+
+	ControlledEntityImpl* _entity{ nullptr };
+
+public:
 	virtual StrategyType getStrategyType() const noexcept = 0;
 	virtual model::EntityNode* getEntityNode(NotFoundBehavior const notFoundBehavior) = 0;
 	virtual entity::model::EntityNodeStaticModel* getEntityNodeStaticModel(NotFoundBehavior const notFoundBehavior)
@@ -330,62 +387,6 @@ public:
 	TreeModelAccessStrategy(TreeModelAccessStrategy&&) = delete;
 	TreeModelAccessStrategy& operator=(TreeModelAccessStrategy const&) = delete;
 	TreeModelAccessStrategy& operator=(TreeModelAccessStrategy&&) = delete;
-
-protected:
-	TreeModelAccessStrategy(ControlledEntityImpl* const entity) noexcept
-		: _entity{ entity }
-	{
-	}
-
-	bool handleDescriptorNotFound(NotFoundBehavior const notFoundBehavior, ControlledEntity::Exception::Type const exceptionType, std::string const& message)
-	{
-		switch (notFoundBehavior)
-		{
-			case NotFoundBehavior::IgnoreAndReturnNull:
-				break;
-			case NotFoundBehavior::LogAndReturnNull:
-				// TODO: Properly log the message using the logger
-				AVDECC_ASSERT(false, message);
-				break;
-			case NotFoundBehavior::DefaultConstruct:
-				return true;
-			case NotFoundBehavior::Throw:
-				throw ControlledEntity::Exception(exceptionType, message.c_str());
-			default:
-				break;
-		}
-		return false;
-	}
-
-	template<typename TreeModelAccessPointer, typename DescriptorIndexType>
-	auto* getNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const descriptorIndex, TreeModelAccessPointer TreeModelAccessStrategy::*Pointer, NotFoundBehavior const notFoundBehavior)
-	{
-		auto* const node = (this->*Pointer)(configurationIndex, descriptorIndex, notFoundBehavior);
-		if (node)
-		{
-			return &(node->staticModel);
-		}
-		return decltype(&node->staticModel){ nullptr };
-	}
-
-	template<typename TreeModelAccessPointer, typename DescriptorIndexType>
-	auto* getNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const descriptorIndex, TreeModelAccessPointer TreeModelAccessStrategy::*Pointer, NotFoundBehavior const notFoundBehavior)
-	{
-		auto* const node = (this->*Pointer)(configurationIndex, descriptorIndex, notFoundBehavior);
-		if (node)
-		{
-			return &(node->dynamicModel);
-		}
-		return decltype(&node->dynamicModel){ nullptr };
-	}
-
-	template<typename DescriptorIndexType>
-	bool isDescriptorIndexInRange(DescriptorIndexType const descriptorIndex, DescriptorIndexType const baseIndex, std::uint16_t const countDescriptors)
-	{
-		return descriptorIndex >= baseIndex && descriptorIndex < static_cast<DescriptorIndexType>(baseIndex + countDescriptors);
-	}
-
-	ControlledEntityImpl* _entity{ nullptr };
 };
 
 } // namespace controller
