@@ -934,7 +934,7 @@ bool ControllerImpl::updateControlValues(ControlledEntityImpl& controlledEntity,
 			auto const& controlValues = *controlValuesOpt;
 
 			// Validate ControlValues
-			if (!validateControlValues(controlledEntity.getEntity().getEntityID(), controlIndex, controlStaticModel->values, controlValues))
+			if (!validateControlValues(controlledEntity.getEntity().getEntityID(), controlIndex, controlValueType, controlStaticModel->values, controlValues))
 			{
 				// Flag the entity as "Not fully IEEE1722.1 compliant"
 				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
@@ -2820,12 +2820,13 @@ bool ControllerImpl::validateIdentifyControl(ControlledEntityImpl& controlledEnt
 	return false;
 }
 
-bool ControllerImpl::validateControlValues(UniqueIdentifier const entityID, entity::model::ControlIndex const controlIndex, entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) noexcept
+bool ControllerImpl::validateControlValues(UniqueIdentifier const entityID, entity::model::ControlIndex const controlIndex, entity::model::ControlValueType::Type const controlValueType, entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) noexcept
 {
 	if (!staticValues)
 	{
-		LOG_CONTROLLER_WARN(entityID, "StaticValues for ControlDescriptor at Index {} are not initialized", controlIndex);
-		return false;
+		// Returning true here because uninitialized values may be due to a type unknown to the library
+		LOG_CONTROLLER_WARN(entityID, "StaticValues (type {}) for ControlDescriptor at Index {} are not initialized (probably unhandled type)", entity::model::controlValueTypeToString(controlValueType), controlIndex);
+		return true;
 	}
 
 	if (staticValues.areDynamicValues())
@@ -2836,8 +2837,9 @@ bool ControllerImpl::validateControlValues(UniqueIdentifier const entityID, enti
 
 	if (!dynamicValues)
 	{
-		LOG_CONTROLLER_WARN(entityID, "DynamicValues for ControlDescriptor at Index {} are not initialized", controlIndex);
-		return false;
+		// Returning true here because uninitialized values may be due to a type unknown to the library
+		LOG_CONTROLLER_WARN(entityID, "DynamicValues (type {}) for ControlDescriptor at Index {} are not initialized (probably unhandled type)", entity::model::controlValueTypeToString(controlValueType), controlIndex);
+		return true;
 	}
 
 	if (!dynamicValues.areDynamicValues())
@@ -2942,7 +2944,7 @@ void ControllerImpl::validateControlDescriptors(ControlledEntityImpl& controlled
 				}
 
 				// Validate ControlValues
-				if (!validateControlValues(entityID, controlIndex, controlNode.staticModel.values, controlNode.dynamicModel.values))
+				if (!validateControlValues(entityID, controlIndex, controlNode.staticModel.controlValueType.getType(), controlNode.staticModel.values, controlNode.dynamicModel.values))
 				{
 					// Flag the entity as "Not fully IEEE1722.1 compliant"
 					removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
