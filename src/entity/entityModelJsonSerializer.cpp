@@ -258,14 +258,20 @@ json dumpAudioUnitModels(Context& c, ConfigurationTree const& configTree, Flags 
 			audioUnit[keyName::Node_DynamicInformation] = audioUnitTree.dynamicModel;
 		}
 
-		// Dump StreamPortInputs
-		audioUnit[keyName::NodeName_StreamPortInputDescriptors] = dumpStreamPortModels(c, audioUnitTree, flags, &AudioUnitTree::streamPortInputTrees, c.nextExpectedStreamPortInputIndex, "StreamPortInput", staticModel.baseStreamInputPort, staticModel.numberOfStreamInputPorts);
+		// We first need to dump leaves, as some trees may contain the same type of leaves we can find at the configuration level (eg. Controls)
+		{
+			// Dump Controls
+			audioUnit[keyName::NodeName_ControlDescriptors] = dumpLeafModels(c, audioUnitTree, flags, &AudioUnitTree::controlModels, c.nextExpectedControlIndex, "Control", staticModel.baseControl, staticModel.numberOfControls);
+		}
 
-		// Dump StreamPortOutputs
-		audioUnit[keyName::NodeName_StreamPortOutputDescriptors] = dumpStreamPortModels(c, audioUnitTree, flags, &AudioUnitTree::streamPortOutputTrees, c.nextExpectedStreamPortOutputIndex, "StreamPortOutput", staticModel.baseStreamOutputPort, staticModel.numberOfStreamOutputPorts);
+		// Now we can dump the trees
+		{
+			// Dump StreamPortInputs
+			audioUnit[keyName::NodeName_StreamPortInputDescriptors] = dumpStreamPortModels(c, audioUnitTree, flags, &AudioUnitTree::streamPortInputTrees, c.nextExpectedStreamPortInputIndex, "StreamPortInput", staticModel.baseStreamInputPort, staticModel.numberOfStreamInputPorts);
 
-		// Dump Controls
-		audioUnit[keyName::NodeName_ControlDescriptors] = dumpLeafModels(c, audioUnitTree, flags, &AudioUnitTree::controlModels, c.nextExpectedControlIndex, "Control", staticModel.baseControl, staticModel.numberOfControls);
+			// Dump StreamPortOutputs
+			audioUnit[keyName::NodeName_StreamPortOutputDescriptors] = dumpStreamPortModels(c, audioUnitTree, flags, &AudioUnitTree::streamPortOutputTrees, c.nextExpectedStreamPortOutputIndex, "StreamPortOutput", staticModel.baseStreamOutputPort, staticModel.numberOfStreamOutputPorts);
+		}
 
 		// Dump informative DescriptorIndex
 		audioUnit[model::keyName::Node_Informative_Index] = audioUnitIndex;
@@ -408,7 +414,7 @@ json dumpConfigurationTrees(std::map<ConfigurationIndex, ConfigurationTree> cons
 			config[keyName::Node_StaticInformation] = staticModel;
 
 #if 1
-			// Until we are able to load VIDEO/SENSOR/CONTROL_BLOCK, we need to flag the device as incomplete because of possible CONTROLS at other levels of the model, breaking the numering
+			// Until we are able to load VIDEO/SENSOR/CONTROL_BLOCK, we need to flag the device as incomplete because of possible CONTROLS at other levels of the model, breaking the numbering
 #	pragma message("TODO: Load VIDEO/SENSOR/CONTROL_BLOCK")
 			if (staticModel.descriptorCounts.count(avdecc::entity::model::DescriptorType::VideoUnit) > 0 || staticModel.descriptorCounts.count(avdecc::entity::model::DescriptorType::SensorUnit) > 0 || staticModel.descriptorCounts.count(avdecc::entity::model::DescriptorType::ControlBlock) > 0)
 			{
@@ -436,38 +442,45 @@ json dumpConfigurationTrees(std::map<ConfigurationIndex, ConfigurationTree> cons
 			}
 		}
 
-		// Dump AudioUnits
-		config[keyName::NodeName_AudioUnitDescriptors] = dumpAudioUnitModels(c, configTree, dumpFlags);
+		// We first need to dump leaves, as some trees may contain the same type of leaves we can find at the configuration level (eg. Controls)
+		{
+			// Dump StreamInputs
+			config[keyName::NodeName_StreamInputDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::streamInputModels, c.nextExpectedStreamInputIndex, "StreamInput", 0, configTree.streamInputModels.size());
 
-		// Dump StreamInputs
-		config[keyName::NodeName_StreamInputDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::streamInputModels, c.nextExpectedStreamInputIndex, "StreamInput", 0, configTree.streamInputModels.size());
+			// Dump StreamOutputs
+			config[keyName::NodeName_StreamOutputDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::streamOutputModels, c.nextExpectedStreamOutputIndex, "StreamOutput", 0, configTree.streamOutputModels.size());
 
-		// Dump StreamOutputs
-		config[keyName::NodeName_StreamOutputDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::streamOutputModels, c.nextExpectedStreamOutputIndex, "StreamOutput", 0, configTree.streamOutputModels.size());
+			// Dump ClockSources
+			config[keyName::NodeName_ClockSourceDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::clockSourceModels, c.nextExpectedClockSourceIndex, "ClockSource", 0, configTree.clockSourceModels.size());
 
-		// Dump JackInputs
-		config[keyName::NodeName_JackInputDescriptors] = dumpJackModels(c, configTree, dumpFlags, &ConfigurationTree::jackInputTrees, c.nextExpectedJackInputIndex, "JackInput", 0, static_cast<std::uint16_t>(configTree.jackOutputTrees.size()));
+			// Dump MemoryObjects
+			config[keyName::NodeName_MemoryObjectDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::memoryObjectModels, c.nextExpectedMemoryObjectIndex, "MemoryObject", 0, configTree.memoryObjectModels.size());
 
-		// Dump JackOutputs
-		config[keyName::NodeName_JackOutputDescriptors] = dumpJackModels(c, configTree, dumpFlags, &ConfigurationTree::jackOutputTrees, c.nextExpectedJackOutputIndex, "JackOutput", 0, static_cast<std::uint16_t>(configTree.jackOutputTrees.size()));
+			// Dump Locales
+			config[keyName::NodeName_LocaleDescriptors] = dumpLocaleModels(c, configTree, dumpFlags);
 
-		// Dump AvbInterfaces
-		config[keyName::NodeName_AvbInterfaceDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::avbInterfaceModels, c.nextExpectedAvbInterfaceIndex, "AvbInterface", 0, configTree.avbInterfaceModels.size());
+			// Dump Controls
+			config[keyName::NodeName_ControlDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::controlModels, c.nextExpectedControlIndex, "Control", 0, configTree.controlModels.size());
 
-		// Dump ClockSources
-		config[keyName::NodeName_ClockSourceDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::clockSourceModels, c.nextExpectedClockSourceIndex, "ClockSource", 0, configTree.clockSourceModels.size());
+			// Dump ClockDomains
+			config[keyName::NodeName_ClockDomainDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::clockDomainModels, c.nextExpectedClockDomainIndex, "ClockDomain", 0, configTree.clockDomainModels.size());
+		}
 
-		// Dump MemoryObjects
-		config[keyName::NodeName_MemoryObjectDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::memoryObjectModels, c.nextExpectedMemoryObjectIndex, "MemoryObject", 0, configTree.memoryObjectModels.size());
+		// Now we can dump the trees
+		{
+			// Dump AudioUnits
+			config[keyName::NodeName_AudioUnitDescriptors] = dumpAudioUnitModels(c, configTree, dumpFlags);
 
-		// Dump Locales
-		config[keyName::NodeName_LocaleDescriptors] = dumpLocaleModels(c, configTree, dumpFlags);
+			// Dump JackInputs
+			config[keyName::NodeName_JackInputDescriptors] = dumpJackModels(c, configTree, dumpFlags, &ConfigurationTree::jackInputTrees, c.nextExpectedJackInputIndex, "JackInput", 0, static_cast<std::uint16_t>(configTree.jackInputTrees.size()));
 
-		// Dump Controls
-		config[keyName::NodeName_ControlDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::controlModels, c.nextExpectedControlIndex, "Control", 0, configTree.controlModels.size());
+			// Dump JackOutputs
+			config[keyName::NodeName_JackOutputDescriptors] = dumpJackModels(c, configTree, dumpFlags, &ConfigurationTree::jackOutputTrees, c.nextExpectedJackOutputIndex, "JackOutput", 0, static_cast<std::uint16_t>(configTree.jackOutputTrees.size()));
 
-		// Dump ClockDomains
-		config[keyName::NodeName_ClockDomainDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::clockDomainModels, c.nextExpectedClockDomainIndex, "ClockDomain", 0, configTree.clockDomainModels.size());
+			// Dump AvbInterfaces
+			// Will be a tree in 1722.1-2021
+			config[keyName::NodeName_AvbInterfaceDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::avbInterfaceModels, c.nextExpectedAvbInterfaceIndex, "AvbInterface", 0, configTree.avbInterfaceModels.size());
+		}
 
 		// Dump informative DescriptorIndex
 		config[model::keyName::Node_Informative_Index] = configIndex;
