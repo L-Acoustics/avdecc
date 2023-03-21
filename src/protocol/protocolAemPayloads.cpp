@@ -993,7 +993,6 @@ entity::model::ControlDescriptor deserializeReadControlDescriptorResponse(AemAec
 		else
 		{
 			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Unsupported ControlValueType for READ_CONTROL_DESCRIPTOR RESPONSE: {}", valueType);
-			throw UnsupportedValueException();
 		}
 
 		if (des.remaining() != 0)

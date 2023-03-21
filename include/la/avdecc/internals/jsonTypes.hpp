@@ -2160,14 +2160,21 @@ inline void to_json(json& j, ControlNodeStaticModel const& s)
 	j[keyName::ControlNode_Static_ControlValueType] = s.controlValueType;
 
 	// Pack type dependant values
-	auto const valueType = s.values.getType();
-	if (auto const& it = s_toJsonDispatch.find(valueType); it != s_toJsonDispatch.end())
+	if (s.values)
 	{
-		j[keyName::ControlNode_Static_Values] = it->second(s.values);
+		auto const valueType = s.values.getType();
+		if (auto const& it = s_toJsonDispatch.find(valueType); it != s_toJsonDispatch.end())
+		{
+			j[keyName::ControlNode_Static_Values] = it->second(s.values);
+		}
+		else
+		{
+			throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InternalError, "Unsupported ControlValues Type" };
+		}
 	}
 	else
 	{
-		throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InternalError, "Unsupported ControlValues Type" };
+		j[keyName::ControlNode_Static_Values] = nullptr;
 	}
 }
 inline void from_json(json const& j, ControlNodeStaticModel& s)
@@ -2223,14 +2230,21 @@ inline void to_json(json& j, ControlNodeDynamicModel const& d)
 	j[keyName::ControlNode_Dynamic_ObjectName] = d.objectName;
 
 	// Pack type dependant values
-	auto const valueType = d.values.getType();
-	if (auto const& it = s_toJsonDispatch.find(valueType); it != s_toJsonDispatch.end())
+	if (d.values)
 	{
-		j[keyName::ControlNode_Dynamic_Values] = it->second(d.values);
+		auto const valueType = d.values.getType();
+		if (auto const& it = s_toJsonDispatch.find(valueType); it != s_toJsonDispatch.end())
+		{
+			j[keyName::ControlNode_Dynamic_Values] = it->second(d.values);
+		}
+		else
+		{
+			throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InternalError, "Unsupported ControlValues Type" };
+		}
 	}
 	else
 	{
-		throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InternalError, "Unsupported ControlValues Type" };
+		j[keyName::ControlNode_Dynamic_Values] = nullptr;
 	}
 }
 inline void from_json(json const& j, ControlNodeDynamicModel& d)
