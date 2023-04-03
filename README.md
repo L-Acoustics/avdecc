@@ -60,13 +60,13 @@ C language bindings over la_avdecc library.
 
 ### Windows
 - Windows 10
-- Visual Studio 2019 v16.3 or greater (using platform toolset v142)
+- Visual Studio 2022 v17.4 or greater (using platform toolset v143)
 - WinPcap 4.1.2 Developer's Pack (see [this file](externals/3rdparty/winpcap/README.md) for more details)
 - GitBash or cygwin
 
 ### macOS
 - macOS 10.13
-- Xcode 12
+- Xcode 14
 
 ### Linux
 - C++17 compliant compiler (for g++, v11.0 or greater)
