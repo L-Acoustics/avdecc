@@ -639,9 +639,10 @@ void readStreamPortModels(json const& object, Flags const flags, std::string con
 		// Read Static model
 		if (flags.test(Flag::ProcessStaticModel))
 		{
-			// Get base cluster and map descriptor index
+			// Get base descriptor indexes
 			modelTree.staticModel.baseCluster = c.nextExpectedAudioClusterIndex;
 			modelTree.staticModel.baseMap = c.nextExpectedAudioMapIndex;
+			modelTree.staticModel.baseControl = c.nextExpectedControlIndex;
 
 			if constexpr (isStaticModelOptional)
 			{
@@ -675,11 +676,15 @@ void readStreamPortModels(json const& object, Flags const flags, std::string con
 		// Read AudioMaps
 		readLeafModels<false, false, true, false>(j, flags, keyName::NodeName_AudioMapDescriptors, c.nextExpectedAudioMapIndex, modelTree.audioMapModels, ignoreDynamicModel);
 
+		// Read Controls
+		readLeafModels(j, flags, keyName::NodeName_ControlDescriptors, c.nextExpectedControlIndex, modelTree.controlModels, ignoreDynamicModel);
+
 		if (flags.test(Flag::ProcessStaticModel))
 		{
-			// Get number of cluster and map descriptors that were read
+			// Get number of descriptors that were read
 			modelTree.staticModel.numberOfClusters = c.nextExpectedAudioClusterIndex - modelTree.staticModel.baseCluster;
 			modelTree.staticModel.numberOfMaps = c.nextExpectedAudioMapIndex - modelTree.staticModel.baseMap;
+			modelTree.staticModel.numberOfControls = c.nextExpectedControlIndex - modelTree.staticModel.baseControl;
 			modelTree.staticModel.hasDynamicAudioMap = modelTree.staticModel.numberOfMaps == 0;
 		}
 
@@ -696,9 +701,10 @@ void readAudioUnitModels(json const& object, Flags const flags, Context& c, Conf
 		// Read Static model
 		if (flags.test(Flag::ProcessStaticModel))
 		{
-			// Get base stream port descriptor index
+			// Get base descriptor indexes
 			audioUnitTree.staticModel.baseStreamInputPort = c.nextExpectedStreamPortInputIndex;
 			audioUnitTree.staticModel.baseStreamOutputPort = c.nextExpectedStreamPortOutputIndex;
+			audioUnitTree.staticModel.baseControl = c.nextExpectedControlIndex;
 
 			j.at(keyName::Node_StaticInformation).get_to(audioUnitTree.staticModel);
 		}
@@ -709,22 +715,99 @@ void readAudioUnitModels(json const& object, Flags const flags, Context& c, Conf
 			j.at(keyName::Node_DynamicInformation).get_to(audioUnitTree.dynamicModel);
 		}
 
-		// Read StreamPortInputs
-		readStreamPortModels<false, false, true>(j, flags, keyName::NodeName_StreamPortInputDescriptors, c.nextExpectedStreamPortInputIndex, audioUnitTree.streamPortInputTrees, c, ignoreDynamicModel);
+		// We first need to read leaves, as some trees may contain the same type of leaves we can find at the configuration level (eg. Controls)
+		{
+			// Read Controls
+			readLeafModels(j, flags, keyName::NodeName_ControlDescriptors, c.nextExpectedControlIndex, audioUnitTree.controlModels, ignoreDynamicModel);
+		}
 
-		// Read StreamPortOutputs
-		readStreamPortModels<false, false, true>(j, flags, keyName::NodeName_StreamPortOutputDescriptors, c.nextExpectedStreamPortOutputIndex, audioUnitTree.streamPortOutputTrees, c, ignoreDynamicModel);
+		// Now we can read the trees
+		{
+			// Read StreamPortInputs
+			readStreamPortModels<false, false, true>(j, flags, keyName::NodeName_StreamPortInputDescriptors, c.nextExpectedStreamPortInputIndex, audioUnitTree.streamPortInputTrees, c, ignoreDynamicModel);
 
-#pragma message("TODO: Read other AUDIO_UNIT children")
+			// Read StreamPortOutputs
+			readStreamPortModels<false, false, true>(j, flags, keyName::NodeName_StreamPortOutputDescriptors, c.nextExpectedStreamPortOutputIndex, audioUnitTree.streamPortOutputTrees, c, ignoreDynamicModel);
+		}
 
 		if (flags.test(Flag::ProcessStaticModel))
 		{
-			// Get number of stream port descriptors that were read
+			// Get number of descriptors that were read
 			audioUnitTree.staticModel.numberOfStreamInputPorts = c.nextExpectedStreamPortInputIndex - audioUnitTree.staticModel.baseStreamInputPort;
 			audioUnitTree.staticModel.numberOfStreamOutputPorts = c.nextExpectedStreamPortOutputIndex - audioUnitTree.staticModel.baseStreamOutputPort;
+			audioUnitTree.staticModel.numberOfControls = c.nextExpectedControlIndex - audioUnitTree.staticModel.baseControl;
 		}
 
 		config.audioUnitTrees[c.nextExpectedAudioUnitIndex++] = std::move(audioUnitTree);
+	}
+}
+
+template<bool isKeyRequired = false, bool isStaticModelOptional = false, bool isDynamicModelOptional = false, bool hasDynamicModel = true, typename ModelTrees>
+void readJackModels(json const& object, Flags const flags, std::string const& keyName, DescriptorIndex& currentIndex, ModelTrees& modelTrees, Context& c, bool const ignoreDynamicModel)
+{
+	auto const* obj = static_cast<json const*>(nullptr);
+
+	if constexpr (isKeyRequired)
+	{
+		obj = &object.at(keyName);
+	}
+	else
+	{
+		auto const it = object.find(keyName);
+		if (it == object.end())
+		{
+			return;
+		}
+
+		obj = &(*it);
+	}
+
+	for (auto const& j : *obj)
+	{
+		auto modelTree = typename ModelTrees::mapped_type{};
+
+		// Read Static model
+		if (flags.test(Flag::ProcessStaticModel))
+		{
+			// Get base descriptor indexes
+			modelTree.staticModel.baseControl = c.nextExpectedControlIndex;
+
+			if constexpr (isStaticModelOptional)
+			{
+				get_optional_value(object, keyName::Node_StaticInformation, modelTree.staticModel);
+			}
+			else
+			{
+				j.at(keyName::Node_StaticInformation).get_to(modelTree.staticModel);
+			}
+		}
+
+		// Read Dynamic model
+		if constexpr (hasDynamicModel)
+		{
+			if (flags.test(Flag::ProcessDynamicModel) && !ignoreDynamicModel)
+			{
+				if constexpr (isDynamicModelOptional)
+				{
+					get_optional_value(j, keyName::Node_DynamicInformation, modelTree.dynamicModel);
+				}
+				else
+				{
+					j.at(keyName::Node_DynamicInformation).get_to(modelTree.dynamicModel);
+				}
+			}
+		}
+
+		// Read Controls
+		readLeafModels(j, flags, keyName::NodeName_ControlDescriptors, c.nextExpectedControlIndex, modelTree.controlModels, ignoreDynamicModel);
+
+		if (flags.test(Flag::ProcessStaticModel))
+		{
+			// Get number of descriptors that were read
+			modelTree.staticModel.numberOfControls = c.nextExpectedControlIndex - modelTree.staticModel.baseControl;
+		}
+
+		modelTrees[currentIndex++] = std::move(modelTree);
 	}
 }
 
@@ -784,46 +867,51 @@ EntityTree::ConfigurationTrees readConfigurationTrees(json const& object, Flags 
 
 		auto const ignoreDynamicModel = currentConfiguration ? (*currentConfiguration != configurationIndex) : false;
 
-		// Read AudioUnits
-		if (auto const jtree = j.find(keyName::NodeName_AudioUnitDescriptors); jtree != j.end())
+		// We first need to read leaves, as some trees may contain the same type of leaves we can find at the configuration level (eg. Controls)
 		{
-			readAudioUnitModels(*jtree, flags, c, config, ignoreDynamicModel);
+			// Read StreamInputs
+			readLeafModels(j, flags, keyName::NodeName_StreamInputDescriptors, c.nextExpectedStreamInputIndex, config.streamInputModels, ignoreDynamicModel);
+
+			// Read StreamOutputs
+			readLeafModels(j, flags, keyName::NodeName_StreamOutputDescriptors, c.nextExpectedStreamOutputIndex, config.streamOutputModels, ignoreDynamicModel);
+
+			// Read ClockSources
+			readLeafModels<false, false, true>(j, flags, keyName::NodeName_ClockSourceDescriptors, c.nextExpectedClockSourceIndex, config.clockSourceModels, ignoreDynamicModel);
+
+			// Read MemoryObjects
+			readLeafModels(j, flags, keyName::NodeName_MemoryObjectDescriptors, c.nextExpectedMemoryObjectIndex, config.memoryObjectModels, ignoreDynamicModel);
+
+			// Read Locales
+			if (auto const jtree = j.find(keyName::NodeName_LocaleDescriptors); jtree != j.end())
+			{
+				readLocaleModels(*jtree, flags, c, config, ignoreDynamicModel);
+			}
+
+			// Read Controls
+			readLeafModels(j, flags, keyName::NodeName_ControlDescriptors, c.nextExpectedControlIndex, config.controlModels, ignoreDynamicModel);
+
+			// Read ClockDomains
+			readLeafModels(j, flags, keyName::NodeName_ClockDomainDescriptors, c.nextExpectedClockDomainIndex, config.clockDomainModels, ignoreDynamicModel);
 		}
 
-		// Read StreamInputs
-		readLeafModels(j, flags, keyName::NodeName_StreamInputDescriptors, c.nextExpectedStreamInputIndex, config.streamInputModels, ignoreDynamicModel);
-
-		// Read StreamOutputs
-		readLeafModels(j, flags, keyName::NodeName_StreamOutputDescriptors, c.nextExpectedStreamOutputIndex, config.streamOutputModels, ignoreDynamicModel);
-
-		// Read JackInputs
-		AVDECC_ASSERT(false, "TODO: FAIRE LA LECTURE DES JACK NODES ET PAS JUSTE DU MODELE, COMME POUR LE DUMP (faire une fonction readJackModels au lieu de readLeafModels)");
-		AVDECC_ASSERT(false, "TODO: FAIRE LA LECTURE DES CONTROLS A TOUS LES NIVEAUX COMME LE DUMP (Jack, StreamPort, AudioUnit)");
-		readLeafModels(j, flags, keyName::NodeName_JackInputDescriptors, c.nextExpectedJackInputIndex, config.jackInputTrees, ignoreDynamicModel);
-
-		// Read JackOutputs
-		readLeafModels(j, flags, keyName::NodeName_JackOutputDescriptors, c.nextExpectedJackOutputIndex, config.jackOutputTrees, ignoreDynamicModel);
-
-		// Read AvbInterfaces
-		readLeafModels<false, false, true>(j, flags, keyName::NodeName_AvbInterfaceDescriptors, c.nextExpectedAvbInterfaceIndex, config.avbInterfaceModels, ignoreDynamicModel);
-
-		// Read ClockSources
-		readLeafModels<false, false, true>(j, flags, keyName::NodeName_ClockSourceDescriptors, c.nextExpectedClockSourceIndex, config.clockSourceModels, ignoreDynamicModel);
-
-		// Read MemoryObjects
-		readLeafModels(j, flags, keyName::NodeName_MemoryObjectDescriptors, c.nextExpectedMemoryObjectIndex, config.memoryObjectModels, ignoreDynamicModel);
-
-		// Read Locales
-		if (auto const jtree = j.find(keyName::NodeName_LocaleDescriptors); jtree != j.end())
+		// Now we can read the trees
 		{
-			readLocaleModels(*jtree, flags, c, config, ignoreDynamicModel);
+			// Read AudioUnits
+			if (auto const jtree = j.find(keyName::NodeName_AudioUnitDescriptors); jtree != j.end())
+			{
+				readAudioUnitModels(*jtree, flags, c, config, ignoreDynamicModel);
+			}
+
+			// Read JackInputs
+			readJackModels(j, flags, keyName::NodeName_JackInputDescriptors, c.nextExpectedJackInputIndex, config.jackInputTrees, c, ignoreDynamicModel);
+
+			// Read JackOutputs
+			readJackModels(j, flags, keyName::NodeName_JackOutputDescriptors, c.nextExpectedJackOutputIndex, config.jackOutputTrees, c, ignoreDynamicModel);
+
+			// Read AvbInterfaces
+			// Will be a tree in 1722.1-2021
+			readLeafModels<false, false, true>(j, flags, keyName::NodeName_AvbInterfaceDescriptors, c.nextExpectedAvbInterfaceIndex, config.avbInterfaceModels, ignoreDynamicModel);
 		}
-
-		// Read Controls
-		readLeafModels(j, flags, keyName::NodeName_ControlDescriptors, c.nextExpectedControlIndex, config.controlModels, ignoreDynamicModel);
-
-		// Read ClockDomains
-		readLeafModels(j, flags, keyName::NodeName_ClockDomainDescriptors, c.nextExpectedClockDomainIndex, config.clockDomainModels, ignoreDynamicModel);
 
 		configurationTrees[configurationIndex++] = std::move(config);
 	}

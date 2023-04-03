@@ -551,7 +551,7 @@ model::AudioMapNode const& ControlledEntityImpl::getAudioMapNode(entity::model::
 
 model::ControlNode const& ControlledEntityImpl::getControlNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const controlIndex) const
 {
-	return *_treeModelAccess->getControlNode(configurationIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
+	return *_treeModelAccess->getControlNode(configurationIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw, TreeModelAccessStrategy::DefaultConstructLevelHint::None);
 	//	auto const& configNode = getConfigurationNode(configurationIndex);
 	//
 	//	auto const it = configNode.controls.find(controlIndex);
@@ -2168,7 +2168,7 @@ void ControlledEntityImpl::setAudioMapDescriptor(entity::model::AudioMapDescript
 void ControlledEntityImpl::setControlDescriptor(entity::model::ControlDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const controlIndex) noexcept
 {
 	// Get or create a new ControlNode for this entity
-	auto* const node = _treeModelAccess->getControlNode(configurationIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
+	auto* const node = _treeModelAccess->getControlNode(configurationIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::None);
 	AVDECC_ASSERT(!!node, "Should not be null, should be default constructed");
 
 	// Copy static model
@@ -2968,7 +2968,15 @@ void processStreamPortNodes(ControlledEntityImpl* const entity, entity::model::C
 		// Build controls (ControlNode)
 		for (auto const& [controlIndex, controlTree] : streamPortTree.controlModels)
 		{
-			auto* const controlNode = entity->getModelAccessStrategy().getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
+			auto* controlNode = static_cast<model::ControlNode*>(nullptr);
+			if constexpr (std::is_same_v<NodeType, model::StreamPortInputNode>)
+			{
+				controlNode = entity->getModelAccessStrategy().getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::StreamPortInput);
+			}
+			else if constexpr (std::is_same_v<NodeType, model::StreamPortOutputNode>)
+			{
+				controlNode = entity->getModelAccessStrategy().getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::StreamPortOutput);
+			}
 			controlNode->staticModel = controlTree.staticModel;
 			controlNode->dynamicModel = controlTree.dynamicModel;
 		}
@@ -3014,7 +3022,15 @@ void processJackNodes(ControlledEntityImpl* const entity, entity::model::Configu
 		// Build controls (ControlNode)
 		for (auto const& [controlIndex, controlTree] : jackTree.controlModels)
 		{
-			auto* const controlNode = entity->getModelAccessStrategy().getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
+			auto* controlNode = static_cast<model::ControlNode*>(nullptr);
+			if constexpr (std::is_same_v<NodeType, model::JackInputNode>)
+			{
+				controlNode = entity->getModelAccessStrategy().getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::JackInput);
+			}
+			else if constexpr (std::is_same_v<NodeType, model::JackOutputNode>)
+			{
+				controlNode = entity->getModelAccessStrategy().getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::JackOutput);
+			}
 			controlNode->staticModel = controlTree.staticModel;
 			controlNode->dynamicModel = controlTree.dynamicModel;
 		}
@@ -3059,101 +3075,113 @@ void ControlledEntityImpl::buildEntityModelGraph(entity::model::EntityTree const
 			configNode->staticModel = configTree.staticModel;
 			configNode->dynamicModel = configTree.dynamicModel;
 
-			// Build audio units (AudioUnitNode)
-			for (auto& [audioUnitIndex, audioUnitTree] : configTree.audioUnitTrees)
+			// Build leaves first
 			{
-				auto* const audioUnitNode = _treeModelAccess->getAudioUnitNode(configIndex, audioUnitIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
-				audioUnitNode->staticModel = audioUnitTree.staticModel;
-				audioUnitNode->dynamicModel = audioUnitTree.dynamicModel;
+				// Build stream inputs and outputs (StreamInputNode / StreamOutputNode)
+				buildEntityModelHelper::processStreamNodes<model::StreamInputNode>(this, configIndex, configTree.streamInputModels);
+				buildEntityModelHelper::processStreamNodes<model::StreamOutputNode>(this, configIndex, configTree.streamOutputModels);
 
-				// Build stream port inputs and outputs (StreamPortInputNode / StreamPortOutputNode)
-				buildEntityModelHelper::processStreamPortNodes<model::StreamPortInputNode>(this, configIndex, audioUnitTree.streamPortInputTrees);
-				buildEntityModelHelper::processStreamPortNodes<model::StreamPortOutputNode>(this, configIndex, audioUnitTree.streamPortOutputTrees);
+				// Build clock sources (ClockSourceNode)
+				for (auto& [sourceIndex, sourceModel] : configTree.clockSourceModels)
+				{
+					auto* const sourceNode = _treeModelAccess->getClockSourceNode(configIndex, sourceIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
+					sourceNode->staticModel = sourceModel.staticModel;
+					sourceNode->dynamicModel = sourceModel.dynamicModel;
+				}
 
-				//	Process ExternalPortInputTrees
-				//	Process ExternalPortOutputTrees
-				//	Process InternalPortInputTrees
-				//	Process InternalPortOutputTrees
+				// Build memory objects (MemoryObjectNode)
+				for (auto& [memoryObjectIndex, memoryObjectModel] : configTree.memoryObjectModels)
+				{
+					auto* const memoryObjectNode = _treeModelAccess->getMemoryObjectNode(configIndex, memoryObjectIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
+					memoryObjectNode->staticModel = memoryObjectModel.staticModel;
+					memoryObjectNode->dynamicModel = memoryObjectModel.dynamicModel;
+				}
+
+				// Build locales (LocaleNode)
+				for (auto const& [localeIndex, localeTree] : configTree.localeTrees)
+				{
+					auto* const localeNode = _treeModelAccess->getLocaleNode(configIndex, localeIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
+					localeNode->staticModel = localeTree.staticModel;
+
+					// Build strings (StringsNode)
+					for (auto const& [stringsIndex, stringsModel] : localeTree.stringsModels)
+					{
+						auto* const stringsNode = _treeModelAccess->getStringsNode(configIndex, stringsIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
+						stringsNode->staticModel = stringsModel.staticModel;
+					}
+				}
 
 				// Build controls (ControlNode)
-				for (auto const& [controlIndex, controlTree] : audioUnitTree.controlModels)
+				for (auto& [controlIndex, controlModel] : configTree.controlModels)
 				{
-					auto* const controlNode = _treeModelAccess->getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
-					controlNode->staticModel = controlTree.staticModel;
-					controlNode->dynamicModel = controlTree.dynamicModel;
+					auto* const controlNode = _treeModelAccess->getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::Configuration);
+					controlNode->staticModel = controlModel.staticModel;
+					controlNode->dynamicModel = controlModel.dynamicModel;
 				}
-			}
 
-			// Build stream inputs and outputs (StreamInputNode / StreamOutputNode)
-			buildEntityModelHelper::processStreamNodes<model::StreamInputNode>(this, configIndex, configTree.streamInputModels);
-			buildEntityModelHelper::processStreamNodes<model::StreamOutputNode>(this, configIndex, configTree.streamOutputModels);
-
-			// Build jack inputs and outputs (JackInputNode / JackOutputNode)
-			buildEntityModelHelper::processJackNodes<model::JackInputNode>(this, configIndex, configTree.jackInputTrees);
-			buildEntityModelHelper::processJackNodes<model::JackOutputNode>(this, configIndex, configTree.jackOutputTrees);
-
-			// Build avb interfaces (AvbInterfaceNode)
-			for (auto& [interfaceIndex, interfaceModel] : configTree.avbInterfaceModels)
-			{
-				auto* const interfaceNode = _treeModelAccess->getAvbInterfaceNode(configIndex, interfaceIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
-				interfaceNode->staticModel = interfaceModel.staticModel;
-				interfaceNode->dynamicModel = interfaceModel.dynamicModel;
-#pragma message("TODO: Add Controls (AvbInterface children) - 1722.1-2021")
-			}
-
-			// Build clock sources (ClockSourceNode)
-			for (auto& [sourceIndex, sourceModel] : configTree.clockSourceModels)
-			{
-				auto* const sourceNode = _treeModelAccess->getClockSourceNode(configIndex, sourceIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
-				sourceNode->staticModel = sourceModel.staticModel;
-				sourceNode->dynamicModel = sourceModel.dynamicModel;
-			}
-
-			// Build memory objects (MemoryObjectNode)
-			for (auto& [memoryObjectIndex, memoryObjectModel] : configTree.memoryObjectModels)
-			{
-				auto* const memoryObjectNode = _treeModelAccess->getMemoryObjectNode(configIndex, memoryObjectIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
-				memoryObjectNode->staticModel = memoryObjectModel.staticModel;
-				memoryObjectNode->dynamicModel = memoryObjectModel.dynamicModel;
-			}
-
-			// Build locales (LocaleNode)
-			for (auto const& [localeIndex, localeTree] : configTree.localeTrees)
-			{
-				auto* const localeNode = _treeModelAccess->getLocaleNode(configIndex, localeIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
-				localeNode->staticModel = localeTree.staticModel;
-
-				// Build strings (StringsNode)
-				for (auto const& [stringsIndex, stringsModel] : localeTree.stringsModels)
+				// Build clock domains (ClockDomainNode)
+				for (auto& [domainIndex, domainModel] : configTree.clockDomainModels)
 				{
-					auto* const stringsNode = _treeModelAccess->getStringsNode(configIndex, stringsIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
-					stringsNode->staticModel = stringsModel.staticModel;
-				}
-			}
+					auto* const domainNode = _treeModelAccess->getClockDomainNode(configIndex, domainIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
+					domainNode->staticModel = domainModel.staticModel;
+					domainNode->dynamicModel = domainModel.dynamicModel;
 
-			// Build controls (ControlNode)
-			for (auto& [controlIndex, controlModel] : configTree.controlModels)
-			{
-				auto* const controlNode = _treeModelAccess->getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
-				controlNode->staticModel = controlModel.staticModel;
-				controlNode->dynamicModel = controlModel.dynamicModel;
-			}
-
-			// Build clock domains (ClockDomainNode)
-			for (auto& [domainIndex, domainModel] : configTree.clockDomainModels)
-			{
-				auto* const domainNode = _treeModelAccess->getClockDomainNode(configIndex, domainIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
-				domainNode->staticModel = domainModel.staticModel;
-				domainNode->dynamicModel = domainModel.dynamicModel;
-
-				// Build associated clock sources (ClockSourceNode)
-				for (auto const sourceIndex : domainModel.staticModel.clockSources)
-				{
-					if (auto const sourceIt = configNode->clockSources.find(sourceIndex); sourceIt != configNode->clockSources.end())
+					// Build associated clock sources (ClockSourceNode)
+					for (auto const sourceIndex : domainModel.staticModel.clockSources)
 					{
-						auto const& sourceNode = sourceIt->second;
-						domainNode->clockSources[sourceIndex] = &sourceNode;
+						if (auto const sourceIt = configNode->clockSources.find(sourceIndex); sourceIt != configNode->clockSources.end())
+						{
+							auto const& sourceNode = sourceIt->second;
+							domainNode->clockSources[sourceIndex] = &sourceNode;
+						}
 					}
+				}
+			}
+
+			// Now build the trees
+			{
+				// Build audio units (AudioUnitNode)
+				for (auto& [audioUnitIndex, audioUnitTree] : configTree.audioUnitTrees)
+				{
+					auto* const audioUnitNode = _treeModelAccess->getAudioUnitNode(configIndex, audioUnitIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
+					audioUnitNode->staticModel = audioUnitTree.staticModel;
+					audioUnitNode->dynamicModel = audioUnitTree.dynamicModel;
+
+					// Build leaves first
+					{
+						// Build controls (ControlNode)
+						for (auto const& [controlIndex, controlTree] : audioUnitTree.controlModels)
+						{
+							auto* const controlNode = _treeModelAccess->getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::AudioUnit);
+							controlNode->staticModel = controlTree.staticModel;
+							controlNode->dynamicModel = controlTree.dynamicModel;
+						}
+					}
+
+					// Now build the trees
+					{
+						// Build stream port inputs and outputs (StreamPortInputNode / StreamPortOutputNode)
+						buildEntityModelHelper::processStreamPortNodes<model::StreamPortInputNode>(this, configIndex, audioUnitTree.streamPortInputTrees);
+						buildEntityModelHelper::processStreamPortNodes<model::StreamPortOutputNode>(this, configIndex, audioUnitTree.streamPortOutputTrees);
+
+						//	Process ExternalPortInputTrees
+						//	Process ExternalPortOutputTrees
+						//	Process InternalPortInputTrees
+						//	Process InternalPortOutputTrees
+					}
+				}
+
+				// Build jack inputs and outputs (JackInputNode / JackOutputNode)
+				buildEntityModelHelper::processJackNodes<model::JackInputNode>(this, configIndex, configTree.jackInputTrees);
+				buildEntityModelHelper::processJackNodes<model::JackOutputNode>(this, configIndex, configTree.jackOutputTrees);
+
+				// Build avb interfaces (AvbInterfaceNode)
+				for (auto& [interfaceIndex, interfaceModel] : configTree.avbInterfaceModels)
+				{
+					auto* const interfaceNode = _treeModelAccess->getAvbInterfaceNode(configIndex, interfaceIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
+					interfaceNode->staticModel = interfaceModel.staticModel;
+					interfaceNode->dynamicModel = interfaceModel.dynamicModel;
+#pragma message("TODO: Add Controls (AvbInterface children) - 1722.1-2021")
 				}
 			}
 		}

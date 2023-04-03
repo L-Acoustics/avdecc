@@ -545,7 +545,7 @@ private:
 		return nullptr;
 	}
 
-	virtual model::ControlNode* getControlNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior) override
+	virtual model::ControlNode* getControlNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior, DefaultConstructLevelHint const /*levelHint*/) override
 	{
 		auto* const configurationNode = getConfigurationNode(configurationIndex, notFoundBehavior);
 		if (configurationNode)
