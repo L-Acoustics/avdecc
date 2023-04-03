@@ -288,251 +288,78 @@ entity::model::ConfigurationIndex ControlledEntityImpl::getCurrentConfigurationI
 model::EntityNode const& ControlledEntityImpl::getEntityNode() const
 {
 	return *_treeModelAccess->getEntityNode(TreeModelAccessStrategy::NotFoundBehavior::Throw);
-	//if (gotFatalEnumerationError())
-	//{
-	//	throw Exception(Exception::Type::EnumerationError, "Entity had an enumeration error");
-	//}
-	//
-	//if (!_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
-	//{
-	//	throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
-	//}
-	//
-	//return _entityNode;
 }
 
 model::ConfigurationNode const& ControlledEntityImpl::getConfigurationNode(entity::model::ConfigurationIndex const configurationIndex) const
 {
 	return *_treeModelAccess->getConfigurationNode(configurationIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
-
-	//	model::EntityNode const& entityNode = getEntityNode();
-	//
-	//	auto const it = entityNode.configurations.find(configurationIndex);
-	//	if (it == entityNode.configurations.end())
-	//	{
-	//		throw Exception(Exception::Type::InvalidConfigurationIndex, "Invalid configuration index");
-	//	}
-	//
-	//	return it->second;
 }
 
 model::ConfigurationNode const& ControlledEntityImpl::getCurrentConfigurationNode() const
 {
 	return *_treeModelAccess->getConfigurationNode(getCurrentConfigurationIndex(), TreeModelAccessStrategy::NotFoundBehavior::Throw);
-	//	model::EntityNode const& entityNode = getEntityNode();
-	//
-	//	auto const it = entityNode.configurations.find(entityNode.dynamicModel.currentConfiguration);
-	//	if (it == entityNode.configurations.end())
-	//	{
-	//		throw Exception(Exception::Type::Internal, "ConfigurationNode for current_configuration not set");
-	//	}
-	//
-	//	return it->second;
 }
 
 model::AudioUnitNode const& ControlledEntityImpl::getAudioUnitNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::AudioUnitIndex const audioUnitIndex) const
 {
 	return *_treeModelAccess->getAudioUnitNode(configurationIndex, audioUnitIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
-	//auto const& configNode = getConfigurationNode(configurationIndex);
-	//
-	//auto const it = configNode.audioUnits.find(audioUnitIndex);
-	//if (it == configNode.audioUnits.end())
-	//{
-	//	throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid audio unit index");
-	//}
-	//
-	//return it->second;
 }
 
 model::StreamInputNode const& ControlledEntityImpl::getStreamInputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const
 {
 	return *_treeModelAccess->getStreamInputNode(configurationIndex, streamIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
-	//	auto const& configNode = getConfigurationNode(configurationIndex);
-	//
-	//	auto const it = configNode.streamInputs.find(streamIndex);
-	//	if (it == configNode.streamInputs.end())
-	//	{
-	//		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid stream index");
-	//	}
-	//
-	//	return it->second;
 }
 
 model::StreamOutputNode const& ControlledEntityImpl::getStreamOutputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamIndex const streamIndex) const
 {
 	return *_treeModelAccess->getStreamOutputNode(configurationIndex, streamIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
-	//	auto const& configNode = getConfigurationNode(configurationIndex);
-	//
-	//	auto const it = configNode.streamOutputs.find(streamIndex);
-	//	if (it == configNode.streamOutputs.end())
-	//	{
-	//		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid stream index");
-	//	}
-	//
-	//	return it->second;
 }
 
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 model::RedundantStreamNode const& ControlledEntityImpl::getRedundantStreamInputNode(entity::model::ConfigurationIndex const configurationIndex, model::VirtualIndex const redundantStreamIndex) const
 {
 	return *_treeModelAccess->getRedundantStreamInputNode(configurationIndex, redundantStreamIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
-	//	auto const& configNode = getConfigurationNode(configurationIndex);
-	//
-	//	auto const it = configNode.redundantStreamInputs.find(redundantStreamIndex);
-	//	if (it == configNode.redundantStreamInputs.end())
-	//	{
-	//		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid redundant stream index");
-	//	}
-	//
-	//	return it->second;
 }
 
 model::RedundantStreamNode const& ControlledEntityImpl::getRedundantStreamOutputNode(entity::model::ConfigurationIndex const configurationIndex, model::VirtualIndex const redundantStreamIndex) const
 {
 	return *_treeModelAccess->getRedundantStreamOutputNode(configurationIndex, redundantStreamIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
-	//	auto const& configNode = getConfigurationNode(configurationIndex);
-	//
-	//	auto const it = configNode.redundantStreamOutputs.find(redundantStreamIndex);
-	//	if (it == configNode.redundantStreamOutputs.end())
-	//	{
-	//		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid redundant stream index");
-	//	}
-	//
-	//	return it->second;
 }
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 model::JackInputNode const& ControlledEntityImpl::getJackInputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex) const
 {
 	return *_treeModelAccess->getJackInputNode(configurationIndex, jackIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
-	//	auto const& configNode = getConfigurationNode(configurationIndex);
-	//
-	//	auto const it = configNode.jackInputs.find(jackIndex);
-	//	if (it == configNode.jackInputs.end())
-	//	{
-	//		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid jack index");
-	//	}
-	//
-	//	return it->second;
 }
 
 model::JackOutputNode const& ControlledEntityImpl::getJackOutputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex) const
 {
 	return *_treeModelAccess->getJackOutputNode(configurationIndex, jackIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
-	//	auto const& configNode = getConfigurationNode(configurationIndex);
-	//
-	//	auto const it = configNode.jackOutputs.find(jackIndex);
-	//	if (it == configNode.jackOutputs.end())
-	//	{
-	//		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid jack index");
-	//	}
-	//
-	//	return it->second;
 }
 
 model::AvbInterfaceNode const& ControlledEntityImpl::getAvbInterfaceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::AvbInterfaceIndex const avbInterfaceIndex) const
 {
 	return *_treeModelAccess->getAvbInterfaceNode(configurationIndex, avbInterfaceIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
-	//	auto const& configNode = getConfigurationNode(configurationIndex);
-	//
-	//	auto const it = configNode.avbInterfaces.find(avbInterfaceIndex);
-	//	if (it == configNode.avbInterfaces.end())
-	//	{
-	//		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid avb interface index");
-	//	}
-	//
-	//	return it->second;
 }
 
 model::ClockSourceNode const& ControlledEntityImpl::getClockSourceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockSourceIndex const clockSourceIndex) const
 {
 	return *_treeModelAccess->getClockSourceNode(configurationIndex, clockSourceIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
-	//	auto const& configNode = getConfigurationNode(configurationIndex);
-	//
-	//	auto const it = configNode.clockSources.find(clockSourceIndex);
-	//	if (it == configNode.clockSources.end())
-	//	{
-	//		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid clock source index");
-	//	}
-	//
-	//	return it->second;
 }
 
 model::StreamPortNode const& ControlledEntityImpl::getStreamPortInputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) const
 {
 	return *_treeModelAccess->getStreamPortInputNode(configurationIndex, streamPortIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
-	//	auto const& configNode = getConfigurationNode(configurationIndex);
-	//
-	//	// Search a matching StreamPortIndex in all AudioUnits
-	//	for (auto const& audioUnitNodeKV : configNode.audioUnits)
-	//	{
-	//		auto const& audioUnitNode = audioUnitNodeKV.second;
-	//
-	//		if (auto const it = audioUnitNode.streamPortInputs.find(streamPortIndex); it != audioUnitNode.streamPortInputs.end())
-	//		{
-	//			return it->second;
-	//		}
-	//	}
-	//
-	//	// Not found
-	//	throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid stream port input index");
 }
 
 model::StreamPortNode const& ControlledEntityImpl::getStreamPortOutputNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::StreamPortIndex const streamPortIndex) const
 {
 	return *_treeModelAccess->getStreamPortOutputNode(configurationIndex, streamPortIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
-	//	auto const& configNode = getConfigurationNode(configurationIndex);
-	//
-	//	// Search a matching StreamPortIndex in all AudioUnits
-	//	for (auto const& audioUnitNodeKV : configNode.audioUnits)
-	//	{
-	//		auto const& audioUnitNode = audioUnitNodeKV.second;
-	//
-	//		if (auto const it = audioUnitNode.streamPortOutputs.find(streamPortIndex); it != audioUnitNode.streamPortOutputs.end())
-	//		{
-	//			return it->second;
-	//		}
-	//	}
-	//
-	//	// Not found
-	//	throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid stream port output index");
 }
 
 model::AudioClusterNode const& ControlledEntityImpl::getAudioClusterNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClusterIndex const clusterIndex) const
 {
 	return *_treeModelAccess->getAudioClusterNode(configurationIndex, clusterIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
-	//	auto const& configNode = getConfigurationNode(configurationIndex);
-	//
-	//	// Search a matching ClusterIndex in all AudioUnits/StreamPorts
-	//	for (auto const& audioUnitNodeKV : configNode.audioUnits)
-	//	{
-	//		auto const& audioUnitNode = audioUnitNodeKV.second;
-	//
-	//		// Search StreamPortInputs
-	//		for (auto const& streamPortNodeKV : audioUnitNode.streamPortInputs)
-	//		{
-	//			auto const& streamPortNode = streamPortNodeKV.second;
-	//
-	//			if (auto const audioClustersIt = streamPortNode.audioClusters.find(clusterIndex); audioClustersIt != streamPortNode.audioClusters.end())
-	//			{
-	//				return audioClustersIt->second;
-	//			}
-	//		}
-	//
-	//		// Search StreamPortOutputs
-	//		for (auto const& streamPortNodeKV : audioUnitNode.streamPortOutputs)
-	//		{
-	//			auto const& streamPortNode = streamPortNodeKV.second;
-	//
-	//			if (auto const audioClustersIt = streamPortNode.audioClusters.find(clusterIndex); audioClustersIt != streamPortNode.audioClusters.end())
-	//			{
-	//				return audioClustersIt->second;
-	//			}
-	//		}
-	//	}
-	//
-	//	// Not found
-	//	throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid audio cluster index");
 }
 #if 0
 model::AudioMapNode const& ControlledEntityImpl::getAudioMapNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex) const
@@ -552,25 +379,11 @@ model::AudioMapNode const& ControlledEntityImpl::getAudioMapNode(entity::model::
 model::ControlNode const& ControlledEntityImpl::getControlNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const controlIndex) const
 {
 	return *_treeModelAccess->getControlNode(configurationIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw, TreeModelAccessStrategy::DefaultConstructLevelHint::None);
-	//	auto const& configNode = getConfigurationNode(configurationIndex);
-	//
-	//	auto const it = configNode.controls.find(controlIndex);
-	//	if (it == configNode.controls.end())
-	//		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid control index");
-	//
-	//	return it->second;
 }
 
 model::ClockDomainNode const& ControlledEntityImpl::getClockDomainNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) const
 {
 	return *_treeModelAccess->getClockDomainNode(configurationIndex, clockDomainIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
-	//	auto const& configNode = getConfigurationNode(configurationIndex);
-	//
-	//	auto const it = configNode.clockDomains.find(clockDomainIndex);
-	//	if (it == configNode.clockDomains.end())
-	//		throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid clock domain index");
-	//
-	//	return it->second;
 }
 
 model::LocaleNode const* ControlledEntityImpl::findLocaleNode(entity::model::ConfigurationIndex const configurationIndex, std::string const& /*locale*/) const
