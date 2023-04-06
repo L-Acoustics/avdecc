@@ -117,15 +117,31 @@ public:
 							{
 								ACMKV.second.dynamicModel = {};
 							}
+							// AudioMap doesn't have dynamic model
+							for (auto& CKV : spi.controls)
+							{
+								auto& c = CKV.second;
+								c.dynamicModel = {};
+							}
 						}
 						for (auto& SPOKV : aut.streamPortOutputs)
 						{
 							auto& spo = SPOKV.second;
-							KV.second.dynamicModel = {};
+							spo.dynamicModel = {};
 							for (auto& ACMKV : spo.audioClusters)
 							{
 								ACMKV.second.dynamicModel = {};
 							}
+							for (auto& CKV : spo.controls)
+							{
+								auto& c = CKV.second;
+								c.dynamicModel = {};
+							}
+						}
+						for (auto& CKV : aut.controls)
+						{
+							auto& c = CKV.second;
+							c.dynamicModel = {};
 						}
 					}
 					for (auto& KV : config.streamInputs)
@@ -136,9 +152,37 @@ public:
 					{
 						KV.second.dynamicModel = {};
 					}
+					for (auto& KV : config.jackInputs)
+					{
+						auto& ji = KV.second;
+						ji.dynamicModel = {};
+						for (auto& CKV : ji.controls)
+						{
+							auto& c = CKV.second;
+							c.dynamicModel = {};
+						}
+					}
+					for (auto& KV : config.jackOutputs)
+					{
+						auto& jo = KV.second;
+						jo.dynamicModel = {};
+						for (auto& CKV : jo.controls)
+						{
+							auto& c = CKV.second;
+							c.dynamicModel = {};
+						}
+					}
 					for (auto& KV : config.avbInterfaces)
 					{
-						KV.second.dynamicModel = {};
+						auto& a = KV.second;
+						a.dynamicModel = {};
+#if 0 // IEEE 1722.1-2021
+						for (auto& CKV : a.controls)
+						{
+							auto& c = CKV.second;
+							c.dynamicModel = {};
+						}
+#endif
 					}
 					for (auto& KV : config.clockSources)
 					{
@@ -150,7 +194,6 @@ public:
 					}
 					// LocaleNodeModel doesn't have dynamic model
 					// StringsNodeModel doesn't have dynamic model
-					// AudioMapNodeModel doesn't have dynamic model
 					for (auto& KV : config.controls)
 					{
 						KV.second.dynamicModel = {};
