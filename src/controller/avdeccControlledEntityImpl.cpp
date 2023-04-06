@@ -412,7 +412,14 @@ entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString
 	if (configurationDynamicModel)
 	{
 		auto const globalOffset = stringReference.getGlobalOffset();
-		return configurationDynamicModel->localizedStrings.at(entity::model::StringsIndex(globalOffset));
+		if (globalOffset < configurationDynamicModel->localizedStrings.size())
+		{
+			return configurationDynamicModel->localizedStrings.at(entity::model::StringsIndex(globalOffset));
+		}
+		else
+		{
+			LOG_CONTROLLER_WARN(_entity.getEntityID(), "LocalizedStringReference out of bounds: {} (global offset: {})", stringReference.getValue(), globalOffset);
+		}
 	}
 	return s_noLocalizationString;
 }
