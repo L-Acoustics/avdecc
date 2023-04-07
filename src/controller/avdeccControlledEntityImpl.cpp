@@ -2572,17 +2572,15 @@ void ControlledEntityImpl::onEntityFullyLoaded() noexcept
 	// If AEM is supported
 	if (isAemSupported)
 	{
-#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-		// Build redundancy nodes
+		// Build all virtual nodes (eg. ClockSources in ClockDomains, RedundantStreams, ...)
 		auto* entityNode = _treeModelAccess->getEntityNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 		if (entityNode)
 		{
 			for (auto& configKV : entityNode->configurations)
 			{
-				buildRedundancyNodes(configKV.second);
+				buildVirtualNodes(configKV.second);
 			}
 		}
-#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 	}
 }
 
@@ -2743,6 +2741,28 @@ private:
 		return entity.getLocalizedString(streamNode->staticModel.localizedDescription);
 	}
 };
+
+void ControlledEntityImpl::buildVirtualNodes(model::ConfigurationNode& configNode) noexcept
+{
+	// Check all clock domains (ClockDomainNode)
+	for (auto& [domainIndex, domainNode] : configNode.clockDomains)
+	{
+		// Build associated clock sources (ClockSourceNode)
+		for (auto const sourceIndex : domainNode.staticModel.clockSources)
+		{
+			if (auto const sourceIt = configNode.clockSources.find(sourceIndex); sourceIt != configNode.clockSources.end())
+			{
+				auto const& sourceNode = sourceIt->second;
+				domainNode.clockSources[sourceIndex] = &sourceNode;
+			}
+		}
+	}
+
+#	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	// Build RedundantStreamNodes
+	buildRedundancyNodes(configNode);
+#	endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+}
 
 void ControlledEntityImpl::buildRedundancyNodes(model::ConfigurationNode& configNode) noexcept
 {
@@ -2945,16 +2965,6 @@ void ControlledEntityImpl::buildEntityModelGraph(entity::model::EntityTree const
 					auto* const domainNode = _treeModelAccess->getClockDomainNode(configIndex, domainIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
 					domainNode->staticModel = domainModel.staticModel;
 					domainNode->dynamicModel = domainModel.dynamicModel;
-
-					// Build associated clock sources (ClockSourceNode)
-					for (auto const sourceIndex : domainModel.staticModel.clockSources)
-					{
-						if (auto const sourceIt = configNode->clockSources.find(sourceIndex); sourceIt != configNode->clockSources.end())
-						{
-							auto const& sourceNode = sourceIt->second;
-							domainNode->clockSources[sourceIndex] = &sourceNode;
-						}
-					}
 				}
 			}
 

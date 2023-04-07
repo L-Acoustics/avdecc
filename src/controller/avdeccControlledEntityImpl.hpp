@@ -523,6 +523,7 @@ private:
 	// Private methods
 	void switchToCachedTreeModelAccessStrategy() noexcept;
 	bool isEntityModelComplete(model::EntityNode const& entityNode, std::uint16_t const configurationsCount) const noexcept;
+	void buildVirtualNodes(model::ConfigurationNode& configNode) noexcept;
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	void buildRedundancyNodes(model::ConfigurationNode& configNode) noexcept;
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
