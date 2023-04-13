@@ -262,6 +262,11 @@ public:
 			return false;
 		}
 
+#if 0 // IEEE 1722.1-2021
+		// Check TIMING descriptors
+		// Check PTP_INSTANCE descriptors
+#endif
+
 		// Seems valid
 		return true;
 	}

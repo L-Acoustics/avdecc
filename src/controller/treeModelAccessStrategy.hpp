@@ -25,6 +25,7 @@
 #pragma once
 
 #include "la/avdecc/controller/internals/avdeccControlledEntity.hpp"
+#include "avdeccControllerLogHelper.hpp"
 
 #include <la/avdecc/internals/entityModelTree.hpp>
 #include <la/avdecc/utils.hpp>
@@ -71,6 +72,8 @@ public:
 	};
 
 protected:
+	virtual UniqueIdentifier getEntityID() const noexcept = 0;
+
 	TreeModelAccessStrategy(ControlledEntityImpl* const entity) noexcept
 		: _entity{ entity }
 	{
@@ -83,8 +86,7 @@ protected:
 			case NotFoundBehavior::IgnoreAndReturnNull:
 				break;
 			case NotFoundBehavior::LogAndReturnNull:
-				// TODO: Properly log the message using the logger
-				AVDECC_ASSERT(false, message);
+				LOG_CONTROLLER_DEBUG(getEntityID(), message.c_str());
 				break;
 			case NotFoundBehavior::DefaultConstruct:
 				return true;

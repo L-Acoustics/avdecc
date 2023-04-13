@@ -42,6 +42,11 @@ public:
 	}
 
 private:
+	virtual UniqueIdentifier getEntityID() const noexcept override
+	{
+		return _entity->getEntity().getEntityID();
+	}
+
 	virtual StrategyType getStrategyType() const noexcept override
 	{
 		return StrategyType::Traverse;
@@ -51,13 +56,13 @@ private:
 	{
 		if (_entity->gotFatalEnumerationError())
 		{
-			handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::EnumerationError, "Entity had an enumeration error");
+			handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::EnumerationError, "getEntityNode: Entity had an enumeration error");
 			return nullptr;
 		}
 
 		if (!_entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported))
 		{
-			handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::NotSupported, "EM not supported by the entity");
+			handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::NotSupported, "getEntityNode: EM not supported by the entity");
 			return nullptr;
 		}
 
@@ -72,7 +77,7 @@ private:
 			auto it = entityNode->configurations.find(configurationIndex);
 			if (it == entityNode->configurations.end())
 			{
-				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidConfigurationIndex, "Invalid configuration index"))
+				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidConfigurationIndex, "getConfigurationNode: Invalid configuration index"))
 				{
 					return nullptr;
 				}
@@ -92,7 +97,7 @@ private:
 			auto it = configurationNode->audioUnits.find(descriptorIndex);
 			if (it == configurationNode->audioUnits.end())
 			{
-				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid audio unit index"))
+				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getAudioUnitNode: Invalid audio unit index"))
 				{
 					return nullptr;
 				}
@@ -112,7 +117,7 @@ private:
 			auto it = configurationNode->streamInputs.find(descriptorIndex);
 			if (it == configurationNode->streamInputs.end())
 			{
-				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid stream input index"))
+				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getStreamInputNode: Invalid stream input index"))
 				{
 					return nullptr;
 				}
@@ -131,7 +136,7 @@ private:
 			auto it = configurationNode->streamOutputs.find(descriptorIndex);
 			if (it == configurationNode->streamOutputs.end())
 			{
-				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid stream output index"))
+				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getStreamOutputNode: Invalid stream output index"))
 				{
 					return nullptr;
 				}
@@ -152,7 +157,7 @@ private:
 			auto it = configurationNode->redundantStreamInputs.find(redundantStreamIndex);
 			if (it == configurationNode->redundantStreamInputs.end())
 			{
-				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid redundant stream input index"))
+				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getRedundantStreamInputNode: Invalid redundant stream input index"))
 				{
 					return nullptr;
 				}
@@ -171,7 +176,7 @@ private:
 			auto it = configurationNode->redundantStreamOutputs.find(redundantStreamIndex);
 			if (it == configurationNode->redundantStreamOutputs.end())
 			{
-				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid redundant stream output index"))
+				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getRedundantStreamOutputNode: Invalid redundant stream output index"))
 				{
 					return nullptr;
 				}
@@ -193,7 +198,7 @@ private:
 			auto it = configurationNode->jackInputs.find(descriptorIndex);
 			if (it == configurationNode->jackInputs.end())
 			{
-				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid jack input index"))
+				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getJackInputNode: Invalid jack input index"))
 				{
 					return nullptr;
 				}
@@ -212,7 +217,7 @@ private:
 			auto it = configurationNode->jackOutputs.find(descriptorIndex);
 			if (it == configurationNode->jackOutputs.end())
 			{
-				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid jack output index"))
+				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getJackOutputNode: Invalid jack output index"))
 				{
 					return nullptr;
 				}
@@ -232,7 +237,7 @@ private:
 			auto it = configurationNode->avbInterfaces.find(descriptorIndex);
 			if (it == configurationNode->avbInterfaces.end())
 			{
-				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid avbInterface index"))
+				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getAvbInterfaceNode: Invalid avbInterface index"))
 				{
 					return nullptr;
 				}
@@ -252,7 +257,7 @@ private:
 			auto it = configurationNode->clockSources.find(descriptorIndex);
 			if (it == configurationNode->clockSources.end())
 			{
-				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid clockSource index"))
+				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getClockSourceNode: Invalid clockSource index"))
 				{
 					return nullptr;
 				}
@@ -272,7 +277,7 @@ private:
 			auto it = configurationNode->memoryObjects.find(descriptorIndex);
 			if (it == configurationNode->memoryObjects.end())
 			{
-				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid memoryObject index"))
+				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getMemoryObjectNode: Invalid memoryObject index"))
 				{
 					return nullptr;
 				}
@@ -292,7 +297,7 @@ private:
 			auto it = configurationNode->locales.find(descriptorIndex);
 			if (it == configurationNode->locales.end())
 			{
-				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid locale index"))
+				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getLocaleNode: Invalid locale index"))
 				{
 					return nullptr;
 				}
@@ -319,7 +324,7 @@ private:
 					auto it = localeNode.strings.find(descriptorIndex);
 					if (it == localeNode.strings.end())
 					{
-						if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid strings index"))
+						if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getStringsNode: Invalid strings index"))
 						{
 							return nullptr;
 						}
@@ -330,7 +335,7 @@ private:
 				}
 			}
 			// Not found
-			handleDescriptorNotFound(NotFoundBehavior::IgnoreAndReturnNull, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid strings index");
+			handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getStringsNode: Invalid strings index");
 			return nullptr;
 		}
 		return nullptr;
@@ -351,7 +356,7 @@ private:
 					auto it = unitNode.streamPortInputs.find(descriptorIndex);
 					if (it == unitNode.streamPortInputs.end())
 					{
-						if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid streamPortInput index"))
+						if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getStreamPortInputNode: Invalid streamPortInput index (AudioUnit level)"))
 						{
 							return nullptr;
 						}
@@ -367,7 +372,7 @@ private:
 			// Search a matching StreamPortIndex in all SensorUnits
 
 			// Not found
-			handleDescriptorNotFound(NotFoundBehavior::IgnoreAndReturnNull, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid streamPortInput index");
+			handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getStreamPortInputNode: Invalid streamPortInput index");
 			return nullptr;
 		}
 		return nullptr;
@@ -387,7 +392,7 @@ private:
 					auto it = unitNode.streamPortOutputs.find(descriptorIndex);
 					if (it == unitNode.streamPortOutputs.end())
 					{
-						if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid streamPortOutput index"))
+						if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getStreamPortOutputNode: Invalid streamPortOutput index (AudioUnit level)"))
 						{
 							return nullptr;
 						}
@@ -403,7 +408,7 @@ private:
 			// Search a matching StreamPortIndex in all SensorUnits
 
 			// Not found
-			handleDescriptorNotFound(NotFoundBehavior::IgnoreAndReturnNull, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid streamPortOutput index");
+			handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getStreamPortOutputNode: Invalid streamPortOutput index");
 			return nullptr;
 		}
 		return nullptr;
@@ -429,7 +434,7 @@ private:
 						auto it = streamPortNode.audioClusters.find(descriptorIndex);
 						if (it == streamPortNode.audioClusters.end())
 						{
-							if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid cluster index"))
+							if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getAudioClusterNode: Invalid cluster index (StreamPortInput level)"))
 							{
 								return nullptr;
 							}
@@ -450,7 +455,7 @@ private:
 						auto it = streamPortNode.audioClusters.find(descriptorIndex);
 						if (it == streamPortNode.audioClusters.end())
 						{
-							if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid cluster index"))
+							if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getAudioClusterNode: Invalid cluster index (StreamPortOutput level)"))
 							{
 								return nullptr;
 							}
@@ -467,7 +472,7 @@ private:
 			// Search a matching ClusterIndex in all SensorUnits/StreamPorts
 
 			// Not found
-			handleDescriptorNotFound(NotFoundBehavior::IgnoreAndReturnNull, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid cluster index");
+			handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getAudioClusterNode: Invalid cluster index");
 			return nullptr;
 		}
 		return nullptr;
@@ -493,7 +498,7 @@ private:
 						auto it = streamPortNode.audioMaps.find(descriptorIndex);
 						if (it == streamPortNode.audioMaps.end())
 						{
-							if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid map index"))
+							if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getAudioMapNode: Invalid map index (StreamPortInput level)"))
 							{
 								return nullptr;
 							}
@@ -514,7 +519,7 @@ private:
 						auto it = streamPortNode.audioMaps.find(descriptorIndex);
 						if (it == streamPortNode.audioMaps.end())
 						{
-							if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid map index"))
+							if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getAudioMapNode: Invalid map index (StreamPortOutput level)"))
 							{
 								return nullptr;
 							}
@@ -531,7 +536,7 @@ private:
 			// Search a matching MapIndex in all SensorUnits/StreamPorts
 
 			// Not found
-			handleDescriptorNotFound(NotFoundBehavior::IgnoreAndReturnNull, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid map index");
+			handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getAudioMapNode: Invalid map index");
 			return nullptr;
 		}
 		return nullptr;
@@ -543,19 +548,26 @@ private:
 		if (configurationNode)
 		{
 			// Search Top Level
-			if (levelHint == DefaultConstructLevelHint::Configuration || isDescriptorIndexInRange(descriptorIndex, entity::model::ControlIndex{ 0u }, configurationNode->staticModel.descriptorCounts[entity::model::DescriptorType::Control]))
+			try
 			{
-				auto it = configurationNode->controls.find(descriptorIndex);
-				if (it == configurationNode->controls.end())
+				if (levelHint == DefaultConstructLevelHint::Configuration || isDescriptorIndexInRange(descriptorIndex, entity::model::ControlIndex{ 0u }, configurationNode->staticModel.descriptorCounts.at(entity::model::DescriptorType::Control)))
 				{
-					if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid control index"))
+					auto it = configurationNode->controls.find(descriptorIndex);
+					if (it == configurationNode->controls.end())
 					{
-						return nullptr;
+						if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getControlNode: Invalid control index (Configuration level)"))
+						{
+							return nullptr;
+						}
+						it = configurationNode->controls.emplace(descriptorIndex, model::ControlNode{ descriptorIndex }).first;
 					}
-					it = configurationNode->controls.emplace(descriptorIndex, model::ControlNode{ descriptorIndex }).first;
-				}
 
-				return &(it->second);
+					return &(it->second);
+				}
+			}
+			catch (std::out_of_range const&)
+			{
+				// Ignore and continue (if configurationNode->staticModel.descriptorCounts is not set)
 			}
 
 			// Search a matching ControlIndex in all AudioUnits/StreamPorts/ExternalPorts/InternalPorts
@@ -569,7 +581,7 @@ private:
 					auto it = unitNode.controls.find(descriptorIndex);
 					if (it == unitNode.controls.end())
 					{
-						if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid control index"))
+						if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getControlNode: Invalid control index (AudioUnit level)"))
 						{
 							return nullptr;
 						}
@@ -589,7 +601,7 @@ private:
 						auto it = streamPortNode.controls.find(descriptorIndex);
 						if (it == streamPortNode.controls.end())
 						{
-							if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid control index"))
+							if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getControlNode: Invalid control index (StreamPortInput level)"))
 							{
 								return nullptr;
 							}
@@ -610,7 +622,7 @@ private:
 						auto it = streamPortNode.controls.find(descriptorIndex);
 						if (it == streamPortNode.controls.end())
 						{
-							if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid control index"))
+							if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getControlNode: Invalid control index (StreamPortOutput level)"))
 							{
 								return nullptr;
 							}
@@ -644,7 +656,7 @@ private:
 					auto it = jackNode.controls.find(descriptorIndex);
 					if (it == jackNode.controls.end())
 					{
-						if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid control index"))
+						if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getControlNode: Invalid control index (JackInput level)"))
 						{
 							return nullptr;
 						}
@@ -665,7 +677,7 @@ private:
 					auto it = jackNode.controls.find(descriptorIndex);
 					if (it == jackNode.controls.end())
 					{
-						if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid control index"))
+						if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getControlNode: Invalid control index (JackOutput level)"))
 						{
 							return nullptr;
 						}
@@ -688,7 +700,7 @@ private:
 					auto it = avbInterfaceNode.controls.find(descriptorIndex);
 					if (it == avbInterfaceNode.controls.end())
 					{
-						if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid control index"))
+						if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getControlNode: Invalid control index (AvbInterface level)"))
 						{
 							return nullptr;
 						}
@@ -714,7 +726,7 @@ private:
 					auto it = ptpInstanceNode.controls.find(descriptorIndex);
 					if (it == ptpInstanceNode.controls.end())
 					{
-						if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid control index"))
+						if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getControlNode: Invalid control index (PtpInstance level)"))
 						{
 							return nullptr;
 						}
@@ -727,7 +739,7 @@ private:
 #endif
 
 			// Not found
-			handleDescriptorNotFound(NotFoundBehavior::IgnoreAndReturnNull, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid control index");
+			handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getControlNode: Invalid control index");
 			return nullptr;
 		}
 		return nullptr;
@@ -741,7 +753,7 @@ private:
 			auto it = configurationNode->clockDomains.find(descriptorIndex);
 			if (it == configurationNode->clockDomains.end())
 			{
-				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "Invalid clockDomain index"))
+				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getClockDomainNode: Invalid clockDomain index"))
 				{
 					return nullptr;
 				}

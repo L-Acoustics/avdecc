@@ -49,6 +49,8 @@
 #	define FORMAT_ARGS(...) la::avdecc::logger::format(__VA_ARGS__)
 #endif // HAVE_FMT
 
+#ifndef AVDECC_LOGGER_FORMAT_DEFINED
+#	define AVDECC_LOGGER_FORMAT_DEFINED
 namespace la
 {
 namespace avdecc
@@ -67,13 +69,13 @@ inline std::string format(std::string&& message, Ts&&... /*params*/)
 template<Level LevelValue, class LogItemType, typename... Ts>
 constexpr void log(Ts&&... params)
 {
-#ifndef DEBUG
+#	ifndef DEBUG
 	// In release, we don't want Trace nor Debug levels
 	if constexpr (LevelValue == Level::Trace || LevelValue == Level::Debug)
 	{
 	}
 	else
-#endif // !DEBUG
+#	endif // !DEBUG
 	{
 		auto const item = LogItemType{ std::forward<Ts>(params)... };
 		Logger::getInstance().logItem(LevelValue, &item);
@@ -83,6 +85,7 @@ constexpr void log(Ts&&... params)
 } // namespace logger
 } // namespace avdecc
 } // namespace la
+#endif // AVDECC_LOGGER_FORMAT_DEFINED
 
 /** Preprocessor defines to remove at compile time some of the most time-consuming log messages (Trace and Debug) - Creation of the arguments */
 #define LOG_GENERIC(LogLevel, Message) la::avdecc::logger::log<la::avdecc::logger::Level::LogLevel, la::avdecc::logger::LogItemGeneric>(Message)
