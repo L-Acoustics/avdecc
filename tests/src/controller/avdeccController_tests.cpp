@@ -23,6 +23,7 @@
 */
 
 // Public API
+#include <la/avdecc/executor.hpp>
 #include <la/avdecc/controller/avdeccController.hpp>
 #include <la/avdecc/internals/protocolAemAecpdu.hpp>
 #include <la/avdecc/internals/protocolAemPayloadSizes.hpp>
@@ -839,8 +840,8 @@ TEST(Controller, InvalidControlValues)
 		ASSERT_TRUE(!!staticValues) << "VirtualEntity should have valid values in its ControlNode";
 		ASSERT_TRUE(!staticValues.areDynamicValues()) << "VirtualEntity should have static values in its ControlNode";
 
-		// Expect to not pass ControlValues validation with non-valid dynamic values
-		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues.getType(), staticValues, {}));
+		// Expect to pass ControlValues validation with non-initialized dynamic values (might be an unknown type of ControlValues)
+		EXPECT_TRUE(c.validateControlValues(EntityID, ControlIndex, staticValues.getType(), staticValues, {}));
 
 		// Expect to not pass ControlValues validation with static values instead of dynamic values
 		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueStatic<std::uint8_t>>{} }));

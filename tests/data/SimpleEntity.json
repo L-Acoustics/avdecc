@@ -506,6 +506,40 @@
 						}
 					],
 					"static": {
+						"descriptor_counts": [
+							[
+								"AUDIO_UNIT",
+								1
+							],
+							[
+								"AVB_INTERFACE",
+								1
+							],
+							[
+								"CLOCK_DOMAIN",
+								1
+							],
+							[
+								"CLOCK_SOURCE",
+								1
+							],
+							[
+								"CONTROL",
+								1
+							],
+							[
+								"STREAM_INPUT",
+								1
+							],
+							[
+								"LOCALE",
+								2
+							],
+							[
+								"MEMORY_OBJECT",
+								2
+							]
+						],
 						"localized_description": {
 							"index": 2,
 							"offset": 0
