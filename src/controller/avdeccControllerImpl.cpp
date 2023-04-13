@@ -1549,6 +1549,7 @@ void ControllerImpl::checkRedundancyWarningDiagnostics(ControllerImpl const* con
 		catch (ControlledEntity::Exception const&)
 		{
 			LOG_CONTROLLER_WARN(entity.getEntityID(), "Entity is declared Milan Redundant but does not have AVB_INTERFACE_0 and AVB_INTERFACE_1");
+			addCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::MilanWarning);
 		}
 	}
 
