@@ -1040,7 +1040,6 @@ void ControllerImpl::updateGptpInformation(ControlledEntityImpl& controlledEntit
 		// First update gPTP Info in ADP structures
 		auto& entity = controlledEntity.getEntity();
 		auto const caps = entity.getEntityCapabilities();
-		auto const currentConfigurationIndex = controlledEntity.getCurrentConfigurationIndex();
 		if (caps.test(entity::EntityCapability::GptpSupported))
 		{
 			// Search which InterfaceInformation matches this AvbInterfaceIndex (searching by Index, or by MacAddress in case the Index was not specified in ADP)
@@ -1064,21 +1063,28 @@ void ControllerImpl::updateGptpInformation(ControlledEntityImpl& controlledEntit
 			}
 		}
 
-		// Then update gPTP Info in existing AvbDescriptors (don't create if not created yet)
-		auto& configurationNode = controlledEntity.getConfigurationNode(currentConfigurationIndex);
-		for (auto& [interfaceIndex, avbInterfaceNode] : configurationNode.avbInterfaces)
+		// If AEM is supported
+		auto const isAemSupported = entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported);
+		if (isAemSupported && controlledEntity.hasAnyConfiguration())
 		{
-			// Match with the passed AvbInterfaceIndex, or with macAddress if passed AvbInterfaceIndex is the GlobalAvbInterfaceIndex
-			if (interfaceIndex == avbInterfaceIndex || (avbInterfaceIndex == entity::Entity::GlobalAvbInterfaceIndex && macAddress == avbInterfaceNode.staticModel.macAddress))
+			// Then update gPTP Info in existing AvbDescriptors (don't create if not created yet)
+			auto const currentConfigurationIndex = controlledEntity.getCurrentConfigurationIndex();
+			auto& configurationNode = controlledEntity.getConfigurationNode(currentConfigurationIndex);
+			for (auto& [interfaceIndex, avbInterfaceNode] : configurationNode.avbInterfaces)
 			{
-				// Alter InterfaceInfo with new gPTP info
-				if (avbInterfaceNode.dynamicModel.gptpGrandmasterID != gptpGrandmasterID || avbInterfaceNode.dynamicModel.gptpDomainNumber != gptpDomainNumber)
+				// Match with the passed AvbInterfaceIndex, or with macAddress if passed AvbInterfaceIndex is the GlobalAvbInterfaceIndex
+				if (interfaceIndex == avbInterfaceIndex || (avbInterfaceIndex == entity::Entity::GlobalAvbInterfaceIndex && macAddress == avbInterfaceNode.staticModel.macAddress))
 				{
-					avbInterfaceNode.dynamicModel.gptpGrandmasterID = gptpGrandmasterID;
-					avbInterfaceNode.dynamicModel.gptpDomainNumber = gptpDomainNumber;
-					infoChanged |= true;
+					// Alter InterfaceInfo with new gPTP info
+					if (avbInterfaceNode.dynamicModel.gptpGrandmasterID != gptpGrandmasterID || avbInterfaceNode.dynamicModel.gptpDomainNumber != gptpDomainNumber)
+					{
+						avbInterfaceNode.dynamicModel.gptpGrandmasterID = gptpGrandmasterID;
+						avbInterfaceNode.dynamicModel.gptpDomainNumber = gptpDomainNumber;
+						infoChanged |= true;
+					}
 				}
 			}
+
 		}
 
 		// Check for Diagnostics - Redundancy Warning
@@ -1527,7 +1533,6 @@ void ControllerImpl::checkAvbInterfaceLinkStatus(ControllerImpl const* const con
 void ControllerImpl::checkRedundancyWarningDiagnostics(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity) noexcept
 {
 	auto& entity = controlledEntity.getEntity();
-	auto const currentConfigurationIndex = controlledEntity.getCurrentConfigurationIndex();
 	auto isWarning = false;
 
 	// Only for a Milan redundant device
@@ -1536,6 +1541,7 @@ void ControllerImpl::checkRedundancyWarningDiagnostics(ControllerImpl const* con
 		// Check if AVB_INTERFACE_0 and AVB_INTERFACE_1 have the same gPTP
 		try
 		{
+			auto const currentConfigurationIndex = controlledEntity.getCurrentConfigurationIndex();
 			auto const& avbInterfaceNode0 = controlledEntity.getAvbInterfaceNode(currentConfigurationIndex, entity::model::AvbInterfaceIndex{ 0u });
 			auto const& avbInterfaceNode1 = controlledEntity.getAvbInterfaceNode(currentConfigurationIndex, entity::model::AvbInterfaceIndex{ 1u });
 			isWarning = avbInterfaceNode0.dynamicModel.gptpGrandmasterID == avbInterfaceNode1.dynamicModel.gptpGrandmasterID;
