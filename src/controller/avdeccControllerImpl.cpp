@@ -1084,7 +1084,6 @@ void ControllerImpl::updateGptpInformation(ControlledEntityImpl& controlledEntit
 					}
 				}
 			}
-
 		}
 
 		// Check for Diagnostics - Redundancy Warning
@@ -2471,148 +2470,266 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 	// Check if AEM is supported by this entity
 	if (caps.test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
 	{
-		AVDECC_ASSERT(false, "TODO: Use the visitor");
-#if 0
-		auto const& entityTree = entity->getEntityTree();
-		auto const currentConfigurationIndex = entity->getCurrentConfigurationIndex();
-
-		// Get DynamicModel for each Configuration descriptors
-		for (auto configurationIndex = entity::model::ConfigurationIndex(0u); configurationIndex < entityTree.configurationTrees.size(); ++configurationIndex)
+		class DynamicInfoModelVisitor : public la::avdecc::controller::model::EntityModelVisitor
 		{
-			auto const& configTree = entity->getConfigurationTree(configurationIndex);
-			auto& configDynamicModel = entity->getConfigurationNodeDynamicModel(configurationIndex);
-
-			// We can set the currentConfiguration value right now, we know it
-			configDynamicModel.isActiveConfiguration = configurationIndex == currentConfigurationIndex;
-
-			// Get ConfigurationName
-			queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ConfigurationName, 0u);
-
-			// And only for the current configuration, get DynamicModel for sub-descriptors
-			if (configDynamicModel.isActiveConfiguration)
+		public:
+			DynamicInfoModelVisitor(ControllerImpl* const controller, ControlledEntityImpl* const entity) noexcept
+				: _controller{ controller }
+				, _entity{ entity }
 			{
-				// Choose a locale
-				chooseLocale(entity, configurationIndex, _preferedLocale,
-					[this, entity, configurationIndex](entity::model::StringsIndex const stringsIndex)
-					{
-						// Strings not in cache, we need to query the device
-						queryInformation(entity, configurationIndex, entity::model::DescriptorType::Strings, stringsIndex);
-					});
+			}
 
-				// Get DynamicModel for each AudioUnit descriptors
+			// Deleted compiler auto-generated methods
+			DynamicInfoModelVisitor(DynamicInfoModelVisitor const&) = delete;
+			DynamicInfoModelVisitor(DynamicInfoModelVisitor&&) = delete;
+			DynamicInfoModelVisitor& operator=(DynamicInfoModelVisitor const&) = delete;
+			DynamicInfoModelVisitor& operator=(DynamicInfoModelVisitor&&) = delete;
+
+		private:
+			// Private methods
+			void getControlNodeDynamicInformation(la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ControlIndex const controlIndex) noexcept
+			{
+				// Get ControlName
+				_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlName, controlIndex);
+				// Get ControlValues
+				_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlValues, controlIndex);
+			}
+			// la::avdecc::controller::model::EntityModelVisitor overrides
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::EntityNode const& node) noexcept
+			{
+				// Store the current configuration index
+				_currentConfigurationIndex = node.dynamicModel.currentConfiguration;
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::EntityNode const* const /*parent*/, la::avdecc::controller::model::ConfigurationNode const& node) noexcept
+			{
+				auto const configurationIndex = node.descriptorIndex;
+
+				// Get configuration dynamic model
+				auto* const configDynamicModel = _entity->getModelAccessStrategy().getConfigurationNodeDynamicModel(configurationIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+				if (configDynamicModel)
 				{
-					auto const count = configTree.audioUnitTrees.size();
-					for (auto index = entity::model::AudioUnitIndex(0); index < count; ++index)
+					// We can set the currentConfiguration value right now, we know it
+					configDynamicModel->isActiveConfiguration = configurationIndex == _currentConfigurationIndex;
+
+					// Get ConfigurationName
+					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ConfigurationName, 0u);
+
+
+					if (configDynamicModel->isActiveConfiguration)
 					{
-						// Get AudioUnitName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName, index);
-						// Get AudioUnitSamplingRate
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate, index);
-					}
-				}
-				// Get DynamicModel for each StreamInput descriptors
-				{
-					auto const count = configTree.streamInputModels.size();
-					for (auto index = entity::model::StreamIndex(0); index < count; ++index)
-					{
-						// Get InputStreamName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName, index);
-						// Get InputStreamFormat
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat, index);
-					}
-				}
-				// Get DynamicModel for each StreamOutput descriptors
-				{
-					auto const count = configTree.streamOutputModels.size();
-					for (auto index = entity::model::StreamIndex(0); index < count; ++index)
-					{
-						// Get OutputStreamName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName, index);
-						// Get OutputStreamFormat
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat, index);
-					}
-				}
-				// Get DynamicModel for each JackInput descriptors
-				{
-					auto const count = configTree.jackInputModels.size();
-					for (auto index = entity::model::JackIndex(0); index < count; ++index)
-					{
-						// Get InputJackName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputJackName, index);
-					}
-				}
-				// Get DynamicModel for each JackOutput descriptors
-				{
-					auto const count = configTree.jackOutputModels.size();
-					for (auto index = entity::model::JackIndex(0); index < count; ++index)
-					{
-						// Get OutputJackName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputJackName, index);
-					}
-				}
-				// Get DynamicModel for each AvbInterface descriptors
-				{
-					auto const count = configTree.avbInterfaceModels.size();
-					for (auto index = entity::model::AvbInterfaceIndex(0); index < count; ++index)
-					{
-						// Get AvbInterfaceName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName, index);
-					}
-				}
-				// Get DynamicModel for each ClockSource descriptors
-				{
-					auto const count = configTree.clockSourceModels.size();
-					for (auto index = entity::model::ClockSourceIndex(0); index < count; ++index)
-					{
-						// Get ClockSourceName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName, index);
-					}
-				}
-				// Get DynamicModel for each MemoryObject descriptors
-				{
-					auto const count = configTree.memoryObjectModels.size();
-					for (auto index = entity::model::MemoryObjectIndex(0); index < count; ++index)
-					{
-						// Get MemoryObjectName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName, index);
-						// Get MemoryObjectLength
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength, index);
-					}
-				}
-				// Get DynamicModel for each AudioCluster descriptors
-				{
-					auto const count = configTree.audioClusterModels.size();
-					for (auto index = entity::model::ClusterIndex(0); index < count; ++index)
-					{
-						// Get AudioClusterName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, index);
-					}
-				}
-				// Get DynamicModel for each Control descriptors
-				{
-					auto const count = configTree.controlModels.size();
-					for (auto index = entity::model::ControlIndex(0); index < count; ++index)
-					{
-						// Get ControlName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlName, index);
-						// Get ControlValues
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlValues, index);
-					}
-				}
-				// Get DynamicModel for each ClockDomain descriptors
-				{
-					auto const count = configTree.clockDomainModels.size();
-					for (auto index = entity::model::ClockDomainIndex(0); index < count; ++index)
-					{
-						// Get ClockDomainName
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName, index);
-						// Get ClockDomainSourceIndex
-						queryInformation(entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex, index);
+						// Choose a locale
+						chooseLocale(_entity, configurationIndex, _controller->_preferedLocale,
+							[this, configurationIndex](entity::model::StringsIndex const stringsIndex)
+							{
+								// Strings not in cache, we need to query the device
+								_controller->queryInformation(_entity, configurationIndex, entity::model::DescriptorType::Strings, stringsIndex);
+							});
 					}
 				}
 			}
-		}
-#endif
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::AudioUnitNode const& node) noexcept
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const audioUnitIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get AudioUnitName
+					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitName, audioUnitIndex);
+					// Get AudioUnitSamplingRate
+					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate, audioUnitIndex);
+				}
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::StreamInputNode const& node) noexcept
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const streamIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get InputStreamName
+					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamName, streamIndex);
+					// Get InputStreamFormat
+					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat, streamIndex);
+				}
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::StreamOutputNode const& node) noexcept
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const streamIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get OutputStreamName
+					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamName, streamIndex);
+					// Get OutputStreamFormat
+					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat, streamIndex);
+				}
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::JackInputNode const& node) noexcept
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const jackIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get InputJackName
+					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputJackName, jackIndex);
+				}
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::JackOutputNode const& node) noexcept
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const jackIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get OutputJackName
+					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputJackName, jackIndex);
+				}
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::JackNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& node) noexcept
+			{
+				auto const configurationIndex = grandParent->descriptorIndex;
+				auto const controlIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					getControlNodeDynamicInformation(configurationIndex, controlIndex);
+				}
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::AvbInterfaceNode const& node) noexcept
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const avbInterfaceIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get AvbInterfaceName
+					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName, avbInterfaceIndex);
+				}
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::ClockSourceNode const& node) noexcept
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const clockSourceIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get ClockSourceName
+					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName, clockSourceIndex);
+				}
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::MemoryObjectNode const& node) noexcept
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const memoryObjectIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get MemoryObjectName
+					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectName, memoryObjectIndex);
+					// Get MemoryObjectLength
+					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength, memoryObjectIndex);
+				}
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::LocaleNode const& /*node*/) noexcept
+			{
+				// Nothing to get
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::LocaleNode const* const /*parent*/, la::avdecc::controller::model::StringsNode const& /*node*/) noexcept
+			{
+				// Nothing to get
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::StreamPortInputNode const& /*node*/) noexcept
+			{
+				// Nothing to get
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::StreamPortOutputNode const& /*node*/) noexcept
+			{
+				// Nothing to get
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandGrandParent, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::AudioClusterNode const& node) noexcept
+			{
+				auto const configurationIndex = grandGrandParent->descriptorIndex;
+				auto const clusterIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get AudioClusterName
+					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, clusterIndex);
+				}
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::AudioMapNode const& /*node*/) noexcept
+			{
+				// Nothing to get
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandGrandParent, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& node) noexcept
+			{
+				auto const configurationIndex = grandGrandParent->descriptorIndex;
+				auto const controlIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					getControlNodeDynamicInformation(configurationIndex, controlIndex);
+				}
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& node) noexcept
+			{
+				auto const configurationIndex = grandParent->descriptorIndex;
+				auto const controlIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					getControlNodeDynamicInformation(configurationIndex, controlIndex);
+				}
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const controlIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					getControlNodeDynamicInformation(configurationIndex, controlIndex);
+				}
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::ClockDomainNode const& node) noexcept
+			{
+				auto const configurationIndex = parent->descriptorIndex;
+				auto const clockDomainIndex = node.descriptorIndex;
+
+				// Only for active configuration
+				if (configurationIndex == _currentConfigurationIndex)
+				{
+					// Get ClockDomainName
+					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainName, clockDomainIndex);
+					// Get ClockDomainSourceIndex
+					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex, clockDomainIndex);
+				}
+			}
+
+			ControllerImpl* _controller{ nullptr };
+			ControlledEntityImpl* _entity{ nullptr };
+			entity::model::ConfigurationIndex _currentConfigurationIndex{ entity::model::getInvalidDescriptorIndex() };
+		};
+
+		// Visit the model, and retrieve dynamic info
+		auto visitor = DynamicInfoModelVisitor{ this, entity };
+		entity->accept(&visitor, true);
 	}
 
 	// Get all expected descriptor dynamic information
