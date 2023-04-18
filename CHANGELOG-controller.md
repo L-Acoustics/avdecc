@@ -6,9 +6,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Added
-- Complete controller entity model refactoring to support descriptors at non-configuration level
 - Support for JACK_INPUT/JACK_OUTPUT descriptors
 - Support for CONTROL descriptors at AUDIO_UNIT, JACK, STREAM_PORT levels
+
+### Changed
+- Complete controller entity model refactoring to support descriptors at non-configuration level
+- EntityModelVisitor is now virtual pure, but a new derivated visitor (with all default implementation) has been added: DefaultedEntityModelVisitor
+
+### Removed
+- Direct access to ClockSource descriptors from the ClockDomain. Will still be enumerated correctly when using the model visitor
+
+### Fixed
+- Controller entity model no longer uses pointers to prevent dangling issues when making copies
 
 ## [3.4.1] - 2023-01-11
 ### Fixed

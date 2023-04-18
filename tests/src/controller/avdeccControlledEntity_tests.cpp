@@ -307,6 +307,8 @@ TEST(ControlledEntity, VisitorValidation)
 			EXPECT_EQ(la::avdecc::entity::model::DescriptorType::ClockSource, node.descriptorType);
 		}
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamInputNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamOutputNode const& /*node*/) noexcept override {}
 		// Virtual parenting to show StreamInputNode which have the specified RedundantStreamNode as parent
 		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::RedundantStreamNode const* const /*parent*/, la::avdecc::controller::model::StreamInputNode const& node) noexcept override
 		{

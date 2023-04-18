@@ -373,9 +373,8 @@ void ChecksumEntityModelVisitor::serializeModel(model::StreamPortNode const& nod
 void ChecksumEntityModelVisitor::serializeModel(model::RedundantStreamNode const& node) noexcept
 {
 	static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
-	for (auto const& streamKV : node.redundantStreams)
+	for (auto const streamIndex : node.redundantStreams)
 	{
-		auto const streamIndex = streamKV.first;
 		static_cast<Sha256Serializer&>(*_serializer) << streamIndex;
 	}
 }

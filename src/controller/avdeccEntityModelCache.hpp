@@ -85,7 +85,7 @@ public:
 		return std::nullopt;
 	}
 
-	void cacheEntityModel(UniqueIdentifier const entityModelID, model::EntityNode const& model) noexcept
+	void cacheEntityModel(UniqueIdentifier const entityModelID, model::EntityNode&& model) noexcept
 	{
 		AVDECC_ASSERT(_isEnabled, "Should not call AEM cache if cache is not enabled");
 		AVDECC_ASSERT(entityModelID, "Should not call AEM cache if EntityModelID is invalid");
@@ -96,116 +96,8 @@ public:
 			// Cache the EntityModel but only if not already in cache
 			if (_modelCache.count(entityModelID) == 0)
 			{
-				// Make a copy of the passed tree as we want to remove all the dynamic part from it
-				auto cachedModel = model;
-
-				// Wipe all the dynamic model
-				cachedModel.dynamicModel = {};
-				for (auto& configKV : cachedModel.configurations)
-				{
-					auto& config = configKV.second;
-					config.dynamicModel = {};
-					for (auto& KV : config.audioUnits)
-					{
-						auto& aut = KV.second;
-						aut.dynamicModel = {};
-						for (auto& SPIKV : aut.streamPortInputs)
-						{
-							auto& spi = SPIKV.second;
-							spi.dynamicModel = {};
-							for (auto& ACMKV : spi.audioClusters)
-							{
-								ACMKV.second.dynamicModel = {};
-							}
-							// AudioMap doesn't have dynamic model
-							for (auto& CKV : spi.controls)
-							{
-								auto& c = CKV.second;
-								c.dynamicModel = {};
-							}
-						}
-						for (auto& SPOKV : aut.streamPortOutputs)
-						{
-							auto& spo = SPOKV.second;
-							spo.dynamicModel = {};
-							for (auto& ACMKV : spo.audioClusters)
-							{
-								ACMKV.second.dynamicModel = {};
-							}
-							for (auto& CKV : spo.controls)
-							{
-								auto& c = CKV.second;
-								c.dynamicModel = {};
-							}
-						}
-						for (auto& CKV : aut.controls)
-						{
-							auto& c = CKV.second;
-							c.dynamicModel = {};
-						}
-					}
-					for (auto& KV : config.streamInputs)
-					{
-						KV.second.dynamicModel = {};
-					}
-					for (auto& KV : config.streamOutputs)
-					{
-						KV.second.dynamicModel = {};
-					}
-					for (auto& KV : config.jackInputs)
-					{
-						auto& ji = KV.second;
-						ji.dynamicModel = {};
-						for (auto& CKV : ji.controls)
-						{
-							auto& c = CKV.second;
-							c.dynamicModel = {};
-						}
-					}
-					for (auto& KV : config.jackOutputs)
-					{
-						auto& jo = KV.second;
-						jo.dynamicModel = {};
-						for (auto& CKV : jo.controls)
-						{
-							auto& c = CKV.second;
-							c.dynamicModel = {};
-						}
-					}
-					for (auto& KV : config.avbInterfaces)
-					{
-						auto& a = KV.second;
-						a.dynamicModel = {};
-#if 0 // IEEE 1722.1-2021
-						for (auto& CKV : a.controls)
-						{
-							auto& c = CKV.second;
-							c.dynamicModel = {};
-						}
-#endif
-					}
-					for (auto& KV : config.clockSources)
-					{
-						KV.second.dynamicModel = {};
-					}
-					for (auto& KV : config.memoryObjects)
-					{
-						KV.second.dynamicModel = {};
-					}
-					// LocaleNodeModel doesn't have dynamic model
-					// StringsNodeModel doesn't have dynamic model
-					for (auto& KV : config.controls)
-					{
-						KV.second.dynamicModel = {};
-					}
-					for (auto& KV : config.clockDomains)
-					{
-						KV.second.dynamicModel = {};
-					}
-				}
-
 				// Move it to the cache
-				_modelCache.insert(std::make_pair(entityModelID, std::move(cachedModel)));
+				_modelCache.emplace(entityModelID, std::move(model));
 			}
 		}
 	}

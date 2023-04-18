@@ -125,6 +125,22 @@ private:
 		serializeNode(parent);
 		serializeNode(node);
 	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::JackInputNode const& node) noexcept override
+	{
+		serializeNode(parent);
+		serializeNode(node);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::JackOutputNode const& node) noexcept override
+	{
+		serializeNode(parent);
+		serializeNode(node);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::JackNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept override
+	{
+		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+	}
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::AvbInterfaceNode const& node) noexcept override
 	{
 		serializeNode(parent);
@@ -177,6 +193,19 @@ private:
 		serializeNode(parent);
 		serializeNode(node);
 	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandGrandParent, la::avdecc::controller::model::AudioUnitNode const* const grandParent, la::avdecc::controller::model::StreamPortNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept override
+	{
+		serializeNode(grandGrandParent);
+		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::AudioUnitNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept override
+	{
+		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+	}
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept override
 	{
 		serializeNode(parent);
@@ -198,25 +227,23 @@ private:
 	{
 		serializeNode(parent);
 		serializeNode(node);
-		_serializedModel += "rsi";
-		for (auto const& streamKV : node.redundantStreams)
+		_serializedModel += "rsi" + std::to_string(node.primaryStreamIndex) + "+";
+		for (auto const streamIndex : node.redundantStreams)
 		{
-			auto const streamIndex = streamKV.first;
 			_serializedModel += std::to_string(streamIndex) + "+";
 		}
-		serializeNode(*node.primaryStream);
+		_serializedModel += ",";
 	}
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::RedundantStreamOutputNode const& node) noexcept override
 	{
 		serializeNode(parent);
 		serializeNode(node);
-		_serializedModel += "rso";
-		for (auto const& streamKV : node.redundantStreams)
+		_serializedModel += "rso" + std::to_string(node.primaryStreamIndex) + "+";
+		for (auto const streamIndex : node.redundantStreams)
 		{
-			auto const streamIndex = streamKV.first;
 			_serializedModel += std::to_string(streamIndex) + "+";
 		}
-		serializeNode(*node.primaryStream);
+		_serializedModel += ",";
 	}
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::RedundantStreamNode const* const parent, la::avdecc::controller::model::StreamInputNode const& node) noexcept override
 	{
@@ -318,7 +345,7 @@ TEST(Controller, RedundantStreams)
 		EntityModelVisitor serializer{};
 		entity.accept(&serializer);
 		auto const serialized = serializer.getSerializedModel();
-		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,vi0,rsi0+1+dt5,di0,pdt1,pdt5,dt5,di0,pdt1,pdt5,dt5,di1,", serialized.c_str());
+		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,vi0,rsi0+0+1+,pdt1,pdt5,dt5,di0,pdt1,pdt5,dt5,di1,", serialized.c_str());
 	}
 
 	// Valid redundant association (secondary stream declared first)
@@ -338,7 +365,7 @@ TEST(Controller, RedundantStreams)
 		EntityModelVisitor serializer{};
 		entity.accept(&serializer);
 		auto const serialized = serializer.getSerializedModel();
-		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,vi0,rsi0+1+dt5,di1,pdt1,pdt5,dt5,di0,pdt1,pdt5,dt5,di1,", serialized.c_str());
+		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,vi0,rsi1+0+1+,pdt1,pdt5,dt5,di0,pdt1,pdt5,dt5,di1,", serialized.c_str());
 	}
 
 	// Valid redundant association (single stream declared as well as redundant pair)
@@ -359,7 +386,7 @@ TEST(Controller, RedundantStreams)
 		EntityModelVisitor serializer{};
 		entity.accept(&serializer);
 		auto const serialized = serializer.getSerializedModel();
-		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,di2,pdt1,dt5,vi0,rsi1+2+dt5,di2,pdt1,pdt5,dt5,di1,pdt1,pdt5,dt5,di2,", serialized.c_str());
+		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,di2,pdt1,dt5,vi0,rsi2+1+2+,pdt1,pdt5,dt5,di1,pdt1,pdt5,dt5,di2,", serialized.c_str());
 	}
 }
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY

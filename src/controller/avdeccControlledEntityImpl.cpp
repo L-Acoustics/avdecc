@@ -692,11 +692,30 @@ void processRedundantStreamNodes(ControlledEntity const* const entity, model::En
 		visitor->visit(entity, &configuration, redundantStream);
 
 		// Loop over StreamNodes
-		for (auto const& streamKV : redundantStream.redundantStreams)
+		for (auto const streamIndex : redundantStream.redundantStreams)
 		{
-			auto const* stream = static_cast<NodeType const*>(streamKV.second);
-			// Visit StreamNodes (RedundantStreamNodes is parent)
-			visitor->visit(entity, &configuration, &redundantStream, *stream);
+			if constexpr (std::is_same_v<NodeType, model::StreamInputNode>)
+			{
+				if (auto const streamIt = configuration.streamInputs.find(streamIndex); streamIt != configuration.streamInputs.end())
+				{
+					auto const& stream = static_cast<NodeType const&>(streamIt->second);
+					// Visit StreamNodes (RedundantStreamNodes is parent)
+					visitor->visit(entity, &configuration, &redundantStream, stream);
+				}
+			}
+			else if constexpr (std::is_same_v<NodeType, model::StreamOutputNode>)
+			{
+				if (auto const streamIt = configuration.streamOutputs.find(streamIndex); streamIt != configuration.streamOutputs.end())
+				{
+					auto const& stream = static_cast<NodeType const&>(streamIt->second);
+					// Visit StreamNodes (RedundantStreamNodes is parent)
+					visitor->visit(entity, &configuration, &redundantStream, stream);
+				}
+			}
+			else
+			{
+				AVDECC_ASSERT(false, "Unknown NodeType");
+			}
 		}
 	}
 }
@@ -828,11 +847,18 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor, bool
 					visitor->visit(this, &configuration, domain);
 
 					// Loop over ClockSourceNode
-					for (auto const& sourceKV : domain.clockSources)
+					for (auto const sourceIndex : domain.staticModel.clockSources)
 					{
-						auto const* source = sourceKV.second;
-						// Visit ClockSourceNode (ClockDomainNode is parent)
-						visitor->visit(this, &configuration, &domain, *source);
+						if (auto const sourceIt = configuration.clockSources.find(sourceIndex); sourceIt != configuration.clockSources.end())
+						{
+							auto const& source = sourceIt->second;
+							// Visit ClockSourceNode (ClockDomainNode is parent)
+							visitor->visit(this, &configuration, &domain, source);
+						}
+						else
+						{
+							LOG_CONTROLLER_WARN(_entity.getEntityID(), "Invalid ClockSourceIndex in ClockDomain");
+						}
 					}
 				}
 			}
@@ -2572,7 +2598,7 @@ void ControlledEntityImpl::onEntityFullyLoaded() noexcept
 	// If AEM is supported
 	if (isAemSupported)
 	{
-		// Build all virtual nodes (eg. ClockSources in ClockDomains, RedundantStreams, ...)
+		// Build all virtual nodes (eg. RedundantStreams, ...)
 		auto* entityNode = _treeModelAccess->getEntityNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
 		if (entityNode)
 		{
@@ -2699,13 +2725,13 @@ public:
 					for (auto& redundantNodeKV : redundantStreamNodes)
 					{
 						auto* const redundantNode = redundantNodeKV.second;
-						redundantStreamNode.redundantStreams.emplace(std::make_pair(redundantNode->descriptorIndex, redundantNode));
+						redundantStreamNode.redundantStreams.emplace(redundantNode->descriptorIndex);
 						redundantNode->isRedundant = true; // Set this StreamNode as part of a valid redundant stream association
 					}
 
 					auto redundantStreamIt = redundantStreamNodes.begin();
 					// Defined the primary stream
-					redundantStreamNode.primaryStream = redundantStreamIt->second;
+					redundantStreamNode.primaryStreamIndex = redundantStreamIt->second->descriptorIndex;
 
 					// Try to create a virtual name
 					if (redundantStreamNodes.size() == 2)
@@ -2744,20 +2770,6 @@ private:
 
 void ControlledEntityImpl::buildVirtualNodes(model::ConfigurationNode& configNode) noexcept
 {
-	// Check all clock domains (ClockDomainNode)
-	for (auto& [domainIndex, domainNode] : configNode.clockDomains)
-	{
-		// Build associated clock sources (ClockSourceNode)
-		for (auto const sourceIndex : domainNode.staticModel.clockSources)
-		{
-			if (auto const sourceIt = configNode.clockSources.find(sourceIndex); sourceIt != configNode.clockSources.end())
-			{
-				auto const& sourceNode = sourceIt->second;
-				domainNode.clockSources[sourceIndex] = &sourceNode;
-			}
-		}
-	}
-
 #	ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	// Build RedundantStreamNodes
 	buildRedundancyNodes(configNode);
@@ -3337,6 +3349,13 @@ entity::model::EntityTree const& ControlledEntityImpl::getEntityModelTree() cons
 			// Save
 			_entity._entityTree->configurationTrees[parent->descriptorIndex].clockDomainModels[node.descriptorIndex] = std::move(clockDomainTree);
 		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::ClockDomainNode const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& /*node*/) noexcept override {}
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamInputNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamOutputNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::RedundantStreamNode const* const /*parent*/, la::avdecc::controller::model::StreamInputNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::RedundantStreamNode const* const /*parent*/, la::avdecc::controller::model::StreamOutputNode const& /*node*/) noexcept override {}
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 		ControlledEntityImpl const& _entity;
 	};
@@ -3459,6 +3478,8 @@ entity::model::EntityTree const& ControlledEntityImpl::getEntityModelTree() cons
 			// Update dynamic model
 			memoryObjectTree.dynamicModel = node.dynamicModel;
 		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::LocaleNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::LocaleNode const* const /*parent*/, la::avdecc::controller::model::StringsNode const& /*node*/) noexcept override {}
 		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::AudioUnitNode const* const parent, la::avdecc::controller::model::StreamPortInputNode const& node) noexcept override
 		{
 			// Get tree
@@ -3498,6 +3519,7 @@ entity::model::EntityTree const& ControlledEntityImpl::getEntityModelTree() cons
 				AVDECC_ASSERT(false, "Unsupported DescriptorType");
 			}
 		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::AudioMapNode const& /*node*/) noexcept override {}
 		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandGrandParent, la::avdecc::controller::model::AudioUnitNode const* const grandParent, la::avdecc::controller::model::StreamPortNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept override
 		{
 			if (parent->descriptorType == entity::model::DescriptorType::StreamPortInput)
@@ -3545,6 +3567,13 @@ entity::model::EntityTree const& ControlledEntityImpl::getEntityModelTree() cons
 			// Update dynamic model
 			clockDomainTree.dynamicModel = node.dynamicModel;
 		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::ClockDomainNode const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& /*node*/) noexcept override {}
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamInputNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamOutputNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::RedundantStreamNode const* const /*parent*/, la::avdecc::controller::model::StreamInputNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::RedundantStreamNode const* const /*parent*/, la::avdecc::controller::model::StreamOutputNode const& /*node*/) noexcept override {}
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 		ControlledEntityImpl const& _entity;
 	};

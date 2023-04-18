@@ -2392,6 +2392,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 		{
 			_currentConfigurationIndex = node.descriptorIndex;
 		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::AudioUnitNode const& /*node*/) noexcept override {}
 		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::StreamInputNode const& node) noexcept override
 		{
 			// StreamInfo
@@ -2414,6 +2415,9 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			// TX_STATE
 			_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamState, node.descriptorIndex);
 		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::JackInputNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::JackOutputNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::JackNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept override {}
 		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::AvbInterfaceNode const& node) noexcept override
 		{
 			// AvbInfo
@@ -2423,6 +2427,13 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			// Counters
 			_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetAvbInterfaceCounters, node.descriptorIndex);
 		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::MemoryObjectNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::LocaleNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::LocaleNode const* const /*parent*/, la::avdecc::controller::model::StringsNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::StreamPortInputNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::StreamPortOutputNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::AudioClusterNode const& /*node*/) noexcept override {}
 		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const parent, la::avdecc::controller::model::AudioMapNode const& node) noexcept override
 		{
 			// TODO: Clause 7.4.44.3 recommands to Lock or Acquire the entity before getting the dynamic audio map
@@ -2439,11 +2450,21 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 				AVDECC_ASSERT(false, "Unsupported DescriptorType");
 			}
 		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept override {}
 		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::ClockDomainNode const& node) noexcept override
 		{
 			// Counters
 			_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::GetClockDomainCounters, node.descriptorIndex);
 		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::ClockDomainNode const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& /*node*/) noexcept override {}
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamInputNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamOutputNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::RedundantStreamNode const* const /*parent*/, la::avdecc::controller::model::StreamInputNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::RedundantStreamNode const* const /*parent*/, la::avdecc::controller::model::StreamOutputNode const& /*node*/) noexcept override {}
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 		// Private members
 		ControllerImpl* _controller{ nullptr };
@@ -2721,6 +2742,28 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockDomainSourceIndex, clockDomainIndex);
 				}
 			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::ClockDomainNode const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& /*node*/) noexcept override
+			{
+				// Runtime built node (virtual node)
+			}
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamInputNode const& /*node*/) noexcept override
+			{
+				// Runtime built node (virtual node)
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamOutputNode const& /*node*/) noexcept override
+			{
+				// Runtime built node (virtual node)
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::RedundantStreamNode const* const /*parent*/, la::avdecc::controller::model::StreamInputNode const& /*node*/) noexcept override
+			{
+				// Runtime built node (virtual node)
+			}
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::RedundantStreamNode const* const /*parent*/, la::avdecc::controller::model::StreamOutputNode const& /*node*/) noexcept override
+			{
+				// Runtime built node (virtual node)
+			}
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 			ControllerImpl* _controller{ nullptr };
 			ControlledEntityImpl* _entity{ nullptr };
@@ -2740,6 +2783,238 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 		checkEnumerationSteps(entity);
 	}
 }
+
+class CreateCachedModelVisitor : public model::EntityModelVisitor
+{
+public:
+	model::EntityNode&& getModel() noexcept
+	{
+		return std::move(_model);
+	}
+
+private:
+	// model::EntityModelVisitor overrides
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::EntityNode const& node) noexcept override
+	{
+		// Create a new EntityNode
+		auto entityNode = model::EntityNode{};
+		// Copy all static information
+		entityNode.staticModel = node.staticModel;
+		// Move to the model
+		_model = std::move(entityNode);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::EntityNode const* const /*parent*/, la::avdecc::controller::model::ConfigurationNode const& node) noexcept override
+	{
+		// Create a new ConfigurationNode
+		auto configurationNode = model::ConfigurationNode{ node.descriptorIndex };
+		// Copy all static information
+		configurationNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentConfiguration = &(_model.configurations.emplace(node.descriptorIndex, std::move(configurationNode)).first->second);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::AudioUnitNode const& node) noexcept override
+	{
+		// Create a new AudioUnitNode
+		auto audioUnitNode = model::AudioUnitNode{ node.descriptorIndex };
+		// Copy all static information
+		audioUnitNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentAudioUnit = &(_currentConfiguration->audioUnits.emplace(node.descriptorIndex, std::move(audioUnitNode)).first->second);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::StreamInputNode const& node) noexcept override
+	{
+		// Create a new StreamInputNode
+		auto streamInputNode = model::StreamInputNode{ node.descriptorIndex };
+		// Copy all static information
+		streamInputNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentConfiguration->streamInputs.emplace(node.descriptorIndex, std::move(streamInputNode));
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::StreamOutputNode const& node) noexcept override
+	{
+		// Create a new StreamOutputNode
+		auto streamOutputNode = model::StreamOutputNode{ node.descriptorIndex };
+		// Copy all static information
+		streamOutputNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentConfiguration->streamOutputs.emplace(node.descriptorIndex, std::move(streamOutputNode));
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::JackInputNode const& node) noexcept override
+	{
+		// Create a new JackInputNode
+		auto jackInputNode = model::JackInputNode{ node.descriptorIndex };
+		// Copy all static information
+		jackInputNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentJack = &(_currentConfiguration->jackInputs.emplace(node.descriptorIndex, std::move(jackInputNode)).first->second);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::JackOutputNode const& node) noexcept override
+	{
+		// Create a new JackOutputNode
+		auto jackOutputNode = model::JackOutputNode{ node.descriptorIndex };
+		// Copy all static information
+		jackOutputNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentJack = &(_currentConfiguration->jackOutputs.emplace(node.descriptorIndex, std::move(jackOutputNode)).first->second);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::JackNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& node) noexcept override
+	{
+		// Create a new ControlNode
+		auto controlNode = model::ControlNode{ node.descriptorIndex };
+		// Copy all static information
+		controlNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentJack->controls.emplace(node.descriptorIndex, std::move(controlNode));
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::AvbInterfaceNode const& node) noexcept override
+	{
+		// Create a new AvbInterfaceNode
+		auto avbInterfaceNode = model::AvbInterfaceNode{ node.descriptorIndex };
+		// Copy all static information
+		avbInterfaceNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentConfiguration->avbInterfaces.emplace(node.descriptorIndex, std::move(avbInterfaceNode));
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& node) noexcept override
+	{
+		// Create a new ClockSourceNode
+		auto clockSourceNode = model::ClockSourceNode{ node.descriptorIndex };
+		// Copy all static information
+		clockSourceNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentConfiguration->clockSources.emplace(node.descriptorIndex, std::move(clockSourceNode));
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::MemoryObjectNode const& node) noexcept override
+	{
+		// Create a new MemoryObjectNode
+		auto memoryObjectNode = model::MemoryObjectNode{ node.descriptorIndex };
+		// Copy all static information
+		memoryObjectNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentConfiguration->memoryObjects.emplace(node.descriptorIndex, std::move(memoryObjectNode));
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::LocaleNode const& node) noexcept override
+	{
+		// Create a new LocaleNode
+		auto localeNode = model::LocaleNode{ node.descriptorIndex };
+		// Copy all static information
+		localeNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentLocale = &(_currentConfiguration->locales.emplace(node.descriptorIndex, std::move(localeNode)).first->second);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::LocaleNode const* const /*parent*/, la::avdecc::controller::model::StringsNode const& node) noexcept override
+	{
+		// Create a new StringsNode
+		auto stringsNode = model::StringsNode{ node.descriptorIndex };
+		// Copy all static information
+		stringsNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentLocale->strings.emplace(node.descriptorIndex, std::move(stringsNode));
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::StreamPortInputNode const& node) noexcept override
+	{
+		// Create a new StreamPortInputNode
+		auto streamPortInputNode = model::StreamPortInputNode{ node.descriptorIndex };
+		// Copy all static information
+		streamPortInputNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentStreamPort = &(_currentAudioUnit->streamPortInputs.emplace(node.descriptorIndex, std::move(streamPortInputNode)).first->second);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::StreamPortOutputNode const& node) noexcept override
+	{
+		// Create a new StreamPortOutputNode
+		auto streamPortOutputNode = model::StreamPortOutputNode{ node.descriptorIndex };
+		// Copy all static information
+		streamPortOutputNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentStreamPort = &(_currentAudioUnit->streamPortOutputs.emplace(node.descriptorIndex, std::move(streamPortOutputNode)).first->second);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::AudioClusterNode const& node) noexcept override
+	{
+		// Create a new AudioClusterNode
+		auto audioClusterNode = model::AudioClusterNode{ node.descriptorIndex };
+		// Copy all static information
+		audioClusterNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentStreamPort->audioClusters.emplace(node.descriptorIndex, std::move(audioClusterNode));
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::AudioMapNode const& node) noexcept override
+	{
+		// Create a new AudioMapNode
+		auto audioMapNode = model::AudioMapNode{ node.descriptorIndex };
+		// Copy all static information
+		audioMapNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentStreamPort->audioMaps.emplace(node.descriptorIndex, std::move(audioMapNode));
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& node) noexcept override
+	{
+		// Create a new ControlNode
+		auto controlNode = model::ControlNode{ node.descriptorIndex };
+		// Copy all static information
+		controlNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentStreamPort->controls.emplace(node.descriptorIndex, std::move(controlNode));
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& node) noexcept override
+	{
+		// Create a new ControlNode
+		auto controlNode = model::ControlNode{ node.descriptorIndex };
+		// Copy all static information
+		controlNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentAudioUnit->controls.emplace(node.descriptorIndex, std::move(controlNode));
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& node) noexcept override
+	{
+		// Create a new ControlNode
+		auto controlNode = model::ControlNode{ node.descriptorIndex };
+		// Copy all static information
+		controlNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentConfiguration->controls.emplace(node.descriptorIndex, std::move(controlNode));
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::ClockDomainNode const& node) noexcept override
+	{
+		// Create a new ClockDomainNode
+		auto clockDomainNode = model::ClockDomainNode{ node.descriptorIndex };
+		// Copy all static information
+		clockDomainNode.staticModel = node.staticModel;
+		// Move to the model
+		_currentConfiguration->clockDomains.emplace(node.descriptorIndex, std::move(clockDomainNode));
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::ClockDomainNode const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& /*node*/) noexcept override
+	{
+		// Runtime built node (virtual node)
+	}
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamInputNode const& /*node*/) noexcept override
+	{
+		// Runtime built node (virtual node)
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamOutputNode const& /*node*/) noexcept override
+	{
+		// Runtime built node (virtual node)
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::RedundantStreamNode const* const /*parent*/, la::avdecc::controller::model::StreamInputNode const& /*node*/) noexcept override
+	{
+		// Runtime built node (virtual node)
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::RedundantStreamNode const* const /*parent*/, la::avdecc::controller::model::StreamOutputNode const& /*node*/) noexcept override
+	{
+		// Runtime built node (virtual node)
+	}
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+
+	// Private members
+	model::EntityNode _model{};
+	model::ConfigurationNode* _currentConfiguration{ nullptr };
+	model::JackNode* _currentJack{ nullptr };
+	model::LocaleNode* _currentLocale{ nullptr };
+	model::AudioUnitNode* _currentAudioUnit{ nullptr };
+	model::StreamPortNode* _currentStreamPort{ nullptr };
+};
+
 
 void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const controlledEntity) noexcept
 {
@@ -2809,8 +3084,12 @@ void ControllerImpl::checkEnumerationSteps(ControlledEntityImpl* const controlle
 			{
 				if (EntityModelCache::isValidEntityModelID(entityModelID))
 				{
-					// Store EntityModel in the cache for later use
-					entityModelCache.cacheEntityModel(entityModelID, entity.getEntityNode());
+					// Create a copy of the static part of EntityModel
+					auto visitor = CreateCachedModelVisitor{};
+					controlledEntity->accept(&visitor);
+
+					// Store EntityModel in the cache for later usevisitor
+					entityModelCache.cacheEntityModel(entityModelID, visitor.getModel());
 					LOG_CONTROLLER_INFO(entityID, "AEM-CACHE: Cached model for EntityModelID {}", utils::toHexString(entityModelID, true, false));
 				}
 				else
@@ -3245,12 +3524,15 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 				for (auto const& [virtualIndex, redundantStreamNode] : redundantStreams)
 				{
 					// Take the first (not necessarily the primary) stream
-					auto const& [streamIndex, streamNode] = *redundantStreamNode.redundantStreams.begin();
-					if (streamNode->staticModel.clockDomainIndex == domainIndex)
+					auto const streamIndex = *redundantStreamNode.redundantStreams.begin();
+					if (auto const streamIt = streams.find(streamIndex); streamIt != streams.end())
 					{
-						if (capableStreams.count(streamIndex) > 0)
+						if (streamIt->second.staticModel.clockDomainIndex == domainIndex)
 						{
-							++countStreams;
+							if (capableStreams.count(streamIndex) > 0)
+							{
+								++countStreams;
+							}
 						}
 					}
 				}
