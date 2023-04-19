@@ -35,7 +35,7 @@ namespace entity
 {
 namespace model
 {
-static inline void createUnpackFullControlValuesDispatchTable(std::unordered_map<ControlValueType::Type, std::function<ControlValues(Deserializer&, std::uint16_t)>>& dispatchTable)
+static inline void createUnpackDynamicControlValuesDispatchTable(std::unordered_map<ControlValueType::Type, std::function<ControlValues(Deserializer&, std::uint16_t)>>& dispatchTable)
 {
 	dispatchTable[ControlValueType::Type::ControlLinearInt8] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlLinearInt8>::unpackDynamicControlValues;
 	dispatchTable[ControlValueType::Type::ControlLinearUInt8] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlLinearUInt8>::unpackDynamicControlValues;
@@ -69,7 +69,7 @@ std::optional<ControlValues> LA_AVDECC_CALL_CONVENTION unpackDynamicControlValue
 	if (s_Dispatch.empty())
 	{
 		// Create the dispatch table
-		createUnpackFullControlValuesDispatchTable(s_Dispatch);
+		createUnpackDynamicControlValuesDispatchTable(s_Dispatch);
 	}
 
 	try
