@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - Controller entity model no longer uses pointers to prevent dangling issues when making copies
+- Not flagging a device as non IEEE/Milan compatible, if the library cannot handle a CONTROL type if doesn't support
 
 ## [3.4.1] - 2023-01-11
 ### Fixed
