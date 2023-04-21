@@ -341,6 +341,7 @@ void ChecksumEntityModelVisitor::serializeModel(model::ControlNode const& node) 
 	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.signalIndex;
 	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.signalOutput;
 	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.controlValueType;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfValues;
 	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.values.getType();
 	// Missing values serialization
 }

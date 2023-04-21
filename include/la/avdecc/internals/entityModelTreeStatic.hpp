@@ -197,6 +197,7 @@ struct ControlNodeStaticModel
 	DescriptorIndex signalIndex{ DescriptorIndex(0u) };
 	std::uint16_t signalOutput{ 0u };
 	ControlValueType controlValueType{};
+	std::uint16_t numberOfValues{ 0u };
 	ControlValues values{};
 };
 

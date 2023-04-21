@@ -156,7 +156,7 @@ struct LA_AVDECC_TYPE_INFO_EXPORT SelectorValueStatic
 
 	std::uint16_t countValues() const noexcept
 	{
-		return static_cast<std::uint16_t>(options.size());
+		return 1; // There is actually just one value in SELECTOR type, but multiple options
 	}
 
 	// Comparison operator

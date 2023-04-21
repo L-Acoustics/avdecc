@@ -2031,6 +2031,7 @@ void ControlledEntityImpl::setControlDescriptor(entity::model::ControlDescriptor
 		m.signalIndex = descriptor.signalIndex;
 		m.signalOutput = descriptor.signalOutput;
 		m.controlValueType = descriptor.controlValueType;
+		m.numberOfValues = descriptor.numberOfValues;
 		m.values = descriptor.valuesStatic;
 	}
 

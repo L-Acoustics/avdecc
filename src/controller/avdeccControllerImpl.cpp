@@ -926,8 +926,8 @@ bool ControllerImpl::updateControlValues(ControlledEntityImpl& controlledEntity,
 	if (controlStaticModel)
 	{
 		auto const controlValueType = controlStaticModel->controlValueType.getType();
-		auto const controlValueSize = controlStaticModel->values.size();
-		auto const controlValuesOpt = entity::model::unpackDynamicControlValues(packedControlValues, controlValueType, controlValueSize);
+		auto const numberOfValues = controlStaticModel->numberOfValues;
+		auto const controlValuesOpt = entity::model::unpackDynamicControlValues(packedControlValues, controlValueType, numberOfValues);
 
 		if (controlValuesOpt)
 		{
@@ -947,7 +947,7 @@ bool ControllerImpl::updateControlValues(ControlledEntityImpl& controlledEntity,
 				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onControlValuesChanged, this, &controlledEntity, controlIndex, controlValues);
 
 				// Check for Identify Control
-				if (entity::model::StandardControlType::Identify == controlStaticModel->controlType.getValue() && controlValueType == entity::model::ControlValueType::Type::ControlLinearUInt8 && controlValueSize == 1)
+				if (entity::model::StandardControlType::Identify == controlStaticModel->controlType.getValue() && controlValueType == entity::model::ControlValueType::Type::ControlLinearUInt8 && numberOfValues == 1)
 				{
 					auto const identifyOpt = getIdentifyControlValue(controlValues);
 					if (identifyOpt)

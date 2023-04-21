@@ -155,7 +155,7 @@ struct SelectorValueBaseTraits
 	using size_type = SizeType;
 	static constexpr bool is_value_details = true;
 	static constexpr bool is_dynamic = IsDynamic;
-	static constexpr std::optional<bool> static_dynamic_counts_identical = false;
+	static constexpr std::optional<bool> static_dynamic_counts_identical = true;
 };
 
 template<>

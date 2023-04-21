@@ -978,14 +978,13 @@ entity::model::ControlDescriptor deserializeReadControlDescriptorResponse(AemAec
 
 		// Check control descriptor payload - Clause 7.2.22
 		auto des = Deserializer{ commandPayload, commandPayloadLength };
-		auto numberOfValues = std::uint16_t{ 0u };
 		auto valuesOffset = std::uint16_t{ 0u };
 
 		des.setPosition(commonSize); // Skip already unpacked common header
 		des >> controlDescriptor.objectName >> controlDescriptor.localizedDescription;
 		des >> controlDescriptor.blockLatency >> controlDescriptor.controlLatency >> controlDescriptor.controlDomain;
 		des >> controlDescriptor.controlValueType >> controlDescriptor.controlType >> controlDescriptor.resetTime;
-		des >> valuesOffset >> numberOfValues;
+		des >> valuesOffset >> controlDescriptor.numberOfValues;
 		des >> controlDescriptor.signalType >> controlDescriptor.signalIndex >> controlDescriptor.signalOutput;
 
 		// No need to check descriptor variable size, we'll let the ControlValueType specific unpacker throw if needed
@@ -1004,7 +1003,7 @@ entity::model::ControlDescriptor deserializeReadControlDescriptorResponse(AemAec
 		{
 			try
 			{
-				auto [valuesStatic, valuesDynamic] = it->second(des, numberOfValues);
+				auto [valuesStatic, valuesDynamic] = it->second(des, controlDescriptor.numberOfValues);
 				controlDescriptor.valuesStatic = std::move(valuesStatic);
 				controlDescriptor.valuesDynamic = std::move(valuesDynamic);
 			}

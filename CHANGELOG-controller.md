@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Support for JACK_INPUT/JACK_OUTPUT descriptors
 - Support for CONTROL descriptors at AUDIO_UNIT, JACK, STREAM_PORT levels
+- *numberOfValues* field in the ControlNode
 
 ### Changed
 - Complete controller entity model refactoring to support descriptors at non-configuration level

@@ -874,6 +874,7 @@ constexpr auto ControlNode_Static_SignalType = "signal_type";
 constexpr auto ControlNode_Static_SignalIndex = "signal_index";
 constexpr auto ControlNode_Static_SignalOutput = "signal_output";
 constexpr auto ControlNode_Static_ControlValueType = "control_value_type";
+constexpr auto ControlNode_Static_NumberOfValues = "number_of_values";
 constexpr auto ControlNode_Static_Values = "values";
 constexpr auto ControlNode_Dynamic_ObjectName = "object_name";
 constexpr auto ControlNode_Dynamic_Values = "values";
@@ -2263,6 +2264,7 @@ inline void to_json(json& j, ControlNodeStaticModel const& s)
 	j[keyName::ControlNode_Static_SignalIndex] = s.signalIndex;
 	j[keyName::ControlNode_Static_SignalOutput] = s.signalOutput;
 	j[keyName::ControlNode_Static_ControlValueType] = s.controlValueType;
+	j[keyName::ControlNode_Static_NumberOfValues] = s.numberOfValues;
 
 	// Pack type dependant values
 	if (s.values)
@@ -2303,6 +2305,7 @@ inline void from_json(json const& j, ControlNodeStaticModel& s)
 	j.at(keyName::ControlNode_Static_SignalIndex).get_to(s.signalIndex);
 	j.at(keyName::ControlNode_Static_SignalOutput).get_to(s.signalOutput);
 	j.at(keyName::ControlNode_Static_ControlValueType).get_to(s.controlValueType);
+	j.at(keyName::ControlNode_Static_NumberOfValues).get_to(s.numberOfValues);
 
 	// Unpack type dependant values
 	auto const& jvalues = j.at(keyName::ControlNode_Static_Values);

@@ -1374,6 +1374,7 @@ public:
 		return _countMustBeIdentical;
 	}
 
+	/** Number of values (either static or dynamic, depending on the template type) in the ControlValues. */
 	constexpr std::uint16_t size() const noexcept
 	{
 		return _countValues;
