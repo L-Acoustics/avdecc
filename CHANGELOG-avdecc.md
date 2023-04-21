@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Support for JACK_INPUT/JACK_OUTPUT descriptors
 - Support for CONTROL descriptors at AUDIO_UNIT, JACK, STREAM_PORT levels
+- [Support for CONTROL_SELECTOR type for CONTROL descriptors](https://github.com/L-Acoustics/avdecc/issues/128)
 
 ## [3.4.1] - 2023-01-11
 

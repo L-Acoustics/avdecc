@@ -206,6 +206,126 @@ struct control_values_payload_traits<entity::model::ControlValueType::Type::Cont
 {
 };
 
+/** Selector Value - Clause 7.3.5.2.2 */
+template<typename SizeType, typename StaticValueType = entity::model::SelectorValueStatic<SizeType>, typename DynamicValueType = entity::model::SelectorValueDynamic<SizeType>>
+struct SelectorValuePayloadTraits : BaseValuesPayloadTraits<StaticValueType, DynamicValueType>
+{
+	static std::tuple<entity::model::ControlValues, entity::model::ControlValues> unpackFullControlValues(Deserializer& des, std::uint16_t const numberOfValues)
+	{
+		auto valueStatic = StaticValueType{};
+		auto valueDynamic = DynamicValueType{};
+
+		des >> valueDynamic.currentValue;
+		des >> valueStatic.defaultValue;
+
+		// For Selector Values, the number of options is the number of values
+		auto const numberOfOptions = numberOfValues;
+		for (auto i = 0u; i < numberOfOptions; ++i)
+		{
+			auto option = SizeType{};
+
+			des >> option;
+
+			valueStatic.options.push_back(std::move(option));
+		}
+
+		des >> valueStatic.unit;
+
+		return std::make_tuple(entity::model::ControlValues{ std::move(valueStatic) }, entity::model::ControlValues{ std::move(valueDynamic) });
+	}
+
+	static entity::model::ControlValues unpackDynamicControlValues(Deserializer& des, std::uint16_t const numberOfValues)
+	{
+		if (numberOfValues != 1)
+		{
+			throw std::invalid_argument("CONTROL_SELECTOR should only have 1 dynamic value");
+		}
+
+		auto valueDynamic = DynamicValueType{};
+		des >> valueDynamic.currentValue;
+
+		return entity::model::ControlValues{ std::move(valueDynamic) };
+	}
+
+	static void packDynamicControlValues(Serializer<AemAecpdu::MaximumSendPayloadBufferLength>& ser, entity::model::ControlValues const& values)
+	{
+		if (values.size() != 1)
+		{
+			throw std::invalid_argument("CONTROL_SELECTOR should only have 1 dynamic value");
+		}
+
+		auto const& selectorValue = values.getValues<DynamicValueType>();
+		ser << selectorValue.currentValue;
+	}
+
+	static std::optional<std::string> validateControlValues(entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) noexcept
+	{
+		auto const& staticSelectorValue = staticValues.getValues<StaticValueType>();
+		auto const& dynamicSelectorValue = dynamicValues.getValues<DynamicValueType>();
+		auto const dynamicValue = dynamicSelectorValue.currentValue;
+
+		// Check that the current dynamic value is in the list of possible options
+		if (std::find(staticSelectorValue.options.begin(), staticSelectorValue.options.end(), dynamicValue) == staticSelectorValue.options.end())
+		{
+			if constexpr (std::is_same_v<SizeType, entity::model::LocalizedStringReference>)
+			{
+				return "DynamicValue " + std::to_string(utils::forceNumeric(dynamicValue.getValue())) + " is not in the list of possible values";
+			}
+			else
+			{
+				return "DynamicValue " + std::to_string(utils::forceNumeric(dynamicValue)) + " is not in the list of possible values";
+			}
+		}
+
+		return std::nullopt;
+	}
+};
+
+template<>
+struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorInt8> : SelectorValuePayloadTraits<std::int8_t>
+{
+};
+template<>
+struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorUInt8> : SelectorValuePayloadTraits<std::uint8_t>
+{
+};
+template<>
+struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorInt16> : SelectorValuePayloadTraits<std::int16_t>
+{
+};
+template<>
+struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorUInt16> : SelectorValuePayloadTraits<std::uint16_t>
+{
+};
+template<>
+struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorInt32> : SelectorValuePayloadTraits<std::int32_t>
+{
+};
+template<>
+struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorUInt32> : SelectorValuePayloadTraits<std::uint32_t>
+{
+};
+template<>
+struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorInt64> : SelectorValuePayloadTraits<std::int64_t>
+{
+};
+template<>
+struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorUInt64> : SelectorValuePayloadTraits<std::uint64_t>
+{
+};
+template<>
+struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorFloat> : SelectorValuePayloadTraits<float>
+{
+};
+template<>
+struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorDouble> : SelectorValuePayloadTraits<double>
+{
+};
+template<>
+struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorString> : SelectorValuePayloadTraits<entity::model::LocalizedStringReference>
+{
+};
+
 /** Array Values - Clause 7.3.5.2.3 */
 template<typename SizeType, typename StaticValueType = entity::model::ArrayValueStatic<SizeType>, typename DynamicValueType = entity::model::ArrayValueDynamic<SizeType>>
 struct ArrayValuesPayloadTraits : BaseValuesPayloadTraits<StaticValueType, DynamicValueType>

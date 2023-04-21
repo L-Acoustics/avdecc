@@ -887,7 +887,7 @@ constexpr auto ControlValueType_Type = "value_type";
 constexpr auto ControlValues_Type = "type";
 constexpr auto ControlValues_Values = "values";
 
-/* LinearValue */
+/* LinearValue - Clause 7.3.5.2.1 */
 constexpr auto LinearValue_Minimum = "minimum";
 constexpr auto LinearValue_Maximum = "maximum";
 constexpr auto LinearValue_Step = "step";
@@ -895,7 +895,12 @@ constexpr auto LinearValue_Default = "default";
 constexpr auto LinearValue_Unit = "unit";
 constexpr auto LinearValue_String = "string";
 
-/* ArrayValue */
+/* SelectorValue - Clause 7.3.5.2.2 */
+constexpr auto SelectorValue_Default = "default";
+constexpr auto SelectorValue_Unit = "unit";
+constexpr auto SelectorValue_Options = "options";
+
+/* ArrayValue - Clause 7.3.5.2.3 */
 constexpr auto ArrayValue_Minimum = "minimum";
 constexpr auto ArrayValue_Maximum = "maximum";
 constexpr auto ArrayValue_Step = "step";
@@ -1847,8 +1852,8 @@ inline void from_json(json const& j, AudioMapNodeStaticModel& s)
 	j.at(keyName::AudioMapNode_Static_Mappings).get_to(s.mappings);
 }
 
-/* LinearValueStatic conversion */
-template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>>
+/* LinearValueStatic conversion - Clause 7.3.5.2.1 */
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
 inline void to_json(json& j, LinearValueStatic<SizeType> const& value)
 {
 	j[keyName::LinearValue_Minimum] = value.minimum;
@@ -1858,7 +1863,7 @@ inline void to_json(json& j, LinearValueStatic<SizeType> const& value)
 	j[keyName::LinearValue_Unit] = value.unit;
 	j[keyName::LinearValue_String] = value.localizedName;
 }
-template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>>
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
 inline void from_json(json const& j, LinearValueStatic<SizeType>& value)
 {
 	j.at(keyName::LinearValue_Minimum).get_to(value.minimum);
@@ -1869,19 +1874,19 @@ inline void from_json(json const& j, LinearValueStatic<SizeType>& value)
 	get_optional_value(j, keyName::LinearValue_String, value.localizedName);
 }
 
-/* LinearValueDynamic conversion */
-template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>>
+/* LinearValueDynamic conversion - Clause 7.3.5.2.1 */
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
 inline void to_json(json& j, LinearValueDynamic<SizeType> const& value)
 {
 	j = value.currentValue;
 }
-template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>>
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
 inline void from_json(json const& j, LinearValueDynamic<SizeType>& value)
 {
 	value.currentValue = j;
 }
 
-/* LinearValues conversion */
+/* LinearValues conversion - Clause 7.3.5.2.1 */
 template<typename ValueType, typename Traits = ControlValues::control_value_details_traits<LinearValues<ValueType>>>
 inline void to_json(json& j, LinearValues<ValueType> const& values)
 {
@@ -1897,8 +1902,44 @@ inline void from_json(json const& j, LinearValues<ValueType>& values)
 	j.get_to(values.getValues());
 }
 
-/* ArrayValueStatic conversion */
-template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>, typename Traits = ControlValues::control_value_details_traits<ArrayValueStatic<SizeType>>>
+/* SelectorValueStatic conversion - Clause 7.3.5.2.2 */
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType> || std::is_same_v<SizeType, LocalizedStringReference>>, typename Traits = ControlValues::control_value_details_traits<SelectorValueStatic<SizeType>>>
+inline void to_json(json& j, SelectorValueStatic<SizeType> const& value)
+{
+	static_assert(Traits::is_value_details, "from_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
+
+	j[keyName::SelectorValue_Default] = value.defaultValue;
+	j[keyName::SelectorValue_Unit] = value.unit;
+	j[keyName::SelectorValue_Options] = value.options;
+}
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType> || std::is_same_v<SizeType, LocalizedStringReference>>, typename Traits = ControlValues::control_value_details_traits<SelectorValueStatic<SizeType>>>
+inline void from_json(json const& j, SelectorValueStatic<SizeType>& value)
+{
+	static_assert(Traits::is_value_details, "from_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
+
+	j.at(keyName::SelectorValue_Default).get_to(value.defaultValue);
+	j.at(keyName::SelectorValue_Unit).get_to(value.unit);
+	j.at(keyName::SelectorValue_Options).get_to(value.options);
+}
+
+/* SelectorValueDynamic conversion - Clause 7.3.5.2.2 */
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType> || std::is_same_v<SizeType, LocalizedStringReference>>, typename Traits = ControlValues::control_value_details_traits<SelectorValueDynamic<SizeType>>>
+inline void to_json(json& j, SelectorValueDynamic<SizeType> const& value)
+{
+	static_assert(Traits::is_value_details, "to_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
+
+	j = value.currentValue;
+}
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType> || std::is_same_v<SizeType, LocalizedStringReference>>, typename Traits = ControlValues::control_value_details_traits<SelectorValueDynamic<SizeType>>>
+inline void from_json(json const& j, SelectorValueDynamic<SizeType>& value)
+{
+	static_assert(Traits::is_value_details, "from_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
+
+	j.get_to(value.currentValue);
+}
+
+/* ArrayValueStatic conversion - Clause 7.3.5.2.3 */
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>, typename Traits = ControlValues::control_value_details_traits<ArrayValueStatic<SizeType>>>
 inline void to_json(json& j, ArrayValueStatic<SizeType> const& value)
 {
 	static_assert(Traits::is_value_details, "from_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
@@ -1910,7 +1951,7 @@ inline void to_json(json& j, ArrayValueStatic<SizeType> const& value)
 	j[keyName::ArrayValue_Unit] = value.unit;
 	j[keyName::ArrayValue_String] = value.localizedName;
 }
-template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>, typename Traits = ControlValues::control_value_details_traits<ArrayValueStatic<SizeType>>>
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>, typename Traits = ControlValues::control_value_details_traits<ArrayValueStatic<SizeType>>>
 inline void from_json(json const& j, ArrayValueStatic<SizeType>& value)
 {
 	static_assert(Traits::is_value_details, "from_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
@@ -1923,15 +1964,15 @@ inline void from_json(json const& j, ArrayValueStatic<SizeType>& value)
 	get_optional_value(j, keyName::ArrayValue_String, value.localizedName);
 }
 
-/* ArrayValueDynamic conversion */
-template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>, typename Traits = ControlValues::control_value_details_traits<ArrayValueDynamic<SizeType>>>
+/* ArrayValueDynamic conversion - Clause 7.3.5.2.3 */
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>, typename Traits = ControlValues::control_value_details_traits<ArrayValueDynamic<SizeType>>>
 inline void to_json(json& j, ArrayValueDynamic<SizeType> const& value)
 {
 	static_assert(Traits::is_value_details, "to_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
 
 	j = value.currentValues;
 }
-template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic<SizeType>::value>, typename Traits = ControlValues::control_value_details_traits<ArrayValueDynamic<SizeType>>>
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>, typename Traits = ControlValues::control_value_details_traits<ArrayValueDynamic<SizeType>>>
 inline void from_json(json const& j, ArrayValueDynamic<SizeType>& value)
 {
 	static_assert(Traits::is_value_details, "from_json, ControlValues::control_value_details_traits::is_value_details trait not defined for requested ValueType. Did you include entityModelControlValuesTraits.hpp?");
@@ -1939,7 +1980,7 @@ inline void from_json(json const& j, ArrayValueDynamic<SizeType>& value)
 	j.get_to(value.currentValues);
 }
 
-/* UTF8StringValueStatic conversion */
+/* UTF8StringValueStatic conversion - Clause 7.3.5.2.4 */
 inline void to_json(json& /*j*/, UTF8StringValueStatic const& /*value*/)
 {
 	// UTF8 Static has no data
@@ -1949,7 +1990,7 @@ inline void from_json(json const& /*j*/, UTF8StringValueStatic& /*value*/)
 	// UTF8 Static has no data
 }
 
-/* UTF8StringValueDynamic conversion */
+/* UTF8StringValueDynamic conversion - Clause 7.3.5.2.4 */
 inline void to_json(json& j, UTF8StringValueDynamic const& value)
 {
 	auto constexpr nullCharacter = decltype(value.currentValue)::value_type{ 0u };
@@ -2028,6 +2069,7 @@ inline void createToJsonDispatchTable(std::unordered_map<ControlValueType::Type,
 {
 	if constexpr (IsDynamic)
 	{
+		/** Linear Values - Clause 7.3.5.2.1 */
 		dispatchTable[ControlValueType::Type::ControlLinearInt8] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int8_t>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearUInt8] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::uint8_t>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearInt16] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int16_t>>>();
@@ -2039,6 +2081,20 @@ inline void createToJsonDispatchTable(std::unordered_map<ControlValueType::Type,
 		dispatchTable[ControlValueType::Type::ControlLinearFloat] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<float>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearDouble] = createToJsonDispatchFunctor<LinearValues<LinearValueDynamic<double>>>();
 
+		/** Selector Value - Clause 7.3.5.2.2 */
+		dispatchTable[ControlValueType::Type::ControlSelectorInt8] = createToJsonDispatchFunctor<SelectorValueDynamic<std::int8_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt8] = createToJsonDispatchFunctor<SelectorValueDynamic<std::uint8_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt16] = createToJsonDispatchFunctor<SelectorValueDynamic<std::int16_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt16] = createToJsonDispatchFunctor<SelectorValueDynamic<std::uint16_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt32] = createToJsonDispatchFunctor<SelectorValueDynamic<std::int32_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt32] = createToJsonDispatchFunctor<SelectorValueDynamic<std::uint32_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt64] = createToJsonDispatchFunctor<SelectorValueDynamic<std::int64_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt64] = createToJsonDispatchFunctor<SelectorValueDynamic<std::uint64_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorFloat] = createToJsonDispatchFunctor<SelectorValueDynamic<float>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorDouble] = createToJsonDispatchFunctor<SelectorValueDynamic<double>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorString] = createToJsonDispatchFunctor<SelectorValueDynamic<LocalizedStringReference>>();
+
+		/** Array Values - Clause 7.3.5.2.3 */
 		dispatchTable[ControlValueType::Type::ControlArrayInt8] = createToJsonDispatchFunctor<ArrayValueDynamic<std::int8_t>>();
 		dispatchTable[ControlValueType::Type::ControlArrayUInt8] = createToJsonDispatchFunctor<ArrayValueDynamic<std::uint8_t>>();
 		dispatchTable[ControlValueType::Type::ControlArrayInt16] = createToJsonDispatchFunctor<ArrayValueDynamic<std::int16_t>>();
@@ -2050,10 +2106,12 @@ inline void createToJsonDispatchTable(std::unordered_map<ControlValueType::Type,
 		dispatchTable[ControlValueType::Type::ControlArrayFloat] = createToJsonDispatchFunctor<ArrayValueDynamic<float>>();
 		dispatchTable[ControlValueType::Type::ControlArrayDouble] = createToJsonDispatchFunctor<ArrayValueDynamic<double>>();
 
+		/** UTF-8 String Value - Clause 7.3.5.2.4 */
 		dispatchTable[ControlValueType::Type::ControlUtf8] = createToJsonDispatchFunctor<UTF8StringValueDynamic>();
 	}
 	else
 	{
+		/** Linear Values - Clause 7.3.5.2.1 */
 		dispatchTable[ControlValueType::Type::ControlLinearInt8] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int8_t>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearUInt8] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::uint8_t>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearInt16] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int16_t>>>();
@@ -2065,6 +2123,20 @@ inline void createToJsonDispatchTable(std::unordered_map<ControlValueType::Type,
 		dispatchTable[ControlValueType::Type::ControlLinearFloat] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<float>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearDouble] = createToJsonDispatchFunctor<LinearValues<LinearValueStatic<double>>>();
 
+		/** Selector Value - Clause 7.3.5.2.2 */
+		dispatchTable[ControlValueType::Type::ControlSelectorInt8] = createToJsonDispatchFunctor<SelectorValueStatic<std::int8_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt8] = createToJsonDispatchFunctor<SelectorValueStatic<std::uint8_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt16] = createToJsonDispatchFunctor<SelectorValueStatic<std::int16_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt16] = createToJsonDispatchFunctor<SelectorValueStatic<std::uint16_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt32] = createToJsonDispatchFunctor<SelectorValueStatic<std::int32_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt32] = createToJsonDispatchFunctor<SelectorValueStatic<std::uint32_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt64] = createToJsonDispatchFunctor<SelectorValueStatic<std::int64_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt64] = createToJsonDispatchFunctor<SelectorValueStatic<std::uint64_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorFloat] = createToJsonDispatchFunctor<SelectorValueStatic<float>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorDouble] = createToJsonDispatchFunctor<SelectorValueStatic<double>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorString] = createToJsonDispatchFunctor<SelectorValueStatic<LocalizedStringReference>>();
+
+		/** Array Values - Clause 7.3.5.2.3 */
 		dispatchTable[ControlValueType::Type::ControlArrayInt8] = createToJsonDispatchFunctor<ArrayValueStatic<std::int8_t>>();
 		dispatchTable[ControlValueType::Type::ControlArrayUInt8] = createToJsonDispatchFunctor<ArrayValueStatic<std::uint8_t>>();
 		dispatchTable[ControlValueType::Type::ControlArrayInt16] = createToJsonDispatchFunctor<ArrayValueStatic<std::int16_t>>();
@@ -2076,6 +2148,7 @@ inline void createToJsonDispatchTable(std::unordered_map<ControlValueType::Type,
 		dispatchTable[ControlValueType::Type::ControlArrayFloat] = createToJsonDispatchFunctor<ArrayValueStatic<float>>();
 		dispatchTable[ControlValueType::Type::ControlArrayDouble] = createToJsonDispatchFunctor<ArrayValueStatic<double>>();
 
+		/** UTF-8 String Value - Clause 7.3.5.2.4 */
 		dispatchTable[ControlValueType::Type::ControlUtf8] = createToJsonDispatchFunctor<UTF8StringValueStatic>();
 	}
 }
@@ -2084,6 +2157,7 @@ inline void createFromJsonDispatchTable(std::unordered_map<ControlValueType::Typ
 {
 	if constexpr (IsDynamic)
 	{
+		/** Linear Values - Clause 7.3.5.2.1 */
 		dispatchTable[ControlValueType::Type::ControlLinearInt8] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int8_t>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearUInt8] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::uint8_t>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearInt16] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<std::int16_t>>>();
@@ -2095,6 +2169,20 @@ inline void createFromJsonDispatchTable(std::unordered_map<ControlValueType::Typ
 		dispatchTable[ControlValueType::Type::ControlLinearFloat] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<float>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearDouble] = createFromJsonDispatchFunctor<LinearValues<LinearValueDynamic<double>>>();
 
+		/** Selector Value - Clause 7.3.5.2.2 */
+		dispatchTable[ControlValueType::Type::ControlSelectorInt8] = createFromJsonDispatchFunctor<SelectorValueDynamic<std::int8_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt8] = createFromJsonDispatchFunctor<SelectorValueDynamic<std::uint8_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt16] = createFromJsonDispatchFunctor<SelectorValueDynamic<std::int16_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt16] = createFromJsonDispatchFunctor<SelectorValueDynamic<std::uint16_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt32] = createFromJsonDispatchFunctor<SelectorValueDynamic<std::int32_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt32] = createFromJsonDispatchFunctor<SelectorValueDynamic<std::uint32_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt64] = createFromJsonDispatchFunctor<SelectorValueDynamic<std::int64_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt64] = createFromJsonDispatchFunctor<SelectorValueDynamic<std::uint64_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorFloat] = createFromJsonDispatchFunctor<SelectorValueDynamic<float>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorDouble] = createFromJsonDispatchFunctor<SelectorValueDynamic<double>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorString] = createFromJsonDispatchFunctor<SelectorValueDynamic<LocalizedStringReference>>();
+
+		/** Array Values - Clause 7.3.5.2.3 */
 		dispatchTable[ControlValueType::Type::ControlArrayInt8] = createFromJsonDispatchFunctor<ArrayValueDynamic<std::int8_t>>();
 		dispatchTable[ControlValueType::Type::ControlArrayUInt8] = createFromJsonDispatchFunctor<ArrayValueDynamic<std::uint8_t>>();
 		dispatchTable[ControlValueType::Type::ControlArrayInt16] = createFromJsonDispatchFunctor<ArrayValueDynamic<std::int16_t>>();
@@ -2106,10 +2194,12 @@ inline void createFromJsonDispatchTable(std::unordered_map<ControlValueType::Typ
 		dispatchTable[ControlValueType::Type::ControlArrayFloat] = createFromJsonDispatchFunctor<ArrayValueDynamic<float>>();
 		dispatchTable[ControlValueType::Type::ControlArrayDouble] = createFromJsonDispatchFunctor<ArrayValueDynamic<double>>();
 
+		/** UTF-8 String Value - Clause 7.3.5.2.4 */
 		dispatchTable[ControlValueType::Type::ControlUtf8] = createFromJsonDispatchFunctor<UTF8StringValueDynamic>();
 	}
 	else
 	{
+		/** Linear Values - Clause 7.3.5.2.1 */
 		dispatchTable[ControlValueType::Type::ControlLinearInt8] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int8_t>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearUInt8] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<std::uint8_t>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearInt16] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<std::int16_t>>>();
@@ -2121,6 +2211,20 @@ inline void createFromJsonDispatchTable(std::unordered_map<ControlValueType::Typ
 		dispatchTable[ControlValueType::Type::ControlLinearFloat] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<float>>>();
 		dispatchTable[ControlValueType::Type::ControlLinearDouble] = createFromJsonDispatchFunctor<LinearValues<LinearValueStatic<double>>>();
 
+		/** Selector Value - Clause 7.3.5.2.2 */
+		dispatchTable[ControlValueType::Type::ControlSelectorInt8] = createFromJsonDispatchFunctor<SelectorValueStatic<std::int8_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt8] = createFromJsonDispatchFunctor<SelectorValueStatic<std::uint8_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt16] = createFromJsonDispatchFunctor<SelectorValueStatic<std::int16_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt16] = createFromJsonDispatchFunctor<SelectorValueStatic<std::uint16_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt32] = createFromJsonDispatchFunctor<SelectorValueStatic<std::int32_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt32] = createFromJsonDispatchFunctor<SelectorValueStatic<std::uint32_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorInt64] = createFromJsonDispatchFunctor<SelectorValueStatic<std::int64_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorUInt64] = createFromJsonDispatchFunctor<SelectorValueStatic<std::uint64_t>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorFloat] = createFromJsonDispatchFunctor<SelectorValueStatic<float>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorDouble] = createFromJsonDispatchFunctor<SelectorValueStatic<double>>();
+		dispatchTable[ControlValueType::Type::ControlSelectorString] = createFromJsonDispatchFunctor<SelectorValueStatic<LocalizedStringReference>>();
+
+		/** Array Values - Clause 7.3.5.2.3 */
 		dispatchTable[ControlValueType::Type::ControlArrayInt8] = createFromJsonDispatchFunctor<ArrayValueStatic<std::int8_t>>();
 		dispatchTable[ControlValueType::Type::ControlArrayUInt8] = createFromJsonDispatchFunctor<ArrayValueStatic<std::uint8_t>>();
 		dispatchTable[ControlValueType::Type::ControlArrayInt16] = createFromJsonDispatchFunctor<ArrayValueStatic<std::int16_t>>();
@@ -2132,6 +2236,7 @@ inline void createFromJsonDispatchTable(std::unordered_map<ControlValueType::Typ
 		dispatchTable[ControlValueType::Type::ControlArrayFloat] = createFromJsonDispatchFunctor<ArrayValueStatic<float>>();
 		dispatchTable[ControlValueType::Type::ControlArrayDouble] = createFromJsonDispatchFunctor<ArrayValueStatic<double>>();
 
+		/** UTF-8 String Value - Clause 7.3.5.2.4 */
 		dispatchTable[ControlValueType::Type::ControlUtf8] = createFromJsonDispatchFunctor<UTF8StringValueStatic>();
 	}
 }
