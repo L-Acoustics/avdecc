@@ -3074,14 +3074,18 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 			}
 		},
 		// Get Control
-		{ protocol::AemCommandType::GetControl.getValue(),[](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
+		{ protocol::AemCommandType::GetControl.getValue(),[](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const [descriptorType, descriptorIndex, controlValues] = protocol::aemPayload::deserializeGetControlResponse(status, aem.getPayload());
+				auto const [descriptorType, descriptorIndex, packedControlValues] = protocol::aemPayload::deserializeGetControlResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
-				answerCallback.invoke<controller::Interface::GetControlValuesHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, controlValues);
+				answerCallback.invoke<controller::Interface::GetControlValuesHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, packedControlValues);
+				if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change from the device itself
+				{
+					utils::invokeProtectedMethod(&controller::Delegate::onControlValuesChanged, delegate, controllerInterface, targetID, descriptorIndex, packedControlValues);
+				}
 			}
 		},
 		// Start Streaming
