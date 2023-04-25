@@ -5024,7 +5024,7 @@ bool ControllerImpl::fetchCorrespondingDescriptor(ControlledEntityImpl* const en
 
 	if (!!descriptorType)
 	{
-		LOG_CONTROLLER_DEBUG(entity->getEntity().getEntityID(), "Failed to get DescriptorDynamicInfo, trying to get the corresponding Descriptor");
+		LOG_CONTROLLER_DEBUG(entity->getEntity().getEntityID(), "Failed to get DescriptorDynamicInfo ({}), falling back to {} Descriptor enumeration", ControlledEntityImpl::descriptorDynamicInfoTypeToString(descriptorDynamicInfoType), entity::model::descriptorTypeToString(descriptorType));
 		queryInformation(entity, configurationIndex, descriptorType, descriptorIndex);
 		return true;
 	}

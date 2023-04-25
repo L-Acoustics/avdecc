@@ -112,6 +112,12 @@ struct LinearValuesPayloadTraits : BaseValuesPayloadTraits<StaticValueType, Dyna
 			valuesDynamic.addValue(std::move(valueDynamic));
 		}
 
+		// Validate there is no more data in the buffer
+		if (des.remaining() != 0)
+		{
+			LOG_AEM_PAYLOAD_WARN("Unpack LINEAR value warning: Remaining data in GET_CONTROL response");
+		}
+
 		return entity::model::ControlValues{ std::move(valuesDynamic) };
 	}
 
@@ -234,26 +240,26 @@ struct SelectorValuePayloadTraits : BaseValuesPayloadTraits<StaticValueType, Dyn
 		return std::make_tuple(entity::model::ControlValues{ std::move(valueStatic) }, entity::model::ControlValues{ std::move(valueDynamic) });
 	}
 
-	static entity::model::ControlValues unpackDynamicControlValues(Deserializer& des, std::uint16_t const numberOfValues)
+	static entity::model::ControlValues unpackDynamicControlValues(Deserializer& des, std::uint16_t const /*numberOfValues*/)
 	{
-		if (numberOfValues != 1)
-		{
-			throw std::invalid_argument("CONTROL_SELECTOR should only have 1 dynamic value");
-		}
-
+		// For Selector Values, the number of dynamic values is always 1
+		// The number of static values is the number of options
 		auto valueDynamic = DynamicValueType{};
 		des >> valueDynamic.currentValue;
+
+		// Validate there is no more data in the buffer
+		if (des.remaining() != 0)
+		{
+			LOG_AEM_PAYLOAD_WARN("Unpack SELECTOR value warning: Remaining data in GET_CONTROL response");
+		}
 
 		return entity::model::ControlValues{ std::move(valueDynamic) };
 	}
 
 	static void packDynamicControlValues(Serializer<AemAecpdu::MaximumSendPayloadBufferLength>& ser, entity::model::ControlValues const& values)
 	{
-		if (values.size() != 1)
-		{
-			throw std::invalid_argument("CONTROL_SELECTOR should only have 1 dynamic value");
-		}
-
+		// For Selector Values, the number of dynamic values is always 1
+		// The number of static values is the number of options
 		auto const& selectorValue = values.getValues<DynamicValueType>();
 		ser << selectorValue.currentValue;
 	}
@@ -360,6 +366,12 @@ struct ArrayValuesPayloadTraits : BaseValuesPayloadTraits<StaticValueType, Dynam
 			des >> valueDynamic;
 
 			valuesDynamic.currentValues.push_back(std::move(valueDynamic));
+		}
+
+		// Validate there is no more data in the buffer
+		if (des.remaining() != 0)
+		{
+			LOG_AEM_PAYLOAD_WARN("Unpack ARRAY value warning: Remaining data in GET_CONTROL response");
 		}
 
 		return entity::model::ControlValues{ std::move(valuesDynamic) };
