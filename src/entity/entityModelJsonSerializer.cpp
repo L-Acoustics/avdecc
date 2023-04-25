@@ -604,6 +604,15 @@ void readLeafModels(json const& object, Flags const flags, std::string const& ke
 				else
 				{
 					j.at(keyName::Node_DynamicInformation).get_to(modelTree.dynamicModel);
+
+					// Special handling of CONTROL descriptors that were missing the 'number_of_values' field (in the static model) in previous dump versions
+					if constexpr (std::is_same_v<typename ModelTrees::mapped_type, ControlNodeModels>)
+					{
+						if (flags.test(Flag::ProcessStaticModel) && modelTree.staticModel.numberOfValues == 0)
+						{
+							modelTree.staticModel.numberOfValues = static_cast<std::uint16_t>(modelTree.dynamicModel.values.size());
+						}
+					}
 				}
 			}
 		}

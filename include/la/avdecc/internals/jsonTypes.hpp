@@ -2305,7 +2305,8 @@ inline void from_json(json const& j, ControlNodeStaticModel& s)
 	j.at(keyName::ControlNode_Static_SignalIndex).get_to(s.signalIndex);
 	j.at(keyName::ControlNode_Static_SignalOutput).get_to(s.signalOutput);
 	j.at(keyName::ControlNode_Static_ControlValueType).get_to(s.controlValueType);
-	j.at(keyName::ControlNode_Static_NumberOfValues).get_to(s.numberOfValues);
+	// Optionnaly get this field for backward compatibility (not present in older versions, but we absolutely need it now so we'll build it in parent call if it's 0)
+	get_optional_value(j, keyName::ControlNode_Static_NumberOfValues, s.numberOfValues);
 
 	// Unpack type dependant values
 	auto const& jvalues = j.at(keyName::ControlNode_Static_Values);
