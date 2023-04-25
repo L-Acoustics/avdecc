@@ -731,7 +731,7 @@ void ControllerImpl::updateJackOutputName(ControlledEntityImpl& controlledEntity
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	controlledEntity.setObjectName(configurationIndex, jackIndex, &TreeModelAccessStrategy::getJackInputNodeDynamicModel, jackOutputName, notFoundBehavior);
+	controlledEntity.setObjectName(configurationIndex, jackIndex, &TreeModelAccessStrategy::getJackOutputNodeDynamicModel, jackOutputName, notFoundBehavior);
 
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
