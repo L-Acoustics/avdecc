@@ -1007,7 +1007,7 @@ entity::model::ControlDescriptor deserializeReadControlDescriptorResponse(AemAec
 				controlDescriptor.valuesStatic = std::move(valuesStatic);
 				controlDescriptor.valuesDynamic = std::move(valuesDynamic);
 			}
-			catch (std::invalid_argument const& e)
+			catch ([[maybe_unused]] std::invalid_argument const& e)
 			{
 				LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Unsupported ControlValueType for READ_CONTROL_DESCRIPTOR RESPONSE: {} ({})", valueType, e.what());
 			}
