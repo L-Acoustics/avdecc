@@ -355,8 +355,9 @@ endif()
 if(BUILD_AVDECC_BINDINGS_CSHARP)
 	include(${CU_BASE_DIR}/helpers/SetupSwig.cmake REQUIRED)
 
-	set(TARGET_PREFIX ${PROJECT_NAME})
-	set(SWIG_INTERFACE_FILE "${CU_ROOT_DIR}/include/la/avdecc/avdecc.i")
+	# avdecc entity model
+	set(TARGET_PREFIX ${PROJECT_NAME}EntityModel)
+	set(SWIG_INTERFACE_FILE "${CU_ROOT_DIR}/include/la/avdecc/internals/entityModel.i")
 	cu_setup_swig_target(VERSION 4.2 TARGET_NAME ${PROJECT_NAME}::static INTERFACE_FILE "${SWIG_INTERFACE_FILE}" LANGUAGES ${AVDECC_SWIG_LANGUAGES} SWIG_TARGET_PREFIX ${TARGET_PREFIX} REQUIRED INSTALL_SUPPORT_FILES)
 
 	# Post process generated targets
@@ -375,4 +376,26 @@ if(BUILD_AVDECC_BINDINGS_CSHARP)
 		cu_setup_deploy_library(${SWIG_TARGET_NAME} ${INSTALL_BINDINGS_FLAG} ${SIGN_FLAG})
 
 	endforeach()
+
+	# avdecc library
+#	set(TARGET_PREFIX ${PROJECT_NAME})
+#	set(SWIG_INTERFACE_FILE "${CU_ROOT_DIR}/include/la/avdecc/avdecc.i")
+#	cu_setup_swig_target(VERSION 4.2 TARGET_NAME ${PROJECT_NAME}::static INTERFACE_FILE "${SWIG_INTERFACE_FILE}" LANGUAGES ${AVDECC_SWIG_LANGUAGES} SWIG_TARGET_PREFIX ${TARGET_PREFIX} REQUIRED INSTALL_SUPPORT_FILES)
+#
+#	# Post process generated targets
+#	foreach(SWIG_LANG ${AVDECC_SWIG_LANGUAGES})
+#		set(SWIG_TARGET_NAME ${TARGET_PREFIX}-${SWIG_LANG})
+#
+#		# Add all public header files as dependency, so that wrapper files are re-generated whenever they change
+#		set_property(TARGET ${SWIG_TARGET_NAME} PROPERTY SWIG_DEPENDS ${PUBLIC_HEADER_FILES})
+#		# Setup common options like any other project
+#		cu_setup_library_options(${SWIG_TARGET_NAME} ALIAS_NAME ${SWIG_LANG})
+#		if(${SWIG_LANG} STREQUAL "lua")
+#			target_link_libraries(${SWIG_TARGET_NAME} PRIVATE liblua)
+#		endif()
+#
+#		# Setup install (and signing)
+#		cu_setup_deploy_library(${SWIG_TARGET_NAME} ${INSTALL_BINDINGS_FLAG} ${SIGN_FLAG})
+#
+#	endforeach()
 endif()
