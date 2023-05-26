@@ -10,8 +10,8 @@
 %include <std_vector.i>
 %include <std_array.i>
 %include <std_set.i>
-%include "std_unordered_map.i" // From https://github.com/microsoft/CNTK/blob/master/bindings/csharp/Swig/std_unordered_map.i and https://github.com/swig/swig/pull/2480
-%include "optional.i"
+%include "la/avdecc/internals/std_unordered_map.i" // From https://github.com/microsoft/CNTK/blob/master/bindings/csharp/Swig/std_unordered_map.i and https://github.com/swig/swig/pull/2480
+%include "la/avdecc/internals/optional.i"
 
 // Generated wrapper file needs to include our header file
 %{
@@ -92,8 +92,8 @@ private:
 // UniqueIdentifier
 ////////////////////////////////////////
 %nspace la::avdecc::UniqueIdentifier;
-%ignore la::avdecc::UniqueIdentifier::operator value_type() const noexcept; // Ignore, don't need it
-%ignore la::avdecc::UniqueIdentifier::operator bool() const noexcept; // Ignore, don't need it
+%ignore la::avdecc::UniqueIdentifier::operator value_type() const noexcept; // Ignore, don't need it (already have getValue() method)
+%ignore la::avdecc::UniqueIdentifier::operator bool() const noexcept; // Ignore, don't need it (already have isValid() method)
 %rename("isEqual") operator==(UniqueIdentifier const& lhs, UniqueIdentifier const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
 %rename("isDifferent") operator!=(UniqueIdentifier const& lhs, UniqueIdentifier const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
 %rename("isLess") operator<(UniqueIdentifier const& lhs, UniqueIdentifier const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
@@ -101,6 +101,7 @@ private:
 %ignore la::avdecc::UniqueIdentifier::UniqueIdentifier(UniqueIdentifier&&); // Ignore move constructor
 %ignore la::avdecc::UniqueIdentifier::operator=; // Ignore copy operator
 
+// Include c++ declaration file
 %include "la/avdecc/internals/uniqueIdentifier.hpp"
 
 
@@ -176,6 +177,7 @@ DEFINE_AEM_TYPES_CLASS(ControlValueType);
 DEFINE_AEM_TYPES_CLASS_BASE(ControlValues);
 %ignore la::avdecc::entity::model::ControlValues::operator bool() const noexcept;
 
+// Include c++ declaration file
 %include "la/avdecc/internals/entityModelTypes.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
 
@@ -193,19 +195,19 @@ DEFINE_AEM_TYPES_CLASS_BASE(ControlValues);
 // Entity Enums
 ////////////////////////////////////////
 // Define some macros
-%define DEFINE_ENTITY_ENUM_BITFIELD_CLASS(bitfieldname, bitname, type)
-	%nspace la::avdecc::entity::bitname;
+%define DEFINE_ENUM_BITFIELD_CLASS(namespace, bitfieldname, bitname, type)
+	%nspace namespace::bitname;
 #if defined(SWIGCSHARP)
-	%typemap(csbase) la::avdecc::entity::bitname "uint" // Currently hardcode as uint because of SWIG issue https://github.com/swig/swig/issues/2576
+	%typemap(csbase) namespace::bitname "uint" // Currently hardcode as uint because of SWIG issue https://github.com/swig/swig/issues/2576
 #else
-	%typemap(csbase) la::avdecc::entity::bitname type
+	%typemap(csbase) namespace::bitname type
 #endif
-	//%template(bitfieldname) la::avdecc::utils::EnumBitfield<la::avdecc::entity::bitname>;
+	//%template(bitfieldname) la::avdecc::utils::EnumBitfield<namespace::bitname>;
 	//%template(UnderlyingValueType) std::underlying_type_t<value_type>;
 %enddef
 
 // Bind enums
-DEFINE_ENTITY_ENUM_BITFIELD_CLASS(EntityCapabilities, EntityCapability, "uint")
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, EntityCapabilities, EntityCapability, "uint")
 //%apply std::uint32_t { la::avdecc::utils::EnumBitfield<la::avdecc::entity::EntityCapability>::underlying_value_type };
 //%template(UnderlyingValueUInt) la::avdecc::utils::EnumBitfield::underlying_value_type<std::uint32_t>;
 //%template(EntityCapabilities) la::avdecc::utils::EnumBitfield<la::avdecc::entity::EntityCapability>;
@@ -236,28 +238,29 @@ class EnumBitfield2 final
 	}
 %}
 
-DEFINE_ENTITY_ENUM_BITFIELD_CLASS(TalkerCapabilities, TalkerCapability, "ushort")
-DEFINE_ENTITY_ENUM_BITFIELD_CLASS(ListenerCapabilities, ListenerCapability, "ushort")
-DEFINE_ENTITY_ENUM_BITFIELD_CLASS(ControllerCapabilities, ControllerCapability, "uint")
-DEFINE_ENTITY_ENUM_BITFIELD_CLASS(ConnectionFlags, ConnectionFlag, "ushort")
-DEFINE_ENTITY_ENUM_BITFIELD_CLASS(StreamFlags, StreamFlag, "ushort")
-DEFINE_ENTITY_ENUM_BITFIELD_CLASS(JackFlags, JackFlag, "ushort")
-DEFINE_ENTITY_ENUM_BITFIELD_CLASS(AvbInterfaceFlags, AvbInterfaceFlag, "ushort")
-DEFINE_ENTITY_ENUM_BITFIELD_CLASS(ClockSourceFlags, ClockSourceFlag, "ushort")
-DEFINE_ENTITY_ENUM_BITFIELD_CLASS(PortFlags, PortFlag, "ushort")
-DEFINE_ENTITY_ENUM_BITFIELD_CLASS(StreamInfoFlags, StreamInfoFlag, "uint")
-DEFINE_ENTITY_ENUM_BITFIELD_CLASS(StreamInfoFlagsEx, StreamInfoFlagEx, "uint")
-DEFINE_ENTITY_ENUM_BITFIELD_CLASS(AvbInfoFlags, AvbInfoFlag, "byte")
-DEFINE_ENTITY_ENUM_BITFIELD_CLASS(EntityCounterValidFlags, EntityCounterValidFlag, "uint")
-DEFINE_ENTITY_ENUM_BITFIELD_CLASS(AvbInterfaceCounterValidFlags, AvbInterfaceCounterValidFlag, "uint")
-DEFINE_ENTITY_ENUM_BITFIELD_CLASS(ClockDomainCounterValidFlags, ClockDomainCounterValidFlag, "uint")
-DEFINE_ENTITY_ENUM_BITFIELD_CLASS(StreamInputCounterValidFlags, StreamInputCounterValidFlag, "uint")
-DEFINE_ENTITY_ENUM_BITFIELD_CLASS(StreamOutputCounterValidFlags, StreamOutputCounterValidFlag, "uint")
-DEFINE_ENTITY_ENUM_BITFIELD_CLASS(MilanInfoFeaturesFlags, MilanInfoFeaturesFlag, "uint")
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, TalkerCapabilities, TalkerCapability, "ushort")
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, ListenerCapabilities, ListenerCapability, "ushort")
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, ControllerCapabilities, ControllerCapability, "uint")
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, ConnectionFlags, ConnectionFlag, "ushort")
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamFlags, StreamFlag, "ushort")
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, JackFlags, JackFlag, "ushort")
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, AvbInterfaceFlags, AvbInterfaceFlag, "ushort")
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, ClockSourceFlags, ClockSourceFlag, "ushort")
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, PortFlags, PortFlag, "ushort")
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamInfoFlags, StreamInfoFlag, "uint")
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamInfoFlagsEx, StreamInfoFlagEx, "uint")
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, AvbInfoFlags, AvbInfoFlag, "byte")
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, EntityCounterValidFlags, EntityCounterValidFlag, "uint")
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, AvbInterfaceCounterValidFlags, AvbInterfaceCounterValidFlag, "uint")
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, ClockDomainCounterValidFlags, ClockDomainCounterValidFlag, "uint")
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamInputCounterValidFlags, StreamInputCounterValidFlag, "uint")
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamOutputCounterValidFlags, StreamOutputCounterValidFlag, "uint")
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MilanInfoFeaturesFlags, MilanInfoFeaturesFlag, "uint")
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
 
+// Include c++ declaration file
 %include "la/avdecc/internals/entityEnums.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
 
@@ -291,6 +294,7 @@ DEFINE_PROTOCOL_CLASS(MvuCommandType)
 DEFINE_PROTOCOL_CLASS(AcmpMessageType)
 DEFINE_PROTOCOL_CLASS(AcmpStatus)
 
+// Include c++ declaration file
 %include "la/avdecc/internals/protocolDefines.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
 
@@ -317,7 +321,7 @@ DEFINE_PROTOCOL_CLASS(AcmpStatus)
 %enddef
 
 // Define optionals
-//DEFINE_OPTIONAL_CLASS(la::avdecc::entity, StreamInfoFlagsEx, OptStreamInfoFlagsEx, 0u)
+//DEFINE_OPTIONAL_CLASS(la::avdecc::entity, StreamInfoFlagsEx, OptStreamInfoFlagsEx, 0u) // wrap.cxx doesn't compile if defined (because of EnumBitfield)
 DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, ProbingStatus, OptProbingStatus, la.avdecc.entity.model.ProbingStatus.Disabled)
 DEFINE_OPTIONAL_CLASS(la::avdecc::protocol, AcmpStatus, OptAcmpStatus, la.avdecc.protocol.AcmpStatus.Success)
 
@@ -349,6 +353,7 @@ DEFINE_AEM_STRUCT(AsPath);
 %ignore la::avdecc::entity::model::makeEntityModelID; // Ignore, not needed
 %ignore la::avdecc::entity::model::splitEntityModelID; // Ignore, not needed
 
+// Include c++ declaration file
 %include "la/avdecc/internals/entityModel.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
 
