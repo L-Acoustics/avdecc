@@ -59,7 +59,11 @@ class ProtocolInterface : public la::avdecc::utils::Subject<ProtocolInterface, s
 {
 public:
 	/** Name of the default executor used for events */
+#ifdef SWIG /* Help swig parse this correctly (until the issue is fixed in swig) */
+	static constexpr char const* DefaultExecutorName = "avdecc::protocol::PI";
+#else /* !SWIG*/
 	static auto constexpr DefaultExecutorName = "avdecc::protocol::PI";
+#endif /* SWIG */
 
 	/** The existing types of ProtocolInterface */
 	enum class Type
