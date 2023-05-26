@@ -2516,12 +2516,12 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 				_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ControlValues, controlIndex);
 			}
 			// la::avdecc::controller::model::EntityModelVisitor overrides
-			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::EntityNode const& node) noexcept
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::EntityNode const& node) noexcept override
 			{
 				// Store the current configuration index
 				_currentConfigurationIndex = node.dynamicModel.currentConfiguration;
 			}
-			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::EntityNode const* const /*parent*/, la::avdecc::controller::model::ConfigurationNode const& node) noexcept
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::EntityNode const* const /*parent*/, la::avdecc::controller::model::ConfigurationNode const& node) noexcept override
 			{
 				auto const configurationIndex = node.descriptorIndex;
 
@@ -2548,7 +2548,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 					}
 				}
 			}
-			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::AudioUnitNode const& node) noexcept
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::AudioUnitNode const& node) noexcept override
 			{
 				auto const configurationIndex = parent->descriptorIndex;
 				auto const audioUnitIndex = node.descriptorIndex;
@@ -2562,7 +2562,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioUnitSamplingRate, audioUnitIndex);
 				}
 			}
-			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::StreamInputNode const& node) noexcept
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::StreamInputNode const& node) noexcept override
 			{
 				auto const configurationIndex = parent->descriptorIndex;
 				auto const streamIndex = node.descriptorIndex;
@@ -2576,7 +2576,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputStreamFormat, streamIndex);
 				}
 			}
-			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::StreamOutputNode const& node) noexcept
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::StreamOutputNode const& node) noexcept override
 			{
 				auto const configurationIndex = parent->descriptorIndex;
 				auto const streamIndex = node.descriptorIndex;
@@ -2590,7 +2590,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputStreamFormat, streamIndex);
 				}
 			}
-			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::JackInputNode const& node) noexcept
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::JackInputNode const& node) noexcept override
 			{
 				auto const configurationIndex = parent->descriptorIndex;
 				auto const jackIndex = node.descriptorIndex;
@@ -2602,7 +2602,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::InputJackName, jackIndex);
 				}
 			}
-			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::JackOutputNode const& node) noexcept
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::JackOutputNode const& node) noexcept override
 			{
 				auto const configurationIndex = parent->descriptorIndex;
 				auto const jackIndex = node.descriptorIndex;
@@ -2614,7 +2614,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::OutputJackName, jackIndex);
 				}
 			}
-			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::JackNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& node) noexcept
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::JackNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& node) noexcept override
 			{
 				auto const configurationIndex = grandParent->descriptorIndex;
 				auto const controlIndex = node.descriptorIndex;
@@ -2625,7 +2625,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 					getControlNodeDynamicInformation(configurationIndex, controlIndex);
 				}
 			}
-			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::AvbInterfaceNode const& node) noexcept
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::AvbInterfaceNode const& node) noexcept override
 			{
 				auto const configurationIndex = parent->descriptorIndex;
 				auto const avbInterfaceIndex = node.descriptorIndex;
@@ -2637,7 +2637,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AvbInterfaceName, avbInterfaceIndex);
 				}
 			}
-			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::ClockSourceNode const& node) noexcept
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::ClockSourceNode const& node) noexcept override
 			{
 				auto const configurationIndex = parent->descriptorIndex;
 				auto const clockSourceIndex = node.descriptorIndex;
@@ -2649,7 +2649,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::ClockSourceName, clockSourceIndex);
 				}
 			}
-			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::MemoryObjectNode const& node) noexcept
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::MemoryObjectNode const& node) noexcept override
 			{
 				auto const configurationIndex = parent->descriptorIndex;
 				auto const memoryObjectIndex = node.descriptorIndex;
@@ -2663,23 +2663,23 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::MemoryObjectLength, memoryObjectIndex);
 				}
 			}
-			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::LocaleNode const& /*node*/) noexcept
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::LocaleNode const& /*node*/) noexcept override
 			{
 				// Nothing to get
 			}
-			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::LocaleNode const* const /*parent*/, la::avdecc::controller::model::StringsNode const& /*node*/) noexcept
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::LocaleNode const* const /*parent*/, la::avdecc::controller::model::StringsNode const& /*node*/) noexcept override
 			{
 				// Nothing to get
 			}
-			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::StreamPortInputNode const& /*node*/) noexcept
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::StreamPortInputNode const& /*node*/) noexcept override
 			{
 				// Nothing to get
 			}
-			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::StreamPortOutputNode const& /*node*/) noexcept
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::StreamPortOutputNode const& /*node*/) noexcept override
 			{
 				// Nothing to get
 			}
-			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandGrandParent, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::AudioClusterNode const& node) noexcept
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandGrandParent, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::AudioClusterNode const& node) noexcept override
 			{
 				auto const configurationIndex = grandGrandParent->descriptorIndex;
 				auto const clusterIndex = node.descriptorIndex;
@@ -2691,11 +2691,11 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 					_controller->queryInformation(_entity, configurationIndex, ControlledEntityImpl::DescriptorDynamicInfoType::AudioClusterName, clusterIndex);
 				}
 			}
-			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::AudioMapNode const& /*node*/) noexcept
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::AudioMapNode const& /*node*/) noexcept override
 			{
 				// Nothing to get
 			}
-			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandGrandParent, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& node) noexcept
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandGrandParent, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& node) noexcept override
 			{
 				auto const configurationIndex = grandGrandParent->descriptorIndex;
 				auto const controlIndex = node.descriptorIndex;
@@ -2706,7 +2706,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 					getControlNodeDynamicInformation(configurationIndex, controlIndex);
 				}
 			}
-			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& node) noexcept
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& node) noexcept override
 			{
 				auto const configurationIndex = grandParent->descriptorIndex;
 				auto const controlIndex = node.descriptorIndex;
@@ -2717,7 +2717,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 					getControlNodeDynamicInformation(configurationIndex, controlIndex);
 				}
 			}
-			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept override
 			{
 				auto const configurationIndex = parent->descriptorIndex;
 				auto const controlIndex = node.descriptorIndex;
@@ -2728,7 +2728,7 @@ void ControllerImpl::getDescriptorDynamicInfo(ControlledEntityImpl* const entity
 					getControlNodeDynamicInformation(configurationIndex, controlIndex);
 				}
 			}
-			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::ClockDomainNode const& node) noexcept
+			virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::ClockDomainNode const& node) noexcept override
 			{
 				auto const configurationIndex = parent->descriptorIndex;
 				auto const clockDomainIndex = node.descriptorIndex;
