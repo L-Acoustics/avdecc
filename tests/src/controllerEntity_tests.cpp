@@ -86,7 +86,7 @@ TEST(ControllerEntity, DetectMainAvbInterfaceLost)
 	static constexpr auto EntityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
 	static auto entityOfflinePromise = std::promise<void>{};
 
-	class Delegate final : public la::avdecc::entity::controller::Delegate
+	class Delegate final : public la::avdecc::entity::controller::DefaultedDelegate
 	{
 	private:
 		virtual void onEntityOffline(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID) noexcept override

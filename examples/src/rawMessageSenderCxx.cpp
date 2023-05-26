@@ -420,7 +420,7 @@ inline void sendControllerCommands(la::avdecc::protocol::ProtocolInterface& pi)
 
 inline void sendControllerHighLevelCommands(la::avdecc::protocol::ProtocolInterface& pi)
 {
-	class Delegate : public la::avdecc::entity::controller::Delegate
+	class Delegate : public la::avdecc::entity::controller::DefaultedDelegate
 	{
 	public:
 		Delegate() = default;
