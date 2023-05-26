@@ -119,12 +119,12 @@ public:
 	EndStation& operator=(EndStation const&) = delete;
 	EndStation& operator=(EndStation&&) = delete;
 
+	/** Destructor */
+	virtual ~EndStation() noexcept = default;
+
 protected:
 	/** Constructor */
 	EndStation() noexcept = default;
-
-	/** Destructor */
-	virtual ~EndStation() noexcept = default;
 
 private:
 	/** Entry point */

@@ -534,12 +534,12 @@ public:
 	Controller& operator=(Controller const&) = delete;
 	Controller& operator=(Controller&&) = delete;
 
+	/** Destructor */
+	virtual ~Controller() = default;
+
 protected:
 	/** Constructor */
 	Controller() = default;
-
-	/** Destructor */
-	virtual ~Controller() = default;
 
 private:
 	/** Create method for COM-like interface */
