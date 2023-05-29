@@ -38,6 +38,19 @@
 // Entity Model
 ////////////////////////////////////////
 %import "la/avdecc/internals/entityModel.i"
+// Redefine helper template for the wrap.cxx file
+%{
+namespace la::avdecc::utils
+{
+template<typename T>
+class UnderlyingType
+{
+public:
+    using value_type = void;
+};
+}
+%}
+
 
 
 ////////////////////////////////////////
@@ -105,7 +118,7 @@ DEFINE_CONTROLLED_ENTITY_MODEL_NODE(Entity)
 // AVDECC CONTROLLED ENTITY
 ////////////////////////////////////////
 // Bind enums
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller::ControlledEntity, CompatibilityFlags, CompatibilityFlag, "byte")
+DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity, CompatibilityFlag, "byte")
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
@@ -120,6 +133,9 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller::ControlledEntity, Compatibili
 // Include c++ declaration file
 %include "la/avdecc/controller/internals/avdeccControlledEntity.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
+
+// Define templates
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller::ControlledEntity, CompatibilityFlags, CompatibilityFlag, std::uint8_t)
 
 
 ////////////////////////////////////////
@@ -143,7 +159,7 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller::ControlledEntity, Compatibili
 %unique_ptr(la::avdecc::controller::Controller::ExclusiveAccessToken) // Define unique_ptr for ExclusiveAccessToken
 
 // Bind enums
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller, CompileOptions, CompileOption, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::controller, CompileOption, "uint")
 
 // Define C# exception handling for la::avdecc::controller::Controller::Exception
 %insert(runtime) %{
@@ -228,6 +244,9 @@ namespace la.avdecc.controller
 %rename("%s") "la::avdecc::controller::Controller::createController"; // Force declare createController
 %include "la/avdecc/controller/avdeccController.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
+
+// Define templates
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller, CompileOptions, CompileOption, std::uint32_t)
 
 // Define wrapped functions
 %extend la::avdecc::controller::Controller

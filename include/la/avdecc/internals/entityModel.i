@@ -36,9 +36,57 @@
 ////////////////////////////////////////
 // Utils
 ////////////////////////////////////////
+// Define a helper template to handle std::underlying_type_t
+%inline %{
+namespace la::avdecc::utils
+{
+template<typename T>
+class UnderlyingType
+{
+public:
+    using value_type = void;
+};
+}
+%}
+
 // Redefine a simplier version of some classes from la::avdecc::utils namespace (easier to parse for SWIG)
 namespace la::avdecc::utils
 {
+template<typename EnumType>
+class EnumBitfield final
+{
+public:
+	using value_type = EnumType;
+	using underlying_value_type = UnderlyingType<EnumType>::value_type;
+	static constexpr size_t value_size = sizeof(underlying_value_type) * 8;
+
+	template<typename... Values>
+	constexpr explicit EnumBitfield(value_type const value, Values const... values) noexcept;
+	void assign(underlying_value_type const value) noexcept;
+	constexpr bool test(value_type const flag) const noexcept;
+	EnumBitfield& set(value_type const flag) noexcept;
+	EnumBitfield& reset(value_type const flag) noexcept;
+	void clear() noexcept;
+	constexpr bool empty() const noexcept;
+	constexpr size_t size() const noexcept;
+	constexpr size_t count() const noexcept;
+	constexpr underlying_value_type value() const noexcept;
+	%rename("isEqual") operator==(EnumBitfield const other) const noexcept;
+	constexpr bool operator==(EnumBitfield const other) const noexcept;
+	%rename("isDifferent") operator!=(EnumBitfield const other) const noexcept;
+	constexpr bool operator!=(EnumBitfield const other) const noexcept;
+	%rename("orEqual") operator|=(EnumBitfield const other) noexcept;
+	EnumBitfield& operator|=(EnumBitfield const other) noexcept;
+	%rename("andEqual") operator&=(EnumBitfield const other) noexcept;
+	EnumBitfield& operator&=(EnumBitfield const other) noexcept;
+	constexpr value_type at(size_t const setPosition) const;
+	constexpr size_t getBitSetPosition(value_type const value) const;
+	static constexpr size_t getPosition(value_type const value);
+
+private:
+	underlying_value_type _value{};
+};
+
 template<class Derived, typename DataType>
 class TypedDefine
 {
@@ -195,67 +243,58 @@ DEFINE_AEM_TYPES_CLASS_BASE(ControlValues);
 // Entity Enums
 ////////////////////////////////////////
 // Define some macros
-%define DEFINE_ENUM_BITFIELD_CLASS(namespace, bitfieldname, bitname, type)
-	%nspace namespace::bitname;
+%define DEFINE_ENUM_CLASS(nspacename, bitname, type)
+	%nspace nspacename::bitname;
 #if defined(SWIGCSHARP)
-	%typemap(csbase) namespace::bitname "uint" // Currently hardcode as uint because of SWIG issue https://github.com/swig/swig/issues/2576
+	%typemap(csbase) nspacename::bitname "uint" // Currently hardcode as uint because of SWIG issue https://github.com/swig/swig/issues/2576
 #else
-	%typemap(csbase) namespace::bitname type
+	%typemap(csbase) nspacename::bitname type
 #endif
-	//%template(bitfieldname) la::avdecc::utils::EnumBitfield<namespace::bitname>;
-	//%template(UnderlyingValueType) std::underlying_type_t<value_type>;
+%enddef
+%define DEFINE_ENUM_BITFIELD_CLASS(nspacename, bitfieldname, bitname, underlyingtype)
+	%inline %{
+	namespace la::avdecc::utils
+	{
+	template<>
+	class UnderlyingType<nspacename::bitname>
+	{
+	public:
+//#if defined(SWIGCSHARP)
+	//using value_type = std::uint32_t; // Currently hardcode as uint because of SWIG issue https://github.com/swig/swig/issues/2576
+//#else
+	using value_type = underlyingtype;
+//#endif
+	};
+	}
+	%}
+//#if defined(SWIGCSHARP)
+	//%apply std::uint32_t { la::avdecc::utils::UnderlyingType<nspacename::bitname>::value_type }; // Currently hardcode as uint because of SWIG issue https://github.com/swig/swig/issues/2576
+//#else
+	%apply underlyingtype { la::avdecc::utils::UnderlyingType<nspacename::bitname>::value_type };
+//#endif
+	%template(bitfieldname) la::avdecc::utils::EnumBitfield<nspacename::bitname>;
 %enddef
 
 // Bind enums
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, EntityCapabilities, EntityCapability, "uint")
-//%apply std::uint32_t { la::avdecc::utils::EnumBitfield<la::avdecc::entity::EntityCapability>::underlying_value_type };
-//%template(UnderlyingValueUInt) la::avdecc::utils::EnumBitfield::underlying_value_type<std::uint32_t>;
-//%template(EntityCapabilities) la::avdecc::utils::EnumBitfield<la::avdecc::entity::EntityCapability>;
-#if 0
-template<class EnumType, typename EnumSize>
-class EnumBitfield2 final
-{
-%typemap(csinterfaces) EnumBitfield2<EnumType, EnumSize> "global::System.IDisposable\n"
-
-	public:
-		// Constructor from a la::avdecc::utils::EnumBitfield
-		EnumBitfield2(la::avdecc::utils::EnumBitfield<EnumType> const& bitfield) noexcept
-			: _value{ bitfield.value() }
-		{
-		}
-	private:
-		EnumSize _value{ 0u };
-};
-%template(EntityCapabilitiesss) EnumBitfield2<la::avdecc::entity::EntityCapability, std::uint32_t>;
-//%typemap(csbase) EnumBitfield2<la::avdecc::entity::EntityCapability, std::uint32_t> "uint"
-%apply EnumBitfield2<la::avdecc::entity::EntityCapability, std::uint32_t> { la::avdecc::utils::EnumBitfield<la::avdecc::entity::EntityCapability> };
-#endif
-// TEMP TO TEST IF EntityCapability is correctly wrapped
-%inline %{
-	la::avdecc::entity::EntityCapabilities getCapa() noexcept
-	{
-		return la::avdecc::entity::EntityCapabilities{la::avdecc::entity::EntityCapability::AemSupported};
-	}
-%}
-
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, TalkerCapabilities, TalkerCapability, "ushort")
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, ListenerCapabilities, ListenerCapability, "ushort")
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, ControllerCapabilities, ControllerCapability, "uint")
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, ConnectionFlags, ConnectionFlag, "ushort")
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamFlags, StreamFlag, "ushort")
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, JackFlags, JackFlag, "ushort")
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, AvbInterfaceFlags, AvbInterfaceFlag, "ushort")
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, ClockSourceFlags, ClockSourceFlag, "ushort")
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, PortFlags, PortFlag, "ushort")
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamInfoFlags, StreamInfoFlag, "uint")
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamInfoFlagsEx, StreamInfoFlagEx, "uint")
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, AvbInfoFlags, AvbInfoFlag, "byte")
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, EntityCounterValidFlags, EntityCounterValidFlag, "uint")
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, AvbInterfaceCounterValidFlags, AvbInterfaceCounterValidFlag, "uint")
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, ClockDomainCounterValidFlags, ClockDomainCounterValidFlag, "uint")
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamInputCounterValidFlags, StreamInputCounterValidFlag, "uint")
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamOutputCounterValidFlags, StreamOutputCounterValidFlag, "uint")
-DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MilanInfoFeaturesFlags, MilanInfoFeaturesFlag, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity, EntityCapability, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity, TalkerCapability, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity, ListenerCapability, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity, ControllerCapability, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity, ConnectionFlag, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity, StreamFlag, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity, JackFlag, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity, AvbInterfaceFlag, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity, ClockSourceFlag, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity, PortFlag, "ushort")
+DEFINE_ENUM_CLASS(la::avdecc::entity, StreamInfoFlag, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity, StreamInfoFlagEx, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity, AvbInfoFlag, "byte")
+DEFINE_ENUM_CLASS(la::avdecc::entity, EntityCounterValidFlag, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity, AvbInterfaceCounterValidFlag, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity, ClockDomainCounterValidFlag, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity, StreamInputCounterValidFlag, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity, StreamOutputCounterValidFlag, "uint")
+DEFINE_ENUM_CLASS(la::avdecc::entity, MilanInfoFeaturesFlag, "uint")
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
@@ -263,6 +302,27 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MilanInfoFeaturesFlags, MilanInfo
 // Include c++ declaration file
 %include "la/avdecc/internals/entityEnums.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
+
+// Define templates
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, EntityCapabilities, EntityCapability, std::uint32_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, TalkerCapabilities, TalkerCapability, std::uint16_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, ListenerCapabilities, ListenerCapability, std::uint16_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, ControllerCapabilities, ControllerCapability, std::uint32_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, ConnectionFlags, ConnectionFlag, std::uint16_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamFlags, StreamFlag, std::uint16_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, JackFlags, JackFlag, std::uint16_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, AvbInterfaceFlags, AvbInterfaceFlag, std::uint16_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, ClockSourceFlags, ClockSourceFlag, std::uint16_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, PortFlags, PortFlag, std::uint16_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamInfoFlags, StreamInfoFlag, std::uint32_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamInfoFlagsEx, StreamInfoFlagEx, std::uint32_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, AvbInfoFlags, AvbInfoFlag, std::uint8_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, EntityCounterValidFlags, EntityCounterValidFlag, std::uint32_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, AvbInterfaceCounterValidFlags, AvbInterfaceCounterValidFlag, std::uint32_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, ClockDomainCounterValidFlags, ClockDomainCounterValidFlag, std::uint32_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamInputCounterValidFlags, StreamInputCounterValidFlag, std::uint32_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, StreamOutputCounterValidFlags, StreamOutputCounterValidFlag, std::uint32_t)
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MilanInfoFeaturesFlags, MilanInfoFeaturesFlag, std::uint32_t)
 
 
 ////////////////////////////////////////
