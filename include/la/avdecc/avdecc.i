@@ -144,9 +144,14 @@ public:
 // Entity Model
 ////////////////////////////////////////
 // Define optionals before including entityModel.i (we need to declare the optionals before the underlying types are defined)
-DEFINE_OPTIONAL_SIMPLE(OptDescriptorIndex, la::avdecc::entity::model::DescriptorIndex, avdeccEntityModel.getInvalidDescriptorIndex()) // Will be used for all kind of descriptor indexes
-//DEFINE_OPTIONAL_SIMPLE(OptUInt8, std::uint8_t, (byte)0)
+DEFINE_OPTIONAL_SIMPLE(OptUInt8, std::uint8_t, (byte)0)
+DEFINE_OPTIONAL_SIMPLE(OptUInt16, std::uint16_t, (ushort)0)
+DEFINE_OPTIONAL_SIMPLE(OptUInt32, std::uint32_t, (uint)0)
+DEFINE_OPTIONAL_SIMPLE(OptUInt64, std::uint64_t, (ulong)0)
+//DEFINE_OPTIONAL_SIMPLE(OptDescriptorIndex, la::avdecc::entity::model::DescriptorIndex, avdeccEntityModel.getInvalidDescriptorIndex()) // Currently we cannot define both OptUInt16 and OptDescriptorIndex (or they mix up). We'll define each Descriptor type once we use a TypedDefine
+DEFINE_OPTIONAL_SIMPLE(OptMsrpFailureCode, la::avdecc::entity::model::MsrpFailureCode, la.avdecc.entity.model.MsrpFailureCode.NoFailure)
 DEFINE_OPTIONAL_CLASS(la::avdecc, UniqueIdentifier, OptUniqueIdentifier)
+DEFINE_OPTIONAL_CLASS(la::networkInterface, MacAddress, OptMacAddress)
 
 // Import entity model
 %import "la/avdecc/internals/entityModel.i"
@@ -282,7 +287,15 @@ DEFINE_OPTIONAL_CLASS(la::avdecc, UniqueIdentifier, OptUniqueIdentifier)
 %enddef
 
 // Define optionals
-// DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, StreamDynamicInfo, OptStreamDynamicInfo)
+DEFINE_OPTIONAL_SIMPLE(OptBool, bool, false)
+DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, StreamDynamicInfo, OptStreamDynamicInfo)
+DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, AvbInterfaceInfo, OptAvbInterfaceInfo)
+DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, AsPath, OptAsPath)
+DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, EntityCounters, OptEntityCounters)
+DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, StreamInputCounters, OptStreamInputCounters)
+DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, StreamOutputCounters, OptStreamOutputCounters)
+DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, AvbInterfaceCounters, OptAvbInterfaceCounters)
+DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, ClockDomainCounters, OptClockDomainCounters)
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
@@ -341,6 +354,11 @@ DEFINE_AEM_TREE_NODE(Entity);
 %template(LocaleTrees) std::map<la::avdecc::entity::model::LocaleIndex, la::avdecc::entity::model::LocaleTree>;
 %template(JackTrees) std::map<la::avdecc::entity::model::JackIndex, la::avdecc::entity::model::JackTree>;
 %template(ConfigurationTrees) std::map<la::avdecc::entity::model::ConfigurationIndex, la::avdecc::entity::model::ConfigurationTree>;
+%template(EntityCounters) std::map<la::avdecc::entity::EntityCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
+%template(StreamInputCounters) std::map<la::avdecc::entity::StreamInputCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
+%template(StreamOutputCounters) std::map<la::avdecc::entity::StreamOutputCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
+%template(AvbInterfaceCounters) std::map<la::avdecc::entity::AvbInterfaceCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
+%template(ClockDomainCounters) std::map<la::avdecc::entity::ClockDomainCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
 
 
 ////////////////////////////////////////
