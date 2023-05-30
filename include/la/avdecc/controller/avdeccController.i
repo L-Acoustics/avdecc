@@ -75,7 +75,7 @@ public:
 %nspace la::avdecc::controller::model::MediaClockChainNode::Status;
 
 // Define optionals
-//DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, StreamIndex, OptStreamIndex, null) // Not compiling in C# (Inconsistent accessibility)
+//DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, StreamIndex, OptStreamIndex)
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable

@@ -145,11 +145,8 @@ public:
 ////////////////////////////////////////
 // Define optionals before including entityModel.i (we need to declare the optionals before the underlying types are defined)
 DEFINE_OPTIONAL_SIMPLE(OptDescriptorIndex, la::avdecc::entity::model::DescriptorIndex, avdeccEntityModel.getInvalidDescriptorIndex()) // Will be used for all kind of descriptor indexes
-//DEFINE_OPTIONAL_SIMPLE(OptUInt8, std::uint8_t, (byte)0) // Not compiling in C# (Inconsistent accessibility)
-//DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, ControlIndex, OptControlIndex, avdeccEntityModel.getInvalidDescriptorIndex())
-//DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, AvbInterfaceIndex, OptAvbInterfaceIndex, avdeccEntityModel.getInvalidDescriptorIndex())
-DEFINE_OPTIONAL_CLASS(la::avdecc, UniqueIdentifier, OptUniqueIdentifier, la.avdecc.UniqueIdentifier.getUninitializedUniqueIdentifier())
-//DEFINE_OPTIONAL_CLASS(, std::uint8_t, OptUInt8, (byte)0) // Not compiling in C# (Inconsistent accessibility)
+//DEFINE_OPTIONAL_SIMPLE(OptUInt8, std::uint8_t, (byte)0)
+DEFINE_OPTIONAL_CLASS(la::avdecc, UniqueIdentifier, OptUniqueIdentifier)
 
 // Import entity model
 %import "la/avdecc/internals/entityModel.i"
@@ -285,7 +282,7 @@ DEFINE_OPTIONAL_CLASS(la::avdecc, UniqueIdentifier, OptUniqueIdentifier, la.avde
 %enddef
 
 // Define optionals
-// DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, StreamDynamicInfo, OptStreamDynamicInfo, null)
+// DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, StreamDynamicInfo, OptStreamDynamicInfo)
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable

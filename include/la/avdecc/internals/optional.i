@@ -35,7 +35,7 @@ namespace std {
 // If there is no language-specific DEFINE_OPTIONAL_CLASS() definition, assume
 // that we only have "simple" optional values.
 #ifndef DEFINE_OPTIONAL_CLASS
-%define DEFINE_OPTIONAL_CLASS(scope, classname, name, defValue)
-DEFINE_OPTIONAL_SIMPLE(name, scope::classname, defValue)
+%define DEFINE_OPTIONAL_CLASS(scope, classname, name)
+DEFINE_OPTIONAL_SIMPLE(name, scope::classname, 0)
 %enddef
 #endif

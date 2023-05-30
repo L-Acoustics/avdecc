@@ -106,25 +106,32 @@ DEFINE_OPTIONAL_HELPER(OptT, T)
 
 #endif // normal/COM versions of DEFINE_OPTIONAL_SIMPLE
 
-%define DEFINE_OPTIONAL_CLASS_HELPER(OptT, T, defValue)
+%define DEFINE_OPTIONAL_CLASS_HELPER(OptT, T)
 
 DEFINE_OPTIONAL_HELPER(OptT, T)
 
 %typemap(cstype) std::optional< T >, const std::optional< T > & "$typemap(cstype, T)"
 
 %typemap(csin,
-         pre="    OptT opt$csinput = $csinput != defValue ? new OptT($csinput): new OptT();"
+         pre="    OptT opt$csinput = $csinput != null ? new OptT($csinput): new OptT();"
          ) std::optional< T >, const std::optional< T >& "$csclassname.getCPtr(opt$csinput)"
 
+%typemap(csout, excode=SWIGEXCODE) std::optional< T >, const std::optional< T >& {
+    OptT optvalue = new OptT($imcall, $owner);$excode
+    if (optvalue.has_value())
+      return optvalue.value();
+    else
+      return null;
+  }
 %typemap(csvarin, excode=SWIGEXCODE2) std::optional< T >, const std::optional< T >& %{
     set {
-      OptT optvalue = value != defValue ? new OptT(value) : new OptT();
+      OptT optvalue = value != null ? new OptT(value) : new OptT();
       $imcall;$excode
     }%}
 %typemap(csvarout, excode=SWIGEXCODE2) std::optional< T >, const std::optional< T >& %{
     get {
       OptT optvalue = new OptT($imcall, $owner);$excode
-      return optvalue.has_value() ? optvalue.value() : defValue;
+      return optvalue.has_value() ? optvalue.value() : null;
     }%}
 
 %enddef
@@ -137,8 +144,8 @@ DEFINE_OPTIONAL_HELPER(OptT, T)
 // unqualified name of the class, the name of the exported optional type is
 // defined by the third argument.
 // Default value must be defined as forth argument, null by default
-%define DEFINE_OPTIONAL_CLASS(scope, classname, name, defValue)
+%define DEFINE_OPTIONAL_CLASS(scope, classname, name)
 
-DEFINE_OPTIONAL_CLASS_HELPER(name, scope::classname, defValue)
+DEFINE_OPTIONAL_CLASS_HELPER(name, scope::classname)
 
 %enddef
