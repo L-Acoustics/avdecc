@@ -19,6 +19,7 @@
 %include <arrays_csharp.i>
 #endif
 %include "la/avdecc/internals/chrono.i"
+%include "la/avdecc/internals/optional.i"
 
 // Generated wrapper file needs to include our header file (include as soon as possible using 'insert(runtime)' as target language exceptions are defined early in the generated wrapper file)
 %insert(runtime) %{
@@ -139,22 +140,24 @@ public:
 // Include c++ declaration file
 %include "la/avdecc/internals/exception.hpp"
 
-
 ////////////////////////////////////////
 // Entity Model
 ////////////////////////////////////////
+// Define optionals before including entityModel.i (we need to declare the optionals before the underlying types are defined)
+DEFINE_OPTIONAL_SIMPLE(OptDescriptorIndex, la::avdecc::entity::model::DescriptorIndex, avdeccEntityModel.getInvalidDescriptorIndex()) // Will be used for all kind of descriptor indexes
+//DEFINE_OPTIONAL_SIMPLE(OptUInt8, std::uint8_t, (byte)0) // Not compiling in C# (Inconsistent accessibility)
+//DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, ControlIndex, OptControlIndex, avdeccEntityModel.getInvalidDescriptorIndex())
+//DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, AvbInterfaceIndex, OptAvbInterfaceIndex, avdeccEntityModel.getInvalidDescriptorIndex())
+DEFINE_OPTIONAL_CLASS(la::avdecc, UniqueIdentifier, OptUniqueIdentifier, la.avdecc.UniqueIdentifier.getUninitializedUniqueIdentifier())
+//DEFINE_OPTIONAL_CLASS(, std::uint8_t, OptUInt8, (byte)0) // Not compiling in C# (Inconsistent accessibility)
+
+// Import entity model
 %import "la/avdecc/internals/entityModel.i"
 
 
 ////////////////////////////////////////
 // Entity/LocalEntity
 ////////////////////////////////////////
-// Define optionals
-//DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, ControlIndex, OptControlIndex, avdeccEntityModel.getInvalidDescriptorIndex()) // Not compiling in C# (Inconsistent accessibility)
-//DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, AvbInterfaceIndex, OptAvbInterfaceIndex, avdeccEntityModel.getInvalidDescriptorIndex()) // Not compiling in C# (Inconsistent accessibility)
-//DEFINE_OPTIONAL_CLASS(la::avdecc, UniqueIdentifier, OptUniqueIdentifier, la.avdecc.UniqueIdentifier.getUninitializedUniqueIdentifier()) // Not compiling in C# (Inconsistent accessibility)
-//DEFINE_OPTIONAL_CLASS(, std::uint8_t, OptUInt8, (byte)0) // Not compiling in C# (Inconsistent accessibility)
-
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
 

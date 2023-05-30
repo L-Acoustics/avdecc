@@ -381,9 +381,12 @@ DEFINE_PROTOCOL_CLASS(AcmpStatus)
 %enddef
 
 // Define optionals
-//DEFINE_OPTIONAL_CLASS(la::avdecc::entity, StreamInfoFlagsEx, OptStreamInfoFlagsEx, 0u) // wrap.cxx doesn't compile if defined (because of EnumBitfield)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, ProbingStatus, OptProbingStatus, la.avdecc.entity.model.ProbingStatus.Disabled)
-DEFINE_OPTIONAL_CLASS(la::avdecc::protocol, AcmpStatus, OptAcmpStatus, la.avdecc.protocol.AcmpStatus.Success)
+//DEFINE_OPTIONAL_SIMPLE(OptStreamInfoFlagsEx, la::avdecc::entity::StreamInfoFlagsEx, 0u)
+DEFINE_OPTIONAL_SIMPLE(OptProbingStatus, la::avdecc::entity::model::ProbingStatus, la.avdecc.entity.model.ProbingStatus.Disabled)
+DEFINE_OPTIONAL_SIMPLE(OptAcmpStatus, la::avdecc::protocol::AcmpStatus, la.avdecc.protocol.AcmpStatus.Success)
+DEFINE_OPTIONAL_CLASS(la::avdecc::entity, StreamInfoFlagsEx, OptStreamInfoFlagsEx, 0u)
+//DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, ProbingStatus, OptProbingStatus, la.avdecc.entity.model.ProbingStatus.Disabled)
+//DEFINE_OPTIONAL_CLASS(la::avdecc::protocol, AcmpStatus, OptAcmpStatus, la.avdecc.protocol.AcmpStatus.Success)
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable

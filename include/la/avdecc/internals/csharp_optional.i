@@ -47,7 +47,7 @@ DEFINE_OPTIONAL_HELPER(OptT, T)
 // property value is accessible as "value" in C#.
 %typemap(csin,
          pre="    OptT opt$csinput = $csinput.HasValue ? new OptT($csinput.Value) : new OptT();"
-         ) const std::optional< T >& "$csclassname.getCPtr(opt$csinput)"
+         ) std::optional< T >, const std::optional< T >& "$csclassname.getCPtr(opt$csinput)"
 
 // This is used for functions returning optional values.
 %typemap(csout, excode=SWIGEXCODE) std::optional< T >, const std::optional< T >& {
@@ -59,12 +59,12 @@ DEFINE_OPTIONAL_HELPER(OptT, T)
   }
 
 // This code is used for the optional-valued properties in C#.
-%typemap(csvarin, excode=SWIGEXCODE2) const std::optional< T >& %{
+%typemap(csvarin, excode=SWIGEXCODE2) std::optional< T >, const std::optional< T >& %{
     set {
       OptT optvalue = value.HasValue ? new OptT(value.Value) : new OptT();
       $imcall;$excode
     }%}
-%typemap(csvarout, excode=SWIGEXCODE2) const std::optional< T >& %{
+%typemap(csvarout, excode=SWIGEXCODE2) std::optional< T >, const std::optional< T >& %{
     get {
       OptT optvalue = new OptT($imcall, $owner);$excode
       if (optvalue.has_value())
@@ -89,7 +89,7 @@ DEFINE_OPTIONAL_HELPER(OptT, T)
 // check if the input argument contains a value or not.
 %typemap(csin,
          pre="    OptT opt$csinput = $csinput.ToString().Length > 0 ? new OptT(($typemap(cstype, T))$csinput) : new OptT();"
-        ) const std::optional< T >& "$csclassname.getCPtr(opt$csinput)"
+        ) std::optional< T >, const std::optional< T >& "$csclassname.getCPtr(opt$csinput)"
 
 %typemap(csout, excode=SWIGEXCODE) std::optional< T >, const std::optional< T >& {
     OptT optvalue = new OptT($imcall, $owner);$excode
@@ -110,18 +110,18 @@ DEFINE_OPTIONAL_HELPER(OptT, T)
 
 DEFINE_OPTIONAL_HELPER(OptT, T)
 
-%typemap(cstype) const std::optional< T > & "$typemap(cstype, T)"
+%typemap(cstype) std::optional< T >, const std::optional< T > & "$typemap(cstype, T)"
 
 %typemap(csin,
          pre="    OptT opt$csinput = $csinput != defValue ? new OptT($csinput): new OptT();"
-         ) const std::optional< T >& "$csclassname.getCPtr(opt$csinput)"
+         ) std::optional< T >, const std::optional< T >& "$csclassname.getCPtr(opt$csinput)"
 
-%typemap(csvarin, excode=SWIGEXCODE2) const std::optional< T >& %{
+%typemap(csvarin, excode=SWIGEXCODE2) std::optional< T >, const std::optional< T >& %{
     set {
       OptT optvalue = value != defValue ? new OptT(value) : new OptT();
       $imcall;$excode
     }%}
-%typemap(csvarout, excode=SWIGEXCODE2) const std::optional< T >& %{
+%typemap(csvarout, excode=SWIGEXCODE2) std::optional< T >, const std::optional< T >& %{
     get {
       OptT optvalue = new OptT($imcall, $owner);$excode
       return optvalue.has_value() ? optvalue.value() : defValue;
