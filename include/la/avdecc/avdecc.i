@@ -330,7 +330,7 @@ DEFINE_AEM_TREE_LEAF(AudioMap);
 DEFINE_AEM_TREE_LEAF(Control);
 DEFINE_AEM_TREE_LEAF(ClockDomain);
 DEFINE_AEM_TREE_NODE(Jack);
-DEFINE_AEM_TREE_NODE(Local);
+DEFINE_AEM_TREE_NODE(Locale);
 DEFINE_AEM_TREE_NODE(StreamPort);
 DEFINE_AEM_TREE_NODE(AudioUnit);
 DEFINE_AEM_TREE_NODE(Configuration);
@@ -353,13 +353,20 @@ DEFINE_AEM_TREE_NODE(Entity);
 %template(AudioUnitTrees) std::map<la::avdecc::entity::model::AudioUnitIndex, la::avdecc::entity::model::AudioUnitTree>;
 %template(LocaleTrees) std::map<la::avdecc::entity::model::LocaleIndex, la::avdecc::entity::model::LocaleTree>;
 %template(JackTrees) std::map<la::avdecc::entity::model::JackIndex, la::avdecc::entity::model::JackTree>;
+%template(StreamInputModels) std::map<la::avdecc::entity::model::StreamIndex, la::avdecc::entity::model::StreamInputNodeModels>;
+%template(StreamOutputModels) std::map<la::avdecc::entity::model::StreamIndex, la::avdecc::entity::model::StreamOutputNodeModels>;
+%template(AvbInterfaceModels) std::map<la::avdecc::entity::model::AvbInterfaceIndex, la::avdecc::entity::model::AvbInterfaceNodeModels>;
+%template(ClockSourceModels) std::map<la::avdecc::entity::model::ClockSourceIndex, la::avdecc::entity::model::ClockSourceNodeModels>;
+%template(MemoryObjectModels) std::map<la::avdecc::entity::model::MemoryObjectIndex, la::avdecc::entity::model::MemoryObjectNodeModels>;
+%template(ClockDomainModels) std::map<la::avdecc::entity::model::ClockDomainIndex, la::avdecc::entity::model::ClockDomainNodeModels>;
 %template(ConfigurationTrees) std::map<la::avdecc::entity::model::ConfigurationIndex, la::avdecc::entity::model::ConfigurationTree>;
 %template(EntityCounters) std::map<la::avdecc::entity::EntityCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
 %template(StreamInputCounters) std::map<la::avdecc::entity::StreamInputCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
 %template(StreamOutputCounters) std::map<la::avdecc::entity::StreamOutputCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
 %template(AvbInterfaceCounters) std::map<la::avdecc::entity::AvbInterfaceCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
 %template(ClockDomainCounters) std::map<la::avdecc::entity::ClockDomainCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
-
+%template(LocalizedStrings) std::unordered_map<la::avdecc::entity::model::StringsIndex, la::avdecc::entity::model::AvdeccFixedString>;
+//%template(DescriptorsVector) std::vector<la::avdecc::entity::model::DescriptorIndex>; // TODO: C# generated code doesn't compile
 
 ////////////////////////////////////////
 // EndStation
