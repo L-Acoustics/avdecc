@@ -408,6 +408,7 @@ DEFINE_AEM_DESCRIPTOR(ClockDomainDescriptor);
 DEFINE_AEM_STRUCT(StreamInfo);
 DEFINE_AEM_STRUCT(AvbInfo);
 DEFINE_AEM_STRUCT(AsPath);
+DEFINE_AEM_STRUCT(MilanInfo);
 
 // Some ignores
 %ignore la::avdecc::entity::model::makeEntityModelID; // Ignore, not needed

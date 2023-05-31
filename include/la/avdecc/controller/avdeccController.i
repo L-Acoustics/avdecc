@@ -75,7 +75,7 @@ public:
 %nspace la::avdecc::controller::model::MediaClockChainNode::Status;
 
 // Define optionals
-//DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, StreamIndex, OptStreamIndex)
+DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, MilanInfo, OptMilanInfo)
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
@@ -91,9 +91,9 @@ DEFINE_CONTROLLED_ENTITY_MODEL_NODE(StreamPort)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(StreamPortInput)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(StreamPortOutput)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(AudioUnit)
-DEFINE_CONTROLLED_ENTITY_MODEL_NODE(StreamNode)
-DEFINE_CONTROLLED_ENTITY_MODEL_NODE(StreamNodeInput)
-DEFINE_CONTROLLED_ENTITY_MODEL_NODE(StreamNodeOutput)
+DEFINE_CONTROLLED_ENTITY_MODEL_NODE(Stream)
+DEFINE_CONTROLLED_ENTITY_MODEL_NODE(StreamInput)
+DEFINE_CONTROLLED_ENTITY_MODEL_NODE(StreamOutput)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(RedundantStream)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(RedundantStreamInput)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(RedundantStreamOutput)
@@ -113,6 +113,27 @@ DEFINE_CONTROLLED_ENTITY_MODEL_NODE(Entity)
 %include "la/avdecc/controller/internals/avdeccControlledEntityModel.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
 
+// Define templates
+// WARNING: Requires https://github.com/swig/swig/issues/2625 to be fixed (or a modified version of the std_map.i file)
+%template(AudioClusterNodes) std::map<la::avdecc::entity::model::ClusterIndex, la::avdecc::controller::model::AudioClusterNode>;
+%template(AudioMapNodes) std::map<la::avdecc::entity::model::MapIndex, la::avdecc::controller::model::AudioMapNode>;
+%template(ControlNodes) std::map<la::avdecc::entity::model::ControlIndex, la::avdecc::controller::model::ControlNode>;
+%template(StreamPortInputsNodes) std::map<la::avdecc::entity::model::StreamPortIndex, la::avdecc::controller::model::StreamPortInputNode>;
+%template(StreamPortOutputNodes) std::map<la::avdecc::entity::model::StreamPortIndex, la::avdecc::controller::model::StreamPortOutputNode>;
+%template(StringNodes) std::map<la::avdecc::entity::model::StringsIndex, la::avdecc::controller::model::StringsNode>;
+%template(AudioUnitNodes) std::map<la::avdecc::entity::model::AudioUnitIndex, la::avdecc::controller::model::AudioUnitNode>;
+%template(StreamInputNodes) std::map<la::avdecc::entity::model::StreamIndex, la::avdecc::controller::model::StreamInputNode>;
+%template(StreamOutputNodes) std::map<la::avdecc::entity::model::StreamIndex, la::avdecc::controller::model::StreamOutputNode>;
+%template(JackInputNodes) std::map<la::avdecc::entity::model::JackIndex, la::avdecc::controller::model::JackInputNode>;
+%template(JackOutputNodes) std::map<la::avdecc::entity::model::JackIndex, la::avdecc::controller::model::JackOutputNode>;
+%template(AvbInterfaceNodes) std::map<la::avdecc::entity::model::AvbInterfaceIndex, la::avdecc::controller::model::AvbInterfaceNode>;
+%template(ClockSourceNodes) std::map<la::avdecc::entity::model::ClockSourceIndex, la::avdecc::controller::model::ClockSourceNode>;
+%template(MemoryObjectNodes) std::map<la::avdecc::entity::model::MemoryObjectIndex, la::avdecc::controller::model::MemoryObjectNode>;
+%template(LocaleNodes) std::map<la::avdecc::entity::model::LocaleIndex, la::avdecc::controller::model::LocaleNode>;
+%template(ClockDomainNodes) std::map<la::avdecc::entity::model::ClockDomainIndex, la::avdecc::controller::model::ClockDomainNode>;
+%template(RedundantStreamInputNodes) std::map<la::avdecc::controller::model::VirtualIndex, la::avdecc::controller::model::RedundantStreamInputNode>;
+%template(RedundantStreamOutputNodes) std::map<la::avdecc::controller::model::VirtualIndex, la::avdecc::controller::model::RedundantStreamOutputNode>;
+%template(ConfigurationNodes) std::map<la::avdecc::entity::model::ConfigurationIndex, la::avdecc::controller::model::ConfigurationNode>;
 
 ////////////////////////////////////////
 // AVDECC CONTROLLED ENTITY
