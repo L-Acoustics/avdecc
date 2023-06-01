@@ -232,117 +232,231 @@ DEFINE_OPTIONAL_CLASS(la::networkInterface, MacAddress, OptMacAddress)
 %nspace la::avdecc::entity::controller::Interface;
 %rename("%s") la::avdecc::entity::controller::Interface; // Unignore class
 %rename("%s") AcquireEntityHandler; // Unignore function // TODO: Would be nice to have the handler in the same namespace as the class (ie. be able to pass a namespace to std_function)
+%rename("%s") ReleaseEntityHandler;
+%rename("%s") LockEntityHandler;
+%rename("%s") UnlockEntityHandler;
+%rename("%s") QueryEntityAvailableHandler;
+%rename("%s") QueryControllerAvailableHandler;
+%rename("%s") RegisterUnsolicitedNotificationsHandler;
+%rename("%s") UnregisterUnsolicitedNotificationsHandler;
+%rename("%s") EntityDescriptorHandler;
+%rename("%s") ConfigurationDescriptorHandler;
+%rename("%s") AudioUnitDescriptorHandler;
+%rename("%s") StreamInputDescriptorHandler;
+%rename("%s") StreamOutputDescriptorHandler;
+%rename("%s") JackInputDescriptorHandler;
+%rename("%s") JackOutputDescriptorHandler;
+%rename("%s") AvbInterfaceDescriptorHandler;
+%rename("%s") ClockSourceDescriptorHandler;
+%rename("%s") MemoryObjectDescriptorHandler;
+%rename("%s") LocaleDescriptorHandler;
+%rename("%s") StringsDescriptorHandler;
+%rename("%s") StreamPortInputDescriptorHandler;
+%rename("%s") StreamPortOutputDescriptorHandler;
+%rename("%s") ExternalPortInputDescriptorHandler;
+%rename("%s") ExternalPortOutputDescriptorHandler;
+%rename("%s") InternalPortInputDescriptorHandler;
+%rename("%s") InternalPortOutputDescriptorHandler;
+%rename("%s") AudioClusterDescriptorHandler;
+%rename("%s") AudioMapDescriptorHandler;
+%rename("%s") ControlDescriptorHandler;
+%rename("%s") ClockDomainDescriptorHandler;
+%rename("%s") SetConfigurationHandler;
+%rename("%s") GetConfigurationHandler;
+%rename("%s") SetStreamInputFormatHandler;
+%rename("%s") GetStreamInputFormatHandler;
+%rename("%s") SetStreamOutputFormatHandler;
+%rename("%s") GetStreamOutputFormatHandler;
+%rename("%s") GetStreamPortInputAudioMapHandler;
+%rename("%s") GetStreamPortOutputAudioMapHandler;
+%rename("%s") AddStreamPortInputAudioMappingsHandler;
+%rename("%s") AddStreamPortOutputAudioMappingsHandler;
+%rename("%s") RemoveStreamPortInputAudioMappingsHandler;
+%rename("%s") RemoveStreamPortOutputAudioMappingsHandler;
+%rename("%s") SetStreamInputInfoHandler;
+%rename("%s") SetStreamOutputInfoHandler;
+%rename("%s") GetStreamInputInfoHandler;
+%rename("%s") GetStreamOutputInfoHandler;
+%rename("%s") SetEntityNameHandler;
+%rename("%s") GetEntityNameHandler;
+%rename("%s") SetEntityGroupNameHandler;
+%rename("%s") GetEntityGroupNameHandler;
+%rename("%s") SetConfigurationNameHandler;
+%rename("%s") GetConfigurationNameHandler;
+%rename("%s") SetAudioUnitNameHandler;
+%rename("%s") GetAudioUnitNameHandler;
+%rename("%s") SetStreamInputNameHandler;
+%rename("%s") GetStreamInputNameHandler;
+%rename("%s") SetStreamOutputNameHandler;
+%rename("%s") GetStreamOutputNameHandler;
+%rename("%s") SetJackInputNameHandler;
+%rename("%s") GetJackInputNameHandler;
+%rename("%s") SetJackOutputNameHandler;
+%rename("%s") GetJackOutputNameHandler;
+%rename("%s") SetAvbInterfaceNameHandler;
+%rename("%s") GetAvbInterfaceNameHandler;
+%rename("%s") SetClockSourceNameHandler;
+%rename("%s") GetClockSourceNameHandler;
+%rename("%s") SetMemoryObjectNameHandler;
+%rename("%s") GetMemoryObjectNameHandler;
+%rename("%s") SetAudioClusterNameHandler;
+%rename("%s") GetAudioClusterNameHandler;
+%rename("%s") SetControlNameHandler;
+%rename("%s") GetControlNameHandler;
+%rename("%s") SetClockDomainNameHandler;
+%rename("%s") GetClockDomainNameHandler;
+%rename("%s") SetAssociationHandler;
+%rename("%s") GetAssociationHandler;
+%rename("%s") SetAudioUnitSamplingRateHandler;
+%rename("%s") GetAudioUnitSamplingRateHandler;
+%rename("%s") SetVideoClusterSamplingRateHandler;
+%rename("%s") GetVideoClusterSamplingRateHandler;
+%rename("%s") SetSensorClusterSamplingRateHandler;
+%rename("%s") GetSensorClusterSamplingRateHandler;
+%rename("%s") SetClockSourceHandler;
+%rename("%s") GetClockSourceHandler;
+%rename("%s") SetControlValuesHandler;
+%rename("%s") GetControlValuesHandler;
+%rename("%s") StartStreamInputHandler;
+%rename("%s") StartStreamOutputHandler;
+%rename("%s") StopStreamInputHandler;
+%rename("%s") StopStreamOutputHandler;
+%rename("%s") GetAvbInfoHandler;
+%rename("%s") GetAsPathHandler;
+%rename("%s") GetEntityCountersHandler;
+%rename("%s") GetAvbInterfaceCountersHandler;
+%rename("%s") GetClockDomainCountersHandler;
+%rename("%s") GetStreamInputCountersHandler;
+%rename("%s") GetStreamOutputCountersHandler;
+%rename("%s") RebootHandler;
+%rename("%s") RebootToFirmwareHandler;
+%rename("%s") StartOperationHandler;
+%rename("%s") AbortOperationHandler;
+%rename("%s") SetMemoryObjectLengthHandler;
+%rename("%s") GetMemoryObjectLengthHandler;
+%rename("%s") AddressAccessHandler;
+%rename("%s") GetMilanInfoHandler;
+%rename("%s") ConnectStreamHandler;
+%rename("%s") DisconnectStreamHandler;
+%rename("%s") DisconnectTalkerStreamHandler;
+%rename("%s") GetTalkerStreamStateHandler;
+%rename("%s") GetListenerStreamStateHandler;
+%rename("%s") GetTalkerStreamConnectionHandler;
 %std_function(AcquireEntityHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const owningEntity, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex);
-%rename("$ignore") la::avdecc::entity::controller::Interface::releaseEntity; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::lockEntity; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::unlockEntity; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::queryEntityAvailable; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::queryControllerAvailable; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::registerUnsolicitedNotifications; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::unregisterUnsolicitedNotifications; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::readEntityDescriptor; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::readConfigurationDescriptor; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::readAudioUnitDescriptor; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::readStreamInputDescriptor; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::readStreamOutputDescriptor; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::readJackInputDescriptor; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::readJackOutputDescriptor; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::readAvbInterfaceDescriptor; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::readClockSourceDescriptor; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::readMemoryObjectDescriptor; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::readLocaleDescriptor; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::readStringsDescriptor; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::readStreamPortInputDescriptor; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::readStreamPortOutputDescriptor; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::readExternalPortInputDescriptor; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::readExternalPortOutputDescriptor; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::readInternalPortInputDescriptor; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::readInternalPortOutputDescriptor; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::readAudioClusterDescriptor; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::readAudioMapDescriptor; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::readControlDescriptor; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::readClockDomainDescriptor; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setConfiguration; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getConfiguration; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setStreamInputFormat; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getStreamInputFormat; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setStreamOutputFormat; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getStreamOutputFormat; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getStreamPortInputAudioMap; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getStreamPortOutputAudioMap; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::addStreamPortInputAudioMappings; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::addStreamPortOutputAudioMappings; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::removeStreamPortInputAudioMappings; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::removeStreamPortOutputAudioMappings; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setStreamInputInfo; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setStreamOutputInfo; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getStreamInputInfo; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getStreamOutputInfo; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setEntityName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getEntityName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setEntityGroupName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getEntityGroupName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setConfigurationName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getConfigurationName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setAudioUnitName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getAudioUnitName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setStreamInputName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getStreamInputName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setStreamOutputName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getStreamOutputName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setJackInputName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getJackInputName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setJackOutputName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getJackOutputName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setAvbInterfaceName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getAvbInterfaceName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setClockSourceName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getClockSourceName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setMemoryObjectName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getMemoryObjectName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setAudioClusterName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getAudioClusterName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setControlName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getControlName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setClockDomainName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getClockDomainName; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setAssociation; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getAssociation; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setAudioUnitSamplingRate; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getAudioUnitSamplingRate; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setVideoClusterSamplingRate; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getVideoClusterSamplingRate; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setSensorClusterSamplingRate; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getSensorClusterSamplingRate; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setClockSource; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getClockSource; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setControlValues; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getControlValues; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::startStreamInput; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::startStreamOutput; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::stopStreamInput; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::stopStreamOutput; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getAvbInfo; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getAsPath; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getEntityCounters; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getAvbInterfaceCounters; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getClockDomainCounters; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getStreamInputCounters; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getStreamOutputCounters; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::reboot; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::rebootToFirmware; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::startOperation; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::abortOperation; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::setMemoryObjectLength; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getMemoryObjectLength; // Temp ignore method
+%std_function(ReleaseEntityHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const owningEntity, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex);
+%std_function(LockEntityHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const lockingEntity, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex);
+%std_function(UnlockEntityHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const lockingEntity, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex);
+%std_function(QueryEntityAvailableHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status);
+%std_function(QueryControllerAvailableHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status);
+%std_function(RegisterUnsolicitedNotificationsHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status);
+%std_function(UnregisterUnsolicitedNotificationsHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status);
+%std_function(EntityDescriptorHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::EntityDescriptor const& descriptor);
+%std_function(ConfigurationDescriptorHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ConfigurationDescriptor const& descriptor);
+%std_function(AudioUnitDescriptorHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::AudioUnitIndex const audioUnitIndex, la::avdecc::entity::model::AudioUnitDescriptor const& descriptor);
+%std_function(StreamInputDescriptorHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamDescriptor const& descriptor);
+%std_function(StreamOutputDescriptorHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamDescriptor const& descriptor);
+%std_function(JackInputDescriptorHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::JackIndex const jackIndex, la::avdecc::entity::model::JackDescriptor const& descriptor);
+%std_function(JackOutputDescriptorHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::JackIndex const jackIndex, la::avdecc::entity::model::JackDescriptor const& descriptor);
+%std_function(AvbInterfaceDescriptorHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::AvbInterfaceIndex const avbInterfaceIndex, la::avdecc::entity::model::AvbInterfaceDescriptor const& descriptor);
+%std_function(ClockSourceDescriptorHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ClockSourceIndex const clockSourceIndex, la::avdecc::entity::model::ClockSourceDescriptor const& descriptor);
+%std_function(MemoryObjectDescriptorHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MemoryObjectIndex const memoryObjectIndex, la::avdecc::entity::model::MemoryObjectDescriptor const& descriptor);
+%std_function(LocaleDescriptorHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::LocaleIndex const localeIndex, la::avdecc::entity::model::LocaleDescriptor const& descriptor);
+%std_function(StringsDescriptorHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::StringsIndex const stringsIndex, la::avdecc::entity::model::StringsDescriptor const& descriptor);
+%std_function(StreamPortInputDescriptorHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::StreamPortIndex const streamPortIndex, la::avdecc::entity::model::StreamPortDescriptor const& descriptor);
+%std_function(StreamPortOutputDescriptorHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::StreamPortIndex const streamPortIndex, la::avdecc::entity::model::StreamPortDescriptor const& descriptor);
+%std_function(ExternalPortInputDescriptorHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ExternalPortIndex const externalPortIndex, la::avdecc::entity::model::ExternalPortDescriptor const& descriptor);
+%std_function(ExternalPortOutputDescriptorHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ExternalPortIndex const externalPortIndex, la::avdecc::entity::model::ExternalPortDescriptor const& descriptor);
+%std_function(InternalPortInputDescriptorHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::InternalPortIndex const internalPortIndex, la::avdecc::entity::model::InternalPortDescriptor const& descriptor);
+%std_function(InternalPortOutputDescriptorHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::InternalPortIndex const internalPortIndex, la::avdecc::entity::model::InternalPortDescriptor const& descriptor);
+%std_function(AudioClusterDescriptorHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ClusterIndex const clusterIndex, la::avdecc::entity::model::AudioClusterDescriptor const& descriptor);
+%std_function(AudioMapDescriptorHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MapIndex const mapIndex, la::avdecc::entity::model::AudioMapDescriptor const& descriptor);
+%std_function(ControlDescriptorHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ControlIndex const controlIndex, la::avdecc::entity::model::ControlDescriptor const& descriptor);
+%std_function(ClockDomainDescriptorHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::model::ClockDomainDescriptor const& descriptor);
+%std_function(SetConfigurationHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex);
+%std_function(GetConfigurationHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex);
+%std_function(SetStreamInputFormatHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamFormat const streamFormat);
+%std_function(GetStreamInputFormatHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamFormat const streamFormat);
+%std_function(SetStreamOutputFormatHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamFormat const streamFormat);
+%std_function(GetStreamOutputFormatHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamFormat const streamFormat);
+%std_function(GetStreamPortInputAudioMapHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamPortIndex const streamPortIndex, la::avdecc::entity::model::MapIndex const numberOfMaps, la::avdecc::entity::model::MapIndex const mapIndex, la::avdecc::entity::model::AudioMappings const& mappings);
+%std_function(GetStreamPortOutputAudioMapHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamPortIndex const streamPortIndex, la::avdecc::entity::model::MapIndex const numberOfMaps, la::avdecc::entity::model::MapIndex const mapIndex, la::avdecc::entity::model::AudioMappings const& mappings);
+%std_function(AddStreamPortInputAudioMappingsHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamPortIndex const streamPortIndex, la::avdecc::entity::model::AudioMappings const& mappings);
+%std_function(AddStreamPortOutputAudioMappingsHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamPortIndex const streamPortIndex, la::avdecc::entity::model::AudioMappings const& mappings);
+%std_function(RemoveStreamPortInputAudioMappingsHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamPortIndex const streamPortIndex, la::avdecc::entity::model::AudioMappings const& mappings);
+%std_function(RemoveStreamPortOutputAudioMappingsHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamPortIndex const streamPortIndex, la::avdecc::entity::model::AudioMappings const& mappings);
+%std_function(SetStreamInputInfoHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamInfo const& info);
+%std_function(SetStreamOutputInfoHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamInfo const& info);
+%std_function(GetStreamInputInfoHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamInfo const& info);
+%std_function(GetStreamOutputInfoHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamInfo const& info);
+%std_function(SetEntityNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::AvdeccFixedString const& entityName);
+%std_function(GetEntityNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::AvdeccFixedString const& entityName);
+%std_function(SetEntityGroupNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::AvdeccFixedString const& entityGroupName);
+%std_function(GetEntityGroupNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::AvdeccFixedString const& entityGroupName);
+%std_function(SetConfigurationNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::AvdeccFixedString const& configurationName);
+%std_function(GetConfigurationNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::AvdeccFixedString const& configurationName);
+%std_function(SetAudioUnitNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::AudioUnitIndex const audioUnitIndex, la::avdecc::entity::model::AvdeccFixedString const& audioUnitName);
+%std_function(GetAudioUnitNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::AudioUnitIndex const audioUnitIndex, la::avdecc::entity::model::AvdeccFixedString const& audioUnitName);
+%std_function(SetStreamInputNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::AvdeccFixedString const& streamInputName);
+%std_function(GetStreamInputNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::AvdeccFixedString const& streamInputName);
+%std_function(SetStreamOutputNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::AvdeccFixedString const& streamOutputName);
+%std_function(GetStreamOutputNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::AvdeccFixedString const& streamOutputName);
+%std_function(SetJackInputNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::JackIndex const jackIndex, la::avdecc::entity::model::AvdeccFixedString const& jackInputName);
+%std_function(GetJackInputNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::JackIndex const jackIndex, la::avdecc::entity::model::AvdeccFixedString const& jackInputName);
+%std_function(SetJackOutputNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::JackIndex const jackIndex, la::avdecc::entity::model::AvdeccFixedString const& jackOutputName);
+%std_function(GetJackOutputNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::JackIndex const jackIndex, la::avdecc::entity::model::AvdeccFixedString const& jackOutputName);
+%std_function(SetAvbInterfaceNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::AvbInterfaceIndex const avbInterfaceIndex, la::avdecc::entity::model::AvdeccFixedString const& avbInterfaceName);
+%std_function(GetAvbInterfaceNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::AvbInterfaceIndex const avbInterfaceIndex, la::avdecc::entity::model::AvdeccFixedString const& avbInterfaceName);
+%std_function(SetClockSourceNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ClockSourceIndex const clockSourceIndex, la::avdecc::entity::model::AvdeccFixedString const& clockSourceName);
+%std_function(GetClockSourceNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ClockSourceIndex const clockSourceIndex, la::avdecc::entity::model::AvdeccFixedString const& clockSourceName);
+%std_function(SetMemoryObjectNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MemoryObjectIndex const memoryObjectIndex, la::avdecc::entity::model::AvdeccFixedString const& memoryObjectName);
+%std_function(GetMemoryObjectNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MemoryObjectIndex const memoryObjectIndex, la::avdecc::entity::model::AvdeccFixedString const& memoryObjectName);
+%std_function(SetAudioClusterNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ClusterIndex const audioClusterIndex, la::avdecc::entity::model::AvdeccFixedString const& audioClusterName);
+%std_function(GetAudioClusterNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ClusterIndex const audioClusterIndex, la::avdecc::entity::model::AvdeccFixedString const& audioClusterName);
+%std_function(SetControlNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ControlIndex const controlIndex, la::avdecc::entity::model::AvdeccFixedString const& controlName);
+%std_function(GetControlNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ControlIndex const controlIndex, la::avdecc::entity::model::AvdeccFixedString const& controlName);
+%std_function(SetClockDomainNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::model::AvdeccFixedString const& clockDomainName);
+%std_function(GetClockDomainNameHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::model::AvdeccFixedString const& clockDomainName);
+%std_function(SetAssociationHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const associationID);
+%std_function(GetAssociationHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const associationID);
+%std_function(SetAudioUnitSamplingRateHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::AudioUnitIndex const audioUnitIndex, la::avdecc::entity::model::SamplingRate const samplingRate);
+%std_function(GetAudioUnitSamplingRateHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::AudioUnitIndex const audioUnitIndex, la::avdecc::entity::model::SamplingRate const samplingRate);
+%std_function(SetVideoClusterSamplingRateHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ClusterIndex const videoClusterIndex, la::avdecc::entity::model::SamplingRate const samplingRate);
+%std_function(GetVideoClusterSamplingRateHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ClusterIndex const videoClusterIndex, la::avdecc::entity::model::SamplingRate const samplingRate);
+%std_function(SetSensorClusterSamplingRateHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ClusterIndex const sensorClusterIndex, la::avdecc::entity::model::SamplingRate const samplingRate);
+%std_function(GetSensorClusterSamplingRateHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ClusterIndex const sensorClusterIndex, la::avdecc::entity::model::SamplingRate const samplingRate);
+%std_function(SetClockSourceHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::model::ClockSourceIndex const clockSourceIndex);
+%std_function(GetClockSourceHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::model::ClockSourceIndex const clockSourceIndex);
+%std_function(SetControlValuesHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ControlIndex const controlIndex, la::avdecc::MemoryBuffer const& packedControlValues);
+%std_function(GetControlValuesHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ControlIndex const controlIndex, la::avdecc::MemoryBuffer const& packedControlValues);
+%std_function(StartStreamInputHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex);
+%std_function(StartStreamOutputHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex);
+%std_function(StopStreamInputHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex);
+%std_function(StopStreamOutputHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex);
+%std_function(GetAvbInfoHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::AvbInterfaceIndex const avbInterfaceIndex, la::avdecc::entity::model::AvbInfo const& info);
+%std_function(GetAsPathHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::AvbInterfaceIndex const avbInterfaceIndex, la::avdecc::entity::model::AsPath const& asPath);
+%std_function(GetEntityCountersHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::EntityCounterValidFlags const validCounters, la::avdecc::entity::model::DescriptorCounters const& counters);
+%std_function(GetAvbInterfaceCountersHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::AvbInterfaceIndex const avbInterfaceIndex, la::avdecc::entity::AvbInterfaceCounterValidFlags const validCounters, la::avdecc::entity::model::DescriptorCounters const& counters);
+%std_function(GetClockDomainCountersHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::ClockDomainCounterValidFlags const validCounters, la::avdecc::entity::model::DescriptorCounters const& counters);
+%std_function(GetStreamInputCountersHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::StreamInputCounterValidFlags const validCounters, la::avdecc::entity::model::DescriptorCounters const& counters);
+%std_function(GetStreamOutputCountersHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::StreamOutputCounterValidFlags const validCounters, la::avdecc::entity::model::DescriptorCounters const& counters);
+%std_function(RebootHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status);
+%std_function(RebootToFirmwareHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::MemoryObjectIndex const memoryObjectIndex);
+%std_function(StartOperationHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, la::avdecc::entity::model::OperationID const operationID, la::avdecc::entity::model::MemoryObjectOperationType const operationType, la::avdecc::MemoryBuffer const& memoryBuffer);
+%std_function(AbortOperationHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, la::avdecc::entity::model::OperationID const operationID);
+%std_function(SetMemoryObjectLengthHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length);
+%std_function(GetMemoryObjectLengthHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length);
+#if 1
 %rename("$ignore") la::avdecc::entity::controller::Interface::addressAccess; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getMilanInfo; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::connectStream; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::disconnectStream; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::disconnectTalkerStream; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getTalkerStreamState; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getListenerStreamState; // Temp ignore method
-%rename("$ignore") la::avdecc::entity::controller::Interface::getTalkerStreamConnection; // Temp ignore method
+#else
+%std_function(AddressAccessHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AaCommandStatus const status, la::avdecc::entity::addressAccess::Tlvs const& tlvs);
+#endif
+%std_function(GetMilanInfoHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::MvuCommandStatus const status, la::avdecc::entity::model::MilanInfo const& info);
+%std_function(ConnectStreamHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::LocalEntity::ControlStatus const status);
+%std_function(DisconnectStreamHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::LocalEntity::ControlStatus const status);
+%std_function(DisconnectTalkerStreamHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::LocalEntity::ControlStatus const status);
+%std_function(GetTalkerStreamStateHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::LocalEntity::ControlStatus const status);
+%std_function(GetListenerStreamStateHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::LocalEntity::ControlStatus const status);
+%std_function(GetTalkerStreamConnectionHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::entity::model::StreamIdentification const& talkerStream, la::avdecc::entity::model::StreamIdentification const& listenerStream, std::uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::LocalEntity::ControlStatus const status);
 
 %nspace la::avdecc::entity::ControllerEntity;
 %rename("%s") la::avdecc::entity::ControllerEntity; // Unignore class
