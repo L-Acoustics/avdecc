@@ -34,8 +34,8 @@
 %feature("director") Name;
 
 #if defined(SWIGCSHARP)
-#if 0 // Currently not working
 %typemap(cscode) Name %{
+#if GENERATE_LAMBDA // Currently not working
   public class Action : Name {
     private readonly System.Action<%foreach(%param, __VA_ARGS__)> delegateAction;
 
@@ -51,9 +51,9 @@
     }
   }
 
+#endif
   public static implicit operator Name##Native(Name handler) => new Name##Native(handler);
 %}
-#endif
 
 %typemap(csclassmodifiers) Name "public abstract class"
 %csmethodmodifiers Name::Invoke "protected abstract";
