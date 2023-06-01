@@ -344,11 +344,10 @@ DEFINE_OPTIONAL_CLASS(la::networkInterface, MacAddress, OptMacAddress)
 %rename("$ignore") la::avdecc::entity::controller::Interface::getListenerStreamState; // Temp ignore method
 %rename("$ignore") la::avdecc::entity::controller::Interface::getTalkerStreamConnection; // Temp ignore method
 
-// TODO: DOESN'T SEEM TO BE CREATED!!!
-%nspace la::avdecc::entity::controller::ControllerEntity;
-%rename("%s") la::avdecc::entity::controller::ControllerEntity; // Unignore class
-%ignore la::avdecc::entity::controller::ControllerEntity::ControllerEntity(ControllerEntity&&); // Ignore move constructor
-%ignore la::avdecc::entity::controller::ControllerEntity::operator=; // Ignore copy operator
+%nspace la::avdecc::entity::ControllerEntity;
+%rename("%s") la::avdecc::entity::ControllerEntity; // Unignore class
+%ignore la::avdecc::entity::ControllerEntity::ControllerEntity(ControllerEntity&&); // Ignore move constructor
+%ignore la::avdecc::entity::ControllerEntity::operator=; // Ignore copy operator
 
 // Include c++ declaration file
 %include "la/avdecc/internals/controllerEntity.hpp"
