@@ -20,6 +20,7 @@
 #endif
 %include "la/avdecc/internals/chrono.i"
 %include "la/avdecc/internals/optional.i"
+%include "la/avdecc/internals/std_function.i"
 
 // Generated wrapper file needs to include our header file (include as soon as possible using 'insert(runtime)' as target language exceptions are defined early in the generated wrapper file)
 %insert(runtime) %{
@@ -227,6 +228,121 @@ DEFINE_OPTIONAL_CLASS(la::networkInterface, MacAddress, OptMacAddress)
 %ignore la::avdecc::entity::controller::Delegate::operator=; // Ignore copy operator
 %feature("director") la::avdecc::entity::controller::Delegate;
 //%interface_impl(la::avdecc::entity::controller::Delegate); // Not working as expected
+
+%nspace la::avdecc::entity::controller::Interface;
+%rename("%s") la::avdecc::entity::controller::Interface; // Unignore class
+%rename("%s") AcquireEntityHandler; // Unignore function // TODO: Would be nice to have the handler in the same namespace as the class (ie. be able to pass a namespace to std_function)
+%std_function(AcquireEntityHandler, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const owningEntity, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex);
+%rename("$ignore") la::avdecc::entity::controller::Interface::releaseEntity; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::lockEntity; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::unlockEntity; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::queryEntityAvailable; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::queryControllerAvailable; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::registerUnsolicitedNotifications; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::unregisterUnsolicitedNotifications; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::readEntityDescriptor; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::readConfigurationDescriptor; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::readAudioUnitDescriptor; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::readStreamInputDescriptor; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::readStreamOutputDescriptor; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::readJackInputDescriptor; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::readJackOutputDescriptor; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::readAvbInterfaceDescriptor; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::readClockSourceDescriptor; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::readMemoryObjectDescriptor; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::readLocaleDescriptor; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::readStringsDescriptor; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::readStreamPortInputDescriptor; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::readStreamPortOutputDescriptor; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::readExternalPortInputDescriptor; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::readExternalPortOutputDescriptor; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::readInternalPortInputDescriptor; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::readInternalPortOutputDescriptor; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::readAudioClusterDescriptor; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::readAudioMapDescriptor; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::readControlDescriptor; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::readClockDomainDescriptor; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setConfiguration; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getConfiguration; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setStreamInputFormat; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getStreamInputFormat; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setStreamOutputFormat; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getStreamOutputFormat; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getStreamPortInputAudioMap; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getStreamPortOutputAudioMap; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::addStreamPortInputAudioMappings; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::addStreamPortOutputAudioMappings; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::removeStreamPortInputAudioMappings; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::removeStreamPortOutputAudioMappings; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setStreamInputInfo; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setStreamOutputInfo; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getStreamInputInfo; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getStreamOutputInfo; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setEntityName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getEntityName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setEntityGroupName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getEntityGroupName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setConfigurationName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getConfigurationName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setAudioUnitName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getAudioUnitName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setStreamInputName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getStreamInputName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setStreamOutputName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getStreamOutputName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setJackInputName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getJackInputName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setJackOutputName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getJackOutputName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setAvbInterfaceName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getAvbInterfaceName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setClockSourceName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getClockSourceName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setMemoryObjectName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getMemoryObjectName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setAudioClusterName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getAudioClusterName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setControlName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getControlName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setClockDomainName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getClockDomainName; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setAssociation; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getAssociation; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setAudioUnitSamplingRate; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getAudioUnitSamplingRate; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setVideoClusterSamplingRate; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getVideoClusterSamplingRate; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setSensorClusterSamplingRate; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getSensorClusterSamplingRate; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setClockSource; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getClockSource; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setControlValues; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getControlValues; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::startStreamInput; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::startStreamOutput; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::stopStreamInput; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::stopStreamOutput; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getAvbInfo; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getAsPath; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getEntityCounters; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getAvbInterfaceCounters; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getClockDomainCounters; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getStreamInputCounters; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getStreamOutputCounters; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::reboot; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::rebootToFirmware; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::startOperation; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::abortOperation; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::setMemoryObjectLength; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getMemoryObjectLength; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::addressAccess; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getMilanInfo; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::connectStream; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::disconnectStream; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::disconnectTalkerStream; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getTalkerStreamState; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getListenerStreamState; // Temp ignore method
+%rename("$ignore") la::avdecc::entity::controller::Interface::getTalkerStreamConnection; // Temp ignore method
 
 // TODO: DOESN'T SEEM TO BE CREATED!!!
 %nspace la::avdecc::entity::controller::ControllerEntity;
