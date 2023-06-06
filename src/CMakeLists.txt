@@ -358,7 +358,14 @@ if(BUILD_AVDECC_BINDINGS_CSHARP)
 	# avdecc entity model
 	set(TARGET_PREFIX ${PROJECT_NAME}EntityModel)
 	set(SWIG_INTERFACE_FILE "${CU_ROOT_DIR}/include/la/avdecc/internals/entityModel.i")
-	cu_setup_swig_target(VERSION 4.2 TARGET_NAME ${PROJECT_NAME}::static INTERFACE_FILE "${SWIG_INTERFACE_FILE}" LANGUAGES ${AVDECC_SWIG_LANGUAGES} SWIG_TARGET_PREFIX ${TARGET_PREFIX} REQUIRED INSTALL_SUPPORT_FILES)
+	set(SWIG_FILE_DEPENDENCIES
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/chrono.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/csharp_optional.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/optional.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_function.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_unordered_map.i"
+	)
+	cu_setup_swig_target(VERSION 4.2 TARGET_NAME ${PROJECT_NAME}::static INTERFACE_FILE "${SWIG_INTERFACE_FILE}" LANGUAGES ${AVDECC_SWIG_LANGUAGES} SWIG_TARGET_PREFIX ${TARGET_PREFIX} REQUIRED INSTALL_SUPPORT_FILES FILE_DEPENDENCIES ${SWIG_FILE_DEPENDENCIES})
 
 	# Post process generated targets
 	foreach(SWIG_LANG ${AVDECC_SWIG_LANGUAGES})
@@ -380,7 +387,15 @@ if(BUILD_AVDECC_BINDINGS_CSHARP)
 	# avdecc library
 	set(TARGET_PREFIX ${PROJECT_NAME})
 	set(SWIG_INTERFACE_FILE "${CU_ROOT_DIR}/include/la/avdecc/avdecc.i")
-	cu_setup_swig_target(VERSION 4.2 TARGET_NAME ${PROJECT_NAME}::static INTERFACE_FILE "${SWIG_INTERFACE_FILE}" LANGUAGES ${AVDECC_SWIG_LANGUAGES} SWIG_TARGET_PREFIX ${TARGET_PREFIX} REQUIRED INSTALL_SUPPORT_FILES)
+	set(SWIG_FILE_DEPENDENCIES
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/chrono.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/csharp_optional.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/optional.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_function.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/std_unordered_map.i"
+		"${CU_ROOT_DIR}/include/la/avdecc/internals/entityModel.i"
+	)
+	cu_setup_swig_target(VERSION 4.2 TARGET_NAME ${PROJECT_NAME}::static INTERFACE_FILE "${SWIG_INTERFACE_FILE}" LANGUAGES ${AVDECC_SWIG_LANGUAGES} SWIG_TARGET_PREFIX ${TARGET_PREFIX} REQUIRED INSTALL_SUPPORT_FILES FILE_DEPENDENCIES ${SWIG_FILE_DEPENDENCIES})
 
 	# Post process generated targets
 	foreach(SWIG_LANG ${AVDECC_SWIG_LANGUAGES})
