@@ -165,8 +165,7 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::Controller, Error, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::controller::Controller, QueryCommandError, "uint")
 
 // Bind structs and classes
-//!!!!!!!!! CURRENTLY WE NEED TO KEEP ALL DEFINITIONS OTHERWISE std::function WILL NOT WORK - Probably related to the other issues when the c# generated code is garbage for std::function
-//%rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
+%rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
 
 %nspace la::avdecc::controller::CompileOptionInfo;
 %rename("%s") la::avdecc::controller::CompileOptionInfo; // Unignore class
@@ -273,59 +272,6 @@ namespace la.avdecc.controller
 %rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::deserializeControlledEntitiesFromJsonNetworkState"; // Temp ignore method
 %rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::deserializeControlledEntityFromJson"; // Temp ignore method
 %rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::computeEntityModelChecksum";
-// TEMP ignore all methods with callbacks
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::acquireEntity";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::releaseEntity";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::lockEntity";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::unlockEntity";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setConfiguration";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setStreamInputFormat";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setStreamOutputFormat";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setStreamInputInfo";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setStreamOutputInfo";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setEntityName";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setEntityGroupName";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setConfigurationName";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setAudioUnitName";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setStreamInputName";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setStreamOutputName";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setJackInputName";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setJackOutputName";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setAvbInterfaceName";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setClockSourceName";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setMemoryObjectName";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setAudioClusterName";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setControlName";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setClockDomainName";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setAssociationID";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setAudioUnitSamplingRate";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setClockSource";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setControlValues";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::startStreamInput";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::stopStreamInput";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::startStreamOutput";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::stopStreamOutput";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::addStreamPortInputAudioMappings";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::addStreamPortOutputAudioMappings";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::removeStreamPortInputAudioMappings";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::removeStreamPortOutputAudioMappings";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::reboot";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::rebootToFirmware";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::startStoreMemoryObjectOperation";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::startStoreAndRebootMemoryObjectOperation";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::startReadMemoryObjectOperation";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::startEraseMemoryObjectOperation";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::startUploadMemoryObjectOperation";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::abortOperation";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::setMemoryObjectLength";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::identifyEntity";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::readDeviceMemory";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::writeDeviceMemory";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::connectStream";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::disconnectStream";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::disconnectTalkerStream";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::getListenerStreamState";
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::requestExclusiveAccess";
 
 // Unignore functions automatically generated by the following std_function calls (because we asked to ignore all methods earlier)
 %rename("%s") Handler_Entity_AemCommandStatus_UniqueIdentifier;
@@ -348,25 +294,25 @@ namespace la.avdecc.controller
 %rename("%s") Handler_Entity_ControlStatus;
 %rename("%s") Handler_Entity_AemCommandStatus_ExclusiveAccessToken;
 // TODO: Would be nice to have the handler in the same namespace as the class (ie. be able to pass a namespace to std_function)
-%std_function(Handler_Entity_AemCommandStatus_UniqueIdentifier, void, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const entityID);
-%std_function(Handler_Entity_AemCommandStatus, void, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AemCommandStatus const status);
-%std_function(Handler_Entity_AemCommandStatus_OperationID, void, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::OperationID const operationID);
+%std_function(Handler_Entity_AemCommandStatus_UniqueIdentifier, void, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const entityID);
+%std_function(Handler_Entity_AemCommandStatus, void, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::LocalEntity::AemCommandStatus const status);
+%std_function(Handler_Entity_AemCommandStatus_OperationID, void, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::OperationID const operationID);
 %std_function(Handler_Entity_float, bool, la::avdecc::controller::ControlledEntity const* const entity, float const percentComplete);
-%std_function(Handler_Entity_AaCommandStatus_DeviceMemoryBuffer, void, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AaCommandStatus const status, la::avdecc::controller::Controller::DeviceMemoryBuffer const& memoryBuffer);
-%std_function(Handler_Entity_AaCommandStatus, void, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AaCommandStatus const status);
+%std_function(Handler_Entity_AaCommandStatus_DeviceMemoryBuffer, void, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::LocalEntity::AaCommandStatus const status, la::avdecc::controller::Controller::DeviceMemoryBuffer const& memoryBuffer);
+%std_function(Handler_Entity_AaCommandStatus, void, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::LocalEntity::AaCommandStatus const status);
 #if TYPED_DESCRIPTOR_INDEXES
-%std_function(Handler_Entity_Entity_StreamIndex_StreamIndex_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const talkerEntity, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::StreamIndex const talkerStreamIndex, la::avdecc::entity::model::StreamIndex const listenerStreamIndex, la::avdecc::entity::ControllerEntity::ControlStatus const status);
-%std_function(Handler_Entity_Entity_StreamIndex_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::StreamIndex const listenerStreamIndex, la::avdecc::entity::ControllerEntity::ControlStatus const status);
-%std_function(Handler_Entity_StreamIndex_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::StreamIndex const listenerStreamIndex, la::avdecc::entity::ControllerEntity::ControlStatus const status);
-%std_function(Handler_Entity_Entity_StreamIndex_StreamIndex_uint16_ConnectionFlags_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const talkerEntity, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::StreamIndex const talkerStreamIndex, la::avdecc::entity::model::StreamIndex const listenerStreamIndex, std::uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::ControllerEntity::ControlStatus const status);
+%std_function(Handler_Entity_Entity_StreamIndex_StreamIndex_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const talkerEntity, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::StreamIndex const talkerStreamIndex, la::avdecc::entity::model::StreamIndex const listenerStreamIndex, la::avdecc::entity::LocalEntity::ControlStatus const status);
+%std_function(Handler_Entity_Entity_StreamIndex_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::StreamIndex const listenerStreamIndex, la::avdecc::entity::LocalEntity::ControlStatus const status);
+%std_function(Handler_Entity_StreamIndex_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::StreamIndex const listenerStreamIndex, la::avdecc::entity::LocalEntity::ControlStatus const status);
+%std_function(Handler_Entity_Entity_StreamIndex_StreamIndex_uint16_ConnectionFlags_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const talkerEntity, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::StreamIndex const talkerStreamIndex, la::avdecc::entity::model::StreamIndex const listenerStreamIndex, std::uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::LocalEntity::ControlStatus const status);
 #else
-%std_function(Handler_Entity_Entity_DescriptorIndex_DescriptorIndex_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const talkerEntity, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::DescriptorIndex const talkerDescriptorIndex, la::avdecc::entity::model::DescriptorIndex const listenerDescriptorIndex, la::avdecc::entity::ControllerEntity::ControlStatus const status);
-%std_function(Handler_Entity_Entity_DescriptorIndex_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::DescriptorIndex const listenerDescriptorIndex, la::avdecc::entity::ControllerEntity::ControlStatus const status);
-%std_function(Handler_Entity_DescriptorIndex_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::DescriptorIndex const listenerDescriptorIndex, la::avdecc::entity::ControllerEntity::ControlStatus const status);
-%std_function(Handler_Entity_Entity_DescriptorIndex_DescriptorIndex_uint16_ConnectionFlags_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const talkerEntity, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::DescriptorIndex const talkerDescriptorIndex, la::avdecc::entity::model::DescriptorIndex const listenerDescriptorIndex, std::uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::ControllerEntity::ControlStatus const status);
+%std_function(Handler_Entity_Entity_DescriptorIndex_DescriptorIndex_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const talkerEntity, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::DescriptorIndex const talkerDescriptorIndex, la::avdecc::entity::model::DescriptorIndex const listenerDescriptorIndex, la::avdecc::entity::LocalEntity::ControlStatus const status);
+%std_function(Handler_Entity_Entity_DescriptorIndex_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::DescriptorIndex const listenerDescriptorIndex, la::avdecc::entity::LocalEntity::ControlStatus const status);
+%std_function(Handler_Entity_DescriptorIndex_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::DescriptorIndex const listenerDescriptorIndex, la::avdecc::entity::LocalEntity::ControlStatus const status);
+%std_function(Handler_Entity_Entity_DescriptorIndex_DescriptorIndex_uint16_ConnectionFlags_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const talkerEntity, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::DescriptorIndex const talkerDescriptorIndex, la::avdecc::entity::model::DescriptorIndex const listenerDescriptorIndex, std::uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::LocalEntity::ControlStatus const status);
 #endif
-%std_function(Handler_Entity_ControlStatus, void, la::avdecc::entity::ControllerEntity::ControlStatus const status);
-%std_function(Handler_Entity_AemCommandStatus_ExclusiveAccessToken, void, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::controller::Controller::ExclusiveAccessToken::UniquePointer&& token);
+%std_function(Handler_Entity_ControlStatus, void, la::avdecc::entity::LocalEntity::ControlStatus const status);
+%std_function(Handler_Entity_AemCommandStatus_ExclusiveAccessToken, void, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::controller::Controller::ExclusiveAccessToken::UniquePointer&& token);
 
 
 // Include c++ declaration file
