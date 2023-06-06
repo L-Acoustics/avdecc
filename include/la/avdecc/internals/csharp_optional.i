@@ -123,16 +123,20 @@ DEFINE_OPTIONAL_HELPER(OptT, T)
     else
       return null;
   }
+
 %typemap(csvarin, excode=SWIGEXCODE2) std::optional< T >, const std::optional< T >& %{
     set {
       OptT optvalue = value != null ? new OptT(value) : new OptT();
       $imcall;$excode
     }%}
+
 %typemap(csvarout, excode=SWIGEXCODE2) std::optional< T >, const std::optional< T >& %{
     get {
       OptT optvalue = new OptT($imcall, $owner);$excode
       return optvalue.has_value() ? optvalue.value() : null;
     }%}
+
+%typemap(csdirectorin) std::optional< T >, const std::optional< T >& "$typemap(csdirectorin, T*)"
 
 %enddef
 
