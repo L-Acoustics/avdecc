@@ -43,6 +43,68 @@
 #define LA_AVDECC_CALL_CONVENTION
 
 ////////////////////////////////////////
+// Utils
+////////////////////////////////////////
+// Define a helper template to handle std::underlying_type_t
+%inline %{
+namespace la::avdecc::utils
+{
+template<typename T>
+class UnderlyingType
+{
+public:
+    using value_type = void;
+};
+}
+%}
+
+// Redefine a simplier version of some classes from la::avdecc::utils namespace (easier to parse for SWIG)
+namespace la::avdecc::utils
+{
+class EmptyLock
+{
+public:
+	void lock() const noexcept;
+	void unlock() const noexcept;
+	// Defaulted compiler auto-generated methods
+	EmptyLock() noexcept = default;
+	~EmptyLock() noexcept = default;
+	EmptyLock(EmptyLock const&) noexcept = default;
+	%ignore operator=; // Ignore copy operator
+	EmptyLock& operator=(EmptyLock const&) noexcept = default;
+	EmptyLock& operator=(EmptyLock&&) noexcept = default;
+};
+
+// Forward declare Subject template class
+template<class Derived, class Mut>
+class Subject;
+
+template<class Observable>
+class Observer
+{
+};
+
+template<class Derived, class Mut>
+class Subject
+{
+public:
+	using mutex_type = Mut;
+	using observer_type = Observer<Derived>;
+
+	void registerObserver(observer_type* const observer) const;
+	void unregisterObserver(observer_type* const observer) const;
+	%rename("_lock") lock() noexcept;
+	void lock() noexcept;
+	%rename("_unlock") unlock() noexcept;
+	void unlock() noexcept;
+	size_t countObservers() const noexcept;
+	bool isObserverRegistered(observer_type* const observer) const noexcept;
+};
+
+} // namespace la::avdecc::utils
+
+
+////////////////////////////////////////
 // MemoryBuffer class
 ////////////////////////////////////////
 %nspace la::avdecc::MemoryBuffer;

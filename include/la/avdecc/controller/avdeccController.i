@@ -48,7 +48,6 @@ public:
 %}
 
 
-
 ////////////////////////////////////////
 // AVDECC Library
 ////////////////////////////////////////
@@ -159,6 +158,10 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller::ControlledEntity, Compatibili
 ////////////////////////////////////////
 // AVDECC CONTROLLER
 ////////////////////////////////////////
+// Define Observer templates
+%template("ControllerSubject") la::avdecc::utils::Subject<la::avdecc::controller::Controller, std::recursive_mutex>;
+%template("ControllerObserver") la::avdecc::utils::Observer<la::avdecc::controller::Controller>;
+
 // Bind enums
 DEFINE_ENUM_CLASS(la::avdecc::controller, CompileOption, "uint")
 DEFINE_ENUM_CLASS(la::avdecc::controller::Controller, Error, "uint")
@@ -302,12 +305,10 @@ namespace la.avdecc.controller
 %std_function(Handler_Entity_AaCommandStatus, void, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::LocalEntity::AaCommandStatus const status);
 #if TYPED_DESCRIPTOR_INDEXES
 %std_function(Handler_Entity_Entity_StreamIndex_StreamIndex_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const talkerEntity, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::StreamIndex const talkerStreamIndex, la::avdecc::entity::model::StreamIndex const listenerStreamIndex, la::avdecc::entity::LocalEntity::ControlStatus const status);
-%std_function(Handler_Entity_Entity_StreamIndex_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::StreamIndex const listenerStreamIndex, la::avdecc::entity::LocalEntity::ControlStatus const status);
 %std_function(Handler_Entity_StreamIndex_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::StreamIndex const listenerStreamIndex, la::avdecc::entity::LocalEntity::ControlStatus const status);
 %std_function(Handler_Entity_Entity_StreamIndex_StreamIndex_uint16_ConnectionFlags_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const talkerEntity, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::StreamIndex const talkerStreamIndex, la::avdecc::entity::model::StreamIndex const listenerStreamIndex, std::uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::LocalEntity::ControlStatus const status);
 #else
 %std_function(Handler_Entity_Entity_DescriptorIndex_DescriptorIndex_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const talkerEntity, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::DescriptorIndex const talkerDescriptorIndex, la::avdecc::entity::model::DescriptorIndex const listenerDescriptorIndex, la::avdecc::entity::LocalEntity::ControlStatus const status);
-%std_function(Handler_Entity_Entity_DescriptorIndex_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::DescriptorIndex const listenerDescriptorIndex, la::avdecc::entity::LocalEntity::ControlStatus const status);
 %std_function(Handler_Entity_DescriptorIndex_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::DescriptorIndex const listenerDescriptorIndex, la::avdecc::entity::LocalEntity::ControlStatus const status);
 %std_function(Handler_Entity_Entity_DescriptorIndex_DescriptorIndex_uint16_ConnectionFlags_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const talkerEntity, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::DescriptorIndex const talkerDescriptorIndex, la::avdecc::entity::model::DescriptorIndex const listenerDescriptorIndex, std::uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::LocalEntity::ControlStatus const status);
 #endif
