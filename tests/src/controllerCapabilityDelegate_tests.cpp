@@ -176,7 +176,7 @@ TEST_F(ControllerCapabilityDelegate_F, BaseProtocolViolation)
 	static auto readDescriptorResultPromise = std::promise<la::avdecc::entity::LocalEntity::AemCommandStatus>{};
 
 	// Define the controller delegate
-	class Delegate final : public la::avdecc::entity::controller::Delegate
+	class Delegate final : public la::avdecc::entity::controller::DefaultedDelegate
 	{
 	private:
 		virtual void onEntityOnline(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::Entity const& /*entity*/) noexcept override

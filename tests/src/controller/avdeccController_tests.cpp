@@ -681,7 +681,7 @@ TEST(Controller, AdpRedundantInterfaceNotifications)
 {
 	static auto s_CallOrder = std::vector<std::uint8_t>{};
 
-	class Obs final : public la::avdecc::controller::Controller::Observer
+	class Obs final : public la::avdecc::controller::Controller::DefaultedObserver
 	{
 	private:
 		virtual void onEntityOnline(la::avdecc::controller::Controller const* const /*controller*/, la::avdecc::controller::ControlledEntity const* const entity) noexcept override
@@ -893,7 +893,7 @@ TEST(Controller, InvalidControlValues)
 
 namespace
 {
-class MediaClockModel_F : public ::testing::Test, public la::avdecc::controller::Controller::Observer
+class MediaClockModel_F : public ::testing::Test, public la::avdecc::controller::Controller::DefaultedObserver
 {
 public:
 	virtual void SetUp() override

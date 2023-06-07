@@ -40,7 +40,7 @@
 
 int doJob()
 {
-	class ControllerDelegate : public la::avdecc::entity::controller::Delegate, public la::avdecc::logger::Logger::Observer
+	class ControllerDelegate : public la::avdecc::entity::controller::DefaultedDelegate, public la::avdecc::logger::Logger::Observer
 	{
 	public:
 		~ControllerDelegate() noexcept override

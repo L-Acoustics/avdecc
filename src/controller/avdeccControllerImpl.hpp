@@ -54,7 +54,7 @@ class ExclusiveAccessTokenImpl;
 /* ************************************************************************** */
 /* ControllerImpl class definition                                            */
 /* ************************************************************************** */
-class ControllerImpl final : public Controller, private entity::controller::Delegate
+class ControllerImpl final : public Controller, private entity::controller::DefaultedDelegate
 {
 public:
 	using SharedControlledEntityImpl = std::shared_ptr<ControlledEntityImpl>;

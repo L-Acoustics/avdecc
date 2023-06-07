@@ -47,7 +47,7 @@
 /* Discovery class                                                            */
 /* ************************************************************************** */
 
-class Discovery : public la::avdecc::controller::Controller::Observer, public la::avdecc::logger::Logger::Observer
+class Discovery : public la::avdecc::controller::Controller::DefaultedObserver, public la::avdecc::logger::Logger::Observer
 {
 public:
 	/** Constructor/destructor/destroy */

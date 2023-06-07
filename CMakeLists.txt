@@ -23,6 +23,7 @@ option(BUILD_AVDECC_LIB_SHARED_CXX "Build C++ shared library." TRUE)
 option(BUILD_AVDECC_LIB_STATIC_RT_SHARED "Build static library (runtime shared)." TRUE)
 option(BUILD_AVDECC_DOC "Build documentation." FALSE)
 option(BUILD_AVDECC_BINDINGS_C "Build avdecc C bindings library." FALSE)
+option(BUILD_AVDECC_BINDINGS_CSHARP "Build avdecc C# bindings library." FALSE)
 option(BUILD_AVDECC_CONTROLLER "Build avdecc controller library." TRUE)
 option(BUILD_AVDECC_INTERFACE_PCAP "Build the pcap protocol interface." TRUE)
 option(BUILD_AVDECC_INTERFACE_PCAP_DYNAMIC_LINKING "Pcap protocol interface uses dynamic shared library linking (instead of static linking)." TRUE)
@@ -51,6 +52,13 @@ option(IGNORE_NEITHER_STATIC_NOR_DYNAMIC_MAPPINGS "Allow Entities not supporting
 option(ALLOW_GET_AUDIO_MAP_UNSOL "Allow receiving GetAudioMap unsolicited notifications." TRUE) # Required for L-Acoustics older devices, when changing dynamic mappings from the front panel
 option(ALLOW_RECV_BIG_AECP_PAYLOADS "Allow receiving AECP payloads bigger than the allowed 524 bytes." TRUE) # Required for Q6 Core devices not splitting AudioMaps into smaller ones, and for Milan devices
 option(ALLOW_SEND_BIG_AECP_PAYLOADS "Allow sending AECP payloads bigger than the allowed 524 bytes." FALSE)
+
+############ Override from command line "CMake -D<PARAM>=<VALUE>"
+
+# Configuration options
+if(NOT AVDECC_SWIG_LANGUAGES)
+	set(AVDECC_SWIG_LANGUAGES "csharp" CACHE STRING "Set the languages to compile as SWIG wrappers." FORCE)
+endif()
 
 ############ CMake configuration
 
@@ -108,13 +116,14 @@ endif()
 set(BUILD_NIH_EXAMPLES OFF CACHE BOOL "Build examples." FORCE)
 set(BUILD_NIH_TESTS OFF CACHE BOOL "Build unit tests." FORCE)
 set(BUILD_C_BINDINGS OFF CACHE BOOL "Build C Bindings." FORCE)
-set(BUILD_NIH_SWIG OFF CACHE BOOL "Build SWIG Wrapper." FORCE)
+set(BUILD_NIH_SWIG ${BUILD_AVDECC_BINDINGS_CSHARP} CACHE BOOL "Build SWIG Wrapper." FORCE)
+set(NIH_SWIG_LANGUAGES ${AVDECC_SWIG_LANGUAGES} CACHE STRING "Set the languages to compile as SWIG wrappers." FORCE)
 # Install options
 set(INSTALL_NIH_EXAMPLES OFF CACHE BOOL "Install examples." FORCE)
 set(INSTALL_NIH_TESTS OFF CACHE BOOL "Install unit tests." FORCE)
 set(INSTALL_NIH_LIB_STATIC (${INSTALL_AVDECC_LIB_SHARED_CXX} OR ${INSTALL_AVDECC_LIB_STATIC}) CACHE BOOL "Install static library." FORCE)
-set(INSTALL_NIH_LIB_C OFF CACHE BOOL "Install C Bindings libraries." FORCE)
-set(INSTALL_NIH_LIB_SWIG OFF CACHE BOOL "Install swig libraries." FORCE)
+set(INSTALL_NIH_LIB_C ${INSTALL_AVDECC_BINDINGS} CACHE BOOL "Install C Bindings libraries." FORCE)
+set(INSTALL_NIH_LIB_SWIG ${INSTALL_AVDECC_BINDINGS} CACHE BOOL "Install swig libraries." FORCE)
 set(INSTALL_NIH_HEADERS ${INSTALL_AVDECC_HEADERS} CACHE BOOL "Install headers." FORCE)
 
 # Include NIH
