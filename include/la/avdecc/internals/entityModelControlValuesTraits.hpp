@@ -148,7 +148,129 @@ struct ControlValues::control_value_details_traits<LinearValues<LinearValueDynam
 	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlLinearDouble;
 };
 
-/** Array Values - Clause 7.3.5.2.2 */
+/** Selector Value - Clause 7.3.5.2.2 */
+template<typename SizeType, bool IsDynamic>
+struct SelectorValueBaseTraits
+{
+	using size_type = SizeType;
+	static constexpr bool is_value_details = true;
+	static constexpr bool is_dynamic = IsDynamic;
+	static constexpr std::optional<bool> static_dynamic_counts_identical = true;
+};
+
+template<>
+struct ControlValues::control_value_details_traits<SelectorValueStatic<std::int8_t>> : SelectorValueBaseTraits<std::int8_t, false>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorInt8;
+};
+template<>
+struct ControlValues::control_value_details_traits<SelectorValueStatic<std::uint8_t>> : SelectorValueBaseTraits<std::uint8_t, false>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorUInt8;
+};
+template<>
+struct ControlValues::control_value_details_traits<SelectorValueStatic<std::int16_t>> : SelectorValueBaseTraits<std::int16_t, false>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorInt16;
+};
+template<>
+struct ControlValues::control_value_details_traits<SelectorValueStatic<std::uint16_t>> : SelectorValueBaseTraits<std::uint16_t, false>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorUInt16;
+};
+template<>
+struct ControlValues::control_value_details_traits<SelectorValueStatic<std::int32_t>> : SelectorValueBaseTraits<std::int32_t, false>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorInt32;
+};
+template<>
+struct ControlValues::control_value_details_traits<SelectorValueStatic<std::uint32_t>> : SelectorValueBaseTraits<std::uint32_t, false>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorUInt32;
+};
+template<>
+struct ControlValues::control_value_details_traits<SelectorValueStatic<std::int64_t>> : SelectorValueBaseTraits<std::int64_t, false>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorInt64;
+};
+template<>
+struct ControlValues::control_value_details_traits<SelectorValueStatic<std::uint64_t>> : SelectorValueBaseTraits<std::uint64_t, false>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorUInt64;
+};
+template<>
+struct ControlValues::control_value_details_traits<SelectorValueStatic<float>> : SelectorValueBaseTraits<float, false>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorFloat;
+};
+template<>
+struct ControlValues::control_value_details_traits<SelectorValueStatic<double>> : SelectorValueBaseTraits<double, false>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorDouble;
+};
+template<>
+struct ControlValues::control_value_details_traits<SelectorValueStatic<LocalizedStringReference>> : SelectorValueBaseTraits<LocalizedStringReference::value_type, false>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorString;
+};
+
+template<>
+struct ControlValues::control_value_details_traits<SelectorValueDynamic<std::int8_t>> : SelectorValueBaseTraits<std::int8_t, true>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorInt8;
+};
+template<>
+struct ControlValues::control_value_details_traits<SelectorValueDynamic<std::uint8_t>> : SelectorValueBaseTraits<std::uint8_t, true>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorUInt8;
+};
+template<>
+struct ControlValues::control_value_details_traits<SelectorValueDynamic<std::int16_t>> : SelectorValueBaseTraits<std::int16_t, true>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorInt16;
+};
+template<>
+struct ControlValues::control_value_details_traits<SelectorValueDynamic<std::uint16_t>> : SelectorValueBaseTraits<std::uint16_t, true>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorUInt16;
+};
+template<>
+struct ControlValues::control_value_details_traits<SelectorValueDynamic<std::int32_t>> : SelectorValueBaseTraits<std::int32_t, true>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorInt32;
+};
+template<>
+struct ControlValues::control_value_details_traits<SelectorValueDynamic<std::uint32_t>> : SelectorValueBaseTraits<std::uint32_t, true>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorUInt32;
+};
+template<>
+struct ControlValues::control_value_details_traits<SelectorValueDynamic<std::int64_t>> : SelectorValueBaseTraits<std::int64_t, true>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorInt64;
+};
+template<>
+struct ControlValues::control_value_details_traits<SelectorValueDynamic<std::uint64_t>> : SelectorValueBaseTraits<std::uint64_t, true>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorUInt64;
+};
+template<>
+struct ControlValues::control_value_details_traits<SelectorValueDynamic<float>> : SelectorValueBaseTraits<float, true>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorFloat;
+};
+template<>
+struct ControlValues::control_value_details_traits<SelectorValueDynamic<double>> : SelectorValueBaseTraits<double, true>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorDouble;
+};
+template<>
+struct ControlValues::control_value_details_traits<SelectorValueDynamic<LocalizedStringReference>> : SelectorValueBaseTraits<LocalizedStringReference::value_type, true>
+{
+	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorString;
+};
+
+/** Array Values - Clause 7.3.5.2.3 */
 template<typename SizeType, bool IsDynamic>
 struct ArrayValuesBaseTraits
 {

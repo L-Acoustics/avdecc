@@ -169,7 +169,7 @@ void EndStationImpl::destroy() noexcept
 	delete this;
 }
 
-std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, entity::model::EntityTree> LA_AVDECC_CALL_CONVENTION EndStation::deserializeEntityModelFromJson(std::string const& filePath, bool const processDynamicModel, bool const isBinaryFormat) noexcept
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, entity::model::EntityTree> LA_AVDECC_CALL_CONVENTION EndStation::deserializeEntityModelFromJson([[maybe_unused]] std::string const& filePath, [[maybe_unused]] bool const processDynamicModel, [[maybe_unused]] bool const isBinaryFormat) noexcept
 {
 #ifndef ENABLE_AVDECC_FEATURE_JSON
 	return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Deserialization feature not supported by the library (was not compiled)", entity::model::EntityTree{} };

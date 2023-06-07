@@ -145,9 +145,9 @@ void Discovery::onEntityOnline(la::avdecc::controller::Controller const* const /
 		for (auto const& objIt : configNode.memoryObjects)
 		{
 			auto const& obj = objIt.second;
-			if (obj.staticModel->memoryObjectType == la::avdecc::entity::model::MemoryObjectType::PngEntity)
+			if (obj.staticModel.memoryObjectType == la::avdecc::entity::model::MemoryObjectType::PngEntity)
 			{
-				_controller->readDeviceMemory(entity->getEntity().getEntityID(), obj.staticModel->startAddress, obj.staticModel->maximumLength,
+				_controller->readDeviceMemory(entity->getEntity().getEntityID(), obj.staticModel.startAddress, obj.staticModel.maximumLength,
 					[](la::avdecc::controller::ControlledEntity const* const /*entity*/, float const percentComplete)
 					{
 						outputText("Memory Object progress: " + std::to_string(percentComplete) + "\n");

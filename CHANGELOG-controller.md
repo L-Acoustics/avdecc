@@ -5,6 +5,22 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Support for JACK_INPUT/JACK_OUTPUT descriptors
+- Support for CONTROL descriptors at AUDIO_UNIT, JACK, STREAM_PORT levels
+- *numberOfValues* field in the ControlNode
+
+### Changed
+- Complete controller entity model refactoring to support descriptors at non-configuration level
+- EntityModelVisitor is now virtual pure, but a new derivated visitor (with all default implementation) has been added: DefaultedEntityModelVisitor
+
+### Removed
+- Direct access to ClockSource descriptors from the ClockDomain. Will still be enumerated correctly when using the model visitor
+
+### Fixed
+- Controller entity model no longer uses pointers to prevent dangling issues when making copies
+- Not flagging a device as non IEEE/Milan compatible, if the library cannot handle a CONTROL type if doesn't support
+- CONTROL values updated by the device itself didn't trigger an update notification
 
 ## [3.4.1] - 2023-01-11
 ### Fixed

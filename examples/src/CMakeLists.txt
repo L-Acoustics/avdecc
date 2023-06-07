@@ -79,16 +79,18 @@ if(BUILD_AVDECC_CONTROLLER)
 	# Deploy and install target and its runtime dependencies (call this AFTER ALL dependencies have been added to the target)
 	cu_setup_deploy_runtime(Discovery ${INSTALL_EXAMPLE_FLAG} ${SIGN_FLAG})
 
-	# EntityDumper
-	add_executable(EntityDumper entityDumper.cpp utils.cpp utils.hpp)
-	set_target_properties(EntityDumper PROPERTIES FOLDER "Examples/Controller")
-	# Using controller library
-	target_link_libraries(EntityDumper PRIVATE la_avdecc_controller_cxx)
-	if(NOT WIN32)
-		target_link_libraries(EntityDumper PRIVATE ncurses)
+	if(ENABLE_AVDECC_FEATURE_JSON)
+		# EntityDumper
+		add_executable(EntityDumper entityDumper.cpp utils.cpp utils.hpp)
+		set_target_properties(EntityDumper PROPERTIES FOLDER "Examples/Controller")
+		# Using controller library
+		target_link_libraries(EntityDumper PRIVATE la_avdecc_controller_cxx)
+		if(NOT WIN32)
+			target_link_libraries(EntityDumper PRIVATE ncurses)
+		endif()
+		# Setup common options
+		cu_setup_executable_options(EntityDumper)
+		# Deploy and install target and its runtime dependencies (call this AFTER ALL dependencies have been added to the target)
+		cu_setup_deploy_runtime(EntityDumper ${INSTALL_EXAMPLE_FLAG} ${SIGN_FLAG})
 	endif()
-	# Setup common options
-	cu_setup_executable_options(EntityDumper)
-	# Deploy and install target and its runtime dependencies (call this AFTER ALL dependencies have been added to the target)
-	cu_setup_deploy_runtime(EntityDumper ${INSTALL_EXAMPLE_FLAG} ${SIGN_FLAG})
 endif()

@@ -914,6 +914,7 @@ entity::model::AudioMapDescriptor deserializeReadAudioMapDescriptorResponse(AemA
 
 static inline void createUnpackFullControlValuesDispatchTable(std::unordered_map<entity::model::ControlValueType::Type, std::function<std::tuple<entity::model::ControlValues, entity::model::ControlValues>(Deserializer&, std::uint16_t)>>& dispatchTable)
 {
+	/** Linear Values - Clause 7.3.5.2.1 */
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt8>::unpackFullControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt8>::unpackFullControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt16>::unpackFullControlValues;
@@ -925,6 +926,20 @@ static inline void createUnpackFullControlValuesDispatchTable(std::unordered_map
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearFloat] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearFloat>::unpackFullControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearDouble>::unpackFullControlValues;
 
+	/** Selector Value - Clause 7.3.5.2.2 */
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorInt8>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorUInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorUInt8>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorInt16>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorUInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorUInt16>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorInt32] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorInt32>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorUInt32] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorUInt32>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorInt64] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorInt64>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorUInt64] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorUInt64>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorFloat] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorFloat>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorDouble>::unpackFullControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorString] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorString>::unpackFullControlValues;
+
+	/** Array Values - Clause 7.3.5.2.3 */
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt8>::unpackFullControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayUInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt8>::unpackFullControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt16>::unpackFullControlValues;
@@ -936,6 +951,7 @@ static inline void createUnpackFullControlValuesDispatchTable(std::unordered_map
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayFloat] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayFloat>::unpackFullControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayDouble>::unpackFullControlValues;
 
+	/** UTF-8 String Value - Clause 7.3.5.2.4 */
 	dispatchTable[entity::model::ControlValueType::Type::ControlUtf8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlUtf8>::unpackFullControlValues;
 }
 
@@ -962,14 +978,13 @@ entity::model::ControlDescriptor deserializeReadControlDescriptorResponse(AemAec
 
 		// Check control descriptor payload - Clause 7.2.22
 		auto des = Deserializer{ commandPayload, commandPayloadLength };
-		auto numberOfValues = std::uint16_t{ 0u };
 		auto valuesOffset = std::uint16_t{ 0u };
 
 		des.setPosition(commonSize); // Skip already unpacked common header
 		des >> controlDescriptor.objectName >> controlDescriptor.localizedDescription;
 		des >> controlDescriptor.blockLatency >> controlDescriptor.controlLatency >> controlDescriptor.controlDomain;
 		des >> controlDescriptor.controlValueType >> controlDescriptor.controlType >> controlDescriptor.resetTime;
-		des >> valuesOffset >> numberOfValues;
+		des >> valuesOffset >> controlDescriptor.numberOfValues;
 		des >> controlDescriptor.signalType >> controlDescriptor.signalIndex >> controlDescriptor.signalOutput;
 
 		// No need to check descriptor variable size, we'll let the ControlValueType specific unpacker throw if needed
@@ -986,14 +1001,20 @@ entity::model::ControlDescriptor deserializeReadControlDescriptorResponse(AemAec
 		auto const valueType = controlDescriptor.controlValueType.getType();
 		if (auto const& it = s_Dispatch.find(valueType); it != s_Dispatch.end())
 		{
-			auto [valuesStatic, valuesDynamic] = it->second(des, numberOfValues);
-			controlDescriptor.valuesStatic = std::move(valuesStatic);
-			controlDescriptor.valuesDynamic = std::move(valuesDynamic);
+			try
+			{
+				auto [valuesStatic, valuesDynamic] = it->second(des, controlDescriptor.numberOfValues);
+				controlDescriptor.valuesStatic = std::move(valuesStatic);
+				controlDescriptor.valuesDynamic = std::move(valuesDynamic);
+			}
+			catch ([[maybe_unused]] std::invalid_argument const& e)
+			{
+				LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Unsupported ControlValueType for READ_CONTROL_DESCRIPTOR RESPONSE: {} ({})", valueType, e.what());
+			}
 		}
 		else
 		{
 			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Unsupported ControlValueType for READ_CONTROL_DESCRIPTOR RESPONSE: {}", valueType);
-			throw UnsupportedValueException();
 		}
 
 		if (des.remaining() != 0)
@@ -1835,6 +1856,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 /** SET_CONTROL Command - Clause 7.4.25.1 */
 static inline void createPackDynamicControlValuesDispatchTable(std::unordered_map<entity::model::ControlValueType::Type, std::function<void(Serializer<AemAecpdu::MaximumSendPayloadBufferLength>&, entity::model::ControlValues const&)>>& dispatchTable)
 {
+	/** Linear Values - Clause 7.3.5.2.1 */
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt8>::packDynamicControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt8>::packDynamicControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt16>::packDynamicControlValues;
@@ -1846,6 +1868,20 @@ static inline void createPackDynamicControlValuesDispatchTable(std::unordered_ma
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearFloat] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearFloat>::packDynamicControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearDouble>::packDynamicControlValues;
 
+	/** Selector Value - Clause 7.3.5.2.2 */
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorInt8>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorUInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorUInt8>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorInt16>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorUInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorUInt16>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorInt32] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorInt32>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorUInt32] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorUInt32>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorInt64] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorInt64>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorUInt64] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorUInt64>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorFloat] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorFloat>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorDouble>::packDynamicControlValues;
+	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorString] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorString>::packDynamicControlValues;
+
+	/** Array Values - Clause 7.3.5.2.3 */
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt8>::packDynamicControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayUInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt8>::packDynamicControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt16>::packDynamicControlValues;
@@ -1857,6 +1893,7 @@ static inline void createPackDynamicControlValuesDispatchTable(std::unordered_ma
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayFloat] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayFloat>::packDynamicControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayDouble>::packDynamicControlValues;
 
+	/** UTF-8 String Value - Clause 7.3.5.2.4 */
 	dispatchTable[entity::model::ControlValueType::Type::ControlUtf8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlUtf8>::packDynamicControlValues;
 }
 

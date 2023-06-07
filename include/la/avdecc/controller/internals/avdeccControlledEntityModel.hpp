@@ -37,6 +37,7 @@
 #include <vector>
 #include <optional>
 #include <map>
+#include <functional>
 #include <set>
 #include <deque>
 
@@ -118,29 +119,70 @@ struct Node
 struct EntityModelNode : public Node
 {
 	entity::model::DescriptorIndex descriptorIndex{ 0u };
+
+	// Constructor
+	EntityModelNode(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: Node{ descriptorType }
+		, descriptorIndex{ descriptorIndex }
+	{
+	}
 };
 
 struct VirtualNode : public Node
 {
 	VirtualIndex virtualIndex{ 0u };
+
+	// Constructor
+	VirtualNode(entity::model::DescriptorType const descriptorType, VirtualIndex const virtualIndex) noexcept
+		: Node{ descriptorType }
+		, virtualIndex{ virtualIndex }
+	{
+	}
+};
+
+struct ControlNode : public EntityModelNode
+{
+	// AEM Static info
+	entity::model::ControlNodeStaticModel staticModel{};
+
+	// AEM Dynamic info
+	entity::model::ControlNodeDynamicModel dynamicModel{};
+
+	// Constructor
+	explicit ControlNode(entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: EntityModelNode{ entity::model::DescriptorType::Control, descriptorIndex }
+	{
+	}
 };
 
 struct AudioMapNode : public EntityModelNode
 {
 	// AEM Static info
-	entity::model::AudioMapNodeStaticModel const* staticModel{ nullptr };
+	entity::model::AudioMapNodeStaticModel staticModel{};
 
 	// AEM Dynamic info
-	//AudioMapNodeDynamicModel* dynamicModel{ nullptr };
+	//AudioMapNodeDynamicModel dynamicModel{  };
+
+	// Constructor
+	explicit AudioMapNode(entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: EntityModelNode{ entity::model::DescriptorType::AudioMap, descriptorIndex }
+	{
+	}
 };
 
 struct AudioClusterNode : public EntityModelNode
 {
 	// AEM Static info
-	entity::model::AudioClusterNodeStaticModel const* staticModel{ nullptr };
+	entity::model::AudioClusterNodeStaticModel staticModel{};
 
 	// AEM Dynamic info
-	entity::model::AudioClusterNodeDynamicModel* dynamicModel{ nullptr };
+	entity::model::AudioClusterNodeDynamicModel dynamicModel{};
+
+	// Constructor
+	explicit AudioClusterNode(entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: EntityModelNode{ entity::model::DescriptorType::AudioCluster, descriptorIndex }
+	{
+	}
 };
 
 struct StreamPortNode : public EntityModelNode
@@ -148,50 +190,102 @@ struct StreamPortNode : public EntityModelNode
 	// Children
 	std::map<entity::model::ClusterIndex, AudioClusterNode> audioClusters{};
 	std::map<entity::model::MapIndex, AudioMapNode> audioMaps{};
+	std::map<entity::model::ControlIndex, ControlNode> controls{};
 
 	// AEM Static info
-	entity::model::StreamPortNodeStaticModel const* staticModel{ nullptr };
+	entity::model::StreamPortNodeStaticModel staticModel{};
 
 	// AEM Dynamic info
-	entity::model::StreamPortNodeDynamicModel* dynamicModel{ nullptr };
+	entity::model::StreamPortNodeDynamicModel dynamicModel{};
+
+protected:
+	// Constructor
+	StreamPortNode(entity::model::DescriptorType descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: EntityModelNode{ descriptorType, descriptorIndex }
+	{
+	}
+};
+
+struct StreamPortInputNode : public StreamPortNode
+{
+	// Constructor
+	explicit StreamPortInputNode(entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: StreamPortNode{ entity::model::DescriptorType::StreamPortInput, descriptorIndex }
+	{
+	}
+};
+
+struct StreamPortOutputNode : public StreamPortNode
+{
+	// Constructor
+	explicit StreamPortOutputNode(entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: StreamPortNode{ entity::model::DescriptorType::StreamPortOutput, descriptorIndex }
+	{
+	}
 };
 
 struct AudioUnitNode : public EntityModelNode
 {
 	// Children
-	std::map<entity::model::StreamPortIndex, StreamPortNode> streamPortInputs{};
-	std::map<entity::model::StreamPortIndex, StreamPortNode> streamPortOutputs{};
+	std::map<entity::model::StreamPortIndex, StreamPortInputNode> streamPortInputs{};
+	std::map<entity::model::StreamPortIndex, StreamPortOutputNode> streamPortOutputs{};
 	// ExternalPortInput
 	// ExternalPortOutput
 	// InternalPortInput
 	// InternalPortOutput
+	std::map<entity::model::ControlIndex, ControlNode> controls{};
 
 	// AEM Static info
-	entity::model::AudioUnitNodeStaticModel const* staticModel{ nullptr };
+	entity::model::AudioUnitNodeStaticModel staticModel{};
 
 	// AEM Dynamic info
-	entity::model::AudioUnitNodeDynamicModel* dynamicModel{ nullptr };
+	entity::model::AudioUnitNodeDynamicModel dynamicModel{};
+
+	// Constructor
+	explicit AudioUnitNode(entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: EntityModelNode{ entity::model::DescriptorType::AudioUnit, descriptorIndex }
+	{
+	}
 };
 
 struct StreamNode : public EntityModelNode
 {
 	// AEM Static info
-	entity::model::StreamNodeStaticModel const* staticModel{ nullptr };
+	entity::model::StreamNodeStaticModel staticModel{};
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 	bool isRedundant{ false }; // True if stream is part of a valid redundant stream association
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+
+protected:
+	// Constructor
+	StreamNode(entity::model::DescriptorType descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: EntityModelNode{ descriptorType, descriptorIndex }
+	{
+	}
 };
 
 struct StreamInputNode : public StreamNode
 {
 	// AEM Dynamic info
-	entity::model::StreamInputNodeDynamicModel* dynamicModel{ nullptr };
+	entity::model::StreamInputNodeDynamicModel dynamicModel{};
+
+	// Constructor
+	explicit StreamInputNode(entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: StreamNode{ entity::model::DescriptorType::StreamInput, descriptorIndex }
+	{
+	}
 };
 
 struct StreamOutputNode : public StreamNode
 {
 	// AEM Dynamic info
-	entity::model::StreamOutputNodeDynamicModel* dynamicModel{ nullptr };
+	entity::model::StreamOutputNodeDynamicModel dynamicModel{};
+
+	// Constructor
+	explicit StreamOutputNode(entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: StreamNode{ entity::model::DescriptorType::StreamOutput, descriptorIndex }
+	{
+	}
 };
 
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
@@ -201,47 +295,133 @@ struct RedundantStreamNode : public VirtualNode
 	entity::model::AvdeccFixedString virtualName{};
 
 	// Children
-	std::map<entity::model::StreamIndex, StreamNode const*> redundantStreams{}; // Either StreamInputNode or StreamOutputNode, based on Node::descriptorType
+	std::set<entity::model::StreamIndex> redundantStreams{}; // Either StreamInputNode or StreamOutputNode, based on Node::descriptorType
 
 	// Quick access to the primary stream (which is also contained in this->redundantStreams)
-	StreamNode const* primaryStream{ nullptr }; // Either StreamInputNode or StreamOutputNode, based on Node::descriptorType
+	entity::model::StreamIndex primaryStreamIndex{ entity::model::getInvalidDescriptorIndex() };
+
+protected:
+	// Constructor
+	RedundantStreamNode(entity::model::DescriptorType descriptorType, VirtualIndex const virtualIndex) noexcept
+		: VirtualNode{ descriptorType, virtualIndex }
+	{
+	}
+};
+
+struct RedundantStreamInputNode : public RedundantStreamNode
+{
+	// Constructor
+	explicit RedundantStreamInputNode(model::VirtualIndex const descriptorIndex) noexcept
+		: RedundantStreamNode{ entity::model::DescriptorType::StreamInput, descriptorIndex }
+	{
+	}
+};
+
+struct RedundantStreamOutputNode : public RedundantStreamNode
+{
+	// Constructor
+	explicit RedundantStreamOutputNode(model::VirtualIndex const descriptorIndex) noexcept
+		: RedundantStreamNode{ entity::model::DescriptorType::StreamOutput, descriptorIndex }
+	{
+	}
 };
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+
+struct JackNode : public EntityModelNode
+{
+	// Children
+	std::map<entity::model::ControlIndex, ControlNode> controls{};
+
+	// AEM Static info
+	entity::model::JackNodeStaticModel staticModel{};
+
+	// AEM Dynamic info
+	entity::model::JackNodeDynamicModel dynamicModel{};
+
+protected:
+	// Constructor
+	JackNode(entity::model::DescriptorType descriptorType, entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: EntityModelNode{ descriptorType, descriptorIndex }
+	{
+	}
+};
+
+struct JackInputNode : public JackNode
+{
+	// Constructor
+	explicit JackInputNode(entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: JackNode{ entity::model::DescriptorType::JackInput, descriptorIndex }
+	{
+	}
+};
+
+struct JackOutputNode : public JackNode
+{
+	// Constructor
+	explicit JackOutputNode(entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: JackNode{ entity::model::DescriptorType::JackOutput, descriptorIndex }
+	{
+	}
+};
 
 struct AvbInterfaceNode : public EntityModelNode
 {
 	// AEM Static info
-	entity::model::AvbInterfaceNodeStaticModel const* staticModel{ nullptr };
+	entity::model::AvbInterfaceNodeStaticModel staticModel{};
 
 	// AEM Dynamic info
-	entity::model::AvbInterfaceNodeDynamicModel* dynamicModel{ nullptr };
+	entity::model::AvbInterfaceNodeDynamicModel dynamicModel{};
+
+	// Constructor
+	explicit AvbInterfaceNode(entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: EntityModelNode{ entity::model::DescriptorType::AvbInterface, descriptorIndex }
+	{
+	}
 };
 
 struct ClockSourceNode : public EntityModelNode
 {
 	// AEM Static info
-	entity::model::ClockSourceNodeStaticModel const* staticModel{ nullptr };
+	entity::model::ClockSourceNodeStaticModel staticModel{};
 
 	// AEM Dynamic info
-	entity::model::ClockSourceNodeDynamicModel* dynamicModel{ nullptr };
+	entity::model::ClockSourceNodeDynamicModel dynamicModel{};
+
+	// Constructor
+	explicit ClockSourceNode(entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: EntityModelNode{ entity::model::DescriptorType::ClockSource, descriptorIndex }
+	{
+	}
 };
 
 struct MemoryObjectNode : public EntityModelNode
 {
 	// AEM Static info
-	entity::model::MemoryObjectNodeStaticModel const* staticModel{ nullptr };
+	entity::model::MemoryObjectNodeStaticModel staticModel{};
 
 	// AEM Dynamic info
-	entity::model::MemoryObjectNodeDynamicModel* dynamicModel{ nullptr };
+	entity::model::MemoryObjectNodeDynamicModel dynamicModel{};
+
+	// Constructor
+	explicit MemoryObjectNode(entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: EntityModelNode{ entity::model::DescriptorType::MemoryObject, descriptorIndex }
+	{
+	}
 };
 
 struct StringsNode : public EntityModelNode
 {
 	// AEM Static info
-	entity::model::StringsNodeStaticModel const* staticModel{ nullptr };
+	entity::model::StringsNodeStaticModel staticModel{};
 
 	// AEM Dynamic info
-	//StringsNodeDynamicModel* dynamicModel{ nullptr };
+	//StringsNodeDynamicModel dynamicModel{  };
+
+	// Constructor
+	explicit StringsNode(entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: EntityModelNode{ entity::model::DescriptorType::Strings, descriptorIndex }
+	{
+	}
 };
 
 struct LocaleNode : public EntityModelNode
@@ -250,33 +430,33 @@ struct LocaleNode : public EntityModelNode
 	std::map<entity::model::StringsIndex, StringsNode> strings{};
 
 	// AEM Static info
-	entity::model::LocaleNodeStaticModel const* staticModel{ nullptr };
+	entity::model::LocaleNodeStaticModel staticModel{};
 
 	// AEM Dynamic info
-	//LocaleNodeDynamicModel* dynamicModel{ nullptr };
-};
+	//LocaleNodeDynamicModel dynamicModel{ nullptr };
 
-struct ControlNode : public EntityModelNode
-{
-	// AEM Static info
-	entity::model::ControlNodeStaticModel const* staticModel{ nullptr };
-
-	// AEM Dynamic info
-	entity::model::ControlNodeDynamicModel* dynamicModel{ nullptr };
+	// Constructor
+	explicit LocaleNode(entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: EntityModelNode{ entity::model::DescriptorType::Locale, descriptorIndex }
+	{
+	}
 };
 
 struct ClockDomainNode : public EntityModelNode
 {
-	// Children
-	std::map<entity::model::ClockSourceIndex, ClockSourceNode const*> clockSources{};
-
 	// AEM Static info
-	entity::model::ClockDomainNodeStaticModel const* staticModel{ nullptr };
+	entity::model::ClockDomainNodeStaticModel staticModel{};
 
 	// AEM Dynamic info
-	entity::model::ClockDomainNodeDynamicModel* dynamicModel{ nullptr };
+	entity::model::ClockDomainNodeDynamicModel dynamicModel{};
 
 	MediaClockChain mediaClockChain{}; // Complete chain of MediaClock for this domain
+
+	// Constructor
+	explicit ClockDomainNode(entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: EntityModelNode{ entity::model::DescriptorType::ClockDomain, descriptorIndex }
+	{
+	}
 };
 
 struct ConfigurationNode : public EntityModelNode
@@ -285,8 +465,8 @@ struct ConfigurationNode : public EntityModelNode
 	std::map<entity::model::AudioUnitIndex, AudioUnitNode> audioUnits{};
 	std::map<entity::model::StreamIndex, StreamInputNode> streamInputs{};
 	std::map<entity::model::StreamIndex, StreamOutputNode> streamOutputs{};
-	// JackInput
-	// JackOutput
+	std::map<entity::model::JackIndex, JackInputNode> jackInputs{};
+	std::map<entity::model::JackIndex, JackOutputNode> jackOutputs{};
 	std::map<entity::model::AvbInterfaceIndex, AvbInterfaceNode> avbInterfaces{};
 	std::map<entity::model::ClockSourceIndex, ClockSourceNode> clockSources{};
 	std::map<entity::model::MemoryObjectIndex, MemoryObjectNode> memoryObjects{};
@@ -295,15 +475,21 @@ struct ConfigurationNode : public EntityModelNode
 	std::map<entity::model::ClockDomainIndex, ClockDomainNode> clockDomains{};
 
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-	std::map<VirtualIndex, RedundantStreamNode> redundantStreamInputs{};
-	std::map<VirtualIndex, RedundantStreamNode> redundantStreamOutputs{};
+	std::map<VirtualIndex, RedundantStreamInputNode> redundantStreamInputs{};
+	std::map<VirtualIndex, RedundantStreamOutputNode> redundantStreamOutputs{};
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 	// AEM Static info
-	entity::model::ConfigurationNodeStaticModel const* staticModel{ nullptr };
+	entity::model::ConfigurationNodeStaticModel staticModel{};
 
 	// AEM Dynamic info
-	entity::model::ConfigurationNodeDynamicModel* dynamicModel{ nullptr };
+	entity::model::ConfigurationNodeDynamicModel dynamicModel{};
+
+	// Constructor
+	explicit ConfigurationNode(entity::model::DescriptorIndex const descriptorIndex) noexcept
+		: EntityModelNode{ entity::model::DescriptorType::Configuration, descriptorIndex }
+	{
+	}
 };
 
 struct EntityNode : public EntityModelNode
@@ -312,38 +498,52 @@ struct EntityNode : public EntityModelNode
 	std::map<entity::model::ConfigurationIndex, ConfigurationNode> configurations{};
 
 	// AEM Static info
-	entity::model::EntityNodeStaticModel const* staticModel{ nullptr };
+	entity::model::EntityNodeStaticModel staticModel{};
 
 	// AEM Dynamic info
-	entity::model::EntityNodeDynamicModel* dynamicModel{ nullptr };
+	entity::model::EntityNodeDynamicModel dynamicModel{};
+
+	// Constructor
+	EntityNode() noexcept
+		: EntityModelNode{ entity::model::DescriptorType::Entity, entity::model::DescriptorIndex{ 0u } }
+	{
+	}
 };
 
+/** Visitor base class for the Entity Model of a ControlledEntity. */
 class EntityModelVisitor
 {
 public:
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::EntityNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::EntityNode const* const /*parent*/, la::avdecc::controller::model::ConfigurationNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::AudioUnitNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::StreamInputNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::StreamOutputNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::AvbInterfaceNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::MemoryObjectNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::LocaleNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::LocaleNode const* const /*parent*/, la::avdecc::controller::model::StringsNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::StreamPortNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::AudioClusterNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::AudioMapNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept {}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::ClockDomainNode const& /*node*/) noexcept {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::EntityNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::EntityNode const* const /*parent*/, la::avdecc::controller::model::ConfigurationNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::AudioUnitNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::StreamInputNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::StreamOutputNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::JackInputNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::JackOutputNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::JackNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::AvbInterfaceNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::MemoryObjectNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::LocaleNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::LocaleNode const* const /*parent*/, la::avdecc::controller::model::StringsNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::StreamPortInputNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::StreamPortOutputNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::AudioClusterNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::AudioMapNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::ClockDomainNode const& /*node*/) noexcept = 0;
 	// Virtual parenting to show ClockSourceNode which have the specified ClockDomainNode as parent
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::ClockDomainNode const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& /*node*/) noexcept {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::ClockDomainNode const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& /*node*/) noexcept = 0;
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamNode const& /*node*/) noexcept {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamInputNode const& /*node*/) noexcept = 0;
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamOutputNode const& /*node*/) noexcept = 0;
 	// Virtual parenting to show StreamInputNode which have the specified RedundantStreamNode as parent
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::RedundantStreamNode const* const /*parent*/, la::avdecc::controller::model::StreamInputNode const& /*node*/) noexcept {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::RedundantStreamNode const* const /*parent*/, la::avdecc::controller::model::StreamInputNode const& /*node*/) noexcept = 0;
 	// Virtual parenting to show StreamOutputNode which have the specified RedundantStreamNode as parent
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::RedundantStreamNode const* const /*parent*/, la::avdecc::controller::model::StreamOutputNode const& /*node*/) noexcept {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::RedundantStreamNode const* const /*parent*/, la::avdecc::controller::model::StreamOutputNode const& /*node*/) noexcept = 0;
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 
 	// Defaulted compiler auto-generated methods
@@ -353,6 +553,51 @@ public:
 	EntityModelVisitor(EntityModelVisitor const&) = default;
 	EntityModelVisitor& operator=(EntityModelVisitor const&) = default;
 	EntityModelVisitor& operator=(EntityModelVisitor&&) = default;
+};
+
+/** Defaulted version of the visitor base class. */
+class DefaultedEntityModelVisitor : public EntityModelVisitor
+{
+public:
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::EntityNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::EntityNode const* const /*parent*/, la::avdecc::controller::model::ConfigurationNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::AudioUnitNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::StreamInputNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::StreamOutputNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::JackInputNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::JackOutputNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::JackNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::AvbInterfaceNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::MemoryObjectNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::LocaleNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::LocaleNode const* const /*parent*/, la::avdecc::controller::model::StringsNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::StreamPortInputNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::StreamPortOutputNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::AudioClusterNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::AudioMapNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*grandParent*/, la::avdecc::controller::model::StreamPortNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::AudioUnitNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::ClockDomainNode const& /*node*/) noexcept override {}
+	// Virtual parenting to show ClockSourceNode which have the specified ClockDomainNode as parent
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::ClockDomainNode const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& /*node*/) noexcept override {}
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamInputNode const& /*node*/) noexcept override {}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamOutputNode const& /*node*/) noexcept override {}
+	// Virtual parenting to show StreamInputNode which have the specified RedundantStreamNode as parent
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::RedundantStreamNode const* const /*parent*/, la::avdecc::controller::model::StreamInputNode const& /*node*/) noexcept override {}
+	// Virtual parenting to show StreamOutputNode which have the specified RedundantStreamNode as parent
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::RedundantStreamNode const* const /*parent*/, la::avdecc::controller::model::StreamOutputNode const& /*node*/) noexcept override {}
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+
+	// Defaulted compiler auto-generated methods
+	DefaultedEntityModelVisitor() noexcept = default;
+	virtual ~DefaultedEntityModelVisitor() noexcept override = default;
+	DefaultedEntityModelVisitor(DefaultedEntityModelVisitor&&) = default;
+	DefaultedEntityModelVisitor(DefaultedEntityModelVisitor const&) = default;
+	DefaultedEntityModelVisitor& operator=(DefaultedEntityModelVisitor const&) = default;
+	DefaultedEntityModelVisitor& operator=(DefaultedEntityModelVisitor&&) = default;
 };
 
 } // namespace model

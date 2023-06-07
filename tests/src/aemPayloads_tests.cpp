@@ -26,7 +26,9 @@
 #include <la/avdecc/avdecc.hpp>
 #include <la/avdecc/internals/entityModelControlValuesTraits.hpp>
 #include <la/avdecc/internals/entityModelControlValues.hpp>
-#include <la/avdecc/internals/jsonTypes.hpp>
+#ifdef ENABLE_AVDECC_FEATURE_JSON
+#	include <la/avdecc/internals/jsonTypes.hpp>
+#endif // ENABLE_AVDECC_FEATURE_JSON
 
 // Internal API
 #include "protocol/protocolAemPayloads.hpp"
@@ -567,6 +569,7 @@ static inline std::tuple<la::avdecc::entity::model::ControlNodeStaticModel, la::
 	return { s, d };
 }
 
+#	ifdef ENABLE_AVDECC_FEATURE_JSON
 TEST(AemPayloads, DeserializeReadControlDescriptorResponse_LinearUInt8)
 {
 	auto ser = la::avdecc::Serializer<la::avdecc::protocol::AemAecpdu::MaximumPayloadBufferLength>{};
@@ -722,5 +725,6 @@ TEST(AemPayloads, DeserializeReadControlDescriptorResponse_Utf8)
 		ASSERT_TRUE(false) << "Should not throw";
 	}
 }
+#	endif // ENABLE_AVDECC_FEATURE_JSON
 
 #endif // _WIN32 || __APPLE__

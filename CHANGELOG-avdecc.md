@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Support for JACK_INPUT/JACK_OUTPUT descriptors
+- Support for CONTROL descriptors at AUDIO_UNIT, JACK, STREAM_PORT levels
+- [Support for CONTROL_SELECTOR type for CONTROL descriptors](https://github.com/L-Acoustics/avdecc/issues/128)
+- *numberOfValues* field in the CONTROL descriptor
 
 ## [3.4.1] - 2023-01-11
 

@@ -934,6 +934,66 @@ void CapabilityDelegate::getStreamOutputName(UniqueIdentifier const targetEntity
 	}
 }
 
+void CapabilityDelegate::setJackInputName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::JackIndex const jackIndex, model::AvdeccFixedString const& jackInputName, Interface::SetJackInputNameHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, jackIndex, s_emptyAvdeccFixedString);
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::JackInput, jackIndex, 0, configurationIndex, jackInputName);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setName: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::getJackInputName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::JackIndex const jackIndex, Interface::GetJackInputNameHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, jackIndex, s_emptyAvdeccFixedString);
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::JackInput, jackIndex, 0, configurationIndex);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getName: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::setJackOutputName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::JackIndex const jackIndex, model::AvdeccFixedString const& jackOutputName, Interface::SetJackOutputNameHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, jackIndex, s_emptyAvdeccFixedString);
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeSetNameCommand(model::DescriptorType::JackOutput, jackIndex, 0, configurationIndex, jackOutputName);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::SetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize setName: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
+void CapabilityDelegate::getJackOutputName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::JackIndex const jackIndex, Interface::GetJackOutputNameHandler const& handler) const noexcept
+{
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, jackIndex, s_emptyAvdeccFixedString);
+	try
+	{
+		auto const ser = protocol::aemPayload::serializeGetNameCommand(model::DescriptorType::JackOutput, jackIndex, 0, configurationIndex);
+		sendAemAecpCommand(targetEntityID, protocol::AemCommandType::GetName, ser.data(), ser.size(), errorCallback, handler);
+	}
+	catch ([[maybe_unused]] std::exception const& e)
+	{
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getName: {}", e.what());
+		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
+	}
+}
+
 void CapabilityDelegate::setAvbInterfaceName(UniqueIdentifier const targetEntityID, model::ConfigurationIndex const configurationIndex, model::AvbInterfaceIndex const avbInterfaceIndex, model::AvdeccFixedString const& avbInterfaceName, Interface::SetAvbInterfaceNameHandler const& handler) const noexcept
 {
 	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, configurationIndex, avbInterfaceIndex, s_emptyAvdeccFixedString);
@@ -2544,6 +2604,40 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 						}
 						break;
 					}
+					case model::DescriptorType::JackInput:
+					{
+						switch (nameIndex)
+						{
+							case 0: // jack_name
+								answerCallback.invoke<controller::Interface::SetJackInputNameHandler>(protocolViolationCallback, controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								if (aem.getUnsolicited() && delegate && !!status)
+								{
+									utils::invokeProtectedMethod(&controller::Delegate::onJackInputNameChanged, delegate, controllerInterface, targetID, configurationIndex, descriptorIndex, name);
+								}
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in SET_NAME response for JackInput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::JackOutput:
+					{
+						switch (nameIndex)
+						{
+							case 0: // jack_name
+								answerCallback.invoke<controller::Interface::SetJackOutputNameHandler>(protocolViolationCallback, controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								if (aem.getUnsolicited() && delegate && !!status)
+								{
+									utils::invokeProtectedMethod(&controller::Delegate::onJackOutputNameChanged, delegate, controllerInterface, targetID, configurationIndex, descriptorIndex, name);
+								}
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in SET_NAME response for JackOutput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
 					case model::DescriptorType::AvbInterface:
 					{
 						switch (nameIndex)
@@ -2738,6 +2832,32 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 								break;
 							default:
 								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for StreamOutput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::JackInput:
+					{
+						switch (nameIndex)
+						{
+							case 0: // object_name
+								answerCallback.invoke<controller::Interface::GetJackInputNameHandler>(protocolViolationCallback, controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for JackInput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
+								break;
+						}
+						break;
+					}
+					case model::DescriptorType::JackOutput:
+					{
+						switch (nameIndex)
+						{
+							case 0: // object_name
+								answerCallback.invoke<controller::Interface::GetJackOutputNameHandler>(protocolViolationCallback, controllerInterface, targetID, status, configurationIndex, descriptorIndex, name);
+								break;
+							default:
+								LOG_CONTROLLER_ENTITY_DEBUG(targetID, "Unhandled nameIndex in GET_NAME response for JackOutput Descriptor: DescriptorType={} DescriptorIndex={} NameIndex={} ConfigurationIndex={} Name={}", utils::to_integral(descriptorType), descriptorIndex, nameIndex, configurationIndex, name.str());
 								break;
 						}
 						break;
@@ -2954,14 +3074,18 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 			}
 		},
 		// Get Control
-		{ protocol::AemCommandType::GetControl.getValue(),[](controller::Delegate* const /*delegate*/, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
+		{ protocol::AemCommandType::GetControl.getValue(),[](controller::Delegate* const delegate, Interface const* const controllerInterface, LocalEntity::AemCommandStatus const status, protocol::AemAecpdu const& aem, LocalEntityImpl<>::AnswerCallback const& answerCallback, LocalEntityImpl<>::AnswerCallback::Callback const& protocolViolationCallback)
 			{
 				// Deserialize payload
-				auto const [descriptorType, descriptorIndex, controlValues] = protocol::aemPayload::deserializeGetControlResponse(status, aem.getPayload());
+				auto const [descriptorType, descriptorIndex, packedControlValues] = protocol::aemPayload::deserializeGetControlResponse(status, aem.getPayload());
 				auto const targetID = aem.getTargetEntityID();
 
 				// Notify handlers
-				answerCallback.invoke<controller::Interface::GetControlValuesHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, controlValues);
+				answerCallback.invoke<controller::Interface::GetControlValuesHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, packedControlValues);
+				if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change from the device itself
+				{
+					utils::invokeProtectedMethod(&controller::Delegate::onControlValuesChanged, delegate, controllerInterface, targetID, descriptorIndex, packedControlValues);
+				}
 			}
 		},
 		// Start Streaming

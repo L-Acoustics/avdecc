@@ -297,7 +297,7 @@ std::string ChecksumEntityModelVisitor::getHash() const noexcept
 }
 
 // Private methods
-void ChecksumEntityModelVisitor::serializeNode(la::avdecc::controller::model::Node const* const node) noexcept
+void ChecksumEntityModelVisitor::serializeNode(model::Node const* const node) noexcept
 {
 	if (_checksumVersion >= 1)
 	{
@@ -312,7 +312,7 @@ void ChecksumEntityModelVisitor::serializeNode(la::avdecc::controller::model::No
 	}
 }
 
-void ChecksumEntityModelVisitor::serializeNode(la::avdecc::controller::model::EntityModelNode const& node) noexcept
+void ChecksumEntityModelVisitor::serializeNode(model::EntityModelNode const& node) noexcept
 {
 	if (_checksumVersion >= 1)
 	{
@@ -320,7 +320,7 @@ void ChecksumEntityModelVisitor::serializeNode(la::avdecc::controller::model::En
 	}
 }
 
-void ChecksumEntityModelVisitor::serializeNode(la::avdecc::controller::model::VirtualNode const& node) noexcept
+void ChecksumEntityModelVisitor::serializeNode(model::VirtualNode const& node) noexcept
 {
 	if (_checksumVersion >= 1)
 	{
@@ -328,105 +328,158 @@ void ChecksumEntityModelVisitor::serializeNode(la::avdecc::controller::model::Vi
 	}
 }
 
+void ChecksumEntityModelVisitor::serializeModel(model::ControlNode const& node) noexcept
+{
+	static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.localizedDescription;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.blockLatency;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.controlLatency;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.controlDomain;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.controlType;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.resetTime;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.signalType;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.signalIndex;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.signalOutput;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.controlValueType;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfValues;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.values.getType();
+	// Missing values serialization
+}
+
+void ChecksumEntityModelVisitor::serializeModel(model::JackNode const& node) noexcept
+{
+	static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.localizedDescription;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.jackFlags;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.jackType;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfControls;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.baseControl;
+}
+
+void ChecksumEntityModelVisitor::serializeModel(model::StreamPortNode const& node) noexcept
+{
+	static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.clockDomainIndex;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.portFlags;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfControls;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.baseControl;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfClusters;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.baseCluster;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfMaps;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.baseMap;
+	static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.hasDynamicAudioMap;
+}
+
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+void ChecksumEntityModelVisitor::serializeModel(model::RedundantStreamNode const& node) noexcept
+{
+	static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
+	for (auto const streamIndex : node.redundantStreams)
+	{
+		static_cast<Sha256Serializer&>(*_serializer) << streamIndex;
+	}
+}
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+
 // la::avdecc::controller::model::EntityModelVisitor overrides
-void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::EntityNode const& node) noexcept
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::EntityNode const& node) noexcept
 {
 	if (_checksumVersion >= 1)
 	{
 		serializeNode(nullptr); // Parent node
 		serializeNode(node); // Node itself
-		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel << node.staticModel->vendorNameString << node.staticModel->modelNameString;
+		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel << node.staticModel.vendorNameString << node.staticModel.modelNameString;
 	}
 }
 
-void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::EntityNode const* const parent, la::avdecc::controller::model::ConfigurationNode const& node) noexcept
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::EntityNode const* const parent, model::ConfigurationNode const& node) noexcept
 {
 	if (_checksumVersion >= 1)
 	{
 		serializeNode(parent);
 		serializeNode(node);
-		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel << node.staticModel->localizedDescription;
-		for (auto const& [descriptorType, count] : node.staticModel->descriptorCounts)
+		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel << node.staticModel.localizedDescription;
+		for (auto const& [descriptorType, count] : node.staticModel.descriptorCounts)
 		{
 			static_cast<Sha256Serializer&>(*_serializer) << descriptorType << count;
 		}
 	}
 }
 
-void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::AudioUnitNode const& node) noexcept
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::AudioUnitNode const& node) noexcept
 {
 	if (_checksumVersion >= 1)
 	{
 		serializeNode(parent);
 		serializeNode(node);
 		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->localizedDescription;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->clockDomainIndex;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->numberOfStreamInputPorts;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->baseStreamInputPort;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->numberOfStreamOutputPorts;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->baseStreamOutputPort;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->numberOfExternalInputPorts;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->baseExternalInputPort;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->numberOfExternalOutputPorts;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->baseExternalOutputPort;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->numberOfInternalInputPorts;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->baseInternalInputPort;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->numberOfInternalOutputPorts;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->baseInternalOutputPort;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->numberOfControls;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->baseControl;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->numberOfSignalSelectors;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->baseSignalSelector;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->numberOfMixers;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->baseMixer;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->numberOfMatrices;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->baseMatrix;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->numberOfSplitters;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->baseSplitter;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->numberOfCombiners;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->baseCombiner;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->numberOfDemultiplexers;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->baseDemultiplexer;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->numberOfMultiplexers;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->baseMultiplexer;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->numberOfTranscoders;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->baseTranscoder;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->numberOfControlBlocks;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->baseControlBlock;
-		for (auto const& sr : node.staticModel->samplingRates)
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.localizedDescription;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.clockDomainIndex;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfStreamInputPorts;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.baseStreamInputPort;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfStreamOutputPorts;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.baseStreamOutputPort;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfExternalInputPorts;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.baseExternalInputPort;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfExternalOutputPorts;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.baseExternalOutputPort;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfInternalInputPorts;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.baseInternalInputPort;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfInternalOutputPorts;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.baseInternalOutputPort;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfControls;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.baseControl;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfSignalSelectors;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.baseSignalSelector;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfMixers;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.baseMixer;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfMatrices;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.baseMatrix;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfSplitters;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.baseSplitter;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfCombiners;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.baseCombiner;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfDemultiplexers;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.baseDemultiplexer;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfMultiplexers;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.baseMultiplexer;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfTranscoders;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.baseTranscoder;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfControlBlocks;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.baseControlBlock;
+		for (auto const& sr : node.staticModel.samplingRates)
 		{
 			static_cast<Sha256Serializer&>(*_serializer) << sr;
 		}
 	}
 }
 
-void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::StreamInputNode const& node) noexcept
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::StreamInputNode const& node) noexcept
 {
 	if (_checksumVersion >= 1)
 	{
 		serializeNode(parent);
 		serializeNode(node);
 		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->localizedDescription;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->clockDomainIndex;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->streamFlags;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->backupTalkerEntityID_0;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->backupTalkerUniqueID_0;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->backupTalkerEntityID_1;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->backupTalkerUniqueID_1;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->backupTalkerEntityID_2;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->backupTalkerUniqueID_2;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->backedupTalkerEntityID;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->backedupTalkerUnique;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->avbInterfaceIndex;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->bufferLength;
-		for (auto const& fmt : node.staticModel->formats)
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.localizedDescription;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.clockDomainIndex;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.streamFlags;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.backupTalkerEntityID_0;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.backupTalkerUniqueID_0;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.backupTalkerEntityID_1;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.backupTalkerUniqueID_1;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.backupTalkerEntityID_2;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.backupTalkerUniqueID_2;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.backedupTalkerEntityID;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.backedupTalkerUnique;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.avbInterfaceIndex;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.bufferLength;
+		for (auto const& fmt : node.staticModel.formats)
 		{
 			static_cast<Sha256Serializer&>(*_serializer) << fmt;
 		}
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-		for (auto const& rIndex : node.staticModel->redundantStreams)
+		for (auto const& rIndex : node.staticModel.redundantStreams)
 		{
 			static_cast<Sha256Serializer&>(*_serializer) << rIndex;
 		}
@@ -434,32 +487,32 @@ void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity 
 	}
 }
 
-void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::StreamOutputNode const& node) noexcept
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::StreamOutputNode const& node) noexcept
 {
 	if (_checksumVersion >= 1)
 	{
 		serializeNode(parent);
 		serializeNode(node);
 		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->localizedDescription;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->clockDomainIndex;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->streamFlags;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->backupTalkerEntityID_0;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->backupTalkerUniqueID_0;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->backupTalkerEntityID_1;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->backupTalkerUniqueID_1;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->backupTalkerEntityID_2;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->backupTalkerUniqueID_2;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->backedupTalkerEntityID;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->backedupTalkerUnique;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->avbInterfaceIndex;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->bufferLength;
-		for (auto const& fmt : node.staticModel->formats)
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.localizedDescription;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.clockDomainIndex;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.streamFlags;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.backupTalkerEntityID_0;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.backupTalkerUniqueID_0;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.backupTalkerEntityID_1;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.backupTalkerUniqueID_1;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.backupTalkerEntityID_2;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.backupTalkerUniqueID_2;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.backedupTalkerEntityID;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.backedupTalkerUnique;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.avbInterfaceIndex;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.bufferLength;
+		for (auto const& fmt : node.staticModel.formats)
 		{
 			static_cast<Sha256Serializer&>(*_serializer) << fmt;
 		}
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-		for (auto const& rIndex : node.staticModel->redundantStreams)
+		for (auto const& rIndex : node.staticModel.redundantStreams)
 		{
 			static_cast<Sha256Serializer&>(*_serializer) << rIndex;
 		}
@@ -467,74 +520,105 @@ void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity 
 	}
 }
 
-void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::AvbInterfaceNode const& node) noexcept
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::JackInputNode const& node) noexcept
+{
+	if (_checksumVersion >= 1)
+	{
+		serializeNode(parent);
+		serializeNode(node);
+		serializeModel(node);
+	}
+}
+
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::JackOutputNode const& node) noexcept
+{
+	if (_checksumVersion >= 1)
+	{
+		serializeNode(parent);
+		serializeNode(node);
+		serializeModel(node);
+	}
+}
+
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::JackNode const* const parent, model::ControlNode const& node) noexcept
+{
+	if (_checksumVersion >= 1)
+	{
+		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+		serializeModel(node);
+	}
+}
+
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::AvbInterfaceNode const& node) noexcept
 {
 	if (_checksumVersion >= 1)
 	{
 		serializeNode(parent);
 		serializeNode(node);
 		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->localizedDescription;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->macAddress;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->interfaceFlags;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->clockIdentity;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->priority1;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->clockClass;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->offsetScaledLogVariance;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->clockAccuracy;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->priority2;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->domainNumber;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->logSyncInterval;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->logAnnounceInterval;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->logPDelayInterval;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->portNumber;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.localizedDescription;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.macAddress;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.interfaceFlags;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.clockIdentity;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.priority1;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.clockClass;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.offsetScaledLogVariance;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.clockAccuracy;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.priority2;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.domainNumber;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.logSyncInterval;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.logAnnounceInterval;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.logPDelayInterval;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.portNumber;
 	}
 }
 
-void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::ClockSourceNode const& node) noexcept
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::ClockSourceNode const& node) noexcept
 {
 	if (_checksumVersion >= 1)
 	{
 		serializeNode(parent);
 		serializeNode(node);
 		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->localizedDescription;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->clockSourceType;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->clockSourceLocationType;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->clockSourceLocationIndex;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.localizedDescription;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.clockSourceType;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.clockSourceLocationType;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.clockSourceLocationIndex;
 	}
 }
 
-void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::MemoryObjectNode const& node) noexcept
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::MemoryObjectNode const& node) noexcept
 {
 	if (_checksumVersion >= 1)
 	{
 		serializeNode(parent);
 		serializeNode(node);
 		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->localizedDescription;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->memoryObjectType;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->targetDescriptorType;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->targetDescriptorIndex;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->startAddress;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->maximumLength;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.localizedDescription;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.memoryObjectType;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.targetDescriptorType;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.targetDescriptorIndex;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.startAddress;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.maximumLength;
 	}
 }
 
-void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::LocaleNode const& node) noexcept
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::LocaleNode const& node) noexcept
 {
 	if (_checksumVersion >= 1)
 	{
 		serializeNode(parent);
 		serializeNode(node);
 		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->localeID;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->numberOfStringDescriptors;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->baseStringDescriptorIndex;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.localeID;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.numberOfStringDescriptors;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.baseStringDescriptorIndex;
 	}
 }
 
-void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::LocaleNode const* const parent, la::avdecc::controller::model::StringsNode const& node) noexcept
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::LocaleNode const* const parent, model::StringsNode const& node) noexcept
 {
 	if (_checksumVersion >= 1)
 	{
@@ -542,34 +626,36 @@ void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity 
 		serializeNode(parent);
 		serializeNode(node);
 		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
-		for (auto const& str : node.staticModel->strings)
+		for (auto const& str : node.staticModel.strings)
 		{
 			static_cast<Sha256Serializer&>(*_serializer) << str;
 		}
 	}
 }
 
-void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::AudioUnitNode const* const parent, la::avdecc::controller::model::StreamPortNode const& node) noexcept
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::AudioUnitNode const* const parent, model::StreamPortInputNode const& node) noexcept
 {
 	if (_checksumVersion >= 1)
 	{
 		serializeNode(grandParent);
 		serializeNode(parent);
 		serializeNode(node);
-		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->clockDomainIndex;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->portFlags;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->numberOfControls;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->baseControl;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->numberOfClusters;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->baseCluster;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->numberOfMaps;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->baseMap;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->hasDynamicAudioMap;
+		serializeModel(node);
 	}
 }
 
-void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandGrandParent, la::avdecc::controller::model::AudioUnitNode const* const grandParent, la::avdecc::controller::model::StreamPortNode const* const parent, la::avdecc::controller::model::AudioClusterNode const& node) noexcept
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::AudioUnitNode const* const parent, model::StreamPortOutputNode const& node) noexcept
+{
+	if (_checksumVersion >= 1)
+	{
+		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+		serializeModel(node);
+	}
+}
+
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandGrandParent, model::AudioUnitNode const* const grandParent, model::StreamPortNode const* const parent, model::AudioClusterNode const& node) noexcept
 {
 	if (_checksumVersion >= 1)
 	{
@@ -578,18 +664,18 @@ void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity 
 		serializeNode(parent);
 		serializeNode(node);
 		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->localizedDescription;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->signalType;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->signalIndex;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->signalOutput;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->pathLatency;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->blockLatency;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->channelCount;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->format;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.localizedDescription;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.signalType;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.signalIndex;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.signalOutput;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.pathLatency;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.blockLatency;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.channelCount;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.format;
 	}
 }
 
-void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandGrandParent, la::avdecc::controller::model::AudioUnitNode const* const grandParent, la::avdecc::controller::model::StreamPortNode const* const parent, la::avdecc::controller::model::AudioMapNode const& node) noexcept
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandGrandParent, model::AudioUnitNode const* const grandParent, model::StreamPortNode const* const parent, model::AudioMapNode const& node) noexcept
 {
 	if (_checksumVersion >= 1)
 	{
@@ -598,51 +684,62 @@ void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity 
 		serializeNode(parent);
 		serializeNode(node);
 		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
-		for (auto const& mapping : node.staticModel->mappings)
+		for (auto const& mapping : node.staticModel.mappings)
 		{
 			static_cast<Sha256Serializer&>(*_serializer) << mapping.streamIndex << mapping.streamChannel << mapping.clusterOffset << mapping.clusterChannel;
 		}
 	}
 }
 
-void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandGrandParent, model::AudioUnitNode const* const grandParent, model::StreamPortNode const* const parent, model::ControlNode const& node) noexcept
 {
 	if (_checksumVersion >= 1)
 	{
+		serializeNode(grandGrandParent);
+		serializeNode(grandParent);
 		serializeNode(parent);
 		serializeNode(node);
-		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->localizedDescription;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->blockLatency;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->controlLatency;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->controlDomain;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->controlType;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->resetTime;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->signalType;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->signalIndex;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->signalOutput;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->controlValueType;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->values.getType();
-		// Missing values serialization
+		serializeModel(node);
 	}
 }
 
-void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::ClockDomainNode const& node) noexcept
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::AudioUnitNode const* const parent, model::ControlNode const& node) noexcept
+{
+	if (_checksumVersion >= 1)
+	{
+		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+		serializeModel(node);
+	}
+}
+
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::ControlNode const& node) noexcept
+{
+	if (_checksumVersion >= 1)
+	{
+		serializeNode(parent);
+		serializeNode(node);
+		serializeModel(node);
+	}
+}
+
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::ClockDomainNode const& node) noexcept
 {
 	if (_checksumVersion >= 1)
 	{
 		serializeNode(parent);
 		serializeNode(node);
 		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->localizedDescription;
-		for (auto const& csi : node.staticModel->clockSources)
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.localizedDescription;
+		for (auto const& csi : node.staticModel.clockSources)
 		{
 			static_cast<Sha256Serializer&>(*_serializer) << csi;
 		}
 	}
 }
 
-void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::ClockDomainNode const* const parent, la::avdecc::controller::model::ClockSourceNode const& node) noexcept
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::ClockDomainNode const* const parent, model::ClockSourceNode const& node) noexcept
 {
 	if (_checksumVersion >= 1)
 	{
@@ -650,30 +747,34 @@ void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity 
 		serializeNode(parent);
 		serializeNode(node);
 		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->localizedDescription;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->clockSourceType;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->clockSourceLocationType;
-		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel->clockSourceLocationIndex;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.localizedDescription;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.clockSourceType;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.clockSourceLocationType;
+		static_cast<Sha256Serializer&>(*_serializer) << node.staticModel.clockSourceLocationIndex;
 	}
 }
 
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::RedundantStreamNode const& node) noexcept
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::RedundantStreamInputNode const& node) noexcept
 {
 	if (_checksumVersion >= 1)
 	{
 		serializeNode(parent);
 		serializeNode(node);
-		static_cast<Sha256Serializer&>(*_serializer) << StartStaticModel;
-		for (auto const& streamKV : node.redundantStreams)
-		{
-			auto const streamIndex = streamKV.first;
-			static_cast<Sha256Serializer&>(*_serializer) << streamIndex;
-		}
+		serializeModel(node);
+	}
+}
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const parent, model::RedundantStreamOutputNode const& node) noexcept
+{
+	if (_checksumVersion >= 1)
+	{
+		serializeNode(parent);
+		serializeNode(node);
+		serializeModel(node);
 	}
 }
 
-void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::RedundantStreamNode const* const parent, la::avdecc::controller::model::StreamInputNode const& node) noexcept
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::RedundantStreamNode const* const parent, model::StreamInputNode const& node) noexcept
 {
 	if (_checksumVersion >= 1)
 	{
@@ -683,7 +784,7 @@ void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity 
 	}
 }
 
-void ChecksumEntityModelVisitor::visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::RedundantStreamNode const* const parent, la::avdecc::controller::model::StreamOutputNode const& node) noexcept
+void ChecksumEntityModelVisitor::visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const grandParent, model::RedundantStreamNode const* const parent, model::StreamOutputNode const& node) noexcept
 {
 	if (_checksumVersion >= 1)
 	{

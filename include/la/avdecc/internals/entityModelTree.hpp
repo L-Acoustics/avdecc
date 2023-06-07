@@ -39,12 +39,6 @@ namespace entity
 {
 namespace model
 {
-struct AudioUnitNodeModels
-{
-	AudioUnitNodeStaticModel staticModel{};
-	AudioUnitNodeDynamicModel dynamicModel{};
-};
-
 struct StreamInputNodeModels
 {
 	StreamNodeStaticModel staticModel{};
@@ -75,20 +69,9 @@ struct MemoryObjectNodeModels
 	MemoryObjectNodeDynamicModel dynamicModel{};
 };
 
-struct LocaleNodeModels
-{
-	LocaleNodeStaticModel staticModel{};
-};
-
 struct StringsNodeModels
 {
 	StringsNodeStaticModel staticModel{};
-};
-
-struct StreamPortNodeModels
-{
-	StreamPortNodeStaticModel staticModel{};
-	StreamPortNodeDynamicModel dynamicModel{};
 };
 
 struct AudioClusterNodeModels
@@ -114,27 +97,81 @@ struct ClockDomainNodeModels
 	ClockDomainNodeDynamicModel dynamicModel{};
 };
 
-struct ConfigurationTree
+struct JackTree
 {
 	// Children
-	std::map<AudioUnitIndex, AudioUnitNodeModels> audioUnitModels{};
+	std::map<ControlIndex, ControlNodeModels> controlModels{};
+
+	// AEM Static info
+	JackNodeStaticModel staticModel{};
+
+	// AEM Dynamic info
+	JackNodeDynamicModel dynamicModel{};
+};
+
+struct LocaleTree
+{
+	// Children
+	std::map<StringsIndex, StringsNodeModels> stringsModels{};
+
+	// AEM Static info
+	LocaleNodeStaticModel staticModel{};
+};
+
+struct StreamPortTree
+{
+	// Children
+	std::map<ClusterIndex, AudioClusterNodeModels> audioClusterModels{};
+	std::map<MapIndex, AudioMapNodeModels> audioMapModels{};
+	std::map<ControlIndex, ControlNodeModels> controlModels{};
+
+	// AEM Static info
+	StreamPortNodeStaticModel staticModel{};
+
+	// AEM Dynamic info
+	StreamPortNodeDynamicModel dynamicModel{};
+};
+
+struct AudioUnitTree
+{
+	using StreamPortTrees = std::map<StreamPortIndex, StreamPortTree>;
+	//using ExternalPortInputTrees;
+	//using ExternalPortOutputTrees;
+	//using InternalPortInputTrees;
+	//using InternalPortOutputTrees;
+
+	// Children
+	StreamPortTrees streamPortInputTrees{};
+	StreamPortTrees streamPortOutputTrees{};
+	//ExternalPortInputTrees ExternalPortInputTrees{};
+	//ExternalPortOutputTrees ExternalPortOutputTrees{};
+	//InternalPortInputTrees InternalPortInputTrees{};
+	//InternalPortOutputTrees InternalPortOutputTrees{};
+	std::map<ControlIndex, ControlNodeModels> controlModels{};
+
+	// AEM Static info
+	AudioUnitNodeStaticModel staticModel{};
+
+	// AEM Dynamic info
+	AudioUnitNodeDynamicModel dynamicModel{};
+};
+
+struct ConfigurationTree
+{
+	using AudioUnitTrees = std::map<AudioUnitIndex, AudioUnitTree>;
+	using LocaleTrees = std::map<LocaleIndex, LocaleTree>;
+	using JackTrees = std::map<JackIndex, JackTree>;
+
+	// Children
+	AudioUnitTrees audioUnitTrees{};
 	std::map<StreamIndex, StreamInputNodeModels> streamInputModels{};
 	std::map<StreamIndex, StreamOutputNodeModels> streamOutputModels{};
-	//std::map<JackIndex, JackNodeModels> jackInputModels{};
-	//std::map<JackIndex, JackNodeStaticModel> jackOutputModels{};
+	JackTrees jackInputTrees{};
+	JackTrees jackOutputTrees{};
 	std::map<AvbInterfaceIndex, AvbInterfaceNodeModels> avbInterfaceModels{};
 	std::map<ClockSourceIndex, ClockSourceNodeModels> clockSourceModels{};
 	std::map<MemoryObjectIndex, MemoryObjectNodeModels> memoryObjectModels{};
-	std::map<LocaleIndex, LocaleNodeModels> localeModels{};
-	std::map<StringsIndex, StringsNodeModels> stringsModels{};
-	std::map<StreamPortIndex, StreamPortNodeModels> streamPortInputModels{};
-	std::map<StreamPortIndex, StreamPortNodeModels> streamPortOutputModels{};
-	//std::map<ExternalPortIndex, ExternalPortNodeModels> externalPortInputModels{};
-	//std::map<ExternalPortIndex, ExternalPortNodeModels> externalPortOutputModels{};
-	//std::map<InternalPortIndex, InternalPortNodeModels> internalPortInputModels{};
-	//std::map<InternalPortIndex, InternalPortNodeModels> internalPortOutputModels{};
-	std::map<ClusterIndex, AudioClusterNodeModels> audioClusterModels{};
-	std::map<MapIndex, AudioMapNodeModels> audioMapModels{};
+	LocaleTrees localeTrees{};
 	std::map<ControlIndex, ControlNodeModels> controlModels{};
 	std::map<ClockDomainIndex, ClockDomainNodeModels> clockDomainModels{};
 

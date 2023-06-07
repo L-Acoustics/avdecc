@@ -148,6 +148,47 @@ private:
 	Values _values{};
 };
 
+/** Selector Value - Clause 7.3.5.2.2 */
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType> || std::is_same_v<SizeType, LocalizedStringReference>>>
+struct LA_AVDECC_TYPE_INFO_EXPORT SelectorValueStatic
+{
+	using control_value_details_traits = ControlValues::control_value_details_traits<SelectorValueStatic<SizeType>>;
+
+	std::uint16_t countValues() const noexcept
+	{
+		return 1; // There is actually just one value in SELECTOR type, but multiple options
+	}
+
+	// Comparison operator
+	CONSTEXPR_COMPARISON friend bool operator==(SelectorValueStatic const& lhs, SelectorValueStatic const& rhs) noexcept
+	{
+		return lhs.defaultValue == rhs.defaultValue && lhs.unit == rhs.unit && lhs.options == rhs.options;
+	}
+
+	SizeType defaultValue{ 0 };
+	ControlValueUnit unit{ 0 };
+	std::vector<SizeType> options{};
+};
+
+template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType> || std::is_same_v<SizeType, LocalizedStringReference>>>
+struct LA_AVDECC_TYPE_INFO_EXPORT SelectorValueDynamic
+{
+	using control_value_details_traits = ControlValues::control_value_details_traits<SelectorValueDynamic<SizeType>>;
+
+	std::uint16_t countValues() const noexcept
+	{
+		return 1;
+	}
+
+	// Comparison operator
+	CONSTEXPR_COMPARISON friend bool operator==(SelectorValueDynamic const& lhs, SelectorValueDynamic const& rhs) noexcept
+	{
+		return lhs.currentValue == rhs.currentValue;
+	}
+
+	SizeType currentValue{}; // The actual default value should be the one from SelectorValueStatic
+};
+
 /** Array Values - Clause 7.3.5.2.3 */
 template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
 struct LA_AVDECC_TYPE_INFO_EXPORT ArrayValueStatic

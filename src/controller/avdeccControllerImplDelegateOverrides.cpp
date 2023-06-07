@@ -297,7 +297,7 @@ void ControllerImpl::onConfigurationChanged(entity::controller::Interface const*
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-		updateConfiguration(controller, entity, configurationIndex);
+		updateConfiguration(controller, entity, configurationIndex, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -309,15 +309,7 @@ void ControllerImpl::onStreamInputFormatChanged(entity::controller::Interface co
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring StreamInputFormat update from unsolicited notification because STREAM {} not enumerated yet", streamIndex);
-			return;
-		}
-
-		updateStreamInputFormat(entity, streamIndex, streamFormat);
+		updateStreamInputFormat(entity, streamIndex, streamFormat, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -329,15 +321,7 @@ void ControllerImpl::onStreamOutputFormatChanged(entity::controller::Interface c
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring StreamOutputFormat update from unsolicited notification because STREAM {} not enumerated yet", streamIndex);
-			return;
-		}
-
-		updateStreamOutputFormat(entity, streamIndex, streamFormat);
+		updateStreamOutputFormat(entity, streamIndex, streamFormat, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -350,19 +334,15 @@ void ControllerImpl::onStreamPortInputAudioMappingsChanged(entity::controller::I
 	{
 		auto& entity = *controlledEntity;
 
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), streamPortIndex, &entity::model::ConfigurationTree::streamPortInputModels))
+		// Only support the case where numberOfMaps == 1
+		if (numberOfMaps != 1 || mapIndex != 0)
 		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring StreamPortInputAudioMappings update from unsolicited notification because STREAM_PORT {} not enumerated yet", streamPortIndex);
 			return;
 		}
 
-		// Only support the case where numberOfMaps == 1
-		if (numberOfMaps != 1 || mapIndex != 0)
-			return;
-
-		controlledEntity->clearStreamPortInputAudioMappings(streamPortIndex);
-		updateStreamPortInputAudioMappingsAdded(entity, streamPortIndex, mappings);
+		auto const behavior = entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull;
+		controlledEntity->clearStreamPortInputAudioMappings(streamPortIndex, behavior);
+		updateStreamPortInputAudioMappingsAdded(entity, streamPortIndex, mappings, behavior);
 	}
 }
 
@@ -375,19 +355,15 @@ void ControllerImpl::onStreamPortOutputAudioMappingsChanged(entity::controller::
 	{
 		auto& entity = *controlledEntity;
 
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), streamPortIndex, &entity::model::ConfigurationTree::streamPortOutputModels))
+		// Only support the case where numberOfMaps == 1
+		if (numberOfMaps != 1 || mapIndex != 0)
 		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring StreamPortOutputAudioMappings update from unsolicited notification because STREAM_PORT {} not enumerated yet", streamPortIndex);
 			return;
 		}
 
-		// Only support the case where numberOfMaps == 1
-		if (numberOfMaps != 1 || mapIndex != 0)
-			return;
-
-		controlledEntity->clearStreamPortOutputAudioMappings(streamPortIndex);
-		updateStreamPortOutputAudioMappingsAdded(entity, streamPortIndex, mappings);
+		auto const behavior = entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull;
+		controlledEntity->clearStreamPortOutputAudioMappings(streamPortIndex, behavior);
+		updateStreamPortOutputAudioMappingsAdded(entity, streamPortIndex, mappings, behavior);
 	}
 }
 
@@ -399,15 +375,7 @@ void ControllerImpl::onStreamInputInfoChanged(entity::controller::Interface cons
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring StreamInputInfo update from unsolicited notification because STREAM {} not enumerated yet", streamIndex);
-			return;
-		}
-
-		updateStreamInputInfo(entity, streamIndex, info, fromGetStreamInfoResponse, fromGetStreamInfoResponse);
+		updateStreamInputInfo(entity, streamIndex, info, fromGetStreamInfoResponse, fromGetStreamInfoResponse, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -419,15 +387,7 @@ void ControllerImpl::onStreamOutputInfoChanged(entity::controller::Interface con
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring StreamOutputInfo update from unsolicited notification because STREAM {} not enumerated yet", streamIndex);
-			return;
-		}
-
-		updateStreamOutputInfo(entity, streamIndex, info, fromGetStreamInfoResponse, fromGetStreamInfoResponse);
+		updateStreamOutputInfo(entity, streamIndex, info, fromGetStreamInfoResponse, fromGetStreamInfoResponse, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -439,7 +399,7 @@ void ControllerImpl::onEntityNameChanged(entity::controller::Interface const* co
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-		updateEntityName(entity, entityName);
+		updateEntityName(entity, entityName, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -451,7 +411,7 @@ void ControllerImpl::onEntityGroupNameChanged(entity::controller::Interface cons
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-		updateEntityGroupName(entity, entityGroupName);
+		updateEntityGroupName(entity, entityGroupName, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -463,15 +423,7 @@ void ControllerImpl::onConfigurationNameChanged(entity::controller::Interface co
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasConfigurationTree(configurationIndex))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring ConfigurationName update from unsolicited notification because STREAM {} not enumerated yet", configurationIndex);
-			return;
-		}
-
-		updateConfigurationName(entity, configurationIndex, configurationName);
+		updateConfigurationName(entity, configurationIndex, configurationName, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -483,15 +435,7 @@ void ControllerImpl::onAudioUnitNameChanged(entity::controller::Interface const*
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasConfigurationTree(configurationIndex) || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), audioUnitIndex, &entity::model::ConfigurationTree::audioUnitModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring AudioUnitName update from unsolicited notification because AUDIO_UNIT {} not enumerated yet", audioUnitIndex);
-			return;
-		}
-
-		updateAudioUnitName(entity, configurationIndex, audioUnitIndex, audioUnitName);
+		updateAudioUnitName(entity, configurationIndex, audioUnitIndex, audioUnitName, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -503,15 +447,7 @@ void ControllerImpl::onStreamInputNameChanged(entity::controller::Interface cons
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasConfigurationTree(configurationIndex) || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring StreamInputName update from unsolicited notification because STREAM {} not enumerated yet", streamIndex);
-			return;
-		}
-
-		updateStreamInputName(entity, configurationIndex, streamIndex, streamName);
+		updateStreamInputName(entity, configurationIndex, streamIndex, streamName, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -523,15 +459,31 @@ void ControllerImpl::onStreamOutputNameChanged(entity::controller::Interface con
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
+		updateStreamOutputName(entity, configurationIndex, streamIndex, streamName, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	}
+}
 
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasConfigurationTree(configurationIndex) || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring StreamOutputName update from unsolicited notification because STREAM {} not enumerated yet", streamIndex);
-			return;
-		}
+void ControllerImpl::onJackInputNameChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex, entity::model::AvdeccFixedString const& jackName) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
 
-		updateStreamOutputName(entity, configurationIndex, streamIndex, streamName);
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+		updateJackInputName(entity, configurationIndex, jackIndex, jackName, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	}
+}
+
+void ControllerImpl::onJackOutputNameChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::JackIndex const jackIndex, entity::model::AvdeccFixedString const& jackName) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+		updateJackOutputName(entity, configurationIndex, jackIndex, jackName, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -543,15 +495,7 @@ void ControllerImpl::onAvbInterfaceNameChanged(entity::controller::Interface con
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasConfigurationTree(configurationIndex) || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring AvbInterfaceName update from unsolicited notification because AVB_INTERFACE {} not enumerated yet", avbInterfaceIndex);
-			return;
-		}
-
-		updateAvbInterfaceName(entity, configurationIndex, avbInterfaceIndex, avbInterfaceName);
+		updateAvbInterfaceName(entity, configurationIndex, avbInterfaceIndex, avbInterfaceName, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -563,15 +507,7 @@ void ControllerImpl::onClockSourceNameChanged(entity::controller::Interface cons
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasConfigurationTree(configurationIndex) || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), clockSourceIndex, &entity::model::ConfigurationTree::clockSourceModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring ClockSourceName update from unsolicited notification because CLOCK_SOURCE {} not enumerated yet", clockSourceIndex);
-			return;
-		}
-
-		updateClockSourceName(entity, configurationIndex, clockSourceIndex, clockSourceName);
+		updateClockSourceName(entity, configurationIndex, clockSourceIndex, clockSourceName, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -583,15 +519,7 @@ void ControllerImpl::onMemoryObjectNameChanged(entity::controller::Interface con
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasConfigurationTree(configurationIndex) || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), memoryObjectIndex, &entity::model::ConfigurationTree::memoryObjectModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring MemoryObjectName update from unsolicited notification because MEMORY_OBJECT {} not enumerated yet", memoryObjectIndex);
-			return;
-		}
-
-		updateMemoryObjectName(entity, configurationIndex, memoryObjectIndex, memoryObjectName);
+		updateMemoryObjectName(entity, configurationIndex, memoryObjectIndex, memoryObjectName, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -603,15 +531,7 @@ void ControllerImpl::onAudioClusterNameChanged(entity::controller::Interface con
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasConfigurationTree(configurationIndex) || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), audioClusterIndex, &entity::model::ConfigurationTree::audioClusterModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring AudioClusterName update from unsolicited notification because AUDIO_CLUSTER {} not enumerated yet", audioClusterIndex);
-			return;
-		}
-
-		updateAudioClusterName(entity, configurationIndex, audioClusterIndex, audioClusterName);
+		updateAudioClusterName(entity, configurationIndex, audioClusterIndex, audioClusterName, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -623,15 +543,7 @@ void ControllerImpl::onControlNameChanged(entity::controller::Interface const* c
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasConfigurationTree(configurationIndex) || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), controlIndex, &entity::model::ConfigurationTree::controlModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring ControlName update from unsolicited notification because CONTROL {} not enumerated yet", controlIndex);
-			return;
-		}
-
-		updateControlName(entity, configurationIndex, controlIndex, controlName);
+		updateControlName(entity, configurationIndex, controlIndex, controlName, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -643,15 +555,7 @@ void ControllerImpl::onClockDomainNameChanged(entity::controller::Interface cons
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasConfigurationTree(configurationIndex) || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), clockDomainIndex, &entity::model::ConfigurationTree::clockDomainModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring ClockDomainName update from unsolicited notification because CLOCK_DOMAIN {} not enumerated yet", clockDomainIndex);
-			return;
-		}
-
-		updateClockDomainName(entity, configurationIndex, clockDomainIndex, clockDomainName);
+		updateClockDomainName(entity, configurationIndex, clockDomainIndex, clockDomainName, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -663,7 +567,7 @@ void ControllerImpl::onAssociationIDChanged(entity::controller::Interface const*
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-		updateAssociationID(entity, associationID);
+		updateAssociationID(entity, associationID, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -675,15 +579,7 @@ void ControllerImpl::onAudioUnitSamplingRateChanged(entity::controller::Interfac
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), audioUnitIndex, &entity::model::ConfigurationTree::audioUnitModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring AudioUnitSamplingRate update from unsolicited notification because AUDIO_UNIT {} not enumerated yet", audioUnitIndex);
-			return;
-		}
-
-		updateAudioUnitSamplingRate(entity, audioUnitIndex, samplingRate);
+		updateAudioUnitSamplingRate(entity, audioUnitIndex, samplingRate, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -695,15 +591,7 @@ void ControllerImpl::onClockSourceChanged(entity::controller::Interface const* c
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), clockDomainIndex, &entity::model::ConfigurationTree::clockDomainModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring ClockSource update from unsolicited notification because CLOCK_DOMAIN {} not enumerated yet", clockDomainIndex);
-			return;
-		}
-
-		updateClockSource(entity, clockDomainIndex, clockSourceIndex);
+		updateClockSource(entity, clockDomainIndex, clockSourceIndex, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -715,15 +603,7 @@ void ControllerImpl::onControlValuesChanged(entity::controller::Interface const*
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), controlIndex, &entity::model::ConfigurationTree::controlModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring ControlValues update from unsolicited notification because CONTROL {} not enumerated yet", controlIndex);
-			return;
-		}
-
-		updateControlValues(entity, controlIndex, packedControlValues);
+		updateControlValues(entity, controlIndex, packedControlValues, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -735,15 +615,7 @@ void ControllerImpl::onStreamInputStarted(entity::controller::Interface const* c
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring StreamInputRunning update from unsolicited notification because STREAM {} not enumerated yet", streamIndex);
-			return;
-		}
-
-		updateStreamInputRunningStatus(entity, streamIndex, true);
+		updateStreamInputRunningStatus(entity, streamIndex, true, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -755,15 +627,7 @@ void ControllerImpl::onStreamOutputStarted(entity::controller::Interface const* 
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring StreamOutputRunning update from unsolicited notification because STREAM {} not enumerated yet", streamIndex);
-			return;
-		}
-
-		updateStreamOutputRunningStatus(entity, streamIndex, true);
+		updateStreamOutputRunningStatus(entity, streamIndex, true, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -775,15 +639,7 @@ void ControllerImpl::onStreamInputStopped(entity::controller::Interface const* c
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring StreamInputRunning update from unsolicited notification because STREAM {} not enumerated yet", streamIndex);
-			return;
-		}
-
-		updateStreamInputRunningStatus(entity, streamIndex, false);
+		updateStreamInputRunningStatus(entity, streamIndex, false, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -795,15 +651,7 @@ void ControllerImpl::onStreamOutputStopped(entity::controller::Interface const* 
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring StreamOutputRunning update from unsolicited notification because STREAM {} not enumerated yet", streamIndex);
-			return;
-		}
-
-		updateStreamOutputRunningStatus(entity, streamIndex, false);
+		updateStreamOutputRunningStatus(entity, streamIndex, false, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -815,15 +663,7 @@ void ControllerImpl::onAvbInfoChanged(entity::controller::Interface const* const
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring AvBInfo update from unsolicited notification because AVB_INTERFACE {} not enumerated yet", avbInterfaceIndex);
-			return;
-		}
-
-		updateAvbInfo(entity, avbInterfaceIndex, info);
+		updateAvbInfo(entity, avbInterfaceIndex, info, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -835,15 +675,7 @@ void ControllerImpl::onAsPathChanged(entity::controller::Interface const* const 
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring AsPath update from unsolicited notification because AVB_INTERFACE {} not enumerated yet", avbInterfaceIndex);
-			return;
-		}
-
-		updateAsPath(entity, avbInterfaceIndex, asPath);
+		updateAsPath(entity, avbInterfaceIndex, asPath, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -855,7 +687,7 @@ void ControllerImpl::onEntityCountersChanged(entity::controller::Interface const
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-		updateEntityCounters(entity, validCounters, counters);
+		updateEntityCounters(entity, validCounters, counters, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -867,15 +699,7 @@ void ControllerImpl::onAvbInterfaceCountersChanged(entity::controller::Interface
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), avbInterfaceIndex, &entity::model::ConfigurationTree::avbInterfaceModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring AvbInterfaceCounters update from unsolicited notification because AVB_INTERFACE {} not enumerated yet", avbInterfaceIndex);
-			return;
-		}
-
-		updateAvbInterfaceCounters(entity, avbInterfaceIndex, validCounters, counters);
+		updateAvbInterfaceCounters(entity, avbInterfaceIndex, validCounters, counters, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -887,15 +711,7 @@ void ControllerImpl::onClockDomainCountersChanged(entity::controller::Interface 
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), clockDomainIndex, &entity::model::ConfigurationTree::clockDomainModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring ClockDomainCounters update from unsolicited notification because CLOCK_DOMAIN {} not enumerated yet", clockDomainIndex);
-			return;
-		}
-
-		updateClockDomainCounters(entity, clockDomainIndex, validCounters, counters);
+		updateClockDomainCounters(entity, clockDomainIndex, validCounters, counters, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -907,15 +723,7 @@ void ControllerImpl::onStreamInputCountersChanged(entity::controller::Interface 
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamInputModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring StreamInputCounters update from unsolicited notification because STREAM {} not enumerated yet", streamIndex);
-			return;
-		}
-
-		updateStreamInputCounters(entity, streamIndex, validCounters, counters);
+		updateStreamInputCounters(entity, streamIndex, validCounters, counters, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -927,15 +735,7 @@ void ControllerImpl::onStreamOutputCountersChanged(entity::controller::Interface
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), streamIndex, &entity::model::ConfigurationTree::streamOutputModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring StreamOutputCounters update from unsolicited notification because STREAM {} not enumerated yet", streamIndex);
-			return;
-		}
-
-		updateStreamOutputCounters(entity, streamIndex, validCounters, counters);
+		updateStreamOutputCounters(entity, streamIndex, validCounters, counters, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -947,15 +747,7 @@ void ControllerImpl::onStreamPortInputAudioMappingsAdded(entity::controller::Int
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), streamPortIndex, &entity::model::ConfigurationTree::streamPortInputModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring StreamPortInputAudioMappings update from unsolicited notification because STREAM_PORT {} not enumerated yet", streamPortIndex);
-			return;
-		}
-
-		updateStreamPortInputAudioMappingsAdded(entity, streamPortIndex, mappings);
+		updateStreamPortInputAudioMappingsAdded(entity, streamPortIndex, mappings, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -967,15 +759,7 @@ void ControllerImpl::onStreamPortOutputAudioMappingsAdded(entity::controller::In
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), streamPortIndex, &entity::model::ConfigurationTree::streamPortOutputModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring StreamPortOutputAudioMappings update from unsolicited notification because STREAM_PORT {} not enumerated yet", streamPortIndex);
-			return;
-		}
-
-		updateStreamPortOutputAudioMappingsAdded(entity, streamPortIndex, mappings);
+		updateStreamPortOutputAudioMappingsAdded(entity, streamPortIndex, mappings, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -987,15 +771,7 @@ void ControllerImpl::onStreamPortInputAudioMappingsRemoved(entity::controller::I
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), streamPortIndex, &entity::model::ConfigurationTree::streamPortInputModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring StreamPortInputAudioMappings update from unsolicited notification because STREAM_PORT {} not enumerated yet", streamPortIndex);
-			return;
-		}
-
-		updateStreamPortInputAudioMappingsRemoved(entity, streamPortIndex, mappings);
+		updateStreamPortInputAudioMappingsRemoved(entity, streamPortIndex, mappings, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -1007,15 +783,7 @@ void ControllerImpl::onStreamPortOutputAudioMappingsRemoved(entity::controller::
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasAnyConfiguration() || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), streamPortIndex, &entity::model::ConfigurationTree::streamPortOutputModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring StreamPortOutputAudioMappings update from unsolicited notification because STREAM_PORT {} not enumerated yet", streamPortIndex);
-			return;
-		}
-
-		updateStreamPortOutputAudioMappingsRemoved(entity, streamPortIndex, mappings);
+		updateStreamPortOutputAudioMappingsRemoved(entity, streamPortIndex, mappings, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -1027,15 +795,7 @@ void ControllerImpl::onMemoryObjectLengthChanged(entity::controller::Interface c
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-
-		// If we need to update based on a notification, only do it if we already enumerated associated descriptor
-		if (!entity.hasConfigurationTree(configurationIndex) || !entity.hasTreeModel(entity.getCurrentConfigurationIndex(), memoryObjectIndex, &entity::model::ConfigurationTree::memoryObjectModels))
-		{
-			LOG_CONTROLLER_DEBUG(entityID, "Ignoring MemoryObjectLength update from unsolicited notification because MEMORY_OBJECT {} not enumerated yet", memoryObjectIndex);
-			return;
-		}
-
-		updateMemoryObjectLength(entity, configurationIndex, memoryObjectIndex, length);
+		updateMemoryObjectLength(entity, configurationIndex, memoryObjectIndex, length, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 
@@ -1047,7 +807,7 @@ void ControllerImpl::onOperationStatus(entity::controller::Interface const* cons
 	if (controlledEntity)
 	{
 		auto& entity = *controlledEntity;
-		updateOperationStatus(entity, descriptorType, descriptorIndex, operationID, percentComplete);
+		updateOperationStatus(entity, descriptorType, descriptorIndex, operationID, percentComplete, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
 	}
 }
 

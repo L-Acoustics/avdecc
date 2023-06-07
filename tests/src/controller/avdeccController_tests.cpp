@@ -23,6 +23,7 @@
 */
 
 // Public API
+#include <la/avdecc/executor.hpp>
 #include <la/avdecc/controller/avdeccController.hpp>
 #include <la/avdecc/internals/protocolAemAecpdu.hpp>
 #include <la/avdecc/internals/protocolAemPayloadSizes.hpp>
@@ -124,6 +125,22 @@ private:
 		serializeNode(parent);
 		serializeNode(node);
 	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::JackInputNode const& node) noexcept override
+	{
+		serializeNode(parent);
+		serializeNode(node);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::JackOutputNode const& node) noexcept override
+	{
+		serializeNode(parent);
+		serializeNode(node);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::JackNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept override
+	{
+		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+	}
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::AvbInterfaceNode const& node) noexcept override
 	{
 		serializeNode(parent);
@@ -150,7 +167,13 @@ private:
 		serializeNode(parent);
 		serializeNode(node);
 	}
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::AudioUnitNode const* const parent, la::avdecc::controller::model::StreamPortNode const& node) noexcept override
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::AudioUnitNode const* const parent, la::avdecc::controller::model::StreamPortInputNode const& node) noexcept override
+	{
+		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::AudioUnitNode const* const parent, la::avdecc::controller::model::StreamPortOutputNode const& node) noexcept override
 	{
 		serializeNode(grandParent);
 		serializeNode(parent);
@@ -166,6 +189,19 @@ private:
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandGrandParent, la::avdecc::controller::model::AudioUnitNode const* const grandParent, la::avdecc::controller::model::StreamPortNode const* const parent, la::avdecc::controller::model::AudioMapNode const& node) noexcept override
 	{
 		serializeNode(grandGrandParent);
+		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandGrandParent, la::avdecc::controller::model::AudioUnitNode const* const grandParent, la::avdecc::controller::model::StreamPortNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept override
+	{
+		serializeNode(grandGrandParent);
+		serializeNode(grandParent);
+		serializeNode(parent);
+		serializeNode(node);
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::AudioUnitNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept override
+	{
 		serializeNode(grandParent);
 		serializeNode(parent);
 		serializeNode(node);
@@ -187,17 +223,27 @@ private:
 		serializeNode(node);
 	}
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::RedundantStreamNode const& node) noexcept override
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::RedundantStreamInputNode const& node) noexcept override
 	{
 		serializeNode(parent);
 		serializeNode(node);
-		_serializedModel += "rsi";
-		for (auto const& streamKV : node.redundantStreams)
+		_serializedModel += "rsi" + std::to_string(node.primaryStreamIndex) + "+";
+		for (auto const streamIndex : node.redundantStreams)
 		{
-			auto const streamIndex = streamKV.first;
 			_serializedModel += std::to_string(streamIndex) + "+";
 		}
-		serializeNode(*node.primaryStream);
+		_serializedModel += ",";
+	}
+	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::RedundantStreamOutputNode const& node) noexcept override
+	{
+		serializeNode(parent);
+		serializeNode(node);
+		_serializedModel += "rso" + std::to_string(node.primaryStreamIndex) + "+";
+		for (auto const streamIndex : node.redundantStreams)
+		{
+			_serializedModel += std::to_string(streamIndex) + "+";
+		}
+		_serializedModel += ",";
 	}
 	virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::RedundantStreamNode const* const parent, la::avdecc::controller::model::StreamInputNode const& node) noexcept override
 	{
@@ -299,7 +345,7 @@ TEST(Controller, RedundantStreams)
 		EntityModelVisitor serializer{};
 		entity.accept(&serializer);
 		auto const serialized = serializer.getSerializedModel();
-		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,vi0,rsi0+1+dt5,di0,pdt1,pdt5,dt5,di0,pdt1,pdt5,dt5,di1,", serialized.c_str());
+		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,vi0,rsi0+0+1+,pdt1,pdt5,dt5,di0,pdt1,pdt5,dt5,di1,", serialized.c_str());
 	}
 
 	// Valid redundant association (secondary stream declared first)
@@ -319,7 +365,7 @@ TEST(Controller, RedundantStreams)
 		EntityModelVisitor serializer{};
 		entity.accept(&serializer);
 		auto const serialized = serializer.getSerializedModel();
-		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,vi0,rsi0+1+dt5,di1,pdt1,pdt5,dt5,di0,pdt1,pdt5,dt5,di1,", serialized.c_str());
+		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,vi0,rsi1+0+1+,pdt1,pdt5,dt5,di0,pdt1,pdt5,dt5,di1,", serialized.c_str());
 	}
 
 	// Valid redundant association (single stream declared as well as redundant pair)
@@ -340,7 +386,7 @@ TEST(Controller, RedundantStreams)
 		EntityModelVisitor serializer{};
 		entity.accept(&serializer);
 		auto const serialized = serializer.getSerializedModel();
-		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,di2,pdt1,dt5,vi0,rsi1+2+dt5,di2,pdt1,pdt5,dt5,di1,pdt1,pdt5,dt5,di2,", serialized.c_str());
+		EXPECT_STREQ("nullptr,dt0,di0,pdt0,dt1,di0,pdt1,dt5,di0,pdt1,dt5,di1,pdt1,dt5,di2,pdt1,dt5,vi0,rsi2+1+2+,pdt1,pdt5,dt5,di1,pdt1,pdt5,dt5,di2,", serialized.c_str());
 	}
 }
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
@@ -770,7 +816,7 @@ TEST(Controller, ValidControlValues)
 	{
 		// Get ControlNode
 		auto const& controlNode = e.getControlNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, ControlIndex);
-		auto const& staticValues = controlNode.staticModel->values;
+		auto const& staticValues = controlNode.staticModel.values;
 
 		ASSERT_EQ(1u, staticValues.size()) << "VirtualEntity should have 1 value in its ControlNode";
 		ASSERT_EQ(la::avdecc::entity::model::ControlValueType::Type::ControlLinearUInt8, staticValues.getType()) << "VirtualEntity should have ControlLinearUInt8 type in its ControlNode";
@@ -778,10 +824,10 @@ TEST(Controller, ValidControlValues)
 		ASSERT_TRUE(!staticValues.areDynamicValues()) << "VirtualEntity should have static values in its ControlNode";
 
 		// Expect to pass ControlValues validation with a value set to minimum
-		EXPECT_TRUE(c.validateControlValues(EntityID, ControlIndex, staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{ { { 0u } } } }));
+		EXPECT_TRUE(c.validateControlValues(EntityID, ControlIndex, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{ { { 0u } } } }));
 
 		// Expect to pass ControlValues validation with a value set to maximum
-		EXPECT_TRUE(c.validateControlValues(EntityID, ControlIndex, staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{ { { 255u } } } }));
+		EXPECT_TRUE(c.validateControlValues(EntityID, ControlIndex, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{ { { 255u } } } }));
 	}
 	catch (la::avdecc::controller::ControlledEntity::Exception const&)
 	{
@@ -814,27 +860,27 @@ TEST(Controller, InvalidControlValues)
 	{
 		// Get ControlNode
 		auto const& controlNode = e.getControlNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, ControlIndex);
-		auto const& staticValues = controlNode.staticModel->values;
+		auto const& staticValues = controlNode.staticModel.values;
 
 		ASSERT_EQ(1u, staticValues.size()) << "VirtualEntity should have 1 value in its ControlNode";
 		ASSERT_EQ(la::avdecc::entity::model::ControlValueType::Type::ControlLinearUInt8, staticValues.getType()) << "VirtualEntity should have ControlLinearUInt8 type in its ControlNode";
 		ASSERT_TRUE(!!staticValues) << "VirtualEntity should have valid values in its ControlNode";
 		ASSERT_TRUE(!staticValues.areDynamicValues()) << "VirtualEntity should have static values in its ControlNode";
 
-		// Expect to not pass ControlValues validation with non-valid dynamic values
-		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues, {}));
+		// Expect to pass ControlValues validation with non-initialized dynamic values (might be an unknown type of ControlValues)
+		EXPECT_TRUE(c.validateControlValues(EntityID, ControlIndex, staticValues.getType(), staticValues, {}));
 
 		// Expect to not pass ControlValues validation with static values instead of dynamic values
-		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueStatic<std::uint8_t>>{} }));
+		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueStatic<std::uint8_t>>{} }));
 
 		// Expect to not pass ControlValues validation with a different type of dynamic values
-		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::int8_t>>{} }));
+		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::int8_t>>{} }));
 
 		// Expect to not pass ControlValues validation with a different count of values
-		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{} }));
+		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{} }));
 
 		// Expect to not pass ControlValues validation with a value not multiple of Step for LinearValues
-		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{ { { 1u } } } }));
+		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{ { { 1u } } } }));
 
 		// Expect to not pass ControlValues validation with a value outside bounds // TODO: Cannot test with an IDENTIFY Control, have to create another Control
 	}
@@ -2080,7 +2126,7 @@ TEST_F(MediaClockModel_F, StreamInput_Connected_Online_SwitchClockSource)
 		EXPECT_CALL(*this, onMediaClockChainChanged(::testing::_, c.getControlledEntityGuard(Entity01).get(), la::avdecc::entity::model::ClockDomainIndex{ 0u }, ::testing::_));
 
 		// Change the clock source
-		c.updateClockSource(*c.getControlledEntityImplGuard(Entity01, true, false), la::avdecc::entity::model::ClockDomainIndex{ 0u }, la::avdecc::entity::model::ClockSourceIndex{ 1u });
+		c.updateClockSource(*c.getControlledEntityImplGuard(Entity01, true, false), la::avdecc::entity::model::ClockDomainIndex{ 0u }, la::avdecc::entity::model::ClockSourceIndex{ 1u }, la::avdecc::controller::TreeModelAccessStrategy::NotFoundBehavior::Throw);
 
 		// Validate chain has been updated
 		{

@@ -98,6 +98,15 @@ struct StreamNodeStaticModel
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 };
 
+struct JackNodeStaticModel
+{
+	LocalizedStringReference localizedDescription{};
+	entity::JackFlags jackFlags{};
+	JackType jackType{ JackType::Speaker };
+	std::uint16_t numberOfControls{ 0u };
+	ControlIndex baseControl{ ControlIndex(0u) };
+};
+
 struct AvbInterfaceNodeStaticModel
 {
 	LocalizedStringReference localizedDescription{};
@@ -188,6 +197,7 @@ struct ControlNodeStaticModel
 	DescriptorIndex signalIndex{ DescriptorIndex(0u) };
 	std::uint16_t signalOutput{ 0u };
 	ControlValueType controlValueType{};
+	std::uint16_t numberOfValues{ 0u };
 	ControlValues values{};
 };
 
