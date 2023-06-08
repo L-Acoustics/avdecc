@@ -233,10 +233,10 @@ DEFINE_AEM_TYPES_CLASS_BASE(ControlValues);
 %template(MultiplierUnit) std::pair<std::int8_t, la::avdecc::entity::model::ControlValueUnit::Unit>;
 %template(PullBaseFrequency) std::pair<std::uint8_t, std::uint32_t>;
 %template(OffsetIndex) std::pair<std::uint16_t, std::uint8_t>;
-%template(AudioMappings) std::vector<la::avdecc::entity::model::AudioMapping>;
-%template(MsrpMappings) std::vector<la::avdecc::entity::model::MsrpMapping>;
-%template(PathSequence) std::vector<la::avdecc::UniqueIdentifier>;
-%template(DescriptorCounters) std::array<la::avdecc::entity::model::DescriptorCounter, 32>;
+%template(AudioMappingVector) std::vector<la::avdecc::entity::model::AudioMapping>;
+%template(MsrpMappingVector) std::vector<la::avdecc::entity::model::MsrpMapping>;
+%template(UniqueIdentifierVector) std::vector<la::avdecc::UniqueIdentifier>;
+%template(DescriptorCounterArray) std::array<la::avdecc::entity::model::DescriptorCounter, 32>;
 
 
 ////////////////////////////////////////
@@ -419,9 +419,9 @@ DEFINE_AEM_STRUCT(MilanInfo);
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
 
 // Define templates
-%template(DescriptorCounts) std::unordered_map<la::avdecc::entity::model::DescriptorType, std::uint16_t, la::avdecc::utils::EnumClassHash>;
-%template(Strings) std::array<la::avdecc::entity::model::AvdeccFixedString, 7>;
-//%template(ClockSources) std::vector<la::avdecc::entity::model::ClockSourceIndex>; // Not compiling in C# (maybe need to %apply as ushort all descriptor indexes?)
-%template(SamplingRates) std::set<la::avdecc::entity::model::SamplingRate>;
-%template(StreamFormats) std::set<la::avdecc::entity::model::StreamFormat>;
-%template(RedundantStreamIndexes) std::set<la::avdecc::entity::model::StreamIndex>;
+%template(DescriptorCountMap) std::unordered_map<la::avdecc::entity::model::DescriptorType, std::uint16_t, la::avdecc::utils::EnumClassHash>;
+%template(StringArray) std::array<la::avdecc::entity::model::AvdeccFixedString, 7>;
+//%template(ClockSourceVector) std::vector<la::avdecc::entity::model::ClockSourceIndex>; // Not compiling in C# (maybe need to %apply as ushort all descriptor indexes?)
+%template(SamplingRateSet) std::set<la::avdecc::entity::model::SamplingRate>;
+%template(StreamFormatSet) std::set<la::avdecc::entity::model::StreamFormat>;
+%template(RedundantStreamIndexSet) std::set<la::avdecc::entity::model::StreamIndex>;
