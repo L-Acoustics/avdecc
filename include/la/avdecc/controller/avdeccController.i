@@ -270,7 +270,7 @@ namespace la.avdecc.controller
 %ignore la::avdecc::controller::Controller::ChecksumVersion; // Ignore because of constexpr undefined
 
 %rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::loadEntityModelFile"; // Temp ignore method
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::loadVirtualEntitiesFromJsonNetworkState"; // Temp ignore method
+%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::loadVirtualEntitiesFromJsonNetworkState"; // Temp ignore method (requires support of std::tuple, see https://stackoverflow.com/questions/72816953/support-for-stdtuple-in-swig)
 %rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::loadVirtualEntityFromJson"; // Temp ignore method
 %rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::deserializeControlledEntitiesFromJsonNetworkState"; // Temp ignore method
 %rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::deserializeControlledEntityFromJson"; // Temp ignore method
