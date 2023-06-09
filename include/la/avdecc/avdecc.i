@@ -64,7 +64,9 @@ namespace la::avdecc::utils
 class EmptyLock
 {
 public:
+	%rename("_lock") lock() const noexcept;
 	void lock() const noexcept;
+	%rename("_unlock") unlock() const noexcept;
 	void unlock() const noexcept;
 	// Defaulted compiler auto-generated methods
 	EmptyLock() noexcept = default;
