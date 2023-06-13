@@ -64,7 +64,9 @@ namespace la::avdecc::utils
 class EmptyLock
 {
 public:
+	%rename("_lock") lock() const noexcept;
 	void lock() const noexcept;
+	%rename("_unlock") unlock() const noexcept;
 	void unlock() const noexcept;
 	// Defaulted compiler auto-generated methods
 	EmptyLock() noexcept = default;
@@ -266,7 +268,7 @@ DEFINE_OPTIONAL_CLASS(la::networkInterface, MacAddress, OptMacAddress)
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
 
 // Define templates
-%template(InterfacesInformation) std::map<la::avdecc::entity::model::AvbInterfaceIndex, la::avdecc::entity::Entity::InterfaceInformation>;
+%template(InterfaceInformationMap) std::map<la::avdecc::entity::model::AvbInterfaceIndex, la::avdecc::entity::Entity::InterfaceInformation>;
 
 ////////////////////////////////////////
 // ControllerEntity
@@ -538,29 +540,28 @@ DEFINE_AEM_TREE_NODE(Entity);
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
 
 // Define templates
-%template(StreamConnections) std::set<la::avdecc::entity::model::StreamIdentification>;
-%template(ControlModels) std::map<la::avdecc::entity::model::ControlIndex, la::avdecc::entity::model::ControlNodeModels>;
-%template(StringsModels) std::map<la::avdecc::entity::model::StringsIndex, la::avdecc::entity::model::StringsNodeModels>;
-%template(AudioClusterModels) std::map<la::avdecc::entity::model::ClusterIndex, la::avdecc::entity::model::AudioClusterNodeModels>;
-%template(AudioMapModels) std::map<la::avdecc::entity::model::MapIndex, la::avdecc::entity::model::AudioMapNodeModels>;
-%template(StreamPortTrees) std::map<la::avdecc::entity::model::StreamPortIndex, la::avdecc::entity::model::StreamPortTree>;
-%template(AudioUnitTrees) std::map<la::avdecc::entity::model::AudioUnitIndex, la::avdecc::entity::model::AudioUnitTree>;
-%template(LocaleTrees) std::map<la::avdecc::entity::model::LocaleIndex, la::avdecc::entity::model::LocaleTree>;
-%template(JackTrees) std::map<la::avdecc::entity::model::JackIndex, la::avdecc::entity::model::JackTree>;
-%template(StreamInputModels) std::map<la::avdecc::entity::model::StreamIndex, la::avdecc::entity::model::StreamInputNodeModels>;
-%template(StreamOutputModels) std::map<la::avdecc::entity::model::StreamIndex, la::avdecc::entity::model::StreamOutputNodeModels>;
-%template(AvbInterfaceModels) std::map<la::avdecc::entity::model::AvbInterfaceIndex, la::avdecc::entity::model::AvbInterfaceNodeModels>;
-%template(ClockSourceModels) std::map<la::avdecc::entity::model::ClockSourceIndex, la::avdecc::entity::model::ClockSourceNodeModels>;
-%template(MemoryObjectModels) std::map<la::avdecc::entity::model::MemoryObjectIndex, la::avdecc::entity::model::MemoryObjectNodeModels>;
-%template(ClockDomainModels) std::map<la::avdecc::entity::model::ClockDomainIndex, la::avdecc::entity::model::ClockDomainNodeModels>;
-%template(ConfigurationTrees) std::map<la::avdecc::entity::model::ConfigurationIndex, la::avdecc::entity::model::ConfigurationTree>;
+%template(StreamIdentificationSet) std::set<la::avdecc::entity::model::StreamIdentification>;
+%template(ControlNodeModelMap) std::map<la::avdecc::entity::model::ControlIndex, la::avdecc::entity::model::ControlNodeModels>;
+%template(StringsNodeModelMap) std::map<la::avdecc::entity::model::StringsIndex, la::avdecc::entity::model::StringsNodeModels>;
+%template(AudioClusterNodeModelMap) std::map<la::avdecc::entity::model::ClusterIndex, la::avdecc::entity::model::AudioClusterNodeModels>;
+%template(AudioMapNodeModelMap) std::map<la::avdecc::entity::model::MapIndex, la::avdecc::entity::model::AudioMapNodeModels>;
+%template(StreamPortTreeMap) std::map<la::avdecc::entity::model::StreamPortIndex, la::avdecc::entity::model::StreamPortTree>;
+%template(AudioUnitTreeMap) std::map<la::avdecc::entity::model::AudioUnitIndex, la::avdecc::entity::model::AudioUnitTree>;
+%template(LocaleTreeMap) std::map<la::avdecc::entity::model::LocaleIndex, la::avdecc::entity::model::LocaleTree>;
+%template(JackTreeMap) std::map<la::avdecc::entity::model::JackIndex, la::avdecc::entity::model::JackTree>;
+%template(StreamInputNodeModelMap) std::map<la::avdecc::entity::model::StreamIndex, la::avdecc::entity::model::StreamInputNodeModels>;
+%template(StreamOutputNodeModelMap) std::map<la::avdecc::entity::model::StreamIndex, la::avdecc::entity::model::StreamOutputNodeModels>;
+%template(AvbInterfaceNodeModelMap) std::map<la::avdecc::entity::model::AvbInterfaceIndex, la::avdecc::entity::model::AvbInterfaceNodeModels>;
+%template(ClockSourceNodeModelMap) std::map<la::avdecc::entity::model::ClockSourceIndex, la::avdecc::entity::model::ClockSourceNodeModels>;
+%template(MemoryObjectNodeModelMap) std::map<la::avdecc::entity::model::MemoryObjectIndex, la::avdecc::entity::model::MemoryObjectNodeModels>;
+%template(ClockDomainNodeModelMap) std::map<la::avdecc::entity::model::ClockDomainIndex, la::avdecc::entity::model::ClockDomainNodeModels>;
+%template(ConfigurationTreeMap) std::map<la::avdecc::entity::model::ConfigurationIndex, la::avdecc::entity::model::ConfigurationTree>;
 %template(EntityCounters) std::map<la::avdecc::entity::EntityCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
 %template(StreamInputCounters) std::map<la::avdecc::entity::StreamInputCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
 %template(StreamOutputCounters) std::map<la::avdecc::entity::StreamOutputCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
 %template(AvbInterfaceCounters) std::map<la::avdecc::entity::AvbInterfaceCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
 %template(ClockDomainCounters) std::map<la::avdecc::entity::ClockDomainCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
-%template(LocalizedStrings) std::unordered_map<la::avdecc::entity::model::StringsIndex, la::avdecc::entity::model::AvdeccFixedString>;
-//%template(DescriptorsVector) std::vector<la::avdecc::entity::model::DescriptorIndex>; // TODO: C# generated code doesn't compile
+%template(LocalizedStringMap) std::unordered_map<la::avdecc::entity::model::StringsIndex, la::avdecc::entity::model::AvdeccFixedString>;
 
 ////////////////////////////////////////
 // EndStation

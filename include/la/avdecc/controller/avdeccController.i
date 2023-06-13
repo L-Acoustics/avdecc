@@ -110,25 +110,25 @@ DEFINE_CONTROLLED_ENTITY_MODEL_NODE(Entity)
 
 // Define templates
 // WARNING: Requires https://github.com/swig/swig/issues/2625 to be fixed (or a modified version of the std_map.i file)
-%template(AudioClusterNodes) std::map<la::avdecc::entity::model::ClusterIndex, la::avdecc::controller::model::AudioClusterNode>;
-%template(AudioMapNodes) std::map<la::avdecc::entity::model::MapIndex, la::avdecc::controller::model::AudioMapNode>;
-%template(ControlNodes) std::map<la::avdecc::entity::model::ControlIndex, la::avdecc::controller::model::ControlNode>;
-%template(StreamPortInputsNodes) std::map<la::avdecc::entity::model::StreamPortIndex, la::avdecc::controller::model::StreamPortInputNode>;
-%template(StreamPortOutputNodes) std::map<la::avdecc::entity::model::StreamPortIndex, la::avdecc::controller::model::StreamPortOutputNode>;
-%template(StringNodes) std::map<la::avdecc::entity::model::StringsIndex, la::avdecc::controller::model::StringsNode>;
-%template(AudioUnitNodes) std::map<la::avdecc::entity::model::AudioUnitIndex, la::avdecc::controller::model::AudioUnitNode>;
-%template(StreamInputNodes) std::map<la::avdecc::entity::model::StreamIndex, la::avdecc::controller::model::StreamInputNode>;
-%template(StreamOutputNodes) std::map<la::avdecc::entity::model::StreamIndex, la::avdecc::controller::model::StreamOutputNode>;
-%template(JackInputNodes) std::map<la::avdecc::entity::model::JackIndex, la::avdecc::controller::model::JackInputNode>;
-%template(JackOutputNodes) std::map<la::avdecc::entity::model::JackIndex, la::avdecc::controller::model::JackOutputNode>;
-%template(AvbInterfaceNodes) std::map<la::avdecc::entity::model::AvbInterfaceIndex, la::avdecc::controller::model::AvbInterfaceNode>;
-%template(ClockSourceNodes) std::map<la::avdecc::entity::model::ClockSourceIndex, la::avdecc::controller::model::ClockSourceNode>;
-%template(MemoryObjectNodes) std::map<la::avdecc::entity::model::MemoryObjectIndex, la::avdecc::controller::model::MemoryObjectNode>;
-%template(LocaleNodes) std::map<la::avdecc::entity::model::LocaleIndex, la::avdecc::controller::model::LocaleNode>;
-%template(ClockDomainNodes) std::map<la::avdecc::entity::model::ClockDomainIndex, la::avdecc::controller::model::ClockDomainNode>;
-%template(RedundantStreamInputNodes) std::map<la::avdecc::controller::model::VirtualIndex, la::avdecc::controller::model::RedundantStreamInputNode>;
-%template(RedundantStreamOutputNodes) std::map<la::avdecc::controller::model::VirtualIndex, la::avdecc::controller::model::RedundantStreamOutputNode>;
-%template(ConfigurationNodes) std::map<la::avdecc::entity::model::ConfigurationIndex, la::avdecc::controller::model::ConfigurationNode>;
+%template(AudioClusterNodeMap) std::map<la::avdecc::entity::model::ClusterIndex, la::avdecc::controller::model::AudioClusterNode>;
+%template(AudioMapNodeMap) std::map<la::avdecc::entity::model::MapIndex, la::avdecc::controller::model::AudioMapNode>;
+%template(ControlNodeMap) std::map<la::avdecc::entity::model::ControlIndex, la::avdecc::controller::model::ControlNode>;
+%template(StreamPortInputsNodeMap) std::map<la::avdecc::entity::model::StreamPortIndex, la::avdecc::controller::model::StreamPortInputNode>;
+%template(StreamPortOutputNodeMap) std::map<la::avdecc::entity::model::StreamPortIndex, la::avdecc::controller::model::StreamPortOutputNode>;
+%template(StringNodeMap) std::map<la::avdecc::entity::model::StringsIndex, la::avdecc::controller::model::StringsNode>;
+%template(AudioUnitNodeMap) std::map<la::avdecc::entity::model::AudioUnitIndex, la::avdecc::controller::model::AudioUnitNode>;
+%template(StreamInputNodeMap) std::map<la::avdecc::entity::model::StreamIndex, la::avdecc::controller::model::StreamInputNode>;
+%template(StreamOutputNodeMap) std::map<la::avdecc::entity::model::StreamIndex, la::avdecc::controller::model::StreamOutputNode>;
+%template(JackInputNodeMap) std::map<la::avdecc::entity::model::JackIndex, la::avdecc::controller::model::JackInputNode>;
+%template(JackOutputNodeMap) std::map<la::avdecc::entity::model::JackIndex, la::avdecc::controller::model::JackOutputNode>;
+%template(AvbInterfaceNodeMap) std::map<la::avdecc::entity::model::AvbInterfaceIndex, la::avdecc::controller::model::AvbInterfaceNode>;
+%template(ClockSourceNodeMap) std::map<la::avdecc::entity::model::ClockSourceIndex, la::avdecc::controller::model::ClockSourceNode>;
+%template(MemoryObjectNodeMap) std::map<la::avdecc::entity::model::MemoryObjectIndex, la::avdecc::controller::model::MemoryObjectNode>;
+%template(LocaleNodeMap) std::map<la::avdecc::entity::model::LocaleIndex, la::avdecc::controller::model::LocaleNode>;
+%template(ClockDomainNodeMap) std::map<la::avdecc::entity::model::ClockDomainIndex, la::avdecc::controller::model::ClockDomainNode>;
+%template(RedundantStreamInputNodeMap) std::map<la::avdecc::controller::model::VirtualIndex, la::avdecc::controller::model::RedundantStreamInputNode>;
+%template(RedundantStreamOutputNodeMap) std::map<la::avdecc::controller::model::VirtualIndex, la::avdecc::controller::model::RedundantStreamOutputNode>;
+%template(ConfigurationNodeMap) std::map<la::avdecc::entity::model::ConfigurationIndex, la::avdecc::controller::model::ConfigurationNode>;
 
 ////////////////////////////////////////
 // AVDECC CONTROLLED ENTITY
@@ -270,7 +270,7 @@ namespace la.avdecc.controller
 %ignore la::avdecc::controller::Controller::ChecksumVersion; // Ignore because of constexpr undefined
 
 %rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::loadEntityModelFile"; // Temp ignore method
-%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::loadVirtualEntitiesFromJsonNetworkState"; // Temp ignore method
+%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::loadVirtualEntitiesFromJsonNetworkState"; // Temp ignore method (requires support of std::tuple, see https://stackoverflow.com/questions/72816953/support-for-stdtuple-in-swig)
 %rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::loadVirtualEntityFromJson"; // Temp ignore method
 %rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::deserializeControlledEntitiesFromJsonNetworkState"; // Temp ignore method
 %rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::deserializeControlledEntityFromJson"; // Temp ignore method
