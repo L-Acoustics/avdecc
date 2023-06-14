@@ -9,6 +9,7 @@
 %include <std_set.i>
 %include <stdint.i>
 %include <std_pair.i>
+%include <std_deque.i>
 %include <std_map.i>
 %include <windows.i>
 %include <std_unique_ptr.i>
@@ -31,21 +32,15 @@
 #define LA_AVDECC_CONTROLLER_CALL_CONVENTION
 
 ////////////////////////////////////////
+// Utils
+////////////////////////////////////////
+%include "la/avdecc/utils.i"
+
+
+////////////////////////////////////////
 // Entity Model
 ////////////////////////////////////////
 %import "la/avdecc/internals/entityModel.i"
-// Redefine helper template for the wrap.cxx file
-%{
-namespace la::avdecc::utils
-{
-template<typename T>
-class UnderlyingType
-{
-public:
-    using value_type = void;
-};
-}
-%}
 
 
 ////////////////////////////////////////
@@ -131,6 +126,8 @@ DEFINE_CONTROLLED_ENTITY_MODEL_NODE(Entity)
 %template(RedundantStreamInputNodeMap) std::map<la::avdecc::controller::model::VirtualIndex, la::avdecc::controller::model::RedundantStreamInputNode>;
 %template(RedundantStreamOutputNodeMap) std::map<la::avdecc::controller::model::VirtualIndex, la::avdecc::controller::model::RedundantStreamOutputNode>;
 %template(ConfigurationNodeMap) std::map<la::avdecc::entity::model::ConfigurationIndex, la::avdecc::controller::model::ConfigurationNode>;
+%template(MediaClockChainDeque) std::deque<la::avdecc::controller::model::MediaClockChainNode>;
+
 
 ////////////////////////////////////////
 // AVDECC CONTROLLED ENTITY
@@ -189,9 +186,13 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::Controller, QueryCommandError, "uint")
 
 DEFINE_OBSERVER_CLASS(la::avdecc::controller::Controller::Observer)
 
+#if SUPPORT_EXCLUSIVE_ACCESS
 %nspace la::avdecc::controller::Controller::ExclusiveAccessToken;
 %rename("%s") la::avdecc::controller::Controller::ExclusiveAccessToken; // Unignore class
-%unique_ptr(la::avdecc::controller::Controller::ExclusiveAccessToken) // Define unique_ptr for ExclusiveAccessToken
+%unique_ptr(la::avdecc::controller::Controller::ExclusiveAccessToken) // Define unique_ptr for ExclusiveAccessToken // FIXME need second template parameter for deleter (see https://github.com/swig/swig/issues/2411)
+#else
+%ignore la::avdecc::controller::Controller::requestExclusiveAccess; // Ignore until https://github.com/swig/swig/issues/2411 is fixed
+#endif
 
 // %rename("%s") la::avdecc::controller::Controller::Error; // Must unignore the enum since it's inside a class
 // %rename("%s") la::avdecc::controller::Controller::QueryCommandError; // Must unignore the enum since it's inside a class
@@ -274,8 +275,12 @@ namespace la.avdecc.controller
 #define constexpr
 %ignore la::avdecc::controller::InterfaceVersion; // Ignore because of constexpr undefined
 %ignore la::avdecc::controller::Controller::ChecksumVersion; // Ignore because of constexpr undefined
+%ignore la::avdecc::controller::getCompileOptions; // Ignore because CompileOptions fails to be mapped correctly // TODO: FIXME
+%ignore la::avdecc::controller::getCompileOptionsInfo; // Ignore for now // TODO: FIXME
 
 %rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::loadEntityModelFile"; // Temp ignore method
+%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::serializeAllControlledEntitiesAsJson"; // Temp ignore method (requires support of std::tuple, see https://stackoverflow.com/questions/72816953/support-for-stdtuple-in-swig)
+%rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::serializeControlledEntityAsJson"; // Temp ignore method (requires support of std::tuple, see https://stackoverflow.com/questions/72816953/support-for-stdtuple-in-swig)
 %rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::loadVirtualEntitiesFromJsonNetworkState"; // Temp ignore method (requires support of std::tuple, see https://stackoverflow.com/questions/72816953/support-for-stdtuple-in-swig)
 %rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::loadVirtualEntityFromJson"; // Temp ignore method
 %rename("$ignore", fullname=1, $isfunction) "la::avdecc::controller::Controller::deserializeControlledEntitiesFromJsonNetworkState"; // Temp ignore method
@@ -301,7 +306,10 @@ namespace la.avdecc.controller
 %rename("%s") Handler_Entity_Entity_DescriptorIndex_DescriptorIndex_uint16_ConnectionFlags_ControlStatus;
 #endif
 %rename("%s") Handler_Entity_ControlStatus;
+#if SUPPORT_EXCLUSIVE_ACCESS
 %rename("%s") Handler_Entity_AemCommandStatus_ExclusiveAccessToken;
+#endif
+%rename("%s") Handler_bool_bool;
 // TODO: Would be nice to have the handler in the same namespace as the class (ie. be able to pass a namespace to std_function)
 %std_function(Handler_Entity_AemCommandStatus_UniqueIdentifier, void, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::UniqueIdentifier const entityID);
 %std_function(Handler_Entity_AemCommandStatus, void, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::LocalEntity::AemCommandStatus const status);
@@ -319,7 +327,10 @@ namespace la.avdecc.controller
 %std_function(Handler_Entity_Entity_DescriptorIndex_DescriptorIndex_uint16_ConnectionFlags_ControlStatus, void, la::avdecc::controller::ControlledEntity const* const talkerEntity, la::avdecc::controller::ControlledEntity const* const listenerEntity, la::avdecc::entity::model::DescriptorIndex const talkerDescriptorIndex, la::avdecc::entity::model::DescriptorIndex const listenerDescriptorIndex, std::uint16_t const connectionCount, la::avdecc::entity::ConnectionFlags const flags, la::avdecc::entity::LocalEntity::ControlStatus const status);
 #endif
 %std_function(Handler_Entity_ControlStatus, void, la::avdecc::entity::LocalEntity::ControlStatus const status);
+#if SUPPORT_EXCLUSIVE_ACCESS
 %std_function(Handler_Entity_AemCommandStatus_ExclusiveAccessToken, void, la::avdecc::controller::ControlledEntity const* const entity, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::controller::Controller::ExclusiveAccessToken::UniquePointer&& token);
+#endif
+%std_function(Handler_bool_bool, bool, bool const isDesiredClockSync, bool const isAvailableClockSync);
 
 
 // Include c++ declaration file
