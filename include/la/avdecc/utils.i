@@ -101,22 +101,6 @@ private:
 	value_type _value{};
 };
 
-class EmptyLock
-{
-public:
-	%rename("_lock") lock() const noexcept;
-	void lock() const noexcept;
-	%rename("_unlock") unlock() const noexcept;
-	void unlock() const noexcept;
-	// Defaulted compiler auto-generated methods
-	EmptyLock() noexcept = default;
-	~EmptyLock() noexcept = default;
-	EmptyLock(EmptyLock const&) noexcept = default;
-	%ignore operator=; // Ignore copy operator
-	EmptyLock& operator=(EmptyLock const&) noexcept = default;
-	EmptyLock& operator=(EmptyLock&&) noexcept = default;
-};
-
 // Forward declare Subject template class
 template<class Derived, class Mut>
 class Subject;
