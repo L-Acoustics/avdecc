@@ -75,6 +75,8 @@ DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, MilanInfo, OptMilanInfo)
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
 
+DEFINE_OBSERVER_CLASS(la::avdecc::controller::model::EntityModelVisitor)
+
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(MediaClockChain)
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE()
 DEFINE_CONTROLLED_ENTITY_MODEL_NODE(EntityModel)
@@ -144,6 +146,9 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity, CompatibilityFlag, "
 %rename("lockEntity") la::avdecc::controller::ControlledEntity::lock; // Rename method
 %rename("unlockEntity") la::avdecc::controller::ControlledEntity::unlock; // Rename method
 
+%nspace la::avdecc::controller::ControlledEntity::Diagnostics;
+%rename("%s") la::avdecc::controller::ControlledEntity::Diagnostics; // Unignore class
+
 %nspace la::avdecc::controller::ControlledEntityGuard;
 %rename("%s") la::avdecc::controller::ControlledEntityGuard; // Unignore class
 
@@ -153,6 +158,7 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity, CompatibilityFlag, "
 
 // Define templates
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller::ControlledEntity, CompatibilityFlags, CompatibilityFlag, std::uint8_t)
+%template("StreamPortInvalidAudioMappings") std::map<la::avdecc::entity::model::StreamPortIndex, la::avdecc::entity::model::AudioMappings>;
 
 
 ////////////////////////////////////////
@@ -178,10 +184,10 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::Controller, QueryCommandError, "uint")
 %ignore la::avdecc::controller::Controller::Exception; // Ignore Exception, will be created as native exception
 %ignore la::avdecc::controller::Controller::create(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree); // Ignore it, will be wrapped
 %unique_ptr(la::avdecc::controller::Controller) // Define unique_ptr for Controller
+%rename("lockController") la::avdecc::controller::Controller::lock; // Rename method
+%rename("unlockController") la::avdecc::controller::Controller::unlock; // Rename method
 
-%nspace la::avdecc::controller::Controller::Observer;
-%rename("%s") la::avdecc::controller::Controller::Observer; // Unignore class
-%feature("director") la::avdecc::controller::Controller::Observer;
+DEFINE_OBSERVER_CLASS(la::avdecc::controller::Controller::Observer)
 
 %nspace la::avdecc::controller::Controller::ExclusiveAccessToken;
 %rename("%s") la::avdecc::controller::Controller::ExclusiveAccessToken; // Unignore class

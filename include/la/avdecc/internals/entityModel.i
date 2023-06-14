@@ -421,7 +421,7 @@ DEFINE_AEM_STRUCT(MilanInfo);
 // Define templates
 %template(DescriptorCountMap) std::unordered_map<la::avdecc::entity::model::DescriptorType, std::uint16_t, la::avdecc::utils::EnumClassHash>;
 %template(StringArray) std::array<la::avdecc::entity::model::AvdeccFixedString, 7>;
-//%template(ClockSourceVector) std::vector<la::avdecc::entity::model::ClockSourceIndex>; // Not compiling in C# (maybe need to %apply as ushort all descriptor indexes?)
+//%template(DescriptorVector) std::vector<la::avdecc::entity::model::DescriptorIndex>; // Not compiling in C# (maybe need to %apply as ushort all descriptor indexes?)
 %template(SamplingRateSet) std::set<la::avdecc::entity::model::SamplingRate>;
 %template(StreamFormatSet) std::set<la::avdecc::entity::model::StreamFormat>;
 %template(RedundantStreamIndexSet) std::set<la::avdecc::entity::model::StreamIndex>;

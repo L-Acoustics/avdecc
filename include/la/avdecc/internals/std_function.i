@@ -66,7 +66,7 @@
 
 			protected override %unpack_type(0, Ret) Invoke(%foreach(%param, __VA_ARGS__))
 			{
-				return delegateAction?.Invoke(%foreach(%unpack_arg, __VA_ARGS__)) ?? throw new InvalidOperationException("Callback not assigned.");
+				return delegateAction?.Invoke(%foreach(%unpack_arg, __VA_ARGS__)) ?? throw new global::System.InvalidOperationException("Callback not assigned.");
 			}
 		}
 

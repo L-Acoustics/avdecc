@@ -182,6 +182,13 @@ public:
 ////////////////////////////////////////
 // avdecc global
 ////////////////////////////////////////
+// Define some macros
+%define DEFINE_OBSERVER_CLASS(classname)
+	%nspace classname;
+	%rename("%s") classname; // Unignore class
+	%feature("director") classname;
+%enddef
+
 %ignore la::avdecc::CompileOption;
 %ignore la::avdecc::CompileOptionInfo;
 %ignore la::avdecc::getCompileOptions();
@@ -286,12 +293,9 @@ DEFINE_OPTIONAL_CLASS(la::networkInterface, MacAddress, OptMacAddress)
 %ignore la::avdecc::entity::controller::Interface::operator=; // Ignore copy operator
 // TODO: Must wrap all result handlers
 
-%nspace la::avdecc::entity::controller::Delegate;
-%rename("%s") la::avdecc::entity::controller::Delegate; // Unignore class
+DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Delegate)
 %ignore la::avdecc::entity::controller::Delegate::Delegate(Delegate&&); // Ignore move constructor
 %ignore la::avdecc::entity::controller::Delegate::operator=; // Ignore copy operator
-%feature("director") la::avdecc::entity::controller::Delegate;
-//%interface_impl(la::avdecc::entity::controller::Delegate); // Not working as expected
 
 %nspace la::avdecc::entity::controller::Interface;
 %rename("%s") la::avdecc::entity::controller::Interface; // Unignore class
@@ -427,6 +431,7 @@ DEFINE_OPTIONAL_CLASS(la::networkInterface, MacAddress, OptMacAddress)
 
 %nspace la::avdecc::entity::ControllerEntity;
 %rename("%s") la::avdecc::entity::ControllerEntity; // Unignore class
+%ignore la::avdecc::entity::ControllerEntity::create; // Prevent direct creation of a ControllerEntity for now at it won't be usable because of double inheritance (controller::Interface methods not available)
 %ignore la::avdecc::entity::ControllerEntity::ControllerEntity(ControllerEntity&&); // Ignore move constructor
 %ignore la::avdecc::entity::ControllerEntity::operator=; // Ignore copy operator
 
@@ -564,6 +569,17 @@ DEFINE_AEM_TREE_NODE(Entity);
 %template(LocalizedStringMap) std::unordered_map<la::avdecc::entity::model::StringsIndex, la::avdecc::entity::model::AvdeccFixedString>;
 
 ////////////////////////////////////////
+// JSON SERIALIZATION
+////////////////////////////////////////
+// Bind enums
+DEFINE_ENUM_CLASS(la::avdecc::entity::model::jsonSerializer, Flag, "ushort")
+
+// Include c++ declaration file
+%include "la/avdecc/internals/jsonSerialization.hpp"
+%rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
+
+
+////////////////////////////////////////
 // EndStation
 ////////////////////////////////////////
 // Bind structs and classes
@@ -573,6 +589,8 @@ DEFINE_AEM_TREE_NODE(Entity);
 %rename("%s") la::avdecc::EndStation; // Unignore class
 %ignore la::avdecc::EndStation::Exception; // Ignore Exception, will be created as native exception
 %ignore la::avdecc::EndStation::create(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceName); // Ignore it, will be wrapped
+%ignore la::avdecc::EndStation::addAggregateEntity; // Ignore at the moment, we don't want to handle AggregateEntity yet
+%ignore la::avdecc::EndStation::deserializeEntityModelFromJson;
 %unique_ptr(la::avdecc::EndStation) // Define unique_ptr for EndStation
 
 // Define C# exception handling for la::avdecc::EndStation::Exception
