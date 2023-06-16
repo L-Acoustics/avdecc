@@ -722,6 +722,14 @@ void ControllerImpl::onMemoryObjectDescriptorResult(entity::controller::Interfac
 		{
 			if (!!status)
 			{
+				// Validate some fields
+				if (descriptor.length > descriptor.maximumLength)
+				{
+					auto& entity = *controlledEntity;
+					LOG_CONTROLLER_WARN(entityID, "Invalid MemoryObject.length value (greater than MemoryObject.maximumLength value): {} > {}", descriptor.length, descriptor.maximumLength);
+					removeCompatibilityFlag(this, entity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					entity.setIgnoreCachedEntityModel();
+				}
 				controlledEntity->setMemoryObjectDescriptor(descriptor, configurationIndex, memoryObjectIndex);
 			}
 			else

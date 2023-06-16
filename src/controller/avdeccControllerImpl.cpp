@@ -1338,6 +1338,18 @@ void ControllerImpl::updateMemoryObjectLength(ControlledEntityImpl& controlledEn
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
+	auto* const memoryObjectNode = controlledEntity.getModelAccessStrategy().getMemoryObjectNode(configurationIndex, memoryObjectIndex, notFoundBehavior);
+	if (memoryObjectNode)
+	{
+		// Validate some fields
+		if (length > memoryObjectNode->staticModel.maximumLength)
+		{
+			LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid MemoryObject.length value (greater than MemoryObject.maximumLength value): {} > {}", length, memoryObjectNode->staticModel.maximumLength);
+			ControllerImpl::removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			controlledEntity.setIgnoreCachedEntityModel();
+		}
+	}
+
 	controlledEntity.setMemoryObjectLength(configurationIndex, memoryObjectIndex, length, notFoundBehavior);
 
 	// Entity was advertised to the user, notify observers
