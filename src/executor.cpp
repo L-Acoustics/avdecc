@@ -164,9 +164,16 @@ public:
 						jobsToProcess.clear();
 					}
 
-					// Notify that we are done processing jobs
-					_flushingJobs = false;
-					_jobProcessedCondVar.notify_one();
+					// If we were asked to flush, notify that we are done
+					// (It may happen that the _flushingJobs bool is set to true after we checked it in the wait condition, but reset it anyway as we processed some jobs and the flush() method will check for any other pending jobs)
+					if (_flushingJobs)
+					{
+						auto const lg = std::lock_guard{ _executorLock };
+
+						// Notify that we are done processing jobs
+						_flushingJobs = false;
+						_flushedPromise.set_value();
+					}
 				}
 				_jobs.clear();
 			});
@@ -193,9 +200,10 @@ public:
 			return;
 		}
 
-		// Enqueue the job
 		{
 			auto const lg = std::lock_guard(_executorLock);
+
+			// Enqueue the job
 			_jobs.push_back(std::move(job));
 		}
 
@@ -211,20 +219,25 @@ public:
 		// Wait until all jobs are processed. We must loop as one job might have been pushed while the executor is calling jobs (and will soon reset _flushingJobs)
 		while (!_jobs.empty())
 		{
-			// Set flag to indicate that we are flushing, we want to wait for the flag to be reset
-			_flushingJobs = true;
+			{
+				auto const lg = std::lock_guard(_executorLock);
+
+				// Set flag to indicate that we are flushing
+				_flushingJobs = true;
+
+				// Create a new promise to wait for the executor thread to finish processing the jobs
+				_flushedPromise = std::promise<void>{};
+			}
 
 			// Notify the executor thread
 			_executorCondVar.notify_one();
 
 			// Wait for the executor thread to finish processing the jobs
+			auto const fut = _flushedPromise.get_future();
+			auto const ret = fut.wait_for(std::chrono::seconds(30));
+			if (!AVDECC_ASSERT_WITH_RET(ret != std::future_status::timeout, "Executor timed out while flushing jobs"))
 			{
-				auto lock = std::unique_lock{ _executorLock };
-				_jobProcessedCondVar.wait(lock,
-					[this]
-					{
-						return !_flushingJobs;
-					});
+				break;
 			}
 		}
 	}
@@ -239,15 +252,16 @@ public:
 		{
 			flush();
 		}
-		else
-		{
-			// Discard jobs
-			auto const lg = std::lock_guard(_executorLock);
-			_jobs.clear();
-		}
 
-		// Set termination flag
-		_shouldTerminate = true;
+		{
+			auto const lg = std::lock_guard(_executorLock);
+
+			// Discard (unflushed) jobs
+			_jobs.clear();
+
+			// Set termination flag
+			_shouldTerminate = true;
+		}
 
 		// Notify the executor thread
 		_executorCondVar.notify_one();
@@ -278,8 +292,9 @@ public:
 
 private:
 	// Private members
-	std::atomic<bool> _shouldTerminate{ false }; // Flag to indicate that the executor thread should terminate
-	std::atomic<bool> _flushingJobs{ false }; // Flag to indicate we want to flush the jobs
+	bool _shouldTerminate{ false }; // Flag to indicate that the executor thread should terminate
+	bool _flushingJobs{ false }; // Flag to indicate we want to flush the jobs
+	std::promise<void> _flushedPromise{}; // Promise to notify when the jobs have been flushed
 	std::recursive_mutex _enqueueLock{}; // Lock to prevent new jobs to be pushed. We have to use a recursive lock to allow flush to be called from the destructor
 	std::mutex _executorLock{}; // Lock to protect the executor queue
 	std::deque<Job> _jobs{}; // Queue of jobs to be executed (could have used a std::queue but we want to be able to iterate and clear the queue)
