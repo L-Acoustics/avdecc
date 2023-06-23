@@ -148,6 +148,7 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity, CompatibilityFlag, "
 
 %nspace la::avdecc::controller::ControlledEntityGuard;
 %rename("%s") la::avdecc::controller::ControlledEntityGuard; // Unignore class
+%ignore la::avdecc::controller::ControlledEntityGuard::operator bool; // Ignore operator bool, isValid() is already defined
 
 // Include c++ declaration file
 %include "la/avdecc/controller/internals/avdeccControlledEntity.hpp"

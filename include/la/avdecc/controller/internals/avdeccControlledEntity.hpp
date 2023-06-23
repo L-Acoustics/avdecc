@@ -253,9 +253,15 @@ public:
 	}
 
 	/** Returns true if the entity is online (meaning a valid ControlledEntity can be retrieved using an operator overload) */
-	explicit operator bool() const noexcept
+	bool isValid() const noexcept
 	{
 		return _controlledEntity != nullptr;
+	}
+
+	/** Entity validity bool operator (equivalent to isValid()) */
+	explicit operator bool() const noexcept
+	{
+		return isValid();
 	}
 
 	/** Releases the Guarded ControlledEntity (and the exclusive access to it). */

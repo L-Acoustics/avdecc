@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support for CONTROL descriptors at AUDIO_UNIT, JACK, STREAM_PORT levels
 - *numberOfValues* field in the ControlNode
 - Detection of out-of-bounds MemoryObject length value
+- isValid() method to ControlledEntityGuard
 
 ### Changed
 - Complete controller entity model refactoring to support descriptors at non-configuration level
