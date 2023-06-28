@@ -18,12 +18,17 @@
 		#include <la/avdecc/internals/entityModel.hpp>
 %}
 
-// Optimize code generation by enabling RVO
+// C# Specifics
 #if defined(SWIGCSHARP)
+// Optimize code generation by enabling RVO
 %typemap(out, optimal="1") SWIGTYPE
 %{
-	$result = new $1_ltype(($1_ltype const&)$1);
+    $result = new $1_ltype(($1_ltype const&)$1);
 %}
+// Marshal all std::string as UTF8Str
+%typemap(imtype, outattributes="[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)]", inattributes="[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPUTF8Str)] ") std::string, std::string const& "string"
+// Better debug display
+%typemap(csattributes) la::avdecc::entity::model::AvdeccFixedString "[System.Diagnostics.DebuggerDisplay(\"{toString()}\")]"
 #endif
 
 // Force define AVDECC C/C++ API Macros to nothing
