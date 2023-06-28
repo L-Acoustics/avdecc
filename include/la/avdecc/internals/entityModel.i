@@ -123,6 +123,17 @@ DEFINE_AEM_TYPES_CLASS_BASE(AvdeccFixedString);
 %ignore la::avdecc::entity::model::AvdeccFixedString::operator[](size_t const pos);
 %ignore la::avdecc::entity::model::AvdeccFixedString::operator[](size_t const pos) const;
 %ignore operator<<(std::ostream&, la::avdecc::entity::model::AvdeccFixedString const&);
+// Extend the class
+%extend la::avdecc::entity::model::AvdeccFixedString
+{
+#if defined(SWIGCSHARP)
+	// Provide a more native ToString() method
+	std::string ToString()
+	{
+		return static_cast<std::string>(*$self);
+	}
+#endif
+}
 DEFINE_AEM_TYPES_CLASS(SamplingRate);
 DEFINE_AEM_TYPES_CLASS(StreamFormat);
 DEFINE_AEM_TYPES_CLASS(LocalizedStringReference);
@@ -208,6 +219,21 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MilanInfoFeaturesFlags, MilanInfo
 	%rename("%s") la::avdecc::protocol::name; // Unignore class
 	%ignore la::avdecc::protocol::name::name(); // Ignore default constructor
 	%rename("toString") la::avdecc::protocol::name::operator std::string() const noexcept;
+#if defined(SWIGCSHARP)
+	// Better debug display
+	%typemap(csattributes) la::avdecc::protocol::name "[System.Diagnostics.DebuggerDisplay(\"{toString()}\")]"
+#endif
+	// Extend the class
+	%extend la::avdecc::protocol::name
+	{
+#if defined(SWIGCSHARP)
+		// Provide a more native ToString() method
+		std::string ToString()
+		{
+			return static_cast<std::string>(*$self);
+		}
+#endif
+	}
 %enddef
 
 // Bind structs and classes
