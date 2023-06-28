@@ -92,6 +92,8 @@ public:
 
 	static LA_AVDECC_API AecpStatus const Success;
 	static LA_AVDECC_API AecpStatus const NotImplemented;
+
+	LA_AVDECC_API operator std::string() const noexcept;
 };
 
 /** AECP SequenceID - Clause 9.2.1.1.10 */
@@ -115,6 +117,8 @@ public:
 	static LA_AVDECC_API AemAecpStatus const EntityMisbehaving;
 	static LA_AVDECC_API AemAecpStatus const NotSupported;
 	static LA_AVDECC_API AemAecpStatus const StreamIsRunning;
+
+	LA_AVDECC_API operator std::string() const noexcept;
 };
 
 /** AEM Command Type - Clause 7.4 */
@@ -214,6 +218,8 @@ public:
 	static LA_AVDECC_API AemAcquireEntityFlags const None;
 	static LA_AVDECC_API AemAcquireEntityFlags const Persistent;
 	static LA_AVDECC_API AemAcquireEntityFlags const Release;
+
+	LA_AVDECC_API operator std::string() const noexcept;
 };
 
 /** AEM Lock Entity Flags - Clause 7.4.2.1 */
@@ -224,6 +230,8 @@ public:
 
 	static LA_AVDECC_API AemLockEntityFlags const None;
 	static LA_AVDECC_API AemLockEntityFlags const Unlock;
+
+	LA_AVDECC_API operator std::string() const noexcept;
 };
 
 /** Address Access Mode - Clause 9.2.1.3.3 */
@@ -251,13 +259,17 @@ public:
 	static LA_AVDECC_API AaAecpStatus const TlvInvalid;
 	static LA_AVDECC_API AaAecpStatus const DataInvalid;
 	static LA_AVDECC_API AaAecpStatus const Unsupported;
+
+	LA_AVDECC_API operator std::string() const noexcept;
 };
 
-/** Milan Vendor Unique AECP Status - (Using base AECP clause) */
+/** Milan Vendor Unique AECP Status - Milan Clause 7.2.3 */
 class MvuAecpStatus : public AecpStatus
 {
 public:
 	using AecpStatus::AecpStatus;
+
+	LA_AVDECC_API operator std::string() const noexcept;
 };
 
 /** Milan Vendor Unique Command Type - Milan Clause 7.2.2.3 */

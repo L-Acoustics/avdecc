@@ -99,6 +99,19 @@ AecpStatus const AecpStatus::Success{ 0 };
 AecpStatus const AecpStatus::NotImplemented{ 1 };
 /* 2-31 defined by message type */
 
+AecpStatus::operator std::string() const noexcept
+{
+	static std::unordered_map<AecpStatus::value_type, std::string> s_AecpStatusMapping = {
+		{ AecpStatus::Success.getValue(), "SUCCESS" },
+		{ AecpStatus::NotImplemented.getValue(), "NOT_IMPLEMENTED" },
+	};
+
+	auto const& it = s_AecpStatusMapping.find(getValue());
+	if (it == s_AecpStatusMapping.end())
+		return "INVALID_STATUS";
+	return it->second;
+}
+
 /** AEM AECP Status - Clause 7.4 */
 LA_AVDECC_API AemAecpStatus::AemAecpStatus(AecpStatus const status) noexcept
 	: AecpStatus{ status }
@@ -117,6 +130,28 @@ AemAecpStatus const AemAecpStatus::EntityMisbehaving{ 10 };
 AemAecpStatus const AemAecpStatus::NotSupported{ 11 };
 AemAecpStatus const AemAecpStatus::StreamIsRunning{ 12 };
 /* 13-31 reserved for future use */
+
+AemAecpStatus::operator std::string() const noexcept
+{
+	static std::unordered_map<AemAecpStatus::value_type, std::string> s_AemAecpStatusMapping = {
+		{ AemAecpStatus::NoSuchDescriptor.getValue(), "NO_SUCH_DESCRIPTOR" },
+		{ AemAecpStatus::EntityLocked.getValue(), "ENTITY_LOCKED" },
+		{ AemAecpStatus::EntityAcquired.getValue(), "ENTITY_ACQUIRED" },
+		{ AemAecpStatus::NotAuthenticated.getValue(), "NOT_AUTHENTICATED" },
+		{ AemAecpStatus::AuthenticationDisabled.getValue(), "AUTHENTICATION_DISABLED" },
+		{ AemAecpStatus::BadArguments.getValue(), "BAD_ARGUMENTS" },
+		{ AemAecpStatus::NoResources.getValue(), "NO_RESOURCES" },
+		{ AemAecpStatus::InProgress.getValue(), "IN_PROGRESS" },
+		{ AemAecpStatus::EntityMisbehaving.getValue(), "ENTITY_MISBEHAVING" },
+		{ AemAecpStatus::NotSupported.getValue(), "NOT_SUPPORTED" },
+		{ AemAecpStatus::StreamIsRunning.getValue(), "STREAM_IS_RUNNING" },
+	};
+
+	auto const& it = s_AemAecpStatusMapping.find(getValue());
+	if (it == s_AemAecpStatusMapping.end())
+		return "INVALID_STATUS";
+	return it->second;
+}
 
 /** AEM Command Type - Clause 7.4 */
 AemCommandType const AemCommandType::AcquireEntity{ 0x0000 };
@@ -292,9 +327,36 @@ AemAcquireEntityFlags const AemAcquireEntityFlags::None{ 0x00000000 };
 AemAcquireEntityFlags const AemAcquireEntityFlags::Persistent{ 0x00000001 };
 AemAcquireEntityFlags const AemAcquireEntityFlags::Release{ 0x80000000 };
 
+AemAcquireEntityFlags::operator std::string() const noexcept
+{
+	static std::unordered_map<AemAcquireEntityFlags::value_type, std::string> s_AemAcquireEntityFlagsMapping = {
+		{ AemAcquireEntityFlags::None.getValue(), "NONE" },
+		{ AemAcquireEntityFlags::Persistent.getValue(), "PERSISTENT" },
+		{ AemAcquireEntityFlags::Release.getValue(), "RELEASE" },
+	};
+
+	auto const& it = s_AemAcquireEntityFlagsMapping.find(getValue());
+	if (it == s_AemAcquireEntityFlagsMapping.end())
+		return "INVALID_FLAGS";
+	return it->second;
+}
+
 /** AEM Lock Entity Flags - Clause 7.4.2.1 */
 AemLockEntityFlags const AemLockEntityFlags::None{ 0x00000000 };
 AemLockEntityFlags const AemLockEntityFlags::Unlock{ 0x00000001 };
+
+AemLockEntityFlags::operator std::string() const noexcept
+{
+	static std::unordered_map<AemLockEntityFlags::value_type, std::string> s_AemLockEntityFlagsMapping = {
+		{ AemLockEntityFlags::None.getValue(), "NONE" },
+		{ AemLockEntityFlags::Unlock.getValue(), "UNLOCK" },
+	};
+
+	auto const& it = s_AemLockEntityFlagsMapping.find(getValue());
+	if (it == s_AemLockEntityFlagsMapping.end())
+		return "INVALID_FLAGS";
+	return it->second;
+}
 
 /** Address Access Mode - Clause 9.2.1.3.3 */
 AaMode const AaMode::Read{ 0x0 };
@@ -324,6 +386,37 @@ AaAecpStatus const AaAecpStatus::TlvInvalid{ 5 };
 AaAecpStatus const AaAecpStatus::DataInvalid{ 6 };
 AaAecpStatus const AaAecpStatus::Unsupported{ 7 };
 /* 8-31 reserved for future use */
+
+AaAecpStatus::operator std::string() const noexcept
+{
+	static std::unordered_map<AaAecpStatus::value_type, std::string> s_AaAecpStatusMapping = {
+		{ AaAecpStatus::AddressTooLow.getValue(), "ADDRESS_TOO_LOW" },
+		{ AaAecpStatus::AddressTooHigh.getValue(), "ADDRESS_TOO_HIGH" },
+		{ AaAecpStatus::AddressInvalid.getValue(), "ADDRESS_INVALID" },
+		{ AaAecpStatus::TlvInvalid.getValue(), "TLV_INVALID" },
+		{ AaAecpStatus::DataInvalid.getValue(), "DATA_INVALID" },
+		{ AaAecpStatus::Unsupported.getValue(), "UNSUPPORTED" },
+	};
+
+	auto const& it = s_AaAecpStatusMapping.find(getValue());
+	if (it == s_AaAecpStatusMapping.end())
+		return "INVALID_STATUS";
+	return it->second;
+}
+
+/** Milan Vendor Unique AECP Status - Milan Clause 7.2.3 */
+MvuAecpStatus::operator std::string() const noexcept
+{
+	static std::unordered_map<MvuAecpStatus::value_type, std::string> s_MvuAecpStatusMapping = {
+		{ MvuAecpStatus::Success.getValue(), "SUCCESS" },
+		{ MvuAecpStatus::NotImplemented.getValue(), "NOT_IMPLEMENTED" },
+	};
+
+	auto const& it = s_MvuAecpStatusMapping.find(getValue());
+	if (it == s_MvuAecpStatusMapping.end())
+		return "INVALID_STATUS";
+	return it->second;
+}
 
 /** Milan Vendor Unique Command Type - Milan Clause 7.2.2.3 */
 MvuCommandType const MvuCommandType::GetMilanInfo{ 0 };
