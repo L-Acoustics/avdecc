@@ -523,10 +523,28 @@ DEFINE_ENUM_CLASS(la::avdecc::entity::model::jsonSerializer, Flag, "ushort")
 %nspace la::avdecc::EndStation;
 %rename("%s") la::avdecc::EndStation; // Unignore class
 %ignore la::avdecc::EndStation::Exception; // Ignore Exception, will be created as native exception
-%ignore la::avdecc::EndStation::create(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceName); // Ignore it, will be wrapped
 %ignore la::avdecc::EndStation::addAggregateEntity; // Ignore at the moment, we don't want to handle AggregateEntity yet
 %ignore la::avdecc::EndStation::deserializeEntityModelFromJson;
 %unique_ptr(la::avdecc::EndStation) // Define unique_ptr for EndStation
+// Extend the class
+%extend la::avdecc::EndStation
+{
+public:
+	static std::unique_ptr<la::avdecc::EndStation> create(/*protocol::ProtocolInterface::Type const protocolInterfaceType, */std::string const& networkInterfaceName)
+	{
+		try
+		{
+			// Right now, force PCap as we cannot bind the protocolInterfaceType enum correctly
+			return std::unique_ptr<la::avdecc::EndStation>{ la::avdecc::EndStation::create(la::avdecc::protocol::ProtocolInterface::Type::PCap, networkInterfaceName).release() };
+		}
+		catch (la::avdecc::EndStation::Exception const& e)
+		{
+			SWIG_CSharpSetPendingExceptionEndStation(e.getError(), e.what());
+			return nullptr;
+		}
+	}
+};
+%ignore la::avdecc::EndStation::create; // Ignore it, will be wrapped (because std::unique_ptr doesn't support custom deleters - Ticket #2411)
 
 // Define C# exception handling for la::avdecc::EndStation::Exception
 %insert(runtime) %{
@@ -600,27 +618,8 @@ namespace la.avdecc
 %}
 
 // Define catches for methods that can throw
-%catches(la::avdecc::EndStation::Exception) la::avdecc::EndStation::createEndStation;
+%catches(la::avdecc::EndStation::Exception) la::avdecc::EndStation::create;
 
 // Include c++ declaration file
 %include "la/avdecc/internals/endStation.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
-
-// Define wrapped functions
-%extend la::avdecc::EndStation
-{
-public:
-	static std::unique_ptr<la::avdecc::EndStation> createEndStation(/*protocol::ProtocolInterface::Type const protocolInterfaceType, */std::string const& networkInterfaceName)
-	{
-		try
-		{
-			// Right now, force PCap as we cannot bind the protocolInterfaceType enum correctly
-			return std::unique_ptr<la::avdecc::EndStation>{ la::avdecc::EndStation::create(la::avdecc::protocol::ProtocolInterface::Type::PCap, networkInterfaceName).release() };
-		}
-		catch (la::avdecc::EndStation::Exception const& e)
-		{
-			SWIG_CSharpSetPendingExceptionEndStation(e.getError(), e.what());
-			return nullptr;
-		}
-	}
-};

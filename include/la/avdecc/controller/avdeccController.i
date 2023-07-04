@@ -180,10 +180,28 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::Controller, QueryCommandError, "uint")
 %nspace la::avdecc::controller::Controller;
 %rename("%s") la::avdecc::controller::Controller; // Unignore class
 %ignore la::avdecc::controller::Controller::Exception; // Ignore Exception, will be created as native exception
-%ignore la::avdecc::controller::Controller::create(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree); // Ignore it, will be wrapped
 %unique_ptr(la::avdecc::controller::Controller) // Define unique_ptr for Controller
 %rename("lockController") la::avdecc::controller::Controller::lock; // Rename method
 %rename("unlockController") la::avdecc::controller::Controller::unlock; // Rename method
+// Extend the class
+%extend la::avdecc::controller::Controller
+{
+public:
+	static std::unique_ptr<la::avdecc::controller::Controller> create(/*protocol::ProtocolInterface::Type const protocolInterfaceType, */std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree)
+	{
+		try
+		{
+			// Right now, force PCap as we cannot bind the protocolInterfaceType enum correctly
+			return std::unique_ptr<la::avdecc::controller::Controller>{ la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::PCap, interfaceName, progID, entityModelID, preferedLocale, entityModelTree).release() };
+		}
+		catch (la::avdecc::controller::Controller::Exception const& e)
+		{
+			SWIG_CSharpSetPendingExceptionController(e.getError(), e.what());
+			return nullptr;
+		}
+	}
+};
+%ignore la::avdecc::controller::Controller::create; // Ignore it, will be wrapped (because std::unique_ptr doesn't support custom deleters - Ticket #2411)
 
 DEFINE_OBSERVER_CLASS(la::avdecc::controller::Controller::Observer)
 
@@ -270,7 +288,7 @@ namespace la.avdecc.controller
 %}
 
 // Define catches for methods that can throw
-%catches(la::avdecc::controller::Controller::Exception) la::avdecc::controller::Controller::createController;
+%catches(la::avdecc::controller::Controller::Exception) la::avdecc::controller::Controller::create;
 
 // Workaround for SWIG bug
 #define constexpr
@@ -335,28 +353,8 @@ namespace la.avdecc.controller
 
 
 // Include c++ declaration file
-%rename("%s") "la::avdecc::controller::Controller::createController"; // Force declare our createController wrapped method
 %include "la/avdecc/controller/avdeccController.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
 
 // Define templates
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller, CompileOptions, CompileOption, std::uint32_t)
-
-// Define wrapped functions
-%extend la::avdecc::controller::Controller
-{
-public:
-	static std::unique_ptr<la::avdecc::controller::Controller> createController(/*protocol::ProtocolInterface::Type const protocolInterfaceType, */std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree)
-	{
-		try
-		{
-			// Right now, force PCap as we cannot bind the protocolInterfaceType enum correctly
-			return std::unique_ptr<la::avdecc::controller::Controller>{ la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::PCap, interfaceName, progID, entityModelID, preferedLocale, entityModelTree).release() };
-		}
-		catch (la::avdecc::controller::Controller::Exception const& e)
-		{
-			SWIG_CSharpSetPendingExceptionController(e.getError(), e.what());
-			return nullptr;
-		}
-	}
-};
