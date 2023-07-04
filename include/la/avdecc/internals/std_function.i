@@ -25,7 +25,21 @@
 #define %unwind_arg_action_internal_9(action,a1,a2,a3,a4,a5,a6,a7,a8,a9) action(0,a1), action(1,a2), action(2,a3), action(3,a4), action(4,a5), action(5,a6), action(6,a7), action(7,a8), action(8,a9)
 
 #define %deduce_macro_internal(_1,_2,_3,_4,_5,_6,_7,_8,_9,NAME,...) NAME
-%define %foreach(action,...) %deduce_macro_internal(__VA_ARGS__, %unwind_arg_action_internal_9, %unwind_arg_action_internal_8, %unwind_arg_action_internal_7, %unwind_arg_action_internal_6, %unwind_arg_action_internal_5, %unwind_arg_action_internal_4, %unwind_arg_action_internal_3, %unwind_arg_action_internal_2, %unwind_arg_action_internal_1, %unwind_arg_action_internal_0)(action,__VA_ARGS__) %enddef
+%define %foreach(action,...)
+#if (#__VA_ARGS__ != "")
+	%deduce_macro_internal(__VA_ARGS__, %unwind_arg_action_internal_9, %unwind_arg_action_internal_8, %unwind_arg_action_internal_7, %unwind_arg_action_internal_6, %unwind_arg_action_internal_5, %unwind_arg_action_internal_4, %unwind_arg_action_internal_3, %unwind_arg_action_internal_2, %unwind_arg_action_internal_1, %unwind_arg_action_internal_0)(action,__VA_ARGS__)
+#endif
+%enddef
+
+#if defined(SWIGCSHARP)
+%define %no_args_test(...)
+#if (#__VA_ARGS__ == "")
+%#if true
+#else
+%#if false
+#endif
+%enddef
+#endif
 
 
 %define %std_function(Name, Ret, ...)
@@ -37,18 +51,25 @@
 #if (#Ret == "void")
 	%typemap(cscode) Name %{
 		public class Action : Name {
+%no_args_test(__VA_ARGS__)
+			private readonly System.Action delegateAction;
+			public Action(System.Action action) : base() {
+				delegateAction = action;
+			}
+			public static implicit operator Action(System.Action action) => new Action(action);
+			protected override void Invoke() {
+				delegateAction?.Invoke();
+			}
+#else
 			private readonly System.Action<%foreach(%unpack_type, __VA_ARGS__)> delegateAction;
-
 			public Action(System.Action<%foreach(%unpack_type, __VA_ARGS__)> action) : base() {
 				delegateAction = action;
 			}
-
 			public static implicit operator Action(System.Action<%foreach(%unpack_type, __VA_ARGS__)> action) => new Action(action);
-
-			protected override void Invoke(%foreach(%param, __VA_ARGS__))
-			{
+			protected override void Invoke(%foreach(%param, __VA_ARGS__)) {
 				delegateAction?.Invoke(%foreach(%unpack_arg, __VA_ARGS__));
 			}
+#endif
 		}
 
 		public static implicit operator Name##Native(Name handler) => new Name##Native(handler);
@@ -56,18 +77,25 @@
 #else
 	%typemap(cscode) Name %{
 		public class Action : Name {
+%no_args_test(__VA_ARGS__)
+			private readonly System.Func<%unpack_type(0, Ret)> delegateAction;
+			public Action(System.Func<%unpack_type(0, Ret)> action) : base() {
+				delegateAction = action;
+			}
+			public static implicit operator Action(System.Func<%unpack_type(0, Ret)> action) => new Action(action);
+			protected override %unpack_type(0, Ret) Invoke() {
+				return delegateAction?.Invoke() ?? throw new global::System.InvalidOperationException("Callback not assigned.");
+			}
+#else
 			private readonly System.Func<%foreach(%unpack_type, __VA_ARGS__), %unpack_type(0, Ret)> delegateAction;
-
 			public Action(System.Func<%foreach(%unpack_type, __VA_ARGS__), %unpack_type(0, Ret)> action) : base() {
 				delegateAction = action;
 			}
-
 			public static implicit operator Action(System.Func<%foreach(%unpack_type, __VA_ARGS__), %unpack_type(0, Ret)> action) => new Action(action);
-
-			protected override %unpack_type(0, Ret) Invoke(%foreach(%param, __VA_ARGS__))
-			{
+			protected override %unpack_type(0, Ret) Invoke(%foreach(%param, __VA_ARGS__)) {
 				return delegateAction?.Invoke(%foreach(%unpack_arg, __VA_ARGS__)) ?? throw new global::System.InvalidOperationException("Callback not assigned.");
 			}
+#endif
 		}
 
 		public static implicit operator Name##Native(Name handler) => new Name##Native(handler);
@@ -83,32 +111,32 @@
 %{
 	struct Name {
 		virtual ~Name() {}
-		virtual Ret Invoke(__VA_ARGS__) = 0;
+		virtual Ret Invoke(##__VA_ARGS__) = 0;
 	};
 %}
 
 struct Name {
 	virtual ~Name();
 protected:
-	virtual Ret Invoke(__VA_ARGS__) = 0;
+	virtual Ret Invoke(##__VA_ARGS__) = 0;
 };
 
 // Create native std::function wrapper with a nice name
-%rename(Name##Native) std::function<Ret(__VA_ARGS__)>;
-%rename(Invoke) std::function<Ret(__VA_ARGS__)>::operator();
+%rename(Name##Native) std::function<Ret(##__VA_ARGS__)>;
+%rename(Invoke) std::function<Ret(##__VA_ARGS__)>::operator();
 
 namespace std {
-	struct function<Ret(__VA_ARGS__)> {
+	struct function<Ret(##__VA_ARGS__)> {
 		// Copy constructor
-		function<Ret(__VA_ARGS__)>(const std::function<Ret(__VA_ARGS__)>&);
+		function<Ret(##__VA_ARGS__)>(const std::function<Ret(##__VA_ARGS__)>&);
 
 		// Call operator
-		Ret operator()(__VA_ARGS__) const;
+		Ret operator()(##__VA_ARGS__) const;
 
 		// Extension for directed forward handler
 		%extend {
-			function<Ret(__VA_ARGS__)>(Name *in) {
-				return new std::function<Ret(__VA_ARGS__)>([=](auto&& ...param){
+			function<Ret(##__VA_ARGS__)>(Name *in) {
+				return new std::function<Ret(##__VA_ARGS__)>([=](auto&& ...param){
 					return in->Invoke(std::forward<decltype(param)>(param)...);
 				});
 			}
