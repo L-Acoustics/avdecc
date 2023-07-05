@@ -94,7 +94,7 @@ private:
 };
 
 /** ExecutorProxy Entry point */
-ExecutorProxy* LA_AVDECC_CALL_CONVENTION ExecutorProxy::createRawExecutorProxy(PushJobProxy const& pushJobProxy, FlushProxy const& flushProxy, TerminateProxy const& terminateProxy, GetExecutorThreadProxy const& getExecutorThreadProxy)
+ExecutorProxy* LA_AVDECC_CALL_CONVENTION ExecutorProxy::createRawExecutorProxy(PushJobProxy const& pushJobProxy, FlushProxy const& flushProxy, TerminateProxy const& terminateProxy, GetExecutorThreadProxy const& getExecutorThreadProxy) noexcept
 {
 	return new ExecutorProxyImpl(pushJobProxy, flushProxy, terminateProxy, getExecutorThreadProxy);
 }
@@ -304,7 +304,7 @@ private:
 };
 
 /** ExecutorWithDispatchQueue Entry point */
-ExecutorWithDispatchQueue* LA_AVDECC_CALL_CONVENTION ExecutorWithDispatchQueue::createRawExecutorWithDispatchQueue(std::optional<std::string> const& name, utils::ThreadPriority const prio)
+ExecutorWithDispatchQueue* LA_AVDECC_CALL_CONVENTION ExecutorWithDispatchQueue::createRawExecutorWithDispatchQueue(std::optional<std::string> const& name, utils::ThreadPriority const prio) noexcept
 {
 	return new ExecutorWithDispatchQueueImpl(name, prio);
 }
