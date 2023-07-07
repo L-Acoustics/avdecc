@@ -538,6 +538,9 @@ DEFINE_ENUM_CLASS(la::avdecc::entity::model::jsonSerializer, Flag, "ushort")
 %include "la/avdecc/internals/jsonSerialization.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
 
+// Define templates
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity::model::jsonSerializer, Flags, Flag, std::uint16_t)
+
 
 ////////////////////////////////////////
 // EndStation
