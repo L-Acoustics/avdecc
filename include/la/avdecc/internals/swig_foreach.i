@@ -5,9 +5,11 @@
 //            see issue https://github.com/swig/swig/issues/1574
 
 // Common unpack actions for the %foreach macro
-#define %unpack_param(num,type)   $typemap(cstype,type) arg ## num
-#define %unpack_type(num,type)    $typemap(cstype,type)
-#define %unpack_arg(num,type)     arg##num
+// Note:  currently defined only for C#
+#define %unpack_param(num,type)     $typemap(cstype,type) arg ## num
+#define %unpack_param_out(num,type) out $typemap(cstype,type) arg ## num
+#define %unpack_type(num,type)      $typemap(cstype,type)
+#define %unpack_arg(num,type)       arg##num
 
 // Following unwind helper macros for different count of arguments
 // Note: we can not unwind zero parameters
