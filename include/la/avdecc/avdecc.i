@@ -21,6 +21,7 @@
 %include "la/avdecc/internals/chrono.i"
 %include "la/avdecc/internals/optional.i"
 %include "la/avdecc/internals/std_function.i"
+%include "la/avdecc/internals/std_tuple.i"
 
 // Generated wrapper file needs to include our header file (include as soon as possible using 'insert(runtime)' as target language exceptions are defined early in the generated wrapper file)
 %insert(runtime) %{
@@ -536,6 +537,9 @@ DEFINE_ENUM_CLASS(la::avdecc::entity::model::jsonSerializer, Flag, "ushort")
 // Include c++ declaration file
 %include "la/avdecc/internals/jsonSerialization.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
+
+// Define templates
+DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity::model::jsonSerializer, Flags, Flag, std::uint16_t)
 
 
 ////////////////////////////////////////
