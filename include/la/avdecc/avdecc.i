@@ -21,6 +21,7 @@
 %include "la/avdecc/internals/chrono.i"
 %include "la/avdecc/internals/optional.i"
 %include "la/avdecc/internals/std_function.i"
+%include "la/avdecc/internals/std_tuple.i"
 
 // Generated wrapper file needs to include our header file (include as soon as possible using 'insert(runtime)' as target language exceptions are defined early in the generated wrapper file)
 %insert(runtime) %{
