@@ -150,6 +150,44 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity, CompatibilityFlag, "
 %rename("%s") la::avdecc::controller::ControlledEntityGuard; // Unignore class
 %ignore la::avdecc::controller::ControlledEntityGuard::operator bool; // Ignore operator bool, isValid() is already defined
 
+// Throw typemap
+%typemap (throws, canthrow=1) la::avdecc::controller::ControlledEntity::Exception %{
+	SWIG_CSharpSetPendingExceptionControlledEntity($1.getType(), $1.what());
+	return $null;
+%}
+
+// Define catches for methods that can throw
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::isStreamInputRunning;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::isStreamOutputRunning;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getCurrentConfigurationIndex;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getEntityNode;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getConfigurationNode;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getCurrentConfigurationNode;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getAudioUnitNode;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getStreamInputNode;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getStreamOutputNode;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getRedundantStreamInputNode;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getRedundantStreamOutputNode;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getJackInputNode;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getJackOutputNode;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getAvbInterfaceNode;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getClockSourceNode;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getStreamPortInputNode;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getStreamPortOutputNode;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getAudioClusterNode;
+//%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getAudioMapNode;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getControlNode;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getClockDomainNode;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::findLocaleNode;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getLocalizedString;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getSinkConnectionInformation;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getStreamPortInputAudioMappings;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getStreamPortInputNonRedundantAudioMappings;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getStreamPortOutputAudioMappings;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getStreamPortOutputNonRedundantAudioMappings;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getStreamPortInputInvalidAudioMappingsForStreamFormat;
+%catches(la::avdecc::controller::ControlledEntity::Exception) la::avdecc::controller::ControlledEntity::getStreamOutputConnections;
+
 // Include c++ declaration file
 %include "la/avdecc/controller/internals/avdeccControlledEntity.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
@@ -220,71 +258,6 @@ DEFINE_OBSERVER_CLASS(la::avdecc::controller::Controller::Observer)
 // %rename("%s") la::avdecc::controller::Controller::Error; // Must unignore the enum since it's inside a class
 // %rename("%s") la::avdecc::controller::Controller::QueryCommandError; // Must unignore the enum since it's inside a class
 
-// Define C# exception handling for la::avdecc::controller::Controller::Exception
-%insert(runtime) %{
-	typedef void (SWIGSTDCALL* ControllerExceptionCallback_t)(la::avdecc::controller::Controller::Error const error, char const* const message);
-	ControllerExceptionCallback_t controllerExceptionCallback = NULL;
-
-	extern "C" SWIGEXPORT void SWIGSTDCALL ControllerExceptionRegisterCallback(ControllerExceptionCallback_t exceptionCallback)
-	{
-		controllerExceptionCallback = exceptionCallback;
-	}
-
-	static void SWIG_CSharpSetPendingExceptionController(la::avdecc::controller::Controller::Error const error, char const* const message)
-	{
-		controllerExceptionCallback(error, message);
-	}
-%}
-%pragma(csharp) imclasscode=%{
-	class ControllerExceptionHelper
-	{
-		public delegate void ControllerExceptionDelegate(la.avdecc.controller.ControllerException.Error error, string message);
-		static ControllerExceptionDelegate controllerDelegate = new ControllerExceptionDelegate(SetPendingControllerException);
-
-		[global::System.Runtime.InteropServices.DllImport(DllImportPath, EntryPoint="ControllerExceptionRegisterCallback")]
-		public static extern void ControllerExceptionRegisterCallback(ControllerExceptionDelegate controllerDelegate);
-
-		static void SetPendingControllerException(la.avdecc.controller.ControllerException.Error error, string message)
-		{
-			SWIGPendingException.Set(new la.avdecc.controller.ControllerException(error, message));
-		}
-
-		static ControllerExceptionHelper()
-		{
-			ControllerExceptionRegisterCallback(controllerDelegate);
-		}
-	}
-	static ControllerExceptionHelper exceptionHelper = new ControllerExceptionHelper();
-%}
-%pragma(csharp) moduleimports=%{
-namespace la.avdecc.controller
-{
-	class ControllerException : global::System.ApplicationException
-	{
-		public enum Error
-		{
-			NoError = 0,
-			InvalidProtocolInterfaceType = 1, /**< Selected protocol interface type is invalid */
-			InterfaceOpenError = 2, /**< Failed to open interface. */
-			InterfaceNotFound = 3, /**< Specified interface not found. */
-			InterfaceInvalid = 4, /**< Specified interface is invalid. */
-			DuplicateProgID = 5, /**< Specified ProgID is already in use on the local computer. */
-			InvalidEntityModel = 6, /**< Provided EntityModel is invalid. */
-			InternalError = 99, /**< Internal error, please report the issue. */
-		}
-		public ControllerException(Error error, string message)
-			: base(message)
-		{
-			_error = error;
-		}
-		Error getError()
-		{
-			return _error;
-		}
-		private Error _error = Error.NoError;
-	}
-}
-%}
 // Throw typemap
 %typemap (throws, canthrow=1) la::avdecc::controller::Controller::Exception %{
 	SWIG_CSharpSetPendingExceptionController($1.getError(), $1.what());
@@ -356,3 +329,133 @@ namespace la.avdecc.controller
 
 // Define templates
 DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller, CompileOptions, CompileOption, std::uint32_t)
+
+
+// Define C# exception handling
+%insert(runtime) %{
+	// la::avdecc::controller::ControlledEntity::Exception
+	typedef void (SWIGSTDCALL* ControlledEntityExceptionCallback_t)(la::avdecc::controller::ControlledEntity::Exception::Type const type, char const* const message);
+	ControlledEntityExceptionCallback_t controlledEntityExceptionCallback = NULL;
+
+	extern "C" SWIGEXPORT void SWIGSTDCALL ControlledEntityExceptionRegisterCallback(ControlledEntityExceptionCallback_t exceptionCallback)
+	{
+		controlledEntityExceptionCallback = exceptionCallback;
+	}
+
+	static void SWIG_CSharpSetPendingExceptionControlledEntity(la::avdecc::controller::ControlledEntity::Exception::Type const type, char const* const message)
+	{
+		controlledEntityExceptionCallback(type, message);
+	}
+
+	// la::avdecc::controller::Controller::Exception
+	typedef void (SWIGSTDCALL* ControllerExceptionCallback_t)(la::avdecc::controller::Controller::Error const error, char const* const message);
+	ControllerExceptionCallback_t controllerExceptionCallback = NULL;
+
+	extern "C" SWIGEXPORT void SWIGSTDCALL ControllerExceptionRegisterCallback(ControllerExceptionCallback_t exceptionCallback)
+	{
+		controllerExceptionCallback = exceptionCallback;
+	}
+
+	static void SWIG_CSharpSetPendingExceptionController(la::avdecc::controller::Controller::Error const error, char const* const message)
+	{
+		controllerExceptionCallback(error, message);
+	}
+%}
+%pragma(csharp) imclasscode=%{
+	// la::avdecc::controller::ControlledEntity::Exception
+	class ControlledEntityExceptionHelper
+	{
+		public delegate void ControlledEntityExceptionDelegate(la.avdecc.controller.ControlledEntityException.Type type, string message);
+		static ControlledEntityExceptionDelegate controlledEntityDelegate = new ControlledEntityExceptionDelegate(SetPendingControlledEntityException);
+
+		[global::System.Runtime.InteropServices.DllImport(DllImportPath, EntryPoint="ControlledEntityExceptionRegisterCallback")]
+		public static extern void ControlledEntityExceptionRegisterCallback(ControlledEntityExceptionDelegate controlledEntityDelegate);
+
+		static void SetPendingControlledEntityException(la.avdecc.controller.ControlledEntityException.Type type, string message)
+		{
+			SWIGPendingException.Set(new la.avdecc.controller.ControlledEntityException(type, message));
+		}
+
+		static ControlledEntityExceptionHelper()
+		{
+			ControlledEntityExceptionRegisterCallback(controlledEntityDelegate);
+		}
+	}
+	static ControlledEntityExceptionHelper controlledEntityExceptionHelper = new ControlledEntityExceptionHelper();
+
+	// la::avdecc::controller::Controller::Exception
+	class ControllerExceptionHelper
+	{
+		public delegate void ControllerExceptionDelegate(la.avdecc.controller.ControllerException.Error error, string message);
+		static ControllerExceptionDelegate controllerDelegate = new ControllerExceptionDelegate(SetPendingControllerException);
+
+		[global::System.Runtime.InteropServices.DllImport(DllImportPath, EntryPoint="ControllerExceptionRegisterCallback")]
+		public static extern void ControllerExceptionRegisterCallback(ControllerExceptionDelegate controllerDelegate);
+
+		static void SetPendingControllerException(la.avdecc.controller.ControllerException.Error error, string message)
+		{
+			SWIGPendingException.Set(new la.avdecc.controller.ControllerException(error, message));
+		}
+
+		static ControllerExceptionHelper()
+		{
+			ControllerExceptionRegisterCallback(controllerDelegate);
+		}
+	}
+	static ControllerExceptionHelper controllerExceptionHelper = new ControllerExceptionHelper();
+%}
+%pragma(csharp) moduleimports=%{
+namespace la.avdecc.controller
+{
+	// la::avdecc::controller::ControlledEntity::Exception
+	class ControlledEntityException : global::System.ApplicationException
+	{
+		public enum Type
+		{
+			None = 0,
+			NotSupported, /**< Query not support by the Entity */
+			InvalidConfigurationIndex, /**< Specified ConfigurationIndex does not exist */
+			InvalidDescriptorIndex, /**< Specified DescriptorIndex (or any derivated) does not exist */
+			InvalidLocaleName, /**< Specified Locale does not exist */
+			EnumerationError, /**< Trying to get information from an Entity that got an error during descriptors enumeration. Only non-throwing methods can be called. */
+			Internal = 99, /**< Internal library error, please report */
+		}
+		public ControlledEntityException(Type type, string message)
+			: base(message)
+		{
+			_type = type;
+		}
+		Type getType()
+		{
+			return _type;
+		}
+		private Type _type = Type.None;
+	}
+
+	// la::avdecc::controller::Controller::Exception
+	class ControllerException : global::System.ApplicationException
+	{
+		public enum Error
+		{
+			NoError = 0,
+			InvalidProtocolInterfaceType = 1, /**< Selected protocol interface type is invalid */
+			InterfaceOpenError = 2, /**< Failed to open interface. */
+			InterfaceNotFound = 3, /**< Specified interface not found. */
+			InterfaceInvalid = 4, /**< Specified interface is invalid. */
+			DuplicateProgID = 5, /**< Specified ProgID is already in use on the local computer. */
+			InvalidEntityModel = 6, /**< Provided EntityModel is invalid. */
+			InternalError = 99, /**< Internal error, please report the issue. */
+		}
+		public ControllerException(Error error, string message)
+			: base(message)
+		{
+			_error = error;
+		}
+		Error getError()
+		{
+			return _error;
+		}
+		private Error _error = Error.NoError;
+	}
+}
+%}
