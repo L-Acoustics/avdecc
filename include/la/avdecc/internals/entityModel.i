@@ -322,7 +322,8 @@ DEFINE_AEM_STRUCT(MilanInfo);
 // Define templates
 %template(DescriptorCountMap) std::unordered_map<la::avdecc::entity::model::DescriptorType, std::uint16_t, la::avdecc::utils::EnumClassHash>;
 %template(StringArray) std::array<la::avdecc::entity::model::AvdeccFixedString, 7>;
-//%template(DescriptorVector) std::vector<la::avdecc::entity::model::DescriptorIndex>; // Not compiling in C# (maybe need to %apply as ushort all descriptor indexes?)
+SWIG_STD_VECTOR_ENHANCED(la::avdecc::entity::model::DescriptorIndex); // Swig is struggling with DescriptorIndex alias (it's a std::uint16_t)
+%template(DescriptorVector) std::vector<la::avdecc::entity::model::DescriptorIndex>;
 %template(SamplingRateSet) std::set<la::avdecc::entity::model::SamplingRate>;
 %template(StreamFormatSet) std::set<la::avdecc::entity::model::StreamFormat>;
 %template(RedundantStreamIndexSet) std::set<la::avdecc::entity::model::StreamIndex>;
