@@ -20,8 +20,12 @@
 %warnfilter(844) Name::Invoke;
 %typemap(csout) Ret Name::Invoke ";"
 
+%typemap(csin) std::function<Ret(##__VA_ARGS__)> *, std::function<Ret(##__VA_ARGS__)> &, std::function<Ret(##__VA_ARGS__)> [] "$csclassname.getCPtr(new Name.Action($csinput))"
+%typemap(csin) std::function<Ret(##__VA_ARGS__)> && "$csclassname.swigRelease(new Name.Action($csinput))"
+
 #if (#Ret == "void")
 	#if ((#__VA_ARGS__ == "") || (#__VA_ARGS__ == "void"))
+		%typemap(cstype) std::function<Ret(##__VA_ARGS__)> *, std::function<Ret(##__VA_ARGS__)> &, std::function<Ret(##__VA_ARGS__)> [], std::function<Ret(##__VA_ARGS__)> && %{System.Action%}
 		%typemap(csclassmodifiers) Name %{
 		using DelegateSignature = System.Action;
 		public abstract class%}
@@ -45,6 +49,7 @@
 			public static implicit operator Name##Native(Name handler) => new Name##Native(handler);
 		%}
 	#else
+		%typemap(cstype) std::function<Ret(##__VA_ARGS__)> *, std::function<Ret(##__VA_ARGS__)> &, std::function<Ret(##__VA_ARGS__)> [], std::function<Ret(##__VA_ARGS__)> && %{System.Action<%foreach(%unpack_type, __VA_ARGS__)>%}
 		%typemap(csclassmodifiers) Name %{
 		using DelegateSignature = System.Action<%foreach(%unpack_type, __VA_ARGS__)>;
 		public abstract class%}
@@ -70,6 +75,7 @@
 	#endif
 #else
 	#if ((#__VA_ARGS__ == "") ||  (#__VA_ARGS__ == "void"))
+		%typemap(cstype) std::function<Ret(##__VA_ARGS__)> *, std::function<Ret(##__VA_ARGS__)> &, std::function<Ret(##__VA_ARGS__)> [], std::function<Ret(##__VA_ARGS__)> && %{System.Func<%unpack_type(0, Ret)>%}
 		%typemap(csclassmodifiers) Name %{
 		using DelegateSignature = System.Func<%unpack_type(0, Ret)>;
 		public abstract class%}
@@ -94,6 +100,7 @@
 			public static implicit operator Name##Native(Name handler) => new Name##Native(handler);
 		%}
 	#else
+		%typemap(cstype) std::function<Ret(##__VA_ARGS__)> *, std::function<Ret(##__VA_ARGS__)> &, std::function<Ret(##__VA_ARGS__)> [], std::function<Ret(##__VA_ARGS__)> && %{System.Func<%foreach(%unpack_type, __VA_ARGS__), %unpack_type(0, Ret)>%}
 		%typemap(csclassmodifiers) Name %{
 		using DelegateSignature = System.Func<%foreach(%unpack_type, __VA_ARGS__), %unpack_type(0, Ret)>;
 		public abstract class%}
