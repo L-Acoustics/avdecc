@@ -185,16 +185,30 @@ private:
 static la::avdecc::bindings::HandleManager<la::avdecc::protocol::ProtocolInterface::UniquePointer> s_ProtocolInterfaceManager{};
 static la::avdecc::bindings::HandleManager<Observer*> s_ProtocolInterfaceObserverManager{};
 
-LA_AVDECC_BINDINGS_C_API avdecc_const_string_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_ProtocolInterface_getDefaultExecutorName()
-{
-	return la::avdecc::protocol::ProtocolInterface::DefaultExecutorName;
-}
-
-LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_ProtocolInterface_create(avdecc_protocol_interface_type_t const protocolInterfaceType, avdecc_const_string_t interfaceName, LA_AVDECC_PROTOCOL_INTERFACE_HANDLE* const createdProtocolInterfaceHandle)
+LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_ProtocolInterface_getExecutorName(LA_AVDECC_PROTOCOL_INTERFACE_HANDLE const handle, avdecc_fixed_string_t const executorName)
 {
 	try
 	{
-		*createdProtocolInterfaceHandle = s_ProtocolInterfaceManager.createObject(static_cast<la::avdecc::protocol::ProtocolInterface::Type>(protocolInterfaceType), std::string(interfaceName));
+		auto& obj = s_ProtocolInterfaceManager.getObject(handle);
+		if (executorName)
+		{
+			auto const exName = obj.getExecutorName().c_str();
+			std::memcpy(&executorName, exName, std::min(sizeof(avdecc_fixed_string_t), strlen(exName)));
+		}
+	}
+	catch (...)
+	{
+		return static_cast<avdecc_protocol_interface_error_t>(avdecc_protocol_interface_error_invalid_protocol_interface_handle);
+	}
+
+	return static_cast<avdecc_protocol_interface_error_t>(avdecc_protocol_interface_error_no_error);
+}
+
+LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_ProtocolInterface_create(avdecc_protocol_interface_type_t const protocolInterfaceType, avdecc_const_string_t interfaceName, avdecc_const_string_t executorName, LA_AVDECC_PROTOCOL_INTERFACE_HANDLE* const createdProtocolInterfaceHandle)
+{
+	try
+	{
+		*createdProtocolInterfaceHandle = s_ProtocolInterfaceManager.createObject(static_cast<la::avdecc::protocol::ProtocolInterface::Type>(protocolInterfaceType), std::string(interfaceName), std::string(executorName));
 	}
 	catch (la::avdecc::protocol::ProtocolInterface::Exception const& e)
 	{

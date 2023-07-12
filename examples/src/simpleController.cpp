@@ -29,6 +29,7 @@
 #include <la/avdecc/avdecc.hpp>
 #include <la/avdecc/utils.hpp>
 #include <la/avdecc/logger.hpp>
+#include <la/avdecc/executor.hpp>
 #include "utils.hpp"
 #include <iostream>
 #include <iomanip>
@@ -388,8 +389,12 @@ int doJob()
 
 	try
 	{
+		// Create our own executor for messages dispatching
+		auto const exName = "Executor::" + intfc.alias;
+		auto executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(exName, la::avdecc::ExecutorWithDispatchQueue::create(exName, la::avdecc::utils::ThreadPriority::Highest));
+
 		outputText("Selected interface '" + intfc.alias + "' and protocol interface '" + la::avdecc::protocol::ProtocolInterface::typeToString(protocolInterfaceType) + "':\n");
-		auto endPoint = la::avdecc::EndStation::create(protocolInterfaceType, intfc.id);
+		auto endPoint = la::avdecc::EndStation::create(protocolInterfaceType, intfc.id, exName);
 		ControllerDelegate controllerDelegate;
 
 		// Register log observer

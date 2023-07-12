@@ -62,8 +62,8 @@ public:
 	/* Public APIs                                                  */
 	/* ************************************************************ */
 	/** Constructor */
-	ProtocolInterfacePcapImpl(std::string const& networkInterfaceName)
-		: ProtocolInterfacePcap(networkInterfaceName)
+	ProtocolInterfacePcapImpl(std::string const& networkInterfaceName, std::string const& executorName)
+		: ProtocolInterfacePcap(networkInterfaceName, executorName)
 	{
 		static constexpr int PCAP_BufferSize = 65536;
 		static constexpr int PCAP_PromiscMode = 1;
@@ -189,6 +189,9 @@ private:
 #endif // __linux__
 			_captureThread.join();
 		}
+
+		// Flush executor jobs
+		la::avdecc::ExecutorManager::getInstance().flush(getExecutorName());
 
 		// Release the pcapLibrary
 		_pcap.reset();
@@ -615,7 +618,7 @@ private:
 	/* ************************************************************ */
 	void processRawPacket(la::avdecc::MemoryBuffer&& packet) const noexcept
 	{
-		la::avdecc::ExecutorManager::getInstance().pushJob(DefaultExecutorName,
+		la::avdecc::ExecutorManager::getInstance().pushJob(getExecutorName(),
 			[this, msg = std::move(packet)]()
 			{
 				// Packet received, process it
@@ -697,8 +700,8 @@ private:
 	EthernetPacketDispatcher<ProtocolInterfacePcapImpl> _ethernetPacketDispatcher{ this, _stateMachineManager };
 };
 
-ProtocolInterfacePcap::ProtocolInterfacePcap(std::string const& networkInterfaceName)
-	: ProtocolInterface(networkInterfaceName)
+ProtocolInterfacePcap::ProtocolInterfacePcap(std::string const& networkInterfaceName, std::string const& executorName)
+	: ProtocolInterface(networkInterfaceName, executorName)
 {
 }
 
@@ -716,9 +719,9 @@ bool ProtocolInterfacePcap::isSupported() noexcept
 	}
 }
 
-ProtocolInterfacePcap* ProtocolInterfacePcap::createRawProtocolInterfacePcap(std::string const& networkInterfaceName)
+ProtocolInterfacePcap* ProtocolInterfacePcap::createRawProtocolInterfacePcap(std::string const& networkInterfaceName, std::string const& executorName)
 {
-	return new ProtocolInterfacePcapImpl(networkInterfaceName);
+	return new ProtocolInterfacePcapImpl(networkInterfaceName, executorName);
 }
 
 } // namespace protocol

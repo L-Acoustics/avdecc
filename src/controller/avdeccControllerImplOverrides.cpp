@@ -59,7 +59,7 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 {
 	try
 	{
-		_endStation = EndStation::create(protocolInterfaceType, interfaceName);
+		_endStation = EndStation::create(protocolInterfaceType, interfaceName, std::nullopt);
 		_controller = _endStation->addControllerEntity(progID, entityModelID, entityModelTree, this);
 	}
 	catch (EndStation::Exception const& e)
@@ -79,6 +79,10 @@ ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolI
 				throw Exception(Error::DuplicateProgID, e.what());
 			case EndStation::Error::InvalidEntityModel:
 				throw Exception(Error::InvalidEntityModel, e.what());
+			case EndStation::Error::DuplicateExecutorName:
+				throw Exception(Error::DuplicateExecutorName, e.what());
+			case EndStation::Error::UnknownExecutorName:
+				throw Exception(Error::UnknownExecutorName, e.what());
 			case EndStation::Error::InternalError:
 				throw Exception(Error::InternalError, e.what());
 			default:

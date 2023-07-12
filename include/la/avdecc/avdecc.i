@@ -624,6 +624,8 @@ namespace la.avdecc
 			InterfaceInvalid = 4, /**< Specified interface is invalid. */
 			DuplicateEntityID = 5, /**< EntityID not available (either duplicate, or no EntityID left on the local computer). */
 			InvalidEntityModel = 6, /**< Provided EntityModel is invalid. */
+			DuplicateExecutorName = 7, /**< Provided executor name already exists. */
+			UnknownExecutorName = 8, /**< Provided executor name doesn't exist. */
 			InternalError = 99, /**< Internal error, please report the issue. */
 		}
 		public EndStationException(Error error, string message)

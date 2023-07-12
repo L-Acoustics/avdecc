@@ -135,6 +135,8 @@ public:
 		InterfaceInvalid = 4, /**< Specified interface is invalid. */
 		DuplicateProgID = 5, /**< Specified ProgID is already in use on the local computer. */
 		InvalidEntityModel = 6, /**< Provided EntityModel is invalid. */
+		DuplicateExecutorName = 7, /**< Provided executor name already exists. */
+		UnknownExecutorName = 8, /**< Provided executor name doesn't exist. */
 		InternalError = 99, /**< Internal error, please report the issue. */
 	};
 

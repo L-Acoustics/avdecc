@@ -277,7 +277,7 @@ public:
 	/* Public APIs                                                  */
 	/* ************************************************************ */
 	/** Constructor */
-	ProtocolInterfaceVirtualImpl(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress);
+	ProtocolInterfaceVirtualImpl(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress, std::string const& executorName);
 
 	/** Destructor */
 	virtual ~ProtocolInterfaceVirtualImpl() noexcept;
@@ -386,8 +386,8 @@ private:
 /* Public APIs                                                  */
 /* ************************************************************ */
 /** Constructor */
-ProtocolInterfaceVirtualImpl::ProtocolInterfaceVirtualImpl(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress)
-	: ProtocolInterfaceVirtual(networkInterfaceName, macAddress)
+ProtocolInterfaceVirtualImpl::ProtocolInterfaceVirtualImpl(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress, std::string const& executorName)
+	: ProtocolInterfaceVirtual(networkInterfaceName, macAddress, executorName)
 {
 	// Should always be supported. Cannot create a Virtual ProtocolInterface if it's not supported.
 	AVDECC_ASSERT(isSupported(), "Should always be supported. Cannot create a Virtual ProtocolInterface if it's not supported");
@@ -422,6 +422,9 @@ void ProtocolInterfaceVirtualImpl::shutdown() noexcept
 	// Unregister from the message dispatcher
 	auto& dispatcher = MessageDispatcher::getInstance();
 	dispatcher.unregisterObserver(_networkInterfaceName, this);
+
+	// Flush executor jobs
+	la::avdecc::ExecutorManager::getInstance().flush(getExecutorName());
 }
 
 UniqueIdentifier ProtocolInterfaceVirtualImpl::getDynamicEID() const noexcept
@@ -870,7 +873,7 @@ void ProtocolInterfaceVirtualImpl::onObserverRegistered(observer_type* const obs
 /* ************************************************************ */
 void ProtocolInterfaceVirtualImpl::processRawPacket(la::avdecc::MemoryBuffer&& packet) const noexcept
 {
-	la::avdecc::ExecutorManager::getInstance().pushJob(DefaultExecutorName,
+	la::avdecc::ExecutorManager::getInstance().pushJob(getExecutorName(),
 		[this, msg = std::move(packet)]()
 		{
 			// Packet received, process it
@@ -925,8 +928,8 @@ ProtocolInterface::Error ProtocolInterfaceVirtualImpl::sendPacket(SerializationB
 	return Error::TransportError;
 }
 
-ProtocolInterfaceVirtual::ProtocolInterfaceVirtual(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress)
-	: ProtocolInterface(networkInterfaceName, macAddress)
+ProtocolInterfaceVirtual::ProtocolInterfaceVirtual(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress, std::string const& executorName)
+	: ProtocolInterface(networkInterfaceName, macAddress, executorName)
 {
 }
 
@@ -935,9 +938,9 @@ bool ProtocolInterfaceVirtual::isSupported() noexcept
 	return true;
 }
 
-ProtocolInterfaceVirtual* ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress)
+ProtocolInterfaceVirtual* ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress, std::string const& executorName)
 {
-	return new ProtocolInterfaceVirtualImpl(networkInterfaceName, macAddress);
+	return new ProtocolInterfaceVirtualImpl(networkInterfaceName, macAddress, executorName);
 }
 
 } // namespace protocol

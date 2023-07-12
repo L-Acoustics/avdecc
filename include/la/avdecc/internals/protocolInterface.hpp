@@ -58,13 +58,6 @@ namespace protocol
 class ProtocolInterface : public la::avdecc::utils::Subject<ProtocolInterface, std::recursive_mutex>
 {
 public:
-	/** Name of the default executor used for events */
-#ifdef SWIG /* Help swig parse this correctly (until the issue is fixed in swig) */
-	static constexpr char const* DefaultExecutorName = "avdecc::protocol::PI";
-#else /* !SWIG*/
-	static auto constexpr DefaultExecutorName = "avdecc::protocol::PI";
-#endif /* SWIG */
-
 	/** The existing types of ProtocolInterface */
 	enum class Type
 	{
@@ -216,21 +209,24 @@ public:
 	* @details Creates a new ProtocolInterface as a unique pointer.
 	* @param[in] protocolInterfaceType The protocol interface type to use.
 	* @param[in] networkInterfaceName The name of the network interface to use. Use #la::networkInterface::NetworkInterfaceHelper::enumerateInterfaces to get a valid interface name.
+	* @param[in] executorName The name of the executor to use to dispatch incoming messages.
 	* @return A new ProtocolInterface as a ProtocolInterface::UniquePointer.
 	* @note Might throw an Exception.
 	*/
-	static UniquePointer create(Type const protocolInterfaceType, std::string const& networkInterfaceName)
+	static UniquePointer create(Type const protocolInterfaceType, std::string const& networkInterfaceName, std::string const& executorName)
 	{
 		auto deleter = [](ProtocolInterface* self)
 		{
 			self->destroy();
 		};
-		return UniquePointer(createRawProtocolInterface(protocolInterfaceType, networkInterfaceName), deleter);
+		return UniquePointer(createRawProtocolInterface(protocolInterfaceType, networkInterfaceName, executorName), deleter);
 	}
 
 	/* ************************************************************ */
 	/* General entry points                                         */
 	/* ************************************************************ */
+	/** Returns the name of the executor used by this ProtocolInterface. */
+	LA_AVDECC_API std::string const& LA_AVDECC_CALL_CONVENTION getExecutorName() const noexcept;
 	/** Returns the Mac Address associated with this ProtocolInterface. */
 	LA_AVDECC_API networkInterface::MacAddress const& LA_AVDECC_CALL_CONVENTION getMacAddress() const noexcept;
 	/** Shuts down the interface, stopping all active communications. This method blocks the current thread until all pending messages are processed. This is automatically called during destructor. */
@@ -292,6 +288,9 @@ public:
 	/** Sends an ACMP response message. Only registered LocalEntities are allowed to call this method. */
 	virtual Error sendAcmpResponse(Acmpdu::UniquePointer&& acmpdu) const noexcept = 0;
 
+	/* ************************************************************ */
+	/* Misc entry points                                            */
+	/* ************************************************************ */
 	/** BasicLockable concept 'lock' method for the whole ProtocolInterface */
 	virtual void lock() const noexcept = 0;
 	/** BasicLockable concept 'unlock' method for the whole ProtocolInterface */
@@ -319,18 +318,20 @@ protected:
 	* @brief Create a ProtocolInterface associated with specified network interface name.
 	* @details Create a ProtocolInterface associated with specified network interface name, checking the interface actually exists.
 	* @param[in] networkInterfaceName The name of the network interface.
+	* @param[in] executorName The name of the executor to use to dispatch incoming messages.
 	* @note Throws Exception if networkInterfaceName is invalid or inaccessible.
 	*/
-	ProtocolInterface(std::string const& networkInterfaceName);
+	ProtocolInterface(std::string const& networkInterfaceName, std::string const& executorName);
 
 	/**
 	* @brief Create a ProtocolInterface associated with specified network interface name and MAC address.
 	* @details Create a ProtocolInterface associated with specified network interface name and MAC address, not checking if the interface exists.
 	* @param[in] networkInterfaceName The name of the network interface.
 	* @param[in] macAddress The MAC address associated with the network interface. Cannot be all 0.
+	* @param[in] executorName The name of the executor to use to dispatch incoming messages.
 	* @note Throws Exception if networkInterfaceName or macAddress is invalid or inaccessible.
 	*/
-	ProtocolInterface(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress);
+	ProtocolInterface(std::string const& networkInterfaceName, networkInterface::MacAddress const& macAddress, std::string const& executorName);
 
 	virtual ~ProtocolInterface() noexcept = default;
 
@@ -347,13 +348,14 @@ protected:
 
 private:
 	/** Entry point */
-	static LA_AVDECC_API ProtocolInterface* LA_AVDECC_CALL_CONVENTION createRawProtocolInterface(Type const protocolInterfaceType, std::string const& networkInterfaceName);
+	static LA_AVDECC_API ProtocolInterface* LA_AVDECC_CALL_CONVENTION createRawProtocolInterface(Type const protocolInterfaceType, std::string const& networkInterfaceName, std::string const& executorName);
 
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept = 0;
 
 	networkInterface::MacAddress _networkInterfaceMacAddress{};
 	std::unordered_map<VuAecpdu::ProtocolIdentifier, VendorUniqueDelegate*, VuAecpdu::ProtocolIdentifier::hash> _vendorUniqueDelegates{};
+	std::string _executorName{};
 };
 
 /* Operator overloads */

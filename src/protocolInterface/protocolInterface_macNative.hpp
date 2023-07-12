@@ -39,10 +39,11 @@ public:
 	* @brief Factory to create a ProtocolInterfaceMacNative.
 	* @details Factory to create a ProtocolInterfaceMacNative as a raw pointer.
 	* @param[in] networkInterfaceName The name of the network interface to use.
+	* @param[in] executorName The name of the executor to use to dispatch incoming messages.
 	* @return A new ProtocolInterfaceMacNative as a raw pointerr
 	* @note Throw #std::invalid_argument if interface is not recognized.
 	*/
-	static ProtocolInterfaceMacNative* createRawProtocolInterfaceMacNative(std::string const& networkInterfaceName);
+	static ProtocolInterfaceMacNative* createRawProtocolInterfaceMacNative(std::string const& networkInterfaceName, std::string const& executorName);
 
 	/** Returns true if this ProtocolInterface is supported (runtime check) */
 	static bool isSupported() noexcept;
@@ -57,7 +58,7 @@ public:
 	ProtocolInterfaceMacNative& operator=(ProtocolInterfaceMacNative&&) = delete;
 
 protected:
-	ProtocolInterfaceMacNative(std::string const& networkInterfaceName);
+	ProtocolInterfaceMacNative(std::string const& networkInterfaceName, std::string const& executorName);
 };
 
 } // namespace protocol
