@@ -32,7 +32,7 @@
 /* ************************************************************************** */
 /* Controller::Delegate Bindings                                              */
 /* ************************************************************************** */
-class Delegate final : public la::avdecc::entity::controller::Delegate
+class Delegate final : public la::avdecc::entity::controller::DefaultedDelegate
 {
 public:
 	Delegate(avdecc_local_entity_controller_delegate_p const delegate, LA_AVDECC_LOCAL_ENTITY_HANDLE const handle)
