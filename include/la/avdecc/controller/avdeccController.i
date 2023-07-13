@@ -229,12 +229,12 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::Controller, QueryCommandError, "uint")
 %extend la::avdecc::controller::Controller
 {
 public:
-	static std::unique_ptr<la::avdecc::controller::Controller> create(/*protocol::ProtocolInterface::Type const protocolInterfaceType, */std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree)
+	static std::unique_ptr<la::avdecc::controller::Controller> create(/*protocol::ProtocolInterface::Type const protocolInterfaceType, */std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, std::optional<std::string> const& executorName)
 	{
 		try
 		{
 			// Right now, force PCap as we cannot bind the protocolInterfaceType enum correctly
-			return std::unique_ptr<la::avdecc::controller::Controller>{ la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::PCap, interfaceName, progID, entityModelID, preferedLocale, entityModelTree).release() };
+			return std::unique_ptr<la::avdecc::controller::Controller>{ la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::PCap, interfaceName, progID, entityModelID, preferedLocale, entityModelTree, executorName).release() };
 		}
 		catch (la::avdecc::controller::Controller::Exception const& e)
 		{
