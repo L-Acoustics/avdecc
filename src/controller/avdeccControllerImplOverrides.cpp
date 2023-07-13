@@ -54,12 +54,12 @@ namespace controller
 /* ************************************************************ */
 /* Controller overrides                                         */
 /* ************************************************************ */
-ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree)
+ControllerImpl::ControllerImpl(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, std::optional<std::string> const& executorName)
 	: _preferedLocale(preferedLocale)
 {
 	try
 	{
-		_endStation = EndStation::create(protocolInterfaceType, interfaceName, std::nullopt);
+		_endStation = EndStation::create(protocolInterfaceType, interfaceName, executorName);
 		_controller = _endStation->addControllerEntity(progID, entityModelID, entityModelTree, this);
 	}
 	catch (EndStation::Exception const& e)

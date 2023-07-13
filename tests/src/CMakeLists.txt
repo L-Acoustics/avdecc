@@ -18,6 +18,7 @@ set(TESTS_SOURCE
 	controllerEntity_tests.cpp
 	commandStateMachine_tests.cpp
 	controllerCapabilityDelegate_tests.cpp
+	endStation_tests.cpp
 	enum_tests.cpp
 	entity_tests.cpp
 	instrumentationObserver.hpp
