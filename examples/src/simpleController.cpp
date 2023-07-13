@@ -412,6 +412,8 @@ int doJob()
 			return 1;
 		}
 
+		controller->discoverRemoteEntities();
+
 		std::this_thread::sleep_for(std::chrono::seconds(30));
 	}
 	catch (la::avdecc::EndStation::Exception const& e)
