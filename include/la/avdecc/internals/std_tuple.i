@@ -1,7 +1,7 @@
 
 %{
-	#include <tuple>
-    #include <utility>
+  #include <tuple>
+  #include <utility>
 %}
 
 %include "swig_foreach.i"
@@ -18,33 +18,33 @@
 %define %std_tuple(Name, ...)
 
 #if defined(SWIGCSHARP)
-    %typemap(cscode) std::tuple<__VA_ARGS__> %{
-        public void Deconstruct(%foreach(%unpack_param_out, __VA_ARGS__)) {
-            %foreach_plain(%std_tuple_cs_unpack_out_getter, __VA_ARGS__)
-        }
+  %typemap(cscode) std::tuple<__VA_ARGS__> %{
+    public void Deconstruct(%foreach(%unpack_param_out, __VA_ARGS__)) {
+      %foreach_plain(%std_tuple_cs_unpack_out_getter, __VA_ARGS__)
+    }
 
-        public static implicit operator (%foreach(%unpack_type, __VA_ARGS__))(Name self) {
-            return (%foreach(%std_tuple_cs_unpack_getter, __VA_ARGS__));
-        }
-    %}
+    public static implicit operator (%foreach(%unpack_type, __VA_ARGS__))(Name self) {
+      return (%foreach(%std_tuple_cs_unpack_getter, __VA_ARGS__));
+    }
+  %}
 #endif
 
 %rename(Name) std::tuple<__VA_ARGS__>;
 
 namespace std {
-    struct tuple<__VA_ARGS__> {
-        // Copy constructor
-        tuple(%foreach(%std_tuple_ctor_unpack_arg, __VA_ARGS__));
+  struct tuple<__VA_ARGS__> {
+    // Copy constructor
+    tuple(%foreach(%std_tuple_ctor_unpack_arg, __VA_ARGS__));
 
-        %extend {
-            %foreach_plain(%std_tuple_make_getter, __VA_ARGS__)
-            %foreach_plain(%std_tuple_make_setter, __VA_ARGS__)
+    %extend {
+      %foreach_plain(%std_tuple_make_getter, __VA_ARGS__)
+      %foreach_plain(%std_tuple_make_setter, __VA_ARGS__)
 
-            size_t Length() const {
-                return std::tuple_size<std::decay_t<decltype(*$self)>>{};
-            }
-        }
-    };
+      size_t Length() const {
+        return std::tuple_size<std::decay_t<decltype(*$self)>>{};
+      }
+    }
+  };
 }
 
 %enddef
