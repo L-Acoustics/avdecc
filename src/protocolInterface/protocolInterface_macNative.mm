@@ -22,6 +22,7 @@
 * @author Christophe Calmejane
 */
 
+#include "la/avdecc/executor.hpp"
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
 #include "la/avdecc/internals/protocolVuAecpdu.hpp"
