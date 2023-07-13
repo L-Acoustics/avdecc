@@ -5324,7 +5324,8 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 	}
 
 	// Ready to advertise using the network executor
-	ExecutorManager::getInstance().pushJob(protocol::ProtocolInterface::DefaultExecutorName,
+	auto const exName = _endStation->getProtocolInterface()->getExecutorName();
+	ExecutorManager::getInstance().pushJob(exName,
 		[this, entityID]()
 		{
 			auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
@@ -5338,7 +5339,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 		});
 
 	// Flush executor to be sure everything is loaded before returning
-	ExecutorManager::getInstance().flush(protocol::ProtocolInterface::DefaultExecutorName);
+	ExecutorManager::getInstance().flush(exName);
 
 	LOG_CONTROLLER_INFO(_controller->getEntityID(), "Successfully registered virtual entity with ID {}", utils::toHexString(entityID, true));
 

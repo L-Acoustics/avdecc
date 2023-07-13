@@ -42,6 +42,7 @@
 #include <vector>
 #include <mutex>
 #include <chrono>
+#include <optional>
 
 namespace la
 {
@@ -135,6 +136,8 @@ public:
 		InterfaceInvalid = 4, /**< Specified interface is invalid. */
 		DuplicateProgID = 5, /**< Specified ProgID is already in use on the local computer. */
 		InvalidEntityModel = 6, /**< Provided EntityModel is invalid. */
+		DuplicateExecutorName = 7, /**< Provided executor name already exists. */
+		UnknownExecutorName = 8, /**< Provided executor name doesn't exist. */
 		InternalError = 99, /**< Internal error, please report the issue. */
 	};
 
@@ -489,16 +492,17 @@ public:
 	* @param[in] preferedLocale ISO 639-1 locale code of the prefered locale to use when querying entity information.
 	*                           If the specified locale is not found on the entity, then english is used.
 	* @param[in] entityModelTree The entity model tree to use for this controller entity, or null to not expose a model.
+	* @param[in] executorName The name of the executor to use to dispatch incoming messages (must be created before the call). If empty, a default executor will be created.
 	* @return A new Controller as a Controller::UniquePointer.
 	* @note Throws Exception if interfaceName is invalid or inaccessible, or if progID is already used on the local computer.
 	*/
-	static UniquePointer create(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree)
+	static UniquePointer create(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, std::optional<std::string> const& executorName)
 	{
 		auto deleter = [](Controller* controller)
 		{
 			controller->destroy();
 		};
-		return UniquePointer(createRawController(protocolInterfaceType, interfaceName, progID, entityModelID, preferedLocale, entityModelTree), deleter);
+		return UniquePointer(createRawController(protocolInterfaceType, interfaceName, progID, entityModelID, preferedLocale, entityModelTree, executorName), deleter);
 	}
 
 	/** Returns the UniqueIdentifier this instance of the controller is using to identify itself on the network */
@@ -634,7 +638,7 @@ protected:
 
 private:
 	/** Create method for COM-like interface */
-	static LA_AVDECC_CONTROLLER_API Controller* LA_AVDECC_CONTROLLER_CALL_CONVENTION createRawController(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree);
+	static LA_AVDECC_CONTROLLER_API Controller* LA_AVDECC_CONTROLLER_CALL_CONVENTION createRawController(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, std::optional<std::string> const& executorName);
 
 	/** Destroy method for COM-like interface */
 	virtual void destroy() noexcept = 0;

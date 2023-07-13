@@ -39,10 +39,11 @@ public:
 	* @brief Factory method to create a new ProtocolInterfacePcap.
 	* @details Creates a new ProtocolInterfacePcap as a raw pointer.
 	* @param[in] networkInterfaceName The name of the network interface to use.
+	* @param[in] executorName The name of the executor to use to dispatch incoming messages.
 	* @return A new ProtocolInterfacePcap as a raw pointer.
 	* @note Throws Exception if #interfaceName is invalid or inaccessible.
 	*/
-	static ProtocolInterfacePcap* createRawProtocolInterfacePcap(std::string const& networkInterfaceName);
+	static ProtocolInterfacePcap* createRawProtocolInterfacePcap(std::string const& networkInterfaceName, std::string const& executorName);
 
 	/** Returns true if this ProtocolInterface is supported (runtime check) */
 	static bool isSupported() noexcept;
@@ -57,7 +58,7 @@ public:
 	ProtocolInterfacePcap& operator=(ProtocolInterfacePcap&&) = delete;
 
 protected:
-	ProtocolInterfacePcap(std::string const& networkInterfaceName);
+	ProtocolInterfacePcap(std::string const& networkInterfaceName, std::string const& executorName);
 };
 
 } // namespace protocol

@@ -22,6 +22,7 @@
 * @author Christophe Calmejane
 */
 
+#include "la/avdecc/executor.hpp"
 #include "la/avdecc/internals/protocolAemAecpdu.hpp"
 #include "la/avdecc/internals/protocolAaAecpdu.hpp"
 #include "la/avdecc/internals/protocolVuAecpdu.hpp"
@@ -186,8 +187,8 @@ public:
 	using ProtocolInterfaceMacNative::getVendorUniqueDelegate;
 
 	/** Constructor */
-	ProtocolInterfaceMacNativeImpl(std::string const& networkInterfaceName)
-		: ProtocolInterfaceMacNative(networkInterfaceName)
+	ProtocolInterfaceMacNativeImpl(std::string const& networkInterfaceName, std::string const& executorName)
+		: ProtocolInterfaceMacNative(networkInterfaceName, executorName)
 	{
 		// Should not be there if the interface is not supported
 		AVDECC_ASSERT(isSupported(), "Should not be there if the interface is not supported");
@@ -417,6 +418,9 @@ private:
 			// Wait for the thread to complete its pending tasks
 			_stateMachineThread.join();
 		}
+
+		// Flush executor jobs
+		la::avdecc::ExecutorManager::getInstance().flush(getExecutorName());
 
 		// Destroy the bridge
 		if (_bridge != nullptr)
@@ -749,8 +753,8 @@ private:
 	CommandEntities _commandEntities{};
 };
 
-ProtocolInterfaceMacNative::ProtocolInterfaceMacNative(std::string const& networkInterfaceName)
-	: ProtocolInterface(networkInterfaceName)
+ProtocolInterfaceMacNative::ProtocolInterfaceMacNative(std::string const& networkInterfaceName, std::string const& executorName)
+	: ProtocolInterface(networkInterfaceName, executorName)
 {
 }
 
@@ -759,9 +763,9 @@ bool ProtocolInterfaceMacNative::isSupported() noexcept
 	return [BridgeInterface isSupported];
 }
 
-ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfaceMacNative(std::string const& networkInterfaceName)
+ProtocolInterfaceMacNative* ProtocolInterfaceMacNative::createRawProtocolInterfaceMacNative(std::string const& networkInterfaceName, std::string const& executorName)
 {
-	return new ProtocolInterfaceMacNativeImpl(networkInterfaceName);
+	return new ProtocolInterfaceMacNativeImpl(networkInterfaceName, executorName);
 }
 
 } // namespace protocol

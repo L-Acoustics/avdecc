@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Complete controller entity model refactoring to support descriptors at non-configuration level
 - EntityModelVisitor is now virtual pure, but a new derivated visitor (with all default implementation) has been added: DefaultedEntityModelVisitor
 - la::avdecc::controller::Controller::Observer is now virtual pure, but a new derivated visitor (with all default implementation) has been added: la::avdecc::controller::Controller::DefaultedObserver
+- [Executor name can be provided when creating a Controller](https://github.com/L-Acoustics/avdecc/issues/132)
 
 ### Removed
 - Direct access to ClockSource descriptors from the ClockDomain. Will still be enumerated correctly when using the model visitor

@@ -553,17 +553,18 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity::model::jsonSerializer, Flags, Fla
 %ignore la::avdecc::EndStation::Exception; // Ignore Exception, will be created as native exception
 %ignore la::avdecc::EndStation::addAggregateEntity; // Ignore at the moment, we don't want to handle AggregateEntity yet
 %ignore la::avdecc::EndStation::deserializeEntityModelFromJson;
+%ignore la::avdecc::EndStation::getProtocolInterface; // Ignore at the moment, we didn't bind ProtocolInterface yet
 %unique_ptr(la::avdecc::EndStation) // Define unique_ptr for EndStation
 // Extend the class
 %extend la::avdecc::EndStation
 {
 public:
-	static std::unique_ptr<la::avdecc::EndStation> create(/*protocol::ProtocolInterface::Type const protocolInterfaceType, */std::string const& networkInterfaceName)
+	static std::unique_ptr<la::avdecc::EndStation> create(/*protocol::ProtocolInterface::Type const protocolInterfaceType, */std::string const& networkInterfaceName, std::optional<std::string> const& executorName)
 	{
 		try
 		{
 			// Right now, force PCap as we cannot bind the protocolInterfaceType enum correctly
-			return std::unique_ptr<la::avdecc::EndStation>{ la::avdecc::EndStation::create(la::avdecc::protocol::ProtocolInterface::Type::PCap, networkInterfaceName).release() };
+			return std::unique_ptr<la::avdecc::EndStation>{ la::avdecc::EndStation::create(la::avdecc::protocol::ProtocolInterface::Type::PCap, networkInterfaceName, executorName).release() };
 		}
 		catch (la::avdecc::EndStation::Exception const& e)
 		{
@@ -624,6 +625,8 @@ namespace la.avdecc
 			InterfaceInvalid = 4, /**< Specified interface is invalid. */
 			DuplicateEntityID = 5, /**< EntityID not available (either duplicate, or no EntityID left on the local computer). */
 			InvalidEntityModel = 6, /**< Provided EntityModel is invalid. */
+			DuplicateExecutorName = 7, /**< Provided executor name already exists. */
+			UnknownExecutorName = 8, /**< Provided executor name doesn't exist. */
 			InternalError = 99, /**< Internal error, please report the issue. */
 		}
 		public EndStationException(Error error, string message)

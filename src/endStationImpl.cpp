@@ -163,6 +163,11 @@ entity::AggregateEntity* EndStationImpl::addAggregateEntity(std::uint16_t const 
 	return aggregatePtr;
 }
 
+protocol::ProtocolInterface const* EndStationImpl::getProtocolInterface() const noexcept
+{
+	return _protocolInterface.get();
+}
+
 /** Destroy method for COM-like interface */
 void EndStationImpl::destroy() noexcept
 {
@@ -261,13 +266,41 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, entity::mo
 }
 
 /** EndStation Entry point */
-EndStation* LA_AVDECC_CALL_CONVENTION EndStation::createRawEndStation(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceName)
+EndStation* LA_AVDECC_CALL_CONVENTION EndStation::createRawEndStation(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& networkInterfaceName, std::optional<std::string> const& executorName)
 {
 	try
 	{
-		// We must create the executor before creating ProtocolInterface (function parameters sequencing is still undefined in c++20, so we force creation in a preceding expression)
-		auto executorWrapper = ExecutorManager::getInstance().registerExecutor(protocol::ProtocolInterface::DefaultExecutorName, ExecutorWithDispatchQueue::create(protocol::ProtocolInterface::DefaultExecutorName, utils::ThreadPriority::Highest));
-		return new EndStationImpl(std::move(executorWrapper), protocol::ProtocolInterface::create(protocolInterfaceType, networkInterfaceName));
+		static auto constexpr DefaultExecutorName = "avdecc::protocol::PI";
+
+		auto executorWrapper = ExecutorManager::ExecutorWrapper::UniquePointer{ nullptr, nullptr };
+		auto exName = std::string{ DefaultExecutorName };
+
+		// If we are passed an executor name, check if it exists
+		if (executorName.has_value())
+		{
+			// Executor name was passed, check if it exists
+			if (!ExecutorManager::getInstance().isExecutorRegistered(*executorName))
+			{
+				// Executor does not exist
+				throw Exception(Error::UnknownExecutorName, "Executor not found");
+			}
+			// Executor exists, we can use it
+			exName = *executorName;
+		}
+		// Create the executor and manage it's lifetime
+		else
+		{
+			// First check if the executor already exists
+			if (ExecutorManager::getInstance().isExecutorRegistered(exName))
+			{
+				// Executor already exists, we can't create a new one
+				throw Exception(Error::DuplicateExecutorName, "Executor already exists");
+			}
+			// We can create a new executor
+			executorWrapper = ExecutorManager::getInstance().registerExecutor(exName, ExecutorWithDispatchQueue::create(exName, utils::ThreadPriority::Highest));
+		}
+
+		return new EndStationImpl(std::move(executorWrapper), protocol::ProtocolInterface::create(protocolInterfaceType, networkInterfaceName, exName));
 	}
 	catch (protocol::ProtocolInterface::Exception const& e)
 	{

@@ -475,6 +475,8 @@ inline void sendControllerHighLevelCommands(la::avdecc::protocol::ProtocolInterf
 
 inline int doJob()
 {
+	static auto constexpr DefaultExecutorName = "avdecc::protocol::PI";
+
 	auto const protocolInterfaceType = chooseProtocolInterfaceType(la::avdecc::protocol::ProtocolInterface::SupportedProtocolInterfaceTypes{ la::avdecc::protocol::ProtocolInterface::Type::PCap, la::avdecc::protocol::ProtocolInterface::Type::MacOSNative });
 	auto intfc = chooseNetworkInterface();
 
@@ -486,13 +488,13 @@ inline int doJob()
 	try
 	{
 		// Create an executor for ProtocolInterface
-		auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(la::avdecc::protocol::ProtocolInterface::DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(la::avdecc::protocol::ProtocolInterface::DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
+		auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
 
 		outputText("Selected interface '" + intfc.alias + "' and protocol interface '" + la::avdecc::protocol::ProtocolInterface::typeToString(protocolInterfaceType) + "':\n");
 
 		// We need to create/destroy the protocol interface for each test, as the protocol interface will not trigger events for already discovered entities
 		{
-			auto pi = la::avdecc::protocol::ProtocolInterface::create(protocolInterfaceType, intfc.id);
+			auto pi = la::avdecc::protocol::ProtocolInterface::create(protocolInterfaceType, intfc.id, DefaultExecutorName);
 
 			// Test sending raw messages
 			sendRawMessages(*pi);
@@ -501,7 +503,7 @@ inline int doJob()
 		}
 
 		{
-			auto pi = la::avdecc::protocol::ProtocolInterface::create(protocolInterfaceType, intfc.id);
+			auto pi = la::avdecc::protocol::ProtocolInterface::create(protocolInterfaceType, intfc.id, DefaultExecutorName);
 
 			// Test receiving raw messages
 			receiveAecpdu(*pi);
@@ -510,14 +512,14 @@ inline int doJob()
 		}
 
 		{
-			auto pi = la::avdecc::protocol::ProtocolInterface::create(protocolInterfaceType, intfc.id);
+			auto pi = la::avdecc::protocol::ProtocolInterface::create(protocolInterfaceType, intfc.id, DefaultExecutorName);
 
 			// Test sending controller type messages (commands)
 			sendControllerCommands(*pi);
 		}
 
 		{
-			auto pi = la::avdecc::protocol::ProtocolInterface::create(protocolInterfaceType, intfc.id);
+			auto pi = la::avdecc::protocol::ProtocolInterface::create(protocolInterfaceType, intfc.id, DefaultExecutorName);
 
 			// Test sending high level controller commands
 			sendControllerHighLevelCommands(*pi);

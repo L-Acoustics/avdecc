@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 - la::avdecc::entity::controller::Delegate is now virtual pure, but a new derivated visitor (with all default implementation) has been added: la::avdecc::entity::controller::DefaultedDelegate
+- [Executor name can be provided when creating an EndStation](https://github.com/L-Acoustics/avdecc/issues/132)
 
 ## [3.4.1] - 2023-01-11
 
