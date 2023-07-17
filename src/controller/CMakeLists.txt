@@ -38,6 +38,7 @@ set (HEADER_FILES_COMMON
 	avdeccControllerImpl.hpp
 	avdeccControlledEntityImpl.hpp
 	avdeccControllerLogHelper.hpp
+	avdeccControllerProxy.hpp
 	avdeccEntityModelCache.hpp
 	entityModelChecksum.hpp
 	treeModelAccessStrategy.hpp
@@ -51,6 +52,7 @@ set (SOURCE_FILES_COMMON
 	avdeccControllerImplDelegateOverrides.cpp
 	avdeccControllerImplHandlers.cpp
 	avdeccControllerImplOverrides.cpp
+	avdeccControllerProxy.cpp
 	avdeccControlledEntityImpl.cpp
 	entityModelChecksum.cpp
 )

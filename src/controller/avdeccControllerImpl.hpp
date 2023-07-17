@@ -31,6 +31,7 @@
 #endif // ENABLE_AVDECC_FEATURE_JSON
 
 #include "avdeccControlledEntityImpl.hpp"
+#include "avdeccControllerProxy.hpp"
 
 #include <string>
 #include <unordered_map>
@@ -59,7 +60,7 @@ class ControllerImpl final : public Controller, private entity::controller::Defa
 public:
 	using SharedControlledEntityImpl = std::shared_ptr<ControlledEntityImpl>;
 
-	ControllerImpl(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, std::optional<std::string> const& executorName);
+	ControllerImpl(protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, UniqueIdentifier const entityModelID, std::string const& preferedLocale, entity::model::EntityTree const* const entityModelTree, std::optional<std::string> const& executorName, entity::controller::Interface const* const virtualEntityInterface);
 
 	void unregisterExclusiveAccessToken(la::avdecc::UniqueIdentifier const entityID, ExclusiveAccessTokenImpl* const token) const noexcept;
 	static std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vector<SharedControlledEntity>> deserializeControlledEntitiesFromJsonNetworkState(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError) noexcept;
@@ -726,6 +727,7 @@ private:
 	std::unordered_map<UniqueIdentifier, SharedControlledEntityImpl, UniqueIdentifier::hash> _controlledEntities;
 	EndStation::UniquePointer _endStation{ nullptr, nullptr };
 	entity::ControllerEntity* _controller{ nullptr };
+	std::unique_ptr<ControllerVirtualProxy> _controllerProxy{ nullptr };
 	std::string _preferedLocale{ "en-US" };
 	bool _fullStaticModelEnumeration{ false };
 	bool _shouldTerminate{ false };

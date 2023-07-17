@@ -5323,6 +5323,9 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> Controller
 		_controlledEntities.insert(std::make_pair(entityID, controlledEntity));
 	}
 
+	// Set entity as virtual
+	_controllerProxy->setVirtualEntity(entityID);
+
 	// Ready to advertise using the network executor
 	auto const exName = _endStation->getProtocolInterface()->getExecutorName();
 	ExecutorManager::getInstance().pushJob(exName,

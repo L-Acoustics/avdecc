@@ -80,7 +80,7 @@ private:
 };
 
 Dumper::Dumper(la::avdecc::protocol::ProtocolInterface::Type const protocolInterfaceType, std::string const& interfaceName, std::uint16_t const progID, la::avdecc::UniqueIdentifier const entityModelID, std::string const& preferedLocale)
-	: _controller(la::avdecc::controller::Controller::create(protocolInterfaceType, interfaceName, progID, entityModelID, preferedLocale, nullptr, std::nullopt))
+	: _controller(la::avdecc::controller::Controller::create(protocolInterfaceType, interfaceName, progID, entityModelID, preferedLocale, nullptr, std::nullopt, nullptr))
 {
 	// Register observers
 	la::avdecc::logger::Logger::getInstance().registerObserver(this);
