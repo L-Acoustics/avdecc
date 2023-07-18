@@ -214,7 +214,7 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MilanInfoFeaturesFlags, MilanInfo
 ////////////////////////////////////////
 // Protocol Defines
 ////////////////////////////////////////
-%define DEFINE_PROTOCOL_CLASS(name)
+%define DEFINE_BASE_PROTOCOL_CLASS(name)
 	%nspace la::avdecc::protocol::name;
 	%rename("%s") la::avdecc::protocol::name; // Unignore class
 	%ignore la::avdecc::protocol::name::name(); // Ignore default constructor
@@ -235,32 +235,34 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MilanInfoFeaturesFlags, MilanInfo
 #endif
 	}
 %enddef
+%define DEFINE_TYPED_PROTOCOL_CLASS(name, typedName, underlyingType)
+	DEFINE_BASE_PROTOCOL_CLASS(name)
+	// Define the parent TypedDefine class (this template must be declare before including the protocolDefines.hpp file, TypedDefine has already been declared anyway)
+	%template(typedName) la::avdecc::utils::TypedDefine<la::avdecc::protocol::name, underlyingType>;
+%enddef
 
 // Bind structs and classes
 %rename($ignore, %$isclass) ""; // Ignore all structs/classes, manually re-enable
 
 // TODO: Would be easier to map these types to the underlying integer type (but how to do it?)
-DEFINE_PROTOCOL_CLASS(AdpMessageType)
-DEFINE_PROTOCOL_CLASS(AecpMessageType)
-DEFINE_PROTOCOL_CLASS(AecpStatus)
-DEFINE_PROTOCOL_CLASS(AemAecpStatus)
+DEFINE_TYPED_PROTOCOL_CLASS(AdpMessageType, AdpMessageTypedDefine, std::uint8_t)
+DEFINE_TYPED_PROTOCOL_CLASS(AecpMessageType, AecpMessageTypedDefine, std::uint8_t)
+DEFINE_TYPED_PROTOCOL_CLASS(AecpStatus, AecpStatusTypedDefine, std::uint8_t)
+DEFINE_BASE_PROTOCOL_CLASS(AemAecpStatus)
 %ignore la::avdecc::protocol::AemAecpStatus::AemAecpStatus(AecpStatus const status) noexcept; // Ignore constructor
-DEFINE_PROTOCOL_CLASS(AemCommandType)
-DEFINE_PROTOCOL_CLASS(AemAcquireEntityFlags)
-DEFINE_PROTOCOL_CLASS(AemLockEntityFlags)
-DEFINE_PROTOCOL_CLASS(AaMode)
-DEFINE_PROTOCOL_CLASS(AaAecpStatus)
-DEFINE_PROTOCOL_CLASS(MvuAecpStatus)
-DEFINE_PROTOCOL_CLASS(MvuCommandType)
-DEFINE_PROTOCOL_CLASS(AcmpMessageType)
-DEFINE_PROTOCOL_CLASS(AcmpStatus)
+DEFINE_TYPED_PROTOCOL_CLASS(AemCommandType, AemCommandTypedDefine, std::uint16_t)
+DEFINE_TYPED_PROTOCOL_CLASS(AemAcquireEntityFlags, AemAcquireEntityFlagsTypedDefine, std::uint32_t)
+DEFINE_TYPED_PROTOCOL_CLASS(AemLockEntityFlags, AemLockEntityFlagsTypedDefine, std::uint32_t)
+DEFINE_TYPED_PROTOCOL_CLASS(AaMode, AaModeTypedDefine, std::uint8_t)
+DEFINE_BASE_PROTOCOL_CLASS(AaAecpStatus)
+DEFINE_BASE_PROTOCOL_CLASS(MvuAecpStatus)
+DEFINE_TYPED_PROTOCOL_CLASS(MvuCommandType, MvuCommandTypedDefine, std::uint16_t)
+DEFINE_TYPED_PROTOCOL_CLASS(AcmpMessageType, AcmpMessageTypedDefine, std::uint8_t)
+DEFINE_TYPED_PROTOCOL_CLASS(AcmpStatus, AcmpStatusTypedDefine, std::uint8_t)
 
 // Include c++ declaration file
 %include "la/avdecc/internals/protocolDefines.hpp"
 %rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
-
-// Define templates
-//%template(AdpMessageTypedDefine) la::avdecc::utils::TypedDefine<la::avdecc::protocol::AdpMessageType, std::uint8_t>; // TODO: Ask how to correctly define a parent class that is a template
 
 
 ////////////////////////////////////////
