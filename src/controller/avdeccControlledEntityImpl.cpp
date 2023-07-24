@@ -52,6 +52,7 @@ static constexpr std::uint16_t MaxQueryDescriptorRetryCount = 2;
 static constexpr std::uint16_t MaxQueryDynamicInfoRetryCount = 2;
 static constexpr std::uint16_t MaxQueryDescriptorDynamicInfoRetryCount = 2;
 static constexpr std::uint16_t QueryRetryMillisecondDelay = 500;
+static entity::model::AvdeccFixedString s_noLocalizationString{};
 
 /** Returns the common part of the two strings, with excess spaces removed. */
 static std::string getCommonString(std::string const& lhs, std::string const& rhs) noexcept
@@ -238,36 +239,40 @@ bool ControlledEntityImpl::isIdentifying() const noexcept
 	if (identifyControlIndex)
 	{
 		// Check if identify is currently in progress
-		auto const* const controlDynamicModel = _treeModelAccess->getControlNodeDynamicModel(getCurrentConfigurationIndex(), *identifyControlIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
-		if (controlDynamicModel)
+		auto const* const entityDynamicModel = _treeModelAccess->getEntityNodeDynamicModel(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+		if (entityDynamicModel)
 		{
-			try
+			auto const* const controlDynamicModel = _treeModelAccess->getControlNodeDynamicModel(entityDynamicModel->currentConfiguration, *identifyControlIndex, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+			if (controlDynamicModel)
 			{
-				// Get and check the control value
-				auto const& values = controlDynamicModel->values;
-				AVDECC_ASSERT(values.areDynamicValues() && values.getType() == entity::model::ControlValueType::Type::ControlLinearUInt8, "Doesn't look like Identify Control Value");
-
-				if (values.size() == 1)
+				try
 				{
-					auto const dynamicValues = values.getValues<entity::model::LinearValues<entity::model::LinearValueDynamic<std::uint8_t>>>(); // We have to store the copy or it will go out of scope
-					auto const& value = dynamicValues.getValues()[0];
-					if (value.currentValue == 0)
+					// Get and check the control value
+					auto const& values = controlDynamicModel->values;
+					AVDECC_ASSERT(values.areDynamicValues() && values.getType() == entity::model::ControlValueType::Type::ControlLinearUInt8, "Doesn't look like Identify Control Value");
+
+					if (values.size() == 1)
 					{
-						return false;
-					}
-					else if (value.currentValue == 255)
-					{
-						return true;
+						auto const dynamicValues = values.getValues<entity::model::LinearValues<entity::model::LinearValueDynamic<std::uint8_t>>>(); // We have to store the copy or it will go out of scope
+						auto const& value = dynamicValues.getValues()[0];
+						if (value.currentValue == 0)
+						{
+							return false;
+						}
+						else if (value.currentValue == 255)
+						{
+							return true;
+						}
 					}
 				}
-			}
-			catch (std::invalid_argument const&)
-			{
-				AVDECC_ASSERT(false, "Identify Control Descriptor values doesn't seem valid");
-			}
-			catch (...)
-			{
-				AVDECC_ASSERT(false, "Identify Control Descriptor was validated, this should not throw");
+				catch (std::invalid_argument const&)
+				{
+					AVDECC_ASSERT(false, "Identify Control Descriptor values doesn't seem valid");
+				}
+				catch (...)
+				{
+					AVDECC_ASSERT(false, "Identify Control Descriptor was validated, this should not throw");
+				}
 			}
 		}
 	}
@@ -395,13 +400,16 @@ model::LocaleNode const* ControlledEntityImpl::findLocaleNode(entity::model::Con
 
 entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString(entity::model::LocalizedStringReference const& stringReference) const noexcept
 {
-	return getLocalizedString(getCurrentConfigurationIndex(), stringReference);
+	auto const* const entityDynamicModel = _treeModelAccess->getEntityNodeDynamicModel(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+	if (entityDynamicModel)
+	{
+		return getLocalizedString(entityDynamicModel->currentConfiguration, stringReference);
+	}
+	return s_noLocalizationString;
 }
 
 entity::model::AvdeccFixedString const& ControlledEntityImpl::getLocalizedString(entity::model::ConfigurationIndex const configurationIndex, entity::model::LocalizedStringReference const& stringReference) const noexcept
 {
-	static entity::model::AvdeccFixedString s_noLocalizationString{};
-
 	// Not valid, return NO_STRING
 	if (!stringReference)
 	{
@@ -881,139 +889,42 @@ void ControlledEntityImpl::unlock() noexcept
 	_sharedLock->unlock();
 }
 
-#if 0
-// Const Tree getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist
-entity::model::EntityTree const& ControlledEntityImpl::getEntityTree() const
-{
-	if (gotFatalEnumerationError())
-		throw Exception(Exception::Type::EnumerationError, "Entity had a fatal enumeration error");
-
-	if (!_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
-		throw Exception(Exception::Type::NotSupported, "EM not supported by the entity");
-
-	return _entityTree;
-}
-
-entity::model::ConfigurationTree const& ControlledEntityImpl::getConfigurationTree(entity::model::ConfigurationIndex const configurationIndex) const
-{
-	auto const& entityTree = getEntityTree();
-	auto const it = entityTree.configurationTrees.find(configurationIndex);
-	if (it == entityTree.configurationTrees.end())
-		throw Exception(Exception::Type::InvalidConfigurationIndex, "Invalid configuration index");
-
-	return it->second;
-}
-
-// Const NodeModel getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist, Exception::InvalidDescriptorIndex if descriptorIndex is invalid
-entity::model::EntityNodeStaticModel const& ControlledEntityImpl::getEntityNodeStaticModel() const
-{
-	return getEntityTree().staticModel;
-}
-
-entity::model::EntityNodeDynamicModel const& ControlledEntityImpl::getEntityNodeDynamicModel() const
-{
-	return getEntityTree().dynamicModel;
-}
-
-entity::model::ConfigurationNodeStaticModel const& ControlledEntityImpl::getConfigurationNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex) const
-{
-	return getConfigurationTree(configurationIndex).staticModel;
-}
-
-entity::model::ConfigurationNodeDynamicModel const& ControlledEntityImpl::getConfigurationNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex) const
-{
-	return getConfigurationTree(configurationIndex).dynamicModel;
-}
-
-// Tree validators, to check if a specific part exists yet without throwing
-bool ControlledEntityImpl::hasConfigurationTree(entity::model::ConfigurationIndex const configurationIndex) const noexcept
-{
-	AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
-	if (gotFatalEnumerationError() || !_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
-	{
-		return false;
-	}
-
-	return _entityTree.configurationTrees.find(configurationIndex) != _entityTree.configurationTrees.end();
-}
-
-bool ControlledEntityImpl::hasEnumeratedDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) const noexcept
-{
-	if (gotFatalEnumerationError() || !_entity.getEntityCapabilities().test(entity::EntityCapability::AemSupported))
-	{
-		return false;
-	}
-
-	if (auto const configIt = _entityTree.configurationTrees.find(configurationIndex); configIt != _entityTree.configurationTrees.end())
-	{
-		auto const& configTree = configIt->second;
-		if (auto const descriptorTypeIt = configTree.enumeratedDescriptors.find(descriptorType); descriptorTypeIt != configTree.enumeratedDescriptors.end())
-		{
-			auto const& descriptorTree = descriptorTypeIt->second;
-			return descriptorTree.count(descriptorIndex) > 0;
-		}
-	}
-
-	return false;
-}
-#endif
-
 TreeModelAccessStrategy& ControlledEntityImpl::getModelAccessStrategy() noexcept
 {
 	return *_treeModelAccess;
 }
 
 // Non-const Node getters
-model::ConfigurationNode& ControlledEntityImpl::getCurrentConfigurationNode()
+model::EntityNode* ControlledEntityImpl::getEntityNode(TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	// Implemented over getCurrentConfigurationNode() const overload
-	return const_cast<model::ConfigurationNode&>(static_cast<ControlledEntityImpl const*>(this)->getCurrentConfigurationNode());
+	return _treeModelAccess->getEntityNode(notFoundBehavior);
 }
 
-model::ConfigurationNode& ControlledEntityImpl::getConfigurationNode(entity::model::ConfigurationIndex const configurationIndex)
+std::optional<entity::model::ConfigurationIndex> ControlledEntityImpl::getCurrentConfigurationIndex(TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	// Implemented over getConfigurationNode() const overload
-	return const_cast<model::ConfigurationNode&>(static_cast<ControlledEntityImpl const*>(this)->getConfigurationNode(configurationIndex));
-}
-#if 0
-// Non-const Tree getters
-entity::model::EntityTree& ControlledEntityImpl::getEntityTree() noexcept
-{
-	return _entityTree;
+	auto const* const entityNode = getEntityNode(notFoundBehavior);
+	if (entityNode)
+	{
+		return entityNode->dynamicModel.currentConfiguration;
+	}
+	return std::nullopt;
 }
 
-entity::model::ConfigurationTree& ControlledEntityImpl::getConfigurationTree(entity::model::ConfigurationIndex const configurationIndex) noexcept
+model::ConfigurationNode* ControlledEntityImpl::getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	auto& entityTree = getEntityTree();
-	return entityTree.configurationTrees[configurationIndex];
+	auto const currentConfigurationIndexOpt = getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
+	{
+		return getConfigurationNode(*currentConfigurationIndexOpt, notFoundBehavior);
+	}
+	return nullptr;
 }
 
-entity::model::ConfigurationIndex ControlledEntityImpl::getCurrentConfigurationIndex() noexcept
+model::ConfigurationNode* ControlledEntityImpl::getConfigurationNode(entity::model::ConfigurationIndex const configurationIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	return _entityTree.dynamicModel.currentConfiguration;
+	return _treeModelAccess->getConfigurationNode(configurationIndex, notFoundBehavior);
 }
 
-// Non-const NodeModel getters
-entity::model::EntityNodeStaticModel& ControlledEntityImpl::getEntityNodeStaticModel() noexcept
-{
-	return getEntityTree().staticModel;
-}
-
-entity::model::EntityNodeDynamicModel& ControlledEntityImpl::getEntityNodeDynamicModel() noexcept
-{
-	return getEntityTree().dynamicModel;
-}
-
-entity::model::ConfigurationNodeStaticModel& ControlledEntityImpl::getConfigurationNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex) noexcept
-{
-	return getConfigurationTree(configurationIndex).staticModel;
-}
-
-entity::model::ConfigurationNodeDynamicModel& ControlledEntityImpl::getConfigurationNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex) noexcept
-{
-	return getConfigurationTree(configurationIndex).dynamicModel;
-}
-#endif
 entity::model::EntityCounters* ControlledEntityImpl::getEntityCounters(TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
 	auto* const dynamicModel = _treeModelAccess->getEntityNodeDynamicModel(notFoundBehavior);
@@ -1031,60 +942,76 @@ entity::model::EntityCounters* ControlledEntityImpl::getEntityCounters(TreeModel
 
 entity::model::AvbInterfaceCounters* ControlledEntityImpl::getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	auto* const dynamicModel = _treeModelAccess->getAvbInterfaceNodeDynamicModel(getCurrentConfigurationIndex(), avbInterfaceIndex, notFoundBehavior);
-	if (dynamicModel)
+	auto const currentConfigurationIndexOpt = getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
 	{
-		// Create counters if they don't exist yet
-		if (!dynamicModel->counters)
+		auto* const dynamicModel = _treeModelAccess->getAvbInterfaceNodeDynamicModel(*currentConfigurationIndexOpt, avbInterfaceIndex, notFoundBehavior);
+		if (dynamicModel)
 		{
-			dynamicModel->counters = entity::model::AvbInterfaceCounters{};
+			// Create counters if they don't exist yet
+			if (!dynamicModel->counters)
+			{
+				dynamicModel->counters = entity::model::AvbInterfaceCounters{};
+			}
+			return &(*dynamicModel->counters);
 		}
-		return &(*dynamicModel->counters);
 	}
 	return nullptr;
 }
 
 entity::model::ClockDomainCounters* ControlledEntityImpl::getClockDomainCounters(entity::model::ClockDomainIndex const clockDomainIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	auto* const dynamicModel = _treeModelAccess->getClockDomainNodeDynamicModel(getCurrentConfigurationIndex(), clockDomainIndex, notFoundBehavior);
-	if (dynamicModel)
+	auto const currentConfigurationIndexOpt = getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
 	{
-		// Create counters if they don't exist yet
-		if (!dynamicModel->counters)
+		auto* const dynamicModel = _treeModelAccess->getClockDomainNodeDynamicModel(*currentConfigurationIndexOpt, clockDomainIndex, notFoundBehavior);
+		if (dynamicModel)
 		{
-			dynamicModel->counters = entity::model::ClockDomainCounters{};
+			// Create counters if they don't exist yet
+			if (!dynamicModel->counters)
+			{
+				dynamicModel->counters = entity::model::ClockDomainCounters{};
+			}
+			return &(*dynamicModel->counters);
 		}
-		return &(*dynamicModel->counters);
 	}
 	return nullptr;
 }
 
 entity::model::StreamInputCounters* ControlledEntityImpl::getStreamInputCounters(entity::model::StreamIndex const streamIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	auto* const dynamicModel = _treeModelAccess->getStreamInputNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, notFoundBehavior);
-	if (dynamicModel)
+	auto const currentConfigurationIndexOpt = getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
 	{
-		// Create counters if they don't exist yet
-		if (!dynamicModel->counters)
+		auto* const dynamicModel = _treeModelAccess->getStreamInputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
+		if (dynamicModel)
 		{
-			dynamicModel->counters = entity::model::StreamInputCounters{};
+			// Create counters if they don't exist yet
+			if (!dynamicModel->counters)
+			{
+				dynamicModel->counters = entity::model::StreamInputCounters{};
+			}
+			return &(*dynamicModel->counters);
 		}
-		return &(*dynamicModel->counters);
 	}
 	return nullptr;
 }
 
 entity::model::StreamOutputCounters* ControlledEntityImpl::getStreamOutputCounters(entity::model::StreamIndex const streamIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	auto* const dynamicModel = _treeModelAccess->getStreamOutputNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, notFoundBehavior);
-	if (dynamicModel)
+	auto const currentConfigurationIndexOpt = getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
 	{
-		// Create counters if they don't exist yet
-		if (!dynamicModel->counters)
+		auto* const dynamicModel = _treeModelAccess->getStreamOutputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
+		if (dynamicModel)
 		{
-			dynamicModel->counters = entity::model::StreamOutputCounters{};
+			// Create counters if they don't exist yet
+			if (!dynamicModel->counters)
+			{
+				dynamicModel->counters = entity::model::StreamOutputCounters{};
+			}
+			return &(*dynamicModel->counters);
 		}
-		return &(*dynamicModel->counters);
 	}
 	return nullptr;
 }
@@ -1137,87 +1064,115 @@ void ControlledEntityImpl::setConfigurationName(entity::model::ConfigurationInde
 
 void ControlledEntityImpl::setSamplingRate(entity::model::AudioUnitIndex const audioUnitIndex, entity::model::SamplingRate const samplingRate, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	auto* const dynamicModel = _treeModelAccess->getAudioUnitNodeDynamicModel(getCurrentConfigurationIndex(), audioUnitIndex, notFoundBehavior);
-	if (dynamicModel)
+	auto const currentConfigurationIndexOpt = getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
 	{
-		dynamicModel->currentSamplingRate = samplingRate;
+		auto* const dynamicModel = _treeModelAccess->getAudioUnitNodeDynamicModel(*currentConfigurationIndexOpt, audioUnitIndex, notFoundBehavior);
+		if (dynamicModel)
+		{
+			dynamicModel->currentSamplingRate = samplingRate;
+		}
 	}
 }
 
 entity::model::StreamInputConnectionInfo ControlledEntityImpl::setStreamInputConnectionInformation(entity::model::StreamIndex const streamIndex, entity::model::StreamInputConnectionInfo const& info, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	auto* const dynamicModel = _treeModelAccess->getStreamInputNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, notFoundBehavior);
-	if (dynamicModel)
+	auto const currentConfigurationIndexOpt = getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
 	{
-		// Save previous StreamInputConnectionInfo
-		auto const previousInfo = dynamicModel->connectionInfo;
+		auto* const dynamicModel = _treeModelAccess->getStreamInputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
+		if (dynamicModel)
+		{
+			// Save previous StreamInputConnectionInfo
+			auto const previousInfo = dynamicModel->connectionInfo;
 
-		// Set connection information
-		dynamicModel->connectionInfo = info;
+			// Set connection information
+			dynamicModel->connectionInfo = info;
 
-		return previousInfo;
+			return previousInfo;
+		}
 	}
 	return entity::model::StreamInputConnectionInfo{};
 }
 
 void ControlledEntityImpl::clearStreamOutputConnections(entity::model::StreamIndex const streamIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	auto* const dynamicModel = _treeModelAccess->getStreamOutputNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, notFoundBehavior);
-	if (dynamicModel)
+	auto const currentConfigurationIndexOpt = getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
 	{
-		dynamicModel->connections.clear();
+		auto* const dynamicModel = _treeModelAccess->getStreamOutputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
+		if (dynamicModel)
+		{
+			dynamicModel->connections.clear();
+		}
 	}
 }
 
 bool ControlledEntityImpl::addStreamOutputConnection(entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	auto* const dynamicModel = _treeModelAccess->getStreamOutputNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, notFoundBehavior);
-	if (dynamicModel)
+	auto const currentConfigurationIndexOpt = getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
 	{
-		auto const result = dynamicModel->connections.insert(listenerStream);
-		return result.second;
+		auto* const dynamicModel = _treeModelAccess->getStreamOutputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
+		if (dynamicModel)
+		{
+			auto const result = dynamicModel->connections.insert(listenerStream);
+			return result.second;
+		}
 	}
 	return false;
 }
 
 bool ControlledEntityImpl::delStreamOutputConnection(entity::model::StreamIndex const streamIndex, entity::model::StreamIdentification const& listenerStream, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	auto* const dynamicModel = _treeModelAccess->getStreamOutputNodeDynamicModel(getCurrentConfigurationIndex(), streamIndex, notFoundBehavior);
-	if (dynamicModel)
+	auto const currentConfigurationIndexOpt = getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
 	{
-		return dynamicModel->connections.erase(listenerStream) > 0;
+		auto* const dynamicModel = _treeModelAccess->getStreamOutputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
+		if (dynamicModel)
+		{
+			return dynamicModel->connections.erase(listenerStream) > 0;
+		}
 	}
 	return false;
 }
 
 entity::model::AvbInterfaceInfo ControlledEntityImpl::setAvbInterfaceInfo(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AvbInterfaceInfo const& info, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	auto* const dynamicModel = _treeModelAccess->getAvbInterfaceNodeDynamicModel(getCurrentConfigurationIndex(), avbInterfaceIndex, notFoundBehavior);
-	if (dynamicModel)
+	auto const currentConfigurationIndexOpt = getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
 	{
-		// Save previous AvbInfo
-		auto previousInfo = dynamicModel->avbInterfaceInfo;
+		auto* const dynamicModel = _treeModelAccess->getAvbInterfaceNodeDynamicModel(*currentConfigurationIndexOpt, avbInterfaceIndex, notFoundBehavior);
+		if (dynamicModel)
+		{
+			// Save previous AvbInfo
+			auto previousInfo = dynamicModel->avbInterfaceInfo;
 
-		// Set AvbInterfaceInfo
-		dynamicModel->avbInterfaceInfo = info;
+			// Set AvbInterfaceInfo
+			dynamicModel->avbInterfaceInfo = info;
 
-		return previousInfo ? *previousInfo : entity::model::AvbInterfaceInfo{};
+			return previousInfo ? *previousInfo : entity::model::AvbInterfaceInfo{};
+		}
 	}
 	return entity::model::AvbInterfaceInfo{};
 }
 
 entity::model::AsPath ControlledEntityImpl::setAsPath(entity::model::AvbInterfaceIndex const avbInterfaceIndex, entity::model::AsPath const& asPath, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	auto* const dynamicModel = _treeModelAccess->getAvbInterfaceNodeDynamicModel(getCurrentConfigurationIndex(), avbInterfaceIndex, notFoundBehavior);
-	if (dynamicModel)
+	auto const currentConfigurationIndexOpt = getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
 	{
-		// Save previous AsPath
-		auto previousPath = dynamicModel->asPath;
+		auto* const dynamicModel = _treeModelAccess->getAvbInterfaceNodeDynamicModel(*currentConfigurationIndexOpt, avbInterfaceIndex, notFoundBehavior);
+		if (dynamicModel)
+		{
+			// Save previous AsPath
+			auto previousPath = dynamicModel->asPath;
 
-		// Set AsPath
-		dynamicModel->asPath = asPath;
+			// Set AsPath
+			dynamicModel->asPath = asPath;
 
-		return previousPath ? *previousPath : entity::model::AsPath{};
+			return previousPath ? *previousPath : entity::model::AsPath{};
+		}
 	}
 	return entity::model::AsPath{};
 }
@@ -1234,51 +1189,59 @@ void ControlledEntityImpl::setSelectedLocaleStringsIndexesRange(entity::model::C
 
 void ControlledEntityImpl::clearStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	auto* const dynamicModel = _treeModelAccess->getStreamPortInputNodeDynamicModel(getCurrentConfigurationIndex(), streamPortIndex, notFoundBehavior);
-	if (dynamicModel)
+	auto const currentConfigurationIndexOpt = getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
 	{
-		dynamicModel->dynamicAudioMap.clear();
+		auto* const dynamicModel = _treeModelAccess->getStreamPortInputNodeDynamicModel(*currentConfigurationIndexOpt, streamPortIndex, notFoundBehavior);
+		if (dynamicModel)
+		{
+			dynamicModel->dynamicAudioMap.clear();
+		}
 	}
 }
 
 void ControlledEntityImpl::addStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	auto* const dynamicModel = _treeModelAccess->getStreamPortInputNodeDynamicModel(getCurrentConfigurationIndex(), streamPortIndex, notFoundBehavior);
-	if (dynamicModel)
+	auto const currentConfigurationIndexOpt = getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
 	{
-		auto& dynamicMap = dynamicModel->dynamicAudioMap;
-
-		// Process audio mappings
-		for (auto const& map : mappings)
+		auto* const dynamicModel = _treeModelAccess->getStreamPortInputNodeDynamicModel(*currentConfigurationIndexOpt, streamPortIndex, notFoundBehavior);
+		if (dynamicModel)
 		{
-			// Search for another mapping associated to the same destination (cluster), which is not allowed except in redundancy
-			auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(),
-				[&map](entity::model::AudioMapping const& mapping)
-				{
-					return (map.clusterOffset == mapping.clusterOffset) && (map.clusterChannel == mapping.clusterChannel);
-				});
-			// Not found, add the new mapping
-			if (foundIt == dynamicMap.end())
+			auto& dynamicMap = dynamicModel->dynamicAudioMap;
+
+			// Process audio mappings
+			for (auto const& map : mappings)
 			{
-				dynamicMap.push_back(map);
-			}
-			else // Otherwise, replace the previous mapping (or add it as well, if redundancy feature is not enabled)
-			{
-				// Note: Not able to check if the stream is redundant (using the redundant property of the stream or the cached Primary/Secondary indexes) since we might receive mappings before having had the time to retrieve the descriptor or build the cache
-#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-				// StreamChannel must be the same and StreamIndex must be different, in redundancy
-				if ((foundIt->streamIndex != map.streamIndex) && (foundIt->streamChannel == map.streamChannel))
+				// Search for another mapping associated to the same destination (cluster), which is not allowed except in redundancy
+				auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(),
+					[&map](entity::model::AudioMapping const& mapping)
+					{
+						return (map.clusterOffset == mapping.clusterOffset) && (map.clusterChannel == mapping.clusterChannel);
+					});
+				// Not found, add the new mapping
+				if (foundIt == dynamicMap.end())
 				{
 					dynamicMap.push_back(map);
 				}
-				else
-#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+				else // Otherwise, replace the previous mapping (or add it as well, if redundancy feature is not enabled)
 				{
-					if (*foundIt != map)
+					// Note: Not able to check if the stream is redundant (using the redundant property of the stream or the cached Primary/Secondary indexes) since we might receive mappings before having had the time to retrieve the descriptor or build the cache
+#ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
+					// StreamChannel must be the same and StreamIndex must be different, in redundancy
+					if ((foundIt->streamIndex != map.streamIndex) && (foundIt->streamChannel == map.streamChannel))
 					{
-						LOG_CONTROLLER_WARN(_entity.getEntityID(), std::string("Duplicate StreamPortInput AudioMappings found: ") + std::to_string(foundIt->streamIndex) + ":" + std::to_string(foundIt->streamChannel) + ":" + std::to_string(foundIt->clusterOffset) + ":" + std::to_string(foundIt->clusterChannel) + " replaced by " + std::to_string(map.streamIndex) + ":" + std::to_string(map.streamChannel) + ":" + std::to_string(map.clusterOffset) + ":" + std::to_string(map.clusterChannel));
-						foundIt->streamIndex = map.streamIndex;
-						foundIt->streamChannel = map.streamChannel;
+						dynamicMap.push_back(map);
+					}
+					else
+#endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
+					{
+						if (*foundIt != map)
+						{
+							LOG_CONTROLLER_WARN(_entity.getEntityID(), std::string("Duplicate StreamPortInput AudioMappings found: ") + std::to_string(foundIt->streamIndex) + ":" + std::to_string(foundIt->streamChannel) + ":" + std::to_string(foundIt->clusterOffset) + ":" + std::to_string(foundIt->clusterChannel) + " replaced by " + std::to_string(map.streamIndex) + ":" + std::to_string(map.streamChannel) + ":" + std::to_string(map.clusterOffset) + ":" + std::to_string(map.clusterChannel));
+							foundIt->streamIndex = map.streamIndex;
+							foundIt->streamChannel = map.streamChannel;
+						}
 					}
 				}
 			}
@@ -1288,27 +1251,31 @@ void ControlledEntityImpl::addStreamPortInputAudioMappings(entity::model::Stream
 
 void ControlledEntityImpl::removeStreamPortInputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	auto* const dynamicModel = _treeModelAccess->getStreamPortInputNodeDynamicModel(getCurrentConfigurationIndex(), streamPortIndex, notFoundBehavior);
-	if (dynamicModel)
+	auto const currentConfigurationIndexOpt = getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
 	{
-		auto& dynamicMap = dynamicModel->dynamicAudioMap;
-
-		// Process audio mappings
-		for (auto const& map : mappings)
+		auto* const dynamicModel = _treeModelAccess->getStreamPortInputNodeDynamicModel(*currentConfigurationIndexOpt, streamPortIndex, notFoundBehavior);
+		if (dynamicModel)
 		{
-			// Check if mapping exists
-			auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(),
-				[&map](entity::model::AudioMapping const& mapping)
+			auto& dynamicMap = dynamicModel->dynamicAudioMap;
+
+			// Process audio mappings
+			for (auto const& map : mappings)
+			{
+				// Check if mapping exists
+				auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(),
+					[&map](entity::model::AudioMapping const& mapping)
+					{
+						return map == mapping;
+					});
+				if (foundIt != dynamicMap.end())
 				{
-					return map == mapping;
-				});
-			if (foundIt != dynamicMap.end())
-			{
-				dynamicMap.erase(foundIt);
-			}
-			else
-			{
-				LOG_CONTROLLER_WARN(_entity.getEntityID(), std::string("Removing non-existing StreamPortInput AudioMappings: ") + std::to_string(map.streamIndex) + ":" + std::to_string(map.streamChannel) + ":" + std::to_string(map.clusterOffset) + ":" + std::to_string(map.clusterChannel));
+					dynamicMap.erase(foundIt);
+				}
+				else
+				{
+					LOG_CONTROLLER_WARN(_entity.getEntityID(), std::string("Removing non-existing StreamPortInput AudioMappings: ") + std::to_string(map.streamIndex) + ":" + std::to_string(map.streamChannel) + ":" + std::to_string(map.clusterOffset) + ":" + std::to_string(map.clusterChannel));
+				}
 			}
 		}
 	}
@@ -1316,44 +1283,52 @@ void ControlledEntityImpl::removeStreamPortInputAudioMappings(entity::model::Str
 
 void ControlledEntityImpl::clearStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	auto* const dynamicModel = _treeModelAccess->getStreamPortOutputNodeDynamicModel(getCurrentConfigurationIndex(), streamPortIndex, notFoundBehavior);
-	if (dynamicModel)
+	auto const currentConfigurationIndexOpt = getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
 	{
-		dynamicModel->dynamicAudioMap.clear();
+		auto* const dynamicModel = _treeModelAccess->getStreamPortOutputNodeDynamicModel(*currentConfigurationIndexOpt, streamPortIndex, notFoundBehavior);
+		if (dynamicModel)
+		{
+			dynamicModel->dynamicAudioMap.clear();
+		}
 	}
 }
 
 void ControlledEntityImpl::addStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	auto* const dynamicModel = _treeModelAccess->getStreamPortOutputNodeDynamicModel(getCurrentConfigurationIndex(), streamPortIndex, notFoundBehavior);
-	if (dynamicModel)
+	auto const currentConfigurationIndexOpt = getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
 	{
-		auto& dynamicMap = dynamicModel->dynamicAudioMap;
-
-		// Process audio mappings
-		for (auto const& map : mappings)
+		auto* const dynamicModel = _treeModelAccess->getStreamPortOutputNodeDynamicModel(*currentConfigurationIndexOpt, streamPortIndex, notFoundBehavior);
+		if (dynamicModel)
 		{
-			// Search for another mapping associated to the same destination (stream), which is not allowed
-			auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(),
-				[&map](entity::model::AudioMapping const& mapping)
-				{
-					return (map.streamIndex == mapping.streamIndex) && (map.streamChannel == mapping.streamChannel);
-				});
-			// Not found, add the new mapping
-			if (foundIt == dynamicMap.end())
+			auto& dynamicMap = dynamicModel->dynamicAudioMap;
+
+			// Process audio mappings
+			for (auto const& map : mappings)
 			{
+				// Search for another mapping associated to the same destination (stream), which is not allowed
+				auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(),
+					[&map](entity::model::AudioMapping const& mapping)
+					{
+						return (map.streamIndex == mapping.streamIndex) && (map.streamChannel == mapping.streamChannel);
+					});
+				// Not found, add the new mapping
+				if (foundIt == dynamicMap.end())
+				{
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
-				// TODO: If StreamIndex is redundant and the other Stream Pair is already in the map, validate it's the same ClusterIndex and ClusterChannel
+					// TODO: If StreamIndex is redundant and the other Stream Pair is already in the map, validate it's the same ClusterIndex and ClusterChannel
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
-				dynamicMap.push_back(map);
-			}
-			else // Otherwise, replace the previous mapping
-			{
-				if (*foundIt != map)
+					dynamicMap.push_back(map);
+				}
+				else // Otherwise, replace the previous mapping
 				{
-					LOG_CONTROLLER_WARN(_entity.getEntityID(), std::string("Duplicate StreamPortOutput AudioMappings found: ") + std::to_string(foundIt->streamIndex) + ":" + std::to_string(foundIt->streamChannel) + ":" + std::to_string(foundIt->clusterOffset) + ":" + std::to_string(foundIt->clusterChannel) + " replaced by " + std::to_string(map.streamIndex) + ":" + std::to_string(map.streamChannel) + ":" + std::to_string(map.clusterOffset) + ":" + std::to_string(map.clusterChannel));
-					foundIt->clusterOffset = map.clusterOffset;
-					foundIt->clusterChannel = map.clusterChannel;
+					if (*foundIt != map)
+					{
+						LOG_CONTROLLER_WARN(_entity.getEntityID(), std::string("Duplicate StreamPortOutput AudioMappings found: ") + std::to_string(foundIt->streamIndex) + ":" + std::to_string(foundIt->streamChannel) + ":" + std::to_string(foundIt->clusterOffset) + ":" + std::to_string(foundIt->clusterChannel) + " replaced by " + std::to_string(map.streamIndex) + ":" + std::to_string(map.streamChannel) + ":" + std::to_string(map.clusterOffset) + ":" + std::to_string(map.clusterChannel));
+						foundIt->clusterOffset = map.clusterOffset;
+						foundIt->clusterChannel = map.clusterChannel;
+					}
 				}
 			}
 		}
@@ -1362,27 +1337,31 @@ void ControlledEntityImpl::addStreamPortOutputAudioMappings(entity::model::Strea
 
 void ControlledEntityImpl::removeStreamPortOutputAudioMappings(entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	auto* const dynamicModel = _treeModelAccess->getStreamPortOutputNodeDynamicModel(getCurrentConfigurationIndex(), streamPortIndex, notFoundBehavior);
-	if (dynamicModel)
+	auto const currentConfigurationIndexOpt = getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
 	{
-		auto& dynamicMap = dynamicModel->dynamicAudioMap;
-
-		// Process audio mappings
-		for (auto const& map : mappings)
+		auto* const dynamicModel = _treeModelAccess->getStreamPortOutputNodeDynamicModel(*currentConfigurationIndexOpt, streamPortIndex, notFoundBehavior);
+		if (dynamicModel)
 		{
-			// Check if mapping exists
-			auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(),
-				[&map](entity::model::AudioMapping const& mapping)
+			auto& dynamicMap = dynamicModel->dynamicAudioMap;
+
+			// Process audio mappings
+			for (auto const& map : mappings)
+			{
+				// Check if mapping exists
+				auto foundIt = std::find_if(dynamicMap.begin(), dynamicMap.end(),
+					[&map](entity::model::AudioMapping const& mapping)
+					{
+						return map == mapping;
+					});
+				if (foundIt != dynamicMap.end())
 				{
-					return map == mapping;
-				});
-			if (foundIt != dynamicMap.end())
-			{
-				dynamicMap.erase(foundIt);
-			}
-			else
-			{
-				LOG_CONTROLLER_WARN(_entity.getEntityID(), std::string("Removing non-existing StreamPortOutput AudioMappings: ") + std::to_string(map.streamIndex) + ":" + std::to_string(map.streamChannel) + ":" + std::to_string(map.clusterOffset) + ":" + std::to_string(map.clusterChannel));
+					dynamicMap.erase(foundIt);
+				}
+				else
+				{
+					LOG_CONTROLLER_WARN(_entity.getEntityID(), std::string("Removing non-existing StreamPortOutput AudioMappings: ") + std::to_string(map.streamIndex) + ":" + std::to_string(map.streamChannel) + ":" + std::to_string(map.clusterOffset) + ":" + std::to_string(map.clusterChannel));
+				}
 			}
 		}
 	}
@@ -1390,19 +1369,27 @@ void ControlledEntityImpl::removeStreamPortOutputAudioMappings(entity::model::St
 
 void ControlledEntityImpl::setClockSource(entity::model::ClockDomainIndex const clockDomainIndex, entity::model::ClockSourceIndex const clockSourceIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	auto* const dynamicModel = _treeModelAccess->getClockDomainNodeDynamicModel(getCurrentConfigurationIndex(), clockDomainIndex, notFoundBehavior);
-	if (dynamicModel)
+	auto const currentConfigurationIndexOpt = getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
 	{
-		dynamicModel->clockSourceIndex = clockSourceIndex;
+		auto* const dynamicModel = _treeModelAccess->getClockDomainNodeDynamicModel(*currentConfigurationIndexOpt, clockDomainIndex, notFoundBehavior);
+		if (dynamicModel)
+		{
+			dynamicModel->clockSourceIndex = clockSourceIndex;
+		}
 	}
 }
 
 void ControlledEntityImpl::setControlValues(entity::model::ControlIndex const controlIndex, entity::model::ControlValues const& controlValues, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior)
 {
-	auto* const dynamicModel = _treeModelAccess->getControlNodeDynamicModel(getCurrentConfigurationIndex(), controlIndex, notFoundBehavior);
-	if (dynamicModel)
+	auto const currentConfigurationIndexOpt = getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
 	{
-		dynamicModel->values = controlValues;
+		auto* const dynamicModel = _treeModelAccess->getControlNodeDynamicModel(*currentConfigurationIndexOpt, controlIndex, notFoundBehavior);
+		if (dynamicModel)
+		{
+			dynamicModel->values = controlValues;
+		}
 	}
 }
 

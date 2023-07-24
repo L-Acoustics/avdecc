@@ -267,95 +267,13 @@ public:
 	// Diagnostics
 	virtual Diagnostics const& getDiagnostics() const noexcept override;
 
-#if 0
-	// Const Tree getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist
-	entity::model::EntityTree const& getEntityTree() const;
-	entity::model::ConfigurationTree const& getConfigurationTree(entity::model::ConfigurationIndex const configurationIndex) const;
-
-	// Const NodeModel getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist, Exception::InvalidDescriptorIndex if descriptorIndex is invalid
-	entity::model::EntityNodeStaticModel const& getEntityNodeStaticModel() const;
-	entity::model::EntityNodeDynamicModel const& getEntityNodeDynamicModel() const;
-	entity::model::ConfigurationNodeStaticModel const& getConfigurationNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex) const;
-	entity::model::ConfigurationNodeDynamicModel const& getConfigurationNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex) const;
-	template<typename FieldPointer, typename DescriptorIndexType>
-	auto const& getNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer entity::model::ConfigurationTree::*Field) const
-	{
-		auto const& configTree = getConfigurationTree(configurationIndex);
-
-		auto const it = (configTree.*Field).find(index);
-		if (it == (configTree.*Field).end())
-			throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid index");
-
-		return it->second.staticModel;
-	}
-	template<typename FieldPointer, typename DescriptorIndexType>
-	auto const& getNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer entity::model::ConfigurationTree::*Field) const
-	{
-		auto const& configTree = getConfigurationTree(configurationIndex);
-
-		auto const it = (configTree.*Field).find(index);
-		if (it == (configTree.*Field).end())
-			throw Exception(Exception::Type::InvalidDescriptorIndex, "Invalid index");
-
-		return it->second.dynamicModel;
-	}
-#endif
-
 	TreeModelAccessStrategy& getModelAccessStrategy() noexcept;
-#if 0
-	// Tree validators, to check if a specific part exists yet without throwing
-	bool hasConfigurationTree(entity::model::ConfigurationIndex const configurationIndex) const noexcept;
-	bool hasEnumeratedDescriptor(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex) const noexcept;
-#endif
 
-	// Non-const Node getters, all throw Exception::NotSupported if EM not supported by the Entity, Exception::InvalidConfigurationIndex if configurationIndex do not exist, Exception::InvalidDescriptorIndex if descriptorIndex is invalid
-	model::ConfigurationNode& getCurrentConfigurationNode();
-	model::ConfigurationNode& getConfigurationNode(entity::model::ConfigurationIndex const configurationIndex);
-
-#if 0
-	// Non-const Tree getters
-	entity::model::EntityTree& getEntityTree() noexcept;
-	entity::model::ConfigurationTree& getConfigurationTree(entity::model::ConfigurationIndex const configurationIndex) noexcept;
-	entity::model::ConfigurationIndex getCurrentConfigurationIndex() noexcept;
-	// Non-const NodeModel getters
-	entity::model::EntityNodeStaticModel& getEntityNodeStaticModel() noexcept;
-	entity::model::EntityNodeDynamicModel& getEntityNodeDynamicModel() noexcept;
-	entity::model::ConfigurationNodeStaticModel& getConfigurationNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex) noexcept;
-	entity::model::ConfigurationNodeDynamicModel& getConfigurationNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex) noexcept;
-	template<typename FieldPointer, typename DescriptorIndexType>
-	auto& getNodeStaticModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer entity::model::ConfigurationTree::*Field) noexcept
-	{
-		AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
-
-		auto& configTree = getConfigurationTree(configurationIndex);
-		return (configTree.*Field)[index].staticModel;
-	}
-	template<typename FieldPointer, typename DescriptorIndexType>
-	auto& getNodeDynamicModel(entity::model::ConfigurationIndex const configurationIndex, DescriptorIndexType const index, FieldPointer entity::model::ConfigurationTree::*Field) noexcept
-	{
-		AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
-
-		auto& configTree = getConfigurationTree(configurationIndex);
-		return (configTree.*Field)[index].dynamicModel;
-	}
-	template<typename FieldPointer>
-	auto& getModels(entity::model::ConfigurationIndex const configurationIndex, FieldPointer entity::model::ConfigurationTree::*Field) noexcept
-	{
-		AVDECC_ASSERT(_sharedLock->_lockedCount >= 0, "ControlledEntity should be locked");
-
-		auto& entityTree = getEntityTree();
-		auto configIt = entityTree.configurationTrees.find(configurationIndex);
-		if (configIt != entityTree.configurationTrees.end())
-		{
-			auto& configTree = configIt->second;
-			return configTree.*Field;
-		}
-
-		// We return a reference, so we have to create a static empty model in case we don't have one so we can return a reference to it
-		static auto s_Empty = FieldPointer{};
-		return s_Empty;
-	}
-#endif
+	// Non-const Node getters. Behavior in case of error is dictated by the passed NotFoundBehavior
+	model::EntityNode* getEntityNode(TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	std::optional<entity::model::ConfigurationIndex> getCurrentConfigurationIndex(TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	model::ConfigurationNode* getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
+	model::ConfigurationNode* getConfigurationNode(entity::model::ConfigurationIndex const configurationIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
 	entity::model::EntityCounters* getEntityCounters(TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
 	entity::model::AvbInterfaceCounters* getAvbInterfaceCounters(entity::model::AvbInterfaceIndex const avbInterfaceIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);
 	entity::model::ClockDomainCounters* getClockDomainCounters(entity::model::ClockDomainIndex const clockDomainIndex, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior);

@@ -238,165 +238,173 @@ void ControllerImpl::onConfigurationDescriptorResult(entity::controller::Interfa
 		{
 			if (!!status)
 			{
-				controlledEntity->setConfigurationDescriptor(descriptor, configurationIndex);
-				auto const isCurrentConfiguration = configurationIndex == controlledEntity->getCurrentConfigurationIndex();
-				// Get full descriptors for active configuration or if _fullStaticModelEnumeration is set
-				if (isCurrentConfiguration || _fullStaticModelEnumeration)
+				try
 				{
-					// Get Locales as soon as possible
+					controlledEntity->setConfigurationDescriptor(descriptor, configurationIndex);
+					auto const isCurrentConfiguration = configurationIndex == *controlledEntity->getCurrentConfigurationIndex(TreeModelAccessStrategy::NotFoundBehavior::Throw);
+					// Get full descriptors for active configuration or if _fullStaticModelEnumeration is set
+					if (isCurrentConfiguration || _fullStaticModelEnumeration)
 					{
-						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::Locale);
-						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+						// Get Locales as soon as possible
 						{
-							auto count = countIt->second;
-							for (auto index = entity::model::LocaleIndex(0); index < count; ++index)
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::Locale);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
 							{
-								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Locale, index);
+								auto count = countIt->second;
+								for (auto index = entity::model::LocaleIndex(0); index < count; ++index)
+								{
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Locale, index);
+								}
+							}
+						}
+						// Get audio units
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::AudioUnit);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::AudioUnitIndex(0); index < count; ++index)
+								{
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::AudioUnit, index);
+								}
+							}
+						}
+						// Get input streams
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::StreamInput);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::StreamIndex(0); index < count; ++index)
+								{
+									// Get Stream Descriptor
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamInput, index);
+								}
+							}
+						}
+						// Get output streams
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::StreamOutput);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::StreamIndex(0); index < count; ++index)
+								{
+									// Get Stream Descriptor
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamOutput, index);
+								}
+							}
+						}
+						// Get input jacks
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::JackInput);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::JackIndex(0); index < count; ++index)
+								{
+									// Get Jack Descriptor
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::JackInput, index);
+								}
+							}
+						}
+						// Get output jacks
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::JackOutput);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::JackIndex(0); index < count; ++index)
+								{
+									// Get Jack Descriptor
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::JackOutput, index);
+								}
+							}
+						}
+						// Get avb interfaces
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::AvbInterface);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::AvbInterfaceIndex(0); index < count; ++index)
+								{
+									// Get AVBInterface Descriptor
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::AvbInterface, index);
+								}
+							}
+						}
+						// Get clock sources
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::ClockSource);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::ClockSourceIndex(0); index < count; ++index)
+								{
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::ClockSource, index);
+								}
+							}
+						}
+						// Get memory objects
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::MemoryObject);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::MemoryObjectIndex(0); index < count; ++index)
+								{
+									// Get Memory Object Descriptor
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::MemoryObject, index);
+								}
+							}
+						}
+						// Get controls
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::Control);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::ControlIndex(0); index < count; ++index)
+								{
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Control, index);
+								}
+							}
+						}
+						// Get clock domains
+						{
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::ClockDomain);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+							{
+								auto count = countIt->second;
+								for (auto index = entity::model::ClockDomainIndex(0); index < count; ++index)
+								{
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::ClockDomain, index);
+								}
 							}
 						}
 					}
-					// Get audio units
+					// For non-active configurations, just get locales (and strings)
+					else
 					{
-						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::AudioUnit);
-						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
+						// Get Locales
 						{
-							auto count = countIt->second;
-							for (auto index = entity::model::AudioUnitIndex(0); index < count; ++index)
+							auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::Locale);
+							if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
 							{
-								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::AudioUnit, index);
-							}
-						}
-					}
-					// Get input streams
-					{
-						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::StreamInput);
-						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
-						{
-							auto count = countIt->second;
-							for (auto index = entity::model::StreamIndex(0); index < count; ++index)
-							{
-								// Get Stream Descriptor
-								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamInput, index);
-							}
-						}
-					}
-					// Get output streams
-					{
-						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::StreamOutput);
-						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
-						{
-							auto count = countIt->second;
-							for (auto index = entity::model::StreamIndex(0); index < count; ++index)
-							{
-								// Get Stream Descriptor
-								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::StreamOutput, index);
-							}
-						}
-					}
-					// Get input jacks
-					{
-						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::JackInput);
-						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
-						{
-							auto count = countIt->second;
-							for (auto index = entity::model::JackIndex(0); index < count; ++index)
-							{
-								// Get Jack Descriptor
-								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::JackInput, index);
-							}
-						}
-					}
-					// Get output jacks
-					{
-						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::JackOutput);
-						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
-						{
-							auto count = countIt->second;
-							for (auto index = entity::model::JackIndex(0); index < count; ++index)
-							{
-								// Get Jack Descriptor
-								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::JackOutput, index);
-							}
-						}
-					}
-					// Get avb interfaces
-					{
-						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::AvbInterface);
-						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
-						{
-							auto count = countIt->second;
-							for (auto index = entity::model::AvbInterfaceIndex(0); index < count; ++index)
-							{
-								// Get AVBInterface Descriptor
-								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::AvbInterface, index);
-							}
-						}
-					}
-					// Get clock sources
-					{
-						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::ClockSource);
-						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
-						{
-							auto count = countIt->second;
-							for (auto index = entity::model::ClockSourceIndex(0); index < count; ++index)
-							{
-								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::ClockSource, index);
-							}
-						}
-					}
-					// Get memory objects
-					{
-						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::MemoryObject);
-						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
-						{
-							auto count = countIt->second;
-							for (auto index = entity::model::MemoryObjectIndex(0); index < count; ++index)
-							{
-								// Get Memory Object Descriptor
-								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::MemoryObject, index);
-							}
-						}
-					}
-					// Get controls
-					{
-						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::Control);
-						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
-						{
-							auto count = countIt->second;
-							for (auto index = entity::model::ControlIndex(0); index < count; ++index)
-							{
-								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Control, index);
-							}
-						}
-					}
-					// Get clock domains
-					{
-						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::ClockDomain);
-						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
-						{
-							auto count = countIt->second;
-							for (auto index = entity::model::ClockDomainIndex(0); index < count; ++index)
-							{
-								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::ClockDomain, index);
+								auto count = countIt->second;
+								for (auto index = entity::model::LocaleIndex(0); index < count; ++index)
+								{
+									queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Locale, index);
+								}
 							}
 						}
 					}
 				}
-				// For non-active configurations, just get locales (and strings)
-				else
+				catch (ControlledEntity::Exception const&)
 				{
-					// Get Locales
-					{
-						auto countIt = descriptor.descriptorCounts.find(entity::model::DescriptorType::Locale);
-						if (countIt != descriptor.descriptorCounts.end() && countIt->second != 0)
-						{
-							auto count = countIt->second;
-							for (auto index = entity::model::LocaleIndex(0); index < count; ++index)
-							{
-								queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Locale, index);
-							}
-						}
-					}
+					controlledEntity->setGetFatalEnumerationError();
+					return;
 				}
 			}
 			else

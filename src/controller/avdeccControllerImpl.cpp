@@ -337,7 +337,13 @@ void ControllerImpl::updateStreamInputFormat(ControlledEntityImpl& controlledEnt
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamInputNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, notFoundBehavior);
+	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+	if (!currentConfigurationIndexOpt)
+	{
+		return;
+	}
+
+	auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamInputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
 	if (streamDynamicModel)
 	{
 		if (streamDynamicModel->streamFormat != streamFormat)
@@ -357,7 +363,13 @@ void ControllerImpl::updateStreamOutputFormat(ControlledEntityImpl& controlledEn
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamOutputNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, notFoundBehavior);
+	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+	if (!currentConfigurationIndexOpt)
+	{
+		return;
+	}
+
+	auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamOutputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
 	if (streamDynamicModel)
 	{
 		if (streamDynamicModel->streamFormat != streamFormat)
@@ -507,15 +519,19 @@ void ControllerImpl::updateStreamInputInfo(ControlledEntityImpl& controlledEntit
 		dynamicInfo.acmpStatus = info.acmpStatus;
 
 		// Update StreamDynamicInfo
-		auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamInputNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, notFoundBehavior);
-		if (streamDynamicModel)
+		auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+		if (currentConfigurationIndexOpt)
 		{
-			streamDynamicModel->streamDynamicInfo = std::move(dynamicInfo);
-
-			// Entity was advertised to the user, notify observers
-			if (controlledEntity.wasAdvertised())
+			auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamInputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
+			if (streamDynamicModel)
 			{
-				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputDynamicInfoChanged, this, &controlledEntity, streamIndex, *streamDynamicModel->streamDynamicInfo);
+				streamDynamicModel->streamDynamicInfo = std::move(dynamicInfo);
+
+				// Entity was advertised to the user, notify observers
+				if (controlledEntity.wasAdvertised())
+				{
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamInputDynamicInfoChanged, this, &controlledEntity, streamIndex, *streamDynamicModel->streamDynamicInfo);
+				}
 			}
 		}
 	}
@@ -608,15 +624,19 @@ void ControllerImpl::updateStreamOutputInfo(ControlledEntityImpl& controlledEnti
 		dynamicInfo.acmpStatus = info.acmpStatus;
 
 		// Update StreamDynamicInfo
-		auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamOutputNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, notFoundBehavior);
-		if (streamDynamicModel)
+		auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+		if (currentConfigurationIndexOpt)
 		{
-			streamDynamicModel->streamDynamicInfo = std::move(dynamicInfo);
-
-			// Entity was advertised to the user, notify observers
-			if (controlledEntity.wasAdvertised())
+			auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamOutputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
+			if (streamDynamicModel)
 			{
-				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputDynamicInfoChanged, this, &controlledEntity, streamIndex, *streamDynamicModel->streamDynamicInfo);
+				streamDynamicModel->streamDynamicInfo = std::move(dynamicInfo);
+
+				// Entity was advertised to the user, notify observers
+				if (controlledEntity.wasAdvertised())
+				{
+					notifyObserversMethod<Controller::Observer>(&Controller::Observer::onStreamOutputDynamicInfoChanged, this, &controlledEntity, streamIndex, *streamDynamicModel->streamDynamicInfo);
+				}
 			}
 		}
 	}
@@ -884,10 +904,10 @@ void ControllerImpl::updateClockSource(ControlledEntityImpl& controlledEntity, e
 		{
 			if (entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
 			{
-				try
+				auto* const configNode = entity->getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+				if (configNode != nullptr)
 				{
-					auto& configNode = entity->getCurrentConfigurationNode();
-					for (auto& clockDomainKV : configNode.clockDomains)
+					for (auto& clockDomainKV : configNode->clockDomains)
 					{
 						auto& clockDomainNode = clockDomainKV.second;
 						// Check if the chain has a node on that clock source changed entity
@@ -909,10 +929,6 @@ void ControllerImpl::updateClockSource(ControlledEntityImpl& controlledEntity, e
 						}
 					}
 				}
-				catch (...)
-				{
-					AVDECC_ASSERT(false, "Unexpected exception");
-				}
 			}
 		}
 	}
@@ -922,7 +938,13 @@ bool ControllerImpl::updateControlValues(ControlledEntityImpl& controlledEntity,
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	auto const* const controlStaticModel = controlledEntity.getModelAccessStrategy().getControlNodeStaticModel(controlledEntity.getCurrentConfigurationIndex(), controlIndex, notFoundBehavior);
+	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+	if (!currentConfigurationIndexOpt)
+	{
+		return false;
+	}
+
+	auto const* const controlStaticModel = controlledEntity.getModelAccessStrategy().getControlNodeStaticModel(*currentConfigurationIndexOpt, controlIndex, notFoundBehavior);
 	if (controlStaticModel)
 	{
 		auto const controlValueType = controlStaticModel->controlValueType.getType();
@@ -975,7 +997,13 @@ void ControllerImpl::updateStreamInputRunningStatus(ControlledEntityImpl& contro
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamInputNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, notFoundBehavior);
+	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+	if (!currentConfigurationIndexOpt)
+	{
+		return;
+	}
+
+	auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamInputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
 	if (streamDynamicModel)
 	{
 		// Never initialized or changed
@@ -1004,7 +1032,13 @@ void ControllerImpl::updateStreamOutputRunningStatus(ControlledEntityImpl& contr
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
-	auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamOutputNodeDynamicModel(controlledEntity.getCurrentConfigurationIndex(), streamIndex, notFoundBehavior);
+	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+	if (!currentConfigurationIndexOpt)
+	{
+		return;
+	}
+
+	auto* const streamDynamicModel = controlledEntity.getModelAccessStrategy().getStreamOutputNodeDynamicModel(*currentConfigurationIndexOpt, streamIndex, notFoundBehavior);
 	if (streamDynamicModel)
 	{
 		// Never initialized or changed
@@ -1068,19 +1102,21 @@ void ControllerImpl::updateGptpInformation(ControlledEntityImpl& controlledEntit
 		if (isAemSupported && controlledEntity.hasAnyConfiguration())
 		{
 			// Then update gPTP Info in existing AvbDescriptors (don't create if not created yet)
-			auto const currentConfigurationIndex = controlledEntity.getCurrentConfigurationIndex();
-			auto& configurationNode = controlledEntity.getConfigurationNode(currentConfigurationIndex);
-			for (auto& [interfaceIndex, avbInterfaceNode] : configurationNode.avbInterfaces)
+			auto* const configurationNode = controlledEntity.getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+			if (configurationNode != nullptr)
 			{
-				// Match with the passed AvbInterfaceIndex, or with macAddress if passed AvbInterfaceIndex is the GlobalAvbInterfaceIndex
-				if (interfaceIndex == avbInterfaceIndex || (avbInterfaceIndex == entity::Entity::GlobalAvbInterfaceIndex && macAddress == avbInterfaceNode.staticModel.macAddress))
+				for (auto& [interfaceIndex, avbInterfaceNode] : configurationNode->avbInterfaces)
 				{
-					// Alter InterfaceInfo with new gPTP info
-					if (avbInterfaceNode.dynamicModel.gptpGrandmasterID != gptpGrandmasterID || avbInterfaceNode.dynamicModel.gptpDomainNumber != gptpDomainNumber)
+					// Match with the passed AvbInterfaceIndex, or with macAddress if passed AvbInterfaceIndex is the GlobalAvbInterfaceIndex
+					if (interfaceIndex == avbInterfaceIndex || (avbInterfaceIndex == entity::Entity::GlobalAvbInterfaceIndex && macAddress == avbInterfaceNode.staticModel.macAddress))
 					{
-						avbInterfaceNode.dynamicModel.gptpGrandmasterID = gptpGrandmasterID;
-						avbInterfaceNode.dynamicModel.gptpDomainNumber = gptpDomainNumber;
-						infoChanged |= true;
+						// Alter InterfaceInfo with new gPTP info
+						if (avbInterfaceNode.dynamicModel.gptpGrandmasterID != gptpGrandmasterID || avbInterfaceNode.dynamicModel.gptpDomainNumber != gptpDomainNumber)
+						{
+							avbInterfaceNode.dynamicModel.gptpGrandmasterID = gptpGrandmasterID;
+							avbInterfaceNode.dynamicModel.gptpDomainNumber = gptpDomainNumber;
+							infoChanged |= true;
+						}
 					}
 				}
 			}
@@ -1126,10 +1162,14 @@ void ControllerImpl::updateAvbInfo(ControlledEntityImpl& controlledEntity, entit
 	}
 
 	// Update gPTP info
-	auto const* const avbInterfaceStaticModel = controlledEntity.getModelAccessStrategy().getAvbInterfaceNodeStaticModel(controlledEntity.getCurrentConfigurationIndex(), avbInterfaceIndex, notFoundBehavior);
-	if (avbInterfaceStaticModel)
+	auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(notFoundBehavior);
+	if (currentConfigurationIndexOpt)
 	{
-		updateGptpInformation(controlledEntity, avbInterfaceIndex, avbInterfaceStaticModel->macAddress, info.gptpGrandmasterID, info.gptpDomainNumber, notFoundBehavior);
+		auto const* const avbInterfaceStaticModel = controlledEntity.getModelAccessStrategy().getAvbInterfaceNodeStaticModel(*currentConfigurationIndexOpt, avbInterfaceIndex, notFoundBehavior);
+		if (avbInterfaceStaticModel)
+		{
+			updateGptpInformation(controlledEntity, avbInterfaceIndex, avbInterfaceStaticModel->macAddress, info.gptpGrandmasterID, info.gptpDomainNumber, notFoundBehavior);
+		}
 	}
 }
 
@@ -1552,9 +1592,9 @@ void ControllerImpl::checkRedundancyWarningDiagnostics(ControllerImpl const* con
 		// Check if AVB_INTERFACE_0 and AVB_INTERFACE_1 have the same gPTP
 		try
 		{
-			auto const currentConfigurationIndex = controlledEntity.getCurrentConfigurationIndex();
-			auto const& avbInterfaceNode0 = controlledEntity.getAvbInterfaceNode(currentConfigurationIndex, entity::model::AvbInterfaceIndex{ 0u });
-			auto const& avbInterfaceNode1 = controlledEntity.getAvbInterfaceNode(currentConfigurationIndex, entity::model::AvbInterfaceIndex{ 1u });
+			auto const currentConfigurationIndexOpt = controlledEntity.getCurrentConfigurationIndex(TreeModelAccessStrategy::NotFoundBehavior::Throw);
+			auto const& avbInterfaceNode0 = controlledEntity.getAvbInterfaceNode(*currentConfigurationIndexOpt, entity::model::AvbInterfaceIndex{ 0u });
+			auto const& avbInterfaceNode1 = controlledEntity.getAvbInterfaceNode(*currentConfigurationIndexOpt, entity::model::AvbInterfaceIndex{ 1u });
 			isWarning = avbInterfaceNode0.dynamicModel.gptpGrandmasterID == avbInterfaceNode1.dynamicModel.gptpGrandmasterID;
 		}
 		catch (ControlledEntity::Exception const&)
@@ -3732,7 +3772,7 @@ void ControllerImpl::computeAndUpdateMediaClockChain(ControlledEntityImpl& contr
 					AVDECC_ASSERT(currentClockDomainIndex != entity::model::getInvalidDescriptorIndex() || currentStreamOutput, "currentClockDomainIndex and currentStreamOutput cannot both be invalid");
 #if 0
 					if (currentStreamOutput)
-#else // Better optimized version preventing retrieval of the StreamOutputNode during the first ieration of the loop if both continueFromEntityDomainIndex and continueFromStreamOutputIndex are defined
+#else // Better optimized version preventing retrieval of the StreamOutputNode during the first iteration of the loop if both continueFromEntityDomainIndex and continueFromStreamOutputIndex are defined
 					if (currentClockDomainIndex == entity::model::getInvalidDescriptorIndex() || (currentStreamOutput && currentClockDomainIndex != entity::model::getInvalidDescriptorIndex() && currentEntityID != continueFromEntityID))
 #endif
 					{
@@ -3983,17 +4023,16 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 
 		// Compute Media Clock Chain and update all entities for which the chain ends on this newly added entity
 		{
-			try
+			// Process the newly added entity and update media clock if needed
 			{
-				auto& configNode = controlledEntity.getCurrentConfigurationNode();
-				for (auto& [clockDomainIndex, clockDomainNode] : configNode.clockDomains)
+				auto* const configNode = controlledEntity.getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+				if (configNode != nullptr)
 				{
-					computeAndUpdateMediaClockChain(controlledEntity, clockDomainNode, entityID, clockDomainIndex, std::nullopt, entityID);
+					for (auto& [clockDomainIndex, clockDomainNode] : configNode->clockDomains)
+					{
+						computeAndUpdateMediaClockChain(controlledEntity, clockDomainNode, entityID, clockDomainIndex, std::nullopt, entityID);
+					}
 				}
-			}
-			catch (...)
-			{
-				AVDECC_ASSERT(false, "Unexpected exception");
 			}
 
 			// Process all other entities and update media clock if needed
@@ -4001,10 +4040,10 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 			{
 				if (eid != entityID && entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
 				{
-					try
+					auto* const configNode = entity->getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+					if (configNode != nullptr)
 					{
-						auto& configNode = entity->getCurrentConfigurationNode();
-						for (auto& clockDomainKV : configNode.clockDomains)
+						for (auto& clockDomainKV : configNode->clockDomains)
 						{
 							auto& clockDomainNode = clockDomainKV.second;
 
@@ -4031,10 +4070,6 @@ void ControllerImpl::onPreAdvertiseEntity(ControlledEntityImpl& controlledEntity
 								}
 							}
 						}
-					}
-					catch (...)
-					{
-						AVDECC_ASSERT(false, "Unexpected exception");
 					}
 				}
 			}
@@ -4107,10 +4142,10 @@ void ControllerImpl::onPreUnadvertiseEntity(ControlledEntityImpl& controlledEnti
 		{
 			if (entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
 			{
-				try
+				auto* const configNode = entity->getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+				if (configNode != nullptr)
 				{
-					auto& configNode = entity->getCurrentConfigurationNode();
-					for (auto& clockDomainKV : configNode.clockDomains)
+					for (auto& clockDomainKV : configNode->clockDomains)
 					{
 						auto& clockDomainNode = clockDomainKV.second;
 						// Check if the chain has a node on that departing entity
@@ -4131,10 +4166,6 @@ void ControllerImpl::onPreUnadvertiseEntity(ControlledEntityImpl& controlledEnti
 							}
 						}
 					}
-				}
-				catch (...)
-				{
-					AVDECC_ASSERT(false, "Unexpected exception");
 				}
 			}
 		}
@@ -5127,10 +5158,10 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 					{
 						if (entity->wasAdvertised() && entity->getEntity().getEntityCapabilities().test(entity::EntityCapability::AemSupported) && entity->hasAnyConfiguration())
 						{
-							try
+							auto* const configNode = entity->getCurrentConfigurationNode(TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+							if (configNode != nullptr)
 							{
-								auto& configNode = entity->getCurrentConfigurationNode();
-								for (auto& clockDomainKV : configNode.clockDomains)
+								for (auto& clockDomainKV : configNode->clockDomains)
 								{
 									auto& clockDomainNode = clockDomainKV.second;
 
@@ -5177,10 +5208,6 @@ void ControllerImpl::handleListenerStreamStateNotification(entity::model::Stream
 										}
 									}
 								}
-							}
-							catch (...)
-							{
-								AVDECC_ASSERT(false, "Unexpected exception");
 							}
 						}
 					}
