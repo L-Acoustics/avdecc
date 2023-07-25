@@ -217,7 +217,7 @@ public:
 		auto const cs = std::lock_guard(_enqueueLock);
 
 		// Wait until all jobs are processed. We must loop as one job might have been pushed while the executor is calling jobs (and will soon reset _flushingJobs)
-		while (!_jobs.empty())
+		do
 		{
 			{
 				auto const lg = std::lock_guard(_executorLock);
@@ -239,7 +239,7 @@ public:
 			{
 				break;
 			}
-		}
+		} while (!_jobs.empty());
 	}
 
 	virtual void terminate(bool const flushJobs = true) noexcept override
