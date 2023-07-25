@@ -374,6 +374,9 @@ ControllerImpl::~ControllerImpl()
 			_controllerProxy->unlockEntity(entityID, entity::model::DescriptorType::Entity, 0u, nullptr); // We don't need the result handler, let's just hope our message was properly sent and received!
 		}
 	}
+
+	// Destroy the controller proxy before the class is destroyed
+	_controllerProxy = nullptr;
 }
 
 void ControllerImpl::destroy() noexcept

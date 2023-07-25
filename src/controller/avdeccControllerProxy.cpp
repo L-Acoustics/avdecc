@@ -41,6 +41,12 @@ ControllerVirtualProxy::ControllerVirtualProxy(protocol::ProtocolInterface const
 	_executorName = _protocolInterface->getExecutorName();
 }
 
+ControllerVirtualProxy::~ControllerVirtualProxy() noexcept
+{
+	// Flush all pending jobs
+	la::avdecc::ExecutorManager::getInstance().flush(_executorName);
+}
+
 void ControllerVirtualProxy::setVirtualEntity(UniqueIdentifier const& virtualEntity) noexcept
 {
 	auto const lg = std::lock_guard<std::mutex>{ _lock };

@@ -42,6 +42,9 @@ public:
 	/** Constructor */
 	ControllerVirtualProxy(protocol::ProtocolInterface const* const protocolInterface, entity::controller::Interface const* const realInterface, entity::controller::Interface const* const virtualInterface) noexcept;
 
+	/** Destructor */
+	virtual ~ControllerVirtualProxy() noexcept;
+
 	/** Sets the specified UniqueIdentifier as a virtual entity */
 	void setVirtualEntity(UniqueIdentifier const& virtualEntity) noexcept;
 
