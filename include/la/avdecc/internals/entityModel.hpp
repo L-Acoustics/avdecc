@@ -409,6 +409,16 @@ struct MilanInfo
 	std::uint32_t certificationVersion{ 0u };
 };
 
+inline bool operator==(MilanInfo const& lhs, MilanInfo const& rhs) noexcept
+{
+	return (lhs.protocolVersion == rhs.protocolVersion) && (lhs.featuresFlags == rhs.featuresFlags) && (lhs.certificationVersion == rhs.certificationVersion);
+}
+
+inline bool operator!=(MilanInfo const& lhs, MilanInfo const& rhs) noexcept
+{
+	return !(lhs == rhs);
+}
+
 
 /**
 * @brief Make a UniqueIdentifier from vendorID, deviceID and modelID.
