@@ -80,6 +80,17 @@ enum class ThreadPriority
 //%rename("constData") la::avdecc::MemoryBuffer::data() const; // RIGHT NOW IGNORE IT AS WE NEED TO FIND A WAY TO MARSHALL THE RETURNED POINTER
 %ignore la::avdecc::MemoryBuffer::data(); // RIGHT NOW IGNORE IT AS WE NEED TO FIND A WAY TO MARSHALL THE RETURNED POINTER
 %ignore la::avdecc::MemoryBuffer::data() const; // RIGHT NOW IGNORE IT AS WE NEED TO FIND A WAY TO MARSHALL THE RETURNED POINTER
+// Extend the class
+%extend la::avdecc::MemoryBuffer
+{
+#if defined(SWIGCSHARP)
+	// Provide a more native Equals() method
+	bool Equals(la::avdecc::MemoryBuffer const& other) const noexcept
+	{
+		return *$self == other;
+	}
+#endif
+}
 
 #ifdef SWIGCSHARP
 // Marshalling for void pointers
@@ -431,6 +442,17 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Delegate)
 	%rename("%s") la::avdecc::entity::model::name; // Unignore class
 	%rename("isEqual") operator==(name const& lhs, name const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
 	%rename("isDifferent") operator!=(name const& lhs, name const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
+	// Extend the class
+	%extend la::avdecc::entity::model::name
+	{
+#if defined(SWIGCSHARP)
+		// Provide a more native Equals() method
+		bool Equals(la::avdecc::entity::model::name const& other) const noexcept
+		{
+			return *$self == other;
+		}
+#endif
+	}
 %enddef
 %define DEFINE_AEM_TREE_MODELS(name)
 	%nspace la::avdecc::entity::model::name##NodeDynamicModel;

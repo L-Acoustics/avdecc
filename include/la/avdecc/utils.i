@@ -55,6 +55,18 @@ private:
 	underlying_value_type _value{};
 };
 
+// Extend the class
+%extend EnumBitfield
+{
+#if defined(SWIGCSHARP)
+	// Provide a more native Equals() method
+	bool Equals(EnumBitfield const& other) const noexcept
+	{
+		return *$self == other;
+	}
+#endif
+}
+
 template<class Derived, typename DataType>
 class TypedDefine
 {
@@ -100,6 +112,18 @@ public:
 private:
 	value_type _value{};
 };
+
+// Extend the class
+%extend TypedDefine
+{
+#if defined(SWIGCSHARP)
+	// Provide a more native Equals() method
+	bool Equals(TypedDefine const& other) const noexcept
+	{
+		return *$self == other;
+	}
+#endif
+}
 
 // Forward declare Subject template class
 template<class Derived, class Mut>

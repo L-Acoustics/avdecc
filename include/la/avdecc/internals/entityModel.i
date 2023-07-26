@@ -56,6 +56,18 @@
 %ignore la::avdecc::UniqueIdentifier::hash::operator(); // Ignore hash functor
 %ignore la::avdecc::UniqueIdentifier::UniqueIdentifier(UniqueIdentifier&&); // Ignore move constructor
 %ignore la::avdecc::UniqueIdentifier::operator=; // Ignore copy operator
+// Extend the class
+%extend la::avdecc::UniqueIdentifier
+{
+#if defined(SWIGCSHARP)
+	// Provide a more native Equals() method
+	bool Equals(la::avdecc::UniqueIdentifier const& other) const noexcept
+	{
+		return *$self == other;
+	}
+#endif
+}
+
 
 // Include c++ declaration file
 %include "la/avdecc/internals/uniqueIdentifier.hpp"
@@ -76,6 +88,17 @@
 	%rename("%s") la::avdecc::entity::model::name; // Unignore class
 	%rename("isEqual") operator==(name const& lhs, name const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
 	%rename("isDifferent") operator!=(name const& lhs, name const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
+	// Extend the class
+	%extend la::avdecc::entity::model::name
+	{
+#if defined(SWIGCSHARP)
+		// Provide a more native Equals() method
+		bool Equals(la::avdecc::entity::model::name const& other) const noexcept
+		{
+			return *$self == other;
+		}
+#endif
+	}
 %enddef
 %define DEFINE_AEM_TYPES_CLASS_BASE(name)
 	%nspace la::avdecc::entity::model::name;
@@ -90,6 +113,17 @@
 	%rename("isEqual") operator==(name const& lhs, name const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
 	%rename("isDifferent") operator!=(name const& lhs, name const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
 	%rename("isLess") operator<(name const& lhs, name const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
+	// Extend the class
+	%extend la::avdecc::entity::model::name
+	{
+#if defined(SWIGCSHARP)
+		// Provide a more native Equals() method
+		bool Equals(la::avdecc::entity::model::name const& other) const noexcept
+		{
+			return *$self == other;
+		}
+#endif
+	}
 %enddef
 
 // Bind enums
@@ -131,6 +165,11 @@ DEFINE_AEM_TYPES_CLASS_BASE(AvdeccFixedString);
 	std::string ToString()
 	{
 		return static_cast<std::string>(*$self);
+	}
+	// Provide a more native Equals() method
+	bool Equals(la::avdecc::entity::model::AvdeccFixedString const& other) const noexcept
+	{
+		return *$self == other;
 	}
 #endif
 }
@@ -281,6 +320,17 @@ DEFINE_TYPED_PROTOCOL_CLASS(AcmpStatus, AcmpStatusTypedDefine, std::uint8_t)
 	%rename("%s") la::avdecc::entity::model::name; // Unignore class
 	%rename("isEqual") operator==(name const& lhs, name const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
 	%rename("isDifferent") operator!=(name const& lhs, name const& rhs) noexcept; // Not put in a namespace https://github.com/swig/swig/issues/2459
+	// Extend the class
+	%extend la::avdecc::entity::model::name
+	{
+#if defined(SWIGCSHARP)
+		// Provide a more native Equals() method
+		bool Equals(la::avdecc::entity::model::name const& other) const noexcept
+		{
+			return *$self == other;
+		}
+#endif
+	}
 %enddef
 
 // Define optionals
