@@ -40,6 +40,7 @@
 #include <chrono>
 #include <unordered_map>
 #include <stdexcept> // invalid_argument
+#include <limits> // quiet_NaN // infinity
 
 using json = nlohmann::json;
 
@@ -61,6 +62,71 @@ inline void logJsonSerializer(Level const level, std::string const& message)
 
 namespace nlohmann
 {
+/** float converter that supports NaN and inf values*/
+template<>
+struct adl_serializer<float>
+{
+	static void to_json(json& j, float const& v)
+	{
+		// Handle NaN and inf values
+		if (std::isnan(v))
+		{
+			j = json::object({ { "NaN", true } });
+			return;
+		}
+		else if (std::isinf(v))
+		{
+			if (v > 0.0f)
+			{
+				j = json::object({ { "Inf", true } });
+			}
+			else
+			{
+				j = json::object({ { "-Inf", true } });
+			}
+			return;
+		}
+
+		// Default behavior
+		::nlohmann::to_json(j, v);
+	}
+	static void from_json(json const& j, float& v)
+	{
+		if (j.is_object())
+		{
+			auto const& o = j.get<json::object_t>();
+			if (o.size() == 1)
+			{
+				auto const& it = o.begin();
+				// Check the only value is a boolean and is true
+				auto const& bVal = it->second;
+				if (bVal.is_boolean() && bVal.get<bool>())
+				{
+					if (it->first == "NaN")
+					{
+						v = std::numeric_limits<float>::quiet_NaN();
+						return;
+					}
+					else if (it->first == "Inf")
+					{
+						v = std::numeric_limits<float>::infinity();
+						return;
+					}
+					else if (it->first == "-Inf")
+					{
+						v = -std::numeric_limits<float>::infinity();
+						return;
+					}
+				}
+			}
+		}
+
+		// Default behavior
+		::nlohmann::from_json(j, v);
+	}
+};
+
+/** std::optional converter */
 template<typename T>
 struct adl_serializer<std::optional<T>>
 {
@@ -84,6 +150,7 @@ struct adl_serializer<std::optional<T>>
 	}
 };
 
+/** std::chrono::milliseconds converter */
 template<>
 struct adl_serializer<std::chrono::milliseconds>
 {
@@ -97,6 +164,7 @@ struct adl_serializer<std::chrono::milliseconds>
 	}
 };
 
+/** converter for an optionnaly defined value */
 template<typename KeyT, typename ValueType>
 inline void get_optional_value(json const& j, KeyT&& key, ValueType& v)
 {
@@ -107,6 +175,7 @@ inline void get_optional_value(json const& j, KeyT&& key, ValueType& v)
 	}
 }
 
+/** la::avdecc::entity::model::EntityCounters converter */
 template<>
 struct adl_serializer<la::avdecc::entity::model::EntityCounters>
 {
@@ -142,6 +211,7 @@ struct adl_serializer<la::avdecc::entity::model::EntityCounters>
 	}
 };
 
+/** la::avdecc::entity::model::AvbInterfaceCounters converter */
 template<>
 struct adl_serializer<la::avdecc::entity::model::AvbInterfaceCounters>
 {
@@ -185,6 +255,7 @@ struct adl_serializer<la::avdecc::entity::model::AvbInterfaceCounters>
 	}
 };
 
+/** la::avdecc::entity::model::ClockDomainCounters converter */
 template<>
 struct adl_serializer<la::avdecc::entity::model::ClockDomainCounters>
 {
@@ -228,6 +299,7 @@ struct adl_serializer<la::avdecc::entity::model::ClockDomainCounters>
 	}
 };
 
+/** la::avdecc::entity::model::StreamInputCounters converter */
 template<>
 struct adl_serializer<la::avdecc::entity::model::StreamInputCounters>
 {
@@ -271,6 +343,7 @@ struct adl_serializer<la::avdecc::entity::model::StreamInputCounters>
 	}
 };
 
+/** la::avdecc::entity::model::StreamOutputCounters converter */
 template<>
 struct adl_serializer<la::avdecc::entity::model::StreamOutputCounters>
 {
