@@ -35,6 +35,7 @@
 #endif // ENABLE_AVDECC_FEATURE_JSON
 #include <la/avdecc/internals/serialization.hpp>
 #include <la/avdecc/internals/protocolAemPayloadSizes.hpp>
+#include <la/avdecc/executor.hpp>
 
 #include <cstdlib> // free / malloc
 #include <cstring> // strerror
@@ -2996,7 +2997,19 @@ bool ControllerImpl::unloadVirtualEntity(UniqueIdentifier const entityID) noexce
 		}
 	}
 
-	onEntityOffline(nullptr, entityID);
+	// Ready to remove using the network executor
+	auto const exName = _endStation->getProtocolInterface()->getExecutorName();
+	ExecutorManager::getInstance().pushJob(exName,
+		[this, entityID]()
+		{
+			auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
+
+			onEntityOffline(nullptr, entityID);
+		});
+
+	// Flush executor to be sure everything is loaded before returning
+	ExecutorManager::getInstance().flush(exName);
+
 	return true;
 }
 
