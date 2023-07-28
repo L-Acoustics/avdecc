@@ -89,8 +89,6 @@ private:
 	virtual void enableFullStaticEntityModelEnumeration() noexcept override;
 	virtual void disableFullStaticEntityModelEnumeration() noexcept override;
 
-	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadEntityModelFile(std::string const& filePath) noexcept override;
-
 	/* Enumeration and Control Protocol (AECP) AEM */
 	virtual void acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, AcquireEntityHandler const& handler) const noexcept override;
 	virtual void releaseEntity(UniqueIdentifier const targetEntityID, ReleaseEntityHandler const& handler) const noexcept override;
@@ -162,6 +160,10 @@ private:
 	/* Model deserialization methods */
 	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadVirtualEntitiesFromJsonNetworkState(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError) noexcept override;
 	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadVirtualEntityFromJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags) noexcept override;
+	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadEntityModelFile(std::string const& filePath) noexcept override;
+
+	/* Other helpful methods */
+	virtual bool refreshEntity(UniqueIdentifier const entityID) noexcept override;
 	virtual bool unloadVirtualEntity(UniqueIdentifier const entityID) noexcept override;
 
 
