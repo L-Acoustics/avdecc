@@ -100,6 +100,7 @@ void ControllerImpl::onRegisterUnsolicitedNotificationsResult(entity::controller
 
 		if (entity.checkAndClearExpectedRegisterUnsol())
 		{
+			entity.setUnsolicitedNotificationsSupported(true); // Set to true by default, will be set to false if we get a failure status
 			if (!!status)
 			{
 				entity.setSubscribedToUnsolicitedNotifications(true);

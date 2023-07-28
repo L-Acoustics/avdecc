@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Detection of out-of-bounds MemoryObject length value
 - isValid() method to ControlledEntityGuard
 - Possibility to define a Proxy Interface to handle virtual entities
+- Boolean value in ControlledEntity to know if unsolicited notifications are supported by the entity
 
 ### Changed
 - Complete controller entity model refactoring to support descriptors at non-configuration level

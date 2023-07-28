@@ -192,6 +192,7 @@ public:
 	virtual bool isMilanRedundant() const noexcept override;
 	virtual bool gotFatalEnumerationError() const noexcept override;
 	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept override;
+	virtual bool areUnsolicitedNotificationsSupported() const noexcept override;
 	virtual bool isAcquired() const noexcept override;
 	virtual bool isAcquireCommandInProgress() const noexcept override;
 	virtual bool isAcquiredByOther() const noexcept override;
@@ -409,6 +410,7 @@ public:
 	void setMilanRedundant(bool const isMilanRedundant) noexcept;
 	void setGetFatalEnumerationError() noexcept;
 	void setSubscribedToUnsolicitedNotifications(bool const isSubscribed) noexcept;
+	void setUnsolicitedNotificationsSupported(bool const isSupported) noexcept;
 	bool wasAdvertised() const noexcept;
 	void setAdvertised(bool const wasAdvertised) noexcept;
 	bool isRedundantPrimaryStreamInput(entity::model::StreamIndex const streamIndex) const noexcept; // True for a Redundant Primary Stream (false for Secondary and non-redundant streams)
@@ -461,6 +463,7 @@ private:
 	bool _isMilanRedundant{ false }; // Current configuration has at least one redundant stream
 	bool _gotFatalEnumerateError{ false }; // Have we got a fatal error during entity enumeration
 	bool _isSubscribedToUnsolicitedNotifications{ false }; // Are we subscribed to unsolicited notifications
+	bool _areUnsolicitedNotificationsSupported{ false }; // Are unsolicited notifications supported
 	bool _advertised{ false }; // Has the entity been advertised to the observers
 	bool _expectedRegisterUnsol{ false };
 	std::unordered_set<MilanInfoKey> _expectedMilanInfo{};

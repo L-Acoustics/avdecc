@@ -120,6 +120,11 @@ bool ControlledEntityImpl::isSubscribedToUnsolicitedNotifications() const noexce
 	return _isSubscribedToUnsolicitedNotifications;
 }
 
+bool ControlledEntityImpl::areUnsolicitedNotificationsSupported() const noexcept
+{
+	return _areUnsolicitedNotificationsSupported;
+}
+
 bool ControlledEntityImpl::isAcquired() const noexcept
 {
 	return _acquireState == model::AcquireState::Acquired;
@@ -2426,6 +2431,11 @@ void ControlledEntityImpl::setSubscribedToUnsolicitedNotifications(bool const is
 	{
 		_expectedSequenceID = std::nullopt;
 	}
+}
+
+void ControlledEntityImpl::setUnsolicitedNotificationsSupported(bool const isSupported) noexcept
+{
+	_areUnsolicitedNotificationsSupported = isSupported;
 }
 
 bool ControlledEntityImpl::wasAdvertised() const noexcept

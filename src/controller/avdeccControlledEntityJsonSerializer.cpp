@@ -119,6 +119,7 @@ json createJsonObject(ControlledEntityImpl const& entity, entity::model::jsonSer
 			state[controller::keyName::ControlledEntityState_LockState] = entity.getLockState();
 			state[controller::keyName::ControlledEntityState_LockingControllerID] = entity.getLockingControllerID();
 			state[controller::keyName::ControlledEntityState_SubscribedUnsol] = entity.isSubscribedToUnsolicitedNotifications();
+			state[controller::keyName::ControlledEntityState_UnsolSupported] = entity.areUnsolicitedNotificationsSupported();
 			state[controller::keyName::ControlledEntityState_ActiveConfiguration] = hasAnyConfiguration ? entity.getCurrentConfigurationIndex() : entity::model::ConfigurationIndex{ 0u };
 		}
 
@@ -226,10 +227,23 @@ void setEntityState(ControlledEntityImpl& entity, json const& object)
 			}
 		}
 		{
+			auto const it = object.find(controller::keyName::ControlledEntityState_UnsolSupported);
+			if (it != object.end())
+			{
+				entity.setUnsolicitedNotificationsSupported(it->get<bool>());
+			}
+		}
+		{
 			auto const it = object.find(controller::keyName::ControlledEntityState_SubscribedUnsol);
 			if (it != object.end())
 			{
-				entity.setSubscribedToUnsolicitedNotifications(it->get<bool>());
+				auto const isSubscribed = it->get<bool>();
+				entity.setSubscribedToUnsolicitedNotifications(isSubscribed);
+				// Forward compatibility in case we load an old file (where controller::keyName::ControlledEntityState_UnsolSupported was not present)
+				if (isSubscribed)
+				{
+					entity.setUnsolicitedNotificationsSupported(true);
+				}
 			}
 		}
 		entity.setCurrentConfiguration(object.at(controller::keyName::ControlledEntityState_ActiveConfiguration).get<entity::model::DescriptorIndex>(), TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);

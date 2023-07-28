@@ -4420,6 +4420,8 @@ bool ControllerImpl::processRegisterUnsolFailureStatus(entity::ControllerEntity:
 				LOG_CONTROLLER_WARN(entityID, "Milan mandatory command not supported by the entity: REGISTER_UNSOLICITED_NOTIFICATION");
 				removeCompatibilityFlag(this, *entity, ControlledEntity::CompatibilityFlag::Milan);
 			}
+			// Remove "Unsolicited notifications supported" as device does not support the command
+			entity->setUnsolicitedNotificationsSupported(false);
 			return true;
 		case FailureAction::TimedOut:
 			[[fallthrough]];

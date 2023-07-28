@@ -119,6 +119,7 @@ public:
 	virtual bool isMilanRedundant() const noexcept = 0; // True if the entity is currently in Milan Redundancy mode (ie. current configuration has at least one redundant stream)
 	virtual bool gotFatalEnumerationError() const noexcept = 0; // True if the controller had a fatal error during entity information retrieval (leading to Exception::Type::EnumerationError if any throwing method is called).
 	virtual bool isSubscribedToUnsolicitedNotifications() const noexcept = 0;
+	virtual bool areUnsolicitedNotificationsSupported() const noexcept = 0;
 	virtual bool isAcquired() const noexcept = 0; // Is entity acquired by the controller it's attached to
 	virtual bool isAcquireCommandInProgress() const noexcept = 0; // Is the attached controller trying to acquire or release the entity
 	virtual bool isAcquiredByOther() const noexcept = 0; // Is entity acquired by another controller
