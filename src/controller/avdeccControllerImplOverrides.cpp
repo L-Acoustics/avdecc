@@ -451,14 +451,6 @@ void ControllerImpl::disableFullStaticEntityModelEnumeration() noexcept
 	_fullStaticModelEnumeration = false;
 }
 
-std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> ControllerImpl::loadEntityModelFile(std::string const& /*filePath*/) noexcept
-{
-	// TODO:
-	//  - Call EndStation::deserializeEntityModelFromJson
-	//  - Feed the cache with the loaded model
-	return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Not supported yet" };
-}
-
 
 /* Enumeration and Control Protocol (AECP) */
 void ControllerImpl::acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, AcquireEntityHandler const& handler) const noexcept
@@ -2977,6 +2969,67 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, SharedCont
 #endif // ENABLE_AVDECC_FEATURE_JSON
 }
 
+std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> ControllerImpl::loadEntityModelFile(std::string const& /*filePath*/) noexcept
+{
+	// TODO:
+	//  - Call EndStation::deserializeEntityModelFromJson
+	//  - Feed the cache with the loaded model
+	return { avdecc::jsonSerializer::DeserializationError::NotSupported, "Not supported yet" };
+}
+
+bool ControllerImpl::refreshEntity(UniqueIdentifier const entityID) noexcept
+{
+	// Check if entity is not virtual
+	{
+		// Lock to protect _controlledEntities
+		std::lock_guard<decltype(_lock)> const lg(_lock);
+
+		auto entityIt = _controlledEntities.find(entityID);
+		// Entity not found
+		if (entityIt == _controlledEntities.end())
+		{
+			return false;
+		}
+		// Entity is virtual
+		if (entityIt->second->isVirtual())
+		{
+			return false;
+		}
+	}
+
+	// Ready to remove using the network executor
+	auto const exName = _endStation->getProtocolInterface()->getExecutorName();
+	ExecutorManager::getInstance().pushJob(exName,
+		[this, entityID]()
+		{
+			// Make a copy of the Entity object since it will be destroyed during onEntityOffline
+			auto e = std::unique_ptr<entity::Entity>{ nullptr };
+			{
+				{
+					// Lock to protect _controlledEntities
+					std::lock_guard<decltype(_lock)> const lg(_lock);
+
+					auto entityIt = _controlledEntities.find(entityID);
+					// Entity not found
+					if (entityIt == _controlledEntities.end())
+					{
+						return;
+					}
+					e = std::make_unique<entity::Entity>(entityIt->second->getEntity());
+				}
+			}
+
+			auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
+			onEntityOffline(_controller, entityID);
+			onEntityOnline(_controller, entityID, *e);
+		});
+
+	// Flush executor to be sure everything is loaded before returning
+	ExecutorManager::getInstance().flush(exName);
+
+	return true;
+}
+
 bool ControllerImpl::unloadVirtualEntity(UniqueIdentifier const entityID) noexcept
 {
 	// Check if entity is virtual
@@ -3004,7 +3057,7 @@ bool ControllerImpl::unloadVirtualEntity(UniqueIdentifier const entityID) noexce
 		{
 			auto const lg = std::lock_guard{ *_controller }; // Lock the Controller itself (thus, lock it's ProtocolInterface), since we are on the Networking Thread
 
-			onEntityOffline(nullptr, entityID);
+			onEntityOffline(_controller, entityID);
 		});
 
 	// Flush executor to be sure everything is loaded before returning

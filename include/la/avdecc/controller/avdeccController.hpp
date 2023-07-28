@@ -528,8 +528,6 @@ public:
 	virtual void enableFullStaticEntityModelEnumeration() noexcept = 0;
 	/** Disables complete EntityModel (static part) enumeration.*/
 	virtual void disableFullStaticEntityModelEnumeration() noexcept = 0;
-	/** Loads an EntityModel file and feed it to the EntityModel cache */
-	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadEntityModelFile(std::string const& filePath) noexcept = 0;
 
 	/* Enumeration and Control Protocol (AECP) AEM. WARNING: The completion handler will not be called if the controller is destroyed while the query is inflight. Otherwise it will always be called. */
 	virtual void acquireEntity(UniqueIdentifier const targetEntityID, bool const isPersistent, AcquireEntityHandler const& handler) const noexcept = 0;
@@ -615,8 +613,13 @@ public:
 	static LA_AVDECC_CONTROLLER_API std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vector<SharedControlledEntity>> LA_AVDECC_CONTROLLER_CALL_CONVENTION deserializeControlledEntitiesFromJsonNetworkState(std::string const& filePath, entity::model::jsonSerializer::Flags const flags, bool const continueOnError) noexcept;
 	/** Deserializes a JSON file representing an entity, and returns the ControlledEntity without loading it. */
 	static LA_AVDECC_CONTROLLER_API std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, SharedControlledEntity> LA_AVDECC_CONTROLLER_CALL_CONVENTION deserializeControlledEntityFromJson(std::string const& filePath, entity::model::jsonSerializer::Flags const flags) noexcept;
+	/** Loads an EntityModel file and feed it to the EntityModel cache */
+	virtual std::tuple<avdecc::jsonSerializer::DeserializationError, std::string> loadEntityModelFile(std::string const& filePath) noexcept = 0;
 
 	/* Other helpful methods */
+	/** Re-enumerates the specified entity (physical entity only). */
+	virtual bool refreshEntity(UniqueIdentifier const entityID) noexcept = 0;
+	/** Removes a Virtual Entity from the controller */
 	virtual bool unloadVirtualEntity(UniqueIdentifier const entityID) noexcept = 0;
 	/** Returns the StreamFormat among the provided availableFormats, that best matches desiredStreamFormat, using clockValidator delegate callback. Returns invalid StreamFormat if none is available. */
 	static LA_AVDECC_CONTROLLER_API entity::model::StreamFormat LA_AVDECC_CONTROLLER_CALL_CONVENTION chooseBestStreamFormat(entity::model::StreamFormats const& availableFormats, entity::model::StreamFormat const desiredStreamFormat, std::function<bool(bool const isDesiredClockSync, bool const isAvailableClockSync)> const& clockValidator) noexcept;
