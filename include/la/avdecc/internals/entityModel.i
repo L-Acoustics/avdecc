@@ -162,7 +162,7 @@ DEFINE_AEM_TYPES_CLASS_BASE(AvdeccFixedString);
 {
 #if defined(SWIGCSHARP)
 	// Provide a more native ToString() method
-	std::string ToString()
+	std::string ToString() const noexcept
 	{
 		return static_cast<std::string>(*$self);
 	}
@@ -267,7 +267,7 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::entity, MilanInfoFeaturesFlags, MilanInfo
 	{
 #if defined(SWIGCSHARP)
 		// Provide a more native ToString() method
-		std::string ToString()
+		std::string ToString() const noexcept
 		{
 			return static_cast<std::string>(*$self);
 		}
