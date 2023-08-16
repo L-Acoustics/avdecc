@@ -56,6 +56,7 @@
 %define DEFINE_CONTROLLED_ENTITY_MODEL_NODE(name)
 	%nspace la::avdecc::controller::model::name##Node;
 	%rename("%s") la::avdecc::controller::model::name##Node; // Unignore class
+	// DO NOT extend the struct with copy-constructor (we don't want to copy the full hierarchy, and also there is no default constructor)
 %enddef
 
 // Bind enums
@@ -145,6 +146,27 @@ DEFINE_ENUM_CLASS(la::avdecc::controller::ControlledEntity, CompatibilityFlag, "
 
 %nspace la::avdecc::controller::ControlledEntity::Diagnostics;
 %rename("%s") la::avdecc::controller::ControlledEntity::Diagnostics; // Unignore class
+// Extend the struct
+%extend la::avdecc::controller::ControlledEntity::Diagnostics
+{
+	// Add default constructor
+	Diagnostics()
+	{
+		return new la::avdecc::controller::ControlledEntity::Diagnostics();
+	}
+	// Add a copy-constructor
+	Diagnostics(la::avdecc::controller::ControlledEntity::Diagnostics const& other)
+	{
+		return new la::avdecc::controller::ControlledEntity::Diagnostics(other);
+	}
+#if defined(SWIGCSHARP)
+  // Provide a more native Equals() method
+  bool Equals(la::avdecc::controller::ControlledEntity::Diagnostics const& other) const noexcept
+  {
+    return $self->redundancyWarning == other.redundancyWarning && $self->streamInputOverLatency == other.streamInputOverLatency;
+  }
+#endif
+};
 
 %nspace la::avdecc::controller::ControlledEntityGuard;
 %rename("%s") la::avdecc::controller::ControlledEntityGuard; // Unignore class

@@ -323,6 +323,16 @@ DEFINE_TYPED_PROTOCOL_CLASS(AcmpStatus, AcmpStatusTypedDefine, std::uint8_t)
 	// Extend the class
 	%extend la::avdecc::entity::model::name
 	{
+		// Add default constructor
+		name()
+		{
+			return new la::avdecc::entity::model::name();
+		}
+		// Add a copy-constructor
+		name(la::avdecc::entity::model::name const& other)
+		{
+			return new la::avdecc::entity::model::name(other);
+		}		
 #if defined(SWIGCSHARP)
 		// Provide a more native Equals() method
 		bool Equals(la::avdecc::entity::model::name const& other) const noexcept
