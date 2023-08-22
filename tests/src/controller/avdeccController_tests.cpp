@@ -480,6 +480,22 @@ TEST_F(Controller_F, VirtualEntityLoad)
 	//ASSERT_NE(std::future_status::timeout, status);
 }
 
+TEST_F(Controller_F, VirtualEntityLoadUTF8)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	//static std::promise<void> commandResultPromise{};
+	{
+		auto& controller = getController();
+		auto const [error, message] = controller.loadVirtualEntityFromJson("data/テスト.json", flags);
+		EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+		EXPECT_STREQ("", message.c_str());
+	}
+
+	// Wait for the handler to complete
+	//auto status = commandResultPromise.get_future().wait_for(std::chrono::seconds(1));
+	//ASSERT_NE(std::future_status::timeout, status);
+}
+
 /*
  * TESTING https://github.com/L-Acoustics/avdecc/issues/84
  * Callback returns BadArguments if passed too many mappings
