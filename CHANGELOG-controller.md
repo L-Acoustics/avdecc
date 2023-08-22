@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Possibility to define a Proxy Interface to handle virtual entities
 - Boolean value in ControlledEntity to know if unsolicited notifications are supported by the entity
 - API to force refresh a entity (_reloadEntity(UniqueIdentifier)_)
+- Support for UTF8 file paths
 
 ### Changed
 - Complete controller entity model refactoring to support descriptors at non-configuration level

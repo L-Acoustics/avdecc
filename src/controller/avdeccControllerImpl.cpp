@@ -5475,7 +5475,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, std::vecto
 {
 	// Try to open the input file
 	auto const mode = std::ios::binary | std::ios::in;
-	auto ifs = std::ifstream{ filePath, mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
+	auto ifs = std::ifstream{ utils::filePathFromUTF8String(filePath), mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
 
 	// Failed to open file for reading
 	if (!ifs.is_open())
@@ -5583,7 +5583,7 @@ std::tuple<avdecc::jsonSerializer::DeserializationError, std::string, Controller
 {
 	// Try to open the input file
 	auto const mode = std::ios::binary | std::ios::in;
-	auto ifs = std::ifstream{ filePath, mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
+	auto ifs = std::ifstream{ utils::filePathFromUTF8String(filePath), mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
 
 	// Failed to open file for reading
 	if (!ifs.is_open())
