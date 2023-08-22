@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - [Support for CONTROL_SELECTOR type for CONTROL descriptors](https://github.com/L-Acoustics/avdecc/issues/128)
 - *numberOfValues* field in the CONTROL descriptor
 - Support for float special values in json dumps (ie. NaN, -inf, +inf)
+- Support for UTF8 file paths
 
 ### Changed
 - la::avdecc::entity::controller::Delegate is now virtual pure, but a new derivated visitor (with all default implementation) has been added: la::avdecc::entity::controller::DefaultedDelegate

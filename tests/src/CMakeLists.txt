@@ -63,8 +63,10 @@ target_link_libraries(Tests PRIVATE ${LINK_LIBRARIES} ${ADD_LINK_LIBRARIES})
 add_custom_command(
 	TARGET Tests
 	POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/../data ${CMAKE_BINARY_DIR}/tests/src/data
+	COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/../data" "${CMAKE_BINARY_DIR}/tests/src/data"
 	COMMENT "Copying Tests data to output folder"
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/../data/SimpleEntity.json" "${CMAKE_BINARY_DIR}/tests/src/data/テスト.json"
+	COMMENT "Creating UTF-8 file"
 	VERBATIM
 )
 

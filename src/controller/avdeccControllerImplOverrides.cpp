@@ -2808,7 +2808,7 @@ std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerIm
 
 	// Try to open the output file
 	auto const mode = std::ios::binary | std::ios::out;
-	auto ofs = std::ofstream{ filePath, mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
+	auto ofs = std::ofstream{ utils::filePathFromUTF8String(filePath), mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
 
 	// Failed to open file to writting
 	if (!ofs.is_open())
@@ -2856,7 +2856,7 @@ std::tuple<avdecc::jsonSerializer::SerializationError, std::string> ControllerIm
 
 		// Try to open the output file
 		auto const mode = std::ios::binary | std::ios::out;
-		auto ofs = std::ofstream{ filePath, mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
+		auto ofs = std::ofstream{ utils::filePathFromUTF8String(filePath), mode }; // We always want to read as 'binary', we don't want the cr/lf shit to alter the size of our allocated buffer (all modern code should handle both lf and cr/lf)
 
 		// Failed to open file to writting
 		if (!ofs.is_open())
