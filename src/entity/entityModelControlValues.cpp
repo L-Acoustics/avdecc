@@ -109,7 +109,7 @@ std::optional<ControlValues> LA_AVDECC_CALL_CONVENTION unpackDynamicControlValue
 	return {};
 }
 
-static inline void createValidateControlValuesDispatchTable(std::unordered_map<entity::model::ControlValueType::Type, std::function<std::optional<std::string>(entity::model::ControlValues const&, entity::model::ControlValues const&)>>& dispatchTable)
+static inline void createValidateControlValuesDispatchTable(std::unordered_map<entity::model::ControlValueType::Type, std::function<std::tuple<ControlValuesValidationResult, std::string>(entity::model::ControlValues const&, entity::model::ControlValues const&)>>& dispatchTable)
 {
 	/** Linear Values - Clause 7.3.5.2.1 */
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt8] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt8>::validateControlValues;
@@ -152,9 +152,9 @@ static inline void createValidateControlValuesDispatchTable(std::unordered_map<e
 	dispatchTable[entity::model::ControlValueType::Type::ControlUtf8] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlUtf8>::validateControlValues;
 }
 
-std::optional<std::string> LA_AVDECC_CALL_CONVENTION validateControlValues(ControlValues const& staticValues, ControlValues const& dynamicValues) noexcept
+std::tuple<ControlValuesValidationResult, std::string> LA_AVDECC_CALL_CONVENTION validateControlValues(ControlValues const& staticValues, ControlValues const& dynamicValues) noexcept
 {
-	static auto s_Dispatch = std::unordered_map<entity::model::ControlValueType::Type, std::function<std::optional<std::string>(entity::model::ControlValues const&, entity::model::ControlValues const&)>>{};
+	static auto s_Dispatch = std::unordered_map<entity::model::ControlValueType::Type, std::function<std::tuple<ControlValuesValidationResult, std::string>(entity::model::ControlValues const&, entity::model::ControlValues const&)>>{};
 
 	if (s_Dispatch.empty())
 	{
@@ -164,38 +164,38 @@ std::optional<std::string> LA_AVDECC_CALL_CONVENTION validateControlValues(Contr
 
 	if (!staticValues)
 	{
-		return "StaticValues  are not initialized";
+		return std::make_tuple(ControlValuesValidationResult::NoStaticValues, "StaticValues are not initialized");
 	}
 
 	if (staticValues.areDynamicValues())
 	{
-		return "StaticValues are dynamic instead of static";
+		return std::make_tuple(ControlValuesValidationResult::WrongStaticValuesType, "StaticValues are dynamic instead of static");
 	}
 
 	if (!dynamicValues)
 	{
-		return "DynamicValues are not initialized";
+		return std::make_tuple(ControlValuesValidationResult::NoDynamicValues, "DynamicValues are not initialized");
 	}
 
 	if (!dynamicValues.areDynamicValues())
 	{
-		return "DynamicValues are static instead of dynamic";
+		return std::make_tuple(ControlValuesValidationResult::WrongDynamicValuesType, "DynamicValues are static instead of dynamic");
 	}
 
 	auto const valueType = staticValues.getType();
 	if (valueType != dynamicValues.getType())
 	{
-		return "DynamicValues type does not match StaticValues type";
+		return std::make_tuple(ControlValuesValidationResult::StaticDynamicTypeMismatch, "DynamicValues type does not match StaticValues type");
 	}
 
 	if (staticValues.countMustBeIdentical() != dynamicValues.countMustBeIdentical())
 	{
-		return "Values countMustBeIdentical() does not match (" + std::to_string(staticValues.countMustBeIdentical()) + " for static values, " + std::to_string(dynamicValues.countMustBeIdentical()) + " for dynamic ones)";
+		return std::make_tuple(ControlValuesValidationResult::StaticDynamicCountMismatch, "Values countMustBeIdentical() does not match (" + std::to_string(staticValues.countMustBeIdentical()) + " for static values, " + std::to_string(dynamicValues.countMustBeIdentical()) + " for dynamic ones)");
 	}
 
 	if (staticValues.countMustBeIdentical() && staticValues.size() != dynamicValues.size())
 	{
-		return "Values count does not match (" + std::to_string(staticValues.size()) + " static values, " + std::to_string(dynamicValues.size()) + " dynamic ones)";
+		return std::make_tuple(ControlValuesValidationResult::StaticDynamicCountMismatch, "Values count does not match (" + std::to_string(staticValues.size()) + " static values, " + std::to_string(dynamicValues.size()) + " dynamic ones)");
 	}
 
 	auto const& it = s_Dispatch.find(valueType);
@@ -205,7 +205,7 @@ std::optional<std::string> LA_AVDECC_CALL_CONVENTION validateControlValues(Contr
 	}
 
 	// In case we don't handle this kind of ControlType, just validate the values
-	return std::nullopt;
+	return std::make_tuple(ControlValuesValidationResult::Valid, "");
 }
 
 } // namespace model
