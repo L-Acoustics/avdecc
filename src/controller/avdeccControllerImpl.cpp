@@ -950,17 +950,28 @@ bool ControllerImpl::updateControlValues(ControlledEntityImpl& controlledEntity,
 		auto const controlValueType = controlStaticModel->controlValueType.getType();
 		auto const numberOfValues = controlStaticModel->numberOfValues;
 		auto const controlValuesOpt = entity::model::unpackDynamicControlValues(packedControlValues, controlValueType, numberOfValues);
+		auto const controlType = controlStaticModel->controlType;
 
 		if (controlValuesOpt)
 		{
 			auto const& controlValues = *controlValuesOpt;
 
 			// Validate ControlValues
-			if (!validateControlValues(controlledEntity.getEntity().getEntityID(), controlIndex, controlValueType, controlStaticModel->values, controlValues))
+			auto const validationResult = validateControlValues(controlledEntity.getEntity().getEntityID(), controlIndex, controlType, controlValueType, controlStaticModel->values, controlValues);
+			auto isOutOfBounds = false;
+			switch (validationResult)
 			{
-				// Flag the entity as "Not fully IEEE1722.1 compliant"
-				removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+				case DynamicControlValuesValidationResult::InvalidValues:
+					// Flag the entity as "Not fully IEEE1722.1 compliant"
+					removeCompatibilityFlag(this, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					break;
+				case DynamicControlValuesValidationResult::CurrentValueOutOfRange:
+					isOutOfBounds = true;
+					break;
+				default:
+					break;
 			}
+			updateControlCurrentValueOutOfBounds(this, controlledEntity, controlIndex, isOutOfBounds);
 			controlledEntity.setControlValues(controlIndex, controlValues, notFoundBehavior);
 
 			// Entity was advertised to the user, notify observers
@@ -969,7 +980,7 @@ bool ControllerImpl::updateControlValues(ControlledEntityImpl& controlledEntity,
 				notifyObserversMethod<Controller::Observer>(&Controller::Observer::onControlValuesChanged, this, &controlledEntity, controlIndex, controlValues);
 
 				// Check for Identify Control
-				if (entity::model::StandardControlType::Identify == controlStaticModel->controlType.getValue() && controlValueType == entity::model::ControlValueType::Type::ControlLinearUInt8 && numberOfValues == 1)
+				if (entity::model::StandardControlType::Identify == controlType.getValue() && controlValueType == entity::model::ControlValueType::Type::ControlLinearUInt8 && numberOfValues == 1)
 				{
 					auto const identifyOpt = getIdentifyControlValue(controlValues);
 					if (identifyOpt)
@@ -1498,6 +1509,34 @@ void ControllerImpl::updateRedundancyWarning(ControllerImpl const* const control
 	{
 		AVDECC_ASSERT(controller->_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 		controller->notifyObserversMethod<Controller::Observer>(&Controller::Observer::onDiagnosticsChanged, controller, &controlledEntity, diags);
+	}
+}
+
+void ControllerImpl::updateControlCurrentValueOutOfBounds(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, entity::model::ControlIndex const controlIndex, bool const isOutOfBounds) noexcept
+{
+	auto& diags = controlledEntity.getDiagnostics();
+	auto const previouslyInError = diags.controlCurrentValueOutOfBounds.count(controlIndex) > 0;
+
+	// State changed
+	if (isOutOfBounds != previouslyInError)
+	{
+		// Was not in the list and now needs to be
+		if (isOutOfBounds)
+		{
+			diags.controlCurrentValueOutOfBounds.insert(controlIndex);
+		}
+		// Was in the list and now needs to be removed
+		else
+		{
+			diags.controlCurrentValueOutOfBounds.erase(controlIndex);
+		}
+
+		// Entity was advertised to the user, notify observers
+		if (controller && controlledEntity.wasAdvertised())
+		{
+			AVDECC_ASSERT(controller->_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
+			controller->notifyObserversMethod<Controller::Observer>(&Controller::Observer::onDiagnosticsChanged, controller, &controlledEntity, diags);
+		}
 	}
 }
 
@@ -3276,46 +3315,65 @@ bool ControllerImpl::validateIdentifyControl(ControlledEntityImpl& controlledEnt
 	return false;
 }
 
-bool ControllerImpl::validateControlValues(UniqueIdentifier const entityID, entity::model::ControlIndex const controlIndex, entity::model::ControlValueType::Type const controlValueType, entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) noexcept
+ControllerImpl::DynamicControlValuesValidationResult ControllerImpl::validateControlValues(UniqueIdentifier const entityID, entity::model::ControlIndex const controlIndex, UniqueIdentifier const& controlType, entity::model::ControlValueType::Type const controlValueType, entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) noexcept
 {
 	if (!staticValues)
 	{
 		// Returning true here because uninitialized values may be due to a type unknown to the library
 		LOG_CONTROLLER_WARN(entityID, "StaticValues (type {}) for ControlDescriptor at Index {} are not initialized (probably unhandled type)", entity::model::controlValueTypeToString(controlValueType), controlIndex);
-		return true;
+		return DynamicControlValuesValidationResult::Valid;
 	}
 
 	if (staticValues.areDynamicValues())
 	{
 		LOG_CONTROLLER_WARN(entityID, "StaticValues for ControlDescriptor at Index {} are dynamic instead of static", controlIndex);
-		return false;
+		return DynamicControlValuesValidationResult::InvalidValues;
 	}
 
 	if (!dynamicValues)
 	{
 		// Returning true here because uninitialized values may be due to a type unknown to the library
 		LOG_CONTROLLER_WARN(entityID, "DynamicValues (type {}) for ControlDescriptor at Index {} are not initialized (probably unhandled type)", entity::model::controlValueTypeToString(controlValueType), controlIndex);
-		return true;
+		return DynamicControlValuesValidationResult::InvalidValues;
 	}
 
 	if (!dynamicValues.areDynamicValues())
 	{
 		LOG_CONTROLLER_WARN(entityID, "DynamicValues for ControlDescriptor at Index {} are static instead of dynamic", controlIndex);
-		return false;
+		return DynamicControlValuesValidationResult::InvalidValues;
 	}
 
-	auto const resultOpt = entity::model::validateControlValues(staticValues, dynamicValues);
+	auto const [result, errMessage] = entity::model::validateControlValues(staticValues, dynamicValues);
 
 	// No error during validation
-	if (!resultOpt)
+	if (result == entity::model::ControlValuesValidationResult::Valid)
 	{
-		return true;
+		return DynamicControlValuesValidationResult::Valid;
 	}
 
-	auto const& errMessage = *resultOpt;
+	// Checking for special (allowed) cases that are only warnings
+	switch (result)
+	{
+		case entity::model::ControlValuesValidationResult::CurrentValueBelowMinimum:
+		case entity::model::ControlValuesValidationResult::CurrentValueAboveMaximum:
+		{
+			switch (controlType.getValue())
+			{
+				case utils::to_integral(entity::model::StandardControlType::PowerStatus):
+				case utils::to_integral(entity::model::StandardControlType::FanStatus):
+				case utils::to_integral(entity::model::StandardControlType::Temperature):
+					LOG_CONTROLLER_DEBUG(entityID, "Warning for DynamicValues for ControlDescriptor at Index {}: {}", controlIndex, errMessage);
+					return DynamicControlValuesValidationResult::CurrentValueOutOfRange;
+				default:
+					break;
+			}
+		}
+		default:
+			break;
+	}
 
-	LOG_CONTROLLER_WARN(entityID, "DynamicValues for ControlDescriptor at Index {} are not a valid: {}", controlIndex, errMessage);
-	return false;
+	LOG_CONTROLLER_WARN(entityID, "DynamicValues for ControlDescriptor at Index {} are not valid: {}", controlIndex, errMessage);
+	return DynamicControlValuesValidationResult::InvalidValues;
 }
 
 void ControllerImpl::validateControlDescriptors(ControlledEntityImpl& controlledEntity) noexcept
@@ -3400,11 +3458,21 @@ void ControllerImpl::validateControlDescriptors(ControlledEntityImpl& controlled
 				}
 
 				// Validate ControlValues
-				if (!validateControlValues(entityID, controlIndex, controlNode.staticModel.controlValueType.getType(), controlNode.staticModel.values, controlNode.dynamicModel.values))
+				auto const validationResult = validateControlValues(entityID, controlIndex, controlType, controlNode.staticModel.controlValueType.getType(), controlNode.staticModel.values, controlNode.dynamicModel.values);
+				auto isOutOfBounds = false;
+				switch (validationResult)
 				{
-					// Flag the entity as "Not fully IEEE1722.1 compliant"
-					removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					case DynamicControlValuesValidationResult::InvalidValues:
+						// Flag the entity as "Not fully IEEE1722.1 compliant"
+						removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+						break;
+					case DynamicControlValuesValidationResult::CurrentValueOutOfRange:
+						isOutOfBounds = true;
+						break;
+					default:
+						break;
 				}
+				updateControlCurrentValueOutOfBounds(nullptr, controlledEntity, controlIndex, isOutOfBounds);
 			}
 
 			// Found a valid Identify ControlIndex

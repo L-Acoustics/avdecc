@@ -355,6 +355,7 @@ private:
 	void updateStreamPortOutputAudioMappingsRemoved(ControlledEntityImpl& controlledEntity, entity::model::StreamPortIndex const streamPortIndex, entity::model::AudioMappings const& mappings, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept;
 	void updateOperationStatus(ControlledEntityImpl& controlledEntity, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, std::uint16_t const percentComplete, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept;
 	static void updateRedundancyWarning(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, bool const isWarning) noexcept;
+	static void updateControlCurrentValueOutOfBounds(ControllerImpl const* const controller, ControlledEntityImpl& controlledEntity, entity::model::ControlIndex const controlIndex, bool const isOutOfBounds) noexcept;
 	void updateStreamInputLatency(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, bool const isOverLatency) const noexcept;
 
 	/* ************************************************************ */
@@ -565,6 +566,12 @@ private:
 		MisbehaveContinue, /**< The entity misbehaved, flag it, ignore and continue to next one. */
 		ErrorFatal, /**< This query returned a fatal error, enumeration should be stopped immediately. */
 	};
+	enum class DynamicControlValuesValidationResult
+	{
+		Valid,
+		CurrentValueOutOfRange, /**< current value is out of min-max range - This is not considered an error for some ControlType */
+		InvalidValues, /**< Either static or dynamic values are deemed invalid - This is a non-1722.1 compliance */
+	};
 
 	/* ************************************************************ */
 	/* Private types                                                */
@@ -637,7 +644,7 @@ private:
 	}
 	entity::model::AudioMappings validateMappings(ControlledEntityImpl& controlledEntity, std::uint16_t const maxStreams, std::uint16_t const maxClusters, entity::model::AudioMappings const& mappings) const noexcept;
 	static bool validateIdentifyControl(ControlledEntityImpl& controlledEntity, model::ControlNode const& identifyControlNode) noexcept;
-	static bool validateControlValues(UniqueIdentifier const entityID, entity::model::ControlIndex const controlIndex, entity::model::ControlValueType::Type const controlValueType, entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) noexcept;
+	static DynamicControlValuesValidationResult validateControlValues(UniqueIdentifier const entityID, entity::model::ControlIndex const controlIndex, UniqueIdentifier const& controlType, entity::model::ControlValueType::Type const controlValueType, entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) noexcept;
 	static void validateControlDescriptors(ControlledEntityImpl& controlledEntity) noexcept;
 	static void validateRedundancy(ControlledEntityImpl& controlledEntity) noexcept;
 	static void validateEntityModel(ControlledEntityImpl& controlledEntity) noexcept;
