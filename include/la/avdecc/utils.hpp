@@ -44,6 +44,10 @@
 #include <vector>
 #include <mutex>
 
+#if !defined(__GNUC__) || __GNUC__ >= 10 /* <version> is not present in earier versions of gcc (not sure which version exactly, using 10 here) */
+#	include <version>
+#endif
+
 #if __cpp_lib_filesystem >= 201703L
 #	define LA_AVDECC_USES_STD_FILESYSTEM
 #	include <filesystem>
