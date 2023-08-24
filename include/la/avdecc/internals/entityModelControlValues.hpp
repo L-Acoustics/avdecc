@@ -283,6 +283,7 @@ enum class ControlValuesValidationResult
 	CurrentValueNotMultipleOfStep, /**< 'currentValue' is not a multiple of 'step' */
 	CurrentValueNotInOptions, /**< 'currentValue' is not in 'options' */
 	CurrentValueNotNullTerminated, /**< 'currentValue' is not null terminated */
+	InvalidPackedValues = 98, /**< Packed values are invalid */
 	NotSupported = 99, /**< Validation not supported for this ControlValueType */
 };
 

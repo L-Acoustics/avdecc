@@ -131,42 +131,49 @@ struct LinearValuesPayloadTraits : BaseValuesPayloadTraits<StaticValueType, Dyna
 
 	static std::tuple<entity::model::ControlValuesValidationResult, std::string> validateControlValues(entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) noexcept
 	{
-		using value_size = typename DynamicValueType::control_value_details_traits::size_type;
-
-		auto pos = decltype(std::declval<decltype(staticValues)>().size()){ 0u };
-
-		auto const staticLinearValues = staticValues.getValues<StaticValueType>(); // We have to store the copy or it will go out of scope if using it directly in the range-based loop
-		auto const dynamicLinearValues = dynamicValues.getValues<DynamicValueType>(); // We have to store the copy or it will go out of scope
-
-		for (auto const& staticValue : staticLinearValues.getValues())
+		try
 		{
-			auto const& dynamicValue = dynamicLinearValues.getValues()[pos];
+			using value_size = typename DynamicValueType::control_value_details_traits::size_type;
 
-			// Check lower bound
-			if (dynamicValue.currentValue < staticValue.minimum)
+			auto pos = decltype(std::declval<decltype(staticValues)>().size()){ 0u };
+
+			auto const staticLinearValues = staticValues.getValues<StaticValueType>(); // We have to store the copy or it will go out of scope if using it directly in the range-based loop
+			auto const dynamicLinearValues = dynamicValues.getValues<DynamicValueType>(); // We have to store the copy or it will go out of scope
+
+			for (auto const& staticValue : staticLinearValues.getValues())
 			{
-				return std::make_tuple(entity::model::ControlValuesValidationResult::CurrentValueBelowMinimum, "DynamicValue " + std::to_string(pos) + " is out of bounds (lower than minimum value of " + std::to_string(utils::forceNumeric(staticValue.minimum)) + "): " + std::to_string(utils::forceNumeric(dynamicValue.currentValue)));
-			}
-			// Check upper bound
-			if (dynamicValue.currentValue > staticValue.maximum)
-			{
-				return std::make_tuple(entity::model::ControlValuesValidationResult::CurrentValueAboveMaximum, "DynamicValue " + std::to_string(pos) + " is out of bounds (greater than maximum value of " + std::to_string(utils::forceNumeric(staticValue.maximum)) + "): " + std::to_string(utils::forceNumeric(dynamicValue.currentValue)));
-			}
-			// Check step
-			if (staticValue.step != value_size{ 0 })
-			{
-				if constexpr (std::is_integral_v<value_size>)
+				auto const& dynamicValue = dynamicLinearValues.getValues()[pos];
+
+				// Check lower bound
+				if (dynamicValue.currentValue < staticValue.minimum)
 				{
-					auto const adjustedValue = static_cast<value_size>(dynamicValue.currentValue - staticValue.minimum);
-					if ((adjustedValue % staticValue.step) != 0)
+					return std::make_tuple(entity::model::ControlValuesValidationResult::CurrentValueBelowMinimum, "DynamicValue " + std::to_string(pos) + " is out of bounds (lower than minimum value of " + std::to_string(utils::forceNumeric(staticValue.minimum)) + "): " + std::to_string(utils::forceNumeric(dynamicValue.currentValue)));
+				}
+				// Check upper bound
+				if (dynamicValue.currentValue > staticValue.maximum)
+				{
+					return std::make_tuple(entity::model::ControlValuesValidationResult::CurrentValueAboveMaximum, "DynamicValue " + std::to_string(pos) + " is out of bounds (greater than maximum value of " + std::to_string(utils::forceNumeric(staticValue.maximum)) + "): " + std::to_string(utils::forceNumeric(dynamicValue.currentValue)));
+				}
+				// Check step
+				if (staticValue.step != value_size{ 0 })
+				{
+					if constexpr (std::is_integral_v<value_size>)
 					{
-						return std::make_tuple(entity::model::ControlValuesValidationResult::CurrentValueNotMultipleOfStep, "DynamicValue " + std::to_string(pos) + " is not a multiple of step: " + std::to_string(utils::forceNumeric(dynamicValue.currentValue)));
+						auto const adjustedValue = static_cast<value_size>(dynamicValue.currentValue - staticValue.minimum);
+						if ((adjustedValue % staticValue.step) != 0)
+						{
+							return std::make_tuple(entity::model::ControlValuesValidationResult::CurrentValueNotMultipleOfStep, "DynamicValue " + std::to_string(pos) + " is not a multiple of step: " + std::to_string(utils::forceNumeric(dynamicValue.currentValue)));
+						}
 					}
 				}
+				++pos;
 			}
-			++pos;
+			return std::make_tuple(entity::model::ControlValuesValidationResult::Valid, "");
 		}
-		return std::make_tuple(entity::model::ControlValuesValidationResult::Valid, "");
+		catch (...)
+		{
+			return std::make_tuple(entity::model::ControlValuesValidationResult::InvalidPackedValues, "");
+		}
 	}
 };
 
@@ -265,24 +272,31 @@ struct SelectorValuePayloadTraits : BaseValuesPayloadTraits<StaticValueType, Dyn
 
 	static std::tuple<entity::model::ControlValuesValidationResult, std::string> validateControlValues(entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) noexcept
 	{
-		auto const& staticSelectorValue = staticValues.getValues<StaticValueType>();
-		auto const& dynamicSelectorValue = dynamicValues.getValues<DynamicValueType>();
-		auto const dynamicValue = dynamicSelectorValue.currentValue;
-
-		// Check that the current dynamic value is in the list of possible options
-		if (std::find(staticSelectorValue.options.begin(), staticSelectorValue.options.end(), dynamicValue) == staticSelectorValue.options.end())
+		try
 		{
-			if constexpr (std::is_same_v<SizeType, entity::model::LocalizedStringReference>)
-			{
-				return std::make_tuple(entity::model::ControlValuesValidationResult::CurrentValueNotInOptions, "DynamicValue " + std::to_string(utils::forceNumeric(dynamicValue.getValue())) + " is not in the list of possible values");
-			}
-			else
-			{
-				return std::make_tuple(entity::model::ControlValuesValidationResult::CurrentValueNotInOptions, "DynamicValue " + std::to_string(utils::forceNumeric(dynamicValue)) + " is not in the list of possible values");
-			}
-		}
+			auto const& staticSelectorValue = staticValues.getValues<StaticValueType>();
+			auto const& dynamicSelectorValue = dynamicValues.getValues<DynamicValueType>();
+			auto const dynamicValue = dynamicSelectorValue.currentValue;
 
-		return std::make_tuple(entity::model::ControlValuesValidationResult::Valid, "");
+			// Check that the current dynamic value is in the list of possible options
+			if (std::find(staticSelectorValue.options.begin(), staticSelectorValue.options.end(), dynamicValue) == staticSelectorValue.options.end())
+			{
+				if constexpr (std::is_same_v<SizeType, entity::model::LocalizedStringReference>)
+				{
+					return std::make_tuple(entity::model::ControlValuesValidationResult::CurrentValueNotInOptions, "DynamicValue " + std::to_string(utils::forceNumeric(dynamicValue.getValue())) + " is not in the list of possible values");
+				}
+				else
+				{
+					return std::make_tuple(entity::model::ControlValuesValidationResult::CurrentValueNotInOptions, "DynamicValue " + std::to_string(utils::forceNumeric(dynamicValue)) + " is not in the list of possible values");
+				}
+			}
+
+			return std::make_tuple(entity::model::ControlValuesValidationResult::Valid, "");
+		}
+		catch (...)
+		{
+			return std::make_tuple(entity::model::ControlValuesValidationResult::InvalidPackedValues, "");
+		}
 	}
 };
 
@@ -387,40 +401,47 @@ struct ArrayValuesPayloadTraits : BaseValuesPayloadTraits<StaticValueType, Dynam
 
 	static std::tuple<entity::model::ControlValuesValidationResult, std::string> validateControlValues(entity::model::ControlValues const& staticValues, entity::model::ControlValues const& dynamicValues) noexcept
 	{
-		using value_size = typename DynamicValueType::control_value_details_traits::size_type;
-
-		auto pos = decltype(std::declval<decltype(staticValues)>().size()){ 0u };
-
-		auto const& staticArrayValue = staticValues.getValues<StaticValueType>();
-		auto const dynamicArrayValues = dynamicValues.getValues<DynamicValueType>(); // We have to store the copy or it will go out of scope
-
-		for (auto const& dynamicValue : dynamicArrayValues.currentValues)
+		try
 		{
-			// Check lower bound
-			if (dynamicValue < staticArrayValue.minimum)
+			using value_size = typename DynamicValueType::control_value_details_traits::size_type;
+
+			auto pos = decltype(std::declval<decltype(staticValues)>().size()){ 0u };
+
+			auto const& staticArrayValue = staticValues.getValues<StaticValueType>();
+			auto const dynamicArrayValues = dynamicValues.getValues<DynamicValueType>(); // We have to store the copy or it will go out of scope
+
+			for (auto const& dynamicValue : dynamicArrayValues.currentValues)
 			{
-				return std::make_tuple(entity::model::ControlValuesValidationResult::CurrentValueBelowMinimum, "DynamicValue " + std::to_string(pos) + " is out of bounds (lower than minimum value of " + std::to_string(utils::forceNumeric(staticArrayValue.minimum)) + "): " + std::to_string(utils::forceNumeric(dynamicValue)));
-			}
-			// Check upper bound
-			if (dynamicValue > staticArrayValue.maximum)
-			{
-				return std::make_tuple(entity::model::ControlValuesValidationResult::CurrentValueAboveMaximum, "DynamicValue " + std::to_string(pos) + " is out of bounds (greater than maximum value of " + std::to_string(utils::forceNumeric(staticArrayValue.maximum)) + "): " + std::to_string(utils::forceNumeric(dynamicValue)));
-			}
-			// Check step
-			if (staticArrayValue.step != value_size{ 0 })
-			{
-				if constexpr (std::is_integral_v<value_size>)
+				// Check lower bound
+				if (dynamicValue < staticArrayValue.minimum)
 				{
-					auto const adjustedValue = static_cast<value_size>(dynamicValue - staticArrayValue.minimum);
-					if ((adjustedValue % staticArrayValue.step) != 0)
+					return std::make_tuple(entity::model::ControlValuesValidationResult::CurrentValueBelowMinimum, "DynamicValue " + std::to_string(pos) + " is out of bounds (lower than minimum value of " + std::to_string(utils::forceNumeric(staticArrayValue.minimum)) + "): " + std::to_string(utils::forceNumeric(dynamicValue)));
+				}
+				// Check upper bound
+				if (dynamicValue > staticArrayValue.maximum)
+				{
+					return std::make_tuple(entity::model::ControlValuesValidationResult::CurrentValueAboveMaximum, "DynamicValue " + std::to_string(pos) + " is out of bounds (greater than maximum value of " + std::to_string(utils::forceNumeric(staticArrayValue.maximum)) + "): " + std::to_string(utils::forceNumeric(dynamicValue)));
+				}
+				// Check step
+				if (staticArrayValue.step != value_size{ 0 })
+				{
+					if constexpr (std::is_integral_v<value_size>)
 					{
-						return std::make_tuple(entity::model::ControlValuesValidationResult::CurrentValueNotMultipleOfStep, "DynamicValue " + std::to_string(pos) + " is not a multiple of step: " + std::to_string(utils::forceNumeric(dynamicValue)));
+						auto const adjustedValue = static_cast<value_size>(dynamicValue - staticArrayValue.minimum);
+						if ((adjustedValue % staticArrayValue.step) != 0)
+						{
+							return std::make_tuple(entity::model::ControlValuesValidationResult::CurrentValueNotMultipleOfStep, "DynamicValue " + std::to_string(pos) + " is not a multiple of step: " + std::to_string(utils::forceNumeric(dynamicValue)));
+						}
 					}
 				}
+				++pos;
 			}
-			++pos;
+			return std::make_tuple(entity::model::ControlValuesValidationResult::Valid, "");
 		}
-		return std::make_tuple(entity::model::ControlValuesValidationResult::Valid, "");
+		catch (...)
+		{
+			return std::make_tuple(entity::model::ControlValuesValidationResult::InvalidPackedValues, "");
+		}
 	}
 };
 
@@ -538,26 +559,33 @@ struct control_values_payload_traits<entity::model::ControlValueType::Type::Cont
 
 	static std::tuple<entity::model::ControlValuesValidationResult, std::string> validateControlValues(entity::model::ControlValues const& /*staticValues*/, entity::model::ControlValues const& dynamicValues) noexcept
 	{
-		// Check for trailing NULL character
-		auto utf8Values = dynamicValues.getValues<entity::model::UTF8StringValueDynamic>();
-		auto constexpr nullCharacter = decltype(utf8Values)::value_type{ 0u };
-
-		auto foundNullChar = false;
-		for (auto const c : utf8Values.currentValue)
+		try
 		{
-			if (c == nullCharacter)
+			// Check for trailing NULL character
+			auto utf8Values = dynamicValues.getValues<entity::model::UTF8StringValueDynamic>();
+			auto constexpr nullCharacter = decltype(utf8Values)::value_type{ 0u };
+
+			auto foundNullChar = false;
+			for (auto const c : utf8Values.currentValue)
 			{
-				foundNullChar = true;
-				break;
+				if (c == nullCharacter)
+				{
+					foundNullChar = true;
+					break;
+				}
 			}
-		}
 
-		if (!foundNullChar)
+			if (!foundNullChar)
+			{
+				return std::make_tuple(entity::model::ControlValuesValidationResult::CurrentValueNotNullTerminated, "UTF-8 string is not NULL terminated (Clause 7.3.5.2.4)");
+			}
+
+			return std::make_tuple(entity::model::ControlValuesValidationResult::Valid, "");
+		}
+		catch (...)
 		{
-			return std::make_tuple(entity::model::ControlValuesValidationResult::CurrentValueNotNullTerminated, "UTF-8 string is not NULL terminated (Clause 7.3.5.2.4)");
+			return std::make_tuple(entity::model::ControlValuesValidationResult::InvalidPackedValues, "");
 		}
-
-		return std::make_tuple(entity::model::ControlValuesValidationResult::Valid, "");
 	}
 };
 

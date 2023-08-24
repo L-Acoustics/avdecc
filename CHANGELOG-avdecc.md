@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - [Executor name can be provided when creating an EndStation](https://github.com/L-Acoustics/avdecc/issues/132)
 - *entity::model::validateControlValues* now returns an enum value as well as an error message
 
+### Fixed
+- Crash when unpacking vendor specific control values
+
 ## [3.4.1] - 2023-01-11
 
 ## [3.4.0] - 2023-01-05
