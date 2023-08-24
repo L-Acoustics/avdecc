@@ -589,7 +589,7 @@ TEST(AemPayloads, DeserializeReadControlDescriptorResponse_LinearUInt8)
 	auto const payload = la::avdecc::protocol::AemAecpdu::Payload{ ser.data(), ser.usedBytes() };
 	auto descriptor = la::avdecc::entity::model::ControlDescriptor{};
 	ASSERT_NO_THROW(descriptor = la::avdecc::protocol::aemPayload::deserializeReadControlDescriptorResponse(payload, 8u, static_cast<la::avdecc::protocol::AemAecpStatus>(la::avdecc::protocol::AemAecpStatus::Success)););
-	ASSERT_FALSE(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic).has_value());
+	ASSERT_EQ(la::avdecc::entity::model::ControlValuesValidationResult::Valid, std::get<0>(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic)));
 
 	try
 	{
@@ -628,7 +628,7 @@ TEST(AemPayloads, DeserializeReadControlDescriptorResponse_ArrayInt8)
 	auto const payload = la::avdecc::protocol::AemAecpdu::Payload{ ser.data(), ser.usedBytes() };
 	auto descriptor = la::avdecc::entity::model::ControlDescriptor{};
 	ASSERT_NO_THROW(descriptor = la::avdecc::protocol::aemPayload::deserializeReadControlDescriptorResponse(payload, 8u, static_cast<la::avdecc::protocol::AemAecpStatus>(la::avdecc::protocol::AemAecpStatus::Success)););
-	ASSERT_FALSE(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic).has_value());
+	ASSERT_EQ(la::avdecc::entity::model::ControlValuesValidationResult::Valid, std::get<0>(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic)));
 
 	try
 	{
@@ -667,7 +667,7 @@ TEST(AemPayloads, DeserializeReadControlDescriptorResponse_ArrayUInt32)
 	auto const payload = la::avdecc::protocol::AemAecpdu::Payload{ ser.data(), ser.usedBytes() };
 	auto descriptor = la::avdecc::entity::model::ControlDescriptor{};
 	ASSERT_NO_THROW(descriptor = la::avdecc::protocol::aemPayload::deserializeReadControlDescriptorResponse(payload, 8u, static_cast<la::avdecc::protocol::AemAecpStatus>(la::avdecc::protocol::AemAecpStatus::Success)););
-	ASSERT_FALSE(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic).has_value());
+	ASSERT_EQ(la::avdecc::entity::model::ControlValuesValidationResult::Valid, std::get<0>(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic)));
 
 	try
 	{
@@ -687,6 +687,7 @@ TEST(AemPayloads, DeserializeReadControlDescriptorResponse_ArrayUInt32)
 	}
 }
 
+#pragma message("TODO: Test each possible value returned by validateControlValues. Need an easy way to create ControlValues")
 TEST(AemPayloads, DeserializeReadControlDescriptorResponse_Utf8)
 {
 	auto ser = la::avdecc::Serializer<la::avdecc::protocol::AemAecpdu::MaximumPayloadBufferLength>{};
@@ -706,7 +707,7 @@ TEST(AemPayloads, DeserializeReadControlDescriptorResponse_Utf8)
 	auto const payload = la::avdecc::protocol::AemAecpdu::Payload{ ser.data(), ser.usedBytes() };
 	auto descriptor = la::avdecc::entity::model::ControlDescriptor{};
 	ASSERT_NO_THROW(descriptor = la::avdecc::protocol::aemPayload::deserializeReadControlDescriptorResponse(payload, 8u, static_cast<la::avdecc::protocol::AemAecpStatus>(la::avdecc::protocol::AemAecpStatus::Success)););
-	ASSERT_FALSE(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic).has_value());
+	ASSERT_EQ(la::avdecc::entity::model::ControlValuesValidationResult::Valid, std::get<0>(la::avdecc::entity::model::validateControlValues(descriptor.valuesStatic, descriptor.valuesDynamic)));
 
 	try
 	{

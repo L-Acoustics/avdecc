@@ -842,10 +842,10 @@ TEST(Controller, ValidControlValues)
 		ASSERT_TRUE(!staticValues.areDynamicValues()) << "VirtualEntity should have static values in its ControlNode";
 
 		// Expect to pass ControlValues validation with a value set to minimum
-		EXPECT_TRUE(c.validateControlValues(EntityID, ControlIndex, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{ { { 0u } } } }));
+		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::Valid, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{ { { 0u } } } }));
 
 		// Expect to pass ControlValues validation with a value set to maximum
-		EXPECT_TRUE(c.validateControlValues(EntityID, ControlIndex, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{ { { 255u } } } }));
+		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::Valid, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{ { { 255u } } } }));
 	}
 	catch (la::avdecc::controller::ControlledEntity::Exception const&)
 	{
@@ -886,19 +886,19 @@ TEST(Controller, InvalidControlValues)
 		ASSERT_TRUE(!staticValues.areDynamicValues()) << "VirtualEntity should have static values in its ControlNode";
 
 		// Expect to pass ControlValues validation with non-initialized dynamic values (might be an unknown type of ControlValues)
-		EXPECT_TRUE(c.validateControlValues(EntityID, ControlIndex, staticValues.getType(), staticValues, {}));
+		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::InvalidValues, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, {}));
 
 		// Expect to not pass ControlValues validation with static values instead of dynamic values
-		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueStatic<std::uint8_t>>{} }));
+		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::InvalidValues, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueStatic<std::uint8_t>>{} }));
 
 		// Expect to not pass ControlValues validation with a different type of dynamic values
-		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::int8_t>>{} }));
+		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::InvalidValues, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::int8_t>>{} }));
 
 		// Expect to not pass ControlValues validation with a different count of values
-		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{} }));
+		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::InvalidValues, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{} }));
 
 		// Expect to not pass ControlValues validation with a value not multiple of Step for LinearValues
-		EXPECT_FALSE(c.validateControlValues(EntityID, ControlIndex, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{ { { 1u } } } }));
+		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::InvalidValues, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{ { { 1u } } } }));
 
 		// Expect to not pass ControlValues validation with a value outside bounds // TODO: Cannot test with an IDENTIFY Control, have to create another Control
 	}
