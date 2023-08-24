@@ -110,6 +110,7 @@ public:
 	struct Diagnostics
 	{
 		bool redundancyWarning{ false }; /** Flag indicating a Milan redundant device has both interfaces connected to the same network */
+		std::set<entity::model::ControlIndex> controlCurrentValueOutOfBounds{}; /** List of Controls whose current value is outside the specified min-max range */
 		std::set<entity::model::StreamIndex> streamInputOverLatency{}; /** List of StreamInput whose MSRP Latency is greater than Talker's Presentation Time */
 	};
 

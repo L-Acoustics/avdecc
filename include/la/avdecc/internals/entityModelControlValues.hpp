@@ -32,6 +32,7 @@
 #include "exports.hpp"
 
 #include <optional>
+#include <tuple>
 #include <array>
 #if !defined(__GNUC__) || __GNUC__ >= 10 /* <version> is not present in earier versions of gcc (not sure which version exactly, using 10 here) */
 #	include <version>
@@ -268,8 +269,25 @@ struct LA_AVDECC_TYPE_INFO_EXPORT UTF8StringValueDynamic
 	Values currentValue{};
 };
 
+enum class ControlValuesValidationResult
+{
+	Valid,
+	NoStaticValues, /**< static values not initialized */
+	WrongStaticValuesType, /**< static values of incorrect type (ie. dynamic) */
+	NoDynamicValues, /**< dynamic values not initialized */
+	WrongDynamicValuesType, /**< dynamic values of incorrect type (ie. static) */
+	StaticDynamicTypeMismatch, /**< Type mismatch between static and dynamic values */
+	StaticDynamicCountMismatch, /**< Count mismatch between static and dynamic values */
+	CurrentValueBelowMinimum, /**< 'currentValue' is below 'minimum' */
+	CurrentValueAboveMaximum, /**< 'currentValue' is above 'maximum' */
+	CurrentValueNotMultipleOfStep, /**< 'currentValue' is not a multiple of 'step' */
+	CurrentValueNotInOptions, /**< 'currentValue' is not in 'options' */
+	CurrentValueNotNullTerminated, /**< 'currentValue' is not null terminated */
+	NotSupported = 99, /**< Validation not supported for this ControlValueType */
+};
+
 LA_AVDECC_API std::optional<ControlValues> LA_AVDECC_CALL_CONVENTION unpackDynamicControlValues(MemoryBuffer const& packedControlValues, ControlValueType::Type const valueType, std::uint16_t const numberOfValues) noexcept;
-LA_AVDECC_API std::optional<std::string> LA_AVDECC_CALL_CONVENTION validateControlValues(ControlValues const& staticValues, ControlValues const& dynamicValues) noexcept;
+LA_AVDECC_API std::tuple<ControlValuesValidationResult, std::string> LA_AVDECC_CALL_CONVENTION validateControlValues(ControlValues const& staticValues, ControlValues const& dynamicValues) noexcept;
 
 } // namespace model
 } // namespace entity
