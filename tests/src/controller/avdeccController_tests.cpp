@@ -858,12 +858,11 @@ TEST(Controller, InvalidControlValues)
 	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
 	// Load entity
 	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
-	auto const [error, message] = controller->loadVirtualEntityFromJson("data/SimpleEntity.json", flags);
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/ControlValueError.json", flags);
 	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
 	EXPECT_STREQ("", message.c_str());
 
 	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
-	auto constexpr ControlIndex = la::avdecc::entity::model::ControlIndex{ 0u };
 
 	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
 	auto& c = static_cast<la::avdecc::controller::ControllerImpl&>(*controller);
@@ -874,10 +873,12 @@ TEST(Controller, InvalidControlValues)
 	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
 	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
 
+	// Get ControlNode.0 (Type: Identify)
 	try
 	{
-		// Get ControlNode
+		auto constexpr ControlIndex = la::avdecc::entity::model::ControlIndex{ 0u };
 		auto const& controlNode = e.getControlNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, ControlIndex);
+		ASSERT_EQ(la::avdecc::utils::to_integral(la::avdecc::entity::model::StandardControlType::Identify), controlNode.staticModel.controlType.getValue()) << "VirtualEntity should have Identify type in its ControlNode";
 		auto const& staticValues = controlNode.staticModel.values;
 
 		ASSERT_EQ(1u, staticValues.size()) << "VirtualEntity should have 1 value in its ControlNode";
@@ -885,22 +886,83 @@ TEST(Controller, InvalidControlValues)
 		ASSERT_TRUE(!!staticValues) << "VirtualEntity should have valid values in its ControlNode";
 		ASSERT_TRUE(!staticValues.areDynamicValues()) << "VirtualEntity should have static values in its ControlNode";
 
-		// Expect to pass ControlValues validation with non-initialized dynamic values (might be an unknown type of ControlValues)
+		// Expect to have InvalidValues validation result with non-initialized dynamic values (might be an unknown type of ControlValues)
 		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::InvalidValues, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, {}));
 
-		// Expect to not pass ControlValues validation with static values instead of dynamic values
+		// Expect to have InvalidValues validation result with static values instead of dynamic values
 		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::InvalidValues, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueStatic<std::uint8_t>>{} }));
 
-		// Expect to not pass ControlValues validation with a different type of dynamic values
+		// Expect to have InvalidValues validation result with a different type of dynamic values
 		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::InvalidValues, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::int8_t>>{} }));
 
-		// Expect to not pass ControlValues validation with a different count of values
+		// Expect to have InvalidValues validation result with a different count of values
 		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::InvalidValues, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{} }));
 
-		// Expect to not pass ControlValues validation with a value not multiple of Step for LinearValues
+		// Expect to have InvalidValues validation result with a value not multiple of Step for LinearValues
 		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::InvalidValues, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, la::avdecc::entity::model::ControlValues{ la::avdecc::entity::model::LinearValues<la::avdecc::entity::model::LinearValueDynamic<std::uint8_t>>{ { { 1u } } } }));
+	}
+	catch (la::avdecc::controller::ControlledEntity::Exception const&)
+	{
+		ASSERT_FALSE(true) << "ControlNode not found";
+	}
 
-		// Expect to not pass ControlValues validation with a value outside bounds // TODO: Cannot test with an IDENTIFY Control, have to create another Control
+	// Get ControlNode.1 (Type: FanStatus)
+	try
+	{
+		auto constexpr ControlIndex = la::avdecc::entity::model::ControlIndex{ 1u };
+		auto const& controlNode = e.getControlNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, ControlIndex);
+		ASSERT_EQ(la::avdecc::utils::to_integral(la::avdecc::entity::model::StandardControlType::FanStatus), controlNode.staticModel.controlType.getValue()) << "VirtualEntity should have Identify type in its ControlNode";
+		auto const& staticValues = controlNode.staticModel.values;
+
+		ASSERT_EQ(1u, staticValues.size()) << "VirtualEntity should have 1 value in its ControlNode";
+		ASSERT_EQ(la::avdecc::entity::model::ControlValueType::Type::ControlLinearUInt8, staticValues.getType()) << "VirtualEntity should have ControlLinearUInt8 type in its ControlNode";
+		ASSERT_TRUE(!!staticValues) << "VirtualEntity should have valid values in its ControlNode";
+		ASSERT_TRUE(!staticValues.areDynamicValues()) << "VirtualEntity should have static values in its ControlNode";
+
+		// Expect to have CurrentValueOutOfRange validation result with a value outside bounds
+		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::CurrentValueOutOfRange, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, controlNode.dynamicModel.values));
+	}
+	catch (la::avdecc::controller::ControlledEntity::Exception const&)
+	{
+		ASSERT_FALSE(true) << "ControlNode not found";
+	}
+
+	// Get ControlNode.2 (Type: VendorSpecific)
+	try
+	{
+		auto constexpr ControlIndex = la::avdecc::entity::model::ControlIndex{ 2u };
+		auto const& controlNode = e.getControlNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, ControlIndex);
+		ASSERT_EQ(la::avdecc::UniqueIdentifier{ 0x480BB2FFFED40000 }, controlNode.staticModel.controlType) << "VirtualEntity should have Identify type in its ControlNode";
+		auto const& staticValues = controlNode.staticModel.values;
+
+		ASSERT_EQ(1u, staticValues.size()) << "VirtualEntity should have 1 value in its ControlNode";
+		ASSERT_EQ(la::avdecc::entity::model::ControlValueType::Type::ControlArrayUInt8, staticValues.getType()) << "VirtualEntity should have ControlLinearUInt8 type in its ControlNode";
+		ASSERT_TRUE(!!staticValues) << "VirtualEntity should have valid values in its ControlNode";
+		ASSERT_TRUE(!staticValues.areDynamicValues()) << "VirtualEntity should have static values in its ControlNode";
+
+		// Expect to have CurrentValueOutOfRange validation result with a value outside bounds
+		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::CurrentValueOutOfRange, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, controlNode.dynamicModel.values));
+	}
+	catch (la::avdecc::controller::ControlledEntity::Exception const&)
+	{
+		ASSERT_FALSE(true) << "ControlNode not found";
+	}
+
+	// Get ControlNode.3 (Type: VendorSpecific, Subnode of AudioUnit)
+	try
+	{
+		auto constexpr ControlIndex = la::avdecc::entity::model::ControlIndex{ 3u };
+		auto const& controlNode = e.getControlNode(la::avdecc::entity::model::ConfigurationIndex{ 0u }, ControlIndex);
+		ASSERT_EQ(la::avdecc::UniqueIdentifier{ 0x480BB2FFFED40000 }, controlNode.staticModel.controlType) << "VirtualEntity should have Identify type in its ControlNode";
+		auto const& staticValues = controlNode.staticModel.values;
+
+		ASSERT_EQ(1u, staticValues.size()) << "VirtualEntity should have 1 value in its ControlNode";
+		ASSERT_EQ(la::avdecc::entity::model::ControlValueType::Type::ControlArrayUInt8, staticValues.getType()) << "VirtualEntity should have ControlLinearUInt8 type in its ControlNode";
+		ASSERT_TRUE(!!staticValues) << "VirtualEntity should have valid values in its ControlNode";
+		ASSERT_TRUE(!staticValues.areDynamicValues()) << "VirtualEntity should have static values in its ControlNode";
+
+		// Expect to have CurrentValueOutOfRange validation result with a value outside bounds
+		EXPECT_EQ(la::avdecc::controller::ControllerImpl::DynamicControlValuesValidationResult::CurrentValueOutOfRange, c.validateControlValues(EntityID, ControlIndex, controlNode.staticModel.controlType, staticValues.getType(), staticValues, controlNode.dynamicModel.values));
 	}
 	catch (la::avdecc::controller::ControlledEntity::Exception const&)
 	{

@@ -3365,6 +3365,12 @@ ControllerImpl::DynamicControlValuesValidationResult ControllerImpl::validateCon
 					LOG_CONTROLLER_DEBUG(entityID, "Warning for DynamicValues for ControlDescriptor at Index {}: {}", controlIndex, errMessage);
 					return DynamicControlValuesValidationResult::CurrentValueOutOfRange;
 				default:
+					// Also return CurrentValueOutOfRange for non-standard controls
+					if (controlType.getVendorID() != entity::model::StandardControlTypeVendorID)
+					{
+						LOG_CONTROLLER_DEBUG(entityID, "Warning for DynamicValues for Non-Standard ControlDescriptor at Index {}: {}", controlIndex, errMessage);
+						return DynamicControlValuesValidationResult::CurrentValueOutOfRange;
+					}
 					break;
 			}
 		}
