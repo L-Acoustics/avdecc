@@ -3558,7 +3558,6 @@ void ControllerImpl::validateControlDescriptors(ControlledEntityImpl& controlled
 	};
 
 	auto const& e = controlledEntity.getEntity();
-	auto const entityID = e.getEntityID();
 	auto const isAemSupported = e.getEntityCapabilities().test(entity::EntityCapability::AemSupported);
 
 	// If AEM is supported
