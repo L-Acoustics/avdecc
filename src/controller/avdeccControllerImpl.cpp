@@ -45,6 +45,7 @@
 #include <unordered_set>
 #include <map>
 #include <utility>
+#include <set>
 
 namespace la
 {
@@ -3384,6 +3385,178 @@ ControllerImpl::DynamicControlValuesValidationResult ControllerImpl::validateCon
 
 void ControllerImpl::validateControlDescriptors(ControlledEntityImpl& controlledEntity) noexcept
 {
+	class ControlDescriptorValidationVisitor : public model::DefaultedEntityModelVisitor
+	{
+	public:
+		ControlDescriptorValidationVisitor(ControlledEntityImpl& controlledEntity) noexcept
+			: _controlledEntity{ controlledEntity }
+			, _entity{ _controlledEntity.getEntity() }
+			, _entityID{ _entity.getEntityID() }
+		{
+			if (_entity.getEntityCapabilities().test(entity::EntityCapability::AemIdentifyControlIndexValid))
+			{
+				_adpIdentifyControlIndex = _entity.getIdentifyControlIndex();
+				if (!_adpIdentifyControlIndex)
+				{
+					LOG_CONTROLLER_WARN(_entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: CONTROL index not defined in ADP");
+					// Flag the entity as "Not fully IEEE1722.1 compliant"
+					removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+				}
+			}
+		}
+
+		void validate() const noexcept
+		{
+			// Check we found a valide Identify Control at either Configuration or Jack level, if ADP contains a valid Identify Control Index
+			if (_adpIdentifyControlIndex && !_foundADPIdentifyControlIndex)
+			{
+				LOG_CONTROLLER_WARN(_entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: No valid CONTROL at index {}", *_adpIdentifyControlIndex);
+				// Flag the entity as "Not fully IEEE1722.1 compliant"
+				removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			}
+		}
+
+		std::optional<entity::model::ControlIndex> getIdentifyControlIndex() const noexcept
+		{
+			// If ADP contains a valid Identify Control Index, use it
+			if (_foundADPIdentifyControlIndex)
+			{
+				return _adpIdentifyControlIndex;
+			}
+			if (!_controlIndices.empty())
+			{
+				// Right now, return the first Identify Control found
+				return *_controlIndices.begin();
+			}
+			return std::nullopt;
+		}
+
+		// Deleted compiler auto-generated methods
+		ControlDescriptorValidationVisitor(ControlDescriptorValidationVisitor const&) = delete;
+		ControlDescriptorValidationVisitor(ControlDescriptorValidationVisitor&&) = delete;
+		ControlDescriptorValidationVisitor& operator=(ControlDescriptorValidationVisitor const&) = delete;
+		ControlDescriptorValidationVisitor& operator=(ControlDescriptorValidationVisitor&&) = delete;
+
+	private:
+		static bool isIdentifyControl(model::ControlNode const& node) noexcept
+		{
+			return entity::model::StandardControlType::Identify == node.staticModel.controlType.getValue();
+		}
+
+		// Validate this is the Identify Control advertised by ADP and it is valid. Returns true if this is an Identify Control (valid or not), false otherwise
+		[[nodiscard]] bool validateAdpIdentifyControl(model::ControlNode const& node) noexcept
+		{
+			auto const controlIndex = node.descriptorIndex;
+
+			if (_adpIdentifyControlIndex && *_adpIdentifyControlIndex == controlIndex)
+			{
+				if (isIdentifyControl(node))
+				{
+					if (validateIdentifyControl(_controlledEntity, node))
+					{
+						_foundADPIdentifyControlIndex = true;
+						_controlIndices.insert(controlIndex);
+					}
+					// Note: No need to remove compatibility flag or log a warning in else statement, the validateIdentifyControl method already did it
+					return true;
+				}
+				else
+				{
+					LOG_CONTROLLER_WARN(_entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: ControlType should be IDENTIFY but is {}", entity::model::controlTypeToString(node.staticModel.controlType));
+					// Flag the entity as "Not fully IEEE1722.1 compliant"
+					removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+				}
+			}
+			return false;
+		}
+
+		void validateControl(model::ControlNode const& node, bool const checkIdentifyControl = true, bool const identifyAllowed = false) noexcept
+		{
+			auto const controlIndex = node.descriptorIndex;
+
+			// Check if we have an Identify Control (not already checked)
+			if (checkIdentifyControl && isIdentifyControl(node))
+			{
+				if (validateIdentifyControl(_controlledEntity, node))
+				{
+					if (identifyAllowed)
+					{
+						_controlIndices.insert(controlIndex);
+					}
+					else
+					{
+						LOG_CONTROLLER_WARN(_entityID, "ControlDescriptor at Index {} is a valid Identify Control but it's neither at CONFIGURATION nor JACK level", controlIndex);
+						// Flag the entity as "Not fully IEEE1722.1 compliant"
+						removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					}
+				}
+				// Note: No need to remove compatibility flag or log a warning in else statement, the validateIdentifyControl method already did it
+			}
+
+			// Validate ControlType
+			auto const controlType = node.staticModel.controlType;
+			if (!controlType.isValid())
+			{
+				LOG_CONTROLLER_WARN(_entityID, "control_type for CONTROL descriptor at index {} is not a valid EUI-64: {}", controlIndex, utils::toHexString(controlType));
+				// Flag the entity as "Not fully IEEE1722.1 compliant"
+				removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+			}
+
+			// Validate ControlValues
+			auto const validationResult = validateControlValues(_entityID, controlIndex, controlType, node.staticModel.controlValueType.getType(), node.staticModel.values, node.dynamicModel.values);
+			auto isOutOfBounds = false;
+			switch (validationResult)
+			{
+				case DynamicControlValuesValidationResult::InvalidValues:
+					// Flag the entity as "Not fully IEEE1722.1 compliant"
+					removeCompatibilityFlag(nullptr, _controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					break;
+				case DynamicControlValuesValidationResult::CurrentValueOutOfRange:
+					isOutOfBounds = true;
+					break;
+				default:
+					break;
+			}
+			updateControlCurrentValueOutOfBounds(nullptr, _controlledEntity, controlIndex, isOutOfBounds);
+		}
+
+		// model::DefaultedEntityModelVisitor overrides
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::JackNode const* const /*parent*/, model::ControlNode const& node) noexcept override
+		{
+			// Jack level, we need to validate ADP Identify Control Index if present and this index
+			auto const isIdentifyControl = validateAdpIdentifyControl(node);
+
+			// Validate the Control
+			validateControl(node, !isIdentifyControl, true);
+		}
+
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandGrandParent*/, model::AudioUnitNode const* const /*grandParent*/, model::StreamPortNode const* const /*parent*/, model::ControlNode const& node) noexcept override
+		{
+			// Validate the Control
+			validateControl(node);
+		}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*grandParent*/, model::AudioUnitNode const* const /*parent*/, model::ControlNode const& node) noexcept override
+		{
+			// Validate the Control
+			validateControl(node);
+		}
+		virtual void visit(ControlledEntity const* const /*entity*/, model::ConfigurationNode const* const /*parent*/, model::ControlNode const& node) noexcept override
+		{
+			// Configuration level, we need to validate ADP Identify Control Index if present and this index
+			auto const isIdentifyControl = validateAdpIdentifyControl(node);
+
+			// Validate the Control
+			validateControl(node, !isIdentifyControl, true);
+		}
+
+		ControlledEntityImpl& _controlledEntity;
+		entity::Entity& _entity;
+		UniqueIdentifier _entityID{};
+		std::optional<entity::model::ControlIndex> _adpIdentifyControlIndex{ std::nullopt };
+		std::set<entity::model::ControlIndex> _controlIndices{};
+		bool _foundADPIdentifyControlIndex{ false };
+	};
+
 	auto const& e = controlledEntity.getEntity();
 	auto const entityID = e.getEntityID();
 	auto const isAemSupported = e.getEntityCapabilities().test(entity::EntityCapability::AemSupported);
@@ -3391,112 +3564,21 @@ void ControllerImpl::validateControlDescriptors(ControlledEntityImpl& controlled
 	// If AEM is supported
 	if (isAemSupported && controlledEntity.hasAnyConfiguration())
 	{
-		// Validate Identify Control Descriptor
-		auto identifyControlIndex = std::optional<entity::model::ControlIndex>{ std::nullopt };
-		try
+		// Use a visitor to:
+		//  1/ Find an Identify Control Descriptor: must exist at Configuration or Jack level, if advertised in ADP. Otherwise just store the ControlIndex
+		//  2/ Validate all Control Descriptors
+		auto visitor = ControlDescriptorValidationVisitor{ controlledEntity };
+
+		// Run the visitor on the entity model
+		controlledEntity.accept(&visitor);
+
+		// Validate post-visitor checks
+		visitor.validate();
+
+		// If we found a valid Identify Control Descriptor, store it in the entity
+		if (auto const identifyControlIndex = visitor.getIdentifyControlIndex(); identifyControlIndex)
 		{
-#pragma message("TODO: When JackDecriptors will be implemented, search for Identify in Jacks as well")
-			auto const& configurationNode = controlledEntity.getCurrentConfigurationNode();
-			if (e.getEntityCapabilities().test(entity::EntityCapability::AemIdentifyControlIndexValid))
-			{
-				auto const indexOpt = e.getIdentifyControlIndex();
-				if (indexOpt)
-				{
-					auto const identifyIndex = *indexOpt;
-					if (auto const nodeIt = configurationNode.controls.find(identifyIndex); nodeIt != configurationNode.controls.end())
-					{
-						auto const& identifyControlNode = nodeIt->second;
-						auto const controlType = identifyControlNode.staticModel.controlType;
-						if (entity::model::StandardControlType::Identify == controlType.getValue())
-						{
-							if (validateIdentifyControl(controlledEntity, identifyControlNode))
-							{
-								identifyControlIndex = indexOpt;
-							}
-							// Note: No need to remove compatibility flag or log a warning, the validateIdentifyControl method will do it
-						}
-						else
-						{
-							LOG_CONTROLLER_WARN(entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: ControlType should be IDENTIFY but is {}", entity::model::controlTypeToString(controlType));
-							// Flag the entity as "Not fully IEEE1722.1 compliant"
-							removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
-						}
-					}
-					else
-					{
-						LOG_CONTROLLER_WARN(entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: No such CONTROL at index {}", identifyIndex);
-						// Flag the entity as "Not fully IEEE1722.1 compliant"
-						removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
-					}
-				}
-				else
-				{
-					LOG_CONTROLLER_WARN(entityID, "AEM_IDENTIFY_CONTROL_INDEX_VALID bit is set in ADP but ControlIndex is invalid: CONTROL index not defined in ADP");
-					// Flag the entity as "Not fully IEEE1722.1 compliant"
-					removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
-				}
-			}
-
-			// Validate Controls while searching for a valid Identify Control Descriptor
-			for (auto const& [controlIndex, controlNode] : configurationNode.controls)
-			{
-				auto const controlType = controlNode.staticModel.controlType;
-
-				// No ControlIndex in ADP (or not valid)
-				if (!identifyControlIndex)
-				{
-					if (entity::model::StandardControlType::Identify == controlType.getValue())
-					{
-						if (validateIdentifyControl(controlledEntity, controlNode))
-						{
-							identifyControlIndex = controlIndex;
-							break;
-						}
-					}
-				}
-
-				// Validate ControlType
-				if (!controlType.isValid())
-				{
-					LOG_CONTROLLER_WARN(entityID, "control_type for CONTROL descriptor at index {} is not a valid EUI-64: {}", controlIndex, utils::toHexString(controlType));
-					// Flag the entity as "Not fully IEEE1722.1 compliant"
-					removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
-				}
-
-				// Validate ControlValues
-				auto const validationResult = validateControlValues(entityID, controlIndex, controlType, controlNode.staticModel.controlValueType.getType(), controlNode.staticModel.values, controlNode.dynamicModel.values);
-				auto isOutOfBounds = false;
-				switch (validationResult)
-				{
-					case DynamicControlValuesValidationResult::InvalidValues:
-						// Flag the entity as "Not fully IEEE1722.1 compliant"
-						removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
-						break;
-					case DynamicControlValuesValidationResult::CurrentValueOutOfRange:
-						isOutOfBounds = true;
-						break;
-					default:
-						break;
-				}
-				updateControlCurrentValueOutOfBounds(nullptr, controlledEntity, controlIndex, isOutOfBounds);
-			}
-
-			// Found a valid Identify ControlIndex
-			if (identifyControlIndex)
-			{
-				// Register the Identify Control Index
-				controlledEntity.setIdentifyControlIndex(*identifyControlIndex);
-			}
-		}
-		catch (ControlledEntity::Exception const&)
-		{
-			LOG_CONTROLLER_WARN(entityID, "Invalid current CONFIGURATION descriptor");
-			// Flag the entity as "Not fully IEEE1722.1 compliant"
-			removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
-		}
-		catch (...)
-		{
-			AVDECC_ASSERT(false, "Unhandled exception");
+			controlledEntity.setIdentifyControlIndex(*identifyControlIndex);
 		}
 	}
 }
