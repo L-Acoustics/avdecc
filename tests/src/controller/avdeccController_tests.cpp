@@ -970,6 +970,307 @@ TEST(Controller, InvalidControlValues)
 	}
 }
 
+TEST(Controller, IdentifyAdvertisedButNoSuchIndex)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Create controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+
+	// Setup logging
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	// Load entity
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/IdentifyAdvertisedButNoSuchIndex.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+
+	// Entity should not be IEEE17221 compatible because of the invalid ControlIndex in the ADP advertise
+	EXPECT_FALSE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	// Entity should have a valid Identify Control Index, at index 0 (even though the Identify ControlIndex advertised in the ADP is invalid, there is a valid one at CONFIGURATION level)
+	ASSERT_TRUE(e.getIdentifyControlIndex().has_value());
+	EXPECT_EQ(la::avdecc::entity::model::ControlIndex{ 0u }, *e.getIdentifyControlIndex());
+}
+
+TEST(Controller, IdentifyAdvertisedButInvalid)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Create controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+
+	// Setup logging
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	// Load entity
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/IdentifyAdvertisedButInvalid.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+
+	// Entity should not be IEEE17221 compatible because of the invalid ControlIndex in the ADP advertise
+	EXPECT_FALSE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	// Entity should not have a valid Identify Control Index
+	EXPECT_FALSE(e.getIdentifyControlIndex().has_value());
+}
+
+TEST(Controller, IdentifyAdvertisedInAudioUnit)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Create controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+
+	// Setup logging
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	// Load entity
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/IdentifyAdvertisedInAudioUnit.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+
+	// Entity should not be IEEE17221 compatible because of the invalid ControlIndex in the ADP advertise
+	EXPECT_FALSE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	// Entity should not have a valid Identify Control Index
+	EXPECT_FALSE(e.getIdentifyControlIndex().has_value());
+}
+
+TEST(Controller, IdentifyAdvertisedInConfiguration)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Create controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+
+	// Setup logging
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	// Load entity
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/IdentifyAdvertisedInConfiguration.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+
+	// Entity should be IEEE17221 compatible
+	EXPECT_TRUE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	// Entity should have a valid Identify Control Index
+	EXPECT_TRUE(e.getIdentifyControlIndex().has_value());
+}
+
+TEST(Controller, IdentifyAdvertisedInJack)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Create controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+
+	// Setup logging
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	// Load entity
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/IdentifyAdvertisedInJack.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+
+	// Entity should be IEEE17221 compatible
+	EXPECT_TRUE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	// Entity should have a valid Identify Control Index
+	EXPECT_TRUE(e.getIdentifyControlIndex().has_value());
+}
+
+TEST(Controller, NotAdvertisedButFoundInConfiguration)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Create controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+
+	// Setup logging
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	// Load entity
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/NotAdvertisedButFoundInConfiguration.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+
+	// Entity should be IEEE17221 compatible
+	EXPECT_TRUE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	// Entity should have a valid Identify Control Index, at index 0
+	ASSERT_TRUE(e.getIdentifyControlIndex().has_value());
+	EXPECT_EQ(la::avdecc::entity::model::ControlIndex{ 0u }, *e.getIdentifyControlIndex());
+}
+
+TEST(Controller, NotAdvertisedButFoundInJack)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Create controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+
+	// Setup logging
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	// Load entity
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/NotAdvertisedButFoundInJack.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+
+	// Entity should be IEEE17221 compatible
+	EXPECT_TRUE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	// Entity should have a valid Identify Control Index, at index 1
+	ASSERT_TRUE(e.getIdentifyControlIndex().has_value());
+	EXPECT_EQ(la::avdecc::entity::model::ControlIndex{ 1u }, *e.getIdentifyControlIndex());
+}
+
+TEST(Controller, NotAdvertisedAndIncorrectlyFoundInAudioUnit)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Create controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+
+	// Setup logging
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	// Load entity
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/NotAdvertisedAndIncorrectlyFoundInAudioUnit.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+
+	// Entity should not be IEEE17221 compatible because of the invalid ControlIndex in the ADP advertise
+	EXPECT_FALSE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	// Entity should not have a valid Identify Control Index
+	EXPECT_FALSE(e.getIdentifyControlIndex().has_value());
+}
+
+TEST(Controller, InvalidAdvertiseButFoundInConfiguration)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Create controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+
+	// Setup logging
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	// Load entity
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/InvalidAdvertiseButFoundInConfiguration.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+
+	// Entity should not be IEEE17221 compatible because of the invalid ControlIndex in the ADP advertise
+	EXPECT_FALSE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	// Entity should have a valid Identify Control Index, at index 0
+	ASSERT_TRUE(e.getIdentifyControlIndex().has_value());
+	EXPECT_EQ(la::avdecc::entity::model::ControlIndex{ 0u }, *e.getIdentifyControlIndex());
+}
+
+TEST(Controller, InvalidAdvertiseButFoundInJack)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Create controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+
+	// Setup logging
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	// Load entity
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/InvalidAdvertiseButFoundInJack.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+
+	// Entity should not be IEEE17221 compatible because of the invalid ControlIndex in the ADP advertise
+	EXPECT_FALSE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	// Entity should have a valid Identify Control Index, at index 1
+	ASSERT_TRUE(e.getIdentifyControlIndex().has_value());
+	EXPECT_EQ(la::avdecc::entity::model::ControlIndex{ 1u }, *e.getIdentifyControlIndex());
+}
+
+TEST(Controller, InvalidAdvertiseAndIncorrectlyFoundInAudioUnit)
+{
+	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::IgnoreAEMSanityChecks, la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessCompatibility, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessMilan, la::avdecc::entity::model::jsonSerializer::Flag::ProcessState, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStatistics };
+	// Create controller
+	auto controller = la::avdecc::controller::Controller::create(la::avdecc::protocol::ProtocolInterface::Type::Virtual, "VirtualInterface", 0x0001, la::avdecc::UniqueIdentifier{}, "en", nullptr, std::nullopt, nullptr);
+
+	// Setup logging
+	auto obs = LogObserver{};
+	la::avdecc::logger::Logger::getInstance().setLevel(la::avdecc::logger::Level::Warn);
+	la::avdecc::logger::Logger::getInstance().registerObserver(&obs);
+
+	// Load entity
+	auto const [error, message] = controller->loadVirtualEntityFromJson("data/InvalidAdvertiseAndIncorrectlyFoundInAudioUnit.json", flags);
+	EXPECT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
+	EXPECT_STREQ("", message.c_str());
+
+	auto constexpr EntityID = la::avdecc::UniqueIdentifier{ 0x001B92FFFF000001 };
+
+	auto& e = const_cast<la::avdecc::controller::ControlledEntityImpl&>(static_cast<la::avdecc::controller::ControlledEntityImpl const&>(*controller->getControlledEntityGuard(EntityID)));
+
+	// Entity should not be IEEE17221 compatible because of the invalid ControlIndex in the ADP advertise
+	EXPECT_FALSE(e.getCompatibilityFlags().test(la::avdecc::controller::ControlledEntity::CompatibilityFlag::IEEE17221));
+
+	// Entity should not have a valid Identify Control Index
+	EXPECT_FALSE(e.getIdentifyControlIndex().has_value());
+}
 
 namespace
 {
