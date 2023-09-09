@@ -184,6 +184,7 @@ private:
 /* ************************************************************************** */
 static la::avdecc::bindings::HandleManager<la::avdecc::protocol::ProtocolInterface::UniquePointer> s_ProtocolInterfaceManager{};
 static la::avdecc::bindings::HandleManager<Observer*> s_ProtocolInterfaceObserverManager{};
+static std::map<LA_AVDECC_PROTOCOL_INTERFACE_HANDLE const, void*> s_ProtocolInterfaceApplicationDataMap{};
 
 LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_ProtocolInterface_getExecutorName(LA_AVDECC_PROTOCOL_INTERFACE_HANDLE const handle, avdecc_fixed_string_t const executorName)
 {
@@ -222,6 +223,7 @@ LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_error_t LA_AVDECC_BINDINGS_C_
 {
 	try
 	{
+		s_ProtocolInterfaceApplicationDataMap.erase(handle);
 		s_ProtocolInterfaceManager.destroyObject(handle);
 	}
 	catch (...)
@@ -710,6 +712,23 @@ LA_AVDECC_BINDINGS_C_API avdecc_bool_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_A
 	{
 		return avdecc_bool_false;
 	}
+}
+
+LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_error_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_ProtocolInterface_setApplicationData(LA_AVDECC_PROTOCOL_INTERFACE_HANDLE const handle, void* applicationData)
+{
+	if (!s_ProtocolInterfaceManager.contains(handle))
+	{
+		return static_cast<avdecc_protocol_interface_error_t>(avdecc_protocol_interface_error_invalid_protocol_interface_handle);
+	}
+
+	s_ProtocolInterfaceApplicationDataMap[handle] = applicationData;
+
+	return static_cast<avdecc_protocol_interface_error_t>(avdecc_protocol_interface_error_no_error);
+}
+
+LA_AVDECC_BINDINGS_C_API void* LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_ProtocolInterface_getApplicationData(LA_AVDECC_PROTOCOL_INTERFACE_HANDLE const handle)
+{
+	return s_ProtocolInterfaceApplicationDataMap[handle];
 }
 
 LA_AVDECC_BINDINGS_C_API avdecc_bool_t LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_ProtocolInterface_isSupportedProtocolInterfaceType(avdecc_protocol_interface_type_t const protocolInterfaceType)
