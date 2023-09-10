@@ -29,4 +29,13 @@
 #include <la/avdecc/internals/aggregateEntity.hpp>
 #include "la/avdecc/avdecc.h"
 
-la::avdecc::entity::AggregateEntity& getAggregateEntity(LA_AVDECC_LOCAL_ENTITY_HANDLE const handle);
+namespace la
+{
+namespace avdecc
+{
+namespace bindings
+{
+LA_AVDECC_API la::avdecc::entity::AggregateEntity& LA_AVDECC_CALL_CONVENTION getAggregateEntity(LA_AVDECC_LOCAL_ENTITY_HANDLE const handle);
+}
+} // namespace avdecc
+} // namespace la
