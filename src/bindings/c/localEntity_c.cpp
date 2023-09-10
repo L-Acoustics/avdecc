@@ -361,7 +361,7 @@ LA_AVDECC_BINDINGS_C_API avdecc_local_entity_error_t LA_AVDECC_BINDINGS_C_CALL_C
 				interfacesInfo.insert({ interfaceInfo->interface_index, la::avdecc::bindings::fromCToCpp::make_entity_interface_information(*interfaceInfo) });
 			}
 		}
-		auto& protocolInterface = getProtocolInterface(handle);
+		auto& protocolInterface = la::avdecc::bindings::getProtocolInterface(handle);
 		*createdLocalEntityHandle = s_AggregateEntityManager.createObject(&protocolInterface, commonInfo, interfacesInfo, nullptr, nullptr);
 
 		// Set delegate
@@ -2382,7 +2382,16 @@ LA_AVDECC_BINDINGS_C_API void* LA_AVDECC_BINDINGS_C_CALL_CONVENTION LA_AVDECC_Lo
 /* ************************************************************************** */
 /* LocalEntity private APIs                                                   */
 /* ************************************************************************** */
-la::avdecc::entity::AggregateEntity& getAggregateEntity(LA_AVDECC_LOCAL_ENTITY_HANDLE const handle)
+namespace la
+{
+namespace avdecc
+{
+namespace bindings
+{
+LA_AVDECC_API la::avdecc::entity::AggregateEntity& LA_AVDECC_CALL_CONVENTION getAggregateEntity(LA_AVDECC_LOCAL_ENTITY_HANDLE const handle)
 {
 	return s_AggregateEntityManager.getObject(handle);
 }
+} // namespace bindings
+} // namespace avdecc
+} // namespace la

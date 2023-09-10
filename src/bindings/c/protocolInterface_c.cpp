@@ -350,7 +350,7 @@ LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_error_t LA_AVDECC_BINDINGS_C_
 		auto& obj = s_ProtocolInterfaceManager.getObject(handle);
 		try
 		{
-			auto& localEntity = getAggregateEntity(localEntityHandle);
+			auto& localEntity = la::avdecc::bindings::getAggregateEntity(localEntityHandle);
 
 			return la::avdecc::bindings::fromCppToC::convertProtocolInterfaceErrorCode(obj.registerLocalEntity(localEntity));
 		}
@@ -372,7 +372,7 @@ LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_error_t LA_AVDECC_BINDINGS_C_
 		auto& obj = s_ProtocolInterfaceManager.getObject(handle);
 		try
 		{
-			auto& localEntity = getAggregateEntity(localEntityHandle);
+			auto& localEntity = la::avdecc::bindings::getAggregateEntity(localEntityHandle);
 
 			return la::avdecc::bindings::fromCppToC::convertProtocolInterfaceErrorCode(obj.unregisterLocalEntity(localEntity));
 		}
@@ -395,7 +395,7 @@ LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_error_t LA_AVDECC_BINDINGS_C_
 
 		try
 		{
-			auto& localEntity = getAggregateEntity(localEntityHandle);
+			auto& localEntity = la::avdecc::bindings::getAggregateEntity(localEntityHandle);
 
 			return la::avdecc::bindings::fromCppToC::convertProtocolInterfaceErrorCode(obj.enableEntityAdvertising(localEntity));
 		}
@@ -418,7 +418,7 @@ LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_error_t LA_AVDECC_BINDINGS_C_
 
 		try
 		{
-			auto& localEntity = getAggregateEntity(localEntityHandle);
+			auto& localEntity = la::avdecc::bindings::getAggregateEntity(localEntityHandle);
 
 			return la::avdecc::bindings::fromCppToC::convertProtocolInterfaceErrorCode(obj.disableEntityAdvertising(localEntity));
 		}
@@ -441,7 +441,7 @@ LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_error_t LA_AVDECC_BINDINGS_C_
 
 		try
 		{
-			auto& localEntity = getAggregateEntity(localEntityHandle);
+			auto& localEntity = la::avdecc::bindings::getAggregateEntity(localEntityHandle);
 
 			return la::avdecc::bindings::fromCppToC::convertProtocolInterfaceErrorCode(obj.setEntityNeedsAdvertise(localEntity, la::avdecc::bindings::fromCToCpp::convertLocalEntityAdvertiseFlags(flags)));
 		}
@@ -749,7 +749,16 @@ LA_AVDECC_BINDINGS_C_API avdecc_protocol_interface_types_t LA_AVDECC_BINDINGS_C_
 /* ************************************************************************** */
 /* ProtocolInterface private APIs                                             */
 /* ************************************************************************** */
-la::avdecc::protocol::ProtocolInterface& getProtocolInterface(LA_AVDECC_PROTOCOL_INTERFACE_HANDLE const handle)
+namespace la
+{
+namespace avdecc
+{
+namespace bindings
+{
+LA_AVDECC_API la::avdecc::protocol::ProtocolInterface& LA_AVDECC_CALL_CONVENTION getProtocolInterface(LA_AVDECC_PROTOCOL_INTERFACE_HANDLE const handle)
 {
 	return s_ProtocolInterfaceManager.getObject(handle);
 }
+} // namespace bindings
+} // namespace avdecc
+} // namespace la
