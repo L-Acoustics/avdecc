@@ -172,16 +172,23 @@ public:
 ////////////////////////////////////////
 // Exception class
 ////////////////////////////////////////
-%nspace la::avdecc::Exception;
-// Currently no resolution is performed in order to match function parameters. This means function parameter types must match exactly. For example, namespace qualifiers and typedefs will not work.
-%ignore la::avdecc::Exception::operator=;
-// Ignore char* constructor
-%ignore la::avdecc::Exception::Exception(char const* const);
-// Ignore move constructor
-%ignore la::avdecc::Exception::Exception(Exception&&);
+// Ignore Exception, will be created as native exception
+
+// Throw typemap
+%typemap (throws, canthrow=1) la::avdecc::Exception %{
+	SWIG_CSharpSetPendingException($1.what());
+	return $null;
+%}
+
+// Define catches for methods that can throw
+%catches(la::avdecc::Exception) la::avdecc::entity::Entity::Entity;
+%catches(la::avdecc::Exception) la::avdecc::entity::Entity::getInterfaceInformation(model::AvbInterfaceIndex const interfaceIndex) const;
+%catches(la::avdecc::Exception) la::avdecc::entity::Entity::getInterfaceInformation(model::AvbInterfaceIndex const interfaceIndex);
+%catches(la::avdecc::Exception) la::avdecc::entity::Entity::getAnyMacAddress() const;
 
 // Include c++ declaration file
 %include "la/avdecc/internals/exception.hpp"
+
 
 ////////////////////////////////////////
 // Entity Model
@@ -663,14 +670,43 @@ public:
 };
 %ignore la::avdecc::EndStation::create; // Ignore it, will be wrapped (because std::unique_ptr doesn't support custom deleters - Ticket #2411)
 
-// Define C# exception handling for la::avdecc::EndStation::Exception
+// Throw typemap
+%typemap (throws, canthrow=1) la::avdecc::EndStation::Exception %{
+	SWIG_CSharpSetPendingExceptionEndStation($1.getError(), $1.what());
+	return $null;
+%}
+
+// Define catches for methods that can throw
+%catches(la::avdecc::EndStation::Exception) la::avdecc::EndStation::create;
+
+// Include c++ declaration file
+%include "la/avdecc/internals/endStation.hpp"
+%rename("%s", %$isclass) ""; // Undo the ignore all structs/classes
+
+
+// Define C# exception handling
 %insert(runtime) %{
+	// la::avdecc::Exception
+	typedef void (SWIGSTDCALL* ExceptionCallback_t)(char const* const message);
+	ExceptionCallback_t exceptionCallback = NULL;
+
+	extern "C" SWIGEXPORT void SWIGSTDCALL ExceptionRegisterCallback(ExceptionCallback_t cb)
+	{
+		exceptionCallback = cb;
+	}
+
+	static void SWIG_CSharpSetPendingException(char const* const message)
+	{
+		exceptionCallback(message);
+	}
+
+	// la::avdecc::EndStation::Exception
 	typedef void (SWIGSTDCALL* EndStationExceptionCallback_t)(la::avdecc::EndStation::Error const error, char const* const message);
 	EndStationExceptionCallback_t endStationExceptionCallback = NULL;
 
-	extern "C" SWIGEXPORT void SWIGSTDCALL EndStationExceptionRegisterCallback(EndStationExceptionCallback_t exceptionCallback)
+	extern "C" SWIGEXPORT void SWIGSTDCALL EndStationExceptionRegisterCallback(EndStationExceptionCallback_t cb)
 	{
-		endStationExceptionCallback = exceptionCallback;
+		endStationExceptionCallback = cb;
 	}
 
 	static void SWIG_CSharpSetPendingExceptionEndStation(la::avdecc::EndStation::Error const error, char const* const message)
@@ -679,6 +715,28 @@ public:
 	}
 %}
 %pragma(csharp) imclasscode=%{
+	// la::avdecc::Exception
+	class ExceptionHelper
+	{
+		public delegate void ExceptionDelegate(string message);
+		static ExceptionDelegate exceptionDelegate = new ExceptionDelegate(SetPendingException);
+
+		[global::System.Runtime.InteropServices.DllImport(DllImportPath, EntryPoint="ExceptionRegisterCallback")]
+		public static extern void ExceptionRegisterCallback(ExceptionDelegate exceptionDelegate);
+
+		static void SetPendingException(string message)
+		{
+			SWIGPendingException.Set(new la.avdecc.Exception(message));
+		}
+
+		static ExceptionHelper()
+		{
+			ExceptionRegisterCallback(exceptionDelegate);
+		}
+	}
+	static ExceptionHelper exceptionHelper = new ExceptionHelper();
+
+	// la::avdecc::EndStation::Exception
 	class EndStationExceptionHelper
 	{
 		public delegate void EndStationExceptionDelegate(la.avdecc.EndStationException.Error error, string message);
@@ -697,11 +755,21 @@ public:
 			EndStationExceptionRegisterCallback(endStationDelegate);
 		}
 	}
-	static EndStationExceptionHelper exceptionHelper = new EndStationExceptionHelper();
+	static EndStationExceptionHelper endStationExceptionHelper = new EndStationExceptionHelper();
 %}
 %pragma(csharp) moduleimports=%{
 namespace la.avdecc
 {
+	// la::avdecc::Exception
+	class Exception : global::System.ApplicationException
+	{
+		public Exception(string message)
+			: base(message)
+		{
+		}
+	}
+
+	// la::avdecc::EndStation::Exception
 	class EndStationException : global::System.ApplicationException
 	{
 		public enum Error
@@ -730,15 +798,3 @@ namespace la.avdecc
 	}
 }
 %}
-// Throw typemap
-%typemap (throws, canthrow=1) la::avdecc::EndStation::Exception %{
-	SWIG_CSharpSetPendingExceptionEndStation($1.getError(), $1.what());
-	return $null;
-%}
-
-// Define catches for methods that can throw
-%catches(la::avdecc::EndStation::Exception) la::avdecc::EndStation::create;
-
-// Include c++ declaration file
-%include "la/avdecc/internals/endStation.hpp"
-%rename("%s", %$isclass) ""; // Undo the ignore all structs/classes

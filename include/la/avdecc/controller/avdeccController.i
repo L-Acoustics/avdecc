@@ -359,9 +359,9 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller, CompileOptions, CompileOption
 	typedef void (SWIGSTDCALL* ControlledEntityExceptionCallback_t)(la::avdecc::controller::ControlledEntity::Exception::Type const type, char const* const message);
 	ControlledEntityExceptionCallback_t controlledEntityExceptionCallback = NULL;
 
-	extern "C" SWIGEXPORT void SWIGSTDCALL ControlledEntityExceptionRegisterCallback(ControlledEntityExceptionCallback_t exceptionCallback)
+	extern "C" SWIGEXPORT void SWIGSTDCALL ControlledEntityExceptionRegisterCallback(ControlledEntityExceptionCallback_t cb)
 	{
-		controlledEntityExceptionCallback = exceptionCallback;
+		controlledEntityExceptionCallback = cb;
 	}
 
 	static void SWIG_CSharpSetPendingExceptionControlledEntity(la::avdecc::controller::ControlledEntity::Exception::Type const type, char const* const message)
@@ -373,9 +373,9 @@ DEFINE_ENUM_BITFIELD_CLASS(la::avdecc::controller, CompileOptions, CompileOption
 	typedef void (SWIGSTDCALL* ControllerExceptionCallback_t)(la::avdecc::controller::Controller::Error const error, char const* const message);
 	ControllerExceptionCallback_t controllerExceptionCallback = NULL;
 
-	extern "C" SWIGEXPORT void SWIGSTDCALL ControllerExceptionRegisterCallback(ControllerExceptionCallback_t exceptionCallback)
+	extern "C" SWIGEXPORT void SWIGSTDCALL ControllerExceptionRegisterCallback(ControllerExceptionCallback_t cb)
 	{
-		controllerExceptionCallback = exceptionCallback;
+		controllerExceptionCallback = cb;
 	}
 
 	static void SWIG_CSharpSetPendingExceptionController(la::avdecc::controller::Controller::Error const error, char const* const message)
