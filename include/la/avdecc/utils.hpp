@@ -1632,6 +1632,8 @@ public:
 		*this \
 	}
 
+bool isDebuggerPresent(void);
+
 } // namespace utils
 } // namespace avdecc
 } // namespace la
