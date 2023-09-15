@@ -68,13 +68,11 @@ public:
 						{
 							for (auto& [name, watchInfo] : watchedMap)
 							{
-#ifdef _WIN32
 								// If debugger is present, update the last alive time and don't check the timeout
-								if (IsDebuggerPresent())
+								if (la::avdecc::utils::isDebuggerPresent())
 								{
 									watchInfo.lastAlive = currentTime;
 								}
-#endif // _WIN32
 
 								// Check if we timed out
 								if (!watchInfo.ignore && std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - watchInfo.lastAlive).count() > watchInfo.maximumInterval.count())
