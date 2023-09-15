@@ -1502,7 +1502,7 @@ void CapabilityDelegate::getStreamInputCounters(UniqueIdentifier const targetEnt
 
 void CapabilityDelegate::getStreamOutputCounters(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, Interface::GetStreamOutputCountersHandler const& handler) const noexcept
 {
-	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex, StreamOutputCounterValidFlags{}, model::DescriptorCounters{});
+	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex, StreamOutputCounterValidFlagsMilan2019{}, model::DescriptorCounters{});
 	try
 	{
 		auto const ser = protocol::aemPayload::serializeGetCountersCommand(model::DescriptorType::StreamOutput, streamIndex);
@@ -2473,7 +2473,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 				if (descriptorType == model::DescriptorType::StreamInput)
 				{
 					answerCallback.invoke<controller::Interface::GetStreamInputInfoHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, streamInfo);
-					if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (Clause 7.5.2)
+					if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (IEEE1722.1-2013 Clause 7.5.2)
 					{
 						utils::invokeProtectedMethod(&controller::Delegate::onStreamInputInfoChanged, delegate, controllerInterface, targetID, descriptorIndex, streamInfo, true);
 					}
@@ -2481,7 +2481,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 				else if (descriptorType == model::DescriptorType::StreamOutput)
 				{
 					answerCallback.invoke<controller::Interface::GetStreamOutputInfoHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, streamInfo);
-					if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (Clause 7.5.2)
+					if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (IEEE1722.1-2013 Clause 7.5.2)
 					{
 						utils::invokeProtectedMethod(&controller::Delegate::onStreamOutputInfoChanged, delegate, controllerInterface, targetID, descriptorIndex, streamInfo, true);
 					}
@@ -3176,7 +3176,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 				if (descriptorType == model::DescriptorType::AvbInterface)
 				{
 					answerCallback.invoke<controller::Interface::GetAvbInfoHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, avbInfo);
-					if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (Clause 7.5.2)
+					if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (IEEE1722.1-2013 Clause 7.5.2)
 					{
 						utils::invokeProtectedMethod(&controller::Delegate::onAvbInfoChanged, delegate, controllerInterface, targetID, descriptorIndex, avbInfo);
 					}
@@ -3194,7 +3194,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 
 				// Notify handlers
 				answerCallback.invoke<controller::Interface::GetAsPathHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, asPath);
-				if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (Clause 7.5.2)
+				if (aem.getUnsolicited() && delegate && !!status) // Unsolicited triggered by change in the SRP domain (IEEE1722.1-2013 Clause 7.5.2)
 				{
 					utils::invokeProtectedMethod(&controller::Delegate::onAsPathChanged, delegate, controllerInterface, targetID, descriptorIndex, asPath);
 				}
@@ -3260,7 +3260,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 					}
 					case model::DescriptorType::StreamOutput:
 					{
-						StreamOutputCounterValidFlags flags;
+						StreamOutputCounterValidFlagsMilan2019 flags;
 						flags.assign(validFlags);
 						answerCallback.invoke<controller::Interface::GetStreamOutputCountersHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, flags, counters);
 						if (aem.getUnsolicited() && delegate && !!status)

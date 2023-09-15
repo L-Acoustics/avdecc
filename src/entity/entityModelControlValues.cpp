@@ -37,7 +37,7 @@ namespace model
 {
 static inline void createUnpackDynamicControlValuesDispatchTable(std::unordered_map<ControlValueType::Type, std::function<ControlValues(Deserializer&, std::uint16_t)>>& dispatchTable)
 {
-	/** Linear Values - Clause 7.3.5.2.1 */
+	/** Linear Values - IEEE1722.1-2013 Clause 7.3.5.2.1 */
 	dispatchTable[ControlValueType::Type::ControlLinearInt8] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlLinearInt8>::unpackDynamicControlValues;
 	dispatchTable[ControlValueType::Type::ControlLinearUInt8] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlLinearUInt8>::unpackDynamicControlValues;
 	dispatchTable[ControlValueType::Type::ControlLinearInt16] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlLinearInt16>::unpackDynamicControlValues;
@@ -49,7 +49,7 @@ static inline void createUnpackDynamicControlValuesDispatchTable(std::unordered_
 	dispatchTable[ControlValueType::Type::ControlLinearFloat] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlLinearFloat>::unpackDynamicControlValues;
 	dispatchTable[ControlValueType::Type::ControlLinearDouble] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlLinearDouble>::unpackDynamicControlValues;
 
-	/** Selector Value - Clause 7.3.5.2.2 */
+	/** Selector Value - IEEE1722.1-2013 Clause 7.3.5.2.2 */
 	dispatchTable[ControlValueType::Type::ControlSelectorInt8] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlSelectorInt8>::unpackDynamicControlValues;
 	dispatchTable[ControlValueType::Type::ControlSelectorUInt8] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlSelectorUInt8>::unpackDynamicControlValues;
 	dispatchTable[ControlValueType::Type::ControlSelectorInt16] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlSelectorInt16>::unpackDynamicControlValues;
@@ -62,7 +62,7 @@ static inline void createUnpackDynamicControlValuesDispatchTable(std::unordered_
 	dispatchTable[ControlValueType::Type::ControlSelectorDouble] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlSelectorDouble>::unpackDynamicControlValues;
 	dispatchTable[ControlValueType::Type::ControlSelectorString] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlSelectorString>::unpackDynamicControlValues;
 
-	/** Array Values - Clause 7.3.5.2.3 */
+	/** Array Values - IEEE1722.1-2013 Clause 7.3.5.2.3 */
 	dispatchTable[ControlValueType::Type::ControlArrayInt8] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlArrayInt8>::unpackDynamicControlValues;
 	dispatchTable[ControlValueType::Type::ControlArrayUInt8] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlArrayUInt8>::unpackDynamicControlValues;
 	dispatchTable[ControlValueType::Type::ControlArrayInt16] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlArrayInt16>::unpackDynamicControlValues;
@@ -74,7 +74,7 @@ static inline void createUnpackDynamicControlValuesDispatchTable(std::unordered_
 	dispatchTable[ControlValueType::Type::ControlArrayFloat] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlArrayFloat>::unpackDynamicControlValues;
 	dispatchTable[ControlValueType::Type::ControlArrayDouble] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlArrayDouble>::unpackDynamicControlValues;
 
-	/** UTF-8 String Value - Clause 7.3.5.2.4 */
+	/** UTF-8 String Value - IEEE1722.1-2013 Clause 7.3.5.2.4 */
 	dispatchTable[ControlValueType::Type::ControlUtf8] = protocol::aemPayload::control_values_payload_traits<ControlValueType::Type::ControlUtf8>::unpackDynamicControlValues;
 }
 
@@ -111,7 +111,7 @@ std::optional<ControlValues> LA_AVDECC_CALL_CONVENTION unpackDynamicControlValue
 
 static inline void createValidateControlValuesDispatchTable(std::unordered_map<entity::model::ControlValueType::Type, std::function<std::tuple<ControlValuesValidationResult, std::string>(entity::model::ControlValues const&, entity::model::ControlValues const&)>>& dispatchTable)
 {
-	/** Linear Values - Clause 7.3.5.2.1 */
+	/** Linear Values - IEEE1722.1-2013 Clause 7.3.5.2.1 */
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt8] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt8>::validateControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt8] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt8>::validateControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt16] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt16>::validateControlValues;
@@ -123,7 +123,7 @@ static inline void createValidateControlValuesDispatchTable(std::unordered_map<e
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearFloat] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearFloat>::validateControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearDouble] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearDouble>::validateControlValues;
 
-	/** Selector Value - Clause 7.3.5.2.2 */
+	/** Selector Value - IEEE1722.1-2013 Clause 7.3.5.2.2 */
 	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorInt8] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorInt8>::validateControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorUInt8] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorUInt8>::validateControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorInt16] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorInt16>::validateControlValues;
@@ -136,7 +136,7 @@ static inline void createValidateControlValuesDispatchTable(std::unordered_map<e
 	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorDouble] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorDouble>::validateControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorString] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorString>::validateControlValues;
 
-	/** Array Values - Clause 7.3.5.2.3 */
+	/** Array Values - IEEE1722.1-2013 Clause 7.3.5.2.3 */
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt8] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt8>::validateControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayUInt8] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt8>::validateControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt16] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt16>::validateControlValues;
@@ -148,7 +148,7 @@ static inline void createValidateControlValuesDispatchTable(std::unordered_map<e
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayFloat] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayFloat>::validateControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayDouble] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayDouble>::validateControlValues;
 
-	/** UTF-8 String Value - Clause 7.3.5.2.4 */
+	/** UTF-8 String Value - IEEE1722.1-2013 Clause 7.3.5.2.4 */
 	dispatchTable[entity::model::ControlValueType::Type::ControlUtf8] = protocol::aemPayload::control_values_payload_traits<entity::model::ControlValueType::Type::ControlUtf8>::validateControlValues;
 }
 

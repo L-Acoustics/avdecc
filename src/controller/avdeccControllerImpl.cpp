@@ -1259,7 +1259,7 @@ void ControllerImpl::updateAvbInterfaceCounters(ControlledEntityImpl& controlled
 		// If Milan device, validate counters values
 		if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 		{
-			// LinkDown should either be equal to LinkUp or be one more (Milan Clause 6.6.3)
+			// LinkDown should either be equal to LinkUp or be one more (Milan-2019 Clause 6.6.3)
 			// We are safe to get those counters, check for their presence during first enumeration has already been done
 			auto const upValue = counters[validCounters.getPosition(entity::AvbInterfaceCounterValidFlag::LinkUp)];
 			auto const downValue = counters[validCounters.getPosition(entity::AvbInterfaceCounterValidFlag::LinkDown)];
@@ -1295,7 +1295,7 @@ void ControllerImpl::updateClockDomainCounters(ControlledEntityImpl& controlledE
 		// If Milan device, validate counters values
 		if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 		{
-			// Unlocked should either be equal to Locked or be one more (Milan Clause 6.11.2)
+			// Unlocked should either be equal to Locked or be one more (Milan-2019 Clause 6.11.2)
 			// We are safe to get those counters, check for their presence during first enumeration has already been done
 			auto const lockedValue = (*clockDomainCounters)[entity::ClockDomainCounterValidFlag::Locked];
 			auto const unlockedValue = (*clockDomainCounters)[entity::ClockDomainCounterValidFlag::Unlocked];
@@ -1331,7 +1331,7 @@ void ControllerImpl::updateStreamInputCounters(ControlledEntityImpl& controlledE
 		// If Milan device, validate counters values
 		if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 		{
-			// MediaUnlocked should either be equal to MediaLocked or be one more (Milan Clause 6.8.10)
+			// MediaUnlocked should either be equal to MediaLocked or be one more (Milan-2019 Clause 6.8.10)
 			// We are safe to get those counters, check for their presence during first enumeration has already been done
 			auto const lockedValue = (*streamCounters)[entity::StreamInputCounterValidFlag::MediaLocked];
 			auto const unlockedValue = (*streamCounters)[entity::StreamInputCounterValidFlag::MediaUnlocked];
@@ -1350,7 +1350,7 @@ void ControllerImpl::updateStreamInputCounters(ControlledEntityImpl& controlledE
 	}
 }
 
-void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::StreamOutputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::StreamOutputCounterValidFlagsMilan2019 const validCounters, entity::model::DescriptorCounters const& counters, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
@@ -1367,10 +1367,10 @@ void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlled
 		// If Milan device, validate counters values
 		if (controlledEntity.getCompatibilityFlags().test(ControlledEntity::CompatibilityFlag::Milan))
 		{
-			// StreamStop should either be equal to StreamStart or be one more (Milan Clause 6.7.7)
+			// StreamStop should either be equal to StreamStart or be one more (Milan-2019 Clause 6.7.7)
 			// We are safe to get those counters, check for their presence during first enumeration has already been done
-			auto const startValue = (*streamCounters)[entity::StreamOutputCounterValidFlag::StreamStart];
-			auto const stopValue = (*streamCounters)[entity::StreamOutputCounterValidFlag::StreamStop];
+			auto const startValue = (*streamCounters)[entity::StreamOutputCounterValidFlagMilan2019::StreamStart];
+			auto const stopValue = (*streamCounters)[entity::StreamOutputCounterValidFlagMilan2019::StreamStop];
 			if (startValue != stopValue && startValue != (stopValue + 1))
 			{
 				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid STREAM_START / STREAM_STOP counters value on STREAM_OUTPUT:{} ({} / {})", streamIndex, startValue, stopValue);
@@ -1470,7 +1470,7 @@ void ControllerImpl::updateOperationStatus(ControlledEntityImpl& controlledEntit
 	// Entity was advertised to the user, notify observers
 	if (controlledEntity.wasAdvertised())
 	{
-		if (percentComplete == 0) /* Clause 7.4.55.2 */
+		if (percentComplete == 0) /* IEEE1722.1-2013 Clause 7.4.55.2 */
 		{
 			// Failure
 			notifyObserversMethod<Controller::Observer>(&Controller::Observer::onOperationCompleted, this, &controlledEntity, descriptorType, descriptorIndex, operationID, true);
@@ -2528,7 +2528,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			if (node.staticModel.numberOfMaps == 0)
 			{
 				// AudioMappings
-				// TODO: Clause 7.4.44.3 recommands to Lock or Acquire the entity before getting the dynamic audio map
+				// TODO: IEEE1722.1-2013 Clause 7.4.44.3 recommands to Lock or Acquire the entity before getting the dynamic audio map
 				_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::InputStreamAudioMappings, node.descriptorIndex);
 			}
 		}
@@ -2537,7 +2537,7 @@ void ControllerImpl::getDynamicInfo(ControlledEntityImpl* const entity) noexcept
 			if (node.staticModel.numberOfMaps == 0)
 			{
 				// AudioMappings
-				// TODO: Clause 7.4.44.3 recommands to Lock or Acquire the entity before getting the dynamic audio map
+				// TODO: IEEE1722.1-2013 Clause 7.4.44.3 recommands to Lock or Acquire the entity before getting the dynamic audio map
 				_controller->queryInformation(_entity, _currentConfigurationIndex, ControlledEntityImpl::DynamicInfoType::OutputStreamAudioMappings, node.descriptorIndex);
 			}
 		}
@@ -3635,10 +3635,10 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 	// If AEM is supported
 	if (isAemSupported)
 	{
-		// [IEEE1722.1 Clause 7.2.1] A device is required to have at least one Configuration Descriptor
+		// IEEE1722.1-2013 Clause 7.2.1 - A device is required to have at least one Configuration Descriptor
 		if (!controlledEntity.hasAnyConfiguration())
 		{
-			LOG_CONTROLLER_WARN(entityID, "[IEEE1722.1 Clause 7.2.1] A device is required to have at least one Configuration Descriptor");
+			LOG_CONTROLLER_WARN(entityID, "[IEEE1722.1-2013 Clause 7.2.1] A device is required to have at least one Configuration Descriptor");
 			// Flag the entity as "Not fully IEEE1722.1 compliant"
 			removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			return;
@@ -3688,7 +3688,7 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 		{
 			if (e.getError() == avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex)
 			{
-				LOG_CONTROLLER_WARN(entityID, "[IEEE1722.1 Clause 7.2] Invalid Descriptor Numbering: {}", e.what());
+				LOG_CONTROLLER_WARN(entityID, "[IEEE1722.1-2013 Clause 7.2] Invalid Descriptor Numbering: {}", e.what());
 				// Flag the entity as "Not fully IEEE1722.1 compliant"
 				removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
 			}
@@ -3729,10 +3729,10 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 								break;
 						}
 					}
-					// [Milan Clause 6.3.4] If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa
+					// [Milan-2019 Clause 6.3.4] If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa
 					if (streamHasAaf && streamHasCrf)
 					{
-						LOG_CONTROLLER_WARN(entityID, "[Milan Clause 6.3.4] If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa");
+						LOG_CONTROLLER_WARN(entityID, "[Milan-2019 Clause 6.3.4] If a STREAM_INPUT/OUTPUT supports the Avnu Pro Audio CRF Media Clock Stream Format, it shall not support the Avnu Pro Audio AAF Audio Stream Format, and vice versa");
 						// Remove "Milan compatibility"
 						removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
 					}
@@ -3822,17 +3822,17 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 					{
 						if (aafInputStreamsForDomain >= 2)
 						{
-							// [Milan Clause 7.2.2] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Input
+							// [Milan-2019 Clause 7.2.2] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Input
 							if (crfInputStreamsForDomain == 0u)
 							{
-								LOG_CONTROLLER_WARN(entityID, "[Milan Clause 7.2.2] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Input");
+								LOG_CONTROLLER_WARN(entityID, "[Milan-2019 Clause 7.2.2] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Input");
 								// Remove "Milan compatibility"
 								removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
 							}
-							// [Milan Clause 7.2.3] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Output
+							// [Milan-2019 Clause 7.2.3] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Output
 							if (crfOutputStreamsForDomain == 0u)
 							{
-								LOG_CONTROLLER_WARN(entityID, "[Milan Clause 7.2.3] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Output");
+								LOG_CONTROLLER_WARN(entityID, "[Milan-2019 Clause 7.2.3] For each supported clock domain, an AAF Media Listener with two or more AAF Media Inputs shall implement a CRF Media Clock Output");
 								// Remove "Milan compatibility"
 								removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
 							}
@@ -3840,14 +3840,14 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 					}
 					if (isAafMediaTalker)
 					{
-						// [Milan Clause 7.2.2] For each supported clock domain, an AAF Media Talker shall implement a CRF Media Clock Input
+						// [Milan-2019 Clause 7.2.2] For each supported clock domain, an AAF Media Talker shall implement a CRF Media Clock Input
 						if (crfInputStreamsForDomain == 0u)
 						{
-							LOG_CONTROLLER_WARN(entityID, "[Milan Clause 7.2.2] For each supported clock domain, an AAF Media Talker shall implement a CRF Media Clock Input");
+							LOG_CONTROLLER_WARN(entityID, "[Milan-2019 Clause 7.2.2] For each supported clock domain, an AAF Media Talker shall implement a CRF Media Clock Input");
 							// Remove "Milan compatibility"
 							removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::Milan);
 						}
-						// [Milan Clause 7.2.3] For each supported clock domain, an AAF Media Talker capable of synchronizing to an external clock source (not an AVB stream) shall implement a CRF Media Clock Output
+						// [Milan-2019 Clause 7.2.3] For each supported clock domain, an AAF Media Talker capable of synchronizing to an external clock source (not an AVB stream) shall implement a CRF Media Clock Output
 						// TODO
 					}
 				}

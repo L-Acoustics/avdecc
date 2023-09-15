@@ -368,7 +368,7 @@ void Manager::processAdpdu(Adpdu const& adpdu) noexcept
 void Manager::processAecpdu(Aecpdu const& aecpdu) noexcept
 {
 	auto const messageType = aecpdu.getMessageType();
-	auto const isResponse = (messageType.getValue() % 2) == 1; // Odd numbers are responses (see Clause 9.2.1.1.5)
+	auto const isResponse = (messageType.getValue() % 2) == 1; // Odd numbers are responses (see IEEE1722.1-2013 Clause 9.2.1.1.5)
 
 	// If the message is a RESPONSE
 	if (isResponse)
@@ -395,7 +395,7 @@ void Manager::processAecpdu(Aecpdu const& aecpdu) noexcept
 void Manager::processAcmpdu(Acmpdu const& acmpdu) noexcept
 {
 	auto const messageType = acmpdu.getMessageType().getValue();
-	auto const isResponse = (messageType % 2) == 1; // Odd numbers are responses (see Clause 8.2.1.5)
+	auto const isResponse = (messageType % 2) == 1; // Odd numbers are responses (see IEEE1722.1-2013 Clause 8.2.1.5)
 
 	// Lock
 	auto const lg = std::lock_guard{ *this };

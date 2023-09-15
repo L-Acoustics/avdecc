@@ -36,7 +36,7 @@ namespace entity
 {
 namespace model
 {
-/** Linear Values - Clause 7.3.5.2.1 */
+/** Linear Values - IEEE1722.1-2013 Clause 7.3.5.2.1 */
 template<typename SizeType, bool IsDynamic>
 struct LinearValuesBaseTraits
 {
@@ -148,7 +148,7 @@ struct ControlValues::control_value_details_traits<LinearValues<LinearValueDynam
 	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlLinearDouble;
 };
 
-/** Selector Value - Clause 7.3.5.2.2 */
+/** Selector Value - IEEE1722.1-2013 Clause 7.3.5.2.2 */
 template<typename SizeType, bool IsDynamic>
 struct SelectorValueBaseTraits
 {
@@ -270,7 +270,7 @@ struct ControlValues::control_value_details_traits<SelectorValueDynamic<Localize
 	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlSelectorString;
 };
 
-/** Array Values - Clause 7.3.5.2.3 */
+/** Array Values - IEEE1722.1-2013 Clause 7.3.5.2.3 */
 template<typename SizeType, bool IsDynamic>
 struct ArrayValuesBaseTraits
 {
@@ -382,7 +382,7 @@ struct ControlValues::control_value_details_traits<ArrayValueDynamic<double>> : 
 	static constexpr ControlValueType::Type control_value_type = ControlValueType::Type::ControlArrayDouble;
 };
 
-/** UTF-8 String Value - Clause 7.3.5.2.4 */
+/** UTF-8 String Value - IEEE1722.1-2013 Clause 7.3.5.2.4 */
 template<>
 struct ControlValues::control_value_details_traits<UTF8StringValueStatic>
 {

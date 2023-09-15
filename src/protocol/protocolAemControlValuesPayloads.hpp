@@ -75,7 +75,7 @@ struct BaseValuesPayloadTraits
 	static_assert(std::is_same_v<typename StaticTraits::size_type, typename DynamicTraits::size_type>, "StaticValueType and DynamicValueType syze_type does not match");
 };
 
-/** Linear Values - Clause 7.3.5.2.1 */
+/** Linear Values - IEEE1722.1-2013 Clause 7.3.5.2.1 */
 template<class StaticValueType, class DynamicValueType>
 struct LinearValuesPayloadTraits : BaseValuesPayloadTraits<StaticValueType, DynamicValueType>
 {
@@ -218,7 +218,7 @@ struct control_values_payload_traits<entity::model::ControlValueType::Type::Cont
 {
 };
 
-/** Selector Value - Clause 7.3.5.2.2 */
+/** Selector Value - IEEE1722.1-2013 Clause 7.3.5.2.2 */
 template<typename SizeType, typename StaticValueType = entity::model::SelectorValueStatic<SizeType>, typename DynamicValueType = entity::model::SelectorValueDynamic<SizeType>>
 struct SelectorValuePayloadTraits : BaseValuesPayloadTraits<StaticValueType, DynamicValueType>
 {
@@ -345,7 +345,7 @@ struct control_values_payload_traits<entity::model::ControlValueType::Type::Cont
 {
 };
 
-/** Array Values - Clause 7.3.5.2.3 */
+/** Array Values - IEEE1722.1-2013 Clause 7.3.5.2.3 */
 template<typename SizeType, typename StaticValueType = entity::model::ArrayValueStatic<SizeType>, typename DynamicValueType = entity::model::ArrayValueDynamic<SizeType>>
 struct ArrayValuesPayloadTraits : BaseValuesPayloadTraits<StaticValueType, DynamicValueType>
 {
@@ -486,7 +486,7 @@ struct control_values_payload_traits<entity::model::ControlValueType::Type::Cont
 {
 };
 
-/** UTF-8 String Value - Clause 7.3.5.2.4 */
+/** UTF-8 String Value - IEEE1722.1-2013 Clause 7.3.5.2.4 */
 template<>
 struct control_values_payload_traits<entity::model::ControlValueType::Type::ControlUtf8>
 {
@@ -518,7 +518,7 @@ struct control_values_payload_traits<entity::model::ControlValueType::Type::Cont
 		// Validate NULL terminated string
 		if (valuesDynamic.currentValue[length - 1] != decltype(valuesDynamic)::value_type{ 0u })
 		{
-			LOG_AEM_PAYLOAD_WARN("Unpack CONTROL value warning: UTF-8 string is not NULL terminated (Clause 7.3.5.2.4)");
+			LOG_AEM_PAYLOAD_WARN("Unpack CONTROL value warning: UTF-8 string is not NULL terminated (IEEE1722.1-2013 Clause 7.3.5.2.4)");
 			valuesDynamic.currentValue[length - 1] = decltype(valuesDynamic)::value_type{ 0u };
 		}
 
@@ -550,7 +550,7 @@ struct control_values_payload_traits<entity::model::ControlValueType::Type::Cont
 		// Validate NULL terminated string (we processed the whole std::array without encountering a single NULL character)
 		if (length == maxLength && utf8Values.currentValue[maxLength - 1] != nullCharacter)
 		{
-			LOG_AEM_PAYLOAD_WARN("pack CONTROL value warning: UTF-8 string is not NULL terminated (Clause 7.3.5.2.4)");
+			LOG_AEM_PAYLOAD_WARN("pack CONTROL value warning: UTF-8 string is not NULL terminated (IEEE1722.1-2013 Clause 7.3.5.2.4)");
 			utf8Values.currentValue[maxLength - 1] = nullCharacter;
 		}
 
@@ -577,7 +577,7 @@ struct control_values_payload_traits<entity::model::ControlValueType::Type::Cont
 
 			if (!foundNullChar)
 			{
-				return std::make_tuple(entity::model::ControlValuesValidationResult::CurrentValueNotNullTerminated, "UTF-8 string is not NULL terminated (Clause 7.3.5.2.4)");
+				return std::make_tuple(entity::model::ControlValuesValidationResult::CurrentValueNotNullTerminated, "UTF-8 string is not NULL terminated (IEEE1722.1-2013 Clause 7.3.5.2.4)");
 			}
 
 			return std::make_tuple(entity::model::ControlValuesValidationResult::Valid, "");
