@@ -58,6 +58,9 @@ struct Context
 	MapIndex nextExpectedAudioMapIndex{ 0u };
 	ControlIndex nextExpectedControlIndex{ 0u };
 	ClockDomainIndex nextExpectedClockDomainIndex{ 0u };
+	TimingIndex nextExpectedTimingIndex{ 0u };
+	PtpInstanceIndex nextExpectedPtpInstanceIndex{ 0u };
+	PtpPortIndex nextExpectedPtpPortIndex{ 0u };
 
 	bool getSanityCheckError{ false };
 };
@@ -339,6 +342,66 @@ json dumpJackModels(Context& c, ConfigurationTree const& configTree, Flags const
 	return jacks;
 }
 
+template<typename FieldPointer>
+json dumpPtpInstanceModels(Context& c, ConfigurationTree const& configTree, Flags const flags, FieldPointer ConfigurationTree::*const Field, DescriptorIndex& nextExpectedIndex, std::string const& descriptorName, DescriptorIndex const basePtpInstance, std::uint16_t const numberOfPtpInstances)
+{
+	auto ptpInstances = json{};
+
+	for (auto ptpInstanceIndexCounter = PtpInstanceIndex(0); ptpInstanceIndexCounter < numberOfPtpInstances; ++ptpInstanceIndexCounter)
+	{
+		auto const ptpInstanceIndex = PtpInstanceIndex(ptpInstanceIndexCounter + basePtpInstance);
+		if (ptpInstanceIndex != nextExpectedIndex)
+		{
+			if (!flags.test(Flag::IgnoreAEMSanityChecks))
+			{
+				throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex, "Invalid " + descriptorName + " Descriptor Index: " + std::to_string(ptpInstanceIndex) + " but expected " + std::to_string(nextExpectedIndex) };
+			}
+			else
+			{
+				c.getSanityCheckError = true;
+			}
+		}
+		++nextExpectedIndex;
+
+		auto const ptpInstanceTreeIt = (configTree.*Field).find(ptpInstanceIndex);
+		if (ptpInstanceTreeIt == (configTree.*Field).end())
+		{
+			throw avdecc::jsonSerializer::SerializationException{ avdecc::jsonSerializer::SerializationError::InvalidDescriptorIndex, "Invalid " + descriptorName + " Descriptor Index: " + std::to_string(ptpInstanceIndex) + " (out of range)" };
+		}
+		auto const& ptpInstanceTree = ptpInstanceTreeIt->second;
+
+		auto ptpInstance = json{};
+
+		// Dump Static model
+		auto const& staticModel = ptpInstanceTree.staticModel;
+		if (flags.test(Flag::ProcessStaticModel))
+		{
+			// Dump PtpInstance Descriptor Model
+			ptpInstance[keyName::Node_StaticInformation] = staticModel;
+		}
+
+		// Dump Dynamic model
+		if (flags.test(Flag::ProcessDynamicModel))
+		{
+			// Dump PtpInstance Descriptor Model
+			ptpInstance[keyName::Node_DynamicInformation] = ptpInstanceTree.dynamicModel;
+		}
+
+		// Dump Controls
+		ptpInstance[keyName::NodeName_ControlDescriptors] = dumpLeafModels(c, ptpInstanceTree, flags, &PtpInstanceTree::controlModels, c.nextExpectedControlIndex, "Control", staticModel.baseControl, staticModel.numberOfControls);
+
+		// Dump PtpPorts
+		ptpInstance[keyName::NodeName_PtpPortDescriptors] = dumpLeafModels(c, ptpInstanceTree, flags, &PtpInstanceTree::ptpPortModels, c.nextExpectedPtpPortIndex, "PtpPort", staticModel.basePtpPort, staticModel.numberOfPtpPorts);
+
+		// Dump informative DescriptorIndex
+		ptpInstance[model::keyName::Node_Informative_Index] = ptpInstanceIndex;
+
+		ptpInstances.push_back(std::move(ptpInstance));
+	}
+
+	return ptpInstances;
+}
+
 json dumpLocaleModels(Context& c, ConfigurationTree const& configTree, Flags const flags)
 {
 	auto locales = json{};
@@ -464,6 +527,9 @@ json dumpConfigurationTrees(std::map<ConfigurationIndex, ConfigurationTree> cons
 
 			// Dump ClockDomains
 			config[keyName::NodeName_ClockDomainDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::clockDomainModels, c.nextExpectedClockDomainIndex, "ClockDomain", 0, configTree.clockDomainModels.size());
+
+			// Dump Timings
+			config[keyName::NodeName_TimingDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::timingModels, c.nextExpectedTimingIndex, "Timing", 0, configTree.timingModels.size());
 		}
 
 		// Now we can dump the trees
@@ -480,6 +546,9 @@ json dumpConfigurationTrees(std::map<ConfigurationIndex, ConfigurationTree> cons
 			// Dump AvbInterfaces
 			// Will be a tree in 1722.1-2021
 			config[keyName::NodeName_AvbInterfaceDescriptors] = dumpLeafModels(c, configTree, dumpFlags, &ConfigurationTree::avbInterfaceModels, c.nextExpectedAvbInterfaceIndex, "AvbInterface", 0, configTree.avbInterfaceModels.size());
+
+			// Dump PtpInstances
+			config[keyName::NodeName_PtpInstanceDescriptors] = dumpPtpInstanceModels(c, configTree, dumpFlags, &ConfigurationTree::ptpInstanceTrees, c.nextExpectedPtpInstanceIndex, "PtpInstance", 0, static_cast<std::uint16_t>(configTree.ptpInstanceTrees.size()));
 		}
 
 		// Dump informative DescriptorIndex
@@ -820,6 +889,79 @@ void readJackModels(json const& object, Flags const flags, std::string const& ke
 	}
 }
 
+template<bool isKeyRequired = false, bool isStaticModelOptional = false, bool isDynamicModelOptional = false, bool hasDynamicModel = true, typename ModelTrees>
+void readPtpInstanceModels(json const& object, Flags const flags, std::string const& keyName, DescriptorIndex& currentIndex, ModelTrees& modelTrees, Context& c, bool const ignoreDynamicModel)
+{
+	auto const* obj = static_cast<json const*>(nullptr);
+
+	if constexpr (isKeyRequired)
+	{
+		obj = &object.at(keyName);
+	}
+	else
+	{
+		auto const it = object.find(keyName);
+		if (it == object.end())
+		{
+			return;
+		}
+
+		obj = &(*it);
+	}
+
+	for (auto const& j : *obj)
+	{
+		auto modelTree = typename ModelTrees::mapped_type{};
+
+		// Read Static model
+		if (flags.test(Flag::ProcessStaticModel))
+		{
+			// Get base descriptor indexes
+			modelTree.staticModel.baseControl = c.nextExpectedControlIndex;
+
+			if constexpr (isStaticModelOptional)
+			{
+				get_optional_value(object, keyName::Node_StaticInformation, modelTree.staticModel);
+			}
+			else
+			{
+				j.at(keyName::Node_StaticInformation).get_to(modelTree.staticModel);
+			}
+		}
+
+		// Read Dynamic model
+		if constexpr (hasDynamicModel)
+		{
+			if (flags.test(Flag::ProcessDynamicModel) && !ignoreDynamicModel)
+			{
+				if constexpr (isDynamicModelOptional)
+				{
+					get_optional_value(j, keyName::Node_DynamicInformation, modelTree.dynamicModel);
+				}
+				else
+				{
+					j.at(keyName::Node_DynamicInformation).get_to(modelTree.dynamicModel);
+				}
+			}
+		}
+
+		// Read Controls
+		readLeafModels(j, flags, keyName::NodeName_ControlDescriptors, c.nextExpectedControlIndex, modelTree.controlModels, ignoreDynamicModel);
+
+		// Read PtpPorts
+		readLeafModels(j, flags, keyName::NodeName_PtpPortDescriptors, c.nextExpectedPtpPortIndex, modelTree.ptpPortModels, ignoreDynamicModel);
+
+		if (flags.test(Flag::ProcessStaticModel))
+		{
+			// Get number of descriptors that were read
+			modelTree.staticModel.numberOfControls = c.nextExpectedControlIndex - modelTree.staticModel.baseControl;
+			modelTree.staticModel.numberOfPtpPorts = c.nextExpectedPtpPortIndex - modelTree.staticModel.basePtpPort;
+		}
+
+		modelTrees[currentIndex++] = std::move(modelTree);
+	}
+}
+
 void readLocaleModels(json const& object, Flags const flags, Context& c, ConfigurationTree& config, bool const ignoreDynamicModel)
 {
 	for (auto const& j : object)
@@ -901,6 +1043,9 @@ EntityTree::ConfigurationTrees readConfigurationTrees(json const& object, Flags 
 
 			// Read ClockDomains
 			readLeafModels(j, flags, keyName::NodeName_ClockDomainDescriptors, c.nextExpectedClockDomainIndex, config.clockDomainModels, ignoreDynamicModel);
+
+			// Read Timings
+			readLeafModels(j, flags, keyName::NodeName_TimingDescriptors, c.nextExpectedTimingIndex, config.timingModels, ignoreDynamicModel);
 		}
 
 		// Now we can read the trees
@@ -920,6 +1065,9 @@ EntityTree::ConfigurationTrees readConfigurationTrees(json const& object, Flags 
 			// Read AvbInterfaces
 			// Will be a tree in 1722.1-2021
 			readLeafModels<false, false, true>(j, flags, keyName::NodeName_AvbInterfaceDescriptors, c.nextExpectedAvbInterfaceIndex, config.avbInterfaceModels, ignoreDynamicModel);
+
+			// Read PtpInstances
+			readPtpInstanceModels(j, flags, keyName::NodeName_PtpInstanceDescriptors, c.nextExpectedPtpInstanceIndex, config.ptpInstanceTrees, c, ignoreDynamicModel);
 		}
 
 		configurationTrees[configurationIndex++] = std::move(config);

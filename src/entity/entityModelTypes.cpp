@@ -113,6 +113,12 @@ std::string LA_AVDECC_CALL_CONVENTION descriptorTypeToString(DescriptorType cons
 			return "CLOCK_DOMAIN";
 		case DescriptorType::ControlBlock:
 			return "CONTROL_BLOCK";
+		case DescriptorType::Timing:
+			return "TIMING";
+		case DescriptorType::PtpInstance:
+			return "PTP_INSTANCE";
+		case DescriptorType::PtpPort:
+			return "PTP_PORT";
 		case DescriptorType::Invalid:
 			return "INVALID";
 		default:
@@ -299,6 +305,56 @@ std::string LA_AVDECC_CALL_CONVENTION audioClusterFormatToString(AudioClusterFor
 			return "MIDI";
 		case AudioClusterFormat::Smpte:
 			return "SMPTE";
+		default:
+			AVDECC_ASSERT(false, "Not handled!");
+			return "UNKNOWN";
+	}
+}
+
+std::string LA_AVDECC_CALL_CONVENTION timingAlgorithmToString(TimingAlgorithm const timingAlgorithm) noexcept
+{
+	switch (timingAlgorithm)
+	{
+		case TimingAlgorithm::Single:
+			return "SINGLE";
+		case TimingAlgorithm::Fallback:
+			return "FALLBACK";
+		case TimingAlgorithm::Combined:
+			return "COMBINED";
+		default:
+			AVDECC_ASSERT(false, "Not handled!");
+			return "UNKNOWN";
+	}
+}
+
+std::string LA_AVDECC_CALL_CONVENTION ptpPortTypeToString(PtpPortType const ptpPortType) noexcept
+{
+	switch (ptpPortType)
+	{
+		case PtpPortType::P2PLinkLayer:
+			return "P2P_LINK_LAYER";
+		case PtpPortType::P2PMulticastUdpV4:
+			return "P2P_MULTICAST_UDP_V4";
+		case PtpPortType::P2PMulticastUdpV6:
+			return "P2P_MULTICAST_UDP_V6";
+		case PtpPortType::TimingMeasurement:
+			return "TIMING_MEASUREMENT";
+		case PtpPortType::FineTimingMeasurement:
+			return "FINE_TIMING_MEASUREMENT";
+		case PtpPortType::E2ELinkLayer:
+			return "E2E_LINK_LAYER";
+		case PtpPortType::E2EMulticastUdpV4:
+			return "E2E_MULTICAST_UDP_V4";
+		case PtpPortType::E2EMulticastUdpV6:
+			return "E2E_MULTICAST_UDP_V6";
+		case PtpPortType::P2PUnicastUdpV4:
+			return "P2P_UNICAST_UDP_V4";
+		case PtpPortType::P2PUnicastUdpV6:
+			return "P2P_UNICAST_UDP_V6";
+		case PtpPortType::E2EUnicastUdpV4:
+			return "E2E_UNICAST_UDP_V4";
+		case PtpPortType::E2EUnicastUdpV6:
+			return "E2E_UNICAST_UDP_V6";
 		default:
 			AVDECC_ASSERT(false, "Not handled!");
 			return "UNKNOWN";

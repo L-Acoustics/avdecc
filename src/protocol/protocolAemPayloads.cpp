@@ -1079,6 +1079,123 @@ entity::model::ClockDomainDescriptor deserializeReadClockDomainDescriptorRespons
 	return clockDomainDescriptor;
 }
 
+entity::model::TimingDescriptor deserializeReadTimingDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
+{
+	entity::model::TimingDescriptor timingDescriptor{};
+
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	if (status == AecpStatus::Success)
+	{
+		auto* const commandPayload = payload.first;
+		auto const commandPayloadLength = payload.second;
+
+		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadTimingDescriptorResponsePayloadMinSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Check timing descriptor payload - IEEE1722.1-2021 Clause 7.2.34
+		Deserializer des(commandPayload, commandPayloadLength);
+		std::uint16_t ptpInstancesOffset{ 0u };
+		std::uint16_t numberOfPtpInstances{ 0u };
+		des.setPosition(commonSize); // Skip already unpacked common header
+		des >> timingDescriptor.objectName;
+		des >> timingDescriptor.localizedDescription >> timingDescriptor.algorithm;
+		des >> ptpInstancesOffset >> numberOfPtpInstances;
+
+		// Check descriptor variable size
+		auto const ptpInstancesSize = sizeof(entity::model::PtpInstanceIndex) * numberOfPtpInstances;
+		if (des.remaining() < ptpInstancesSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Compute deserializer offset for sampling rates (IEEE1722.1-2032 Clause 7.2.34 says the ptp_instances_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+		ptpInstancesOffset += PayloadBufferOffset;
+
+		// Set deserializer position
+		if (ptpInstancesOffset < des.usedBytes())
+			throw IncorrectPayloadSizeException();
+		des.setPosition(ptpInstancesOffset);
+
+		// Let's loop over the ptp instances
+		for (auto index = 0u; index < numberOfPtpInstances; ++index)
+		{
+			entity::model::PtpInstanceIndex ptpInstanceIndex;
+			des >> ptpInstanceIndex;
+			timingDescriptor.ptpInstances.push_back(ptpInstanceIndex);
+		}
+
+		if (des.remaining() != 0)
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_TIMING_DESCRIPTOR RESPONSE: {}", des.remaining());
+		}
+	}
+
+	return timingDescriptor;
+}
+
+entity::model::PtpInstanceDescriptor deserializeReadPtpInstanceDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
+{
+	entity::model::PtpInstanceDescriptor ptpInstanceDescriptor{};
+
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	if (status == AecpStatus::Success)
+	{
+		auto* const commandPayload = payload.first;
+		auto const commandPayloadLength = payload.second;
+
+		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadPtpInstanceDescriptorResponsePayloadSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Check ptp instance descriptor payload - IEEE1722.1-2021 Clause 7.2.35
+		Deserializer des(commandPayload, commandPayloadLength);
+		des.setPosition(commonSize); // Skip already unpacked common header
+		des >> ptpInstanceDescriptor.objectName;
+		des >> ptpInstanceDescriptor.localizedDescription;
+		des >> ptpInstanceDescriptor.clockIdentity >> ptpInstanceDescriptor.flags;
+		des >> ptpInstanceDescriptor.numberOfControls >> ptpInstanceDescriptor.baseControl;
+		des >> ptpInstanceDescriptor.numberOfPtpPorts >> ptpInstanceDescriptor.basePtpPort;
+
+		AVDECC_ASSERT(des.usedBytes() == AecpAemReadPtpInstanceDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
+
+		if (des.remaining() != 0)
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_PTP_INSTANCE_DESCRIPTOR RESPONSE: {}", des.remaining());
+		}
+	}
+
+	return ptpInstanceDescriptor;
+}
+
+entity::model::PtpPortDescriptor deserializeReadPtpPortDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
+{
+	entity::model::PtpPortDescriptor ptpPortDescriptor{};
+
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	if (status == AecpStatus::Success)
+	{
+		auto* const commandPayload = payload.first;
+		auto const commandPayloadLength = payload.second;
+
+		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadPtpPortDescriptorResponsePayloadSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Check ptp port descriptor payload - IEEE1722.1-2021 Clause 7.2.36
+		Deserializer des(commandPayload, commandPayloadLength);
+		des.setPosition(commonSize); // Skip already unpacked common header
+		des >> ptpPortDescriptor.objectName;
+		des >> ptpPortDescriptor.localizedDescription;
+		des >> ptpPortDescriptor.portNumber >> ptpPortDescriptor.portType >> ptpPortDescriptor.flags >> ptpPortDescriptor.avbInterfaceIndex;
+		des.unpackBuffer(ptpPortDescriptor.profileIdentifier.data(), ptpPortDescriptor.profileIdentifier.size());
+
+		AVDECC_ASSERT(des.usedBytes() == AecpAemReadPtpPortDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
+
+		if (des.remaining() != 0)
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_PTP_PORT_DESCRIPTOR RESPONSE: {}", des.remaining());
+		}
+	}
+
+	return ptpPortDescriptor;
+}
+
 /** WRITE_DESCRIPTOR Command - IEEE1722.1-2013 Clause 7.4.6.1 */
 
 /** WRITE_DESCRIPTOR Response - IEEE1722.1-2013 Clause 7.4.6.1 */

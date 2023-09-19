@@ -601,6 +601,42 @@ NLOHMANN_JSON_SERIALIZE_ENUM(PortFlag, {
 																				 { PortFlag::SyncSampleRateConv, "SYNC_SAMPLE_RATE_CONV" },
 																			 });
 
+/* PtpInstanceFlag conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(PtpInstanceFlag, {
+																								{ PtpInstanceFlag::None, "UNKNOWN" },
+																								{ PtpInstanceFlag::CanSetInstanceEnable, "CAN_SET_INSTANCE_ENABLE" },
+																								{ PtpInstanceFlag::CanSetPriority1, "CAN_SET_PRIORITY_1" },
+																								{ PtpInstanceFlag::CanSetPriority2, "CAN_SET_PRIORITY_2" },
+																								{ PtpInstanceFlag::CanSetDomainNumber, "CAN_SET_DOMAIN_NUMBER" },
+																								{ PtpInstanceFlag::CanSetExternalPortConfiguration, "CAN_SET_EXTERNAL_PORT_CONFIGURATION" },
+																								{ PtpInstanceFlag::CanSetSlaveOnly, "CAN_SET_SLAVE_ONLY" },
+																								{ PtpInstanceFlag::CanEnablePerformance, "CAN_ENABLE_PERFORMANCE" },
+																								{ PtpInstanceFlag::PerformanceMonitoring, "PERFORMANCE_MONITORING" },
+																								{ PtpInstanceFlag::GrandmasterCapable, "GRANDMASTER_CAPABLE" },
+																							});
+
+/* PtpPortFlag conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(PtpPortFlag, {
+																						{ PtpPortFlag::None, "UNKNOWN" },
+																						{ PtpPortFlag::CanSetEnable, "CAN_SET_ENABLE" },
+																						{ PtpPortFlag::CanSetLinkDelayThreshold, "CAN_SET_LINK_DELAY_THRESHOLD" },
+																						{ PtpPortFlag::CanSetDelayMechanism, "CAN_SET_DELAY_MECHANISM" },
+																						{ PtpPortFlag::CanSetDelayAsymmetry, "CAN_SET_DELAY_ASYMMETRY" },
+																						{ PtpPortFlag::CanSetInitialMessageIntervals, "CAN_SET_INITIAL_MESSAGE_INTERVALS" },
+																						{ PtpPortFlag::CanSetTimeouts, "CAN_SET_TIMEOUTS" },
+																						{ PtpPortFlag::CanOverrideAnnounceInterval, "CAN_OVERRIDE_ANNOUNCE_INTERVAL" },
+																						{ PtpPortFlag::CanOverrideSyncInterval, "CAN_OVERRIDE_SYNC_INTERVAL" },
+																						{ PtpPortFlag::CanOverridePDelayInterval, "CAN_OVERRIDE_PDELAY_INTERVAL" },
+																						{ PtpPortFlag::CanOverrideGptpCapableInterval, "CAN_OVERRIDE_GPTP_CAPABLE_INTERVAL" },
+																						{ PtpPortFlag::CanOverrideComputeNeighbor, "CAN_OVERRIDE_COMPUTE_NEIGHBOR" },
+																						{ PtpPortFlag::CanOverrideComputeLinkDelay, "CAN_OVERRIDE_COMPUTE_LINK_DELAY" },
+																						{ PtpPortFlag::CanOverrideOnestep, "CAN_OVERRIDE_ONESTEP" },
+																						{ PtpPortFlag::SupportsRemoteIntervalSignal, "SUPPORTS_REMOTE_INTERVAL_SIGNAL" },
+																						{ PtpPortFlag::SupportsOnestepTransmit, "SUPPORTS_ONESTEP_TRANSMIT" },
+																						{ PtpPortFlag::SupportsOnestepReceive, "SUPPORTS_ONESTEP_RECEIVE" },
+																						{ PtpPortFlag::SupportsUnicastNegotiate, "SUPPORTS_UNICAST_NEGOTIATE" },
+																					});
+
 /* StreamInfoFlag conversion */
 NLOHMANN_JSON_SERIALIZE_ENUM(StreamInfoFlag, {
 																							 { StreamInfoFlag::None, "UNKNOWN" },
@@ -798,6 +834,9 @@ constexpr auto NodeName_AudioClusterDescriptors = "audio_cluster_descriptors";
 constexpr auto NodeName_AudioMapDescriptors = "audio_map_descriptors";
 constexpr auto NodeName_ControlDescriptors = "control_descriptors";
 constexpr auto NodeName_ClockDomainDescriptors = "clock_domain_descriptors";
+constexpr auto NodeName_TimingDescriptors = "timing_descriptors";
+constexpr auto NodeName_PtpInstanceDescriptors = "ptp_instance_descriptors";
+constexpr auto NodeName_PtpPortDescriptors = "ptp_port_descriptors";
 
 /* Globals */
 constexpr auto Node_Informative_Index = "_index (informative)";
@@ -989,6 +1028,29 @@ constexpr auto ClockDomainNode_Dynamic_ObjectName = "object_name";
 constexpr auto ClockDomainNode_Dynamic_ClockSourceIndex = "clock_source_index";
 constexpr auto ClockDomainNode_Dynamic_Counters = "counters";
 
+/* TimingNode */
+constexpr auto TimingNode_Static_LocalizedDescription = "localized_description";
+constexpr auto TimingNode_Static_Algorithm = "algorithm";
+constexpr auto TimingNode_Static_PtpInstances = "ptp_instances";
+constexpr auto TimingNode_Dynamic_ObjectName = "object_name";
+
+/* PtpInstanceNode */
+constexpr auto PtpInstanceNode_Static_LocalizedDescription = "localized_description";
+constexpr auto PtpInstanceNode_Static_ClockIdentity = "clock_identity";
+constexpr auto PtpInstanceNode_Static_Flags = "flags";
+constexpr auto PtpInstanceNode_Static_ControlCounts = "control_counts";
+constexpr auto PtpInstanceNode_Static_PtpPortCounts = "ptp_port_counts";
+constexpr auto PtpInstanceNode_Dynamic_ObjectName = "object_name";
+
+/* PtpPortNode */
+constexpr auto PtpPortNode_Static_LocalizedDescription = "localized_description";
+constexpr auto PtpPortNode_Static_PortNumber = "port_number";
+constexpr auto PtpPortNode_Static_PortType = "port_type";
+constexpr auto PtpPortNode_Static_Flags = "flags";
+constexpr auto PtpPortNode_Static_AvbInterfaceIndex = "avb_interface_index";
+constexpr auto PtpPortNode_Static_ProfileIdentifier = "profile_identifier";
+constexpr auto PtpPortNode_Dynamic_ObjectName = "object_name";
+
 /* ControlValueUnit */
 constexpr auto ControlValueUnit_Multiplier = "multiplier";
 constexpr auto ControlValueUnit_Code = "code";
@@ -1082,6 +1144,9 @@ NLOHMANN_JSON_SERIALIZE_ENUM(DescriptorType, {
 																							 { DescriptorType::SignalTranscoder, "SIGNAL_TRANSCODER" },
 																							 { DescriptorType::ClockDomain, "CLOCK_DOMAIN" },
 																							 { DescriptorType::ControlBlock, "CONTROL_BLOCK" },
+																							 { DescriptorType::Timing, "TIMING" },
+																							 { DescriptorType::PtpInstance, "PTP_INSTANCE" },
+																							 { DescriptorType::PtpPort, "PTP_PORT" },
 																						 });
 
 /* JackType conversion */
@@ -1161,6 +1226,29 @@ NLOHMANN_JSON_SERIALIZE_ENUM(AudioClusterFormat, {
 																									 { AudioClusterFormat::Midi, "MIDI" },
 																									 { AudioClusterFormat::Smpte, "SMPTE" },
 																								 });
+
+/* TimingAlgorithm conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(TimingAlgorithm, {
+																								{ TimingAlgorithm::Single, "SINGLE" },
+																								{ TimingAlgorithm::Fallback, "FALLBACK" },
+																								{ TimingAlgorithm::Combined, "COMBINED" },
+																							});
+
+/* PtpPortType conversion */
+NLOHMANN_JSON_SERIALIZE_ENUM(PtpPortType, {
+																						{ PtpPortType::P2PLinkLayer, "P2P_LINK_LAYER" },
+																						{ PtpPortType::P2PMulticastUdpV4, "P2P_MULTICAST_UDP_V4" },
+																						{ PtpPortType::P2PMulticastUdpV6, "P2P_MULTICAST_UDP_V6" },
+																						{ PtpPortType::TimingMeasurement, "TIMING_MEASUREMENT" },
+																						{ PtpPortType::FineTimingMeasurement, "FINE_TIMING_MEASUREMENT" },
+																						{ PtpPortType::E2ELinkLayer, "E2E_LINK_LAYER" },
+																						{ PtpPortType::E2EMulticastUdpV4, "E2E_MULTICAST_UDP_V4" },
+																						{ PtpPortType::E2EMulticastUdpV6, "E2E_MULTICAST_UDP_V6" },
+																						{ PtpPortType::P2PUnicastUdpV4, "P2P_UNICAST_UDP_V4" },
+																						{ PtpPortType::P2PUnicastUdpV6, "P2P_UNICAST_UDP_V6" },
+																						{ PtpPortType::E2EUnicastUdpV4, "E2E_UNICAST_UDP_V4" },
+																						{ PtpPortType::E2EUnicastUdpV6, "E2E_UNICAST_UDP_V6" },
+																					});
 
 /* ControlValueUnit::Unit conversion */
 NLOHMANN_JSON_SERIALIZE_ENUM(ControlValueUnit::Unit, {
@@ -2482,6 +2570,88 @@ inline void from_json(json const& j, ClockDomainNodeDynamicModel& d)
 	get_optional_value(j, keyName::ClockDomainNode_Dynamic_ObjectName, d.objectName);
 	j.at(keyName::ClockDomainNode_Dynamic_ClockSourceIndex).get_to(d.clockSourceIndex);
 	get_optional_value(j, keyName::ClockDomainNode_Dynamic_Counters, d.counters);
+}
+
+/* TimingNodeStaticModel conversion */
+inline void to_json(json& j, TimingNodeStaticModel const& s)
+{
+	j[keyName::TimingNode_Static_LocalizedDescription] = s.localizedDescription;
+	j[keyName::TimingNode_Static_Algorithm] = s.algorithm;
+	j[keyName::TimingNode_Static_PtpInstances] = s.ptpInstances;
+}
+inline void from_json(json const& j, TimingNodeStaticModel& s)
+{
+	j.at(keyName::TimingNode_Static_LocalizedDescription).get_to(s.localizedDescription);
+	j.at(keyName::TimingNode_Static_Algorithm).get_to(s.algorithm);
+	j.at(keyName::TimingNode_Static_PtpInstances).get_to(s.ptpInstances);
+}
+
+/* TimingNodeDynamicModel conversion */
+inline void to_json(json& j, TimingNodeDynamicModel const& d)
+{
+	j[keyName::TimingNode_Dynamic_ObjectName] = d.objectName;
+}
+inline void from_json(json const& j, TimingNodeDynamicModel& d)
+{
+	get_optional_value(j, keyName::TimingNode_Dynamic_ObjectName, d.objectName);
+}
+
+/* PtpInstanceNodeStaticModel conversion */
+inline void to_json(json& j, PtpInstanceNodeStaticModel const& s)
+{
+	j[keyName::PtpInstanceNode_Static_LocalizedDescription] = s.localizedDescription;
+	j[keyName::PtpInstanceNode_Static_ClockIdentity] = s.clockIdentity;
+	j[keyName::PtpInstanceNode_Static_Flags] = s.flags;
+	j[keyName::PtpInstanceNode_Static_ControlCounts] = s.numberOfControls;
+	j[keyName::PtpInstanceNode_Static_PtpPortCounts] = s.numberOfPtpPorts;
+}
+inline void from_json(json const& j, PtpInstanceNodeStaticModel& s)
+{
+	j.at(keyName::PtpInstanceNode_Static_LocalizedDescription).get_to(s.localizedDescription);
+	j.at(keyName::PtpInstanceNode_Static_ClockIdentity).get_to(s.clockIdentity);
+	j.at(keyName::PtpInstanceNode_Static_Flags).get_to(s.flags);
+	j.at(keyName::PtpInstanceNode_Static_ControlCounts).get_to(s.numberOfControls); // Not optional, field was added before that descriptor
+	j.at(keyName::PtpInstanceNode_Static_PtpPortCounts).get_to(s.numberOfPtpPorts); // Not optional, field was added before that descriptor
+}
+
+/* PtpInstanceNodeDynamicModel conversion */
+inline void to_json(json& j, PtpInstanceNodeDynamicModel const& d)
+{
+	j[keyName::PtpInstanceNode_Dynamic_ObjectName] = d.objectName;
+}
+inline void from_json(json const& j, PtpInstanceNodeDynamicModel& d)
+{
+	get_optional_value(j, keyName::PtpInstanceNode_Dynamic_ObjectName, d.objectName);
+}
+
+/* PtpPortNodeStaticModel conversion */
+inline void to_json(json& j, PtpPortNodeStaticModel const& s)
+{
+	j[keyName::PtpPortNode_Static_LocalizedDescription] = s.localizedDescription;
+	j[keyName::PtpPortNode_Static_PortNumber] = s.portNumber;
+	j[keyName::PtpPortNode_Static_PortType] = s.portType;
+	j[keyName::PtpPortNode_Static_Flags] = s.flags;
+	j[keyName::PtpPortNode_Static_AvbInterfaceIndex] = s.avbInterfaceIndex;
+	j[keyName::PtpPortNode_Static_ProfileIdentifier] = s.profileIdentifier;
+}
+inline void from_json(json const& j, PtpPortNodeStaticModel& s)
+{
+	j.at(keyName::PtpPortNode_Static_LocalizedDescription).get_to(s.localizedDescription);
+	j.at(keyName::PtpPortNode_Static_PortNumber).get_to(s.portNumber);
+	j.at(keyName::PtpPortNode_Static_PortType).get_to(s.portType);
+	j.at(keyName::PtpPortNode_Static_Flags).get_to(s.flags);
+	j.at(keyName::PtpPortNode_Static_AvbInterfaceIndex).get_to(s.avbInterfaceIndex);
+	j.at(keyName::PtpPortNode_Static_ProfileIdentifier).get_to(s.profileIdentifier);
+}
+
+/* PtpPortNodeDynamicModel conversion */
+inline void to_json(json& j, PtpPortNodeDynamicModel const& d)
+{
+	j[keyName::PtpPortNode_Dynamic_ObjectName] = d.objectName;
+}
+inline void from_json(json const& j, PtpPortNodeDynamicModel& d)
+{
+	get_optional_value(j, keyName::PtpPortNode_Dynamic_ObjectName, d.objectName);
 }
 
 /* MilanInfo conversion */

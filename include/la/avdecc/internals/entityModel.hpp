@@ -338,6 +338,40 @@ struct ClockDomainDescriptor
 
 /** CONTROL_BLOCK Descriptor - IEEE1722.1-2013 Clause 7.2.33 */
 
+/** TIMING Descriptor - IEEE1722.1-2021 Clause 7.2.34 */
+struct TimingDescriptor
+{
+	AvdeccFixedString objectName{};
+	LocalizedStringReference localizedDescription{};
+	TimingAlgorithm algorithm{ TimingAlgorithm::Single };
+	std::vector<PtpInstanceIndex> ptpInstances{};
+};
+
+/** PTP_INSTANCE Descriptor - IEEE1722.1-2021 Clause 7.2.35 */
+struct PtpInstanceDescriptor
+{
+	AvdeccFixedString objectName{};
+	LocalizedStringReference localizedDescription{};
+	UniqueIdentifier clockIdentity{};
+	PtpInstanceFlags flags{};
+	std::uint16_t numberOfControls{ 0u };
+	ControlIndex baseControl{ ControlIndex(0u) };
+	std::uint16_t numberOfPtpPorts{ 0u };
+	PtpPortIndex basePtpPort{ PtpPortIndex(0u) };
+};
+
+/** PTP_PORT Descriptor - IEEE1722.1-2021 Clause 7.2.36 */
+struct PtpPortDescriptor
+{
+	AvdeccFixedString objectName{};
+	LocalizedStringReference localizedDescription{};
+	std::uint16_t portNumber{ 0u };
+	PtpPortType portType{ PtpPortType::P2PLinkLayer };
+	PtpPortFlags flags{};
+	AvbInterfaceIndex avbInterfaceIndex{ AvbInterfaceIndex(0u) };
+	la::networkInterface::MacAddress profileIdentifier{};
+};
+
 /** GET_STREAM_INFO and SET_STREAM_INFO Dynamic Information - IEEE1722.1-2013 Clause 7.4.16.2 */
 struct StreamInfo
 {

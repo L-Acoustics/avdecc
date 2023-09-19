@@ -193,6 +193,48 @@ enum class PortFlag : std::uint16_t
 };
 using PortFlags = utils::EnumBitfield<PortFlag>;
 
+/** PtpInstanceFlags - IEEE1722.1-2021 Clause 7.2.35.1 */
+enum class PtpInstanceFlag : std::uint32_t
+{
+	None = 0u,
+	CanSetInstanceEnable = 1u << 0,
+	CanSetPriority1 = 1u << 1,
+	CanSetPriority2 = 1u << 2,
+	CanSetDomainNumber = 1u << 3,
+	CanSetExternalPortConfiguration = 1u << 4,
+	CanSetSlaveOnly = 1u << 5,
+	CanEnablePerformance = 1u << 6,
+	/* Bits 2 to 24 reserved for future use */
+	PerformanceMonitoring = 1u << 30,
+	GrandmasterCapable = 1u << 31,
+};
+using PtpInstanceFlags = utils::EnumBitfield<PtpInstanceFlag>;
+
+/** PtpPortFlags - IEEE1722.1-2021 Clause 7.2.36.2 */
+enum class PtpPortFlag : std::uint32_t
+{
+	None = 0u,
+	CanSetEnable = 1u << 0,
+	CanSetLinkDelayThreshold = 1u << 1,
+	CanSetDelayMechanism = 1u << 2,
+	CanSetDelayAsymmetry = 1u << 3,
+	CanSetInitialMessageIntervals = 1u << 4,
+	CanSetTimeouts = 1u << 5,
+	CanOverrideAnnounceInterval = 1u << 6,
+	CanOverrideSyncInterval = 1u << 7,
+	CanOverridePDelayInterval = 1u << 8,
+	CanOverrideGptpCapableInterval = 1u << 9,
+	CanOverrideComputeNeighbor = 1u << 10,
+	CanOverrideComputeLinkDelay = 1u << 11,
+	CanOverrideOnestep = 1u << 12,
+	/* Bits 4 to 18 reserved for future use */
+	SupportsRemoteIntervalSignal = 1u << 28,
+	SupportsOnestepTransmit = 1u << 29,
+	SupportsOnestepReceive = 1u << 30,
+	SupportsUnicastNegotiate = 1u << 31,
+};
+using PtpPortFlags = utils::EnumBitfield<PtpPortFlag>;
+
 /** StreamInfo Flags - IEEE1722.1-2021 Clause 7.4.15.1 */
 enum class StreamInfoFlag : std::uint32_t
 {

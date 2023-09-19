@@ -97,6 +97,31 @@ struct ClockDomainNodeModels
 	ClockDomainNodeDynamicModel dynamicModel{};
 };
 
+struct TimingNodeModels
+{
+	TimingNodeStaticModel staticModel{};
+	TimingNodeDynamicModel dynamicModel{};
+};
+
+struct PtpPortNodeModels
+{
+	PtpPortNodeStaticModel staticModel{};
+	PtpPortNodeDynamicModel dynamicModel{};
+};
+
+struct PtpInstanceTree
+{
+	// Children
+	std::map<ControlIndex, ControlNodeModels> controlModels{};
+	std::map<PtpPortIndex, PtpPortNodeModels> ptpPortModels{};
+
+	// AEM Static info
+	PtpInstanceNodeStaticModel staticModel{};
+
+	// AEM Dynamic info
+	PtpInstanceNodeDynamicModel dynamicModel{};
+};
+
 struct JackTree
 {
 	// Children
@@ -161,6 +186,7 @@ struct ConfigurationTree
 	using AudioUnitTrees = std::map<AudioUnitIndex, AudioUnitTree>;
 	using LocaleTrees = std::map<LocaleIndex, LocaleTree>;
 	using JackTrees = std::map<JackIndex, JackTree>;
+	using PtpInstanceTrees = std::map<PtpInstanceIndex, PtpInstanceTree>;
 
 	// Children
 	AudioUnitTrees audioUnitTrees{};
@@ -174,6 +200,8 @@ struct ConfigurationTree
 	LocaleTrees localeTrees{};
 	std::map<ControlIndex, ControlNodeModels> controlModels{};
 	std::map<ClockDomainIndex, ClockDomainNodeModels> clockDomainModels{};
+	std::map<TimingIndex, TimingNodeModels> timingModels{};
+	PtpInstanceTrees ptpInstanceTrees{};
 
 	// AEM Static info
 	ConfigurationNodeStaticModel staticModel;

@@ -73,6 +73,9 @@ using SignalMultiplexerIndex = DescriptorIndex;
 using SignalTranscoderIndex = DescriptorIndex;
 using ClockDomainIndex = DescriptorIndex;
 using ControlBlockIndex = DescriptorIndex;
+using TimingIndex = DescriptorIndex;
+using PtpInstanceIndex = DescriptorIndex;
+using PtpPortIndex = DescriptorIndex;
 using DescriptorCounterValidFlag = std::uint32_t; /** Counters valid flag - IEEE1722.1-2013 Clause 7.4.42 */
 using DescriptorCounter = std::uint32_t; /** Counter - IEEE1722.1-2013 Clause 7.4.42 */
 using OperationID = std::uint16_t; /** OperationID for OPERATIONS returned by an entity to a controller - IEEE1722.1-2013 Clause 7.4.53 */
@@ -124,8 +127,11 @@ enum class DescriptorType : std::uint16_t
 	SignalTranscoder = 0x0023,
 	ClockDomain = 0x0024,
 	ControlBlock = 0x0025,
-	LAST_VALID_DESCRIPTOR = 0x0025,
-	/* 0026 to fffe reserved for future use */
+	Timing = 0x0026,
+	PtpInstance = 0x0027,
+	PtpPort = 0x0028,
+	LAST_VALID_DESCRIPTOR = 0x0028,
+	/* 0029 to fffe reserved for future use */
 	Invalid = 0xffff
 };
 constexpr bool operator!(DescriptorType const lhs)
@@ -319,6 +325,55 @@ struct AudioMapping
 };
 
 using AudioMappings = std::vector<AudioMapping>;
+
+/** Timing Algorithm - IEEE1722.1-2021 Clause 7.2.34.1 */
+enum class TimingAlgorithm : std::uint16_t
+{
+	Single = 0x0000,
+	Fallback = 0x0001,
+	Combined = 0x0002,
+	/* 0003 to ffff reserved for future use */
+};
+constexpr bool operator==(TimingAlgorithm const lhs, TimingAlgorithm const rhs)
+{
+	return static_cast<std::underlying_type_t<TimingAlgorithm>>(lhs) == static_cast<std::underlying_type_t<TimingAlgorithm>>(rhs);
+}
+
+constexpr bool operator==(TimingAlgorithm const lhs, std::underlying_type_t<TimingAlgorithm> const rhs)
+{
+	return static_cast<std::underlying_type_t<TimingAlgorithm>>(lhs) == rhs;
+}
+
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION timingAlgorithmToString(TimingAlgorithm const timingAlgorithm) noexcept;
+
+/** PTP Port Type - IEEE1722.1-2021 Clause 7.2.36.1 */
+enum class PtpPortType : std::uint16_t
+{
+	P2PLinkLayer = 0x0000,
+	P2PMulticastUdpV4 = 0x0001,
+	P2PMulticastUdpV6 = 0x0002,
+	TimingMeasurement = 0x0003,
+	FineTimingMeasurement = 0x0004,
+	E2ELinkLayer = 0x0005,
+	E2EMulticastUdpV4 = 0x0006,
+	E2EMulticastUdpV6 = 0x0007,
+	P2PUnicastUdpV4 = 0x0008,
+	P2PUnicastUdpV6 = 0x0009,
+	E2EUnicastUdpV4 = 0x000a,
+	E2EUnicastUdpV6 = 0x000b,
+	/* 000c to ffff reserved for future use */
+};
+constexpr bool operator==(PtpPortType const lhs, PtpPortType const rhs)
+{
+	return static_cast<std::underlying_type_t<PtpPortType>>(lhs) == static_cast<std::underlying_type_t<PtpPortType>>(rhs);
+}
+
+constexpr bool operator==(PtpPortType const lhs, std::underlying_type_t<PtpPortType> const rhs)
+{
+	return static_cast<std::underlying_type_t<PtpPortType>>(lhs) == rhs;
+}
+
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION ptpPortTypeToString(PtpPortType const ptpPortType) noexcept;
 
 /** Control Type - IEEE1722.1-2013 Clause 7.3.4 */
 using ControlType = UniqueIdentifier;

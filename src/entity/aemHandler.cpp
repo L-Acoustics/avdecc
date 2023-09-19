@@ -209,6 +209,8 @@ ConfigurationDescriptor AemHandler::buildConfigurationDescriptor(entity::model::
 	setDescriptorsCount<DescriptorType::Locale>(configDescriptor, configTree.localeTrees);
 	setDescriptorsCount<DescriptorType::Control>(configDescriptor, configTree.controlModels);
 	setDescriptorsCount<DescriptorType::ClockDomain>(configDescriptor, configTree.clockDomainModels);
+	setDescriptorsCount<DescriptorType::Timing>(configDescriptor, configTree.timingModels);
+	setDescriptorsCount<DescriptorType::PtpInstance>(configDescriptor, configTree.ptpInstanceTrees);
 
 	std::unordered_map<DescriptorType, std::uint16_t, la::avdecc::utils::EnumClassHash> descriptorCounts{};
 

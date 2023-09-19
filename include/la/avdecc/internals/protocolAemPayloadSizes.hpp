@@ -82,6 +82,9 @@ constexpr size_t AecpAemReadSignalMultiplexerDescriptorResponsePayloadMinSize = 
 constexpr size_t AecpAemReadSignalTranscoderDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 88u;
 constexpr size_t AecpAemReadClockDomainDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 72u;
 constexpr size_t AecpAemReadControlBlockDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 72u;
+constexpr size_t AecpAemReadTimingDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 72u;
+constexpr size_t AecpAemReadPtpInstanceDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 86u;
+constexpr size_t AecpAemReadPtpPortDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 82u;
 
 /** SET_CONFIGURATION Command and Response - IEEE1722.1-2013 Clause 7.4.7.1 */
 constexpr size_t AecpAemSetConfigurationCommandPayloadSize = 4u;

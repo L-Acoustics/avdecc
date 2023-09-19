@@ -117,6 +117,9 @@ entity::model::AudioClusterDescriptor deserializeReadAudioClusterDescriptorRespo
 entity::model::AudioMapDescriptor deserializeReadAudioMapDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status);
 entity::model::ControlDescriptor deserializeReadControlDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status);
 entity::model::ClockDomainDescriptor deserializeReadClockDomainDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status);
+entity::model::TimingDescriptor deserializeReadTimingDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status);
+entity::model::PtpInstanceDescriptor deserializeReadPtpInstanceDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status);
+entity::model::PtpPortDescriptor deserializeReadPtpPortDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status);
 
 /** WRITE_DESCRIPTOR Command - IEEE1722.1-2013 Clause 7.4.6.1 */
 

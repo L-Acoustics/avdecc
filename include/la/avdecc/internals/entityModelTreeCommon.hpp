@@ -124,6 +124,7 @@ using RedundantStreams = std::set<StreamIndex>;
 using SamplingRates = std::set<SamplingRate>;
 using AvdeccFixedStrings = std::array<AvdeccFixedString, 7>;
 using ClockSources = std::vector<ClockSourceIndex>;
+using PtpInstances = std::vector<PtpInstanceIndex>;
 using DescriptorCounts = std::unordered_map<DescriptorType, std::uint16_t, utils::EnumClassHash>;
 
 } // namespace model
