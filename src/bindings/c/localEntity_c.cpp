@@ -270,7 +270,7 @@ private:
 	{
 		la::avdecc::utils::invokeProtectedHandler(_delegate->onStreamInputCountersChanged, _handle, entityID, streamIndex, validCounters.value(), counters.data());
 	}
-	virtual void onStreamOutputCountersChanged(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::StreamOutputCounterValidFlagsMilan2019 const validCounters, la::avdecc::entity::model::DescriptorCounters const& counters) noexcept override
+	virtual void onStreamOutputCountersMilan2019Changed(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::StreamOutputCounterValidFlagsMilan2019 const validCounters, la::avdecc::entity::model::DescriptorCounters const& counters) noexcept override
 	{
 		la::avdecc::utils::invokeProtectedHandler(_delegate->onStreamOutputCountersChanged, _handle, entityID, streamIndex, validCounters.value(), counters.data());
 	}
@@ -2195,7 +2195,7 @@ LA_AVDECC_BINDINGS_C_API avdecc_local_entity_error_t LA_AVDECC_BINDINGS_C_CALL_C
 	try
 	{
 		auto& obj = s_AggregateEntityManager.getObject(handle);
-		obj.getStreamOutputCounters(la::avdecc::UniqueIdentifier{ entityID }, streamIndex,
+		obj.getStreamOutputCountersMilan2019(la::avdecc::UniqueIdentifier{ entityID }, streamIndex,
 			[handle, onResult](la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::StreamOutputCounterValidFlagsMilan2019 const validCounters, la::avdecc::entity::model::DescriptorCounters const& counters)
 			{
 				la::avdecc::utils::invokeProtectedHandler(onResult, handle, entityID, static_cast<avdecc_local_entity_aem_command_status_t>(status), streamIndex, validCounters.value(), counters.data());
