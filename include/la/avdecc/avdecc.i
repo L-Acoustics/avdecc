@@ -297,6 +297,9 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Delegate)
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_MapIndex_AudioMapDescriptor;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_ControlIndex_ControlDescriptor;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_ClockDomainIndex_ClockDomainDescriptor;
+%rename("%s") Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_TimingIndex_TimingDescriptor;
+%rename("%s") Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_PtpInstanceIndex_PtpInstanceDescriptor;
+%rename("%s") Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_PtpPortIndex_PtpPortDescriptor;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_StreamIndex_StreamFormat;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_StreamPortIndex_MapIndex_MapIndex_AudioMappings;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_StreamPortIndex_AudioMappings;
@@ -314,6 +317,9 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Delegate)
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_ClusterIndex_AvdeccFixedString;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_ControlIndex_AvdeccFixedString;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_ClockDomainIndex_AvdeccFixedString;
+%rename("%s") Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_TimingIndex_AvdeccFixedString;
+%rename("%s") Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_PtpInstanceIndex_AvdeccFixedString;
+%rename("%s") Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_PtpPortIndex_AvdeccFixedString;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_AudioUnitIndex_SamplingRate;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_ClusterIndex_SamplingRate;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_StreamIndex;
@@ -332,7 +338,7 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Delegate)
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_AvbInterfaceIndex_AvbInterfaceCounterValidFlags_DescriptorCounters;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_ClockDomainIndex_ClockDomainCounterValidFlags_DescriptorCounters;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_StreamIndex_StreamInputCounterValidFlags_DescriptorCounters;
-%rename("%s") Handler_UniqueIdentifier_AemCommandStatus_StreamIndex_StreamOutputCounterValidFlags_DescriptorCounters;
+%rename("%s") Handler_UniqueIdentifier_AemCommandStatus_StreamIndex_StreamOutputCounterValidFlagsMilan2019_DescriptorCounters;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_DescriptorType_DescriptorIndex_OperationID_MemoryObjectOperationType_MemoryBuffer;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_DescriptorType_DescriptorIndex_OperationID;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_MemoryObjectIndex_uint64_t;
@@ -360,6 +366,9 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Delegate)
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_MapIndex_AudioMapDescriptor, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MapIndex const mapIndex, la::avdecc::entity::model::AudioMapDescriptor const& descriptor);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_ControlIndex_ControlDescriptor, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ControlIndex const controlIndex, la::avdecc::entity::model::ControlDescriptor const& descriptor);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_ClockDomainIndex_ClockDomainDescriptor, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::model::ClockDomainDescriptor const& descriptor);
+%std_function(Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_TimingIndex_TimingDescriptor, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::TimingIndex const timingIndex, la::avdecc::entity::model::TimingDescriptor const& descriptor);
+%std_function(Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_PtpInstanceIndex_PtpInstanceDescriptor, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::PtpInstanceIndex const ptpInstanceIndex, la::avdecc::entity::model::PtpInstanceDescriptor const& descriptor);
+%std_function(Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_PtpPortIndex_PtpPortDescriptor, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::PtpPortIndex const ptpPortIndex, la::avdecc::entity::model::PtpPortDescriptor const& descriptor);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_StreamIndex_StreamFormat, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamFormat const streamFormat);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_StreamPortIndex_MapIndex_MapIndex_AudioMappings, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamPortIndex const streamPortIndex, la::avdecc::entity::model::MapIndex const numberOfMaps, la::avdecc::entity::model::MapIndex const mapIndex, la::avdecc::entity::model::AudioMappings const& mappings);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_StreamPortIndex_AudioMappings, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamPortIndex const streamPortIndex, la::avdecc::entity::model::AudioMappings const& mappings);
@@ -377,6 +386,9 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Delegate)
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_ClusterIndex_AvdeccFixedString, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ClusterIndex const audioClusterIndex, la::avdecc::entity::model::AvdeccFixedString const& name);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_ControlIndex_AvdeccFixedString, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ControlIndex const controlIndex, la::avdecc::entity::model::AvdeccFixedString const& name);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_ClockDomainIndex_AvdeccFixedString, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::model::AvdeccFixedString const& name);
+%std_function(Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_TimingIndex_AvdeccFixedString, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::TimingIndex const timingIndex, la::avdecc::entity::model::AvdeccFixedString const& name);
+%std_function(Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_PtpInstanceIndex_AvdeccFixedString, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::PtpInstanceIndex const ptpInstanceIndex, la::avdecc::entity::model::AvdeccFixedString const& name);
+%std_function(Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_PtpPortIndex_AvdeccFixedString, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::PtpPortIndex const ptpPortIndex, la::avdecc::entity::model::AvdeccFixedString const& name);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_AudioUnitIndex_SamplingRate, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::AudioUnitIndex const audioUnitIndex, la::avdecc::entity::model::SamplingRate const samplingRate);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_ClusterIndex_SamplingRate, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ClusterIndex const clusterIndex, la::avdecc::entity::model::SamplingRate const samplingRate);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_StreamIndex, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex);
@@ -395,7 +407,7 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Delegate)
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_AvbInterfaceIndex_AvbInterfaceCounterValidFlags_DescriptorCounters, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::AvbInterfaceIndex const avbInterfaceIndex, la::avdecc::entity::AvbInterfaceCounterValidFlags const validCounters, la::avdecc::entity::model::DescriptorCounters const& counters);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_ClockDomainIndex_ClockDomainCounterValidFlags_DescriptorCounters, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::ClockDomainCounterValidFlags const validCounters, la::avdecc::entity::model::DescriptorCounters const& counters);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_StreamIndex_StreamInputCounterValidFlags_DescriptorCounters, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::StreamInputCounterValidFlags const validCounters, la::avdecc::entity::model::DescriptorCounters const& counters);
-%std_function(Handler_UniqueIdentifier_AemCommandStatus_StreamIndex_StreamOutputCounterValidFlags_DescriptorCounters, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::StreamOutputCounterValidFlags const validCounters, la::avdecc::entity::model::DescriptorCounters const& counters);
+%std_function(Handler_UniqueIdentifier_AemCommandStatus_StreamIndex_StreamOutputCounterValidFlagsMilan2019_DescriptorCounters, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::StreamOutputCounterValidFlagsMilan2019 const validCounters, la::avdecc::entity::model::DescriptorCounters const& counters);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_DescriptorType_DescriptorIndex_OperationID_MemoryObjectOperationType_MemoryBuffer, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, la::avdecc::entity::model::OperationID const operationID, la::avdecc::entity::model::MemoryObjectOperationType const operationType, la::avdecc::MemoryBuffer const& memoryBuffer);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_DescriptorType_DescriptorIndex_OperationID, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, la::avdecc::entity::model::OperationID const operationID);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_MemoryObjectIndex_uint64_t, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length);
@@ -549,7 +561,7 @@ DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, AvbInterfaceInfo, OptAvbInterfa
 DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, AsPath, OptAsPath)
 DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, EntityCounters, OptEntityCounters)
 DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, StreamInputCounters, OptStreamInputCounters)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, StreamOutputCounters, OptStreamOutputCounters)
+DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, StreamOutputCountersMilan2019, OptStreamOutputCountersMilan2019)
 DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, AvbInterfaceCounters, OptAvbInterfaceCounters)
 DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, ClockDomainCounters, OptClockDomainCounters)
 
@@ -573,6 +585,9 @@ DEFINE_AEM_TREE_MODELS(AudioCluster)
 DEFINE_AEM_TREE_MODELS(AudioMap)
 DEFINE_AEM_TREE_MODELS(Control)
 DEFINE_AEM_TREE_MODELS(ClockDomain)
+DEFINE_AEM_TREE_MODELS(Timing)
+DEFINE_AEM_TREE_MODELS(PtpInstance)
+DEFINE_AEM_TREE_MODELS(PtpPort)
 DEFINE_AEM_TREE_MODELS(Configuration)
 DEFINE_AEM_TREE_MODELS(Entity)
 DEFINE_AEM_TREE_LEAF(StreamInput);
@@ -585,10 +600,13 @@ DEFINE_AEM_TREE_LEAF(AudioCluster);
 DEFINE_AEM_TREE_LEAF(AudioMap);
 DEFINE_AEM_TREE_LEAF(Control);
 DEFINE_AEM_TREE_LEAF(ClockDomain);
+DEFINE_AEM_TREE_LEAF(Timing);
+DEFINE_AEM_TREE_LEAF(PtpPort);
 DEFINE_AEM_TREE_NODE(Jack);
 DEFINE_AEM_TREE_NODE(Locale);
 DEFINE_AEM_TREE_NODE(StreamPort);
 DEFINE_AEM_TREE_NODE(AudioUnit);
+DEFINE_AEM_TREE_NODE(PtpInstance);
 DEFINE_AEM_TREE_NODE(Configuration);
 DEFINE_AEM_TREE_NODE(Entity);
 
@@ -609,16 +627,19 @@ DEFINE_AEM_TREE_NODE(Entity);
 %template(AudioUnitTreeMap) std::map<la::avdecc::entity::model::AudioUnitIndex, la::avdecc::entity::model::AudioUnitTree>;
 %template(LocaleTreeMap) std::map<la::avdecc::entity::model::LocaleIndex, la::avdecc::entity::model::LocaleTree>;
 %template(JackTreeMap) std::map<la::avdecc::entity::model::JackIndex, la::avdecc::entity::model::JackTree>;
+%template(PtpInstanceTreeMap) std::map<la::avdecc::entity::model::PtpInstanceIndex, la::avdecc::entity::model::PtpInstanceTree>;
 %template(StreamInputNodeModelMap) std::map<la::avdecc::entity::model::StreamIndex, la::avdecc::entity::model::StreamInputNodeModels>;
 %template(StreamOutputNodeModelMap) std::map<la::avdecc::entity::model::StreamIndex, la::avdecc::entity::model::StreamOutputNodeModels>;
 %template(AvbInterfaceNodeModelMap) std::map<la::avdecc::entity::model::AvbInterfaceIndex, la::avdecc::entity::model::AvbInterfaceNodeModels>;
 %template(ClockSourceNodeModelMap) std::map<la::avdecc::entity::model::ClockSourceIndex, la::avdecc::entity::model::ClockSourceNodeModels>;
 %template(MemoryObjectNodeModelMap) std::map<la::avdecc::entity::model::MemoryObjectIndex, la::avdecc::entity::model::MemoryObjectNodeModels>;
 %template(ClockDomainNodeModelMap) std::map<la::avdecc::entity::model::ClockDomainIndex, la::avdecc::entity::model::ClockDomainNodeModels>;
+%template(TimingNodeModelMap) std::map<la::avdecc::entity::model::TimingIndex, la::avdecc::entity::model::TimingNodeModels>;
+%template(PtpPortNodeModelMap) std::map<la::avdecc::entity::model::PtpPortIndex, la::avdecc::entity::model::PtpPortNodeModels>;
 %template(ConfigurationTreeMap) std::map<la::avdecc::entity::model::ConfigurationIndex, la::avdecc::entity::model::ConfigurationTree>;
 %template(EntityCounters) std::map<la::avdecc::entity::EntityCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
 %template(StreamInputCounters) std::map<la::avdecc::entity::StreamInputCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
-%template(StreamOutputCounters) std::map<la::avdecc::entity::StreamOutputCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
+%template(StreamOutputCountersMilan2019) std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilan2019, la::avdecc::entity::model::DescriptorCounter>;
 %template(AvbInterfaceCounters) std::map<la::avdecc::entity::AvbInterfaceCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
 %template(ClockDomainCounters) std::map<la::avdecc::entity::ClockDomainCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
 %template(LocalizedStringMap) std::unordered_map<la::avdecc::entity::model::StringsIndex, la::avdecc::entity::model::AvdeccFixedString>;
