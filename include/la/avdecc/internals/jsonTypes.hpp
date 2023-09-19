@@ -343,11 +343,11 @@ struct adl_serializer<la::avdecc::entity::model::StreamInputCounters>
 	}
 };
 
-/** la::avdecc::entity::model::StreamOutputCounters converter */
+/** la::avdecc::entity::model::StreamOutputCountersMilan2019 converter */
 template<>
-struct adl_serializer<la::avdecc::entity::model::StreamOutputCounters>
+struct adl_serializer<la::avdecc::entity::model::StreamOutputCountersMilan2019>
 {
-	static void to_json(json& j, la::avdecc::entity::model::StreamOutputCounters const& counters)
+	static void to_json(json& j, la::avdecc::entity::model::StreamOutputCountersMilan2019 const& counters)
 	{
 		auto object = json::object();
 
@@ -367,21 +367,21 @@ struct adl_serializer<la::avdecc::entity::model::StreamOutputCounters>
 
 		j = std::move(object);
 	}
-	static void from_json(json const& j, la::avdecc::entity::model::StreamOutputCounters& counters)
+	static void from_json(json const& j, la::avdecc::entity::model::StreamOutputCountersMilan2019& counters)
 	{
 		for (auto const& [name, value] : j.items())
 		{
 			json const n = name; // Must use operator= instead of constructor to force usage of the to_json overload
-			auto const key = n.get<la::avdecc::entity::model::StreamOutputCounters::key_type>();
+			auto const key = n.get<la::avdecc::entity::model::StreamOutputCountersMilan2019::key_type>();
 			// Check if key is a valid CounterValidFlag enum
-			if (key == la::avdecc::entity::model::StreamOutputCounters::key_type::None)
+			if (key == la::avdecc::entity::model::StreamOutputCountersMilan2019::key_type::None)
 			{
 				logJsonSerializer(la::avdecc::logger::Level::Warn, std::string("Unknown StreamOutputCounterValidFlag name: ") + name);
-				counters.insert(std::make_pair(static_cast<la::avdecc::entity::model::StreamOutputCounters::key_type>(la::avdecc::utils::convertFromString<la::avdecc::entity::model::DescriptorCounterValidFlag>(name.c_str())), value.get<la::avdecc::entity::model::StreamOutputCounters::mapped_type>()));
+				counters.insert(std::make_pair(static_cast<la::avdecc::entity::model::StreamOutputCountersMilan2019::key_type>(la::avdecc::utils::convertFromString<la::avdecc::entity::model::DescriptorCounterValidFlag>(name.c_str())), value.get<la::avdecc::entity::model::StreamOutputCountersMilan2019::mapped_type>()));
 			}
 			else
 			{
-				counters.insert(std::make_pair(key, value.get<la::avdecc::entity::model::StreamOutputCounters::mapped_type>()));
+				counters.insert(std::make_pair(key, value.get<la::avdecc::entity::model::StreamOutputCountersMilan2019::mapped_type>()));
 			}
 		}
 	}
@@ -898,7 +898,9 @@ constexpr auto StreamOutputNode_Dynamic_ObjectName = "object_name";
 constexpr auto StreamOutputNode_Dynamic_StreamFormat = "stream_format";
 constexpr auto StreamOutputNode_Dynamic_StreamRunning = "stream_running";
 constexpr auto StreamOutputNode_Dynamic_StreamDynamicInfo = "stream_dynamic_info";
-constexpr auto StreamOutputNode_Dynamic_Counters = "counters";
+constexpr auto StreamOutputNode_Dynamic_CountersMilan2019 = "counters_milan_2019";
+constexpr auto StreamOutputNode_Dynamic_CountersLegacy = "counters";
+constexpr auto StreamOutputNode_Dynamic_Counters17221 = "counters_17221";
 
 /* JackNode */
 constexpr auto JackNode_Static_LocalizedDescription = "localized_description";
@@ -1770,7 +1772,7 @@ inline void to_json(json& j, StreamOutputNodeDynamicModel const& d)
 	j[keyName::StreamOutputNode_Dynamic_StreamFormat] = d.streamFormat;
 	j[keyName::StreamOutputNode_Dynamic_StreamRunning] = d.isStreamRunning;
 	j[keyName::StreamOutputNode_Dynamic_StreamDynamicInfo] = d.streamDynamicInfo;
-	j[keyName::StreamOutputNode_Dynamic_Counters] = d.counters;
+	j[keyName::StreamOutputNode_Dynamic_CountersMilan2019] = d.countersMilan2019;
 }
 inline void from_json(json const& j, StreamOutputNodeDynamicModel& d)
 {
@@ -1778,7 +1780,15 @@ inline void from_json(json const& j, StreamOutputNodeDynamicModel& d)
 	j.at(keyName::StreamOutputNode_Dynamic_StreamFormat).get_to(d.streamFormat);
 	get_optional_value(j, keyName::StreamOutputNode_Dynamic_StreamRunning, d.isStreamRunning);
 	get_optional_value(j, keyName::StreamOutputNode_Dynamic_StreamDynamicInfo, d.streamDynamicInfo);
-	get_optional_value(j, keyName::StreamOutputNode_Dynamic_Counters, d.counters);
+	// First try to read the new countersMilan2019, if not present try to read the legacy counters
+	if (auto const& it = j.find(keyName::StreamOutputNode_Dynamic_CountersMilan2019); it != j.end())
+	{
+		it->get_to(d.countersMilan2019);
+	}
+	else
+	{
+		get_optional_value(j, keyName::StreamOutputNode_Dynamic_CountersLegacy, d.countersMilan2019);
+	}
 }
 
 /* JackNodeStaticModel conversion */

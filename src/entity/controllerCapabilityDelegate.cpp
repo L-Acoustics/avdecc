@@ -1635,7 +1635,7 @@ void CapabilityDelegate::getStreamInputCounters(UniqueIdentifier const targetEnt
 	}
 }
 
-void CapabilityDelegate::getStreamOutputCounters(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, Interface::GetStreamOutputCountersHandler const& handler) const noexcept
+void CapabilityDelegate::getStreamOutputCountersMilan2019(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, Interface::GetStreamOutputCountersMilan2019Handler const& handler) const noexcept
 {
 	auto const errorCallback = LocalEntityImpl<>::makeAemAECPErrorHandler(handler, &_controllerInterface, targetEntityID, std::placeholders::_1, streamIndex, StreamOutputCounterValidFlagsMilan2019{}, model::DescriptorCounters{});
 	try
@@ -1645,7 +1645,7 @@ void CapabilityDelegate::getStreamOutputCounters(UniqueIdentifier const targetEn
 	}
 	catch ([[maybe_unused]] std::exception const& e)
 	{
-		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getStreamOutputCounters: {}", e.what());
+		LOG_CONTROLLER_ENTITY_DEBUG(targetEntityID, "Failed to serialize getStreamOutputCountersMilan2019: {}", e.what());
 		utils::invokeProtectedHandler(errorCallback, LocalEntity::AemCommandStatus::ProtocolError);
 	}
 }
@@ -3514,10 +3514,10 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 					{
 						StreamOutputCounterValidFlagsMilan2019 flags;
 						flags.assign(validFlags);
-						answerCallback.invoke<controller::Interface::GetStreamOutputCountersHandler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, flags, counters);
+						answerCallback.invoke<controller::Interface::GetStreamOutputCountersMilan2019Handler>(protocolViolationCallback, controllerInterface, targetID, status, descriptorIndex, flags, counters);
 						if (aem.getUnsolicited() && delegate && !!status)
 						{
-							utils::invokeProtectedMethod(&controller::Delegate::onStreamOutputCountersChanged, delegate, controllerInterface, targetID, descriptorIndex, flags, counters);
+							utils::invokeProtectedMethod(&controller::Delegate::onStreamOutputCountersMilan2019Changed, delegate, controllerInterface, targetID, descriptorIndex, flags, counters);
 						}
 						break;
 					}
