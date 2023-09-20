@@ -392,7 +392,7 @@ enum class StreamOutputCounterValidFlag17221 : model::DescriptorCounterValidFlag
 	TimestampUncertain = 1u << 4, /**< Increments on a toggle of the tu bit in the Stream data AVTPDU. */
 	TimestampValid = 1u << 5, /**< Increments on receipt of a Stream data AVTPDU with the tv bit set. */
 	TimestampNotValid = 1u << 6, /**< Increments on receipt of a Stream data AVTPDU with tv bit cleared. */
-	FramesTx = 1u << 4, /**< Increments on each Stream data AVTPDU transmitted. */
+	FramesTx = 1u << 7, /**< Increments on each Stream data AVTPDU transmitted. */
 };
 using StreamOutputCounterValidFlags17221 = utils::EnumBitfield<StreamOutputCounterValidFlag17221>;
 
