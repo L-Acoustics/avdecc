@@ -1350,7 +1350,7 @@ void ControllerImpl::updateStreamInputCounters(ControlledEntityImpl& controlledE
 	}
 }
 
-void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::StreamOutputCounterValidFlagsMilan2019 const validCounters, entity::model::DescriptorCounters const& counters, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
+void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlledEntity, entity::model::StreamIndex const streamIndex, entity::StreamOutputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters, TreeModelAccessStrategy::NotFoundBehavior const notFoundBehavior) const noexcept
 {
 	AVDECC_ASSERT(_controller->isSelfLocked(), "Should only be called from the network thread (where ProtocolInterface is locked)");
 
@@ -1369,8 +1369,8 @@ void ControllerImpl::updateStreamOutputCounters(ControlledEntityImpl& controlled
 		{
 			// StreamStop should either be equal to StreamStart or be one more (Milan-2019 Clause 6.7.7)
 			// We are safe to get those counters, check for their presence during first enumeration has already been done
-			auto const startValue = (*streamCounters)[entity::StreamOutputCounterValidFlagMilan2019::StreamStart];
-			auto const stopValue = (*streamCounters)[entity::StreamOutputCounterValidFlagMilan2019::StreamStop];
+			auto const startValue = (*streamCounters)[entity::StreamOutputCounterValidFlag::StreamStart];
+			auto const stopValue = (*streamCounters)[entity::StreamOutputCounterValidFlag::StreamStop];
 			if (startValue != stopValue && startValue != (stopValue + 1))
 			{
 				LOG_CONTROLLER_WARN(controlledEntity.getEntity().getEntityID(), "Invalid STREAM_START / STREAM_STOP counters value on STREAM_OUTPUT:{} ({} / {})", streamIndex, startValue, stopValue);

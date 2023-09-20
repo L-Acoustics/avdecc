@@ -932,11 +932,11 @@ void AggregateEntityImpl::getStreamInputCounters(UniqueIdentifier const targetEn
 	}
 }
 
-void AggregateEntityImpl::getStreamOutputCountersMilan2019(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, GetStreamOutputCountersMilan2019Handler const& handler) const noexcept
+void AggregateEntityImpl::getStreamOutputCounters(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, GetStreamOutputCountersHandler const& handler) const noexcept
 {
 	if (AVDECC_ASSERT_WITH_RET(_controllerCapabilityDelegate != nullptr, "Controller method should have a valid ControllerCapabilityDelegate"))
 	{
-		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getStreamOutputCountersMilan2019(targetEntityID, streamIndex, handler);
+		static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getStreamOutputCounters(targetEntityID, streamIndex, handler);
 	}
 }
 

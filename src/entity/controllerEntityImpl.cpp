@@ -602,9 +602,9 @@ void ControllerEntityImpl::getStreamInputCounters(UniqueIdentifier const targetE
 	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getStreamInputCounters(targetEntityID, streamIndex, handler);
 }
 
-void ControllerEntityImpl::getStreamOutputCountersMilan2019(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, GetStreamOutputCountersMilan2019Handler const& handler) const noexcept
+void ControllerEntityImpl::getStreamOutputCounters(UniqueIdentifier const targetEntityID, model::StreamIndex const streamIndex, GetStreamOutputCountersHandler const& handler) const noexcept
 {
-	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getStreamOutputCountersMilan2019(targetEntityID, streamIndex, handler);
+	static_cast<controller::CapabilityDelegate&>(*_controllerCapabilityDelegate).getStreamOutputCounters(targetEntityID, streamIndex, handler);
 }
 
 void ControllerEntityImpl::reboot(UniqueIdentifier const targetEntityID, RebootHandler const& handler) const noexcept

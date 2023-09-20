@@ -338,7 +338,7 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Delegate)
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_AvbInterfaceIndex_AvbInterfaceCounterValidFlags_DescriptorCounters;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_ClockDomainIndex_ClockDomainCounterValidFlags_DescriptorCounters;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_StreamIndex_StreamInputCounterValidFlags_DescriptorCounters;
-%rename("%s") Handler_UniqueIdentifier_AemCommandStatus_StreamIndex_StreamOutputCounterValidFlagsMilan2019_DescriptorCounters;
+%rename("%s") Handler_UniqueIdentifier_AemCommandStatus_StreamIndex_StreamOutputCounterValidFlags_DescriptorCounters;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_DescriptorType_DescriptorIndex_OperationID_MemoryObjectOperationType_MemoryBuffer;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_DescriptorType_DescriptorIndex_OperationID;
 %rename("%s") Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_MemoryObjectIndex_uint64_t;
@@ -407,7 +407,7 @@ DEFINE_OBSERVER_CLASS(la::avdecc::entity::controller::Delegate)
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_AvbInterfaceIndex_AvbInterfaceCounterValidFlags_DescriptorCounters, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::AvbInterfaceIndex const avbInterfaceIndex, la::avdecc::entity::AvbInterfaceCounterValidFlags const validCounters, la::avdecc::entity::model::DescriptorCounters const& counters);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_ClockDomainIndex_ClockDomainCounterValidFlags_DescriptorCounters, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ClockDomainIndex const clockDomainIndex, la::avdecc::entity::ClockDomainCounterValidFlags const validCounters, la::avdecc::entity::model::DescriptorCounters const& counters);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_StreamIndex_StreamInputCounterValidFlags_DescriptorCounters, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::StreamInputCounterValidFlags const validCounters, la::avdecc::entity::model::DescriptorCounters const& counters);
-%std_function(Handler_UniqueIdentifier_AemCommandStatus_StreamIndex_StreamOutputCounterValidFlagsMilan2019_DescriptorCounters, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::StreamOutputCounterValidFlagsMilan2019 const validCounters, la::avdecc::entity::model::DescriptorCounters const& counters);
+%std_function(Handler_UniqueIdentifier_AemCommandStatus_StreamIndex_StreamOutputCounterValidFlags_DescriptorCounters, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::StreamOutputCounterValidFlags const validCounters, la::avdecc::entity::model::DescriptorCounters const& counters);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_DescriptorType_DescriptorIndex_OperationID_MemoryObjectOperationType_MemoryBuffer, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, la::avdecc::entity::model::OperationID const operationID, la::avdecc::entity::model::MemoryObjectOperationType const operationType, la::avdecc::MemoryBuffer const& memoryBuffer);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_DescriptorType_DescriptorIndex_OperationID, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::DescriptorType const descriptorType, la::avdecc::entity::model::DescriptorIndex const descriptorIndex, la::avdecc::entity::model::OperationID const operationID);
 %std_function(Handler_UniqueIdentifier_AemCommandStatus_ConfigurationIndex_MemoryObjectIndex_uint64_t, void, la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::LocalEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length);
@@ -561,7 +561,7 @@ DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, AvbInterfaceInfo, OptAvbInterfa
 DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, AsPath, OptAsPath)
 DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, EntityCounters, OptEntityCounters)
 DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, StreamInputCounters, OptStreamInputCounters)
-DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, StreamOutputCountersMilan2019, OptStreamOutputCountersMilan2019)
+DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, StreamOutputCounters, OptStreamOutputCounters)
 DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, AvbInterfaceCounters, OptAvbInterfaceCounters)
 DEFINE_OPTIONAL_CLASS(la::avdecc::entity::model, ClockDomainCounters, OptClockDomainCounters)
 
@@ -639,7 +639,7 @@ DEFINE_AEM_TREE_NODE(Entity);
 %template(ConfigurationTreeMap) std::map<la::avdecc::entity::model::ConfigurationIndex, la::avdecc::entity::model::ConfigurationTree>;
 %template(EntityCounters) std::map<la::avdecc::entity::EntityCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
 %template(StreamInputCounters) std::map<la::avdecc::entity::StreamInputCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
-%template(StreamOutputCountersMilan2019) std::map<la::avdecc::entity::StreamOutputCounterValidFlagMilan2019, la::avdecc::entity::model::DescriptorCounter>;
+%template(StreamOutputCounters) std::map<la::avdecc::entity::StreamOutputCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
 %template(AvbInterfaceCounters) std::map<la::avdecc::entity::AvbInterfaceCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
 %template(ClockDomainCounters) std::map<la::avdecc::entity::ClockDomainCounterValidFlag, la::avdecc::entity::model::DescriptorCounter>;
 %template(LocalizedStringMap) std::unordered_map<la::avdecc::entity::model::StringsIndex, la::avdecc::entity::model::AvdeccFixedString>;

@@ -370,7 +370,7 @@ enum class StreamInputCounterValidFlag : model::DescriptorCounterValidFlag
 using StreamInputCounterValidFlags = utils::EnumBitfield<StreamInputCounterValidFlag>;
 
 /* STREAM_OUTPUT Counters - Milan-2019 Clause 6.7.7/7.3.25 */
-enum class StreamOutputCounterValidFlagMilan2019 : model::DescriptorCounterValidFlag
+enum class StreamOutputCounterValidFlag : model::DescriptorCounterValidFlag
 {
 	None = 0u,
 	StreamStart = 1u << 0, /**< Incremented each time the Talker starts streaming. */
@@ -379,7 +379,7 @@ enum class StreamOutputCounterValidFlagMilan2019 : model::DescriptorCounterValid
 	TimestampUncertain = 1u << 3, /**< Incremented at the end of every observation interval during which the "tu" bit has been set in any of the transmitted Stream Data AVTPDUs. The duration of the observation interval is implementation-specific and shall be less than or equal to 1 second. */
 	FramesTx = 1u << 4, /**< Incremented at the end of every observation interval during which at least one Stream Data AVTPDU has been transmitted on this STREAM_OUTPUT. The duration of the observation interval is implementation-specific and shall be less than or equal to 1 second. */
 };
-using StreamOutputCounterValidFlagsMilan2019 = utils::EnumBitfield<StreamOutputCounterValidFlagMilan2019>;
+using StreamOutputCounterValidFlags = utils::EnumBitfield<StreamOutputCounterValidFlag>;
 
 /* STREAM_OUTPUT Counters - IEEE1722.1-2021 Clause 7.4.42.2.5 */
 enum class StreamOutputCounterValidFlag17221 : model::DescriptorCounterValidFlag

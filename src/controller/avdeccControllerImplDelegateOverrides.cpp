@@ -727,7 +727,7 @@ void ControllerImpl::onStreamInputCountersChanged(entity::controller::Interface 
 	}
 }
 
-void ControllerImpl::onStreamOutputCountersChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::StreamOutputCounterValidFlagsMilan2019 const validCounters, entity::model::DescriptorCounters const& counters) noexcept
+void ControllerImpl::onStreamOutputCountersChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::StreamIndex const streamIndex, entity::StreamOutputCounterValidFlags const validCounters, entity::model::DescriptorCounters const& counters) noexcept
 {
 	// Take a "scoped locked" shared copy of the ControlledEntity
 	auto controlledEntity = getControlledEntityImplGuard(entityID);

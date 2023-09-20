@@ -45,7 +45,7 @@ using EntityCounters = std::map<entity::EntityCounterValidFlag, DescriptorCounte
 using AvbInterfaceCounters = std::map<entity::AvbInterfaceCounterValidFlag, DescriptorCounter>;
 using ClockDomainCounters = std::map<entity::ClockDomainCounterValidFlag, DescriptorCounter>;
 using StreamInputCounters = std::map<entity::StreamInputCounterValidFlag, DescriptorCounter>;
-using StreamOutputCountersMilan2019 = std::map<entity::StreamOutputCounterValidFlagMilan2019, DescriptorCounter>;
+using StreamOutputCounters = std::map<entity::StreamOutputCounterValidFlag, DescriptorCounter>;
 
 struct AudioUnitNodeDynamicModel
 {
@@ -70,7 +70,7 @@ struct StreamInputNodeDynamicModel : public StreamNodeDynamicModel
 struct StreamOutputNodeDynamicModel : public StreamNodeDynamicModel
 {
 	model::StreamConnections connections{};
-	std::optional<StreamOutputCountersMilan2019> countersMilan2019{ std::nullopt };
+	std::optional<StreamOutputCounters> counters{ std::nullopt };
 };
 
 struct JackNodeDynamicModel
