@@ -624,8 +624,8 @@ public:
 	/** Returns the StreamFormat among the provided availableFormats, that best matches desiredStreamFormat, using clockValidator delegate callback. Returns invalid StreamFormat if none is available. */
 	static LA_AVDECC_CONTROLLER_API entity::model::StreamFormat LA_AVDECC_CONTROLLER_CALL_CONVENTION chooseBestStreamFormat(entity::model::StreamFormats const& availableFormats, entity::model::StreamFormat const desiredStreamFormat, std::function<bool(bool const isDesiredClockSync, bool const isAvailableClockSync)> const& clockValidator) noexcept;
 	static LA_AVDECC_CONTROLLER_API bool LA_AVDECC_CONTROLLER_CALL_CONVENTION isMediaClockStreamFormat(entity::model::StreamFormat const streamFormat) noexcept;
-	/** Returns a checksum of the static entity model of the given ControlledEntity for the given checksumVersion (defaults to the maximum checksum version supported by the library) */
-	static LA_AVDECC_CONTROLLER_API std::string LA_AVDECC_CONTROLLER_CALL_CONVENTION computeEntityModelChecksum(ControlledEntity const& controlledEntity, std::uint32_t const checksumVersion = ChecksumVersion) noexcept;
+	/** Returns a checksum of the static entity model of the given ControlledEntity for the given checksumVersion (defaults to the maximum checksum version supported by the library). Nothing is returned if the model is invalid or incomplete (only full AEM enumeration yields a valid checksum) */
+	static LA_AVDECC_CONTROLLER_API std::optional<std::string> LA_AVDECC_CONTROLLER_CALL_CONVENTION computeEntityModelChecksum(ControlledEntity const& controlledEntity, std::uint32_t const checksumVersion = ChecksumVersion) noexcept;
 
 	// Deleted compiler auto-generated methods
 	Controller(Controller const&) = delete;

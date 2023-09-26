@@ -5870,11 +5870,15 @@ bool LA_AVDECC_CONTROLLER_CALL_CONVENTION Controller::isMediaClockStreamFormat(e
 	return false;
 }
 
-std::string LA_AVDECC_CONTROLLER_CALL_CONVENTION Controller::computeEntityModelChecksum(ControlledEntity const& controlledEntity, std::uint32_t const checksumVersion) noexcept
+std::optional<std::string> LA_AVDECC_CONTROLLER_CALL_CONVENTION Controller::computeEntityModelChecksum(ControlledEntity const& controlledEntity, std::uint32_t const checksumVersion) noexcept
 {
-	auto visitor = ChecksumEntityModelVisitor{ checksumVersion };
-	controlledEntity.accept(&visitor);
-	return visitor.getHash();
+	if (controlledEntity.isEntityModelValidForCaching())
+	{
+		auto visitor = ChecksumEntityModelVisitor{ checksumVersion };
+		controlledEntity.accept(&visitor, true);
+		return visitor.getHash();
+	}
+	return std::nullopt;
 }
 
 
