@@ -2588,12 +2588,12 @@ TEST_F(MediaClockModel_F, NotCrashing_Issue125)
 	}
 }
 
-TEST(Controller, HashEntityModel)
+TEST(Controller, HashEntityModelV1)
 {
 	auto const flags = la::avdecc::entity::model::jsonSerializer::Flags{ la::avdecc::entity::model::jsonSerializer::Flag::ProcessADP, la::avdecc::entity::model::jsonSerializer::Flag::ProcessDynamicModel, la::avdecc::entity::model::jsonSerializer::Flag::ProcessStaticModel };
 	auto const& [error, msg, controlledEntity] = la::avdecc::controller::Controller::deserializeControlledEntityFromJson("data/SimpleEntity.json", flags);
 	ASSERT_EQ(la::avdecc::jsonSerializer::DeserializationError::NoError, error);
-	auto const checksum = la::avdecc::controller::Controller::computeEntityModelChecksum(*controlledEntity);
-	EXPECT_FALSE(checksum.empty());
-	EXPECT_EQ(64u, checksum.size());
+	auto const checksum = la::avdecc::controller::Controller::computeEntityModelChecksum(*controlledEntity, std::uint32_t{ 1u });
+	EXPECT_TRUE(checksum.has_value());
+	EXPECT_EQ(64u, checksum.value().size());
 }
