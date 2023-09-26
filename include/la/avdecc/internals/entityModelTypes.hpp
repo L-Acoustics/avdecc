@@ -124,6 +124,7 @@ enum class DescriptorType : std::uint16_t
 	SignalTranscoder = 0x0023,
 	ClockDomain = 0x0024,
 	ControlBlock = 0x0025,
+	LAST_VALID_DESCRIPTOR = 0x0025,
 	/* 0026 to fffe reserved for future use */
 	Invalid = 0xffff
 };

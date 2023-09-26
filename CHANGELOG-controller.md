@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - API to force refresh a entity (_reloadEntity(UniqueIdentifier)_)
 - Support for UTF8 file paths
 - New type of diagnostics: *controlCurrentValueOutOfBounds*
+- Detection of invalid *descriptor_counts* field in CONFIGURATION descriptor
 
 ### Changed
 - Complete controller entity model refactoring to support descriptors at non-configuration level

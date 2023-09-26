@@ -3644,6 +3644,35 @@ void ControllerImpl::validateEntityModel(ControlledEntityImpl& controlledEntity)
 			return;
 		}
 
+		// IEEE1722.1-2021 Clause 7.2.2 - The descriptor_counts field is the counts of the top level descriptors.
+		try
+		{
+			static auto const s_TopLevelDescriptors = std::set<entity::model::DescriptorType>{ entity::model::DescriptorType::AudioUnit, entity::model::DescriptorType::VideoUnit, entity::model::DescriptorType::SensorUnit, entity::model::DescriptorType::StreamInput, entity::model::DescriptorType::StreamOutput, entity::model::DescriptorType::JackInput, entity::model::DescriptorType::JackOutput, entity::model::DescriptorType::AvbInterface, entity::model::DescriptorType::ClockSource, entity::model::DescriptorType::Control, entity::model::DescriptorType::SignalSelector, entity::model::DescriptorType::Mixer, entity::model::DescriptorType::Matrix, entity::model::DescriptorType::Locale, entity::model::DescriptorType::MatrixSignal, entity::model::DescriptorType::MemoryObject,
+				entity::model::DescriptorType::SignalSplitter, entity::model::DescriptorType::SignalCombiner, entity::model::DescriptorType::SignalDemultiplexer, entity::model::DescriptorType::SignalMultiplexer, entity::model::DescriptorType::SignalTranscoder, entity::model::DescriptorType::ClockDomain, entity::model::DescriptorType::ControlBlock };
+			auto const& currentConfigurationNode = controlledEntity.getCurrentConfigurationNode();
+			for (auto const [descriptorType, count] : currentConfigurationNode.staticModel.descriptorCounts)
+			{
+				// If a declared 'count' is not in the list of top level descriptors, flag the entity as "Not fully IEEE1722.1 compliant"
+				if (s_TopLevelDescriptors.count(descriptorType) == 0)
+				{
+					// First check if this is an unknown descriptor (to this version of the library), so we don't print a warning for something we don't know
+					if (utils::to_integral(descriptorType) > utils::to_integral(entity::model::DescriptorType::LAST_VALID_DESCRIPTOR))
+					{
+						LOG_CONTROLLER_DEBUG(entityID, "Unknown DescriptorType {} found in descriptor_counts field", utils::toHexString(utils::to_integral(descriptorType)));
+						continue;
+					}
+					LOG_CONTROLLER_WARN(entityID, "[IEEE1722.1-2021 Clause 7.2.2] The descriptor_counts field is the counts of the top level descriptors: DescriptorType {} is not a top level descriptor", entity::model::descriptorTypeToString(descriptorType));
+					removeCompatibilityFlag(nullptr, controlledEntity, ControlledEntity::CompatibilityFlag::IEEE17221);
+					return;
+				}
+			}
+		}
+		catch (ControlledEntity::Exception const&)
+		{
+			LOG_CONTROLLER_DEBUG(entityID, "Couldn't find any current configuration although at least one was declared");
+			// Ignore
+		}
+
 		// Check IEEE1722.1 aemxml/json requirements
 #ifdef ENABLE_AVDECC_FEATURE_JSON
 		try

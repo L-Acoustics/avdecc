@@ -2169,7 +2169,7 @@ void CapabilityDelegate::processAemAecpResponse(protocol::AemCommandType const c
 						// Deserialize configuration descriptor
 						auto configurationDescriptor = protocol::aemPayload::deserializeReadConfigurationDescriptorResponse(payload, commonSize, aemStatus);
 						// Notify handlers
-						answerCallback.invoke<controller::Interface::ConfigurationDescriptorHandler>(protocolViolationCallback, controllerInterface, targetID, status, static_cast<model::ConfigurationIndex>(descriptorIndex), configurationDescriptor); // Passing descriptorIndex as ConfigurationIndex here is NOT an error. See 7.4.5.1
+						answerCallback.invoke<controller::Interface::ConfigurationDescriptorHandler>(protocolViolationCallback, controllerInterface, targetID, status, static_cast<model::ConfigurationIndex>(descriptorIndex), configurationDescriptor); // Passing descriptorIndex as ConfigurationIndex here is NOT an error. See IEEE1722.1-2013 Clause 7.4.5.1
 						break;
 					}
 
