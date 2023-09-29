@@ -396,6 +396,21 @@ model::ClockDomainNode const& ControlledEntityImpl::getClockDomainNode(entity::m
 	return *_treeModelAccess->getClockDomainNode(configurationIndex, clockDomainIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
 }
 
+model::TimingNode const& ControlledEntityImpl::getTimingNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const timingIndex) const
+{
+	return *_treeModelAccess->getTimingNode(configurationIndex, timingIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
+}
+
+model::PtpInstanceNode const& ControlledEntityImpl::getPtpInstanceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const ptpInstanceIndex) const
+{
+	return *_treeModelAccess->getPtpInstanceNode(configurationIndex, ptpInstanceIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
+}
+
+model::PtpPortNode const& ControlledEntityImpl::getPtpPortNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex) const
+{
+	return *_treeModelAccess->getPtpPortNode(configurationIndex, ptpPortIndex, TreeModelAccessStrategy::NotFoundBehavior::Throw);
+}
+
 model::LocaleNode const* ControlledEntityImpl::findLocaleNode(entity::model::ConfigurationIndex const configurationIndex, std::string const& /*locale*/) const
 {
 #pragma message("TODO: Parse 'locale' parameter and find best match")
@@ -872,6 +887,67 @@ void ControlledEntityImpl::accept(model::EntityModelVisitor* const visitor, bool
 						{
 							LOG_CONTROLLER_WARN(_entity.getEntityID(), "Invalid ClockSourceIndex in ClockDomain");
 						}
+					}
+				}
+
+				// Loop over TimingNode
+				for (auto const& timingKV : configuration.timings)
+				{
+					auto const& timing = timingKV.second;
+					// Visit TimingNode (ConfigurationNode is parent)
+					visitor->visit(this, &configuration, timing);
+
+					// Loop over PtpInstanceNode
+					for (auto const ptpInstanceIndex : timing.staticModel.ptpInstances)
+					{
+						if (auto const ptpInstanceIt = configuration.ptpInstances.find(ptpInstanceIndex); ptpInstanceIt != configuration.ptpInstances.end())
+						{
+							auto const& ptpInstance = ptpInstanceIt->second;
+							// Visit PtpInstanceNode (TimingNode is parent)
+							visitor->visit(this, &configuration, &timing, ptpInstance);
+
+							// Loop over ControlNode
+							for (auto const& controlKV : ptpInstance.controls)
+							{
+								auto const& control = controlKV.second;
+								// Visit ControlNode (PtpInstanceNode is parent)
+								visitor->visit(this, &configuration, &timing, &ptpInstance, control);
+							}
+							// Loop over PtpPortNode
+							for (auto const& ptpPortKV : ptpInstance.ptpPorts)
+							{
+								auto const& port = ptpPortKV.second;
+								// Visit PtpPortNode (PtpInstanceNode is parent)
+								visitor->visit(this, &configuration, &timing, &ptpInstance, port);
+							}
+						}
+						else
+						{
+							LOG_CONTROLLER_WARN(_entity.getEntityID(), "Invalid PtpInstanceIndex in Timing");
+						}
+					}
+				}
+
+				// Loop over PtpInstanceNode
+				for (auto const& ptpInstanceKV : configuration.ptpInstances)
+				{
+					auto const& ptpInstance = ptpInstanceKV.second;
+					// Visit PtpInstanceNode (ConfigurationNode is parent)
+					visitor->visit(this, &configuration, ptpInstance);
+
+					// Loop over ControlNode
+					for (auto const& controlKV : ptpInstance.controls)
+					{
+						auto const& control = controlKV.second;
+						// Visit ControlNode (PtpInstanceNode is parent)
+						visitor->visit(this, &configuration, &ptpInstance, control);
+					}
+					// Loop over PtpPortNode
+					for (auto const& ptpPortKV : ptpInstance.ptpPorts)
+					{
+						auto const& port = ptpPortKV.second;
+						// Visit PtpPortNode (PtpInstanceNode is parent)
+						visitor->visit(this, &configuration, &ptpInstance, port);
 					}
 				}
 			}
@@ -2058,6 +2134,79 @@ void ControlledEntityImpl::setClockDomainDescriptor(entity::model::ClockDomainDe
 	}
 }
 
+void ControlledEntityImpl::setTimingDescriptor(entity::model::TimingDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const timingIndex) noexcept
+{
+	// Get or create a new TimingNode for this entity
+	auto* const node = _treeModelAccess->getTimingNode(configurationIndex, timingIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
+	AVDECC_ASSERT(!!node, "Should not be null, should be default constructed");
+
+	// Copy static model
+	{
+		auto& m = node->staticModel;
+		m.localizedDescription = descriptor.localizedDescription;
+		m.algorithm = descriptor.algorithm;
+		m.ptpInstances = descriptor.ptpInstances;
+	}
+
+	// Copy dynamic model
+	{
+		auto& m = node->dynamicModel;
+		// Changeable fields through commands
+		m.objectName = descriptor.objectName;
+	}
+}
+
+void ControlledEntityImpl::setPtpInstanceDescriptor(entity::model::PtpInstanceDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const ptpInstanceIndex) noexcept
+{
+	// Get or create a new PtpInstanceNode for this entity
+	auto* const node = _treeModelAccess->getPtpInstanceNode(configurationIndex, ptpInstanceIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
+	AVDECC_ASSERT(!!node, "Should not be null, should be default constructed");
+
+	// Copy static model
+	{
+		auto& m = node->staticModel;
+		m.localizedDescription = descriptor.localizedDescription;
+		m.clockIdentity = descriptor.clockIdentity;
+		m.flags = descriptor.flags;
+		m.numberOfControls = descriptor.numberOfControls;
+		m.baseControl = descriptor.baseControl;
+		m.numberOfPtpPorts = descriptor.numberOfPtpPorts;
+		m.basePtpPort = descriptor.basePtpPort;
+	}
+
+	// Copy dynamic model
+	{
+		auto& m = node->dynamicModel;
+		// Changeable fields through commands
+		m.objectName = descriptor.objectName;
+	}
+}
+
+void ControlledEntityImpl::setPtpPortDescriptor(entity::model::PtpPortDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex) noexcept
+{
+	// Get or create a new PtpPortNode for this entity
+	auto* const node = _treeModelAccess->getPtpPortNode(configurationIndex, ptpPortIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
+	AVDECC_ASSERT(!!node, "Should not be null, should be default constructed");
+
+	// Copy static model
+	{
+		auto& m = node->staticModel;
+		m.localizedDescription = descriptor.localizedDescription;
+		m.portNumber = descriptor.portNumber;
+		m.portType = descriptor.portType;
+		m.flags = descriptor.flags;
+		m.avbInterfaceIndex = descriptor.avbInterfaceIndex;
+		m.profileIdentifier = descriptor.profileIdentifier;
+	}
+
+	// Copy dynamic model
+	{
+		auto& m = node->dynamicModel;
+		// Changeable fields through commands
+		m.objectName = descriptor.objectName;
+	}
+}
+
 // Setters of statistics
 std::uint64_t ControlledEntityImpl::incrementAecpRetryCounter() noexcept
 {
@@ -2573,6 +2722,12 @@ std::string ControlledEntityImpl::descriptorDynamicInfoTypeToString(DescriptorDy
 			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (CLOCK_DOMAIN)";
 		case DescriptorDynamicInfoType::ClockDomainSourceIndex:
 			return protocol::AemCommandType::GetClockSource;
+		case DescriptorDynamicInfoType::TimingName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (TIMING)";
+		case DescriptorDynamicInfoType::PtpInstanceName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (PTP_INSTANCE)";
+		case DescriptorDynamicInfoType::PtpPortName:
+			return static_cast<std::string>(protocol::AemCommandType::GetName) + " (PTP_PORT)";
 		default:
 			return "Unknown DescriptorDynamicInfoType";
 	}
@@ -2976,6 +3131,14 @@ void ControlledEntityImpl::buildEntityModelGraph(entity::model::EntityTree const
 					domainNode->staticModel = domainModel.staticModel;
 					domainNode->dynamicModel = domainModel.dynamicModel;
 				}
+
+				// Build timings (TimingNode)
+				for (auto& [timingIndex, timingModel] : configTree.timingModels)
+				{
+					auto* const timingNode = _treeModelAccess->getTimingNode(configIndex, timingIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
+					timingNode->staticModel = timingModel.staticModel;
+					timingNode->dynamicModel = timingModel.dynamicModel;
+				}
 			}
 
 			// Now build the trees
@@ -3022,6 +3185,29 @@ void ControlledEntityImpl::buildEntityModelGraph(entity::model::EntityTree const
 					interfaceNode->staticModel = interfaceModel.staticModel;
 					interfaceNode->dynamicModel = interfaceModel.dynamicModel;
 #pragma message("TODO: Add Controls (AvbInterface children) - 1722.1-2021")
+				}
+
+				// Build ptp instances (PtpInstanceNode)
+				for (auto& [ptpInstanceIndex, ptpInstanceTree] : configTree.ptpInstanceTrees)
+				{
+					auto* const ptpInstanceNode = _treeModelAccess->getPtpInstanceNode(configIndex, ptpInstanceIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
+					ptpInstanceNode->staticModel = ptpInstanceTree.staticModel;
+					ptpInstanceNode->dynamicModel = ptpInstanceTree.dynamicModel;
+
+					// Build controls (ControlNode)
+					for (auto const& [controlIndex, controlTree] : ptpInstanceTree.controlModels)
+					{
+						auto* const controlNode = _treeModelAccess->getControlNode(configIndex, controlIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct, TreeModelAccessStrategy::DefaultConstructLevelHint::PtpInstance);
+						controlNode->staticModel = controlTree.staticModel;
+						controlNode->dynamicModel = controlTree.dynamicModel;
+					}
+					// Build ptp ports (PtpPortNode)
+					for (auto const& [ptpPortIndex, ptpPortTree] : ptpInstanceTree.ptpPortModels)
+					{
+						auto* const ptpPortNode = _treeModelAccess->getPtpPortNode(configIndex, ptpPortIndex, TreeModelAccessStrategy::NotFoundBehavior::DefaultConstruct);
+						ptpPortNode->staticModel = ptpPortTree.staticModel;
+						ptpPortNode->dynamicModel = ptpPortTree.dynamicModel;
+					}
 				}
 			}
 		}
@@ -3347,7 +3533,70 @@ entity::model::EntityTree const& ControlledEntityImpl::getEntityModelTree() cons
 			// Save
 			_entity._entityTree->configurationTrees[parent->descriptorIndex].clockDomainModels[node.descriptorIndex] = std::move(clockDomainTree);
 		}
-		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::ClockDomainNode const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::ClockDomainNode const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& /*node*/) noexcept override
+		{
+			// Ignore virtual parenting
+		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::TimingNode const& node) noexcept override
+		{
+			// Create tree
+			auto timingTree = entity::model::TimingNodeModels{};
+
+			// Copy static and dynamic models
+			timingTree.staticModel = node.staticModel;
+			timingTree.dynamicModel = node.dynamicModel;
+
+			// Save
+			_entity._entityTree->configurationTrees[parent->descriptorIndex].timingModels[node.descriptorIndex] = std::move(timingTree);
+		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::PtpInstanceNode const& node) noexcept override
+		{
+			// Create tree
+			auto ptpInstanceTree = entity::model::PtpInstanceTree{};
+
+			// Copy static and dynamic models
+			ptpInstanceTree.staticModel = node.staticModel;
+			ptpInstanceTree.dynamicModel = node.dynamicModel;
+
+			// Save
+			_entity._entityTree->configurationTrees[parent->descriptorIndex].ptpInstanceTrees[node.descriptorIndex] = std::move(ptpInstanceTree);
+		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::TimingNode const* const /*parent*/, la::avdecc::controller::model::PtpInstanceNode const& /*node*/) noexcept override
+		{
+			// Ignore virtual parenting
+		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::PtpInstanceNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept
+		{
+			// Create tree
+			auto controlTree = entity::model::ControlNodeModels{};
+
+			// Copy static and dynamic models
+			controlTree.staticModel = node.staticModel;
+			controlTree.dynamicModel = node.dynamicModel;
+
+			// Save
+			_entity._entityTree->configurationTrees[grandParent->descriptorIndex].ptpInstanceTrees[parent->descriptorIndex].controlModels[node.descriptorIndex] = std::move(controlTree);
+		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::PtpInstanceNode const* const parent, la::avdecc::controller::model::PtpPortNode const& node) noexcept
+		{
+			// Create tree
+			auto ptpPortTree = entity::model::PtpPortNodeModels{};
+
+			// Copy static and dynamic models
+			ptpPortTree.staticModel = node.staticModel;
+			ptpPortTree.dynamicModel = node.dynamicModel;
+
+			// Save
+			_entity._entityTree->configurationTrees[grandParent->descriptorIndex].ptpInstanceTrees[parent->descriptorIndex].ptpPortModels[node.descriptorIndex] = std::move(ptpPortTree);
+		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::TimingNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept override
+		{
+			// Ignore virtual parenting
+		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::TimingNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::PtpPortNode const& /*node*/) noexcept override
+		{
+			// Ignore virtual parenting
+		}
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamInputNode const& /*node*/) noexcept override {}
 		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamOutputNode const& /*node*/) noexcept override {}
@@ -3565,7 +3814,54 @@ entity::model::EntityTree const& ControlledEntityImpl::getEntityModelTree() cons
 			// Update dynamic model
 			clockDomainTree.dynamicModel = node.dynamicModel;
 		}
-		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::ClockDomainNode const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& /*node*/) noexcept override {}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::ClockDomainNode const* const /*parent*/, la::avdecc::controller::model::ClockSourceNode const& /*node*/) noexcept override
+		{
+			// Ignore virtual parenting
+		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::TimingNode const& node) noexcept override
+		{
+			// Get tree
+			auto& timingTree = _entity._entityTree->configurationTrees[parent->descriptorIndex].timingModels[node.descriptorIndex];
+
+			// Update dynamic model
+			timingTree.dynamicModel = node.dynamicModel;
+		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const parent, la::avdecc::controller::model::PtpInstanceNode const& node) noexcept override
+		{
+			// Get tree
+			auto& ptpInstanceTree = _entity._entityTree->configurationTrees[parent->descriptorIndex].ptpInstanceTrees[node.descriptorIndex];
+
+			// Update dynamic model
+			ptpInstanceTree.dynamicModel = node.dynamicModel;
+		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandParent*/, la::avdecc::controller::model::TimingNode const* const /*parent*/, la::avdecc::controller::model::PtpInstanceNode const& /*node*/) noexcept override
+		{
+			// Ignore virtual parenting
+		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::PtpInstanceNode const* const parent, la::avdecc::controller::model::ControlNode const& node) noexcept override
+		{
+			// Get tree
+			auto& controlTree = _entity._entityTree->configurationTrees[grandParent->descriptorIndex].ptpInstanceTrees[parent->descriptorIndex].controlModels[node.descriptorIndex];
+
+			// Update dynamic model
+			controlTree.dynamicModel = node.dynamicModel;
+		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const grandParent, la::avdecc::controller::model::PtpInstanceNode const* const parent, la::avdecc::controller::model::PtpPortNode const& node) noexcept override
+		{
+			// Get tree
+			auto& ptpPortTree = _entity._entityTree->configurationTrees[grandParent->descriptorIndex].ptpInstanceTrees[parent->descriptorIndex].ptpPortModels[node.descriptorIndex];
+
+			// Update dynamic model
+			ptpPortTree.dynamicModel = node.dynamicModel;
+		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::TimingNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::ControlNode const& /*node*/) noexcept override
+		{
+			// Ignore virtual parenting
+		}
+		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*grandGrandParent*/, la::avdecc::controller::model::TimingNode const* const /*grandParent*/, la::avdecc::controller::model::PtpInstanceNode const* const /*parent*/, la::avdecc::controller::model::PtpPortNode const& /*node*/) noexcept override
+		{
+			// Ignore virtual parenting
+		}
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
 		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamInputNode const& /*node*/) noexcept override {}
 		virtual void visit(la::avdecc::controller::ControlledEntity const* const /*entity*/, la::avdecc::controller::model::ConfigurationNode const* const /*parent*/, la::avdecc::controller::model::RedundantStreamOutputNode const& /*node*/) noexcept override {}

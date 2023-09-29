@@ -136,6 +136,23 @@ struct ClockDomainNodeDynamicModel
 	std::optional<ClockDomainCounters> counters{ std::nullopt };
 };
 
+struct TimingNodeDynamicModel
+{
+	AvdeccFixedString objectName{};
+};
+
+struct PtpInstanceNodeDynamicModel
+{
+	AvdeccFixedString objectName{};
+	// TODO: Add PTP_INSTANCE dynamic info - See GET_PTP_INSTANCE_INFO (7.4.82) and other PTP_INSTANCE commands
+};
+
+struct PtpPortNodeDynamicModel
+{
+	AvdeccFixedString objectName{};
+	// TODO: Add PTP_PORT dynamic info - See GET_PTP_PORT_INFO (7.4.95) and other PTP_PORT commands
+};
+
 struct ConfigurationNodeDynamicModel
 {
 	AvdeccFixedString objectName{};

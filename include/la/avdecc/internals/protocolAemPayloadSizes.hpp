@@ -34,26 +34,26 @@ namespace protocol
 {
 namespace aemPayload
 {
-/** ACQUIRE_ENTITY Command and Response - Clause 7.4.1.1 */
+/** ACQUIRE_ENTITY Command and Response - IEEE1722.1-2013 Clause 7.4.1.1 */
 constexpr size_t AecpAemAcquireEntityCommandPayloadSize = 16u;
 constexpr size_t AecpAemAcquireEntityResponsePayloadSize = 16u;
 
-/** LOCK_ENTITY Command and Response - Clause 7.4.2.1 */
+/** LOCK_ENTITY Command and Response - IEEE1722.1-2013 Clause 7.4.2.1 */
 constexpr size_t AecpAemLockEntityCommandPayloadSize = 16u;
 constexpr size_t AecpAemLockEntityResponsePayloadSize = 16u;
 
-/** ENTITY_AVAILABLE Command and Response - Clause 7.4.3.1 */
+/** ENTITY_AVAILABLE Command and Response - IEEE1722.1-2013 Clause 7.4.3.1 */
 constexpr size_t AecpAemEntityAvailableCommandPayloadSize = 0u;
 constexpr size_t AecpAemEntityAvailableResponsePayloadSize = 0u;
 
-/** CONTROLLER_AVAILABLE Command and Response - Clause 7.4.4.1 */
+/** CONTROLLER_AVAILABLE Command and Response - IEEE1722.1-2013 Clause 7.4.4.1 */
 constexpr size_t AecpAemControllerAvailableCommandPayloadSize = 0u;
 constexpr size_t AecpAemControllerAvailableResponsePayloadSize = 0u;
 
-/** READ_DESCRIPTOR Command - Clause 7.4.5.1 */
+/** READ_DESCRIPTOR Command - IEEE1722.1-2013 Clause 7.4.5.1 */
 constexpr size_t AecpAemReadDescriptorCommandPayloadSize = 8u;
 
-/** READ_DESCRIPTOR Response - Clause 7.4.5.2 */
+/** READ_DESCRIPTOR Response - IEEE1722.1-2013 Clause 7.4.5.2 */
 constexpr size_t AecpAemReadCommonDescriptorResponsePayloadSize = 8u; // configuration_index (2), reserved (2), descriptor_type (2), descriptor_index (2)
 constexpr size_t AecpAemReadEntityDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 308u;
 constexpr size_t AecpAemReadConfigurationDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 70u;
@@ -82,173 +82,176 @@ constexpr size_t AecpAemReadSignalMultiplexerDescriptorResponsePayloadMinSize = 
 constexpr size_t AecpAemReadSignalTranscoderDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 88u;
 constexpr size_t AecpAemReadClockDomainDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 72u;
 constexpr size_t AecpAemReadControlBlockDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 72u;
+constexpr size_t AecpAemReadTimingDescriptorResponsePayloadMinSize = AecpAemReadCommonDescriptorResponsePayloadSize + 72u;
+constexpr size_t AecpAemReadPtpInstanceDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 86u;
+constexpr size_t AecpAemReadPtpPortDescriptorResponsePayloadSize = AecpAemReadCommonDescriptorResponsePayloadSize + 82u;
 
-/** SET_CONFIGURATION Command and Response - Clause 7.4.7.1 */
+/** SET_CONFIGURATION Command and Response - IEEE1722.1-2013 Clause 7.4.7.1 */
 constexpr size_t AecpAemSetConfigurationCommandPayloadSize = 4u;
 constexpr size_t AecpAemSetConfigurationResponsePayloadSize = 4u;
 
-/** GET_CONFIGURATION Command - Clause 7.4.8.1 */
+/** GET_CONFIGURATION Command - IEEE1722.1-2013 Clause 7.4.8.1 */
 constexpr size_t AecpAemGetConfigurationCommandPayloadSize = 0u;
 
-/** GET_CONFIGURATION Response - Clause 7.4.8.2 */
+/** GET_CONFIGURATION Response - IEEE1722.1-2013 Clause 7.4.8.2 */
 constexpr size_t AecpAemGetConfigurationResponsePayloadSize = 4u;
 
-/** SET_STREAM_FORMAT Command and Response - Clause 7.4.9.1 */
+/** SET_STREAM_FORMAT Command and Response - IEEE1722.1-2013 Clause 7.4.9.1 */
 constexpr size_t AecpAemSetStreamFormatCommandPayloadSize = 12u;
 constexpr size_t AecpAemSetStreamFormatResponsePayloadSize = 12u;
 
-/** GET_STREAM_FORMAT Command - Clause 7.4.10.1 */
+/** GET_STREAM_FORMAT Command - IEEE1722.1-2013 Clause 7.4.10.1 */
 constexpr size_t AecpAemGetStreamFormatCommandPayloadSize = 4u;
 
-/** GET_STREAM_FORMAT Respones - Clause 7.4.10.2 */
+/** GET_STREAM_FORMAT Respones - IEEE1722.1-2013 Clause 7.4.10.2 */
 constexpr size_t AecpAemGetStreamFormatResponsePayloadSize = 12u;
 
-/** SET_STREAM_INFO Command and Response - Clause 7.4.15.1 */
+/** SET_STREAM_INFO Command and Response - IEEE1722.1-2013 Clause 7.4.15.1 */
 constexpr size_t AecpAemSetStreamInfoCommandPayloadSize = 48u;
 constexpr size_t AecpAemSetStreamInfoResponsePayloadSize = 48u;
 
-/** GET_STREAM_INFO Command - Clause 7.4.16.1 */
+/** GET_STREAM_INFO Command - IEEE1722.1-2013 Clause 7.4.16.1 */
 constexpr size_t AecpAemGetStreamInfoCommandPayloadSize = 4u;
 
-/** GET_STREAM_INFO Response - Clause 7.4.16.2 */
+/** GET_STREAM_INFO Response - IEEE1722.1-2013 Clause 7.4.16.2 */
 constexpr size_t AecpAemGetStreamInfoResponsePayloadSize = 48u;
 
-/** GET_STREAM_INFO Response - Milan Clause 7.3.10 */
+/** GET_STREAM_INFO Response - Milan-2019 Clause 7.3.10 */
 constexpr size_t AecpAemMilanGetStreamInfoResponsePayloadSize = 56u;
 
-/** SET_NAME Command and Response - Clause 7.4.17.1 */
+/** SET_NAME Command and Response - IEEE1722.1-2013 Clause 7.4.17.1 */
 constexpr size_t AecpAemSetNameCommandPayloadSize = 72u;
 constexpr size_t AecpAemSetNameResponsePayloadSize = 72u;
 
-/** GET_NAME Command - Clause 7.4.18.1 */
+/** GET_NAME Command - IEEE1722.1-2013 Clause 7.4.18.1 */
 constexpr size_t AecpAemGetNameCommandPayloadSize = 8u;
 
-/** GET_NAME Response - Clause 7.4.18.2 */
+/** GET_NAME Response - IEEE1722.1-2013 Clause 7.4.18.2 */
 constexpr size_t AecpAemGetNameResponsePayloadSize = 72u;
 
-/** SET_ASSOCIATION_ID Command and Response - Clause 7.4.19.1 */
+/** SET_ASSOCIATION_ID Command and Response - IEEE1722.1-2013 Clause 7.4.19.1 */
 constexpr size_t AecpAemSetAssociationIDCommandPayloadSize = 8u;
 constexpr size_t AecpAemSetAssociationIDResponsePayloadSize = 8u;
 
-/** GET_ASSOCIATION_ID Command - Clause 7.4.20.1 */
+/** GET_ASSOCIATION_ID Command - IEEE1722.1-2013 Clause 7.4.20.1 */
 constexpr size_t AecpAemGetAssociationIDCommandPayloadSize = 0u;
 
-/** GET_ASSOCIATION_ID Response - Clause 7.4.20.2 */
+/** GET_ASSOCIATION_ID Response - IEEE1722.1-2013 Clause 7.4.20.2 */
 constexpr size_t AecpAemGetAssociationIDResponsePayloadSize = 8u;
 
-/** SET_SAMPLING_RATE Command and Response - Clause 7.4.21.1 */
+/** SET_SAMPLING_RATE Command and Response - IEEE1722.1-2013 Clause 7.4.21.1 */
 constexpr size_t AecpAemSetSamplingRateCommandPayloadSize = 8u;
 constexpr size_t AecpAemSetSamplingRateResponsePayloadSize = 8u;
 
-/** GET_SAMPLING_RATE Command - Clause 7.4.22.1 */
+/** GET_SAMPLING_RATE Command - IEEE1722.1-2013 Clause 7.4.22.1 */
 constexpr size_t AecpAemGetSamplingRateCommandPayloadSize = 4u;
 
-/** GET_SAMPLING_RATE Response - Clause 7.4.22.2 */
+/** GET_SAMPLING_RATE Response - IEEE1722.1-2013 Clause 7.4.22.2 */
 constexpr size_t AecpAemGetSamplingRateResponsePayloadSize = 8u;
 
-/** SET_CLOCK_SOURCE Command and Response - Clause 7.4.23.1 */
+/** SET_CLOCK_SOURCE Command and Response - IEEE1722.1-2013 Clause 7.4.23.1 */
 constexpr size_t AecpAemSetClockSourceCommandPayloadSize = 8u;
 constexpr size_t AecpAemSetClockSourceResponsePayloadSize = 8u;
 
-/** GET_CLOCK_SOURCE Command - Clause 7.4.24.1 */
+/** GET_CLOCK_SOURCE Command - IEEE1722.1-2013 Clause 7.4.24.1 */
 constexpr size_t AecpAemGetClockSourceCommandPayloadSize = 4u;
 
-/** GET_CLOCK_SOURCE Response - Clause 7.4.24.2 */
+/** GET_CLOCK_SOURCE Response - IEEE1722.1-2013 Clause 7.4.24.2 */
 constexpr size_t AecpAemGetClockSourceResponsePayloadSize = 8u;
 
-/** SET_CONTROL Command and Response - Clause 7.4.25.1 */
+/** SET_CONTROL Command and Response - IEEE1722.1-2013 Clause 7.4.25.1 */
 constexpr size_t AecpAemSetControlCommandPayloadMinSize = 4u;
 constexpr size_t AecpAemSetControlResponsePayloadMinSize = 4u;
 
-/** GET_CONTROL Command - Clause 7.4.26.1 */
+/** GET_CONTROL Command - IEEE1722.1-2013 Clause 7.4.26.1 */
 constexpr size_t AecpAemGetControlCommandPayloadSize = 4u;
 
-/** GET_CONTROL Response - Clause 7.4.26.2 */
+/** GET_CONTROL Response - IEEE1722.1-2013 Clause 7.4.26.2 */
 constexpr size_t AecpAemGetControlResponsePayloadMinSize = 4u;
 
-/** START_STREAMING Command and Response - Clause 7.4.35.1 */
+/** START_STREAMING Command and Response - IEEE1722.1-2013 Clause 7.4.35.1 */
 constexpr size_t AecpAemStartStreamingCommandPayloadSize = 4u;
 constexpr size_t AecpAemStartStreamingResponsePayloadSize = 4u;
 
-/** STOP_STREAMING Command and Response - Clause 7.4.36.1 */
+/** STOP_STREAMING Command and Response - IEEE1722.1-2013 Clause 7.4.36.1 */
 constexpr size_t AecpAemStopStreamingCommandPayloadSize = 4u;
 constexpr size_t AecpAemStopStreamingResponsePayloadSize = 4u;
 
-/** REGISTER_UNSOLICITED_NOTIFICATION Command and Response - Clause 7.4.37.1 */
+/** REGISTER_UNSOLICITED_NOTIFICATION Command and Response - IEEE1722.1-2013 Clause 7.4.37.1 */
 constexpr size_t AecpAemRegisterUnsolicitedNotificationCommandPayloadSize = 0u;
 constexpr size_t AecpAemRegisterUnsolicitedNotificationResponsePayloadSize = 0u;
 
-/** DEREGISTER_UNSOLICITED_NOTIFICATION Command and Response - Clause 7.4.38.1 */
+/** DEREGISTER_UNSOLICITED_NOTIFICATION Command and Response - IEEE1722.1-2013 Clause 7.4.38.1 */
 constexpr size_t AecpAemDeregisterUnsolicitedNotificationCommandPayloadSize = 0u;
 constexpr size_t AecpAemDeregisterUnsolicitedNotificationResponsePayloadSize = 0u;
 
-/** GET_AVB_INFO Command - Clause 7.4.40.1 */
+/** GET_AVB_INFO Command - IEEE1722.1-2013 Clause 7.4.40.1 */
 constexpr size_t AecpAemGetAvbInfoCommandPayloadSize = 4u;
 
-/** GET_AVB_INFO Response - Clause 7.4.40.2 */
+/** GET_AVB_INFO Response - IEEE1722.1-2013 Clause 7.4.40.2 */
 constexpr size_t AecpAemGetAvbInfoResponsePayloadMinSize = 20u;
 
-/** GET_AS_PATH Command - Clause 7.4.41.1 */
+/** GET_AS_PATH Command - IEEE1722.1-2013 Clause 7.4.41.1 */
 constexpr size_t AecpAemGetAsPathCommandPayloadSize = 4u;
 
-/** GET_AS_PATH Response - Clause 7.4.41.2 */
+/** GET_AS_PATH Response - IEEE1722.1-2013 Clause 7.4.41.2 */
 constexpr size_t AecpAemGetAsPathResponsePayloadMinSize = 4u;
 
-/** GET_COUNTERS Command - Clause 7.4.42.1 */
+/** GET_COUNTERS Command - IEEE1722.1-2013 Clause 7.4.42.1 */
 constexpr size_t AecpAemGetCountersCommandPayloadSize = 4u;
 
-/** GET_COUNTERS Response - Clause 7.4.42.2 */
+/** GET_COUNTERS Response - IEEE1722.1-2013 Clause 7.4.42.2 */
 constexpr size_t AecpAemGetCountersResponsePayloadSize = 136u;
 
-/** REBOOT Command - Clause 7.4.43.1 */
+/** REBOOT Command - IEEE1722.1-2013 Clause 7.4.43.1 */
 constexpr size_t AecpAemRebootCommandPayloadSize = 4u;
 
-/** REBOOT Response - Clause 7.4.43.2 */
+/** REBOOT Response - IEEE1722.1-2013 Clause 7.4.43.2 */
 constexpr size_t AecpAemRebootResponsePayloadSize = 4u;
 
-/** GET_AUDIO_MAP Command - Clause 7.4.44.1 */
+/** GET_AUDIO_MAP Command - IEEE1722.1-2013 Clause 7.4.44.1 */
 constexpr size_t AecpAemGetAudioMapCommandPayloadSize = 8u;
 
-/** GET_AUDIO_MAP Response - Clause 7.4.44.2 */
+/** GET_AUDIO_MAP Response - IEEE1722.1-2013 Clause 7.4.44.2 */
 constexpr size_t AecpAemGetAudioMapResponsePayloadMinSize = 12u;
 
-/** ADD_AUDIO_MAPPINGS Command - Clause 7.4.45.1 */
+/** ADD_AUDIO_MAPPINGS Command - IEEE1722.1-2013 Clause 7.4.45.1 */
 constexpr size_t AecpAemAddAudioMappingsCommandPayloadMinSize = 8u;
 
-/** ADD_AUDIO_MAPPINGS Response - Clause 7.4.45.1 */
+/** ADD_AUDIO_MAPPINGS Response - IEEE1722.1-2013 Clause 7.4.45.1 */
 constexpr size_t AecpAemAddAudioMappingsResponsePayloadMinSize = 8u;
 
-/** REMOVE_AUDIO_MAPPINGS Command - Clause 7.4.46.1 */
+/** REMOVE_AUDIO_MAPPINGS Command - IEEE1722.1-2013 Clause 7.4.46.1 */
 constexpr size_t AecpAemRemoveAudioMappingsCommandPayloadMinSize = 8u;
 
-/** REMOVE_AUDIO_MAPPINGS Response - Clause 7.4.46.1 */
+/** REMOVE_AUDIO_MAPPINGS Response - IEEE1722.1-2013 Clause 7.4.46.1 */
 constexpr size_t AecpAemRemoveAudioMappingsResponsePayloadMinSize = 8u;
 
-/** START_OPERATION Command - Clause 7.4.53.1 */
+/** START_OPERATION Command - IEEE1722.1-2013 Clause 7.4.53.1 */
 constexpr size_t AecpAemStartOperationCommandPayloadMinSize = 8u;
 
-/** START_OPERATION Response - Clause 7.4.53.1 */
+/** START_OPERATION Response - IEEE1722.1-2013 Clause 7.4.53.1 */
 constexpr size_t AecpAemStartOperationResponsePayloadMinSize = 8u;
 
-/** ABORT_OPERATION Command - Clause 7.4.54.1 */
+/** ABORT_OPERATION Command - IEEE1722.1-2013 Clause 7.4.54.1 */
 constexpr size_t AecpAemAbortOperationCommandPayloadSize = 8u;
 
-/** ABORT_OPERATION Response - Clause 7.4.54.1 */
+/** ABORT_OPERATION Response - IEEE1722.1-2013 Clause 7.4.54.1 */
 constexpr size_t AecpAemAbortOperationResponsePayloadSize = 8u;
 
-/** OPERATION_STATUS Response - Clause 7.4.55.1 */
+/** OPERATION_STATUS Response - IEEE1722.1-2013 Clause 7.4.55.1 */
 constexpr size_t AecpAemOperationStatusResponsePayloadSize = 8u;
 
-/** SET_MEMORY_OBJECT_LENGTH Command - Clause 7.4.72.1 */
+/** SET_MEMORY_OBJECT_LENGTH Command - IEEE1722.1-2013 Clause 7.4.72.1 */
 constexpr size_t AecpAemSetMemoryObjectLengthCommandPayloadSize = 12u;
 
-/** SET_MEMORY_OBJECT_LENGTH Response - Clause 7.4.72.1 */
+/** SET_MEMORY_OBJECT_LENGTH Response - IEEE1722.1-2013 Clause 7.4.72.1 */
 constexpr size_t AecpAemSetMemoryObjectLengthResponsePayloadSize = 12u;
 
-/** GET_MEMORY_OBJECT_LENGTH Command - Clause 7.4.73.1 */
+/** GET_MEMORY_OBJECT_LENGTH Command - IEEE1722.1-2013 Clause 7.4.73.1 */
 constexpr size_t AecpAemGetMemoryObjectLengthCommandPayloadSize = 4u;
 
-/** GET_MEMORY_OBJECT_LENGTH Response - Clause 7.4.73.2 */
+/** GET_MEMORY_OBJECT_LENGTH Response - IEEE1722.1-2013 Clause 7.4.73.2 */
 constexpr size_t AecpAemGetMemoryObjectLengthResponsePayloadSize = 12u;
 
 static_assert(AecpAemAddAudioMappingsCommandPayloadMinSize == AecpAemRemoveAudioMappingsCommandPayloadMinSize, "Add and Remove no longer the same size, we should split AecpAemMaxAddRemoveAudioMappings in 2");

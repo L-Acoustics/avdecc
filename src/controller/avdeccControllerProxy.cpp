@@ -665,6 +665,69 @@ void ControllerVirtualProxy::readClockDomainDescriptor(UniqueIdentifier const ta
 	}
 }
 
+void ControllerVirtualProxy::readTimingDescriptor(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const timingIndex, TimingDescriptorHandler const& handler) const noexcept
+{
+	auto const isVirtual = isVirtualEntity(targetEntityID);
+	if (isVirtual && _virtualInterface)
+	{
+		// Forward call to the virtual interface
+		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
+			[this, targetEntityID, configurationIndex, timingIndex, handler]()
+			{
+				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
+
+				_virtualInterface->readTimingDescriptor(targetEntityID, configurationIndex, timingIndex, handler);
+			});
+	}
+	else
+	{
+		// Forward call to real interface
+		_realInterface->readTimingDescriptor(targetEntityID, configurationIndex, timingIndex, handler);
+	}
+}
+
+void ControllerVirtualProxy::readPtpInstanceDescriptor(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const ptpInstanceIndex, PtpInstanceDescriptorHandler const& handler) const noexcept
+{
+	auto const isVirtual = isVirtualEntity(targetEntityID);
+	if (isVirtual && _virtualInterface)
+	{
+		// Forward call to the virtual interface
+		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
+			[this, targetEntityID, configurationIndex, ptpInstanceIndex, handler]()
+			{
+				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
+
+				_virtualInterface->readPtpInstanceDescriptor(targetEntityID, configurationIndex, ptpInstanceIndex, handler);
+			});
+	}
+	else
+	{
+		// Forward call to real interface
+		_realInterface->readPtpInstanceDescriptor(targetEntityID, configurationIndex, ptpInstanceIndex, handler);
+	}
+}
+
+void ControllerVirtualProxy::readPtpPortDescriptor(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex, PtpPortDescriptorHandler const& handler) const noexcept
+{
+	auto const isVirtual = isVirtualEntity(targetEntityID);
+	if (isVirtual && _virtualInterface)
+	{
+		// Forward call to the virtual interface
+		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
+			[this, targetEntityID, configurationIndex, ptpPortIndex, handler]()
+			{
+				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
+
+				_virtualInterface->readPtpPortDescriptor(targetEntityID, configurationIndex, ptpPortIndex, handler);
+			});
+	}
+	else
+	{
+		// Forward call to real interface
+		_realInterface->readPtpPortDescriptor(targetEntityID, configurationIndex, ptpPortIndex, handler);
+	}
+}
+
 void ControllerVirtualProxy::setConfiguration(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, SetConfigurationHandler const& handler) const noexcept
 {
 	auto const isVirtual = isVirtualEntity(targetEntityID);
@@ -1541,6 +1604,126 @@ void ControllerVirtualProxy::getClockDomainName(UniqueIdentifier const targetEnt
 	{
 		// Forward call to real interface
 		_realInterface->getClockDomainName(targetEntityID, configurationIndex, clockDomainIndex, handler);
+	}
+}
+
+void ControllerVirtualProxy::setTimingName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const timingIndex, entity::model::AvdeccFixedString const& timingName, SetTimingNameHandler const& handler) const noexcept
+{
+	auto const isVirtual = isVirtualEntity(targetEntityID);
+	if (isVirtual && _virtualInterface)
+	{
+		// Forward call to the virtual interface
+		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
+			[this, targetEntityID, configurationIndex, timingIndex, timingName, handler]()
+			{
+				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
+				_virtualInterface->setTimingName(targetEntityID, configurationIndex, timingIndex, timingName, handler);
+			});
+	}
+	else
+	{
+		// Forward call to real interface
+		_realInterface->setTimingName(targetEntityID, configurationIndex, timingIndex, timingName, handler);
+	}
+}
+
+void ControllerVirtualProxy::getTimingName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const timingIndex, GetTimingNameHandler const& handler) const noexcept
+{
+	auto const isVirtual = isVirtualEntity(targetEntityID);
+	if (isVirtual && _virtualInterface)
+	{
+		// Forward call to the virtual interface
+		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
+			[this, targetEntityID, configurationIndex, timingIndex, handler]()
+			{
+				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
+				_virtualInterface->getTimingName(targetEntityID, configurationIndex, timingIndex, handler);
+			});
+	}
+	else
+	{
+		// Forward call to real interface
+		_realInterface->getTimingName(targetEntityID, configurationIndex, timingIndex, handler);
+	}
+}
+
+void ControllerVirtualProxy::setPtpInstanceName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const ptpInstanceIndex, entity::model::AvdeccFixedString const& ptpInstanceName, SetPtpInstanceNameHandler const& handler) const noexcept
+{
+	auto const isVirtual = isVirtualEntity(targetEntityID);
+	if (isVirtual && _virtualInterface)
+	{
+		// Forward call to the virtual interface
+		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
+			[this, targetEntityID, configurationIndex, ptpInstanceIndex, ptpInstanceName, handler]()
+			{
+				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
+				_virtualInterface->setPtpInstanceName(targetEntityID, configurationIndex, ptpInstanceIndex, ptpInstanceName, handler);
+			});
+	}
+	else
+	{
+		// Forward call to real interface
+		_realInterface->setPtpInstanceName(targetEntityID, configurationIndex, ptpInstanceIndex, ptpInstanceName, handler);
+	}
+}
+
+void ControllerVirtualProxy::getPtpInstanceName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const ptpInstanceIndex, GetPtpInstanceNameHandler const& handler) const noexcept
+{
+	auto const isVirtual = isVirtualEntity(targetEntityID);
+	if (isVirtual && _virtualInterface)
+	{
+		// Forward call to the virtual interface
+		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
+			[this, targetEntityID, configurationIndex, ptpInstanceIndex, handler]()
+			{
+				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
+				_virtualInterface->getPtpInstanceName(targetEntityID, configurationIndex, ptpInstanceIndex, handler);
+			});
+	}
+	else
+	{
+		// Forward call to real interface
+		_realInterface->getPtpInstanceName(targetEntityID, configurationIndex, ptpInstanceIndex, handler);
+	}
+}
+
+void ControllerVirtualProxy::setPtpPortName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex, entity::model::AvdeccFixedString const& ptpPortName, SetPtpPortNameHandler const& handler) const noexcept
+{
+	auto const isVirtual = isVirtualEntity(targetEntityID);
+	if (isVirtual && _virtualInterface)
+	{
+		// Forward call to the virtual interface
+		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
+			[this, targetEntityID, configurationIndex, ptpPortIndex, ptpPortName, handler]()
+			{
+				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
+				_virtualInterface->setPtpPortName(targetEntityID, configurationIndex, ptpPortIndex, ptpPortName, handler);
+			});
+	}
+	else
+	{
+		// Forward call to real interface
+		_realInterface->setPtpPortName(targetEntityID, configurationIndex, ptpPortIndex, ptpPortName, handler);
+	}
+}
+
+void ControllerVirtualProxy::getPtpPortName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex, GetPtpPortNameHandler const& handler) const noexcept
+{
+	auto const isVirtual = isVirtualEntity(targetEntityID);
+	if (isVirtual && _virtualInterface)
+	{
+		// Forward call to the virtual interface
+		la::avdecc::ExecutorManager::getInstance().pushJob(_executorName,
+			[this, targetEntityID, configurationIndex, ptpPortIndex, handler]()
+			{
+				auto const lg = std::lock_guard{ *_protocolInterface }; // Lock the ProtocolInterface as if we were called from the network thread
+				_virtualInterface->getPtpPortName(targetEntityID, configurationIndex, ptpPortIndex, handler);
+			});
+	}
+	else
+	{
+		// Forward call to real interface
+		_realInterface->getPtpPortName(targetEntityID, configurationIndex, ptpPortIndex, handler);
 	}
 }
 

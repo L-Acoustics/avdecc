@@ -50,7 +50,7 @@ namespace entity
 {
 namespace model
 {
-/** ENTITY Descriptor - Clause 7.2.1 */
+/** ENTITY Descriptor - IEEE1722.1-2013 Clause 7.2.1 */
 struct EntityDescriptor
 {
 	UniqueIdentifier entityID{};
@@ -73,15 +73,15 @@ struct EntityDescriptor
 	std::uint16_t currentConfiguration{ 0u };
 };
 
-/** CONFIGURATION Descriptor - Clause 7.2.2 */
+/** CONFIGURATION Descriptor - IEEE1722.1-2013 Clause 7.2.2 */
 struct ConfigurationDescriptor
 {
 	AvdeccFixedString objectName{};
 	LocalizedStringReference localizedDescription{};
-	std::unordered_map<DescriptorType, std::uint16_t, la::avdecc::utils::EnumClassHash> descriptorCounts{};
+	std::unordered_map<DescriptorType, std::uint16_t, utils::EnumClassHash> descriptorCounts{};
 };
 
-/** AUDIO_UNIT Descriptor - Clause 7.2.3 */
+/** AUDIO_UNIT Descriptor - IEEE1722.1-2013 Clause 7.2.3 */
 struct AudioUnitDescriptor
 {
 	AvdeccFixedString objectName{};
@@ -123,11 +123,11 @@ struct AudioUnitDescriptor
 	std::set<SamplingRate> samplingRates{};
 };
 
-/** VIDEO_UNIT Descriptor - Clause 7.2.4 */
+/** VIDEO_UNIT Descriptor - IEEE1722.1-2013 Clause 7.2.4 */
 
-/** SENSOR_UNIT Descriptor - Clause 7.2.5 */
+/** SENSOR_UNIT Descriptor - IEEE1722.1-2013 Clause 7.2.5 */
 
-/** STREAM_INPUT and STREAM_OUTPUT Descriptor - Clause 7.2.6 */
+/** STREAM_INPUT and STREAM_OUTPUT Descriptor - IEEE1722.1-2013 Clause 7.2.6 */
 struct StreamDescriptor
 {
 	AvdeccFixedString objectName{};
@@ -151,7 +151,7 @@ struct StreamDescriptor
 #endif // ENABLE_AVDECC_FEATURE_REDUNDANCY
 };
 
-/** JACK_INPUT and JACK_OUTPUT Descriptor - Clause 7.2.7 */
+/** JACK_INPUT and JACK_OUTPUT Descriptor - IEEE1722.1-2013 Clause 7.2.7 */
 struct JackDescriptor
 {
 	AvdeccFixedString objectName{};
@@ -162,7 +162,7 @@ struct JackDescriptor
 	ControlIndex baseControl{ ControlIndex(0u) };
 };
 
-/** AVB_INTERFACE Descriptor - Clause 7.2.8 */
+/** AVB_INTERFACE Descriptor - IEEE1722.1-2013 Clause 7.2.8 */
 struct AvbInterfaceDescriptor
 {
 	AvdeccFixedString objectName{};
@@ -182,7 +182,7 @@ struct AvbInterfaceDescriptor
 	std::uint16_t portNumber{ 0x0000 };
 };
 
-/** CLOCK_SOURCE Descriptor - Clause 7.2.9 */
+/** CLOCK_SOURCE Descriptor - IEEE1722.1-2013 Clause 7.2.9 */
 struct ClockSourceDescriptor
 {
 	AvdeccFixedString objectName{};
@@ -194,7 +194,7 @@ struct ClockSourceDescriptor
 	DescriptorIndex clockSourceLocationIndex{ DescriptorIndex(0u) };
 };
 
-/** MEMORY_OBJECT Descriptor - Clause 7.2.10 */
+/** MEMORY_OBJECT Descriptor - IEEE1722.1-2013 Clause 7.2.10 */
 struct MemoryObjectDescriptor
 {
 	AvdeccFixedString objectName{};
@@ -207,7 +207,7 @@ struct MemoryObjectDescriptor
 	std::uint64_t length{ 0u };
 };
 
-/** LOCALE Descriptor - Clause 7.2.11 */
+/** LOCALE Descriptor - IEEE1722.1-2013 Clause 7.2.11 */
 struct LocaleDescriptor
 {
 	AvdeccFixedString localeID{};
@@ -215,13 +215,13 @@ struct LocaleDescriptor
 	StringsIndex baseStringDescriptorIndex{ StringsIndex(0u) };
 };
 
-/** STRINGS Descriptor - Clause 7.2.12 */
+/** STRINGS Descriptor - IEEE1722.1-2013 Clause 7.2.12 */
 struct StringsDescriptor
 {
 	std::array<AvdeccFixedString, 7> strings{};
 };
 
-/** STREAM_PORT Descriptor - Clause 7.2.13 */
+/** STREAM_PORT Descriptor - IEEE1722.1-2013 Clause 7.2.13 */
 struct StreamPortDescriptor
 {
 	ClockDomainIndex clockDomainIndex{ ClockDomainIndex(0u) };
@@ -234,7 +234,7 @@ struct StreamPortDescriptor
 	MapIndex baseMap{ MapIndex(0u) };
 };
 
-/** EXTERNAL_PORT Descriptor - Clause 7.2.14 */
+/** EXTERNAL_PORT Descriptor - IEEE1722.1-2013 Clause 7.2.14 */
 struct ExternalPortDescriptor
 {
 	ClockDomainIndex clockDomainIndex{ ClockDomainIndex(0u) };
@@ -248,7 +248,7 @@ struct ExternalPortDescriptor
 	JackIndex jackIndex{ JackIndex(0u) };
 };
 
-/** INTERNAL_PORT Descriptor - Clause 7.2.15 */
+/** INTERNAL_PORT Descriptor - IEEE1722.1-2013 Clause 7.2.15 */
 struct InternalPortDescriptor
 {
 	ClockDomainIndex clockDomainIndex{ ClockDomainIndex(0u) };
@@ -262,7 +262,7 @@ struct InternalPortDescriptor
 	InternalPortIndex internalIndex{ InternalPortIndex(0u) };
 };
 
-/** AUDIO_CLUSTER Descriptor - Clause 7.2.16 */
+/** AUDIO_CLUSTER Descriptor - IEEE1722.1-2013 Clause 7.2.16 */
 struct AudioClusterDescriptor
 {
 	AvdeccFixedString objectName{};
@@ -276,21 +276,21 @@ struct AudioClusterDescriptor
 	AudioClusterFormat format{ AudioClusterFormat::Iec60958 };
 };
 
-/** VIDEO_CLUSTER Descriptor - Clause 7.2.17 */
+/** VIDEO_CLUSTER Descriptor - IEEE1722.1-2013 Clause 7.2.17 */
 
-/** SENSOR_CLUSTER Descriptor - Clause 7.2.18 */
+/** SENSOR_CLUSTER Descriptor - IEEE1722.1-2013 Clause 7.2.18 */
 
-/** AUDIO_MAP Descriptor - Clause 7.2.19 */
+/** AUDIO_MAP Descriptor - IEEE1722.1-2013 Clause 7.2.19 */
 struct AudioMapDescriptor
 {
 	AudioMappings mappings{};
 };
 
-/** VIDEO_MAP Descriptor - Clause 7.2.20 */
+/** VIDEO_MAP Descriptor - IEEE1722.1-2013 Clause 7.2.20 */
 
-/** SENSOR_MAP Descriptor - Clause 7.2.21 */
+/** SENSOR_MAP Descriptor - IEEE1722.1-2013 Clause 7.2.21 */
 
-/** CONTROL Descriptor - Clause 7.2.22 */
+/** CONTROL Descriptor - IEEE1722.1-2013 Clause 7.2.22 */
 struct ControlDescriptor
 {
 	AvdeccFixedString objectName{};
@@ -309,25 +309,25 @@ struct ControlDescriptor
 	ControlValues valuesDynamic{};
 };
 
-/** SIGNAL_SELECTOR Descriptor - Clause 7.2.23 */
+/** SIGNAL_SELECTOR Descriptor - IEEE1722.1-2013 Clause 7.2.23 */
 
-/** MIXER Descriptor - Clause 7.2.24 */
+/** MIXER Descriptor - IEEE1722.1-2013 Clause 7.2.24 */
 
-/** MATRIX Descriptor - Clause 7.2.25 */
+/** MATRIX Descriptor - IEEE1722.1-2013 Clause 7.2.25 */
 
-/** MATRIX_SIGNAL Descriptor - Clause 7.2.26 */
+/** MATRIX_SIGNAL Descriptor - IEEE1722.1-2013 Clause 7.2.26 */
 
-/** SIGNAL_SPLITTER Descriptor - Clause 7.2.27 */
+/** SIGNAL_SPLITTER Descriptor - IEEE1722.1-2013 Clause 7.2.27 */
 
-/** SIGNAL_COMBINER Descriptor - Clause 7.2.28 */
+/** SIGNAL_COMBINER Descriptor - IEEE1722.1-2013 Clause 7.2.28 */
 
-/** SIGNAL_DEMULTIPLEXER Descriptor - Clause 7.2.29 */
+/** SIGNAL_DEMULTIPLEXER Descriptor - IEEE1722.1-2013 Clause 7.2.29 */
 
-/** SIGNAL_MULTIPLEXER Descriptor - Clause 7.2.30 */
+/** SIGNAL_MULTIPLEXER Descriptor - IEEE1722.1-2013 Clause 7.2.30 */
 
-/** SIGNAL_TRANSCODER Descriptor - Clause 7.2.31 */
+/** SIGNAL_TRANSCODER Descriptor - IEEE1722.1-2013 Clause 7.2.31 */
 
-/** CLOCK_DOMAIN Descriptor - Clause 7.2.32 */
+/** CLOCK_DOMAIN Descriptor - IEEE1722.1-2013 Clause 7.2.32 */
 struct ClockDomainDescriptor
 {
 	AvdeccFixedString objectName{};
@@ -336,16 +336,50 @@ struct ClockDomainDescriptor
 	std::vector<ClockSourceIndex> clockSources{};
 };
 
-/** CONTROL_BLOCK Descriptor - Clause 7.2.33 */
+/** CONTROL_BLOCK Descriptor - IEEE1722.1-2013 Clause 7.2.33 */
 
-/** GET_STREAM_INFO and SET_STREAM_INFO Dynamic Information - Clause 7.4.16.2 */
+/** TIMING Descriptor - IEEE1722.1-2021 Clause 7.2.34 */
+struct TimingDescriptor
+{
+	AvdeccFixedString objectName{};
+	LocalizedStringReference localizedDescription{};
+	TimingAlgorithm algorithm{ TimingAlgorithm::Single };
+	std::vector<PtpInstanceIndex> ptpInstances{};
+};
+
+/** PTP_INSTANCE Descriptor - IEEE1722.1-2021 Clause 7.2.35 */
+struct PtpInstanceDescriptor
+{
+	AvdeccFixedString objectName{};
+	LocalizedStringReference localizedDescription{};
+	UniqueIdentifier clockIdentity{};
+	PtpInstanceFlags flags{};
+	std::uint16_t numberOfControls{ 0u };
+	ControlIndex baseControl{ ControlIndex(0u) };
+	std::uint16_t numberOfPtpPorts{ 0u };
+	PtpPortIndex basePtpPort{ PtpPortIndex(0u) };
+};
+
+/** PTP_PORT Descriptor - IEEE1722.1-2021 Clause 7.2.36 */
+struct PtpPortDescriptor
+{
+	AvdeccFixedString objectName{};
+	LocalizedStringReference localizedDescription{};
+	std::uint16_t portNumber{ 0u };
+	PtpPortType portType{ PtpPortType::P2PLinkLayer };
+	PtpPortFlags flags{};
+	AvbInterfaceIndex avbInterfaceIndex{ AvbInterfaceIndex(0u) };
+	networkInterface::MacAddress profileIdentifier{};
+};
+
+/** GET_STREAM_INFO and SET_STREAM_INFO Dynamic Information - IEEE1722.1-2013 Clause 7.4.16.2 */
 struct StreamInfo
 {
 	StreamInfoFlags streamInfoFlags{};
 	StreamFormat streamFormat{};
 	UniqueIdentifier streamID{ 0u };
 	std::uint32_t msrpAccumulatedLatency{ 0u };
-	la::networkInterface::MacAddress streamDestMac{};
+	networkInterface::MacAddress streamDestMac{};
 	MsrpFailureCode msrpFailureCode{ MsrpFailureCode::NoFailure };
 	BridgeIdentifier msrpFailureBridgeID{ 0u };
 	std::uint16_t streamVlanID{ 0u };
@@ -365,7 +399,7 @@ constexpr bool operator!=(StreamInfo const& lhs, StreamInfo const& rhs) noexcept
 	return !(lhs == rhs);
 }
 
-/** GET_AVB_INFO Dynamic Information - Clause 7.4.40.2 */
+/** GET_AVB_INFO Dynamic Information - IEEE1722.1-2013 Clause 7.4.40.2 */
 struct AvbInfo
 {
 	UniqueIdentifier gptpGrandmasterID{};
@@ -385,7 +419,7 @@ constexpr bool operator!=(AvbInfo const& lhs, AvbInfo const& rhs) noexcept
 	return !(lhs == rhs);
 }
 
-/** GET_AS_PATH Dynamic Information - Clause 7.4.41.2 */
+/** GET_AS_PATH Dynamic Information - IEEE1722.1-2013 Clause 7.4.41.2 */
 struct AsPath
 {
 	entity::model::PathSequence sequence{};
@@ -401,7 +435,7 @@ inline bool operator!=(AsPath const& lhs, AsPath const& rhs) noexcept
 	return !(lhs == rhs);
 }
 
-/** GET_MILAN_INFO - Milan Clause 7.4.1 */
+/** GET_MILAN_INFO - Milan-2019 Clause 7.4.1 */
 struct MilanInfo
 {
 	std::uint32_t protocolVersion{ 0u };

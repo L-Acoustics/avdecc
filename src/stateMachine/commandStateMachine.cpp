@@ -40,10 +40,10 @@ namespace protocol
 {
 namespace stateMachine
 {
-/* Aecp commands timeout - Clause 9.2.1 */
+/* Aecp commands timeout - IEEE1722.1-2013 Clause 9.2.1 */
 static constexpr auto AecpAemCommandTimeoutMsec = 250u;
 static constexpr auto AecpAaCommandTimeoutMsec = 250u;
-/* Acmp commands timeout - Clause 8.2.2 */
+/* Acmp commands timeout - IEEE1722.1-2013 Clause 8.2.2 */
 static constexpr auto AcmpConnectTxCommandTimeoutMsec = 2000u;
 static constexpr auto AcmpDisconnectTxCommandTimeoutMsec = 200u;
 static constexpr auto AcmpGetTxStateCommandTimeoutMsec = 200u;
@@ -370,7 +370,7 @@ void CommandStateMachine::handleAcmpResponse(Acmpdu const& acmpdu) noexcept
 
 				// Check if it's an expected response (since the communication btw listener and talkers uses our controllerID and might use our sequenceID, we don't want to detect talker's response as ours)
 				auto const messageType = acmpdu.getMessageType().getValue();
-				auto const expectedResponseType = info.command->getMessageType().getValue() + 1; // Based on Clause 8.2.1.5, responses are always Command + 1
+				auto const expectedResponseType = info.command->getMessageType().getValue() + 1; // Based on IEEE1722.1-2013 Clause 8.2.1.5, responses are always Command + 1
 				if (messageType == expectedResponseType)
 				{
 					// Move the query (it will be deleted)
@@ -476,7 +476,7 @@ bool CommandStateMachine::isAEMUnsolicitedResponse(Aecpdu const& aecpdu) const n
 {
 	auto const messageType = aecpdu.getMessageType();
 
-	// Special case for AEM messages (see Clause 9.2.2.3.1.2.4)
+	// Special case for AEM messages (see IEEE1722.1-2013 Clause 9.2.2.3.1.2.4)
 	if (messageType == AecpMessageType::AemResponse)
 	{
 		auto const& aem = static_cast<AemAecpdu const&>(aecpdu);
@@ -490,7 +490,7 @@ bool CommandStateMachine::shouldRearmTimer(Aecpdu const& aecpdu) const noexcept
 {
 	auto const messageType = aecpdu.getMessageType();
 
-	// Special case for AEM messages (see Clause 9.2.1.2.5)
+	// Special case for AEM messages (see IEEE1722.1-2013 Clause 9.2.1.2.5)
 	if (messageType == AecpMessageType::AemResponse)
 	{
 		auto const status = aecpdu.getStatus();

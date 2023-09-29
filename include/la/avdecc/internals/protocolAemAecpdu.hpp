@@ -46,8 +46,8 @@ public:
 	static constexpr size_t MaximumSendPayloadBufferLength = Aecpdu::MaximumSendLength - Aecpdu::HeaderLength - HeaderLength;
 	static constexpr size_t MaximumRecvPayloadBufferLength = Aecpdu::MaximumRecvLength - Aecpdu::HeaderLength - HeaderLength;
 	static_assert(MaximumPayloadBufferLength >= MaximumSendPayloadBufferLength && MaximumPayloadBufferLength >= MaximumRecvPayloadBufferLength, "Incoherent constexpr values");
-	static LA_AVDECC_API networkInterface::MacAddress const Identify_Mac_Address; /* Annex B */
-	static LA_AVDECC_API UniqueIdentifier const Identify_ControllerEntityID; /* Clause 7.5.1 */
+	static LA_AVDECC_API networkInterface::MacAddress const Identify_Mac_Address; /* IEEE1722.1-2013 Annex B */
+	static LA_AVDECC_API UniqueIdentifier const Identify_ControllerEntityID; /* IEEE1722.1-2013 Clause 7.5.1 */
 	using Payload = std::pair<void const*, size_t>;
 
 	/**

@@ -172,6 +172,9 @@ public:
 		ControlValues, // CONTROL.value_details -> GET_CONTROL (7.4.26)
 		ClockDomainName, // CLOCK_DOMAIN.object_name -> GET_NAME (7.4.18)
 		ClockDomainSourceIndex, // CLOCK_DOMAIN.clock_source_index -> GET_CLOCK_SOURCE (7.4.24)
+		TimingName, // TIMING.object_name -> GET_NAME (7.4.18)
+		PtpInstanceName, // PTP_INSTANCE.object_name -> GET_NAME (7.4.18)
+		PtpPortName, // PTP_PORT.object_name -> GET_NAME (7.4.18)
 	};
 
 	using MilanInfoKey = std::underlying_type_t<MilanInfoType>;
@@ -235,6 +238,9 @@ public:
 	//virtual model::AudioMapNode const& getAudioMapNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex) const override;
 	virtual model::ControlNode const& getControlNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const controlIndex) const override;
 	virtual model::ClockDomainNode const& getClockDomainNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) const override;
+	virtual model::TimingNode const& getTimingNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const timingIndex) const override;
+	virtual model::PtpInstanceNode const& getPtpInstanceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const ptpInstanceIndex) const override;
+	virtual model::PtpPortNode const& getPtpPortNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex) const override;
 
 	virtual model::LocaleNode const* findLocaleNode(entity::model::ConfigurationIndex const configurationIndex, std::string const& locale) const override; // Throws Exception::NotSupported if EM not supported by the Entity // Throws Exception::InvalidConfigurationIndex if configurationIndex do not exist
 	virtual entity::model::AvdeccFixedString const& getLocalizedString(entity::model::LocalizedStringReference const& stringReference) const noexcept override;
@@ -355,6 +361,9 @@ public:
 	void setAudioMapDescriptor(entity::model::AudioMapDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::MapIndex const mapIndex) noexcept;
 	void setControlDescriptor(entity::model::ControlDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ControlIndex const controlIndex) noexcept;
 	void setClockDomainDescriptor(entity::model::ClockDomainDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::ClockDomainIndex const clockDomainIndex) noexcept;
+	void setTimingDescriptor(entity::model::TimingDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const timingIndex) noexcept;
+	void setPtpInstanceDescriptor(entity::model::PtpInstanceDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const ptpInstanceIndex) noexcept;
+	void setPtpPortDescriptor(entity::model::PtpPortDescriptor const& descriptor, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex) noexcept;
 
 	// Setters of statistics
 	std::uint64_t incrementAecpRetryCounter() noexcept;

@@ -62,7 +62,7 @@ static inline void checkResponsePayload(AemAecpdu::Payload const& payload, entit
 	}
 }
 
-/** ACQUIRE_ENTITY Command - Clause 7.4.1.1 */
+/** ACQUIRE_ENTITY Command - IEEE1722.1-2013 Clause 7.4.1.1 */
 Serializer<AecpAemAcquireEntityCommandPayloadSize> serializeAcquireEntityCommand(AemAcquireEntityFlags const flags, UniqueIdentifier const ownerID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
 	Serializer<AecpAemAcquireEntityCommandPayloadSize> ser;
@@ -100,7 +100,7 @@ std::tuple<AemAcquireEntityFlags, UniqueIdentifier, entity::model::DescriptorTyp
 	return std::make_tuple(flags, ownerID, descriptorType, descriptorIndex);
 }
 
-/** ACQUIRE_ENTITY Response - Clause 7.4.1.1 */
+/** ACQUIRE_ENTITY Response - IEEE1722.1-2013 Clause 7.4.1.1 */
 Serializer<AecpAemAcquireEntityResponsePayloadSize> serializeAcquireEntityResponse(AemAcquireEntityFlags const flags, UniqueIdentifier ownerID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
 	// Same as ACQUIRE_ENTITY Command
@@ -116,7 +116,7 @@ std::tuple<AemAcquireEntityFlags, UniqueIdentifier, entity::model::DescriptorTyp
 	return deserializeAcquireEntityCommand(payload);
 }
 
-/** LOCK_ENTITY Command - Clause 7.4.2.1 */
+/** LOCK_ENTITY Command - IEEE1722.1-2013 Clause 7.4.2.1 */
 Serializer<AecpAemLockEntityCommandPayloadSize> serializeLockEntityCommand(AemLockEntityFlags flags, UniqueIdentifier lockedID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
 	Serializer<AecpAemLockEntityCommandPayloadSize> ser;
@@ -154,7 +154,7 @@ std::tuple<AemLockEntityFlags, UniqueIdentifier, entity::model::DescriptorType, 
 	return std::make_tuple(flags, lockedID, descriptorType, descriptorIndex);
 }
 
-/** LOCK_ENTITY Response - Clause 7.4.2.1 */
+/** LOCK_ENTITY Response - IEEE1722.1-2013 Clause 7.4.2.1 */
 Serializer<AecpAemLockEntityResponsePayloadSize> serializeLockEntityResponse(AemLockEntityFlags flags, UniqueIdentifier lockedID, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
 	// Same as LOCK_ENTITY Command
@@ -170,7 +170,7 @@ std::tuple<AemLockEntityFlags, UniqueIdentifier, entity::model::DescriptorType, 
 	return deserializeLockEntityCommand(payload);
 }
 
-/** READ_DESCRIPTOR Command - Clause 7.4.5.1 */
+/** READ_DESCRIPTOR Command - IEEE1722.1-2013 Clause 7.4.5.1 */
 Serializer<AecpAemReadDescriptorCommandPayloadSize> serializeReadDescriptorCommand(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
 	Serializer<AecpAemReadDescriptorCommandPayloadSize> ser;
@@ -207,7 +207,7 @@ std::tuple<entity::model::ConfigurationIndex, entity::model::DescriptorType, ent
 	return std::make_tuple(configurationIndex, descriptorType, descriptorIndex);
 }
 
-/** READ_DESCRIPTOR Response - Clause 7.4.5.2 */
+/** READ_DESCRIPTOR Response - IEEE1722.1-2013 Clause 7.4.5.2 */
 Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeReadDescriptorCommonResponse(entity::model::ConfigurationIndex const configurationIndex, entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
 	Serializer<AemAecpdu::MaximumSendPayloadBufferLength> ser;
@@ -241,7 +241,7 @@ void serializeReadConfigurationDescriptorResponse(Serializer<AemAecpdu::MaximumS
 	ser << configurationDescriptor.localizedDescription;
 	auto const descriptorCountsCount = static_cast<std::uint16_t>(configurationDescriptor.descriptorCounts.size());
 	ser << descriptorCountsCount;
-	// Compute serializer offset for descriptor counts (Clause 7.2.2 says the descriptor_counts_offset field is from the base of the descriptor, which is not where our serializer buffer starts). Also have to add the size of this very field since offset starts after it...
+	// Compute serializer offset for descriptor counts (IEEE1722.1-2021 Clause 7.2.2 says the descriptor_counts_offset field is from the base of the descriptor, which is not where our serializer buffer starts). Also have to add the size of this very field since offset starts after it...
 	auto const descriptorCountsOffset = static_cast<std::uint16_t>(ser.usedBytes() - PayloadBufferOffset + sizeof(std::uint16_t));
 	AVDECC_ASSERT(descriptorCountsOffset == 74, "Descriptor Counts offset should be 74 for IEEE1722.1-2021");
 	ser << descriptorCountsOffset;
@@ -279,7 +279,7 @@ entity::model::EntityDescriptor deserializeReadEntityDescriptorResponse(AemAecpd
 {
 	entity::model::EntityDescriptor entityDescriptor{};
 
-	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
 	if (status == AecpStatus::Success)
 	{
 		auto* const commandPayload = payload.first;
@@ -288,7 +288,7 @@ entity::model::EntityDescriptor deserializeReadEntityDescriptorResponse(AemAecpd
 		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadEntityDescriptorResponsePayloadSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Check entity descriptor payload - Clause 7.2.1
+		// Check entity descriptor payload - IEEE1722.1-2013 Clause 7.2.1
 		Deserializer des(commandPayload, commandPayloadLength);
 		des.setPosition(commonSize); // Skip already unpacked common header
 		des >> entityDescriptor.entityID >> entityDescriptor.entityModelID >> entityDescriptor.entityCapabilities;
@@ -319,7 +319,7 @@ entity::model::ConfigurationDescriptor deserializeReadConfigurationDescriptorRes
 {
 	entity::model::ConfigurationDescriptor configurationDescriptor{};
 
-	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
 	if (status == AecpStatus::Success)
 	{
 		auto* const commandPayload = payload.first;
@@ -328,7 +328,7 @@ entity::model::ConfigurationDescriptor deserializeReadConfigurationDescriptorRes
 		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadConfigurationDescriptorResponsePayloadMinSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Check configuration descriptor payload - Clause 7.2.2
+		// Check configuration descriptor payload - IEEE1722.1-2013 Clause 7.2.2
 		Deserializer des(commandPayload, commandPayloadLength);
 		std::uint16_t descriptorCountsCount{ 0u };
 		std::uint16_t descriptorCountsOffset{ 0u };
@@ -343,7 +343,7 @@ entity::model::ConfigurationDescriptor deserializeReadConfigurationDescriptorRes
 		if (des.remaining() < descriptorCountsSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Compute deserializer offset for descriptor counts (Clause 7.2.2 says the descriptor_counts_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+		// Compute deserializer offset for descriptor counts (IEEE1722.1-2013 Clause 7.2.2 says the descriptor_counts_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
 		descriptorCountsOffset += PayloadBufferOffset;
 
 		// Set deserializer position
@@ -376,7 +376,7 @@ entity::model::AudioUnitDescriptor deserializeReadAudioUnitDescriptorResponse(Ae
 {
 	entity::model::AudioUnitDescriptor audioUnitDescriptor{};
 
-	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
 	if (status == AecpStatus::Success)
 	{
 		auto* const commandPayload = payload.first;
@@ -385,7 +385,7 @@ entity::model::AudioUnitDescriptor deserializeReadAudioUnitDescriptorResponse(Ae
 		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadAudioUnitDescriptorResponsePayloadMinSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Check audio unit descriptor payload - Clause 7.2.3
+		// Check audio unit descriptor payload - IEEE1722.1-2013 Clause 7.2.3
 		Deserializer des(commandPayload, commandPayloadLength);
 		std::uint16_t samplingRatesOffset{ 0u };
 		std::uint16_t numberOfSamplingRates{ 0u };
@@ -415,7 +415,7 @@ entity::model::AudioUnitDescriptor deserializeReadAudioUnitDescriptorResponse(Ae
 		if (des.remaining() < samplingRatesSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Compute deserializer offset for sampling rates (Clause 7.2.3 says the sampling_rates_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+		// Compute deserializer offset for sampling rates (IEEE1722.1-2013 Clause 7.2.3 says the sampling_rates_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
 		samplingRatesOffset += PayloadBufferOffset;
 
 		// Set deserializer position
@@ -444,7 +444,7 @@ entity::model::StreamDescriptor deserializeReadStreamDescriptorResponse(AemAecpd
 {
 	entity::model::StreamDescriptor streamDescriptor{};
 
-	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
 	if (status == AecpStatus::Success)
 	{
 		auto* const commandPayload = payload.first;
@@ -453,7 +453,7 @@ entity::model::StreamDescriptor deserializeReadStreamDescriptorResponse(AemAecpd
 		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadStreamDescriptorResponsePayloadMinSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Check stream descriptor payload - Clause 7.2.6
+		// Check stream descriptor payload - IEEE1722.1-2013 Clause 7.2.6
 		Deserializer des(commandPayload, commandPayloadLength);
 		std::uint16_t formatsOffset{ 0u };
 		std::uint16_t numberOfFormats{ 0u };
@@ -468,7 +468,7 @@ entity::model::StreamDescriptor deserializeReadStreamDescriptorResponse(AemAecpd
 		des >> streamDescriptor.backedupTalkerEntityID >> streamDescriptor.backedupTalkerUnique;
 		des >> streamDescriptor.avbInterfaceIndex >> streamDescriptor.bufferLength;
 
-		// Compute deserializer offset for formats (Clause 7.2.6 says the formats_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+		// Compute deserializer offset for formats (IEEE1722.1-2013 Clause 7.2.6 says the formats_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
 		formatsOffset += PayloadBufferOffset;
 
 #ifdef ENABLE_AVDECC_FEATURE_REDUNDANCY
@@ -479,7 +479,7 @@ entity::model::StreamDescriptor deserializeReadStreamDescriptorResponse(AemAecpd
 		if (remainingBytesBeforeFormats >= (sizeof(redundantOffset) + sizeof(numberOfRedundantStreams)))
 		{
 			des >> redundantOffset >> numberOfRedundantStreams;
-			// Compute deserializer offset for redundant streams association (Clause 7.2.6 says the redundant_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+			// Compute deserializer offset for redundant streams association (IEEE1722.1-2013 Clause 7.2.6 says the redundant_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
 			redundantOffset += PayloadBufferOffset;
 			endDescriptorOffset = redundantOffset;
 		}
@@ -538,7 +538,7 @@ entity::model::JackDescriptor deserializeReadJackDescriptorResponse(AemAecpdu::P
 {
 	entity::model::JackDescriptor jackDescriptor{};
 
-	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
 	if (status == AecpStatus::Success)
 	{
 		auto* const commandPayload = payload.first;
@@ -547,7 +547,7 @@ entity::model::JackDescriptor deserializeReadJackDescriptorResponse(AemAecpdu::P
 		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadJackDescriptorResponsePayloadSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Check jack descriptor payload - Clause 7.2.7
+		// Check jack descriptor payload - IEEE1722.1-2013 Clause 7.2.7
 		Deserializer des(commandPayload, commandPayloadLength);
 		des.setPosition(commonSize); // Skip already unpacked common header
 		des >> jackDescriptor.objectName;
@@ -570,7 +570,7 @@ entity::model::AvbInterfaceDescriptor deserializeReadAvbInterfaceDescriptorRespo
 {
 	entity::model::AvbInterfaceDescriptor avbInterfaceDescriptor{};
 
-	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
 	if (status == AecpStatus::Success)
 	{
 		auto* const commandPayload = payload.first;
@@ -579,7 +579,7 @@ entity::model::AvbInterfaceDescriptor deserializeReadAvbInterfaceDescriptorRespo
 		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadAvbInterfaceDescriptorResponsePayloadSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Check avb interface descriptor payload - Clause 7.2.8
+		// Check avb interface descriptor payload - IEEE1722.1-2013 Clause 7.2.8
 		Deserializer des(commandPayload, commandPayloadLength);
 		des.setPosition(commonSize); // Skip already unpacked common header
 		des >> avbInterfaceDescriptor.objectName;
@@ -608,7 +608,7 @@ entity::model::ClockSourceDescriptor deserializeReadClockSourceDescriptorRespons
 {
 	entity::model::ClockSourceDescriptor clockSourceDescriptor{};
 
-	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
 	if (status == AecpStatus::Success)
 	{
 		auto* const commandPayload = payload.first;
@@ -617,7 +617,7 @@ entity::model::ClockSourceDescriptor deserializeReadClockSourceDescriptorRespons
 		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadClockSourceDescriptorResponsePayloadSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Check clock source descriptor payload - Clause 7.2.9
+		// Check clock source descriptor payload - IEEE1722.1-2013 Clause 7.2.9
 		Deserializer des(commandPayload, commandPayloadLength);
 		des.setPosition(commonSize); // Skip already unpacked common header
 		des >> clockSourceDescriptor.objectName;
@@ -641,7 +641,7 @@ entity::model::MemoryObjectDescriptor deserializeReadMemoryObjectDescriptorRespo
 {
 	entity::model::MemoryObjectDescriptor memoryObjectDescriptor{};
 
-	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
 	if (status == AecpStatus::Success)
 	{
 		auto* const commandPayload = payload.first;
@@ -650,7 +650,7 @@ entity::model::MemoryObjectDescriptor deserializeReadMemoryObjectDescriptorRespo
 		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadMemoryObjectDescriptorResponsePayloadSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Check memory object descriptor payload - Clause 7.2.10
+		// Check memory object descriptor payload - IEEE1722.1-2013 Clause 7.2.10
 		Deserializer des(commandPayload, commandPayloadLength);
 		des.setPosition(commonSize); // Skip already unpacked common header
 		des >> memoryObjectDescriptor.objectName;
@@ -675,7 +675,7 @@ entity::model::LocaleDescriptor deserializeReadLocaleDescriptorResponse(AemAecpd
 {
 	entity::model::LocaleDescriptor localeDescriptor{};
 
-	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
 	if (status == AecpStatus::Success)
 	{
 		auto* const commandPayload = payload.first;
@@ -684,7 +684,7 @@ entity::model::LocaleDescriptor deserializeReadLocaleDescriptorResponse(AemAecpd
 		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadLocaleDescriptorResponsePayloadSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Check locale descriptor payload - Clause 7.2.11
+		// Check locale descriptor payload - IEEE1722.1-2013 Clause 7.2.11
 		Deserializer des(commandPayload, commandPayloadLength);
 		des.setPosition(commonSize); // Skip already unpacked common header
 		des >> localeDescriptor.localeID;
@@ -705,7 +705,7 @@ entity::model::StringsDescriptor deserializeReadStringsDescriptorResponse(AemAec
 {
 	entity::model::StringsDescriptor stringsDescriptor{};
 
-	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
 	if (status == AecpStatus::Success)
 	{
 		auto* const commandPayload = payload.first;
@@ -714,7 +714,7 @@ entity::model::StringsDescriptor deserializeReadStringsDescriptorResponse(AemAec
 		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadStringsDescriptorResponsePayloadSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Check strings descriptor payload - Clause 7.2.12
+		// Check strings descriptor payload - IEEE1722.1-2013 Clause 7.2.12
 		Deserializer des(commandPayload, commandPayloadLength);
 		des.setPosition(commonSize); // Skip already unpacked common header
 		for (auto strIndex = 0u; strIndex < stringsDescriptor.strings.size(); ++strIndex)
@@ -737,7 +737,7 @@ entity::model::StreamPortDescriptor deserializeReadStreamPortDescriptorResponse(
 {
 	entity::model::StreamPortDescriptor streamPortDescriptor{};
 
-	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
 	if (status == AecpStatus::Success)
 	{
 		auto* const commandPayload = payload.first;
@@ -746,7 +746,7 @@ entity::model::StreamPortDescriptor deserializeReadStreamPortDescriptorResponse(
 		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadStreamPortDescriptorResponsePayloadSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Check stream port descriptor payload - Clause 7.2.13
+		// Check stream port descriptor payload - IEEE1722.1-2013 Clause 7.2.13
 		Deserializer des(commandPayload, commandPayloadLength);
 		des.setPosition(commonSize); // Skip already unpacked common header
 		des >> streamPortDescriptor.clockDomainIndex >> streamPortDescriptor.portFlags;
@@ -769,7 +769,7 @@ entity::model::ExternalPortDescriptor deserializeReadExternalPortDescriptorRespo
 {
 	entity::model::ExternalPortDescriptor externalPortDescriptor{};
 
-	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
 	if (status == AecpStatus::Success)
 	{
 		auto* const commandPayload = payload.first;
@@ -778,7 +778,7 @@ entity::model::ExternalPortDescriptor deserializeReadExternalPortDescriptorRespo
 		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadExternalPortDescriptorResponsePayloadSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Check external port descriptor payload - Clause 7.2.14
+		// Check external port descriptor payload - IEEE1722.1-2013 Clause 7.2.14
 		Deserializer des(commandPayload, commandPayloadLength);
 		des.setPosition(commonSize); // Skip already unpacked common header
 		des >> externalPortDescriptor.clockDomainIndex >> externalPortDescriptor.portFlags;
@@ -801,7 +801,7 @@ entity::model::InternalPortDescriptor deserializeReadInternalPortDescriptorRespo
 {
 	entity::model::InternalPortDescriptor internalPortDescriptor{};
 
-	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
 	if (status == AecpStatus::Success)
 	{
 		auto* const commandPayload = payload.first;
@@ -810,7 +810,7 @@ entity::model::InternalPortDescriptor deserializeReadInternalPortDescriptorRespo
 		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadInternalPortDescriptorResponsePayloadSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Check internal port descriptor payload - Clause 7.2.15
+		// Check internal port descriptor payload - IEEE1722.1-2013 Clause 7.2.15
 		Deserializer des(commandPayload, commandPayloadLength);
 		des.setPosition(commonSize); // Skip already unpacked common header
 		des >> internalPortDescriptor.clockDomainIndex >> internalPortDescriptor.portFlags;
@@ -833,7 +833,7 @@ entity::model::AudioClusterDescriptor deserializeReadAudioClusterDescriptorRespo
 {
 	entity::model::AudioClusterDescriptor audioClusterDescriptor{};
 
-	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
 	if (status == AecpStatus::Success)
 	{
 		auto* const commandPayload = payload.first;
@@ -842,7 +842,7 @@ entity::model::AudioClusterDescriptor deserializeReadAudioClusterDescriptorRespo
 		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadAudioClusterDescriptorResponsePayloadSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Check audio cluster descriptor payload - Clause 7.2.16
+		// Check audio cluster descriptor payload - IEEE1722.1-2013 Clause 7.2.16
 		Deserializer des(commandPayload, commandPayloadLength);
 		des.setPosition(commonSize); // Skip already unpacked common header
 		des >> audioClusterDescriptor.objectName;
@@ -866,7 +866,7 @@ entity::model::AudioMapDescriptor deserializeReadAudioMapDescriptorResponse(AemA
 {
 	entity::model::AudioMapDescriptor audioMapDescriptor{};
 
-	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
 	if (status == AecpStatus::Success)
 	{
 		auto* const commandPayload = payload.first;
@@ -875,7 +875,7 @@ entity::model::AudioMapDescriptor deserializeReadAudioMapDescriptorResponse(AemA
 		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadAudioMapDescriptorResponsePayloadMinSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Check audio map descriptor payload - Clause 7.2.19
+		// Check audio map descriptor payload - IEEE1722.1-2013 Clause 7.2.19
 		Deserializer des(commandPayload, commandPayloadLength);
 		std::uint16_t mappingsOffset{ 0u };
 		std::uint16_t numberOfMappings{ 0u };
@@ -887,7 +887,7 @@ entity::model::AudioMapDescriptor deserializeReadAudioMapDescriptorResponse(AemA
 		if (des.remaining() < mappingsSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Compute deserializer offset for sampling rates (Clause 7.2.19 says the mappings_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+		// Compute deserializer offset for sampling rates (IEEE1722.1-2013 Clause 7.2.19 says the mappings_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
 		mappingsOffset += PayloadBufferOffset;
 
 		// Set deserializer position
@@ -914,7 +914,7 @@ entity::model::AudioMapDescriptor deserializeReadAudioMapDescriptorResponse(AemA
 
 static inline void createUnpackFullControlValuesDispatchTable(std::unordered_map<entity::model::ControlValueType::Type, std::function<std::tuple<entity::model::ControlValues, entity::model::ControlValues>(Deserializer&, std::uint16_t)>>& dispatchTable)
 {
-	/** Linear Values - Clause 7.3.5.2.1 */
+	/** Linear Values - IEEE1722.1-2013 Clause 7.3.5.2.1 */
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt8>::unpackFullControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt8>::unpackFullControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt16>::unpackFullControlValues;
@@ -926,7 +926,7 @@ static inline void createUnpackFullControlValuesDispatchTable(std::unordered_map
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearFloat] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearFloat>::unpackFullControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearDouble>::unpackFullControlValues;
 
-	/** Selector Value - Clause 7.3.5.2.2 */
+	/** Selector Value - IEEE1722.1-2013 Clause 7.3.5.2.2 */
 	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorInt8>::unpackFullControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorUInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorUInt8>::unpackFullControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorInt16>::unpackFullControlValues;
@@ -939,7 +939,7 @@ static inline void createUnpackFullControlValuesDispatchTable(std::unordered_map
 	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorDouble>::unpackFullControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorString] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorString>::unpackFullControlValues;
 
-	/** Array Values - Clause 7.3.5.2.3 */
+	/** Array Values - IEEE1722.1-2013 Clause 7.3.5.2.3 */
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt8>::unpackFullControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayUInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt8>::unpackFullControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt16>::unpackFullControlValues;
@@ -951,7 +951,7 @@ static inline void createUnpackFullControlValuesDispatchTable(std::unordered_map
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayFloat] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayFloat>::unpackFullControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayDouble>::unpackFullControlValues;
 
-	/** UTF-8 String Value - Clause 7.3.5.2.4 */
+	/** UTF-8 String Value - IEEE1722.1-2013 Clause 7.3.5.2.4 */
 	dispatchTable[entity::model::ControlValueType::Type::ControlUtf8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlUtf8>::unpackFullControlValues;
 }
 
@@ -967,7 +967,7 @@ entity::model::ControlDescriptor deserializeReadControlDescriptorResponse(AemAec
 
 	auto controlDescriptor = entity::model::ControlDescriptor{};
 
-	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
 	if (status == AecpStatus::Success)
 	{
 		auto* const commandPayload = payload.first;
@@ -976,7 +976,7 @@ entity::model::ControlDescriptor deserializeReadControlDescriptorResponse(AemAec
 		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadControlDescriptorResponsePayloadMinSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Check control descriptor payload - Clause 7.2.22
+		// Check control descriptor payload - IEEE1722.1-2013 Clause 7.2.22
 		auto des = Deserializer{ commandPayload, commandPayloadLength };
 		auto valuesOffset = std::uint16_t{ 0u };
 
@@ -989,7 +989,7 @@ entity::model::ControlDescriptor deserializeReadControlDescriptorResponse(AemAec
 
 		// No need to check descriptor variable size, we'll let the ControlValueType specific unpacker throw if needed
 
-		// Compute deserializer offset for values (Clause 7.2.22 says the values_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+		// Compute deserializer offset for values (IEEE1722.1-2013 Clause 7.2.22 says the values_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
 		valuesOffset += PayloadBufferOffset;
 
 		// Set deserializer position
@@ -1030,7 +1030,7 @@ entity::model::ClockDomainDescriptor deserializeReadClockDomainDescriptorRespons
 {
 	entity::model::ClockDomainDescriptor clockDomainDescriptor{};
 
-	// Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
 	if (status == AecpStatus::Success)
 	{
 		auto* const commandPayload = payload.first;
@@ -1039,7 +1039,7 @@ entity::model::ClockDomainDescriptor deserializeReadClockDomainDescriptorRespons
 		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadClockDomainDescriptorResponsePayloadMinSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Check clock domain descriptor payload - Clause 7.2.32
+		// Check clock domain descriptor payload - IEEE1722.1-2013 Clause 7.2.32
 		Deserializer des(commandPayload, commandPayloadLength);
 		std::uint16_t clockSourcesOffset{ 0u };
 		std::uint16_t numberOfClockSources{ 0u };
@@ -1054,7 +1054,7 @@ entity::model::ClockDomainDescriptor deserializeReadClockDomainDescriptorRespons
 		if (des.remaining() < clockSourcesSize) // Malformed packet
 			throw IncorrectPayloadSizeException();
 
-		// Compute deserializer offset for sampling rates (Clause 7.2.32 says the clock_sources_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+		// Compute deserializer offset for sampling rates (IEEE1722.1-2013 Clause 7.2.32 says the clock_sources_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
 		clockSourcesOffset += PayloadBufferOffset;
 
 		// Set deserializer position
@@ -1079,23 +1079,140 @@ entity::model::ClockDomainDescriptor deserializeReadClockDomainDescriptorRespons
 	return clockDomainDescriptor;
 }
 
-/** WRITE_DESCRIPTOR Command - Clause 7.4.6.1 */
+entity::model::TimingDescriptor deserializeReadTimingDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
+{
+	entity::model::TimingDescriptor timingDescriptor{};
 
-/** WRITE_DESCRIPTOR Response - Clause 7.4.6.1 */
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	if (status == AecpStatus::Success)
+	{
+		auto* const commandPayload = payload.first;
+		auto const commandPayloadLength = payload.second;
 
-/** ENTITY_AVAILABLE Command - Clause 7.4.3.1 */
+		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadTimingDescriptorResponsePayloadMinSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Check timing descriptor payload - IEEE1722.1-2021 Clause 7.2.34
+		Deserializer des(commandPayload, commandPayloadLength);
+		std::uint16_t ptpInstancesOffset{ 0u };
+		std::uint16_t numberOfPtpInstances{ 0u };
+		des.setPosition(commonSize); // Skip already unpacked common header
+		des >> timingDescriptor.objectName;
+		des >> timingDescriptor.localizedDescription >> timingDescriptor.algorithm;
+		des >> ptpInstancesOffset >> numberOfPtpInstances;
+
+		// Check descriptor variable size
+		auto const ptpInstancesSize = sizeof(entity::model::PtpInstanceIndex) * numberOfPtpInstances;
+		if (des.remaining() < ptpInstancesSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Compute deserializer offset for sampling rates (IEEE1722.1-2032 Clause 7.2.34 says the ptp_instances_offset field is from the base of the descriptor, which is not where our deserializer buffer starts)
+		ptpInstancesOffset += PayloadBufferOffset;
+
+		// Set deserializer position
+		if (ptpInstancesOffset < des.usedBytes())
+			throw IncorrectPayloadSizeException();
+		des.setPosition(ptpInstancesOffset);
+
+		// Let's loop over the ptp instances
+		for (auto index = 0u; index < numberOfPtpInstances; ++index)
+		{
+			entity::model::PtpInstanceIndex ptpInstanceIndex;
+			des >> ptpInstanceIndex;
+			timingDescriptor.ptpInstances.push_back(ptpInstanceIndex);
+		}
+
+		if (des.remaining() != 0)
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_TIMING_DESCRIPTOR RESPONSE: {}", des.remaining());
+		}
+	}
+
+	return timingDescriptor;
+}
+
+entity::model::PtpInstanceDescriptor deserializeReadPtpInstanceDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
+{
+	entity::model::PtpInstanceDescriptor ptpInstanceDescriptor{};
+
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	if (status == AecpStatus::Success)
+	{
+		auto* const commandPayload = payload.first;
+		auto const commandPayloadLength = payload.second;
+
+		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadPtpInstanceDescriptorResponsePayloadSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Check ptp instance descriptor payload - IEEE1722.1-2021 Clause 7.2.35
+		Deserializer des(commandPayload, commandPayloadLength);
+		des.setPosition(commonSize); // Skip already unpacked common header
+		des >> ptpInstanceDescriptor.objectName;
+		des >> ptpInstanceDescriptor.localizedDescription;
+		des >> ptpInstanceDescriptor.clockIdentity >> ptpInstanceDescriptor.flags;
+		des >> ptpInstanceDescriptor.numberOfControls >> ptpInstanceDescriptor.baseControl;
+		des >> ptpInstanceDescriptor.numberOfPtpPorts >> ptpInstanceDescriptor.basePtpPort;
+
+		AVDECC_ASSERT(des.usedBytes() == AecpAemReadPtpInstanceDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
+
+		if (des.remaining() != 0)
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_PTP_INSTANCE_DESCRIPTOR RESPONSE: {}", des.remaining());
+		}
+	}
+
+	return ptpInstanceDescriptor;
+}
+
+entity::model::PtpPortDescriptor deserializeReadPtpPortDescriptorResponse(AemAecpdu::Payload const& payload, size_t const commonSize, AemAecpStatus const status)
+{
+	entity::model::PtpPortDescriptor ptpPortDescriptor{};
+
+	// IEEE1722.1-2013 Clause 7.4.5.2 says we should only unpack common descriptor fields in case status is not Success
+	if (status == AecpStatus::Success)
+	{
+		auto* const commandPayload = payload.first;
+		auto const commandPayloadLength = payload.second;
+
+		if (commandPayload == nullptr || commandPayloadLength < AecpAemReadPtpPortDescriptorResponsePayloadSize) // Malformed packet
+			throw IncorrectPayloadSizeException();
+
+		// Check ptp port descriptor payload - IEEE1722.1-2021 Clause 7.2.36
+		Deserializer des(commandPayload, commandPayloadLength);
+		des.setPosition(commonSize); // Skip already unpacked common header
+		des >> ptpPortDescriptor.objectName;
+		des >> ptpPortDescriptor.localizedDescription;
+		des >> ptpPortDescriptor.portNumber >> ptpPortDescriptor.portType >> ptpPortDescriptor.flags >> ptpPortDescriptor.avbInterfaceIndex;
+		des.unpackBuffer(ptpPortDescriptor.profileIdentifier.data(), ptpPortDescriptor.profileIdentifier.size());
+
+		AVDECC_ASSERT(des.usedBytes() == AecpAemReadPtpPortDescriptorResponsePayloadSize, "Used more bytes than specified in protocol constant");
+
+		if (des.remaining() != 0)
+		{
+			LOG_AEM_PAYLOAD_TRACE("ReadDescriptorResponse deserialize warning: Remaining bytes in buffer for READ_PTP_PORT_DESCRIPTOR RESPONSE: {}", des.remaining());
+		}
+	}
+
+	return ptpPortDescriptor;
+}
+
+/** WRITE_DESCRIPTOR Command - IEEE1722.1-2013 Clause 7.4.6.1 */
+
+/** WRITE_DESCRIPTOR Response - IEEE1722.1-2013 Clause 7.4.6.1 */
+
+/** ENTITY_AVAILABLE Command - IEEE1722.1-2013 Clause 7.4.3.1 */
 // No payload
 
-/** ENTITY_AVAILABLE Response - Clause 7.4.3.1 */
+/** ENTITY_AVAILABLE Response - IEEE1722.1-2013 Clause 7.4.3.1 */
 // No payload
 
-/** CONTROLLER_AVAILABLE Command - Clause 7.4.4.1 */
+/** CONTROLLER_AVAILABLE Command - IEEE1722.1-2013 Clause 7.4.4.1 */
 // No payload
 
-/** CONTROLLER_AVAILABLE Response - Clause 7.4.4.1 */
+/** CONTROLLER_AVAILABLE Response - IEEE1722.1-2013 Clause 7.4.4.1 */
 // No payload
 
-/** SET_CONFIGURATION Command - Clause 7.4.7.1 */
+/** SET_CONFIGURATION Command - IEEE1722.1-2013 Clause 7.4.7.1 */
 Serializer<AecpAemSetConfigurationCommandPayloadSize> serializeSetConfigurationCommand(entity::model::ConfigurationIndex const configurationIndex)
 {
 	Serializer<AecpAemSetConfigurationCommandPayloadSize> ser;
@@ -1128,7 +1245,7 @@ std::tuple<entity::model::ConfigurationIndex> deserializeSetConfigurationCommand
 	return std::make_tuple(configurationIndex);
 }
 
-/** SET_CONFIGURATION Response - Clause 7.4.7.1 */
+/** SET_CONFIGURATION Response - IEEE1722.1-2013 Clause 7.4.7.1 */
 Serializer<AecpAemSetConfigurationResponsePayloadSize> serializeSetConfigurationResponse(entity::model::ConfigurationIndex const configurationIndex)
 {
 	// Same as SET_CONFIGURATION Command
@@ -1144,10 +1261,10 @@ std::tuple<entity::model::ConfigurationIndex> deserializeSetConfigurationRespons
 	return deserializeSetConfigurationCommand(payload);
 }
 
-/** GET_CONFIGURATION Command - Clause 7.4.8.1 */
+/** GET_CONFIGURATION Command - IEEE1722.1-2013 Clause 7.4.8.1 */
 // No payload
 
-/** GET_CONFIGURATION Response - Clause 7.4.8.2 */
+/** GET_CONFIGURATION Response - IEEE1722.1-2013 Clause 7.4.8.2 */
 Serializer<AecpAemGetConfigurationResponsePayloadSize> serializeGetConfigurationResponse(entity::model::ConfigurationIndex const configurationIndex)
 {
 	// Same as SET_CONFIGURATION Command
@@ -1163,7 +1280,7 @@ std::tuple<entity::model::ConfigurationIndex> deserializeGetConfigurationRespons
 	return deserializeSetConfigurationCommand(payload);
 }
 
-/** SET_STREAM_FORMAT Command - Clause 7.4.9.1 */
+/** SET_STREAM_FORMAT Command - IEEE1722.1-2013 Clause 7.4.9.1 */
 Serializer<AecpAemSetStreamFormatCommandPayloadSize> serializeSetStreamFormatCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamFormat const streamFormat)
 {
 	Serializer<AecpAemSetStreamFormatCommandPayloadSize> ser;
@@ -1198,7 +1315,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return std::make_tuple(descriptorType, descriptorIndex, streamFormat);
 }
 
-/** SET_STREAM_FORMAT Response - Clause 7.4.9.1 */
+/** SET_STREAM_FORMAT Response - IEEE1722.1-2013 Clause 7.4.9.1 */
 Serializer<AecpAemSetStreamFormatResponsePayloadSize> serializeSetStreamFormatResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamFormat const streamFormat)
 {
 	// Same as SET_STREAM_FORMAT Command
@@ -1214,7 +1331,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return deserializeSetStreamFormatCommand(payload);
 }
 
-/** GET_STREAM_FORMAT Command - Clause 7.4.10.1 */
+/** GET_STREAM_FORMAT Command - IEEE1722.1-2013 Clause 7.4.10.1 */
 Serializer<AecpAemGetStreamFormatCommandPayloadSize> serializeGetStreamFormatCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
 	Serializer<AecpAemGetStreamFormatCommandPayloadSize> ser;
@@ -1246,7 +1363,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 	return std::make_tuple(descriptorType, descriptorIndex);
 }
 
-/** GET_STREAM_FORMAT Response - Clause 7.4.10.2 */
+/** GET_STREAM_FORMAT Response - IEEE1722.1-2013 Clause 7.4.10.2 */
 Serializer<AecpAemGetStreamFormatResponsePayloadSize> serializeGetStreamFormatResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamFormat const streamFormat)
 {
 	// Same as SET_STREAM_FORMAT Command
@@ -1262,7 +1379,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return deserializeSetStreamFormatCommand(payload);
 }
 
-/** SET_STREAM_INFO Command - Clause 7.4.15.1 */
+/** SET_STREAM_INFO Command - IEEE1722.1-2013 Clause 7.4.15.1 */
 Serializer<AecpAemSetStreamInfoCommandPayloadSize> serializeSetStreamInfoCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamInfo const& streamInfo)
 {
 	Serializer<AecpAemSetStreamInfoCommandPayloadSize> ser;
@@ -1319,7 +1436,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return std::make_tuple(descriptorType, descriptorIndex, streamInfo);
 }
 
-/** SET_STREAM_INFO Response - Clause 7.4.15.1 */
+/** SET_STREAM_INFO Response - IEEE1722.1-2013 Clause 7.4.15.1 */
 Serializer<AecpAemSetStreamInfoResponsePayloadSize> serializeSetStreamInfoResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamInfo const& streamInfo)
 {
 	// Same as SET_STREAM_INFO Command
@@ -1335,7 +1452,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return deserializeSetStreamInfoCommand(payload);
 }
 
-/** GET_STREAM_INFO Command - Clause 7.4.16.1 */
+/** GET_STREAM_INFO Command - IEEE1722.1-2013 Clause 7.4.16.1 */
 Serializer<AecpAemGetStreamInfoCommandPayloadSize> serializeGetStreamInfoCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
 	Serializer<AecpAemGetStreamInfoCommandPayloadSize> ser;
@@ -1368,7 +1485,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 }
 
 
-/** GET_STREAM_INFO Response - Clause 7.4.16.2 */
+/** GET_STREAM_INFO Response - IEEE1722.1-2013 Clause 7.4.16.2 */
 Serializer<AecpAemMilanGetStreamInfoResponsePayloadSize> serializeGetStreamInfoResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::StreamInfo const& streamInfo)
 {
 	Serializer<AecpAemMilanGetStreamInfoResponsePayloadSize> ser;
@@ -1465,23 +1582,23 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return std::make_tuple(descriptorType, descriptorIndex, streamInfo);
 }
 
-/** GET_AUDIO_MAP Command  - Clause 7.4.44.1 */
+/** GET_AUDIO_MAP Command  - IEEE1722.1-2013 Clause 7.4.44.1 */
 
-/** GET_AUDIO_MAP Response  - Clause 7.4.44.2 */
+/** GET_AUDIO_MAP Response  - IEEE1722.1-2013 Clause 7.4.44.2 */
 
-/** ADD_AUDIO_MAPPINGS Command  - Clause 7.4.45.1 */
+/** ADD_AUDIO_MAPPINGS Command  - IEEE1722.1-2013 Clause 7.4.45.1 */
 
-/** ADD_AUDIO_MAPPINGS Response  - Clause 7.4.45.1 */
+/** ADD_AUDIO_MAPPINGS Response  - IEEE1722.1-2013 Clause 7.4.45.1 */
 
-/** REMOVE_AUDIO_MAPPINGS Command  - Clause 7.4.46.1 */
+/** REMOVE_AUDIO_MAPPINGS Command  - IEEE1722.1-2013 Clause 7.4.46.1 */
 
-/** REMOVE_AUDIO_MAPPINGS Response  - Clause 7.4.46.1 */
+/** REMOVE_AUDIO_MAPPINGS Response  - IEEE1722.1-2013 Clause 7.4.46.1 */
 
-/** GET_STREAM_INFO Command - Clause 7.4.16.1 */
+/** GET_STREAM_INFO Command - IEEE1722.1-2013 Clause 7.4.16.1 */
 
-/** GET_STREAM_INFO Response - Clause 7.4.16.2 */
+/** GET_STREAM_INFO Response - IEEE1722.1-2013 Clause 7.4.16.2 */
 
-/** SET_NAME Command - Clause 7.4.17.1 */
+/** SET_NAME Command - IEEE1722.1-2013 Clause 7.4.17.1 */
 Serializer<AecpAemSetNameCommandPayloadSize> serializeSetNameCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& name)
 {
 	Serializer<AecpAemSetNameCommandPayloadSize> ser;
@@ -1519,7 +1636,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::u
 	return std::make_tuple(descriptorType, descriptorIndex, nameIndex, configurationIndex, name);
 }
 
-/** SET_NAME Response - Clause 7.4.17.1 */
+/** SET_NAME Response - IEEE1722.1-2013 Clause 7.4.17.1 */
 Serializer<AecpAemSetNameResponsePayloadSize> serializeSetNameResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& name)
 {
 	// Same as SET_NAME Command
@@ -1535,7 +1652,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::u
 	return deserializeSetNameCommand(payload);
 }
 
-/** GET_NAME Command - Clause 7.4.18.1 */
+/** GET_NAME Command - IEEE1722.1-2013 Clause 7.4.18.1 */
 Serializer<AecpAemGetNameCommandPayloadSize> serializeGetNameCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex)
 {
 	Serializer<AecpAemGetNameCommandPayloadSize> ser;
@@ -1571,7 +1688,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::u
 	return std::make_tuple(descriptorType, descriptorIndex, nameIndex, configurationIndex);
 }
 
-/** GET_NAME Response - Clause 7.4.18.2 */
+/** GET_NAME Response - IEEE1722.1-2013 Clause 7.4.18.2 */
 Serializer<AecpAemGetNameResponsePayloadSize> serializeGetNameResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, std::uint16_t const nameIndex, entity::model::ConfigurationIndex const configurationIndex, entity::model::AvdeccFixedString const& name)
 {
 	// Same as SET_NAME Command
@@ -1587,7 +1704,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, std::u
 	return deserializeSetNameCommand(payload);
 }
 
-/** SET_ASSOCIATION_ID Command - Clause 7.4.19.1 */
+/** SET_ASSOCIATION_ID Command - IEEE1722.1-2013 Clause 7.4.19.1 */
 Serializer<AecpAemSetAssociationIDCommandPayloadSize> serializeSetAssociationIDCommand(UniqueIdentifier const associationID)
 {
 	Serializer<AecpAemSetAssociationIDCommandPayloadSize> ser;
@@ -1618,7 +1735,7 @@ std::tuple<UniqueIdentifier> deserializeSetAssociationIDCommand(AemAecpdu::Paylo
 	return std::make_tuple(associationID);
 }
 
-/** SET_ASSOCIATION_ID Response - Clause 7.4.19.1 */
+/** SET_ASSOCIATION_ID Response - IEEE1722.1-2013 Clause 7.4.19.1 */
 Serializer<AecpAemSetAssociationIDResponsePayloadSize> serializeSetAssociationIDResponse(UniqueIdentifier const associationID)
 {
 	// Same as SET_ASSOCIATION_ID Command
@@ -1634,10 +1751,10 @@ std::tuple<UniqueIdentifier> deserializeSetAssociationIDResponse(entity::LocalEn
 	return deserializeSetAssociationIDCommand(payload);
 }
 
-/** GET_ASSOCIATION_ID Command - Clause 7.4.20.1 */
+/** GET_ASSOCIATION_ID Command - IEEE1722.1-2013 Clause 7.4.20.1 */
 // No payload
 
-/** GET_ASSOCIATION_ID Response - Clause 7.4.20.2 */
+/** GET_ASSOCIATION_ID Response - IEEE1722.1-2013 Clause 7.4.20.2 */
 Serializer<AecpAemGetAssociationIDResponsePayloadSize> serializeGetAssociationIDResponse(UniqueIdentifier const associationID)
 {
 	// Same as GET_ASSOCIATION_ID Command
@@ -1653,7 +1770,7 @@ std::tuple<UniqueIdentifier> deserializeGetAssociationIDResponse(entity::LocalEn
 	return deserializeSetAssociationIDCommand(payload);
 }
 
-/** SET_SAMPLING_RATE Command - Clause 7.4.21.1 */
+/** SET_SAMPLING_RATE Command - IEEE1722.1-2013 Clause 7.4.21.1 */
 Serializer<AecpAemSetSamplingRateCommandPayloadSize> serializeSetSamplingRateCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::SamplingRate const samplingRate)
 {
 	Serializer<AecpAemSetSamplingRateCommandPayloadSize> ser;
@@ -1688,7 +1805,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return std::make_tuple(descriptorType, descriptorIndex, samplingRate);
 }
 
-/** SET_SAMPLING_RATE Response - Clause 7.4.21.1 */
+/** SET_SAMPLING_RATE Response - IEEE1722.1-2013 Clause 7.4.21.1 */
 Serializer<AecpAemSetSamplingRateResponsePayloadSize> serializeSetSamplingRateResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::SamplingRate const samplingRate)
 {
 	// Same as SET_SAMPLING_RATE Command
@@ -1704,7 +1821,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return deserializeSetSamplingRateCommand(payload);
 }
 
-/** GET_SAMPLING_RATE Command - Clause 7.4.22.1 */
+/** GET_SAMPLING_RATE Command - IEEE1722.1-2013 Clause 7.4.22.1 */
 Serializer<AecpAemGetSamplingRateCommandPayloadSize> serializeGetSamplingRateCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
 	Serializer<AecpAemGetSamplingRateCommandPayloadSize> ser;
@@ -1736,7 +1853,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 	return std::make_tuple(descriptorType, descriptorIndex);
 }
 
-/** GET_SAMPLING_RATE Response - Clause 7.4.22.2 */
+/** GET_SAMPLING_RATE Response - IEEE1722.1-2013 Clause 7.4.22.2 */
 Serializer<AecpAemGetSamplingRateResponsePayloadSize> serializeGetSamplingRateResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::SamplingRate const samplingRate)
 {
 	// Same as SET_SAMPLING_RATE Command
@@ -1752,7 +1869,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return deserializeSetSamplingRateCommand(payload);
 }
 
-/** SET_CLOCK_SOURCE Command - Clause 7.4.23.1 */
+/** SET_CLOCK_SOURCE Command - IEEE1722.1-2013 Clause 7.4.23.1 */
 Serializer<AecpAemSetClockSourceCommandPayloadSize> serializeSetClockSourceCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::ClockSourceIndex const clockSourceIndex)
 {
 	Serializer<AecpAemSetClockSourceCommandPayloadSize> ser;
@@ -1789,7 +1906,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return std::make_tuple(descriptorType, descriptorIndex, clockSourceIndex);
 }
 
-/** SET_CLOCK_SOURCE Response - Clause 7.4.23.1 */
+/** SET_CLOCK_SOURCE Response - IEEE1722.1-2013 Clause 7.4.23.1 */
 Serializer<AecpAemSetClockSourceResponsePayloadSize> serializeSetClockSourceResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::ClockSourceIndex const clockSourceIndex)
 {
 	// Same as SET_CLOCK_SOURCE Command
@@ -1805,7 +1922,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return deserializeSetClockSourceCommand(payload);
 }
 
-/** GET_CLOCK_SOURCE Command - Clause 7.4.24.1 */
+/** GET_CLOCK_SOURCE Command - IEEE1722.1-2013 Clause 7.4.24.1 */
 Serializer<AecpAemGetClockSourceCommandPayloadSize> serializeGetClockSourceCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
 	Serializer<AecpAemGetClockSourceCommandPayloadSize> ser;
@@ -1837,7 +1954,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 	return std::make_tuple(descriptorType, descriptorIndex);
 }
 
-/** GET_CLOCK_SOURCE Response - Clause 7.4.24.2 */
+/** GET_CLOCK_SOURCE Response - IEEE1722.1-2013 Clause 7.4.24.2 */
 Serializer<AecpAemGetClockSourceResponsePayloadSize> serializeGetClockSourceResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::ClockSourceIndex const clockSourceIndex)
 {
 	// Same as SET_CLOCK_SOURCE Command
@@ -1853,10 +1970,10 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return deserializeSetClockSourceCommand(payload);
 }
 
-/** SET_CONTROL Command - Clause 7.4.25.1 */
+/** SET_CONTROL Command - IEEE1722.1-2013 Clause 7.4.25.1 */
 static inline void createPackDynamicControlValuesDispatchTable(std::unordered_map<entity::model::ControlValueType::Type, std::function<void(Serializer<AemAecpdu::MaximumSendPayloadBufferLength>&, entity::model::ControlValues const&)>>& dispatchTable)
 {
-	/** Linear Values - Clause 7.3.5.2.1 */
+	/** Linear Values - IEEE1722.1-2013 Clause 7.3.5.2.1 */
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt8>::packDynamicControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearUInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearUInt8>::packDynamicControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearInt16>::packDynamicControlValues;
@@ -1868,7 +1985,7 @@ static inline void createPackDynamicControlValuesDispatchTable(std::unordered_ma
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearFloat] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearFloat>::packDynamicControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlLinearDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlLinearDouble>::packDynamicControlValues;
 
-	/** Selector Value - Clause 7.3.5.2.2 */
+	/** Selector Value - IEEE1722.1-2013 Clause 7.3.5.2.2 */
 	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorInt8>::packDynamicControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorUInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorUInt8>::packDynamicControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorInt16>::packDynamicControlValues;
@@ -1881,7 +1998,7 @@ static inline void createPackDynamicControlValuesDispatchTable(std::unordered_ma
 	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorDouble>::packDynamicControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlSelectorString] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlSelectorString>::packDynamicControlValues;
 
-	/** Array Values - Clause 7.3.5.2.3 */
+	/** Array Values - IEEE1722.1-2013 Clause 7.3.5.2.3 */
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt8>::packDynamicControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayUInt8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayUInt8>::packDynamicControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayInt16] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayInt16>::packDynamicControlValues;
@@ -1893,7 +2010,7 @@ static inline void createPackDynamicControlValuesDispatchTable(std::unordered_ma
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayFloat] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayFloat>::packDynamicControlValues;
 	dispatchTable[entity::model::ControlValueType::Type::ControlArrayDouble] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlArrayDouble>::packDynamicControlValues;
 
-	/** UTF-8 String Value - Clause 7.3.5.2.4 */
+	/** UTF-8 String Value - IEEE1722.1-2013 Clause 7.3.5.2.4 */
 	dispatchTable[entity::model::ControlValueType::Type::ControlUtf8] = control_values_payload_traits<entity::model::ControlValueType::Type::ControlUtf8>::packDynamicControlValues;
 }
 
@@ -1955,7 +2072,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, Memory
 	return std::make_tuple(descriptorType, descriptorIndex, memoryBuffer);
 }
 
-/** SET_CONTROL Response - Clause 7.4.25.1 */
+/** SET_CONTROL Response - IEEE1722.1-2013 Clause 7.4.25.1 */
 Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeSetControlResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::ControlValues const& controlValues)
 {
 	// Same as SET_CONTROL Command
@@ -1971,7 +2088,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, Memory
 	return deserializeSetControlCommand(payload);
 }
 
-/** GET_CONTROL Command - Clause 7.4.26.1 */
+/** GET_CONTROL Command - IEEE1722.1-2013 Clause 7.4.26.1 */
 Serializer<AecpAemGetControlCommandPayloadSize> serializeGetControlCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
 	Serializer<AecpAemGetControlCommandPayloadSize> ser;
@@ -2003,7 +2120,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 	return std::make_tuple(descriptorType, descriptorIndex);
 }
 
-/** GET_CONTROL Response - Clause 7.4.26.2 */
+/** GET_CONTROL Response - IEEE1722.1-2013 Clause 7.4.26.2 */
 Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeGetControlResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::ControlValues const& controlValues)
 {
 	// Same as SET_CONTROL Command
@@ -2019,7 +2136,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, Memory
 	return deserializeSetControlCommand(payload);
 }
 
-/** START_STREAMING Command - Clause 7.4.35.1 */
+/** START_STREAMING Command - IEEE1722.1-2013 Clause 7.4.35.1 */
 Serializer<AecpAemStartStreamingCommandPayloadSize> serializeStartStreamingCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
 	Serializer<AecpAemStartStreamingCommandPayloadSize> ser;
@@ -2051,7 +2168,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 	return std::make_tuple(descriptorType, descriptorIndex);
 }
 
-/** START_STREAMING Response - Clause 7.4.35.1 */
+/** START_STREAMING Response - IEEE1722.1-2013 Clause 7.4.35.1 */
 Serializer<AecpAemStartStreamingResponsePayloadSize> serializeStartStreamingResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
 	// Same as START_STREAMING Command
@@ -2067,7 +2184,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 	return deserializeStartStreamingCommand(payload);
 }
 
-/** STOP_STREAMING Command - Clause 7.4.36.1 */
+/** STOP_STREAMING Command - IEEE1722.1-2013 Clause 7.4.36.1 */
 Serializer<AecpAemStopStreamingCommandPayloadSize> serializeStopStreamingCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
 	// Same as START_STREAMING Command
@@ -2082,7 +2199,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 	return deserializeStartStreamingCommand(payload);
 }
 
-/** STOP_STREAMING Response - Clause 7.4.36.1 */
+/** STOP_STREAMING Response - IEEE1722.1-2013 Clause 7.4.36.1 */
 Serializer<AecpAemStopStreamingResponsePayloadSize> serializeStopStreamingResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
 	// Same as START_STREAMING Command
@@ -2098,7 +2215,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 	return deserializeStartStreamingCommand(payload);
 }
 
-/** GET_AVB_INFO Command - Clause 7.4.40.1 */
+/** GET_AVB_INFO Command - IEEE1722.1-2013 Clause 7.4.40.1 */
 Serializer<AecpAemGetAvbInfoCommandPayloadSize> serializeGetAvbInfoCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
 	Serializer<AecpAemGetAvbInfoCommandPayloadSize> ser;
@@ -2130,7 +2247,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 	return std::make_tuple(descriptorType, descriptorIndex);
 }
 
-/** GET_AVB_INFO Response - Clause 7.4.40.2 */
+/** GET_AVB_INFO Response - IEEE1722.1-2013 Clause 7.4.40.2 */
 Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeGetAvbInfoResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::AvbInfo const& avbInfo)
 {
 	Serializer<AemAecpdu::MaximumSendPayloadBufferLength> ser;
@@ -2199,7 +2316,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return std::make_tuple(descriptorType, descriptorIndex, avbInfo);
 }
 
-/** GET_AS_PATH Command - Clause 7.4.41.1 */
+/** GET_AS_PATH Command - IEEE1722.1-2013 Clause 7.4.41.1 */
 Serializer<AecpAemGetAsPathCommandPayloadSize> serializeGetAsPathCommand(entity::model::DescriptorIndex const descriptorIndex)
 {
 	Serializer<AecpAemGetAsPathCommandPayloadSize> ser;
@@ -2232,7 +2349,7 @@ std::tuple<entity::model::DescriptorIndex> deserializeGetAsPathCommand(AemAecpdu
 	return std::make_tuple(descriptorIndex);
 }
 
-/** GET_AS_PATH Response - Clause 7.4.41.2 */
+/** GET_AS_PATH Response - IEEE1722.1-2013 Clause 7.4.41.2 */
 Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeGetAsPathResponse(entity::model::DescriptorIndex const descriptorIndex, entity::model::AsPath const& asPath)
 {
 	Serializer<AemAecpdu::MaximumSendPayloadBufferLength> ser;
@@ -2296,7 +2413,7 @@ std::tuple<entity::model::DescriptorIndex, entity::model::AsPath> deserializeGet
 	return std::make_tuple(descriptorIndex, asPath);
 }
 
-/** GET_COUNTERS Command - Clause 7.4.42.1 */
+/** GET_COUNTERS Command - IEEE1722.1-2013 Clause 7.4.42.1 */
 Serializer<AecpAemGetCountersCommandPayloadSize> serializeGetCountersCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
 	Serializer<AecpAemGetCountersCommandPayloadSize> ser;
@@ -2328,7 +2445,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 	return std::make_tuple(descriptorType, descriptorIndex);
 }
 
-/** GET_COUNTERS Response - Clause 7.4.42.2 */
+/** GET_COUNTERS Response - IEEE1722.1-2013 Clause 7.4.42.2 */
 Serializer<AecpAemGetCountersResponsePayloadSize> serializeGetCountersResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::DescriptorCounterValidFlag const validCounters, entity::model::DescriptorCounters const& counters)
 {
 	Serializer<AecpAemGetCountersResponsePayloadSize> ser;
@@ -2385,7 +2502,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return std::make_tuple(descriptorType, descriptorIndex, validCounters, counters);
 }
 
-/** REBOOT Command - Clause 7.4.43.1 */
+/** REBOOT Command - IEEE1722.1-2013 Clause 7.4.43.1 */
 Serializer<AecpAemRebootCommandPayloadSize> serializeRebootCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
 	Serializer<AecpAemRebootCommandPayloadSize> ser;
@@ -2417,7 +2534,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 	return std::make_tuple(descriptorType, descriptorIndex);
 }
 
-/** REBOOT Response - Clause 7.4.43.1 */
+/** REBOOT Response - IEEE1722.1-2013 Clause 7.4.43.1 */
 Serializer<AecpAemRebootResponsePayloadSize> serializeRebootResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex)
 {
 	// Same as REBOOT Command
@@ -2433,7 +2550,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex> deseri
 	return deserializeRebootCommand(payload);
 }
 
-/** GET_AUDIO_MAP Command - Clause 7.4.44.1 */
+/** GET_AUDIO_MAP Command - IEEE1722.1-2013 Clause 7.4.44.1 */
 Serializer<AecpAemGetAudioMapCommandPayloadSize> serializeGetAudioMapCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::MapIndex const mapIndex)
 {
 	Serializer<AecpAemGetAudioMapCommandPayloadSize> ser;
@@ -2470,7 +2587,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return std::make_tuple(descriptorType, descriptorIndex, mapIndex);
 }
 
-/** GET_AUDIO_MAP Response - Clause 7.4.44.2 */
+/** GET_AUDIO_MAP Response - IEEE1722.1-2013 Clause 7.4.44.2 */
 Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeGetAudioMapResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::MapIndex const mapIndex, entity::model::MapIndex const numberOfMaps, entity::model::AudioMappings const& mappings)
 {
 	Serializer<AemAecpdu::MaximumSendPayloadBufferLength> ser;
@@ -2541,7 +2658,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return std::make_tuple(descriptorType, descriptorIndex, mapIndex, numberOfMaps, mappings);
 }
 
-/** ADD_AUDIO_MAPPINGS Command - Clause 7.4.45.1 */
+/** ADD_AUDIO_MAPPINGS Command - IEEE1722.1-2013 Clause 7.4.45.1 */
 Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeAddAudioMappingsCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::AudioMappings const& mappings)
 {
 	Serializer<AemAecpdu::MaximumSendPayloadBufferLength> ser;
@@ -2601,7 +2718,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return std::make_tuple(descriptorType, descriptorIndex, mappings);
 }
 
-/** ADD_AUDIO_MAPPINGS Response - Clause 7.4.45.2 */
+/** ADD_AUDIO_MAPPINGS Response - IEEE1722.1-2013 Clause 7.4.45.2 */
 Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeAddAudioMappingsResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::AudioMappings const& mappings)
 {
 	// Same as ADD_AUDIO_MAPPINGS Command
@@ -2617,7 +2734,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return deserializeAddAudioMappingsCommand(payload);
 }
 
-/** REMOVE_AUDIO_MAPPINGS Command - Clause 7.4.46.1 */
+/** REMOVE_AUDIO_MAPPINGS Command - IEEE1722.1-2013 Clause 7.4.46.1 */
 Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeRemoveAudioMappingsCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::AudioMappings const& mappings)
 {
 	// Same as ADD_AUDIO_MAPPINGS Command
@@ -2632,7 +2749,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return deserializeAddAudioMappingsCommand(payload);
 }
 
-/** REMOVE_AUDIO_MAPPINGS Response - Clause 7.4.46.2 */
+/** REMOVE_AUDIO_MAPPINGS Response - IEEE1722.1-2013 Clause 7.4.46.2 */
 Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeRemoveAudioMappingsResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::AudioMappings const& mappings)
 {
 	// Same as ADD_AUDIO_MAPPINGS Command
@@ -2648,7 +2765,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return deserializeAddAudioMappingsCommand(payload);
 }
 
-/** START_OPERATION Command - Clause 7.4.53.1 */
+/** START_OPERATION Command - IEEE1722.1-2013 Clause 7.4.53.1 */
 Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeStartOperationCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, entity::model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer)
 {
 	Serializer<AemAecpdu::MaximumSendPayloadBufferLength> ser;
@@ -2697,7 +2814,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return std::make_tuple(descriptorType, descriptorIndex, operationID, operationType, memoryBuffer);
 }
 
-/** START_OPERATION Response - Clause 7.4.53.1 */
+/** START_OPERATION Response - IEEE1722.1-2013 Clause 7.4.53.1 */
 Serializer<AemAecpdu::MaximumSendPayloadBufferLength> serializeStartOperationResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, entity::model::MemoryObjectOperationType const operationType, MemoryBuffer const& memoryBuffer)
 {
 	// Same as START_OPERATION Command
@@ -2713,7 +2830,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return deserializeStartOperationCommand(payload);
 }
 
-/** ABORT_OPERATION Command - Clause 7.4.55.1 */
+/** ABORT_OPERATION Command - IEEE1722.1-2013 Clause 7.4.55.1 */
 Serializer<AecpAemAbortOperationCommandPayloadSize> serializeAbortOperationCommand(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID)
 {
 	Serializer<AecpAemAbortOperationCommandPayloadSize> ser;
@@ -2750,7 +2867,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return std::make_tuple(descriptorType, descriptorIndex, operationID);
 }
 
-/** ABORT_OPERATION Response - Clause 7.4.55.1 */
+/** ABORT_OPERATION Response - IEEE1722.1-2013 Clause 7.4.55.1 */
 Serializer<AecpAemAbortOperationResponsePayloadSize> serializeAbortOperationResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID)
 {
 	// Same as ABORT_OPERATION Command
@@ -2766,7 +2883,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return deserializeAbortOperationCommand(payload);
 }
 
-/** OPERATION_STATUS Unsolicited Response - Clause 7.4.55.1 */
+/** OPERATION_STATUS Unsolicited Response - IEEE1722.1-2013 Clause 7.4.55.1 */
 Serializer<AecpAemOperationStatusResponsePayloadSize> serializeOperationStatusResponse(entity::model::DescriptorType const descriptorType, entity::model::DescriptorIndex const descriptorIndex, entity::model::OperationID const operationID, std::uint16_t const percentComplete)
 {
 	Serializer<AecpAemOperationStatusResponsePayloadSize> ser;
@@ -2804,7 +2921,7 @@ std::tuple<entity::model::DescriptorType, entity::model::DescriptorIndex, entity
 	return std::make_tuple(descriptorType, descriptorIndex, operationID, percentComplete);
 }
 
-/** SET_MEMORY_OBJECT_LENGTH Command - Clause 7.4.72.1 */
+/** SET_MEMORY_OBJECT_LENGTH Command - IEEE1722.1-2013 Clause 7.4.72.1 */
 Serializer<AecpAemSetMemoryObjectLengthCommandPayloadSize> serializeSetMemoryObjectLengthCommand(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length)
 {
 	Serializer<AecpAemSetMemoryObjectLengthCommandPayloadSize> ser;
@@ -2839,7 +2956,7 @@ std::tuple<entity::model::ConfigurationIndex, entity::model::MemoryObjectIndex, 
 	return std::make_tuple(configurationIndex, memoryObjectIndex, length);
 }
 
-/** SET_MEMORY_OBJECT_LENGTH Response - Clause 7.4.72.1 */
+/** SET_MEMORY_OBJECT_LENGTH Response - IEEE1722.1-2013 Clause 7.4.72.1 */
 Serializer<AecpAemSetMemoryObjectLengthResponsePayloadSize> serializeSetMemoryObjectLengthResponse(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length)
 {
 	// Same as SET_MEMORY_OBJECT_LENGTH Command
@@ -2855,7 +2972,7 @@ std::tuple<entity::model::ConfigurationIndex, entity::model::MemoryObjectIndex, 
 	return deserializeSetMemoryObjectLengthCommand(payload);
 }
 
-/** GET_MEMORY_OBJECT_LENGTH Command - Clause 7.4.73.1 */
+/** GET_MEMORY_OBJECT_LENGTH Command - IEEE1722.1-2013 Clause 7.4.73.1 */
 Serializer<AecpAemGetMemoryObjectLengthCommandPayloadSize> serializeGetMemoryObjectLengthCommand(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex)
 {
 	Serializer<AecpAemGetClockSourceCommandPayloadSize> ser;
@@ -2887,7 +3004,7 @@ std::tuple<entity::model::ConfigurationIndex, entity::model::MemoryObjectIndex> 
 	return std::make_tuple(configurationIndex, memoryObjectIndex);
 }
 
-/** GET_MEMORY_OBJECT_LENGTH Response - Clause 7.4.73.2 */
+/** GET_MEMORY_OBJECT_LENGTH Response - IEEE1722.1-2013 Clause 7.4.73.2 */
 Serializer<AecpAemGetMemoryObjectLengthResponsePayloadSize> serializeGetMemoryObjectLengthResponse(entity::model::ConfigurationIndex const configurationIndex, entity::model::MemoryObjectIndex const memoryObjectIndex, std::uint64_t const length)
 {
 	// Same as SET_MEMORY_OBJECT_LENGTH Command

@@ -1030,7 +1030,7 @@ static void set_aem_aecpdu(avdecc_protocol_aem_aecpdu_cp const aecpdu, protocol:
 
 protocol::AemAecpdu make_aem_aecpdu(avdecc_protocol_aem_aecpdu_cp const aecpdu) noexcept
 {
-	auto const isResponse = (aecpdu->message_type % 2) == 1; // Odd numbers are responses (see Clause 8.2.1.5)
+	auto const isResponse = (aecpdu->message_type % 2) == 1; // Odd numbers are responses (see IEEE1722.1-2013 Clause 8.2.1.5)
 	auto aecp = protocol::AemAecpdu{ isResponse };
 
 	set_aem_aecpdu(aecpdu, aecp);
@@ -1040,7 +1040,7 @@ protocol::AemAecpdu make_aem_aecpdu(avdecc_protocol_aem_aecpdu_cp const aecpdu) 
 
 protocol::AemAecpdu::UniquePointer make_aem_aecpdu_unique(avdecc_protocol_aem_aecpdu_cp const aecpdu) noexcept
 {
-	auto const isResponse = (aecpdu->message_type % 2) == 1; // Odd numbers are responses (see Clause 8.2.1.5)
+	auto const isResponse = (aecpdu->message_type % 2) == 1; // Odd numbers are responses (see IEEE1722.1-2013 Clause 8.2.1.5)
 	auto aecp = protocol::AemAecpdu::create(isResponse);
 
 	set_aem_aecpdu(aecpdu, static_cast<protocol::AemAecpdu&>(*aecp));
@@ -1077,7 +1077,7 @@ static void set_mvu_aecpdu(avdecc_protocol_mvu_aecpdu_cp const aecpdu, protocol:
 
 protocol::MvuAecpdu make_mvu_aecpdu(avdecc_protocol_mvu_aecpdu_cp const aecpdu) noexcept
 {
-	auto const isResponse = (aecpdu->message_type % 2) == 1; // Odd numbers are responses (see Clause 8.2.1.5)
+	auto const isResponse = (aecpdu->message_type % 2) == 1; // Odd numbers are responses (see IEEE1722.1-2013 Clause 8.2.1.5)
 	auto aecp = protocol::MvuAecpdu{ isResponse };
 
 	set_mvu_aecpdu(aecpdu, aecp);
@@ -1087,7 +1087,7 @@ protocol::MvuAecpdu make_mvu_aecpdu(avdecc_protocol_mvu_aecpdu_cp const aecpdu) 
 
 protocol::MvuAecpdu::UniquePointer make_mvu_aecpdu_unique(avdecc_protocol_mvu_aecpdu_cp const aecpdu) noexcept
 {
-	auto const isResponse = (aecpdu->message_type % 2) == 1; // Odd numbers are responses (see Clause 8.2.1.5)
+	auto const isResponse = (aecpdu->message_type % 2) == 1; // Odd numbers are responses (see IEEE1722.1-2013 Clause 8.2.1.5)
 	auto aecp = protocol::MvuAecpdu::create(isResponse);
 
 	set_mvu_aecpdu(aecpdu, static_cast<protocol::MvuAecpdu&>(*aecp));

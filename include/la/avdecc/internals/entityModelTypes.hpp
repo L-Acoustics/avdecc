@@ -73,9 +73,12 @@ using SignalMultiplexerIndex = DescriptorIndex;
 using SignalTranscoderIndex = DescriptorIndex;
 using ClockDomainIndex = DescriptorIndex;
 using ControlBlockIndex = DescriptorIndex;
-using DescriptorCounterValidFlag = std::uint32_t; /** Counters valid flag - Clause 7.4.42 */
-using DescriptorCounter = std::uint32_t; /** Counter - Clause 7.4.42 */
-using OperationID = std::uint16_t; /** OperationID for OPERATIONS returned by an entity to a controller - Clause 7.4.53 */
+using TimingIndex = DescriptorIndex;
+using PtpInstanceIndex = DescriptorIndex;
+using PtpPortIndex = DescriptorIndex;
+using DescriptorCounterValidFlag = std::uint32_t; /** Counters valid flag - IEEE1722.1-2013 Clause 7.4.42 */
+using DescriptorCounter = std::uint32_t; /** Counter - IEEE1722.1-2013 Clause 7.4.42 */
+using OperationID = std::uint16_t; /** OperationID for OPERATIONS returned by an entity to a controller - IEEE1722.1-2013 Clause 7.4.53 */
 using BridgeIdentifier = std::uint64_t;
 
 constexpr DescriptorIndex getInvalidDescriptorIndex() noexcept
@@ -83,7 +86,7 @@ constexpr DescriptorIndex getInvalidDescriptorIndex() noexcept
 	return DescriptorIndex(0xFFFF);
 }
 
-/** Descriptor Type - Clause 7.2 */
+/** Descriptor Type - IEEE1722.1-2013 Clause 7.2 */
 enum class DescriptorType : std::uint16_t
 {
 	Entity = 0x0000,
@@ -124,8 +127,11 @@ enum class DescriptorType : std::uint16_t
 	SignalTranscoder = 0x0023,
 	ClockDomain = 0x0024,
 	ControlBlock = 0x0025,
-	LAST_VALID_DESCRIPTOR = 0x0025,
-	/* 0026 to fffe reserved for future use */
+	Timing = 0x0026,
+	PtpInstance = 0x0027,
+	PtpPort = 0x0028,
+	LAST_VALID_DESCRIPTOR = 0x0028,
+	/* 0029 to fffe reserved for future use */
 	Invalid = 0xffff
 };
 constexpr bool operator!(DescriptorType const lhs)
@@ -145,7 +151,7 @@ constexpr bool operator==(DescriptorType const lhs, std::underlying_type_t<Descr
 
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION descriptorTypeToString(DescriptorType const descriptorType) noexcept;
 
-/** Jack Type - Clause 7.2.7.2 */
+/** Jack Type - IEEE1722.1-2013 Clause 7.2.7.2 */
 enum class JackType : std::uint16_t
 {
 	Speaker = 0x0000,
@@ -201,7 +207,7 @@ constexpr bool operator==(JackType const lhs, std::underlying_type_t<JackType> c
 
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION jackTypeToString(JackType const jackType) noexcept;
 
-/** ClockSource Type - Clause 7.2.9.2 */
+/** ClockSource Type - IEEE1722.1-2013 Clause 7.2.9.2 */
 enum class ClockSourceType : std::uint16_t
 {
 	Internal = 0x0000,
@@ -222,7 +228,7 @@ constexpr bool operator==(ClockSourceType const lhs, std::underlying_type_t<Cloc
 
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION clockSourceTypeToString(ClockSourceType const clockSourceType) noexcept;
 
-/** MemoryObject Type - Clause 7.2.10.1 */
+/** MemoryObject Type - IEEE1722.1-2013 Clause 7.2.10.1 */
 enum class MemoryObjectType : std::uint16_t
 {
 	FirmwareImage = 0x0000,
@@ -254,7 +260,7 @@ constexpr bool operator==(MemoryObjectType const lhs, std::underlying_type_t<Mem
 
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION memoryObjectTypeToString(MemoryObjectType const memoryObjectType) noexcept;
 
-/** MemoryObject Operation Type - Clause 7.2.10.2 */
+/** MemoryObject Operation Type - IEEE1722.1-2013 Clause 7.2.10.2 */
 enum class MemoryObjectOperationType : std::uint16_t
 {
 	Store = 0x0000,
@@ -276,7 +282,7 @@ constexpr bool operator==(MemoryObjectOperationType const lhs, std::underlying_t
 
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION memoryObjectOperationTypeToString(MemoryObjectOperationType const memoryObjectOperationType) noexcept;
 
-/** AudioCluster Format - Clause 7.2.16.1 */
+/** AudioCluster Format - IEEE1722.1-2013 Clause 7.2.16.1 */
 enum class AudioClusterFormat : std::uint8_t
 {
 	Iec60958 = 0x00,
@@ -296,7 +302,7 @@ constexpr bool operator==(AudioClusterFormat const lhs, std::underlying_type_t<A
 
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION audioClusterFormatToString(AudioClusterFormat const audioClusterFormat) noexcept;
 
-/** Audio Mapping - Clause 7.2.19.1 */
+/** Audio Mapping - IEEE1722.1-2013 Clause 7.2.19.1 */
 struct AudioMapping
 {
 	StreamIndex streamIndex{ StreamIndex(0u) };
@@ -320,7 +326,56 @@ struct AudioMapping
 
 using AudioMappings = std::vector<AudioMapping>;
 
-/** Control Type - Clause 7.3.4 */
+/** Timing Algorithm - IEEE1722.1-2021 Clause 7.2.34.1 */
+enum class TimingAlgorithm : std::uint16_t
+{
+	Single = 0x0000,
+	Fallback = 0x0001,
+	Combined = 0x0002,
+	/* 0003 to ffff reserved for future use */
+};
+constexpr bool operator==(TimingAlgorithm const lhs, TimingAlgorithm const rhs)
+{
+	return static_cast<std::underlying_type_t<TimingAlgorithm>>(lhs) == static_cast<std::underlying_type_t<TimingAlgorithm>>(rhs);
+}
+
+constexpr bool operator==(TimingAlgorithm const lhs, std::underlying_type_t<TimingAlgorithm> const rhs)
+{
+	return static_cast<std::underlying_type_t<TimingAlgorithm>>(lhs) == rhs;
+}
+
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION timingAlgorithmToString(TimingAlgorithm const timingAlgorithm) noexcept;
+
+/** PTP Port Type - IEEE1722.1-2021 Clause 7.2.36.1 */
+enum class PtpPortType : std::uint16_t
+{
+	P2PLinkLayer = 0x0000,
+	P2PMulticastUdpV4 = 0x0001,
+	P2PMulticastUdpV6 = 0x0002,
+	TimingMeasurement = 0x0003,
+	FineTimingMeasurement = 0x0004,
+	E2ELinkLayer = 0x0005,
+	E2EMulticastUdpV4 = 0x0006,
+	E2EMulticastUdpV6 = 0x0007,
+	P2PUnicastUdpV4 = 0x0008,
+	P2PUnicastUdpV6 = 0x0009,
+	E2EUnicastUdpV4 = 0x000a,
+	E2EUnicastUdpV6 = 0x000b,
+	/* 000c to ffff reserved for future use */
+};
+constexpr bool operator==(PtpPortType const lhs, PtpPortType const rhs)
+{
+	return static_cast<std::underlying_type_t<PtpPortType>>(lhs) == static_cast<std::underlying_type_t<PtpPortType>>(rhs);
+}
+
+constexpr bool operator==(PtpPortType const lhs, std::underlying_type_t<PtpPortType> const rhs)
+{
+	return static_cast<std::underlying_type_t<PtpPortType>>(lhs) == rhs;
+}
+
+LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION ptpPortTypeToString(PtpPortType const ptpPortType) noexcept;
+
+/** Control Type - IEEE1722.1-2013 Clause 7.3.4 */
 using ControlType = UniqueIdentifier;
 constexpr std::uint32_t StandardControlTypeVendorID = 0x90e0f0;
 
@@ -405,7 +460,7 @@ constexpr bool operator==(StandardControlType const lhs, std::underlying_type_t<
 
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION standardControlTypeToString(StandardControlType const controlType) noexcept;
 
-/** MSRP Mapping - Clause 7.4.40.2.1 */
+/** MSRP Mapping - IEEE1722.1-2013 Clause 7.4.40.2.1 */
 struct MsrpMapping
 {
 	std::uint8_t trafficClass{ 0x00 };
@@ -428,10 +483,10 @@ struct MsrpMapping
 
 using MsrpMappings = std::vector<MsrpMapping>;
 
-/** GET_AS_PATH Dynamic Information - Clause 7.4.41.2 */
+/** GET_AS_PATH Dynamic Information - IEEE1722.1-2013 Clause 7.4.41.2 */
 using PathSequence = std::vector<UniqueIdentifier>;
 
-/** GET_COUNTERS - Clause 7.4.42.2 */
+/** GET_COUNTERS - IEEE1722.1-2013 Clause 7.4.42.2 */
 using DescriptorCounters = std::array<DescriptorCounter, 32>;
 
 /** UTF-8 String */
@@ -583,7 +638,7 @@ private:
 	std::array<value_type, MaxLength> _buffer{};
 };
 
-/** Sampling Rate - Clause 7.3.1 */
+/** Sampling Rate - IEEE1722.1-2013 Clause 7.3.1 */
 class SamplingRate final
 {
 public:
@@ -659,7 +714,7 @@ public:
 	/** True if the SamplingRate contains a valid underlying value, false otherwise. */
 	constexpr bool isValid() const noexcept
 	{
-		// Clause 7.3.1.2 says base_frequency ranges from 1 to 536'870'911, so we can use 0 to detect invalid value.
+		// IEEE1722.1-2013 Clause 7.3.1.2 says base_frequency ranges from 1 to 536'870'911, so we can use 0 to detect invalid value.
 		return (_value & 0x1FFFFFFF) != 0;
 	}
 
@@ -719,7 +774,7 @@ private:
 	value_type _value{ NullSamplingRate };
 };
 
-/** Stream Format packed value - Clause 7.3.2 */
+/** Stream Format packed value - IEEE1722.1-2013 Clause 7.3.2 */
 class StreamFormat final
 {
 public:
@@ -808,7 +863,7 @@ private:
 	value_type _value{ NullStreamFormat };
 };
 
-/** Localized String Reference - Clause 7.3.6 */
+/** Localized String Reference - IEEE1722.1-2013 Clause 7.3.6 */
 class LocalizedStringReference final
 {
 public:
@@ -868,7 +923,7 @@ public:
 	/** True if the LocalizedStringReference contains a valid underlying value, false otherwise. */
 	constexpr bool isValid() const noexcept
 	{
-		// Clause 7.3.6 says any index value of 7 is invalid, we just have to check that.
+		// IEEE1722.1-2013 Clause 7.3.6 says any index value of 7 is invalid, we just have to check that.
 		return (_value & 0x0007) != 0x07;
 	}
 
@@ -928,7 +983,7 @@ private:
 	value_type _value{ NullLocalizedStringReference };
 };
 
-/** Control Value Unit - Clause 7.3.3 */
+/** Control Value Unit - IEEE1722.1-2013 Clause 7.3.3 */
 class ControlValueUnit final
 {
 public:
@@ -1171,7 +1226,7 @@ private:
 
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION controlValueUnitToString(ControlValueUnit::Unit const controlValueUnit) noexcept;
 
-/** Control Value Type - Clause 7.3.5 */
+/** Control Value Type - IEEE1722.1-2013 Clause 7.3.5 */
 class ControlValueType final
 {
 public:
@@ -1316,7 +1371,7 @@ private:
 
 LA_AVDECC_API std::string LA_AVDECC_CALL_CONVENTION controlValueTypeToString(ControlValueType::Type const controlValueType) noexcept;
 
-/** Control Values - Clause 7.3.5 */
+/** Control Values - IEEE1722.1-2013 Clause 7.3.5 */
 class ControlValues final
 {
 public:
@@ -1478,7 +1533,7 @@ constexpr bool operator<(StreamIdentification const& lhs, StreamIdentification c
 	return (lhs.entityID.getValue() < rhs.entityID.getValue()) || (lhs.entityID == rhs.entityID && lhs.streamIndex < rhs.streamIndex);
 }
 
-/** Probing Status - Milan Clause 6.8.6 */
+/** Probing Status - Milan-2019 Clause 6.8.6 */
 enum class ProbingStatus : std::uint8_t
 {
 	Disabled = 0x00, /** The sink is not probing because it is not bound. */

@@ -559,6 +559,42 @@ void ControllerImpl::onClockDomainNameChanged(entity::controller::Interface cons
 	}
 }
 
+void ControllerImpl::onTimingNameChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const timingIndex, entity::model::AvdeccFixedString const& timingName) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+		updateTimingName(entity, configurationIndex, timingIndex, timingName, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	}
+}
+
+void ControllerImpl::onPtpInstanceNameChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const ptpInstanceIndex, entity::model::AvdeccFixedString const& ptpInstanceName) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+		updatePtpInstanceName(entity, configurationIndex, ptpInstanceIndex, ptpInstanceName, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	}
+}
+
+void ControllerImpl::onPtpPortNameChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex, entity::model::AvdeccFixedString const& ptpPortName) noexcept
+{
+	// Take a "scoped locked" shared copy of the ControlledEntity
+	auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+	if (controlledEntity)
+	{
+		auto& entity = *controlledEntity;
+		updatePtpPortName(entity, configurationIndex, ptpPortIndex, ptpPortName, entity.wasAdvertised() ? TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull : TreeModelAccessStrategy::NotFoundBehavior::IgnoreAndReturnNull);
+	}
+}
+
 void ControllerImpl::onAssociationIDChanged(entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, UniqueIdentifier const associationID) noexcept
 {
 	// Take a "scoped locked" shared copy of the ControlledEntity

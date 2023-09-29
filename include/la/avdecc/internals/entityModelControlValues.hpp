@@ -52,7 +52,7 @@ namespace entity
 {
 namespace model
 {
-/** Linear Values - Clause 7.3.5.2.1 */
+/** Linear Values - IEEE1722.1-2013 Clause 7.3.5.2.1 */
 template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
 struct LA_AVDECC_TYPE_INFO_EXPORT LinearValueStatic
 {
@@ -149,7 +149,7 @@ private:
 	Values _values{};
 };
 
-/** Selector Value - Clause 7.3.5.2.2 */
+/** Selector Value - IEEE1722.1-2013 Clause 7.3.5.2.2 */
 template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType> || std::is_same_v<SizeType, LocalizedStringReference>>>
 struct LA_AVDECC_TYPE_INFO_EXPORT SelectorValueStatic
 {
@@ -190,7 +190,7 @@ struct LA_AVDECC_TYPE_INFO_EXPORT SelectorValueDynamic
 	SizeType currentValue{}; // The actual default value should be the one from SelectorValueStatic
 };
 
-/** Array Values - Clause 7.3.5.2.3 */
+/** Array Values - IEEE1722.1-2013 Clause 7.3.5.2.3 */
 template<typename SizeType, typename = std::enable_if_t<std::is_arithmetic_v<SizeType>>>
 struct LA_AVDECC_TYPE_INFO_EXPORT ArrayValueStatic
 {
@@ -234,7 +234,7 @@ struct LA_AVDECC_TYPE_INFO_EXPORT ArrayValueDynamic
 	std::vector<SizeType> currentValues{}; // The actual default value should be the one from ArrayValueStatic
 };
 
-/** UTF-8 String Value - Clause 7.3.5.2.4 */
+/** UTF-8 String Value - IEEE1722.1-2013 Clause 7.3.5.2.4 */
 struct LA_AVDECC_TYPE_INFO_EXPORT UTF8StringValueStatic
 {
 	static constexpr size_t MaxLength = 406;

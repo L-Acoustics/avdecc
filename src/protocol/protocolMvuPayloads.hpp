@@ -53,11 +53,11 @@ public:
 // All serialization methods might throw a std::invalid_argument if serialization goes wrong
 // All deserialization methods might throw a la::avdecc:Exception if deserialization goes wrong
 
-/** GET_MILAN_INFO Command - Milan Clause 7.4.1 */
+/** GET_MILAN_INFO Command - Milan-2019 Clause 7.4.1 */
 Serializer<AecpMvuGetMilanInfoCommandPayloadSize> serializeGetMilanInfoCommand();
 void deserializeGetMilanInfoCommand(MvuAecpdu::Payload const& payload);
 
-/** GET_MILAN_INFO Response - Milan Clause 7.4.1 */
+/** GET_MILAN_INFO Response - Milan-2019 Clause 7.4.1 */
 Serializer<AecpMvuGetMilanInfoResponsePayloadSize> serializeGetMilanInfoResponse(entity::model::MilanInfo const& info);
 std::tuple<entity::model::MilanInfo> deserializeGetMilanInfoResponse(MvuAecpdu::Payload const& payload);
 

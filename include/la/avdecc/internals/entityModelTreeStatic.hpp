@@ -207,6 +207,34 @@ struct ClockDomainNodeStaticModel
 	ClockSources clockSources{};
 };
 
+struct TimingNodeStaticModel
+{
+	LocalizedStringReference localizedDescription{};
+	TimingAlgorithm algorithm{ TimingAlgorithm::Single };
+	PtpInstances ptpInstances{};
+};
+
+struct PtpInstanceNodeStaticModel
+{
+	LocalizedStringReference localizedDescription{};
+	UniqueIdentifier clockIdentity{};
+	PtpInstanceFlags flags{};
+	std::uint16_t numberOfControls{ 0u };
+	ControlIndex baseControl{ ControlIndex(0u) };
+	std::uint16_t numberOfPtpPorts{ 0u };
+	PtpPortIndex basePtpPort{ PtpPortIndex(0u) };
+};
+
+struct PtpPortNodeStaticModel
+{
+	LocalizedStringReference localizedDescription{};
+	std::uint16_t portNumber{ 0u };
+	PtpPortType portType{ PtpPortType::P2PLinkLayer };
+	PtpPortFlags flags{};
+	AvbInterfaceIndex avbInterfaceIndex{ AvbInterfaceIndex(0u) };
+	networkInterface::MacAddress profileIdentifier{ 0u };
+};
+
 struct ConfigurationNodeStaticModel
 {
 	LocalizedStringReference localizedDescription{};

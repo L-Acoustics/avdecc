@@ -37,6 +37,8 @@ static auto constexpr DefaultExecutorName = "avdecc::protocol::PI";
 
 TEST(ProtocolInterfaceVirtual, InvalidName)
 {
+	auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
+
 	// Not using EXPECT_THROW, we want to check the error code inside our custom exception
 	try
 	{
@@ -51,6 +53,8 @@ TEST(ProtocolInterfaceVirtual, InvalidName)
 
 TEST(ProtocolInterfaceVirtual, InvalidMac)
 {
+	auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
+
 	// Not using EXPECT_THROW, we want to check the error code inside our custom exception
 	try
 	{
@@ -65,6 +69,8 @@ TEST(ProtocolInterfaceVirtual, InvalidMac)
 
 TEST(ProtocolInterfaceVirtual, ValidInterface)
 {
+	auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
+
 	EXPECT_NO_THROW(std::unique_ptr<la::avdecc::protocol::ProtocolInterfaceVirtual>(la::avdecc::protocol::ProtocolInterfaceVirtual::createRawProtocolInterfaceVirtual("ValidInterface", { { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 } }, DefaultExecutorName)););
 }
 

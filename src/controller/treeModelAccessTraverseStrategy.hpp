@@ -764,6 +764,79 @@ private:
 		}
 		return nullptr;
 	}
+
+	virtual model::TimingNode* getTimingNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior) override
+	{
+		auto* const configurationNode = getConfigurationNode(configurationIndex, notFoundBehavior);
+		if (configurationNode)
+		{
+			auto it = configurationNode->timings.find(descriptorIndex);
+			if (it == configurationNode->timings.end())
+			{
+				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getTimingNode: Invalid timing index"))
+				{
+					return nullptr;
+				}
+				it = configurationNode->timings.emplace(descriptorIndex, model::TimingNode{ descriptorIndex }).first;
+			}
+
+			return &(it->second);
+		}
+		return nullptr;
+	}
+
+	virtual model::PtpInstanceNode* getPtpInstanceNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior) override
+	{
+		auto* const configurationNode = getConfigurationNode(configurationIndex, notFoundBehavior);
+		if (configurationNode)
+		{
+			auto it = configurationNode->ptpInstances.find(descriptorIndex);
+			if (it == configurationNode->ptpInstances.end())
+			{
+				if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getPtpInstanceNode: Invalid ptpInstance index"))
+				{
+					return nullptr;
+				}
+				it = configurationNode->ptpInstances.emplace(descriptorIndex, model::PtpInstanceNode{ descriptorIndex }).first;
+			}
+
+			return &(it->second);
+		}
+		return nullptr;
+	}
+
+	virtual model::PtpPortNode* getPtpPortNode(entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const descriptorIndex, NotFoundBehavior const notFoundBehavior) override
+	{
+		auto* const configurationNode = getConfigurationNode(configurationIndex, notFoundBehavior);
+		if (configurationNode)
+		{
+			// Search a matching PtpPortIndex in all PtpInstances
+			for (auto& ptpInstanceNodeKV : configurationNode->ptpInstances)
+			{
+				auto& ptpInstanceNode = ptpInstanceNodeKV.second;
+
+				if (isDescriptorIndexInRange(descriptorIndex, ptpInstanceNode.staticModel.basePtpPort, ptpInstanceNode.staticModel.numberOfPtpPorts))
+				{
+					auto it = ptpInstanceNode.ptpPorts.find(descriptorIndex);
+					if (it == ptpInstanceNode.ptpPorts.end())
+					{
+						if (!handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getPtpPortNode: Invalid ptp port index (PtpInstance level)"))
+						{
+							return nullptr;
+						}
+						it = ptpInstanceNode.ptpPorts.emplace(descriptorIndex, model::PtpPortNode{ descriptorIndex }).first;
+					}
+
+					return &(it->second);
+				}
+			}
+
+			// Not found
+			handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getPtpPortNode: Invalid ptp port index");
+			return nullptr;
+		}
+		return nullptr;
+	}
 };
 
 } // namespace controller

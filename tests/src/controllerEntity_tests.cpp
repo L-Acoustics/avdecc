@@ -24,6 +24,7 @@
 
 // Public API
 #include <la/avdecc/internals/protocolAemAecpdu.hpp>
+#include <la/avdecc/executor.hpp>
 
 // Internal API
 #include "entity/controllerEntityImpl.hpp"
@@ -85,6 +86,8 @@ TEST(ControllerEntity, DispatchWhileSending)
  */
 TEST(ControllerEntity, DetectMainAvbInterfaceLost)
 {
+	auto const executorWrapper = la::avdecc::ExecutorManager::getInstance().registerExecutor(DefaultExecutorName, la::avdecc::ExecutorWithDispatchQueue::create(DefaultExecutorName, la::avdecc::utils::ThreadPriority::Highest));
+
 	static constexpr auto EntityID = la::avdecc::UniqueIdentifier{ 0x0001020304050607 };
 	static auto entityOfflinePromise = std::promise<void>{};
 

@@ -1485,6 +1485,132 @@ void ControllerImpl::setClockDomainName(UniqueIdentifier const targetEntityID, e
 	}
 }
 
+void ControllerImpl::setTimingName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const timingIndex, entity::model::AvdeccFixedString const& name, SetTimingNameHandler const& handler) const noexcept
+{
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setTimingName (ConfigurationIndex={} TimingIndex={} Name={})", configurationIndex, timingIndex, name.str());
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
+		_controllerProxy->setTimingName(targetEntityID, configurationIndex, timingIndex, name,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::TimingIndex const timingIndex, entity::model::AvdeccFixedString const& timingName)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User setTimingName (ConfigurationIndex={} TimingIndex={}): {}", configurationIndex, timingIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+
+					// Update name
+					if (!!status) // Only change the name in case of success
+					{
+						updateTimingName(*entity, configurationIndex, timingIndex, timingName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					utils::invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
+	}
+	else
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setPtpInstanceName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const ptpInstanceIndex, entity::model::AvdeccFixedString const& name, SetPtpInstanceNameHandler const& handler) const noexcept
+{
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setPtpInstanceName (ConfigurationIndex={} PtpInstanceIndex={} Name={})", configurationIndex, ptpInstanceIndex, name.str());
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
+		_controllerProxy->setPtpInstanceName(targetEntityID, configurationIndex, ptpInstanceIndex, name,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpInstanceIndex const ptpInstanceIndex, entity::model::AvdeccFixedString const& ptpInstanceName)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User setPtpInstanceName (ConfigurationIndex={} PtpInstanceIndex={}): {}", configurationIndex, ptpInstanceIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+
+					// Update name
+					if (!!status) // Only change the name in case of success
+					{
+						updatePtpInstanceName(*entity, configurationIndex, ptpInstanceIndex, ptpInstanceName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					utils::invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
+	}
+	else
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
+void ControllerImpl::setPtpPortName(UniqueIdentifier const targetEntityID, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex, entity::model::AvdeccFixedString const& name, SetPtpPortNameHandler const& handler) const noexcept
+{
+	// Get a shared copy of the ControlledEntity so it stays alive while in the scope
+	auto controlledEntity = getSharedControlledEntityImplHolder(targetEntityID, true);
+
+	if (controlledEntity)
+	{
+		LOG_CONTROLLER_TRACE(targetEntityID, "User setPtpPortName (ConfigurationIndex={} PtpPortIndex={} Name={})", configurationIndex, ptpPortIndex, name.str());
+		auto const guard = ControlledEntityUnlockerGuard{ *this }; // Always temporarily unlock the ControlledEntities before calling the controller
+		_controllerProxy->setPtpPortName(targetEntityID, configurationIndex, ptpPortIndex, name,
+			[this, handler](entity::controller::Interface const* const /*controller*/, UniqueIdentifier const entityID, entity::ControllerEntity::AemCommandStatus const status, entity::model::ConfigurationIndex const configurationIndex, entity::model::PtpPortIndex const ptpPortIndex, entity::model::AvdeccFixedString const& ptpPortName)
+			{
+				LOG_CONTROLLER_TRACE(entityID, "User setPtpPortName (ConfigurationIndex={} PtpPortIndex={}): {}", configurationIndex, ptpPortIndex, entity::ControllerEntity::statusToString(status));
+
+				// Take a "scoped locked" shared copy of the ControlledEntity
+				auto controlledEntity = getControlledEntityImplGuard(entityID);
+
+				if (controlledEntity)
+				{
+					auto* const entity = controlledEntity.get();
+
+					// Update name
+					if (!!status) // Only change the name in case of success
+					{
+						updatePtpPortName(*entity, configurationIndex, ptpPortIndex, ptpPortName, TreeModelAccessStrategy::NotFoundBehavior::LogAndReturnNull);
+					}
+
+					// Invoke result handler
+					utils::invokeProtectedHandler(handler, entity->wasAdvertised() ? entity : nullptr, status);
+				}
+				else // The entity went offline right after we sent our message
+				{
+					utils::invokeProtectedHandler(handler, nullptr, status);
+				}
+			});
+	}
+	else
+	{
+		utils::invokeProtectedHandler(handler, nullptr, entity::ControllerEntity::AemCommandStatus::UnknownEntity);
+	}
+}
+
 void ControllerImpl::setAssociationID(UniqueIdentifier const targetEntityID, UniqueIdentifier const associationID, SetAssociationIDHandler const& handler) const noexcept
 {
 	// Get a shared copy of the ControlledEntity so it stays alive while in the scope

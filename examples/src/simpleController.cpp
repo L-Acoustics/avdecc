@@ -281,12 +281,76 @@ int doJob()
 								controller->readStreamInputDescriptor(entityID, _listenerConfiguration, index, std::bind(&ControllerDelegate::onStreamInputDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 						}
 					}
+					// Print all descriptor counts
+					for (auto const [descriptorType, count] : descriptor.descriptorCounts)
+					{
+						ss << std::dec << "Configuration " << configurationIndex << " has " << std::to_string(count) << " " << la::avdecc::entity::model::descriptorTypeToString(descriptorType) << " DESCRIPTORS" << std::endl;
+					}
+					controller->readTimingDescriptor(entityID, configurationIndex, 0u, std::bind(&ControllerDelegate::onTimingDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
 				}
 				outputText(ss.str());
 			}
 			catch (...)
 			{
 				outputText("Uncaught exception in onConfigurationDescriptorResult");
+			}
+		}
+		void onTimingDescriptorResult(la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::TimingIndex const timingIndex, la::avdecc::entity::model::TimingDescriptor const& descriptor) noexcept
+		{
+			try
+			{
+				if (!!status)
+				{
+					std::stringstream ss;
+					ss << std::hex << "Timing descriptor for index " << timingIndex << ": " << descriptor.objectName << std::endl;
+					outputText(ss.str());
+					// Query PtpInstance descriptors
+					for (auto const ptpInstanceIndex : descriptor.ptpInstances)
+					{
+						controller->readPtpInstanceDescriptor(entityID, configurationIndex, ptpInstanceIndex, std::bind(&ControllerDelegate::onPtpInstanceDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+					}
+				}
+			}
+			catch (...)
+			{
+				outputText("Uncaught exception in onTimingDescriptorResult");
+			}
+		}
+		void onPtpInstanceDescriptorResult(la::avdecc::entity::controller::Interface const* const controller, la::avdecc::UniqueIdentifier const entityID, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const configurationIndex, la::avdecc::entity::model::PtpInstanceIndex const ptpInstanceIndex, la::avdecc::entity::model::PtpInstanceDescriptor const& descriptor) noexcept
+		{
+			try
+			{
+				if (!!status)
+				{
+					std::stringstream ss;
+					ss << std::hex << "PTP instance descriptor for index " << ptpInstanceIndex << ": " << descriptor.objectName << std::endl;
+					outputText(ss.str());
+					// Query PtpPort descriptors
+					for (auto ptpPortIndex = la::avdecc::entity::model::PtpPortIndex(0); ptpPortIndex < descriptor.numberOfPtpPorts; ++ptpPortIndex)
+					{
+						controller->readPtpPortDescriptor(entityID, configurationIndex, ptpPortIndex, std::bind(&ControllerDelegate::onPtpPortDescriptorResult, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6));
+					}
+				}
+			}
+			catch (...)
+			{
+				outputText("Uncaught exception in onPtpInstanceDescriptorResult");
+			}
+		}
+		void onPtpPortDescriptorResult(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const /*configurationIndex*/, la::avdecc::entity::model::PtpPortIndex const ptpPortIndex, la::avdecc::entity::model::PtpPortDescriptor const& descriptor) noexcept
+		{
+			try
+			{
+				if (!!status)
+				{
+					std::stringstream ss;
+					ss << std::hex << "PTP port descriptor for index " << ptpPortIndex << ": " << descriptor.objectName << std::endl;
+					outputText(ss.str());
+				}
+			}
+			catch (...)
+			{
+				outputText("Uncaught exception in onPtpPortDescriptorResult");
 			}
 		}
 		void onStreamInputDescriptorResult(la::avdecc::entity::controller::Interface const* const /*controller*/, la::avdecc::UniqueIdentifier const /*entityID*/, la::avdecc::entity::ControllerEntity::AemCommandStatus const status, la::avdecc::entity::model::ConfigurationIndex const /*configurationIndex*/, la::avdecc::entity::model::StreamIndex const streamIndex, la::avdecc::entity::model::StreamDescriptor const& descriptor) noexcept
