@@ -612,6 +612,17 @@ void ControllerImpl::onJackInputDescriptorResult(entity::controller::Interface c
 			if (!!status)
 			{
 				controlledEntity->setJackInputDescriptor(descriptor, configurationIndex, jackIndex);
+
+				// Get controls
+				{
+					if (descriptor.numberOfControls != 0)
+					{
+						for (auto index = entity::model::ControlIndex(0); index < descriptor.numberOfControls; ++index)
+						{
+							queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Control, descriptor.baseControl + index);
+						}
+					}
+				}
 			}
 			else
 			{
@@ -648,6 +659,17 @@ void ControllerImpl::onJackOutputDescriptorResult(entity::controller::Interface 
 			if (!!status)
 			{
 				controlledEntity->setJackOutputDescriptor(descriptor, configurationIndex, jackIndex);
+
+				// Get controls
+				{
+					if (descriptor.numberOfControls != 0)
+					{
+						for (auto index = entity::model::ControlIndex(0); index < descriptor.numberOfControls; ++index)
+						{
+							queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Control, descriptor.baseControl + index);
+						}
+					}
+				}
 			}
 			else
 			{
@@ -897,6 +919,17 @@ void ControllerImpl::onStreamPortInputDescriptorResult(entity::controller::Inter
 			if (!!status)
 			{
 				controlledEntity->setStreamPortInputDescriptor(descriptor, configurationIndex, streamPortIndex);
+
+				// Get controls
+				{
+					if (descriptor.numberOfControls != 0)
+					{
+						for (auto index = entity::model::ControlIndex(0); index < descriptor.numberOfControls; ++index)
+						{
+							queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Control, descriptor.baseControl + index);
+						}
+					}
+				}
 				// Get audio clusters
 				{
 					if (descriptor.numberOfClusters != 0)
@@ -952,6 +985,17 @@ void ControllerImpl::onStreamPortOutputDescriptorResult(entity::controller::Inte
 			if (!!status)
 			{
 				controlledEntity->setStreamPortOutputDescriptor(descriptor, configurationIndex, streamPortIndex);
+
+				// Get controls
+				{
+					if (descriptor.numberOfControls != 0)
+					{
+						for (auto index = entity::model::ControlIndex(0); index < descriptor.numberOfControls; ++index)
+						{
+							queryInformation(controlledEntity.get(), configurationIndex, entity::model::DescriptorType::Control, descriptor.baseControl + index);
+						}
+					}
+				}
 				// Get audio clusters
 				{
 					if (descriptor.numberOfClusters != 0)
