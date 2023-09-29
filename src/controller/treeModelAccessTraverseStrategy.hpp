@@ -714,8 +714,6 @@ private:
 
 			// Search ControlBlocks
 
-#if 0 // IEEE 1722.1-2021
-
 			// Search PtpInstances
 			for (auto& ptpInstanceNodeKV : configurationNode->ptpInstances)
 			{
@@ -730,13 +728,12 @@ private:
 						{
 							return nullptr;
 						}
-						it = ptpInstanceNode.controls.emplace(descriptorIndex, model::ControlNode{descriptorIndex}).first;
+						it = ptpInstanceNode.controls.emplace(descriptorIndex, model::ControlNode{ descriptorIndex }).first;
 					}
 
 					return &(it->second);
 				}
 			}
-#endif
 
 			// Not found
 			handleDescriptorNotFound(notFoundBehavior, ControlledEntity::Exception::Type::InvalidDescriptorIndex, "getControlNode: Invalid control index");
